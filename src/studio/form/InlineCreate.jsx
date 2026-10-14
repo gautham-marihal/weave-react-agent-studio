@@ -1,0 +1,46 @@
+import React, { useState } from 'react';
+import { useForm } from './ctx.js';
+import { CREATABLE, createAndPoint, createProblems } from './inlineCreate.js';
+
+// "＋ New message / state variable / HTTP connection" under a field that points at one: asks the few things needed, makes
+// it, and points the field at it, all as one change (with Undo).
+export default function InlineCreate({ collection, target, defaultKind, onClose }) {
+  const ctx = useForm();
+  const spec = CREATABLE[collection];
+  const [answers, setAnswers] = useState({ kind: defaultKind || 'string' });
+  const [tried, setTried] = useState(false);
+  if (!spec) return null;
+  const problems = createProblems(collection, answers, ctx.config);
+  const set = (key, value) => setAnswers((old) => ({ ...old, [key]: value }));
+  const submit = () => {
+    setTried(true);
+    if (Object.keys(problems).length) return;
+    const { config, id } = createAndPoint(ctx.config, collection, answers, target);
+    ctx.applyConfig(config, `Created ${spec.word} “${id}”${target ? ' and pointed this field at it' : ''}.`);
+    onClose();
+  };
+  return (
+    <div className="stInlineCreate" role="group" aria-label={`New ${spec.word}`}>
+      <strong>New {spec.word}</strong>
+      {spec.ask.map((field) => (
+        <label key={field.key} className="stICField">
+          <span>{field.label}</span>
+          {field.options ? (
+            <select className="stFInput small" value={answers[field.key] ?? ''} onChange={(event) => set(field.key, event.target.value)}>
+              {field.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          ) : field.multiline ? (
+            <textarea className="stFInput" rows={3} value={answers[field.key] ?? ''} onChange={(event) => set(field.key, event.target.value)} autoFocus />
+          ) : (
+            <input className="stFInput small" type="text" spellCheck={false} value={answers[field.key] ?? ''} placeholder={field.hint} onChange={(event) => set(field.key, event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); submit(); } }} autoFocus={field === spec.ask[0]} />
+          )}
+          {tried && problems[field.key] && <small className="stFErr">{problems[field.key]}</small>}
+        </label>
+      ))}
+      <div className="stICActions">
+        <button type="button" className="stAddBtn" onClick={submit}>Create{target ? ' and use' : ''}</button>
+        <button type="button" className="quietButton small" onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,49 @@
+.scTab { display: grid; gap: 14px; }
+.scHead { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.scHead h3 { margin: 0 0 4px; }
+.scBar { display: flex; flex-wrap: wrap; gap: 8px; }
+.scEmpty { display: grid; gap: 8px; justify-items: start; color: var(--muted); font-size: 13.5px; }
+.scEmpty strong { color: var(--text, inherit); }
+.scList { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.scItem { border: 1px solid var(--line2, rgba(127,127,127,.3)); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.scItem > header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.scItem > header small { color: var(--muted); flex: 1 1 160px; }
+.scItemActions { display: inline-flex; gap: 6px; margin-left: auto; }
+.scSaid { margin: 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.scChip { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line2, rgba(127,127,127,.35)); }
+.scChip.good { color: var(--ok, #34d399); border-color: currentColor; }
+.scChip.bad { color: var(--danger, #f87171); border-color: currentColor; }
+.scChip.idle { color: var(--muted); }
+.scLast { border-top: 1px dashed var(--line2, rgba(127,127,127,.3)); padding-top: 8px; }
+.scLast p { margin: 0 0 6px; font-size: 12.5px; }
+.scResults { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.scResults li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.scResults li b { width: 16px; text-align: center; }
+.scResults li small { display: block; color: var(--muted); }
+.scResults li.passed b { color: var(--ok, #34d399); }
+.scResults li.failed b, .scResults li.error b { color: var(--danger, #f87171); }
+.scTranscript { margin-top: 6px; font-size: 12.5px; }
+.scTranscript ol { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px; }
+.scTranscript li.user b { color: var(--accent, #22d3ee); }
+.scForm { display: grid; gap: 12px; }
+.scGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.scGrid label, .scImport label { display: grid; gap: 4px; font-size: 12.5px; }
+.scGrid label.wide { grid-column: 1 / -1; }
+.scGrid em { font-style: normal; color: var(--muted); }
+.scBlock { border: 1px solid var(--line2, rgba(127,127,127,.3)); border-radius: 10px; padding: 8px 12px 12px; display: grid; gap: 8px; }
+.scBlock legend { font-size: 12.5px; font-weight: 600; padding: 0 6px; }
+.scTurns, .scExpects { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.scTurns li { display: flex; gap: 6px; }
+.scTurns input { flex: 1 1 auto; min-width: 0; }
+.scExpect { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.scExpect .scField { display: grid; gap: 2px; flex: 1 1 200px; }
+.scExpect textarea, .scExpect input[type=text] { flex: 1 1 200px; min-width: 0; }
+.scProblems { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+.scActions { display: flex; gap: 8px; flex-wrap: wrap; }
+.scSummary h4, .scTab h4 { margin: 0 0 4px; font-size: 14px; display: flex; gap: 8px; align-items: center; }
+.scSummary p { margin: 2px 0; font-size: 13.5px; }
+.scNum.good { color: var(--ok, #34d399); } .scNum.bad { color: var(--danger, #f87171); }
+.scFailed { color: var(--danger, #f87171); }
+.scHistory { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 4px; }
+.scHistory .quietButton.on { border-color: var(--accent, #22d3ee); }
+.scOk { color: var(--ok, #34d399); margin: 6px 0 0; font-size: 13px; }

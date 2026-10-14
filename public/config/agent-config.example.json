@@ -1,0 +1,759 @@
+{
+  "$schema": "./agent-config.schema.json",
+  "schema_version": "1.1",
+
+  "meta": {
+    "id": "acme-support",
+    "name": "Acme Telecom Support",
+    "description": "Inbound support bot: billing and technical faults over phone (SIP) and web chat, with live-video hazard watching on chat.",
+    "version": "2.0.0",
+    "status": "draft",
+    "environment": "staging",
+    "tags": ["support", "telecom"],
+    "owner": "support-team",
+    "created_at": "2026-10-06T09:00:00Z",
+    "updated_at": "2026-10-06T09:00:00Z"
+  },
+
+  "runtime": {
+    "engine": "livekit-agents",
+    "provider_mode": "plugins",
+    "dispatch_name": "acme-support",
+    "secrets_vault": "default",
+    "timezone": "America/New_York",
+    "worker": { "http_port": 8081, "num_idle_processes": 1, "initialize_process_timeout_s": 30 },
+    "hangup": { "delete_room_on_close": true, "drain": true }
+  },
+
+  "constants": {
+    "payment_url": "https://pay.acme.example",
+    "supervisor_callback_hours": 4
+  },
+
+  "schedules": {
+    "support_hours": {
+      "description": "When a person can take a transferred call.",
+      "timezone": "America/New_York",
+      "weekly": [
+        { "days": ["mon", "tue", "wed", "thu", "fri"], "start": "08:00", "end": "20:00" },
+        { "days": ["sat"], "start": "09:00", "end": "17:00" }
+      ],
+      "holidays": ["2026-12-25"],
+      "overrides": { "2026-12-24": { "start": "09:00", "end": "13:00" } }
+    }
+  },
+
+  "identity": {
+    "caller_id": {
+      "sources": [
+        { "from": "participant_attribute", "name": "sip.phoneNumber" },
+        { "from": "participant_identity", "strip": ["^sip[:_]", "@.*$"] }
+      ],
+      "normalize": { "type": "e164", "default_country": "US" }
+    }
+  },
+
+  "telephony": {
+    "pbx": { "host": "pbx.acme.example", "transport": "tls", "dnis": "+18005550100" },
+    "transfers": [
+      {
+        "id": "human_support",
+        "description": "Blind-transfer the caller's SIP leg to the queue for what they called about.",
+        "method": "sip_refer",
+        "target": {
+          "lookup": {
+            "state": "intent",
+            "map": { "billing": { "secret": "BILLING_QUEUE_NUMBER" }, "technical": { "secret": "TECH_QUEUE_NUMBER" } },
+            "default": { "secret": "TECH_QUEUE_NUMBER" }
+          }
+        },
+        "uri_template": "sip:{{target}}@{{pbx.host}};transport={{pbx.transport}};sip_h_X-Reason={{args.reason | truncate(200) | urlencode}}",
+        "play_dialtone": true,
+        "headers": {
+          "X-Call-Id": "{{state.call_id}}",
+          "X-Session-Id": "{{state.sip_session_id | default('unknown')}}"
+        },
+        "schedule": "support_hours",
+        "closed": [{ "type": "say", "text": { "message": "outside_hours" } }],
+        "before": [
+          {
+            "type": "http",
+            "connection": "platform_db",
+            "method": "POST",
+            "path": "/active-calls",
+            "body": { "call_id": "{{state.call_id}}", "caller": "{{state.caller_phone}}", "reason": "{{args.reason}}" }
+          }
+        ],
+        "delay_s": 1,
+        "on_success": [{ "type": "set_state", "values": { "disposition": "transferred" } }],
+        "on_failure": [{ "type": "log", "level": "warning", "message": "transfer failed for call {{state.call_id}}" }]
+      }
+    ]
+  },
+
+  "defaults": {
+    "language": { "primary": "en-US", "speaks": ["en", "es"], "also_understands": ["en-GB"], "auto_detect": false },
+
+    "models": {
+      "stt": {
+        "provider": "deepgram",
+        "model": "nova-3",
+        "language": "en",
+        "keyterms": ["Acme", "SIM swap", "roaming"],
+        "api_key": { "secret": "DEEPGRAM_API_KEY" }
+      },
+      "llm": {
+        "provider": "openai",
+        "model": "gpt-4.1-mini",
+        "temperature": 0.3,
+        "parallel_tool_calls": false,
+        "tool_calling": true,
+        "vision": true,
+        "api_key": { "secret": "OPENAI_API_KEY" },
+        "fallbacks": [{ "provider": "openai", "model": "gpt-4o-mini" }]
+      },
+      "tts": {
+        "provider": "elevenlabs",
+        "model": "eleven_multilingual_v2",
+        "voice_id": "voice_placeholder_id",
+        "speed": 1.0,
+        "text_transforms": ["filter_markdown", "filter_emoji"],
+        "api_key": { "secret": "ELEVEN_API_KEY" }
+      },
+      "realtime": null,
+      "vad": { "provider": "silero" },
+      "turn_detector": { "provider": "livekit-multilingual" }
+    },
+
+    "conversation": {
+      "turn_handling": {
+        "endpointing": { "mode": "fixed", "min_delay": 0.5, "max_delay": 3.0 },
+        "interruption": { "enabled": true, "mode": "vad", "min_duration": 0.5, "min_words": 0, "resume_false_interruption": true, "false_interruption_timeout": 2.0 },
+        "preemptive_generation": { "enabled": true, "preemptive_tts": false },
+        "user_turn_limit": { "max_words": null, "max_duration": null }
+      },
+      "max_tool_steps": 6,
+      "inactivity": {
+        "enabled": true,
+        "clock": "auto",
+        "timeout_s": 12,
+        "max_nudges": 2,
+        "nudges": [
+          { "type": "say", "text": { "message": "still_there" } },
+          { "type": "say", "text": { "message": "still_there_final" } }
+        ],
+        "on_exhausted": { "do": [{ "type": "end_call", "say": { "message": "inactivity_goodbye" } }] }
+      },
+      "sounds": {
+        "thinking": {
+          "enabled": true,
+          "clips": [
+            { "source": "keyboard_typing", "volume": 0.3, "probability": 0.5, "fade_out_s": 0.3 },
+            { "source": "keyboard_typing2", "volume": 0.3, "probability": 0.5, "fade_out_s": 0.3 }
+          ]
+        },
+        "ambient": { "enabled": false, "clip": { "source": "office_ambience", "volume": 0.1, "loop": true } }
+      },
+      "speech": {
+        "pronunciation": [
+          { "type": "currency", "symbols": ["$", "USD"], "major_unit": "dollars", "minor_unit": "cents" },
+          { "type": "spell", "id": "reference_ids", "pattern": "\\b(TK|INC)-?\\d{4,8}\\b" },
+          { "type": "time", "style": "spoken_12h" },
+          { "type": "date", "style": "ordinal_month_name" },
+          { "type": "digits", "min_length": 6, "group_size": 4, "plus_prefix": "plus " },
+          { "type": "replace", "id": "sms", "pattern": "\\bSMS\\b", "replacement": "text message" }
+        ],
+        "buffer": { "max_hold_chars": 160 }
+      },
+      "ivr_detection": false,
+      "noise_cancellation": { "enabled": false, "model": "auto" }
+    },
+
+    "reliability": {
+      "connection": {
+        "stt": { "max_retry": 3, "retry_interval_s": 2, "timeout_s": 10 },
+        "llm": { "max_retry": 3, "retry_interval_s": 2, "timeout_s": 15 },
+        "tts": { "max_retry": 3, "retry_interval_s": 2, "timeout_s": 10 }
+      },
+      "max_unrecoverable_errors": 3,
+      "on_session_error": {
+        "do": [
+          { "type": "play_sound", "sound": { "file": "sounds/sorry-call-back.wav" } },
+          { "type": "log", "level": "error", "message": "session closed after unrecoverable errors, call {{state.call_id}}" }
+        ]
+      }
+    }
+  },
+
+  "persona": {
+    "name": "Sam",
+    "company": "Acme Telecom",
+    "tone": "warm, concise, plain language",
+    "style_rules": [
+      "One question at a time.",
+      "Short sentences; this is spoken, not written."
+    ],
+    "shared_rules": [
+      "Only state facts returned by a tool; never guess account data.",
+      "Stay inside your role; hand over instead of improvising."
+    ],
+    "disclosures": { "recording_notice": "This call may be recorded to improve our service." }
+  },
+
+  "messages": [
+    { "id": "greeting", "text": { "en": "Thank you for calling Acme Telecom. This call may be recorded. I'm Sam. How can I help?", "es": "Gracias por llamar a Acme Telecom. Esta llamada puede ser grabada. Soy Sam. ¿En qué puedo ayudarle?" }, "allow_interruptions": false },
+    { "id": "chat_greeting", "text": { "en": "Hi, I'm Sam from Acme Telecom. How can I help?", "es": "Hola, soy Sam de Acme Telecom. ¿En qué puedo ayudarle?" } },
+    { "id": "goodbye", "text": { "en": "Thank you for calling Acme Telecom. Goodbye!", "es": "Gracias por llamar a Acme Telecom. ¡Adiós!" }, "allow_interruptions": false },
+    { "id": "still_there", "text": { "en": "Are you still there?", "es": "¿Sigue ahí?" } },
+    { "id": "still_there_final", "text": { "en": "I'm still here whenever you're ready. Is there anything else I can help with?", "es": "Sigo aquí cuando quiera. ¿Puedo ayudarle con algo más?" } },
+    { "id": "inactivity_goodbye", "text": { "en": "I haven't heard from you, so I'll end the conversation now. Please contact us again any time.", "es": "No he recibido respuesta, así que terminaré la conversación. Contáctenos de nuevo cuando quiera." }, "allow_interruptions": false },
+    { "id": "outside_hours", "text": { "en": "Our team isn't available right now. I can take your details and have someone call you back.", "es": "Nuestro equipo no está disponible ahora. Puedo tomar sus datos para que le llamen." } },
+    { "id": "callback_line", "text": { "en": "A supervisor will call you back within {{const.supervisor_callback_hours}} hours.", "es": "Un supervisor le llamará en un plazo de {{const.supervisor_callback_hours}} horas." } },
+    { "id": "hazard_ack", "text": { "en": "Please keep everyone well away from it. A crew has been alerted, and I'm switching to live video so I can watch this with you.", "es": "Mantenga a todos bien alejados. Se ha avisado a un equipo y paso a vídeo en directo para vigilarlo con usted." }, "allow_interruptions": false },
+    { "id": "hazard_advice", "text": { "en": "Please keep everyone well away from it and don't touch it. A crew has been alerted.", "es": "Mantenga a todos bien alejados y no lo toque. Se ha avisado a un equipo." }, "allow_interruptions": false },
+    { "id": "move_away", "text": { "en": "I need you to move away right now, this is getting worse. A crew is on the way. Please stay well clear until they arrive.", "es": "Aléjese ahora mismo, esto está empeorando. Un equipo va en camino. Manténgase alejado hasta que lleguen." }, "allow_interruptions": false }
+  ],
+
+  "state": {
+    "variables": {
+      "caller_phone": { "type": "string", "source": { "caller_id": true } },
+      "channel": { "type": "enum", "values": ["voice", "chat"], "source": { "channel": "modality" } },
+      "call_id": { "type": "string", "source": { "generate": { "kind": "epoch_hex", "max_length": 16, "uppercase": true } } },
+      "sip_session_id": { "type": "string", "nullable": true, "source": { "participant_attribute": "sip.session_id" } },
+      "intent": { "type": "enum", "values": ["billing", "technical"], "nullable": true, "default": null },
+      "customer": { "type": "object", "nullable": true, "default": null },
+      "verified": { "type": "boolean", "default": false },
+      "verify_attempts": { "type": "integer", "default": 0 },
+      "ticket_id": { "type": "string", "nullable": true, "default": null },
+      "pending_request": { "type": "string", "nullable": true, "default": null, "description": "What the caller still needs when a specialist hands them back; the entry agent picks it up." },
+      "hazard_location": { "type": "string", "nullable": true, "default": null },
+      "hazard_description": { "type": "string", "nullable": true, "default": null },
+      "notification_sent_by": { "type": "string", "nullable": true, "default": null, "description": "Which delivery worked for the last notification (a notifier connection id)." },
+      "contact_name": { "type": "string", "nullable": true, "default": null },
+      "disposition": { "type": "enum", "values": ["disconnected", "transferred"], "default": "disconnected" }
+    }
+  },
+
+  "channels": [
+    {
+      "id": "phone",
+      "type": "sip_voice",
+      "enabled": true,
+      "match": { "participant_kind": ["sip"] },
+      "entry": { "dispatch_rule": "acme-support-inbound", "sip_trunk": "trunk-main", "dnis": "+18005550100" },
+      "modalities": { "input": ["audio"], "output": ["audio"] },
+      "capabilities": { "dtmf": true, "human_transfer": true },
+      "greeting": { "say": { "message": "greeting" }, "allow_interruptions": false },
+      "instructions_append": "This is a voice call. The caller has no camera. Never ask them to show or upload anything.",
+      "overrides": { "conversation": { "noise_cancellation": { "enabled": true, "model": "auto" } } }
+    },
+    {
+      "id": "web-chat",
+      "type": "web_chat",
+      "enabled": true,
+      "match": { "participant_kind": ["standard"] },
+      "entry": { "widget_id": "acme-widget", "allowed_origins": ["https://www.acme.example"] },
+      "modalities": { "input": ["text", "image", "video"], "output": ["text"] },
+      "inputs": {
+        "image": { "topic": "image-upload", "on_receive": "reply", "max_bytes": 5242880, "accepted_mime": ["image/jpeg", "image/png"] },
+        "video": { "camera": true, "screen_share": false }
+      },
+      "capabilities": { "dtmf": false, "human_transfer": false },
+      "greeting": { "say": { "message": "chat_greeting" }, "allow_interruptions": true },
+      "instructions_append": "This is a chat session. The caller may upload a photo or share their camera; describe only what you yourself can see.",
+      "overrides": {
+        "models": { "stt": null, "tts": null },
+        "conversation": {
+          "inactivity": {
+            "clock": "user_activity",
+            "timeout_s": 120,
+            "max_nudges": 2,
+            "nudges": [{ "type": "generate", "instructions": "The visitor has gone quiet. Check in warmly and briefly, asking if they are still there or need anything else." }],
+            "on_exhausted": { "do": [{ "type": "end_call", "say": { "message": "inactivity_goodbye" } }] }
+          },
+          "sounds": { "thinking": { "enabled": false } }
+        }
+      }
+    }
+  ],
+
+  "agents": {
+    "entry": "greeter",
+    "items": [
+      {
+        "id": "greeter",
+        "name": "Front Door",
+        "kind": "router",
+        "instructions": {
+          "role": "You answer, work out what the caller needs and hand over to the right specialist. Do no business yourself.",
+          "opening": "Greet briefly if you have not already, then ask how you can help.",
+          "rules": ["If the caller has nothing else or says goodbye, call end_call. It says the goodbye itself."],
+          "conditional": [{ "when": { "state": "pending_request", "not_equals": null }, "append": "The caller still needs help with: {{state.pending_request}}. Hand over to the right specialist now, without asking anything." }]
+        },
+        "tools": ["end_call", "escalate_to_human"],
+        "handoffs": [
+          { "id": "to_billing", "tool": "go_to_billing", "description": "The caller asks about a bill, charges or a payment.", "to": "billing", "carry_context": true, "set_state": { "intent": "billing" } },
+          { "id": "to_tech", "tool": "go_to_tech_support", "description": "The caller reports a fault: no signal, slow data, a damaged cable or device problems.", "to": "tech_support", "carry_context": true, "set_state": { "intent": "technical" } }
+        ]
+      },
+      {
+        "id": "billing",
+        "name": "Billing",
+        "kind": "specialist",
+        "instructions": {
+          "role": "You help with bills and payments. Verify the caller before any account detail.",
+          "opening": "Acknowledge the request briefly, then continue as your role describes.",
+          "rules": ["Quote amounts in words when speaking.", "Never promise a refund. Offer to raise a dispute."],
+          "conditional": [{ "when": { "state": "verified", "equals": false }, "append": "The caller is not verified yet: call verify_caller before using any account tool." }]
+        },
+        "tools": ["verify_caller", "get_bill_summary", "send_payment_link", "search_help_center", "escalate_to_human", "back_to_menu"]
+      },
+      {
+        "id": "tech_support",
+        "name": "Technical Support",
+        "kind": "specialist",
+        "instructions": {
+          "role": "You troubleshoot connectivity and device faults one step at a time, then raise a ticket if it is not fixed. A damaged or sparking cable is a hazard: call report_hazard at once.",
+          "opening": "Acknowledge the problem briefly, then continue as your role describes.",
+          "rules": ["Check the network status for the caller's area before troubleshooting."],
+          "conditional": [{ "when": { "state": "notification_sent_by", "not_equals": null }, "append": "The ticket confirmation was sent by {{state.notification_sent_by}}; say so." }]
+        },
+        "tools": ["crm_tools", "search_help_center", "report_hazard", "report_hazard_chat", "send_callback_form", "escalate_to_human", "back_to_menu"],
+        "knowledge": ["product_manual"],
+        "vision": { "mode": "turn_attach", "max_dimension": 1024 },
+        "overrides": { "models": { "llm": { "model": "gpt-4.1", "temperature": 0.2 } } }
+      },
+      {
+        "id": "safety_watch",
+        "name": "Live Safety Watch",
+        "kind": "specialist",
+        "channels": ["web-chat"],
+        "instructions": {
+          "role": "You watch a reported hazard through the caller's camera. If it visibly gets worse, interrupt at once and tell them to back away, then call conclude_watch with assessment worsened. If a good look shows no change, call conclude_watch with assessment stable. Describe only what you yourself see.",
+          "opening": "Say you can see it now and keep watching; if you cannot see it, ask them to point the camera at it."
+        },
+        "tools": ["conclude_watch", "back_to_menu"],
+        "vision": {
+          "mode": "continuous",
+          "max_dimension": 1024,
+          "watch": {
+            "sample_interval_s": 1.5,
+            "change_threshold": 18,
+            "min_seconds_between_prompts": 4,
+            "on_change": { "type": "generate", "instructions": "Something just visibly changed in the camera view. Look now. If it is genuinely worse, interrupt and act per your role; if not meaningfully different, say nothing." }
+          }
+        },
+        "overrides": { "models": { "realtime": { "provider": "openai", "model": "gpt-realtime", "modalities": ["text"], "api_key": { "secret": "OPENAI_API_KEY" } } } }
+      }
+    ]
+  },
+
+  "tasks": [
+    {
+      "id": "verify_customer",
+      "kind": "verification",
+      "description": "Confirm who the caller is before account details are shared.",
+      "instructions": "You are one short step in a call: confirm identity. Check every answer with the matching tool; never judge an answer yourself and never reveal account details or the right answer. Do not discuss anything else.",
+      "use_prior_context": true,
+      "steps": [
+        { "id": "account", "ask": "Ask for the account number.", "skip_if": { "state": "customer", "not_equals": null }, "validate": { "type": "tool", "tool": "lookup_account" } },
+        { "id": "surname", "ask": "Ask for the surname on the account.", "validate": { "type": "tool", "tool": "check_surname" } }
+      ],
+      "max_attempts": 3,
+      "inactivity": { "timeout_s": 30 },
+      "on_success": { "set_state": { "verified": true }, "resume": "caller", "silent": true },
+      "on_failure": { "outcome": "failed", "resume": "caller", "silent": false },
+      "on_decline": { "outcome": "declined", "resume": "caller", "silent": false }
+    }
+  ],
+
+  "tools": [
+    {
+      "id": "end_call",
+      "type": "builtin",
+      "builtin": "end_call",
+      "params": { "say": { "message": "goodbye" } }
+    },
+    {
+      "id": "escalate_to_human",
+      "type": "builtin",
+      "builtin": "transfer_or_callback",
+      "description": "Caller asks for a person, or you cannot help.",
+      "params": {
+        "transfer": "human_support",
+        "fallback": [
+          { "type": "say", "text": { "message": "callback_line" } },
+          { "type": "http", "connection": "platform_db", "method": "POST", "path": "/callbacks", "body": { "call_id": "{{state.call_id}}", "phone": "{{state.caller_phone}}", "intent": "{{state.intent}}" } }
+        ]
+      }
+    },
+    {
+      "id": "back_to_menu",
+      "type": "builtin",
+      "builtin": "return_to_entry",
+      "description": "This request is finished, or the caller needs something outside your role.",
+      "params": { "pending_request_into": "pending_request", "guard_loops": true }
+    },
+    {
+      "id": "send_callback_form",
+      "type": "builtin",
+      "builtin": "send_form",
+      "description": "Show the callback form when nobody is available to talk.",
+      "channels": ["web-chat"],
+      "params": { "form": "callback_request" }
+    },
+    {
+      "id": "verify_caller",
+      "type": "task",
+      "task": "verify_customer",
+      "description": "Verify the caller's identity. Required before any account detail."
+    },
+    {
+      "id": "lookup_account",
+      "type": "http",
+      "description": "Find the account for an account number.",
+      "connection": "billing_api",
+      "request": { "method": "GET", "path": "/v1/accounts/lookup", "query": { "number": "{{args.account_number}}" } },
+      "parameters": {
+        "type": "object",
+        "properties": { "account_number": { "type": "string", "description": "Digits only, 8 to 12 digits." } },
+        "required": ["account_number"]
+      },
+      "result": { "to_llm": ["found"], "to_state": { "customer": "$.account" } }
+    },
+    {
+      "id": "check_surname",
+      "type": "http",
+      "description": "Check the surname the caller gave against the account.",
+      "connection": "billing_api",
+      "request": { "method": "POST", "path": "/v1/accounts/{{state.customer.id}}/verify-surname", "body": { "surname": "{{args.surname}}" } },
+      "parameters": { "type": "object", "properties": { "surname": { "type": "string" } }, "required": ["surname"] },
+      "result": { "to_llm": ["match"], "to_state": { "verified": "$.match" } },
+      "limits": { "count_attempts_in": "verify_attempts" }
+    },
+    {
+      "id": "get_bill_summary",
+      "type": "http",
+      "description": "Latest bill: amount, period, whether it is estimated, due date.",
+      "connection": "billing_api",
+      "request": { "method": "GET", "path": "/v1/accounts/{{state.customer.id}}/bill" },
+      "parameters": { "type": "object", "properties": {} },
+      "preconditions": [{ "require": { "state": "verified", "equals": true }, "on_fail": { "tool_error": "The caller is not verified yet. Call verify_caller first." } }],
+      "result": { "to_llm": ["amount", "period", "estimated", "due_in_days"] },
+      "timeout_s": 8,
+      "retries": 1,
+      "on_error": { "tool_error": "I could not fetch the bill right now. Apologise and offer a callback." }
+    },
+    {
+      "id": "send_payment_link",
+      "type": "http",
+      "description": "Send the caller a secure payment link.",
+      "connection": "billing_api",
+      "request": { "method": "POST", "path": "/v1/accounts/{{state.customer.id}}/payment-link", "body": { "return_url": "{{const.payment_url}}" } },
+      "parameters": { "type": "object", "properties": {} },
+      "preconditions": [{ "require": { "state": "verified", "equals": true }, "on_fail": { "tool_error": "The caller is not verified yet. Call verify_caller first." } }],
+      "result": {
+        "to_llm": ["sent", "sent_by"],
+        "out_of_band": { "fields": ["link"], "via": "sms", "template": "Your Acme payment link: {{link}}" }
+      }
+    },
+    {
+      "id": "search_help_center",
+      "type": "knowledge",
+      "description": "Search the help centre for how-to and policy answers.",
+      "source": "help_center",
+      "top_k": 3
+    },
+    {
+      "id": "crm_tools",
+      "type": "mcp",
+      "description": "Network status and ticketing from the CRM.",
+      "server": "crm_mcp",
+      "allow": ["network_status", "create_ticket", "ticket_status"]
+    },
+    {
+      "id": "report_hazard",
+      "name": "report_hazard",
+      "type": "http",
+      "channels": ["phone"],
+      "description": "Report a dangerous situation (a fallen or sparking cable or cabinet).",
+      "connection": "billing_api",
+      "request": { "method": "POST", "path": "/v1/tickets", "body": { "category": "safety", "priority": "emergency", "location": "{{args.location}}", "hazard": "{{args.hazard}}", "caller": "{{state.caller_phone}}" } },
+      "parameters": {
+        "type": "object",
+        "properties": { "location": { "type": "string" }, "hazard": { "type": "string", "description": "What the caller sees, in a few words." } },
+        "required": ["location", "hazard"]
+      },
+      "result": { "to_llm": ["id", "sla_hours"], "to_state": { "ticket_id": "$.id" } },
+      "effects": [
+        {
+          "do": [
+            { "type": "say", "text": { "message": "hazard_advice" }, "allow_interruptions": false },
+            { "type": "notify", "notification": "ticket_sms", "with": { "ticket_id": "{{result.id}}" }, "result_to_state": { "sent_by": "notification_sent_by" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "report_hazard_chat",
+      "name": "report_hazard",
+      "type": "builtin",
+      "builtin": "noop",
+      "channels": ["web-chat"],
+      "description": "Report a dangerous situation (a fallen or sparking cable or cabinet).",
+      "parameters": {
+        "type": "object",
+        "properties": { "location": { "type": "string" }, "hazard": { "type": "string", "description": "What the caller sees, in a few words." } },
+        "required": ["location", "hazard"]
+      },
+      "effects": [
+        {
+          "do": [
+            { "type": "set_state", "values": { "hazard_location": "{{args.location}}", "hazard_description": "{{args.hazard}}" } },
+            { "type": "say", "text": { "message": "hazard_ack" }, "allow_interruptions": false },
+            { "type": "handoff", "to": "safety_watch" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "conclude_watch",
+      "type": "http",
+      "description": "File the safety report from what you saw live, then finish the watch.",
+      "connection": "billing_api",
+      "request": { "method": "POST", "path": "/v1/tickets", "body": { "category": "safety", "priority": "emergency", "location": "{{state.hazard_location}}", "hazard": "{{state.hazard_description}}", "live_check": "{{args.observation}}", "caller": "{{state.caller_phone}}" } },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assessment": { "enum": ["stable", "worsened"], "type": "string" },
+          "observation": { "type": "string", "description": "What you saw, in one or two sentences." }
+        },
+        "required": ["assessment", "observation"]
+      },
+      "result": { "to_llm": ["id", "sla_hours"], "to_state": { "ticket_id": "$.id" } },
+      "effects": [
+        { "do": [{ "type": "notify", "notification": "ticket_sms", "with": { "ticket_id": "{{result.id}}" }, "result_to_state": { "sent_by": "notification_sent_by" } }] },
+        { "when": { "arg": "assessment", "equals": "worsened" }, "do": [{ "type": "say", "text": { "message": "move_away" }, "allow_interruptions": false }, { "type": "end_call" }] }
+      ]
+    }
+  ],
+
+  "connections": {
+    "billing_api": {
+      "type": "http",
+      "base_url": "https://api.acme.example",
+      "auth": { "type": "bearer", "token": { "secret": "BILLING_API_TOKEN" } },
+      "timeout_s": 8
+    },
+    "crm_mcp": {
+      "type": "mcp",
+      "transport": "streamable_http",
+      "url": "https://mcp.acme.example/crm",
+      "auth": { "type": "bearer", "token": { "secret": "CRM_MCP_TOKEN" } }
+    },
+    "rag_service": {
+      "type": "http",
+      "base_url": "https://rag.acme.example",
+      "auth": { "type": "api_key", "header": "X-Api-Key", "key": { "secret": "RAG_API_KEY" } }
+    },
+    "platform_db": {
+      "type": "http",
+      "base_url": "https://calls.acme.example",
+      "auth": { "type": "api_key", "header": "X-Api-Key", "key": { "secret": "CALLS_API_KEY" } },
+      "timeout_s": 10
+    },
+    "sms": {
+      "type": "notifier",
+      "kind": "sms",
+      "provider": "twilio",
+      "from": "+15555550123",
+      "auth": { "account_sid": { "secret": "TWILIO_ACCOUNT_SID" }, "auth_token": { "secret": "TWILIO_AUTH_TOKEN" } }
+    },
+    "email": {
+      "type": "notifier",
+      "kind": "email",
+      "provider": "sendgrid",
+      "from": "support@acme.example",
+      "auth": { "api_key": { "secret": "SENDGRID_API_KEY" } }
+    }
+  },
+
+  "knowledge": [
+    {
+      "id": "help_center",
+      "type": "vector_store",
+      "mode": "tool",
+      "top_k": 3,
+      "sources": [
+        { "type": "url", "url": "https://help.acme.example", "crawl_depth": 2 },
+        { "type": "file", "file_id": "tariff-guide.pdf" }
+      ],
+      "embedding": { "provider": "openai", "model": "text-embedding-3-small" },
+      "refresh": "daily"
+    },
+    {
+      "id": "product_manual",
+      "type": "rag_api",
+      "mode": "inject",
+      "top_k": 6,
+      "connection": "rag_service",
+      "collection": "device-manuals",
+      "request": { "method": "POST", "path": "/v1/search", "body": { "collection": "{{collection}}", "query": "{{query}}", "top_k": "{{top_k}}" } }
+    }
+  ],
+
+  "forms": [
+    {
+      "id": "callback_request",
+      "title": "Request a callback",
+      "description": "Leave your details and we'll call you back.",
+      "fields": [
+        { "name": "name", "label": "Your name", "type": "text", "required": true },
+        { "name": "phone", "label": "Phone number", "type": "phone", "required": true },
+        { "name": "email", "label": "Email (optional)", "type": "email" },
+        { "name": "topic", "label": "What is it about?", "type": "select", "options": ["billing", "technical"], "required": true }
+      ],
+      "submit_label": "Send",
+      "store_in_state": { "name": "contact_name" },
+      "on_submit": [
+        { "type": "notify", "notification": "callback_team" },
+        { "type": "wrapup", "wrapup": "after_callback" }
+      ]
+    }
+  ],
+
+  "notifications": [
+    {
+      "id": "callback_team",
+      "description": "Tell the team who to call back, with the conversation attached.",
+      "strategy": "first_success",
+      "deliver": [
+        {
+          "via": "email",
+          "to": { "lookup": { "state": "intent", "map": { "billing": ["billing-team@acme.example"], "technical": ["tech-team@acme.example"] }, "default": ["support@acme.example"] } },
+          "subject": "Callback request: {{form.topic}}",
+          "body": "{{form.name}} ({{form.phone}}) asked for a callback about {{form.topic}}. Call {{state.call_id}}.",
+          "attachments": [{ "kind": "transcript", "filename": "conversation.txt", "format": "text" }]
+        }
+      ],
+      "on_failure": [{ "type": "log", "level": "error", "message": "callback notification failed for {{form.phone}}" }]
+    },
+    {
+      "id": "ticket_sms",
+      "description": "Confirm a new ticket to the caller.",
+      "strategy": "first_success",
+      "deliver": [{ "via": "sms", "to": "{{state.caller_phone}}", "body": "Acme ticket {{with.ticket_id}} has been created. We will update you soon." }]
+    }
+  ],
+
+  "wrapups": [
+    {
+      "id": "after_callback",
+      "wait_s": 30,
+      "on_silence": [{ "type": "end_call", "say": { "message": "goodbye" } }]
+    }
+  ],
+
+  "guardrails": {
+    "input": [
+      { "id": "prompt_injection", "type": "prompt_injection", "enforcement": "code", "on_trigger": { "action": "deflect", "say": "I can only help with Acme services." } },
+      { "id": "card_numbers", "type": "pii_detect", "entities": ["card_number", "national_id"], "enforcement": "code", "on_trigger": { "action": "redact_in_logs" } }
+    ],
+    "output": [
+      { "id": "no_promises", "type": "statement", "text": "Never promise a refund, compensation or a repair time.", "enforcement": "prompt" },
+      { "id": "secret_firewall", "type": "field_firewall", "fields": ["token", "password", "otp", "link"], "enforcement": "code" },
+      { "id": "no_internal_ids", "type": "regex_block", "patterns": ["\\bINT-\\d+\\b"], "enforcement": "code", "on_trigger": { "action": "rewrite" } }
+    ],
+    "topics": {
+      "blocked": ["legal advice", "medical advice", "competitor pricing"],
+      "on_off_topic": { "say": "I can only help with Acme services.", "max_strikes": 2, "then": "escalate_to_human" }
+    },
+    "escalation": [
+      { "id": "asks_for_human", "when": { "intent": "asks_for_human" }, "action": "tool", "tool": "escalate_to_human" },
+      { "id": "verify_failed", "when": { "state": "verify_attempts", "gte": 3 }, "action": "tool", "tool": "escalate_to_human" },
+      { "id": "abuse", "when": { "sentiment": "abusive", "consecutive_turns": 2 }, "action": "end_call", "say": "I'm ending this call. Please contact us again when you're ready." }
+    ],
+    "limits": { "max_call_duration_s": 900, "max_silence_s": 600, "max_tool_calls_per_call": 30, "max_handoffs_per_call": 8 }
+  },
+
+  "events": [
+    {
+      "on": "call_started",
+      "do": [
+        { "type": "http", "connection": "billing_api", "method": "GET", "path": "/v1/accounts/by-phone", "query": { "phone": "{{state.caller_phone}}" }, "to_state": { "customer": "$.account" } },
+        { "type": "http", "connection": "platform_db", "method": "POST", "path": "/calls", "body": { "call_id": "{{state.call_id}}", "channel": "{{channel.id}}", "caller": "{{state.caller_phone}}", "dnis": "{{call.dnis | default('')}}" } }
+      ]
+    },
+    {
+      "on": "call_ended",
+      "do": [
+        {
+          "type": "http",
+          "connection": "platform_db",
+          "method": "PUT",
+          "path": "/calls/{{state.call_id}}",
+          "skip_when_empty": "call.transcript",
+          "body": {
+            "session": "{{state.sip_session_id | or(call.room)}}",
+            "disposition": "{{state.disposition}}",
+            "started_at": "{{call.started_at | format('%Y-%m-%dT%H:%M:%S', 'Asia/Singapore')}}",
+            "duration_s": "{{call.duration_s}}",
+            "summary": "{{call.summary}}",
+            "transcript": { "$each": "call.transcript", "as": "m", "do": { "direction": "{{m.role | map('user=IN', 'assistant=OUT')}}", "text": "{{m.text | truncate(4000)}}", "seq": "{{m.index}}", "at": "{{m.at | format('%H%M%S', 'Asia/Singapore')}}" } }
+          }
+        }
+      ]
+    },
+    { "on": "inactivity", "do": [{ "type": "log", "level": "info", "message": "caller inactive on call {{state.call_id}}" }] },
+    { "on": "transfer_failed", "do": [{ "type": "log", "level": "warning", "message": "transfer failed on call {{state.call_id}}" }] }
+  ],
+
+  "post_call": {
+    "summary": { "enabled": true, "llm": { "provider": "openai", "model": "gpt-4.1-mini" }, "prompt": "Summarise the call in two sentences: the request and the outcome." },
+    "analysis": [
+      { "id": "resolved", "type": "boolean", "question": "Was the caller's issue resolved?" },
+      { "id": "sentiment", "type": "enum", "values": ["positive", "neutral", "negative"], "question": "Overall caller sentiment." }
+    ],
+    "recording": { "audio": true, "transcript": true, "retention_days": 90 },
+    "artifacts": [
+      { "kind": "transcript", "sink": { "type": "file", "directory": "transcripts" } },
+      { "kind": "metrics", "sink": { "type": "file", "directory": "metrics" } }
+    ]
+  },
+
+  "observability": {
+    "log_level": "INFO",
+    "log_pii": false,
+    "log_llm_requests": false,
+    "log_file": { "path": "logs/agent.log", "max_bytes": 5242880, "backup_count": 5 },
+    "metrics": true,
+    "tracing": false,
+    "otel": { "enabled": false, "endpoint": "http://localhost:4318", "service_name": "acme-support" }
+  },
+
+  "tests": [
+    {
+      "id": "billing_happy_path",
+      "channel": "phone",
+      "caller": { "phone": "+15550001111", "persona": "Calm customer, knows their account number" },
+      "turns": [
+        { "say": "I want to check my bill." },
+        { "say": "The account number is 1 2 3 4 5 6 7 8." },
+        { "say": "Smith." }
+      ],
+      "expect": [
+        { "tool_called": "verify_caller" },
+        { "tool_called": "get_bill_summary" },
+        { "tool_not_called": "escalate_to_human" },
+        { "state_equals": { "state": "verified", "value": true } },
+        { "said_matches": "\\bdollars\\b" },
+        { "judge": "States the bill amount and due date without reading digits one by one." }
+      ]
+    }
+  ],
+
+  "builder": {
+    "lint": { "max_prompt_words_per_agent": 450, "max_tools_per_agent": 8, "warn_on_monolith": true },
+    "ui": { "graph_positions": { "greeter": { "x": 80, "y": 160 }, "billing": { "x": 380, "y": 60 }, "tech_support": { "x": 380, "y": 220 }, "safety_watch": { "x": 680, "y": 220 } } }
+  }
+}

@@ -1,0 +1,22 @@
+/* Phone navigation drawer. Only applies at the width where the original layout hides the sidebar. */
+.stNavToggle { display: none; }
+.stPickList { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow: auto; }
+.stPickList button { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line2); background: var(--surface); color: var(--text); }
+.stPickList button:hover, .stPickList button:focus-visible { border-color: var(--accent); background: var(--surface-hover); outline: 0; }
+.stPickList span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.stPickList strong { color: var(--textStrong); font-size: 14px; overflow-wrap: anywhere; }
+.stPickList small { color: var(--muted); font-size: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.stPickList .agentRowAvatar { width: 36px; height: 36px; flex: 0 0 36px; }
+.stPickEmpty { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin-top: 12px; }
+.stPickSearch { margin-top: 12px; }
+
+@media (max-width: 720px) {
+  .stNavToggle { display: inline-grid; place-items: center; position: fixed; top: 14px; left: 14px; z-index: 5400; width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line2); background: var(--panel); color: var(--textStrong); font-size: 20px; line-height: 1; cursor: pointer; }
+  /* An open dialog sits above the menu button, so the button doesn't cover its corner. */
+  body:has(.createOverlay):not(.mobileNavOpen) .stNavToggle { z-index: 4900; }
+  body.mobileNavOpen .stNavToggle { z-index: 5600; left: min(252px, calc(86vw - 54px)); }
+  .dashTopbar { padding-left: 68px !important; }
+  body.mobileNavOpen .sidebar { display: flex !important; position: fixed; top: 0; left: 0; bottom: 0; width: min(300px, 86vw); z-index: 5500; overflow-y: auto; box-shadow: 0 0 60px rgba(0, 0, 0, .5); }
+  .stNavScrim { position: fixed; inset: 0; z-index: 5450; background: rgba(0, 0, 0, .55); }
+  body.mobileNavOpen { overflow: hidden; }
+}

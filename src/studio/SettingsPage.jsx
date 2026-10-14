@@ -1,0 +1,108 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { api } from '../api/client.js';
+import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from '../demo/demoMode.js';
+import { navigate, routeHref } from './route.js';
+import { envLabel } from './ui.jsx';
+import { useAsync } from './useAsync.js';
+
+// Workspace settings. A workspace here is a label kept in this browser, and so is which workspace an agent is in;
+// the agents themselves live on the Agent Builder API. This page says what is on the server and what is only local.
+export default function SettingsPage({ workspace, workspaceCount, bots, removedCount, sessions, onRename, onDelete, onOpenAgents }) {
+  const [name, setName] = useState(workspace?.name || '');
+  const [savedName, setSavedName] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
+  useEffect(() => { setName(workspace?.name || ''); setDeleteText(''); }, [workspace?.id, workspace?.name]);
+
+  const health = useAsync((signal) => api.health({ signal }), []);
+  const envs = useAsync((signal) => api.environments({ signal }), []);
+
+  const perEnv = useMemo(() => {
+    const out = {};
+    (envs.data || []).forEach((env) => { out[env] = []; });
+    bots.forEach((bot) => Object.entries(bot.deployed || {}).forEach(([env, version]) => { (out[env] ||= []).push({ name: bot.name || bot.id, version }); }));
+    return out;
+  }, [envs.data, bots]);
+
+  if (!workspace) return null;
+  const published = bots.filter((bot) => bot.latest_version).length;
+  const deployed = bots.filter((bot) => Object.keys(bot.deployed || {}).length).length;
+  const canDelete = workspaceCount > 1 && deleteText.trim() === workspace.name;
+  const online = health.data?.ok === true;
+
+  return (
+    <>
+      <section className="welcomeBlock pageHeaderBlock"><div><h1>Settings</h1><p>This workspace, and the Agent Builder API your agents live on.</p></div></section>
+      <div className="settingsGrid">
+        <section className="settingsCard" aria-labelledby="settings-general">
+          <h2 id="settings-general">General</h2>
+          <form className="settingsRow" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || name.trim() === workspace.name) return; onRename(name.trim()); setSavedName(true); window.setTimeout(() => setSavedName(false), 1800); }}>
+            <label><span>Workspace name</span><input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} /></label>
+            <button type="submit" className="secondaryCta" disabled={!name.trim() || name.trim() === workspace.name}>Save name</button>
+            {savedName && <span className="settingsSaved" role="status">Saved</span>}
+          </form>
+          <dl className="settingsFacts">
+            <div><dt>Agents</dt><dd>{bots.length}</dd></div>
+            <div><dt>Published</dt><dd>{published}</dd></div>
+            <div><dt>Deployed</dt><dd>{deployed}</dd></div>
+            <div><dt>Test conversations</dt><dd>{sessions.length}</dd></div>
+          </dl>
+          <p className="stMuted">Workspaces, and which workspace each agent is listed in, are kept in this browser, so two people see different lists. A workspace is a way to group agents, not access control: anyone who can open this app can open every agent. Each agent is in one workspace; the agent itself, its versions and its deployments are on the server.</p>
+        </section>
+
+        <section className="settingsCard" aria-labelledby="settings-source">
+          <h2 id="settings-source">Data source</h2>
+          <p>{isDemoMode() ? DEMO_NOTE : 'Agents are read from and saved to the Agent Builder API. To try the studio without a backend, switch to demo data: sample agents kept in this browser, with simulated saving, publishing and deploying.'}</p>
+          <div className="demoSwitch" role="group" aria-label="Data source">
+            <button type="button" className={isDemoMode() ? 'quietButton' : 'primaryCta compactCta'} disabled={!isDemoMode()} aria-pressed={!isDemoMode()} onClick={() => setDemoMode(false)}>Real API</button>
+            <button type="button" className={isDemoMode() ? 'primaryCta compactCta' : 'quietButton'} disabled={isDemoMode()} aria-pressed={isDemoMode()} onClick={() => setDemoMode(true)}>Demo data</button>
+          </div>
+          {demoIsForced() && <p className="stMuted">This is a demo build, so the choice is fixed. Run <code>npm run dev</code> for the real API.</p>}
+        </section>
+
+        <section className="settingsCard" aria-labelledby="settings-api">
+          <h2 id="settings-api">{isDemoMode() ? 'Agent Builder API (demo)' : 'Agent Builder API'}</h2>
+          <div className="stApiState" role="status">
+            <i className={health.loading && !health.data ? 'wait' : online ? 'ok' : 'bad'} aria-hidden="true" />
+            <div>
+              <strong>{isDemoMode() ? 'Demo, no server' : health.loading && !health.data ? 'Checking…' : online ? 'Connected' : 'Not reachable'}</strong>
+              <small>{isDemoMode() ? 'Nothing here talks to a server: it is an imitation kept in this browser.' : online ? 'Agents, drafts, versions and deployments are read from and saved to the server.' : health.error?.message || 'The API did not answer. Pages that need it will show an error until it is back.'}</small>
+            </div>
+            <button type="button" className="quietButton" onClick={health.reload}>Check again</button>
+          </div>
+          <div className="settingsEnvironments">
+            <h3>What is running where</h3>
+            <p>You choose this per agent on its Deploy tab.</p>
+            {envs.loading && !envs.data ? <p className="stMuted">Loading…</p> : (
+              <ul className="stEnvList">
+                {Object.entries(perEnv).map(([env, items]) => (
+                  <li key={env}>
+                    <strong>{envLabel(env)}</strong>
+                    <span>{items.length === 0 ? 'Nothing deployed' : items.slice(0, 3).map((item) => `${item.name} v${item.version}`).join(', ') + (items.length > 3 ? ` and ${items.length - 3} more` : '')}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <p className="stMuted">
+            {removedCount > 0
+              ? <>{removedCount} agent{removedCount === 1 ? ' is' : 's are'} removed from your list on this browser. <button type="button" className="stLink" onClick={() => { onOpenAgents?.(); navigate(routeHref(), { guard: false }); }}>Manage them on the Agents page</button>.</>
+              : 'Nothing is removed from your list.'}
+          </p>
+        </section>
+
+        <section className="settingsCard settingsDanger" aria-labelledby="settings-danger">
+          <h2 id="settings-danger">Delete workspace</h2>
+          {workspaceCount <= 1 ? (
+            <p>This is your only workspace, so it can’t be deleted. Create another workspace first.</p>
+          ) : (
+            <>
+              <p>Deletes {workspace.name} from this browser, with its test conversations, readiness-check runs and telephony settings. Its agents move to another workspace; nothing is deleted on the server. This can’t be undone.</p>
+              <label className="settingsField"><span>Type <b>{workspace.name}</b> to confirm</span><input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder={workspace.name} /></label>
+              <button type="button" className="modalCreate dangerConfirm" disabled={!canDelete} onClick={onDelete}>Delete workspace</button>
+            </>
+          )}
+        </section>
+      </div>
+    </>
+  );
+}

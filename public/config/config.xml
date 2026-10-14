@@ -1,0 +1,201 @@
+<mxbot-configuration>
+    <settings>
+        <pipeline-config>
+            <stt>
+            <!-- only one stt-provider can have enabled attribute set to true -->
+                <stt-provider name="openai" enabled="true"></stt-provider>
+                <stt-provider name="deepgram" enabled="false"></stt-provider>
+                <stt-provider name="whisper" enabled="false"></stt-provider>
+                <stt-provider name="gpt-transcribe" enabled="false"></stt-provider>
+            </stt>
+
+            <llm>
+                <!-- only one llm-provider can have enabled attribute set to true -->
+                <llm-provider name="openai" enabled="true"></llm-provider>
+                <llm-provider name="mistral" enabled="false"></llm-provider>
+                <llm-provider name="microsoft phi-4" enabled="false"></llm-provider>
+            </llm>
+
+            <tts>
+                <!-- only one tts-provider can have enabled attribute set to true -->
+                <tts-provider name="elevenlabs" enabled="true">
+                    <persona enabled="true" voice-id="owsLoyJNU4K7ctU6NF7F">Singapore Chinese Male</persona>
+                    <persona enabled="false" voice-id="klhjpJNU4K7ctGHT73H">Australian Female</persona>
+                </tts-provider>
+
+                <tts-provider name="cartesia" enabled="false">
+                    <persona enabled="false" voice-id="owsLoyJNU4K7ctU6NF7F">Australian Customer Support Man</persona>
+                    <persona enabled="false" voice-id="owsLoyJNU4K7ctU6NF7F">Australian Salesman</persona>
+                </tts-provider>
+            </tts>
+
+            <vad>
+                <vad-provider enabled="true">silero</vad-provider>
+            </vad>
+        </pipeline-config>
+
+        <features>
+            <audio enabled="true"></audio>
+            <chat enabled="true" aec-host="" aec-port="">
+            <spam-detection enabled="true"></spam-detection>
+            </chat>
+            <video enabled="false"></video>
+            <attachments enabled="true" folder-path="/opt/livekit/attachments">
+                <attachment extension="xlsx" enabled="false"></attachment>
+                <attachment extension="docx" enabled="false"></attachment>
+                <attachment extension="jpg" enabled="false"></attachment>
+                <attachment extension="png" enabled="false"></attachment>
+                <attachment extension="pdf" enabled="false"></attachment>
+            </attachments>
+            <screenShare enabled="true"></screenShare>
+            <rag enabled="true" folder-path="d:/MXBot/RAG"></rag>
+            <agent-transfer > 
+                <voice-transfer enabled="true" sip-refer-host="" sip-refer-port="" vdn="">
+                     <transfer-message>Transferring your call to our agent for further assistance. Please hold on.</transfer-message>
+                     <transfer-data>
+                        <data key="customer_account_number" source="session" variable="session.cust-account-num"></data>
+                        <data key="cif_number" source="session" variable="session.cif-number"></data>
+                        <data key="card_number" source="session" variable="session.card-number"></data>
+                    </transfer-data>
+                </voice-transfer>
+                <chat-transfer enabled="true">
+                    <transfer-message>Transferring you to our agent for further assistance. Please wait.</transfer-message>
+                        <transfer-data>
+                            <data key="customer_account_number" source="db" variable="db.cust-account-num"></data>
+                            <data key="cif_number" source="db" variable="db.cif-number"></data>
+                            <data key="card_number" source="db" variable="db.card-number"></data>
+                        </transfer-data>
+                </chat-transfer>
+            </agent-transfer>
+        </features>
+
+        <transcriptions enabled="true" folder-path="/opt/livekit/transcripts"></transcriptions>
+        <summary enabled="true" folder-path="/opt/livekit/summary"></summary>
+
+        <!-- Inactivity handling -->
+        <inactivity>
+            <attempts>
+                <attempt id="1" timeout-in-seconds="5">
+                    <message>I didn't hear anything. Are you still there?</message>
+                </attempt>
+                <attempt id="2" timeout-in-seconds="5">
+                    <message>I'm still here. Please say something so I can assist you.</message>
+                </attempt>
+                <attempt id="3" timeout-in-seconds="5">
+                    <message>Since there has been no response, this session will be closed. Please call again if you need assistance.</message>
+                </attempt>
+            </attempts>
+        </inactivity>
+    </settings>
+
+    <context-engineering>
+
+        <agent>
+            <name>Tan Wei Jie</name>
+            <persona>Singapore Bank Assistant</persona>
+        </agent>
+
+        <welcome-message>
+            Hello, Welcome to Self-Care Bank. I'm ${agent.name}, your smart assistant. You can speak to me naturally in English, Mandarin, Tamil, or Malay. Please note that this conversation is being recorded for quality assurance and training purposes. Could you share, in a few words, the reason for your call?
+        </welcome-message>
+
+        <exit-message>
+            Thank you for contacting Self-Care Bank. Have a wonderful day.
+        </exit-message>
+
+        <instructions>
+            "You are a helpful voice assistant for a ${agent.persona}. "
+            "You assist with appointments, medication refills, and medical certificates based on provided context. "
+            "You support speech, text, and image inputs. For images (e.g., ID cards, prescriptions), extract relevant details (e.g., name, ID number, medication) and return them in JSON format. "
+            "Integrate extracted details with conversation context to answer queries about clinic services. "
+            "Speak clearly and professionally, and avoid unpronounceable characters."
+        </instructions>
+
+        <guardrails>
+            <guardrail id="A001">
+                Respond naturally to incoming patient queries in language spoken by customer, using a clear, concise tone.
+            </guardrail>
+            <guardrail id="A002">
+                Do not answer any general questions outside the scope of this roleplay.
+            </guardrail>
+            <guardrail id="A003">
+                Respond only if language is English, Mandarin, Tamil, or Malay.
+            </guardrail>
+            <guardrail id="A003">
+                Maintain bank contact center persona.
+            </guardrail>
+        </guardrails>
+
+        <tools>
+            <tool id="100" name="banking_hours_enquiry" type="generic">
+                <tool-description>
+                    if user asks about banking hours then bank is open on all days from 9AM to 5PM SGT.
+                </tool-description>
+            </tool>
+
+            <tool id="200" name="balance_enquiry" type="module">
+                <tool-description>
+                    Provide the account balance. Verfiy caller first.
+                </tool-description>
+
+                <module-engine node-name="check-account-balance">
+                    {			
+                        "accountNum": "${{customer_account_number}}"		
+                    }
+                </module-engine>
+            </tool>
+
+            <tool id="300" name="recent_transactions" type="module">
+                <tool-description>
+                    Get recent transactions
+                </tool-description>
+
+                <arguments>
+                    <argument type="tool" variable="tool_argument" validations="[boolean]">
+                    </argument>
+                    <argument type="session" variable="session.cust-account-num" validations="[mandatory, number]">
+                    </argument>
+                </arguments>
+
+                <module-engine node-name="last_5_transactions">
+                    <request-mapping>
+                        {			
+                            "accountNum": "${{customer_account_number}}",
+                            "trasactionsCount": "3"		
+                        }
+                    </request-mapping>
+
+                    <response-mapping>
+                        {			
+                            "transactions_list": "${{listOfTransactionsArray}}",
+                            "trasactions_count": "3"		
+                        }
+                    </response-mapping>
+
+                    <return-mapping>
+                        {		
+                            "status":"success"	
+                            "message":"Last ${trasactions_count} transactions"
+                            "last3TransaactionsList": "${{transactions_list}}",
+                        }
+                    </return-mapping>
+                </module-engine>
+            </tool>
+
+        </tools>
+
+        <session-data>
+            <session-variable name="room-name">
+            </session-variable>
+
+            <session-variable name="cust-account-num">
+            </session-variable>
+
+            <session-variable name="cif-number">
+            </session-variable>
+
+            <session-variable name="card-number">
+            </session-variable>
+        </session-data>
+    </context-engineering>
+</mxbot-configuration>

@@ -1,0 +1,19 @@
+// Shared curated voice catalog used by both the Builder and the workspace Voice Library.
+// Cartesia entries below use known public/default voice IDs; custom voices still require an account-specific ID.
+export const VOICE_CATALOG = [
+  { id: 'elevenlabs-rachel', name: 'Rachel', provider: 'ElevenLabs', language: 'English (United States)', locale: 'en-US', gender: 'Female', style: 'Calm', voiceId: '21m00Tcm4TlvDq8ikWAM', tags: ['English', 'American', 'Calm'] },
+  { id: 'elevenlabs-adam', name: 'Adam', provider: 'ElevenLabs', language: 'English (United States)', locale: 'en-US', gender: 'Male', style: 'Deep', voiceId: 'pNInz6obpgDQGcFmaJgB', tags: ['English', 'American', 'Deep'] },
+  { id: 'elevenlabs-antoni', name: 'Antoni', provider: 'ElevenLabs', language: 'English (United States)', locale: 'en-US', gender: 'Male', style: 'Warm', voiceId: 'ErXwobaYiN019PkySvjV', tags: ['English', 'American', 'Warm'] },
+  { id: 'elevenlabs-bella', name: 'Bella', provider: 'ElevenLabs', language: 'English (United States)', locale: 'en-US', gender: 'Female', style: 'Soft', voiceId: 'EXAVITQu4vr4xnSDxMaL', tags: ['English', 'American', 'Soft'] },
+  { id: 'elevenlabs-elli', name: 'Elli', provider: 'ElevenLabs', language: 'English (United States)', locale: 'en-US', gender: 'Female', style: 'Youthful', voiceId: 'MF3mGyEYCl7XYWbV9V6O', tags: ['English', 'American', 'Youthful'] },
+  { id: 'elevenlabs-josh', name: 'Josh', provider: 'ElevenLabs', language: 'English (United States)', locale: 'en-US', gender: 'Male', style: 'Conversational', voiceId: 'TxGEqnHWrfWFTfGW9XjX', tags: ['English', 'American', 'Conversational'] },
+  { id: 'elevenlabs-arnold', name: 'Arnold', provider: 'ElevenLabs', language: 'English (United States)', locale: 'en-US', gender: 'Male', style: 'Strong', voiceId: 'VR6AewLTigWG4xSOukaG', tags: ['English', 'American', 'Strong'] },
+  { id: 'elevenlabs-sam', name: 'Sam', provider: 'ElevenLabs', language: 'English (United States)', locale: 'en-US', gender: 'Male', style: 'Raspy', voiceId: 'yoZ06aMxZJJ28mfd3POQ', tags: ['English', 'American', 'Raspy'] },
+  { id: 'cartesia-blake', name: 'Blake', provider: 'Cartesia', language: 'English (United States)', locale: 'en-US', gender: 'Male', style: 'Energetic', voiceId: 'a167e0f3-df7e-4d52-a9c3-f949145efdab', tags: ['English', 'American', 'Energetic'] },
+  { id: 'cartesia-daniela', name: 'Daniela', provider: 'Cartesia', language: 'Spanish (Mexico)', locale: 'es-MX', gender: 'Female', style: 'Calm', voiceId: '5c5ad5e7-1020-476b-8b91-fdcbe9cc313c', tags: ['Spanish', 'Mexico', 'Calm'] },
+  { id: 'cartesia-jacqueline', name: 'Jacqueline', provider: 'Cartesia', language: 'English (United States)', locale: 'en-US', gender: 'Female', style: 'Confident', voiceId: '9626c31c-bec5-4cca-baa8-f8ba9e84c8bc', tags: ['English', 'American', 'Confident'] },
+  { id: 'cartesia-friendly-australian-man', name: 'Friendly Australian Man', provider: 'Cartesia', language: 'English (Australia)', locale: 'en-AU', gender: 'Male', style: 'Friendly', voiceId: 'f786b574-daa5-4673-aa0c-cbe3e8534c02', tags: ['English', 'Australian', 'Friendly'] },
+  { id: 'cartesia-british-reading-lady', name: 'British Reading Lady', provider: 'Cartesia', language: 'English (United Kingdom)', locale: 'en-GB', gender: 'Female', style: 'Clear', voiceId: '71a7ad14-091c-4e8e-a314-022ece01c121', tags: ['English', 'British', 'Reading'] },
+  { id: 'cartesia-barbershop-man', name: 'Barbershop Man', provider: 'Cartesia', language: 'English (United States)', locale: 'en-US', gender: 'Male', style: 'Expressive', voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091', tags: ['English', 'American', 'Expressive'] },
+  { id: 'cartesia-classy-british-man', name: 'Classy British Man', provider: 'Cartesia', language: 'English (United Kingdom)', locale: 'en-GB', gender: 'Male', style: 'Refined', voiceId: '694f9389-aac1-45b6-b726-9d9369183238', tags: ['English', 'British', 'Refined'] },
+];
