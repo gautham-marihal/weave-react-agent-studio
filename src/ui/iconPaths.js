@@ -1,0 +1,33 @@
+// The shapes of the icons, on a 24 by 24 grid: "M…" is an SVG path, "circle:cx cy r" a circle. Kept apart from the component so a test can check them.
+export const PATHS = {
+  home: ['M3 11 12 3l9 8', 'M5 10v10h14V10', 'M10 20v-6h4v6'],
+  agent: ['M7 8h10a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-5a3 3 0 0 1 3-3z', 'M12 8V4', 'M9 13h.01', 'M15 13h.01', 'M4 13H2', 'M22 13h-2'],
+  phone: ['M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z'],
+  voice: ['M4 10v4', 'M8 7v10', 'M12 4v16', 'M16 8v8', 'M20 10v4'],
+  plug: ['M9 2v5', 'M15 2v5', 'M6 7h12v4a6 6 0 0 1-12 0V7z', 'M12 17v5'],
+  dial: ['M5 9h14', 'M5 15h14', 'M10 3 8 21', 'M16 3l-2 18'],
+  sliders: ['M4 6h8', 'M16 6h4', 'M4 12h2', 'M10 12h10', 'M4 18h10', 'M18 18h2', 'circle:14 6 2', 'circle:8 12 2', 'circle:16 18 2'],
+  search: ['circle:11 11 7', 'M20 20l-4-4'],
+  help: ['circle:12 12 9', 'M9.5 9.2a2.6 2.6 0 0 1 5 .6c0 1.7-2.5 2-2.5 3.7', 'M12 17.2h.01'],
+  build: ['M4 20l1-4L16 5l3 3L8 19z', 'M14 7l3 3'],
+  test: ['M9 3h6', 'M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3'],
+  release: ['M12 20V6', 'M6 12l6-6 6 6', 'M5 21h14'],
+  monitor: ['M3 12h4l3-8 4 16 3-8h4'],
+  check: ['M5 12.5 10 17.5 19 7'],
+  alert: ['M12 3 22 20H2z', 'M12 10v4', 'M12 17h.01'],
+  info: ['circle:12 12 9', 'M12 11v5', 'M12 7.8h.01'],
+  close: ['M6 6l12 12', 'M18 6 6 18'],
+  chevronDown: ['M6 9l6 6 6-6'],
+  chevronRight: ['M9 6l6 6-6 6'],
+  arrowRight: ['M5 12h14', 'M13 6l6 6-6 6'],
+  menu: ['M4 7h16', 'M4 12h16', 'M4 17h16'],
+  records: ['M6 3h9l4 4v14H6z', 'M14 3v5h5', 'M9 13h7', 'M9 17h7'],
+  pencil: ['M4 20l1-4L16 5l3 3L8 19z', 'M14 7l3 3'],
+  globe: ['circle:12 12 9', 'M3 12h18', 'M12 3a14 14 0 0 1 0 18', 'M12 3a14 14 0 0 0 0 18'],
+  tools: ['M14.5 6.5a4 4 0 0 0-5 5L3 18l3 3 6.5-6.5a4 4 0 0 0 5-5l-2.5 2.5-2-2z'],
+  sound: ['M5 9v6h4l5 4V5L9 9z', 'M17 9a4 4 0 0 1 0 6'],
+  sparkle: ['M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z', 'M19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z'],
+  team: ['circle:9 8 3', 'M3 20a6 6 0 0 1 12 0', 'circle:17 9 2.2', 'M16 14.5a5 5 0 0 1 5 4.5'],
+};
+
+export const ICON_NAMES = Object.keys(PATHS);

@@ -4,7 +4,7 @@ import { getCachedConfig, loadConfigs } from '../studio/configCache.js';
 import { hasHumanHandoff } from '../studio/scenarios.js';
 import { createPortal } from 'react-dom';
 import { RANGE_MS, TELEPHONY_SECTIONS, formatShortDate, agentLifecycle, compactDateTime, formatDuration, getInitials, makeRecordId, normalizeTelephony } from './helpers.js';
-import { HelpTip, Logo, ProfileMenu, SHORTCUT_LABEL, StatusBadge, ThemeToggle, helpText, openHelpDialog } from './shared.jsx';
+import { Glyph, HelpTip, Logo, ProfileMenu, SHORTCUT_LABEL, StatusBadge, ThemeToggle, helpText, openHelpDialog } from './shared.jsx';
 
 
 // The Telephony pages are a local mock: everything here is kept in this browser and nothing is sent to any phone system.
@@ -27,7 +27,7 @@ function TelephonyPreviewBanner({ section }) {
 
 export function TelephonyPage({ onRecordSession, telephony = normalizeTelephony(), onTelephonyChange, agents = [], onOpenSearch, profile, theme, onToggleTheme, onSignOut, onAccountOpen, workspaceName, initials, workspaces = [], currentWorkspaceId, workspaceOpen, setWorkspaceOpen, onSwitchWorkspace, onCreateWorkspace, onNavigate, section, onSectionChange }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const title = TELEPHONY_SECTIONS.find((item) => item.id === section)?.label || 'Calls';
+  const title = TELEPHONY_SECTIONS.find((item) => item.id === section)?.label || 'Phone numbers';
   return (
     <div className={`dashboard telephonyDashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''}`}>
       <aside className="sidebar telephonySidebar">
@@ -63,7 +63,7 @@ export function TelephonyPage({ onRecordSession, telephony = normalizeTelephony(
         <nav className="telephonyNav" aria-label="Telephony">
           {TELEPHONY_SECTIONS.map((item) => (
             <button key={item.id} type="button" className={`telephonyNavItem ${section === item.id ? 'active' : ''}`} aria-label={item.label} aria-current={section === item.id ? 'page' : undefined} title={sidebarCollapsed ? item.label : undefined} onClick={() => onSectionChange?.(item.id)}>
-              <span aria-hidden="true">{item.icon}</span><strong>{item.label}</strong>
+              <span aria-hidden="true"><Glyph icon={item.icon} size={16} /></span><strong>{item.label}</strong>
             </button>
           ))}
         </nav>
@@ -132,18 +132,11 @@ function generateTestNumber(country, areaCode = '', existing = []) {
 }
 
 function TelephonyRangeControls({ range: controlledRange, onRangeChange }) {
-  const [refresh, setRefresh] = useState('Off');
   const [localRange, setLocalRange] = useState('Past 24 hours');
   const range = controlledRange || localRange;
   const setRange = onRangeChange || setLocalRange;
   return (
     <div className="telephonyHeaderActions">
-      <label className="selectButton">
-        <span className="buttonIcon" aria-hidden="true">↻</span>
-        <select value={refresh} onChange={(event) => setRefresh(event.target.value)} aria-label="Auto-refresh">
-          {['Off', 'Every 30 seconds', 'Every minute', 'Every 5 minutes'].map((option) => <option key={option} value={option}>{option === 'Off' ? 'Auto-refresh off' : `Refresh: ${option.toLowerCase()}`}</option>)}
-        </select>
-      </label>
       <label className="selectButton">
         <span className="buttonIcon" aria-hidden="true">◷</span>
         <select value={range} onChange={(event) => setRange(event.target.value)} aria-label="Time range">
@@ -439,20 +432,20 @@ function TelephonyCallsPage({ telephony, onNavigateSection, agents = [], onChang
   return (
     <>
       <section className="telephonyPageHeader">
-        <div><h1>Calls</h1><p>Monitor inbound calling activity, hold times and where calls went.</p></div>
+        <div><h1>Simulated calls</h1><p>Calls you simulate here, to see how your dispatch rules would route them and how long callers would wait. Real calls, from callers and from tests, are on the <strong>Calls</strong> page.</p></div>
         <div className="telephonyHeaderActions">
           <TelephonyRangeControls range={range} onRangeChange={setRange} />
           <button type="button" className="primaryCta compactCta" disabled={!telephony.numbers.length} title={telephony.numbers.length ? 'Run a call through your dispatch rules' : 'Get a phone number first'} onClick={() => setSimulateOpen(true)}>Simulate a call</button>
         </div>
       </section>
       <section className="telephonyStatsGrid three">
-        <TelephonyStat label="TOTAL CALLS" value={String(calls.length)} note={calls.length ? `${connected.length} connected in the ${range.toLowerCase()}` : 'Across the selected time range'} />
+        <TelephonyStat label="SIMULATED CALLS" value={String(calls.length)} note={calls.length ? `${connected.length} connected in the ${range.toLowerCase()}` : 'None simulated in this time range'} />
         <TelephonyStat label="TOTAL CALL DURATION" value={formatDuration(totalConnected)} note="Combined talk time, not counting hold" />
         <TelephonyStat label="AVERAGE CALL DURATION" value={formatDuration(connected.length ? totalConnected / connected.length : 0)} note="Talk time per connected call" />
       </section>
       <section className="telephonyStatsGrid three">
         <TelephonyStat label="AVERAGE HOLD TIME" value={formatDuration(avgHold)} note={longest ? `Longest ${formatDuration(longest.holdSec)}${overLimit ? `, ${overLimit} over the rule limit` : ''}` : 'Time callers spend waiting'} accent />
-        <TelephonyStat label="ACTIVE CALLS" value="0" note="No active calls right now" accent />
+        <TelephonyStat label="REAL CALLS" value="See Calls" note="This page only knows the calls you simulate" accent />
         <TelephonyStat label="CALLS WITH ISSUES" value={String(withIssues)} note={withIssues ? 'Open a call to see what happened' : 'No call issues detected'} accent />
       </section>
       <TelephonyTablePanel

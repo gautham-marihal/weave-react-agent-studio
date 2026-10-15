@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, getApiUser } from '../../api/client.js';
-import { formatPath } from '../format.js';
+import PlainIssues from '../validation/PlainIssues.jsx';
 import { envLabel, Notice } from '../ui.jsx';
 import { navigate, routeHref } from '../route.js';
 import { useAsync } from '../useAsync.js';
@@ -8,6 +8,10 @@ import { sameModels, summarizeModels } from '../models/config.js';
 import FormPrompt from './FormPrompt.jsx';
 import { testability } from './channels.js';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
+import TraceView from '../trace/TraceView.jsx';
+import { useTrace } from '../trace/useTrace.js';
+import { finalStateOf, toolsUsedIn } from '../trace/records.js';
+import { scenarioFromConversation } from '../scenarios/model.js';
 import './test.css';
 import '../preview/preview.css';
 import '../models/models.css';
@@ -49,6 +53,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const stickRef = useRef(true);
   const fileRef = useRef(null);
   const { status, info, messages, events, error, form, media, agentHint } = session;
+  const trace = useTrace({ botId, session });
+  const [saved, setSaved] = useState(null); // the id of a scenario just made from this conversation
 
   const running = ['starting', 'connecting', 'waiting', 'live'].includes(status);
   const connected = status === 'waiting' || status === 'live';
@@ -85,7 +91,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   useEffect(() => { if (media.camera) session.attachPreview(); }, [media.camera, session.attachPreview]);
 
   // Keep the newest message in view, unless you scrolled up to read.
-  useEffect(() => { if (stickRef.current) endRef.current?.scrollIntoView({ block: 'end' }); }, [messages, form]);
+  // (the list is scrolled itself: scrollIntoView would also scroll the whole page to the end of an empty chat)
+  useEffect(() => { const el = listRef.current; if (stickRef.current && el) el.scrollTop = el.scrollHeight; }, [messages, form]);
   const onScroll = () => {
     const el = listRef.current;
     if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -110,6 +117,14 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     if (imageCfg.max_bytes && file.size > imageCfg.max_bytes) { window.alert(`That picture is ${(file.size / 1048576).toFixed(1)} MB; the limit for this channel is ${(imageCfg.max_bytes / 1048576).toFixed(1)} MB.`); return; }
     if (imageCfg.accepted_mime?.length && !imageCfg.accepted_mime.includes(file.type)) { window.alert(`This channel accepts ${imageCfg.accepted_mime.join(', ')}; that file is ${file.type || 'an unknown type'}.`); return; }
     await session.sendImage(file, imageCfg.topic || 'image-upload');
+  };
+
+  // A finished conversation becomes a starting scenario (the caller's turns, the tools used, the final state) for the author to edit.
+  const canSave = messages.some((m) => m.role === 'user') && !running && !!config && editor.isObject && !editor.parsed.error;
+  const saveAsScenario = () => {
+    const made = scenarioFromConversation(config, { channel: info?.channel?.id, messages, tools: toolsUsedIn(trace.records), finalState: finalStateOf(trace.records) });
+    editor.setValue({ ...config, tests: [...(Array.isArray(config.tests) ? config.tests : []), made] });
+    setSaved(made.id);
   };
 
   return (
@@ -170,7 +185,14 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
       {error && (
         <Notice kind="error" title={error.title} actions={<button type="button" className="quietButton" onClick={session.clearError}>Dismiss</button>}>
           {error.body}
-          {error.errors?.length > 0 && <ul className="stPlain">{error.errors.map((e, i) => <li key={i}>{e.path?.length ? <code>{formatPath(e.path)}</code> : null} {e.message}</li>)}</ul>}
+          {error.details && <details className="stErrDetail"><summary>Details for the person who runs the server</summary><p>{error.details}</p></details>}
+          {error.errors?.length > 0 && <PlainIssues issues={error.errors} severity="error" config={editor.parsed.value} />}
+        </Notice>
+      )}
+
+      {saved && (
+        <Notice kind="good" title={`Added the scenario “${saved}” to the draft`} actions={<button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'scenarios'), { guard: false })}>Open Scenarios</button>}>
+          It has what you said, the tools that were used and the final state. Edit what it checks, then run it. The draft isn’t saved yet.
         </Notice>
       )}
 
@@ -256,8 +278,10 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
             </div>
           )}
 
+          {canSave && <button type="button" className="quietButton stTSaveScenario" onClick={saveAsScenario} disabled={!!saved} title="Turns what you said and what the agent did into a test scenario in the draft">{saved ? 'Saved as a scenario' : 'Save as a scenario'}</button>}
+
           <div className="stTLog">
-            <button type="button" className="stLink" onClick={() => setLogOpen((v) => !v)} aria-expanded={logOpen}>{logOpen ? 'Hide' : 'Show'} session log ({events.length})</button>
+            <button type="button" className="stLink" onClick={() => setLogOpen((v) => !v)} aria-expanded={logOpen}>{logOpen ? 'Hide' : 'Show'} connection log ({events.length})</button>
             {logOpen && (
               <ol>
                 {events.length === 0 && <li className="stMuted">Nothing yet.</li>}
@@ -267,6 +291,14 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
           </div>
         </aside>
       </div>
+
+      {(status !== 'idle' || trace.records.length > 0) && (
+        <section className="stCard stTTrace" aria-label="Trace">
+          <TraceView records={trace.records} live={trace.following} title="What happened in this conversation" emptyText={running ? 'Waiting for the first record…' : 'Nothing was recorded.'}
+            note={session.simulated ? 'These records were made by the simulated conversation, in the same shape a real call has. No runtime wrote them.' : undefined} />
+          {trace.problem && <p className="stMuted" role="status">{trace.problem}</p>}
+        </section>
+      )}
     </div>
   );
 }

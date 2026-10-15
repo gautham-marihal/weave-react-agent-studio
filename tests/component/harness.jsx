@@ -7,7 +7,15 @@ import FormEditor from '../../src/studio/form/FormEditor.jsx';
 import SimpleConfig from '../../src/studio/simple/SimpleConfig.jsx';
 import ScenariosTab from '../../src/studio/scenarios/ScenariosTab.jsx';
 import ChatPreview from '../../src/studio/preview/ChatPreview.jsx';
+import KnowledgeTab from '../../src/studio/knowledge/KnowledgeTab.jsx';
+import CallsView from '../../src/studio/calls/CallsView.jsx';
+import TraceView from '../../src/studio/trace/TraceView.jsx';
+import { ValidationPanel } from '../../src/studio/ConfigTab.jsx';
+import SmartSelect from '../../src/studio/SmartSelect.jsx';
 import { useSimulatedSession } from '../../src/studio/test/useSimulatedSession.js';
+import JourneyNav, { NextBar } from '../../src/studio/JourneyNav.jsx';
+import StatePill from '../../src/studio/StatePill.jsx';
+import { agentState } from '../../src/studio/status.js';
 
 function PreviewScreen({ editor, mode, locked }) {
   const session = useSimulatedSession({ getConfig: async () => editor.parsed.value });
@@ -17,7 +25,13 @@ function PreviewScreen({ editor, mode, locked }) {
 const SCREENS = {
   form: (editor) => <FormEditor editor={editor} onShowJson={() => {}} onShowModels={() => {}} />,
   simple: (editor) => <SimpleConfig editor={editor} onShowJson={() => {}} onOpenAll={() => {}} />,
-  scenarios: (editor) => <ScenariosTab botId="x" name="X" editor={editor} />,
+  scenarios: (editor, props) => <ScenariosTab botId="x" name="X" editor={editor} pollMs={props.pollMs} />,
+  knowledge: (editor, props) => <KnowledgeTab botId="x" name="X" editor={editor} pollMs={props.pollMs} />,
+  calls: (editor, props) => <CallsView bots={props.bots || [{ id: 'x', name: 'X' }]} fixedBotId={props.fixedBotId || ''} />,
+  validation: (editor, props) => <ValidationPanel editor={editor} folded={!!props.folded} onFold={() => {}} onJump={props.onJump || (() => {})} onApply={(next) => editor.setValue(next)} onOpenModels={props.onOpenModels || (() => {})} />,
+  smartselect: (editor, props) => <SmartSelect value={editor.parsed.value.picked ?? ''} options={props.options} ariaLabel="Pick one" action={!!props.action} placeholder={props.placeholder} onChange={(picked) => editor.setValue({ picked })} />,
+  trace: (editor, props) => <TraceView records={props.records || []} live={!!props.live} />,
+  journey: (editor, props) => <><JourneyNav botId="acme" tab={props.tab || 'config'} live={!!props.live} /><NextBar botId="acme" tab={props.tab || 'config'} /><StatePill state={agentState(props.state || {})} /></>,
   preview: (editor, props) => <PreviewScreen editor={editor} mode={props.mode || 'simulated'} locked={!!props.locked} />,
 };
 

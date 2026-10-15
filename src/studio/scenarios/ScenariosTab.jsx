@@ -1,162 +1,51 @@
-import React, { useMemo, useState } from 'react';
-import { Notice } from '../ui.jsx';
+import React, { useCallback, useMemo, useState } from 'react';
+import { api } from '../../api/client.js';
+import { isDemoMode } from '../../demo/demoMode.js';
+import { DemoNote } from '../../demo/DemoBadge.jsx';
+import { Modal, Notice } from '../ui.jsx';
 import { formatWhen } from '../format.js';
-import { EXPECT_KINDS, describeExpectation, hasProblems, kindOfExpectation, newScenario, parseImport, parseValue, regexProblem, scenarioProblems, showValue } from './model.js';
-import { RUNNERS, runAll } from './runner.js';
-import { clearRuns, latestStatuses, loadRuns, saveRun } from './history.js';
+import { useAsync } from '../useAsync.js';
+import { addMockTo, newScenario, parseImport } from './model.js';
+import { isFinished, normalizeHeadline, normalizeScenarioList, resultSummary, runTokens, testStatusOf, tokenWords } from './runResults.js';
+import { useTestRun } from './useTestRun.js';
+import ResultView from './ResultView.jsx';
+import ScenarioForm from './ScenarioForm.jsx';
 import './scenarios.css';
 
-// Test scenarios: conversations written down with what must hold afterwards, kept in the agent's draft (`tests`), played by a runner,
-// with each outcome recorded. The runner today is a SIMULATION (see runner.js): it checks that the scenarios are well formed and shows
-// what they would look like, not whether the real agent passes. A real run needs an endpoint the API doesn't have yet.
+// Test scenarios: conversations written down with what must be true afterwards, kept in the agent's draft (`tests`) and run by the
+// server's runner. A scenario with a `model_script` runs the real runtime with a scripted model (free, the same every time); one without
+// is live (a real model: it costs money and is only run when asked). Results appear as scenarios finish, each with its checks, what to
+// do about a failure, and the trace of what happened. In demo mode there is no runtime: an imitation answers in the same shapes and
+// says so.
 
-const STATUS = { passed: ['Passed', 'good'], failed: ['Failed', 'bad'], unchecked: ['Not checked', 'idle'], error: ['Broken', 'bad'] };
-const MARK = { passed: '✓', failed: '✕', unchecked: '–', error: '!' };
+const STATUS = { passed: ['Passed', 'good'], failed: ['Failed', 'bad'], error: ['Broke', 'bad'], skipped: ['Skipped', 'idle'], running: ['Running…', 'warn'] };
 const Chip = ({ status }) => { const [text, tone] = STATUS[status] || ['Not run', 'idle']; return <span className={`scChip ${tone}`}>{text}</span>; };
+const ModeChip = ({ mode }) => (mode === 'live'
+  ? <span className="scChip warn" title="Uses a real model when run: costs money, and can differ from run to run">Live</span>
+  : <span className="scChip idle" title="Runs the real runtime with a scripted model: free and the same every time">Scripted</span>);
 
-function toolIdsOf(config) {
-  const tools = (Array.isArray(config?.tools) ? config.tools : []).map((t) => t?.id);
-  const handoffs = (Array.isArray(config?.agents?.items) ? config.agents.items : []).flatMap((a) => (Array.isArray(a?.handoffs) ? a.handoffs.map((h) => h?.tool) : []));
-  return [...new Set([...tools, ...handoffs].filter(Boolean))];
-}
-
-// One expectation's inputs.
-function ExpectRow({ value, onChange, onRemove, index, config }) {
-  const kind = kindOfExpectation(value);
-  const tools = toolIdsOf(config);
-  const states = Object.keys(config?.state?.variables || {});
-  const change = (key) => {
-    if (key === kind) return;
-    onChange({ tool_called: { tool_called: tools[0] || '' }, tool_not_called: { tool_not_called: tools[0] || '' }, state_equals: { state_equals: { state: states[0] || '', value: '' } }, said_matches: { said_matches: '' }, judge: { judge: '' } }[key]);
-  };
-  const label = (what) => `Expectation ${index + 1}: ${what}`;
-  return (
-    <li className="scExpect">
-      <select className="stFInput small" value={kind} onChange={(event) => change(event.target.value)} aria-label={label('what to check')}>
-        {!kind && <option value="">Choose what to check…</option>}
-        {EXPECT_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
-      </select>
-      {(kind === 'tool_called' || kind === 'tool_not_called') && (
-        <select className="stFInput small" value={value[kind] || ''} onChange={(event) => onChange({ [kind]: event.target.value })} aria-label={label('tool')}>
-          <option value="">Choose a tool…</option>
-          {tools.map((id) => <option key={id} value={id}>{id}</option>)}
-        </select>
-      )}
-      {kind === 'state_equals' && (
-        <>
-          <select className="stFInput small" value={value.state_equals?.state || ''} onChange={(event) => onChange({ state_equals: { ...value.state_equals, state: event.target.value } })} aria-label={label('state variable')}>
-            <option value="">Choose a variable…</option>
-            {states.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-          <input className="stFInput small mono" type="text" value={showValue(value.state_equals?.value ?? '')} placeholder="value, e.g. true, 3 or paid" aria-label={label('value')}
-            onChange={(event) => onChange({ state_equals: { ...value.state_equals, value: parseValue(event.target.value) } })} />
-        </>
-      )}
-      {kind === 'said_matches' && (
-        <span className="scField">
-          <input className="stFInput small mono" type="text" value={value.said_matches || ''} placeholder="a pattern, e.g. refund|money back" aria-label={label('pattern')} aria-invalid={!!regexProblem(value.said_matches || '') || undefined}
-            onChange={(event) => onChange({ said_matches: event.target.value })} />
-          {regexProblem(value.said_matches || '') && <small className="stFErr">Not a valid pattern: {regexProblem(value.said_matches)}</small>}
-        </span>
-      )}
-      {kind === 'judge' && <textarea className="stFInput small" rows={2} value={value.judge || ''} placeholder="e.g. the agent stays polite and does not promise a refund" aria-label={label('criterion')} onChange={(event) => onChange({ judge: event.target.value })} />}
-      <button type="button" className="stIconBtn danger" aria-label={`Delete expectation ${index + 1}`} onClick={onRemove}>×</button>
-    </li>
-  );
-}
-
-function ScenarioForm({ initial, config, others, onSave, onCancel, isNew }) {
-  const [scenario, setScenario] = useState(initial);
-  const [tried, setTried] = useState(false);
-  const problems = useMemo(() => scenarioProblems(scenario, config, others), [scenario, config, others]);
-  const channels = (Array.isArray(config?.channels) ? config.channels : []).map((c) => c?.id).filter(Boolean);
-  const set = (patch) => setScenario((old) => ({ ...old, ...patch }));
-  const setTurn = (i, say) => set({ turns: scenario.turns.map((t, k) => (k === i ? { say } : t)) });
-  const setCaller = (patch) => { const caller = { ...(scenario.caller || {}), ...patch }; Object.keys(caller).forEach((k) => { if (!caller[k]) delete caller[k]; }); const next = { ...scenario }; if (Object.keys(caller).length) next.caller = caller; else delete next.caller; setScenario(next); };
-  const show = (key) => tried && problems[key];
-
-  return (
-    <form className="scForm" noValidate aria-label={isNew ? 'New scenario' : `Edit ${initial.id}`} onSubmit={(event) => { event.preventDefault(); setTried(true); if (!hasProblems(problems)) onSave(scenario); }}>
-      <div className="scGrid">
-        <label><span>Id</span>
-          <input className="stFInput small mono" type="text" value={scenario.id} onChange={(event) => set({ id: event.target.value })} aria-invalid={!!show('id') || undefined} />
-          {show('id') && <small className="stFErr">{problems.id}</small>}
-        </label>
-        <label><span>Channel</span>
-          <select className="stFInput small" value={scenario.channel} onChange={(event) => set({ channel: event.target.value })} aria-invalid={!!show('channel') || undefined}>
-            <option value="">Choose a channel…</option>
-            {channels.map((id) => <option key={id} value={id}>{id}</option>)}
-          </select>
-          {show('channel') && <small className="stFErr">{problems.channel}</small>}
-        </label>
-        <label className="wide"><span>Who is calling <em>(optional)</em></span>
-          <input className="stFInput small" type="text" value={scenario.caller?.persona || ''} placeholder="e.g. an impatient customer who was double charged" onChange={(event) => setCaller({ persona: event.target.value })} />
-        </label>
-      </div>
-
-      <fieldset className="scBlock">
-        <legend>What the caller says, in order</legend>
-        <ol className="scTurns">
-          {scenario.turns.map((turn, i) => (
-            <li key={i}>
-              <input className="stFInput small" type="text" value={turn.say} placeholder="What they say" aria-label={`Turn ${i + 1}: what the caller says`} onChange={(event) => setTurn(i, event.target.value)} />
-              <button type="button" className="stIconBtn danger" aria-label={`Delete turn ${i + 1}`} onClick={() => set({ turns: scenario.turns.filter((_, k) => k !== i) })}>×</button>
-            </li>
-          ))}
-        </ol>
-        {show('turns') && <small className="stFErr">{problems.turns}</small>}
-        <button type="button" className="stAddBtn" onClick={() => set({ turns: [...scenario.turns, { say: '' }] })}>＋ Add a turn</button>
-      </fieldset>
-
-      <fieldset className="scBlock">
-        <legend>What must be true afterwards</legend>
-        <ul className="scExpects">
-          {scenario.expect.map((value, i) => (
-            <ExpectRow key={i} index={i} value={value} config={config} onChange={(next) => set({ expect: scenario.expect.map((e, k) => (k === i ? next : e)) })} onRemove={() => set({ expect: scenario.expect.filter((_, k) => k !== i) })} />
-          ))}
-        </ul>
-        {show('expect') && <ul className="scProblems">{problems.expect.map((text) => <li key={text} className="stFErr">{text}</li>)}</ul>}
-        <button type="button" className="stAddBtn" onClick={() => set({ expect: [...scenario.expect, { said_matches: '' }] })}>＋ Add an expectation</button>
-      </fieldset>
-
-      <div className="scActions">
-        <button type="submit" className="primaryCta compactCta">{isNew ? 'Add the scenario' : 'Save the scenario'}</button>
-        <button type="button" className="quietButton" onClick={onCancel}>Cancel</button>
-      </div>
-    </form>
-  );
-}
-
-function Outcome({ result }) {
-  return (
-    <div className="scOutcome">
-      <ul className="scResults">
-        {result.results.map((r, i) => (
-          <li key={i} className={r.status}><b aria-hidden="true">{MARK[r.status]}</b><span><strong>{describeExpectation(r.expect)}</strong><small>{r.detail}</small></span></li>
-        ))}
-        {result.detail && <li className="error"><b aria-hidden="true">!</b><span><small>{result.detail}</small></span></li>}
-      </ul>
-      {result.transcript.length > 0 && (
-        <details className="scTranscript">
-          <summary>The simulated conversation ({result.transcript.length} messages)</summary>
-          <ol>{result.transcript.map((m, i) => <li key={i} className={m.role}><b>{m.role === 'user' ? 'Caller' : 'Agent'}</b> {m.text}{m.tools?.length ? <em> (tool: {m.tools.join(', ')})</em> : null}</li>)}</ol>
-        </details>
-      )}
-    </div>
-  );
-}
-
-export default function ScenariosTab({ botId, name, editor }) {
+export default function ScenariosTab({ botId, name, editor, pollMs }) {
   const config = editor.parsed.value;
   const ready = editor.status === 'ready' && editor.isObject && !editor.parsed.error;
   const scenarios = useMemo(() => (Array.isArray(config?.tests) ? config.tests.filter((s) => s && typeof s === 'object') : []), [config]);
-  const [runs, setRuns] = useState(() => loadRuns(botId));
-  const [shown, setShown] = useState(null); // a run being looked at
   const [editing, setEditing] = useState(null); // { index: number | -1 (new), scenario }
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importResult, setImportResult] = useState(null);
-  const statuses = useMemo(() => latestStatuses(runs), [runs]);
+  const [paid, setPaid] = useState({ live: false, judge: false });
+  const [network, setNetwork] = useState(false); // let the bot's API calls reach real systems (the server refuses unless an operator allows it)
+  const [confirm, setConfirm] = useState(null); // 'live' | 'judge'
+  const [queued, setQueued] = useState(null); // the ids the current run was asked for (null = all)
+  const [mockAdded, setMockAdded] = useState({}); // scenario id -> ["GET /x"]
+
+  const saved = useAsync((signal) => api.listTests(botId, { ref: 'draft' }, { signal }), [botId]);
+  const heads = useAsync((signal) => api.listTestRuns(botId, 10, { signal }), [botId]);
+  const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId]);
+  const list = useMemo(() => normalizeScenarioList(saved.data), [saved.data]);
+  const headlines = useMemo(() => (Array.isArray(heads.data) ? heads.data.map(normalizeHeadline) : []), [heads.data]);
+
+  const refresh = useCallback(() => { saved.reload(); heads.reload(); }, [saved, heads]);
+  const { run, running, starting, error, start, open, clear, dismissError } = useTestRun(botId, { scenarios, onFinished: refresh, pollMs });
 
   if (!ready) return <Notice kind="warn" title="The draft can’t be read right now">Fix the JSON on the Config tab first. Scenarios are part of the draft.</Notice>;
 
@@ -165,41 +54,89 @@ export default function ScenariosTab({ botId, name, editor }) {
     if (next.length) copy.tests = next; else delete copy.tests;
     editor.setValue(copy);
   };
-  const run = (which) => {
-    const result = runAll(config, which, 'simulated');
-    setRuns(saveRun(botId, result));
-    setShown(result);
-  };
-  const shownRun = shown || runs[0] || null;
+  const body = (ids) => ({
+    ...(editor.dirty ? { config } : { ref: 'draft' }),
+    ...(ids ? { scenarios: ids } : {}),
+    ...(paid.live ? { live: true } : {}),
+    ...(paid.judge ? { judge: true } : {}),
+    ...(network ? { allow_network: true } : {}),
+  });
+  const go = (ids) => { setQueued(ids); setMockAdded({}); return start(body(ids)); };
+  const liveCount = scenarios.filter((s) => !(Array.isArray(s.model_script) && s.model_script.length)).length;
+  const resultOf = (id) => run?.scenarios.find((r) => r.id === id) || null;
+  const earlier = (id) => list.items.find((i) => i.scenario?.id === id) || null;
+  const pending = (id) => running && (!queued || queued.includes(id)) && !resultOf(id);
+
+  // "this exact version": which published version the latest finished run tested
+  const latest = run && isFinished(run.status) ? run : headlines.find((h) => isFinished(h.status)) || null;
+  const testedVersion = latest?.checksum ? (Array.isArray(versions.data) ? versions.data : []).find((v) => v.checksum === latest.checksum) : null;
+  const newest = Array.isArray(versions.data) ? versions.data[0] : null;
+  const newestStatus = newest ? testStatusOf(newest, headlines.length ? headlines : (run ? [run] : [])) : null;
+
+  const turnOn = (what) => setConfirm(what);
+  const accept = () => { setPaid((p) => ({ ...p, [confirm]: true })); setConfirm(null); };
 
   return (
     <div className="scTab">
       <section className="stCard scHead">
         <div>
           <h3>Test scenarios</h3>
-          <p className="stMuted">Write down conversations and what must be true afterwards, run them, and see which fail. They are part of {name}’s draft (<code>tests</code>), so they are saved and versioned with it.</p>
+          <p className="stMuted">Write down conversations and what must be true afterwards, run them, and see which fail and why. They are part of {name}’s draft (<code>tests</code>), so they are saved and versioned with it.</p>
         </div>
-        <div className="pvModes scRunner" role="group" aria-label="How to run">
-          <button type="button" className="on" aria-pressed="true" title={RUNNERS.simulated.what}>{RUNNERS.simulated.label}</button>
-          <button type="button" disabled aria-pressed="false" title={RUNNERS.live.reason}>{RUNNERS.live.label}</button>
-        </div>
+        <span className="scChip idle" title="Which runner plays the scenarios">{isDemoMode() ? 'Demo imitation' : 'The real runtime'}</span>
       </section>
 
-      <p className="pvBanner sim" role="note">
-        <b>Simulated runs.</b> {RUNNERS.simulated.what} A scenario passing here means it is well formed and its expectations can be met by the simulation, <strong>not</strong> that the real agent would pass.
-        {' '}<b>Real runs aren’t available yet:</b> {RUNNERS.live.reason} Criteria for a reviewer (“a reviewer agrees that…”) are never checked in a simulation.
-      </p>
+      <DemoNote kind="scenarios">There is no runtime in demo mode: scenarios are played by a simple imitation. A pass here means the scenario is well formed and its checks can be met by the imitation, <strong>not</strong> that the real agent would pass. Reviewer (“judge”) checks are never graded.</DemoNote>
+      {!isDemoMode() && (
+        <p className="scBanner" role="note">
+          Scenarios run in the real runtime but <strong>never call a real API</strong>: the mocks you write answer the bot’s API calls{saved.data && list.networkAllowed ? ' (this server lets a run reach real APIs when asked; the studio never asks)' : ''}.
+          Scenarios with a model script are free and repeatable; the others are live and only run when you include them.
+        </p>
+      )}
+
       {editor.dirty && (
-        <Notice kind="info" title="Scenarios and edits are in the draft, not saved yet" actions={<button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving}>{editor.saving ? 'Saving…' : 'Save draft'}</button>}>
-          Runs use your current edits, saved or not.
+        <Notice kind="info" title="Runs use your edits, saved or not" actions={<button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving}>{editor.saving ? 'Saving…' : 'Save draft'}</button>}>
+          The scenarios and everything else you changed are in the draft but not saved. A run tests exactly what is in the editor.
         </Notice>
       )}
 
+      {newest && newestStatus && (
+        <p className={`scVersionLine ${newestStatus.state}`} role="status">
+          <b>Version {newest.version}</b>: {newestStatus.state === 'passed' ? 'these scenarios passed on this exact version.' : newestStatus.state === 'failed' ? `the latest run on this exact version ${newestStatus.text === 'Broke' ? 'broke' : 'failed'}.` : 'no run has tested this exact version yet.'}
+        </p>
+      )}
+
       <div className="scBar">
-        <button type="button" className="primaryCta compactCta" disabled={!scenarios.length} onClick={() => run(scenarios)}>Run all ({scenarios.length})</button>
+        <button type="button" className="primaryCta compactCta" disabled={!scenarios.length || running || starting} onClick={() => go(null)}>
+          {starting ? 'Starting…' : running ? 'Running…' : `Run all (${scenarios.length})`}{paid.live || paid.judge ? ' · uses a paid model' : ''}{network ? ' · real requests' : ''}
+        </button>
         <button type="button" className="quietButton" disabled={!!editing} onClick={() => setEditing({ index: -1, scenario: newScenario(config) })}>＋ New scenario</button>
         <button type="button" className="quietButton" aria-expanded={importOpen} onClick={() => setImportOpen((v) => !v)}>Paste scenarios…</button>
+        <button type="button" className="quietButton" onClick={refresh} disabled={saved.loading}>Refresh results</button>
       </div>
+
+      <details className="scPaid">
+        <summary>Paid and real-request options{paid.live || paid.judge || network ? ' (on)' : ''}</summary>
+        <label className="scCheck"><input type="checkbox" checked={paid.live} onChange={(event) => (event.target.checked ? turnOn('live') : setPaid((p) => ({ ...p, live: false })))} />
+          <span><strong>Include live scenarios</strong> ({liveCount} of {scenarios.length}). They use a real language model: <b>this costs money</b> and the result can differ from run to run. Without this they are skipped.</span>
+        </label>
+        <label className="scCheck"><input type="checkbox" checked={paid.judge} onChange={(event) => (event.target.checked ? turnOn('judge') : setPaid((p) => ({ ...p, judge: false })))} />
+          <span><strong>Grade “a reviewer would agree that…” checks</strong>. A model grades each one: <b>this costs money</b>. A scenario with a model script can’t be graded.</span>
+        </label>
+        <label className="scCheck"><input type="checkbox" checked={network} onChange={(event) => { if (!event.target.checked) { setNetwork(false); return; } if (window.confirm('Let this run send the bot’s requests to the real systems?\n\nA scenario normally never calls a real API: its mocks answer. With this on, a request can change real data. The server refuses it unless an operator has allowed it.')) setNetwork(true); }} />
+          <span><strong>Let requests reach real systems</strong> (for operators). Scenarios normally never call a real API; with this on they can, and a request can <b>change real data</b>. The server refuses it unless an operator has allowed it.</span>
+        </label>
+      </details>
+
+      {confirm && (
+        <Modal eyebrow="Costs money" title={confirm === 'live' ? 'Run live scenarios?' : 'Grade reviewer checks?'} onClose={() => setConfirm(null)}
+          footer={<><button type="button" className="quietButton" onClick={() => setConfirm(null)}>Not now</button><button type="button" className="primaryCta compactCta" onClick={accept}>{confirm === 'live' ? 'Include live scenarios' : 'Grade them'}</button></>}>
+          <p className="stMuted">{confirm === 'live'
+            ? 'A live scenario talks to a real language model, so each run is billed by the model’s provider and the answers can differ every time. A scripted scenario never needs one.'
+            : 'Each reviewer check is graded by a language model, so each run is billed by the model’s provider.'}
+          {' '}It stays on only until you leave this tab. Nothing is run until you press a Run button.</p>
+        </Modal>
+      )}
 
       {importOpen && (
         <section className="stCard scImport">
@@ -222,10 +159,35 @@ export default function ScenariosTab({ botId, name, editor }) {
         </section>
       )}
 
+      {error && (
+        <Notice kind={error.kind === 'info' ? 'info' : 'error'} title={error.title} actions={<button type="button" className="quietButton" onClick={dismissError}>Dismiss</button>}>
+          {error.body}
+          {error.errors?.length > 0 && <ul className="scProblems">{error.errors.map((e, i) => <li key={i}>{e.message}</li>)}</ul>}
+        </Notice>
+      )}
+
+      {run && (
+        <section className="stCard scSummary" aria-label="Current run" role="status">
+          <h4>{running ? 'Running…' : 'Latest run'}: {formatWhen(run.startedAt)} <span className="scChip idle">{run.ref === 'unsaved' ? 'your unsaved edits' : run.ref || 'draft'}</span>{run.runner === 'demo' && <span className="scChip warn">imitation</span>}</h4>
+          {running && <div className="scProgress" aria-hidden="true"><i style={{ width: `${run.total ? Math.round((run.scenarios.length / run.total) * 100) : 5}%` }} /></div>}
+          <p>
+            <b className="scNum good">{run.passed}</b> passed · <b className="scNum bad">{run.failed}</b> failed
+            {run.skipped > 0 && <> · <b className="scNum">{run.skipped}</b> skipped</>}
+            {run.errors > 0 && <> · <b className="scNum bad">{run.errors}</b> broke</>}
+            {' '}of {run.total || run.scenarios.length}{running && ` (${run.scenarios.length} done)`}.
+          </p>
+          {!running && runTokens(run) && <p className="stMuted scUsage">Live scenarios used {tokenWords(runTokens(run))}.</p>}
+          {!running && testedVersion && <p className="scVersionLine passed">This run tested the exact published version <b>{testedVersion.version}</b>.</p>}
+          {!running && !testedVersion && run.checksum && <p className="stMuted">This run tested {run.ref === 'unsaved' ? 'your unsaved edits' : `the ${run.ref || 'draft'}`}, which is not a published version.</p>}
+          {!running && run.failed + run.errors > 0 && <p className="scFailed">Failing: {run.scenarios.filter((s) => s.status === 'failed' || s.status === 'error').map((s) => s.id).join(', ')}</p>}
+          {!running && <button type="button" className="stLink" onClick={clear}>Hide this run</button>}
+        </section>
+      )}
+
       {editing && (
         <section className="stCard">
           <ScenarioForm key={editing.index} initial={editing.scenario} config={config} others={scenarios.filter((_, i) => i !== editing.index)} isNew={editing.index < 0} onCancel={() => setEditing(null)}
-            onSave={(saved) => { writeTests(editing.index < 0 ? [...scenarios, saved] : scenarios.map((s, i) => (i === editing.index ? saved : s))); setEditing(null); }} />
+            onSave={(savedScenario) => { writeTests(editing.index < 0 ? [...scenarios, savedScenario] : scenarios.map((s, i) => (i === editing.index ? savedScenario : s))); setEditing(null); }} />
         </section>
       )}
 
@@ -233,32 +195,45 @@ export default function ScenariosTab({ botId, name, editor }) {
         {scenarios.length === 0 ? (
           <div className="scEmpty">
             <strong>No scenarios yet</strong>
-            <span>A scenario is one conversation: what the caller says, and what must be true afterwards (a tool was called, something was said, a state variable ended up a certain way).</span>
+            <span>A scenario is one conversation: what the caller says, and what must be true afterwards (a tool was called, something was said, a state variable ended up a certain way, an API request was or wasn’t made).</span>
             <button type="button" className="primaryCta compactCta" onClick={() => setEditing({ index: -1, scenario: newScenario(config) })}>Write the first one</button>
           </div>
         ) : (
           <ul className="scList">
             {scenarios.map((scenario, index) => {
-              const last = statuses[scenario.id];
-              const outcome = shownRun?.scenarios.find((s) => s.id === scenario.id);
+              const live = resultOf(scenario.id);
+              const before = earlier(scenario.id);
+              const result = live || before?.result || null;
+              const isOld = !live && !!before?.result;
+              const mode = result?.mode || (Array.isArray(scenario.model_script) && scenario.model_script.length ? 'scripted' : 'live');
+              const status = pending(scenario.id) ? 'running' : result?.status;
+              const open = !!result && (!isOld && ['failed', 'error'].includes(result.status));
               return (
                 <li key={`${scenario.id}-${index}`} className="scItem" data-scenario={scenario.id}>
                   <header>
                     <strong>{scenario.id}</strong>
+                    <ModeChip mode={mode} />
                     <small>{scenario.channel} · {(scenario.turns || []).length} turn{(scenario.turns || []).length === 1 ? '' : 's'} · {(scenario.expect || []).length} expectation{(scenario.expect || []).length === 1 ? '' : 's'}</small>
-                    {last ? <span title={`${last.runner} run, ${formatWhen(last.ranAt)}`}><Chip status={last.status} /></span> : <span className="scChip idle">Not run</span>}
+                    {status ? <span title={isOld ? `Last run: ${formatWhen(before.ranAt)} (saved draft)` : undefined}><Chip status={status} /></span> : <span className="scChip idle">Not run</span>}
                     <span className="scItemActions">
-                      <button type="button" className="quietButton" onClick={() => run([scenario])}>Run</button>
+                      <button type="button" className="quietButton" disabled={running || starting} onClick={() => go([scenario.id])}>Run</button>
                       <button type="button" className="quietButton" disabled={!!editing} onClick={() => setEditing({ index, scenario: JSON.parse(JSON.stringify(scenario)) })}>Edit</button>
                       <button type="button" className="stFDel small" aria-label={`Delete ${scenario.id}`} onClick={() => { if (window.confirm(`Delete the scenario “${scenario.id}” from the draft?`)) writeTests(scenarios.filter((_, i) => i !== index)); }}>Delete</button>
                     </span>
                   </header>
+                  {scenario.description && <p className="scDesc">{scenario.description}</p>}
                   <p className="scSaid">{(scenario.turns || []).map((t) => `“${t.say}”`).join(' → ')}</p>
-                  {outcome && outcome.status !== undefined && (
-                    <div className={`scLast ${outcome.status}`}>
-                      <p><Chip status={outcome.status} /> <small>in the {shownRun.runner} run of {formatWhen(shownRun.ranAt)}</small></p>
-                      <Outcome result={outcome} />
-                    </div>
+                  {result && (
+                    <details className={`scLast ${result.status}`} open={open || undefined}>
+                      <summary>
+                        <Chip status={result.status} /> <small>{isOld ? `from the last run (${formatWhen(before.ranAt)}, saved draft)` : `in the run of ${formatWhen(run?.startedAt)}`} · {resultSummary(result)}</small>
+                      </summary>
+                      <ResultView result={result} scenario={scenario} onEdit={() => setEditing({ index, scenario: JSON.parse(JSON.stringify(scenario)) })} mockAdded={mockAdded[scenario.id] || []}
+                        onAddMock={(request) => {
+                          writeTests(scenarios.map((s, i) => (i === index ? addMockTo(s, request) : s)));
+                          setMockAdded((m) => ({ ...m, [scenario.id]: [...(m[scenario.id] || []), `${request.method || ''} ${request.path}`] }));
+                        }} />
+                    </details>
                   )}
                 </li>
               );
@@ -267,32 +242,19 @@ export default function ScenariosTab({ botId, name, editor }) {
         )}
       </section>
 
-      {shownRun && (
-        <section className="stCard scSummary" aria-label="Latest run" role="status">
-          <h4>Latest run: {formatWhen(shownRun.ranAt)} <span className="scChip idle">{shownRun.runner}</span></h4>
-          <p>
-            <b className="scNum good">{shownRun.passed}</b> passed · <b className="scNum bad">{shownRun.failed}</b> failed
-            {shownRun.unchecked > 0 && <> · <b className="scNum">{shownRun.unchecked}</b> not checked</>}
-            {shownRun.errors > 0 && <> · <b className="scNum bad">{shownRun.errors}</b> broken</>}
-            {' '}of {shownRun.total}.
-          </p>
-          {shownRun.failed + shownRun.errors > 0 && <p className="scFailed">Failing: {shownRun.scenarios.filter((s) => s.status === 'failed' || s.status === 'error').map((s) => s.id).join(', ')}</p>}
-        </section>
-      )}
-
-      {runs.length > 0 && (
+      {headlines.length > 0 && (
         <section className="stCard" aria-label="Earlier runs">
-          <h4>Earlier runs <button type="button" className="stLink" onClick={() => { setRuns(clearRuns(botId)); setShown(null); }}>Clear</button></h4>
+          <h4>Earlier runs</h4>
           <ul className="scHistory">
-            {runs.map((r) => (
-              <li key={r.id}>
-                <button type="button" className={`quietButton ${shownRun?.id === r.id ? 'on' : ''}`} onClick={() => setShown(r)} aria-pressed={shownRun?.id === r.id}>
-                  {formatWhen(r.ranAt)} · {r.runner} · {r.passed}/{r.total} passed{r.failed ? `, ${r.failed} failed` : ''}
+            {headlines.map((h) => (
+              <li key={h.id}>
+                <button type="button" className={`quietButton ${run?.id === h.id ? 'on' : ''}`} aria-pressed={run?.id === h.id} onClick={() => open(h.id)}>
+                  {formatWhen(h.startedAt)} · {h.ref === 'unsaved' ? 'unsaved edits' : h.ref || 'draft'} · {h.status === 'running' ? 'running' : `${h.passed}/${h.total} passed${h.failed ? `, ${h.failed} failed` : ''}`}
                 </button>
               </li>
             ))}
           </ul>
-          <p className="stMuted">Kept in this browser (the API has nowhere to record runs yet).</p>
+          <p className="stMuted">Kept by the server. Each run says which exact configuration it tested.</p>
         </section>
       )}
     </div>

@@ -66,7 +66,41 @@ export function actions(act) {
   return {
     async click(el) { if (!el) throw new Error('nothing to click'); await act(async () => { el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true })); }); },
     async type(el, value) { if (!el) throw new Error('nothing to type in'); await act(async () => { nativeSet(el, value); el.dispatchEvent(new window.Event('input', { bubbles: true })); }); },
-    async choose(el, value) { if (!el) throw new Error('nothing to choose in'); await act(async () => { nativeSet(el, value); el.dispatchEvent(new window.Event('change', { bubbles: true })); }); },
+    async choose(el, value) {
+      if (!el) throw new Error('nothing to choose in');
+      if (el.getAttribute('role') === 'combobox') {
+        // a searchable list (SmartSelect): open it, and press on the option with this value (or this text)
+        await act(async () => { el.focus(); el.click(); });
+        const list = window.document.getElementById(el.getAttribute('aria-controls'));
+        const option = [...(list?.querySelectorAll('[role=option]') || [])].find((o) => o.dataset.value === value || textOf(o) === value || textOf(o).replace(/ ✓$/, '') === value);
+        if (!option) throw new Error(`the list has no option “${value}”`);
+        await act(async () => { option.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true })); });
+        return;
+      }
+      await act(async () => { nativeSet(el, value); el.dispatchEvent(new window.Event('change', { bubbles: true })); });
+    },
+    // the texts of the choices of a select, or of a searchable list (opened to read it, then closed again)
+    async options(el) {
+      if (el.getAttribute('role') !== 'combobox') return [...el.options].map((o) => o.text);
+      await act(async () => { el.focus(); el.click(); });
+      const list = window.document.getElementById(el.getAttribute('aria-controls'));
+      const texts = [...list.querySelectorAll('[role=option]')].map((o) => textOf(o).replace(/ ✓$/, ''));
+      await act(async () => { el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); });
+      return texts;
+    },
     async check(el) { if (!el) throw new Error('nothing to check'); await act(async () => { el.click(); }); },
+    // goes to a screen of "All settings" by its id ('tools', 'defaults.models'…), opening the group that holds it
+    async section(root, id) {
+      const chip = () => $(root, `[data-section="${id}"]`);
+      if (!chip()) {
+        for (const tab of $$(root, '.stFNavGroups [role=tab]')) {
+          await act(async () => { tab.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true })); });
+          if (chip()) break;
+        }
+      }
+      const target = chip();
+      if (!target) throw new Error(`no screen “${id}”`);
+      await act(async () => { target.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true })); });
+    },
   };
 }

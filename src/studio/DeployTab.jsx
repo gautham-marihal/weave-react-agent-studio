@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
+import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.js';
 import { formatWhen } from './format.js';
-import { useProviders } from './models/useProviders.js';
 import { DemoNote } from '../demo/DemoBadge.jsx';
-import { PRODUCTION_WORD, mayDeploy, rollbackTarget, secretsStatus, splitUnsupported } from './preflight.js';
+import { PRODUCTION_WORD, mayDeploy, rollbackTarget, splitUnsupported } from './preflight.js';
 import { envLabel, ErrorState, Notice, Spinner } from './ui.jsx';
 import { useAsync } from './useAsync.js';
+import ReleaseChecklist from './release/ReleaseChecklist.jsx';
+import { normalizePreflightKnowledge } from './release/checklist.js';
 
 const STATUS_TEXT = { active: 'Active', pending: 'Deploying…', failed: 'Failed' };
 
@@ -35,44 +37,24 @@ export function UnsupportedNotices({ items }) {
   );
 }
 
-// Looks at a version before it is deployed: the validator's view of it (what the runtime can't do, which secrets it
-// needs) so nothing is a surprise afterwards.
-function BeforeYouDeploy({ check, providers, environment }) {
-  if (check.loading && !check.data) return <p className="stMuted">Checking this version…</p>;
-  if (check.error) return <p className="stMuted">Couldn’t check this version before deploying ({check.error.message}). You can still deploy it.</p>;
-  const report = check.data;
-  if (!report) return null;
-  const secrets = secretsStatus(report.secrets_required, providers);
-  const { security } = splitUnsupported(report.unsupported);
-  const nothing = !secrets.length && !(report.unsupported || []).length && !(report.warnings || []).length;
-  return (
-    <div className="stBefore" aria-label="What will happen if you deploy this version">
-      <h4>What will happen if you deploy this version</h4>
-      {nothing && <p className="stMuted">Nothing to flag: no secrets needed, nothing the runtime can’t run.</p>}
-      <UnsupportedNotices items={report.unsupported} />
-      {security.length > 0 && environment === 'production' && <p className="stMuted">Because of the above, deploying to production asks you to type “{PRODUCTION_WORD}” first.</p>}
-      {secrets.length > 0 && (
-        <div className="stSecretsNeeded">
-          <p className="stMuted">Secrets it needs, by name (values live on the server):</p>
-          <div className="stChips">{secrets.map((secret) => <code key={secret.name} className={secret.missing ? 'bad' : ''} title={secret.missing ? 'The server says this isn’t set.' : secret.known ? 'Set on the server.' : 'Can’t be checked until you deploy.'}>{secret.name}{secret.missing ? ' · not set' : ''}</code>)}</div>
-        </div>
-      )}
-      {(report.warnings || []).length > 0 && <p className="stMuted">{report.warnings.length} warning{report.warnings.length === 1 ? '' : 's'} from the check; they never block a deploy.</p>}
-    </div>
-  );
-}
-
 function Preflight({ preflight }) {
   if (!preflight) return null;
   const missing = preflight.secrets_missing || [];
   const unsupported = preflight.unsupported || [];
-  if (!missing.length && !unsupported.length) return null;
+  const knowledge = normalizePreflightKnowledge(preflight.knowledge);
+  if (!missing.length && !unsupported.length && !knowledge.length) return null;
   return (
     <div className="stPreflight">
       {missing.length > 0 && (
         <Notice kind="warn" title={`${missing.length} secret${missing.length === 1 ? '' : 's'} not found on the server`}>
           The agent may fail when it needs them. Names only; they can’t be set from here yet.
           <div className="stChips">{missing.map((name) => <code key={name}>{name}</code>)}</div>
+        </Notice>
+      )}
+      {knowledge.length > 0 && (
+        <Notice kind="warn" title={`${knowledge.length} knowledge problem${knowledge.length === 1 ? '' : 's'} in this version`}>
+          Callers asking about these get no answer from the knowledge base, or an out-of-date one.
+          <ul className="stPlain">{knowledge.map((p, i) => <li key={i}>{p.base && <strong>{p.base}: </strong>}{p.problem}{p.fix ? ` ${p.fix}` : ''}</li>)}</ul>
         </Notice>
       )}
       <UnsupportedNotices items={unsupported} />
@@ -95,12 +77,12 @@ export default function DeployTab({ botId, initialVersion, refreshKey, onDeploye
   const [typed, setTyped] = useState(''); // the word that confirms a production deploy while a security item stands
   const [notFound, setNotFound] = useState({}); // environment -> secrets the server couldn't find when something was last deployed there
   const formRef = useRef(null);
-  const { providers } = useProviders();
   // The validator's view of the chosen version, before anything is deployed.
   const check = useAsync(async (signal) => {
     if (!version) return null;
     const record = await api.getVersion(botId, version, { signal });
-    return api.validate(record.config, { signal });
+    const report = await api.validate(record.config, { signal });
+    return { ...report, __record: record };
   }, [botId, version]);
 
   const versionList = versions.data || [];
@@ -222,9 +204,7 @@ export default function DeployTab({ botId, initialVersion, refreshKey, onDeploye
           <h3>Deploy a version</h3>
           <div className="stDeployForm">
             <label><span>Version</span>
-              <select value={version} onChange={(event) => { setVersion(event.target.value); setConfirming(false); setTyped(''); }} disabled={inFlight}>
-                {versionList.map((item, index) => <option key={item.version} value={item.version}>{item.version}{index === 0 ? ' (latest)' : ''}</option>)}
-              </select>
+              <SmartSelect className="" value={version} ariaLabel="Version" disabled={inFlight} options={versionList.map((item, index) => ({ value: item.version, label: `${item.version}${index === 0 ? ' (latest)' : ''}` }))} onChange={(chosen) => { setVersion(chosen); setConfirming(false); setTyped(''); }} />
             </label>
             <label><span>Environment</span>
               <select value={environment} onChange={(event) => { setEnvironment(event.target.value); setConfirming(false); setTyped(''); }} disabled={inFlight}>
@@ -236,7 +216,12 @@ export default function DeployTab({ botId, initialVersion, refreshKey, onDeploye
             </label>
           </div>
 
-          <BeforeYouDeploy check={check} providers={providers} environment={environment} />
+          {check.loading && !check.data && <p className="stMuted">Checking this version…</p>}
+          {check.error && <p className="stMuted">Couldn’t check this version before deploying ({check.error.message}). You can still deploy it.</p>}
+          {check.data && (
+            <ReleaseChecklist botId={botId} config={check.data.__record?.config} report={check.data} version={{ version, checksum: check.data.__record?.checksum }} environment={environment} refreshKey={refreshKey} />
+          )}
+          {check.data && environment === 'production' && security.length > 0 && <p className="stMuted">Because of the protections above, deploying to production asks you to type “{PRODUCTION_WORD}” first.</p>}
           {environment === 'production' && security.length > 0 && (
             <label className="stTypedConfirm">
               <span>Type <b>{PRODUCTION_WORD}</b> to deploy this to production anyway</span>

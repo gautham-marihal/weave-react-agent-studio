@@ -1,35 +1,49 @@
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
+import SmartSelect from '../SmartSelect.jsx';
 import { groupIssues } from '../../api/client.js';
 import { collectSecretNames } from '../form/engine.js';
-import { FormCtx } from '../form/ctx.js';
 import { StringList } from '../form/fields.jsx';
-import FormEditor from '../form/FormEditor.jsx';
+const FormEditor = lazy(() => import('../form/FormEditor.jsx')); // the full form is loaded when a card asks for its detailed settings
 import PromptPreview from '../form/PromptPreview.jsx';
 import TemplateField from '../form/TemplateField.jsx';
 import { createAndPoint, createProblems } from '../form/inlineCreate.js';
 import { templateScope } from '../form/templates.js';
 import ModelsEditor from '../models/ModelsEditor.jsx';
-import { STAGES, modelStatus, modelsFor, providerLabel, providersForStage } from '../models/catalog.js';
+import { STAGES, isRecommendedModel, modelStatus, modelsFor, providerLabel, providersForStage } from '../models/catalog.js';
+import SuggestInput from '../form/SuggestInput.jsx';
 import { readModels, setModel, setProvider, setVoiceId, voicesFor } from '../models/config.js';
 import GenderToggle, { useVoiceGender } from '../models/GenderToggle.jsx';
 import { useProviders } from '../models/useProviders.js';
-import { Notice } from '../ui.jsx';
+import { Notice, Spinner } from '../ui.jsx';
+import Icon from '../../ui/Icon.jsx';
+import { readDataFlow } from '../records/recordsModel.js';
+import { plainToolKind } from '../form/plainKinds.js';
+import { describeRecords } from '../records/recordsModel.js';
+import WhereCard from './WhereCard.jsx';
+import RecordsCard from './RecordsCard.jsx';
 import { BASE_LANGUAGES, LANGUAGES, languageName, readConnections, readSimple, readTools, setAgentName, setGreeting, setPrimaryLanguage, setRecordingNotice, setRole, setStyleRules, setTone, toggleSpoken } from './simpleModel.js';
 import './simple.css';
 
-// The Simple view of an agent: four cards, Instructions, Voice & Language, AI Model and Connections. Each card shows what it is in one line;
+// The Simple view of an agent: a few cards for the everyday decisions, in the customer's words: personality and instructions, voice and
+// language, the AI model, what it can do, where it is available, and what is kept about each call. Each card shows what it is in one line;
 // open it to change the everyday settings, and ask for "Detailed settings" to see everything the configuration has about that part (the
-// ordinary form, limited to the right sections). It edits the same draft as the form and the JSON, so the three always agree.
+// ordinary form, limited to the right sections). Below the cards, the parts used less often are one click away: "More" for the everyday
+// ones, "Advanced" for the engine's own. It edits the same draft as the form and the JSON, so the three always agree.
 
 const CARDS = [
-  { id: 'instructions', title: 'Instructions', icon: '✎', blurb: 'Who the agent is, what it does and how it talks', sections: ['persona', 'agents', 'messages', 'state'] },
-  { id: 'voice', title: 'Voice & Language', icon: '◒', blurb: 'The language it speaks and the voice it uses', sections: ['channels', 'defaults'] },
-  { id: 'model', title: 'AI Model', icon: '✦', blurb: 'What it listens, thinks and speaks with', sections: [] },
-  { id: 'connections', title: 'Connections', icon: '⌁', blurb: 'The systems and tools it can reach', sections: ['connections', 'tools', 'knowledge', 'forms', 'notifications'] },
+  { id: 'instructions', title: 'Personality and instructions', icon: 'pencil', blurb: 'Who the agent is, what it does and how it talks', sections: ['persona', 'agents', 'messages', 'state'] },
+  { id: 'voice', title: 'Voice and language', icon: 'voice', blurb: 'The language it speaks and the voice it uses', sections: ['defaults'] },
+  { id: 'model', title: 'AI model', icon: 'sparkle', blurb: 'What it listens, thinks and speaks with', sections: [] },
+  { id: 'connections', title: 'What it can do', icon: 'tools', blurb: 'The tools, knowledge and systems it can use', sections: ['connections', 'tools', 'knowledge', 'forms', 'notifications'] },
+  { id: 'where', title: 'Where it is available', icon: 'phone', blurb: 'The phone lines and chats people reach it on', sections: ['channels', 'telephony'] },
+  { id: 'records', title: 'Call records', icon: 'records', blurb: 'What is kept about each call, and for how long', sections: ['observability', 'post_call'] },
 ];
-const COVERED = new Set(['persona', 'agents', 'messages', 'state', 'channels', 'defaults', 'connections', 'tools', 'knowledge', 'forms', 'notifications']);
-const OTHER = [['guardrails', 'Guardrails'], ['events', 'Events'], ['post_call', 'After the call'], ['telephony', 'Telephony'], ['tasks', 'Tasks'], ['wrapups', 'Wrap-ups'], ['schedules', 'Schedules'], ['constants', 'Constants'], ['identity', 'Identity'], ['tests', 'Tests'], ['runtime', 'Runtime'], ['meta', 'About'], ['observability', 'Observability'], ['builder', 'Builder']];
+const COVERED = new Set(['persona', 'agents', 'messages', 'state', 'defaults', 'connections', 'tools', 'knowledge', 'forms', 'notifications', 'channels', 'telephony', 'observability', 'post_call']);
+// Below the cards: the everyday parts, then the ones for engineers and operators. Nothing is left out; each opens in All settings.
+const MORE = [['guardrails', 'Safety rules'], ['schedules', 'Business hours'], ['tasks', 'Multi-step tasks'], ['wrapups', 'Closing messages'], ['events', 'Events'], ['tests', 'Test scenarios'], ['meta', 'Name, tags and owner']];
+const ADVANCED = [['identity', 'Caller identity'], ['constants', 'Fixed values'], ['runtime', 'Engine'], ['builder', 'Studio notes']];
 const OPEN_KEY = 'weave_simple_open';
+const CONNECTION_KIND = { http: 'Web service', mcp: 'Tool server', notifier: 'Text or email' };
 
 const words = (text) => (String(text || '').trim().match(/\S+/g) || []).length;
 
@@ -39,7 +53,7 @@ function Card({ card, summary, errors, open, onToggle, children, detail, onDetai
     <section className={`smCard ${open ? 'open' : ''}`} data-card={card.id} aria-labelledby={`sm-title-${card.id}`}>
       <h3 id={`sm-title-${card.id}`}>
         <button type="button" className="smHead" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
-          <span className="smIcon" aria-hidden="true">{card.icon}</span>
+          <span className="smIcon" aria-hidden="true"><Icon name={card.icon} size={18} /></span>
           <span className="smTitle"><strong>{card.title}</strong><small>{open ? card.blurb : summary || card.blurb}</small></span>
           {errors > 0 && <b className="stFBadge" title={`${errors} problem${errors === 1 ? '' : 's'} to fix in this part`}>{errors}</b>}
           <i className="smChevron" aria-hidden="true">{open ? '▾' : '▸'}</i>
@@ -58,7 +72,7 @@ function Card({ card, summary, errors, open, onToggle, children, detail, onDetai
 }
 
 // ---- Instructions
-function InstructionsCard({ config, set }) {
+function InstructionsCard({ config, set, onChangeModel }) {
   const read = readSimple(config);
   const scope = templateScope(config);
   return (
@@ -69,7 +83,7 @@ function InstructionsCard({ config, set }) {
       </label>
       <div className="smField"><span id="sm-role-label">What should it do?</span>
         <TemplateField ariaLabel="What the agent should do (its role)" value={read.role} onChange={(text) => set(setRole(config, text))} scope={scope} multiline rows={6} mono={false} showCount />
-        <small>Written to the agent, as you would brief a person: who it helps, what it does, what it must not do. {read.agentId && <>This is the role of <code>{read.agentId}</code>, the agent that answers first.</>}</small>
+        <small>Written to the agent, as you would brief a person: who it helps, what it does, what it must not do. This is what the agent that answers first is told.</small>
       </div>
       <label className="smField"><span>What it says first</span>
         <input className="stFInput" type="text" value={read.greeting} disabled={read.greetingChannels === 0} onChange={(event) => set(setGreeting(config, event.target.value))} aria-label="Greeting" />
@@ -82,7 +96,8 @@ function InstructionsCard({ config, set }) {
         <StringList values={read.styleRules} onChange={(list) => set(setStyleRules(config, list))} placeholder="e.g. One question at a time." addLabel="Add a rule" />
         <small>Short rules about how it talks. Rules about what it may do belong in the role.</small>
       </div>
-      <FormCtx.Provider value={{ config }}>{read.agentId && <PromptPreview agentId={read.agentId} />}</FormCtx.Provider>
+      <p className="smNote" data-note="processing">{readDataFlow(config).sentence} <button type="button" className="stLink" onClick={onChangeModel}>Change</button></p>
+      {read.agentId && <PromptPreview agentId={read.agentId} config={config} />}
     </div>
   );
 }
@@ -100,11 +115,8 @@ function VoiceCard({ config, set }) {
     <div className="smFields">
       <div className="smPair">
         <label className="smField"><span>Main language</span>
-          <select className="stFInput" value={read.primaryLanguage} onChange={(event) => set(setPrimaryLanguage(config, event.target.value))} aria-label="Main language">
-            {!read.primaryLanguage && <option value="">Choose…</option>}
-            {read.primaryLanguage && !LANGUAGES.some(([c]) => c === read.primaryLanguage) && <option value={read.primaryLanguage}>{languageName(read.primaryLanguage)} ({read.primaryLanguage})</option>}
-            {LANGUAGES.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
-          </select>
+          <SmartSelect value={read.primaryLanguage} ariaLabel="Main language" placeholder="Choose…" onChange={(code) => set(setPrimaryLanguage(config, code))}
+            options={[...(read.primaryLanguage && !LANGUAGES.some(([c]) => c === read.primaryLanguage) ? [{ value: read.primaryLanguage, label: `${languageName(read.primaryLanguage)} (${read.primaryLanguage})` }] : []), ...LANGUAGES.map(([code, label]) => ({ value: code, label }))]} />
         </label>
         <fieldset className="smField smChecks"><legend>It also speaks</legend>
           <div className="smChipChecks">
@@ -120,9 +132,9 @@ function VoiceCard({ config, set }) {
       </div>
 
       <div className="smField"><span>Voice</span>
-        {!models.tts.provider ? <p className="smNote">No voice engine is chosen yet. Choose one under AI Model.</p> : (
+        {!models.tts.provider ? <p className="smNote">No voice engine is chosen yet. Choose one under AI model.</p> : (
           <>
-            <p className="smNote">Voice engine: <strong>{providerLabel(models.tts.provider)}</strong>{models.tts.model ? ` · ${models.tts.model}` : ''}. Change it under AI Model.</p>
+            <p className="smNote">Voice engine: <strong>{providerLabel(models.tts.provider)}</strong>{models.tts.model ? ` · ${models.tts.model}` : ''}. Change it under AI model.</p>
             {voicesFor(models.tts.provider).length > 0 ? (
               <>
                 <GenderToggle provider={models.tts.provider} value={gender} onChange={setGender} />
@@ -137,41 +149,26 @@ function VoiceCard({ config, set }) {
         )}
       </div>
 
-      <div className="smField"><span>It talks on</span>
-        {read.channels.length === 0 ? <p className="smNote">No channels yet: add one in the detailed settings.</p> : (
-          <ul className="smChips" aria-label="Channels">{read.channels.map((c) => <li key={c.id} className={c.enabled ? '' : 'off'}>{c.name}<small>{c.id}{c.enabled ? '' : ' · off'}</small></li>)}</ul>
-        )}
-      </div>
-
-      {read.voiceChannel && (
-        <label className="smField"><span>Recording notice</span>
-          <input className="stFInput" type="text" value={read.recordingNotice} placeholder="e.g. This call may be recorded to improve our service." onChange={(event) => set(setRecordingNotice(config, event.target.value))} aria-label="Recording notice" />
-          <small>Said at the start of voice conversations. Leave it empty only if calls are not recorded.</small>
-        </label>
-      )}
     </div>
   );
 }
 
-// ---- AI Model
+// ---- AI model
 function ModelRow({ stage, config, set, providers }) {
   const slot = readModels(config)[stage.id];
   const offered = providersForStage(providers, stage.id);
   const current = providers.find((p) => p.name === slot.provider);
   const status = slot.provider ? modelStatus(stage.id, slot.provider, slot.model) : null;
-  const listId = `sm-models-${stage.id}`;
   const runnable = !slot.provider || (current && current.installed !== false && (current.stages || []).includes(stage.id));
   return (
     <div className="smModelRow" data-stage={stage.id}>
       <div className="smModelHead"><strong>{stage.short}</strong><small>{stage.id === 'llm' ? 'Decides what to say and which tool to use' : stage.id === 'stt' ? 'Turns the caller’s speech into text' : 'Turns the reply into speech'}</small></div>
       <div className="smPair">
-        <select className="stFInput" value={slot.provider} onChange={(event) => set(setProvider(config, stage.id, event.target.value, providers))} aria-label={`${stage.short} provider`}>
-          {!slot.provider && <option value="">Choose a provider…</option>}
-          {slot.provider && !offered.some((p) => p.name === slot.provider) && <option value={slot.provider}>{providerLabel(slot.provider)} (not offered here)</option>}
-          {offered.map((p) => <option key={p.name} value={p.name} disabled={p.installed === false}>{providerLabel(p.name)}{p.installed === false ? ' (not installed on the server)' : ''}</option>)}
-        </select>
-        <input className="stFInput mono" type="text" spellCheck={false} list={listId} value={slot.model} placeholder="Model id" disabled={!slot.provider} onChange={(event) => set(setModel(config, stage.id, event.target.value))} aria-label={`${stage.short} model`} />
-        <datalist id={listId}>{modelsFor(stage.id, slot.provider).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</datalist>
+        <SmartSelect value={slot.provider} ariaLabel={`${stage.short} provider`} placeholder="Choose a provider…" onChange={(name) => set(setProvider(config, stage.id, name, providers))}
+          options={[...(slot.provider && !offered.some((p) => p.name === slot.provider) ? [{ value: slot.provider, label: `${providerLabel(slot.provider)} (not offered here)` }] : []), ...offered.map((p) => ({ value: p.name, label: `${providerLabel(p.name)}${p.installed === false ? ' (not installed on the server)' : ''}`, disabled: p.installed === false }))]} />
+        <SuggestInput value={slot.model} onChange={(text) => set(setModel(config, stage.id, text))} disabled={!slot.provider} placeholder="Choose a model or type its id" ariaLabel={`${stage.short} model`}
+          options={modelsFor(stage.id, slot.provider).map((m) => ({ value: m.id, label: isRecommendedModel(stage.id, slot.provider, m.id) ? `${m.label} · Recommended` : m.label, description: [m.id !== m.label ? m.id : '', m.note].filter(Boolean).join(' · ') }))}
+          footer="Or type any other model id: the server doesn’t check them." />
       </div>
       {!runnable && <p className="stFErr">The runtime can’t run “{slot.provider}” for this. Choose one from the list.</p>}
       {status && <small className={`smStatus ${status.state}`}>{status.text}</small>}
@@ -209,7 +206,7 @@ function ConnectionsCard({ config, set, secrets, providers }) {
     <div className="smFields">
       <div className="smField"><span>Connections</span>
         {connections.length === 0 ? <p className="smNote">None yet. A connection is a web service the agent’s tools call, such as your billing system.</p> : (
-          <ul className="smList">{connections.map((c) => <li key={c.id}><strong>{c.id}</strong><em>{c.type}</em><span>{c.detail || 'no address'}</span></li>)}</ul>
+          <ul className="smList">{connections.map((c) => <li key={c.id}><strong>{c.id}</strong><em>{CONNECTION_KIND[c.type] || c.type}</em><span>{c.detail || 'no address'}</span></li>)}</ul>
         )}
         {adding ? (
           <form className="smAdd" onSubmit={submit} noValidate aria-label="New HTTP connection">
@@ -222,7 +219,7 @@ function ConnectionsCard({ config, set, secrets, providers }) {
 
       <div className="smField"><span>Tools it can use</span>
         {tools.length === 0 ? <p className="smNote">No tools yet. Tools let the agent do things: end the call, hand over to a person, look something up.</p> : (
-          <ul className="smChips" aria-label="Tools">{tools.map((t) => <li key={t.id} className={t.used ? '' : 'off'} title={t.description || undefined}>{t.id}<small>{t.builtin || t.kind}{t.used ? '' : ' · not offered to an agent'}</small></li>)}</ul>
+          <ul className="smChips" aria-label="Tools">{tools.map((t) => <li key={t.id} className={t.used ? '' : 'off'} title={t.description || undefined}>{t.id}<small>{plainToolKind({ type: t.kind, builtin: t.builtin })}{t.used ? '' : ' · not offered to an agent'}</small></li>)}</ul>
         )}
         <small>Add or change tools in the detailed settings.</small>
       </div>
@@ -240,7 +237,11 @@ function ConnectionsCard({ config, set, secrets, providers }) {
   );
 }
 
-export default function SimpleConfig({ editor, onOpenAll, onShowJson, initialOpen }) {
+function ElseLink({ id, label, count, onOpenAll }) {
+  return <button type="button" className="quietButton" data-more={id} onClick={() => onOpenAll([id])}>{label}{count > 0 && <b className="stFBadge">{count}</b>}</button>;
+}
+
+export default function SimpleConfig({ editor, onOpenAll, onShowJson, onOpenJson, initialOpen }) {
   const config = editor.parsed.value;
   const { providers, live } = useProviders();
   const [open, setOpen] = useState(() => {
@@ -262,36 +263,44 @@ export default function SimpleConfig({ editor, onOpenAll, onShowJson, initialOpe
   const models = readModels(config);
   const summaries = {
     instructions: `${read.name || 'Unnamed'} · ${words(read.role)} word${words(read.role) === 1 ? '' : 's'} of instructions${read.tone ? ` · ${read.tone}` : ''}`,
-    voice: [read.primaryLanguage ? languageName(read.primaryLanguage) : 'No language set', models.tts.voiceId ? (voicesFor(models.tts.provider).find((v) => v.voiceId === models.tts.voiceId)?.name || 'custom voice') : 'no voice chosen', read.channels.map((c) => c.name).join(', ') || 'no channels'].join(' · '),
+    voice: [read.primaryLanguage ? languageName(read.primaryLanguage) : 'No language set', models.tts.voiceId ? (voicesFor(models.tts.provider).find((v) => v.voiceId === models.tts.voiceId)?.name || 'custom voice') : 'no voice chosen'].join(' · '),
+    where: [read.channels.map((c) => `${c.name}${c.enabled ? '' : ' (off)'}`).join(', ') || 'No channels yet', `${(config.telephony?.transfers || []).length} transfer${(config.telephony?.transfers || []).length === 1 ? '' : 's'}`].join(' · '),
+    records: describeRecords(config).headline,
     model: STAGES.map((stage) => { const slot = models[stage.id]; return slot.provider ? `${stage.id.toUpperCase()}: ${providerLabel(slot.provider)}${slot.model ? ` ${slot.model}` : ''}` : `${stage.id.toUpperCase()}: none`; }).join(' · '),
     connections: `${readConnections(config).length} connection${readConnections(config).length === 1 ? '' : 's'} · ${readTools(config).length} tool${readTools(config).length === 1 ? '' : 's'} · ${secrets.length} secret${secrets.length === 1 ? '' : 's'}`,
   };
   const detailBody = (card) => (card.id === 'model'
     ? <ModelsEditor editor={editor} onShowJson={onShowJson} />
-    : <FormEditor editor={editor} only={card.sections} embedded onShowJson={onShowJson} />);
+    : <Suspense fallback={<Spinner label="Loading the settings" />}><FormEditor editor={editor} only={card.sections} embedded onShowJson={onShowJson} onOpenJson={onOpenJson} /></Suspense>);
 
   return (
     <div className="smView">
       {CARDS.map((card) => (
         <Card key={card.id} card={card} summary={summaries[card.id]} open={open.has(card.id)} errors={card.id === 'model' ? issues.filter((i) => i.path[0] === 'defaults' && i.path[1] === 'models').length : errorsIn(card.sections)}
           onToggle={() => toggle(open, setOpen, card.id, true)} detail={detail.has(card.id)} onDetail={() => toggle(detail, setDetail, card.id)} detailLabel={card.id === 'model' ? 'All model settings' : undefined}>
-          {card.id === 'instructions' && <InstructionsCard config={config} set={set} />}
+          {card.id === 'instructions' && <InstructionsCard config={config} set={set} onChangeModel={() => setOpen((old) => new Set([...old, 'model']))} />}
           {card.id === 'voice' && <VoiceCard config={config} set={set} />}
           {card.id === 'model' && <ModelCard config={config} set={set} providers={providers} live={live} />}
           {card.id === 'connections' && <ConnectionsCard config={config} set={set} secrets={secrets} providers={providers} />}
+          {card.id === 'where' && <WhereCard config={config} set={set} />}
+          {card.id === 'records' && <RecordsCard config={config} set={set} />}
           {detail.has(card.id) && <div className="smDetail" data-detail={card.id}>{detailBody(card)}</div>}
         </Card>
       ))}
 
-      <section className="smElse" aria-label="Everything else">
-        <h3>Everything else</h3>
-        <p>Rules, events and the parts used less often. Each opens in All settings.</p>
+      <section className="smElse" aria-label="More">
+        <h3>More</h3>
+        <p>The parts used less often. Each opens in All settings.</p>
         <div className="smElseLinks">
-          {OTHER.filter(([key]) => !COVERED.has(key)).map(([key, label]) => {
-            const count = issues.filter((i) => i.path[0] === key).length;
-            return <button key={key} type="button" className="quietButton" onClick={() => onOpenAll([key])}>{label}{count > 0 && <b className="stFBadge">{count}</b>}</button>;
-          })}
+          {MORE.filter(([key]) => !COVERED.has(key)).map(([key, label]) => <ElseLink key={key} id={key} label={label} count={issues.filter((i) => i.path[0] === key).length} onOpenAll={onOpenAll} />)}
         </div>
+        <details className="smAdvanced">
+          <summary>Advanced</summary>
+          <p>For engineers and the people who run the servers. Most agents never need these.</p>
+          <div className="smElseLinks">
+            {ADVANCED.filter(([key]) => !COVERED.has(key)).map(([key, label]) => <ElseLink key={key} id={key} label={label} count={issues.filter((i) => i.path[0] === key).length} onOpenAll={onOpenAll} />)}
+          </div>
+        </details>
       </section>
     </div>
   );

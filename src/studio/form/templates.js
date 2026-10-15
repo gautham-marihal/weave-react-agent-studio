@@ -5,9 +5,25 @@
 
 import { isObj } from './engine.js';
 
-// The roots a template may start with. `state`, `const` and `args` have names the config can be checked against; the
-// others (a tool's `result`, a form's answers, call details) have names only the runtime knows.
+// The roots a template may start with everywhere. `state`, `const` and `args` have names the config can be checked against; the
+// others (a tool's `result`, a form's answers, call details) have names only the runtime knows. Some places add roots of their own
+// (PLACE_ROOTS below), so which names are valid depends on where the text sits, and the server is the one that decides: it reports an
+// unknown name in `POST /validate` with a path. What this file finds is therefore only ever a HINT (amber), never an error.
 export const TEMPLATE_ROOTS = ['state', 'const', 'args', 'result', 'form', 'meta', 'call', 'channel', 'caller'];
+
+// Roots that exist only in one place of the config, and what each is:
+//   a notification is given `with.…` (the details of what it is sent about)
+//   a transfer's address template reads `pbx.…` and `target` (the number it resolved)
+//   an event supplies `error`, `reason`, `tool`, `transfer`, `from`, `to` (what happened)
+//   a task step's validation reads `value` (the answer just collected)
+//   a tool's direct delivery (`result.out_of_band`) reads the response's own field names, so any name is fine there
+export const PLACE_ROOTS = [
+  { when: (path) => path.includes('notifications'), roots: ['with'] },
+  { when: (path) => path.includes('transfers'), roots: ['pbx', 'target'] },
+  { when: (path) => path[0] === 'events' || path.includes('events'), roots: ['error', 'reason', 'tool', 'transfer', 'from', 'to', 'with'] },
+  { when: (path) => path.includes('tasks') || path.includes('steps') || path.includes('validate'), roots: ['value'] },
+  { when: (path) => path.includes('out_of_band'), any: true },
+];
 export const TEMPLATE_FILTERS = [
   { name: 'default', snippet: "default('')", help: 'A fallback when the value is empty' },
   { name: 'truncate', snippet: 'truncate(200)', help: 'Cut to a length' },
@@ -45,12 +61,13 @@ export const RUNTIME_ROOTS = [
 // What names the config offers. `argNames` are the arguments of the tool being edited (its parameters).
 /**
  * @param {any} config
- * @param {{ argNames?: string[] }} [where]
+ * @param {{ argNames?: string[], extraRoots?: string[], anyRoot?: boolean }} [where]
  */
-export function templateScope(config, { argNames } = {}) {
+export function templateScope(config, { argNames, extraRoots = [], anyRoot = false } = {}) {
   const c = isObj(config) ? config : {};
   return {
-    roots: TEMPLATE_ROOTS,
+    roots: [...TEMPLATE_ROOTS, ...extraRoots.filter((root) => !TEMPLATE_ROOTS.includes(root))],
+    anyRoot,
     names: {
       state: Object.keys(isObj(c.state?.variables) ? c.state.variables : {}),
       const: Object.keys(isObj(c.constants) ? c.constants : {}),
@@ -62,16 +79,22 @@ export function templateScope(config, { argNames } = {}) {
 // The tool's argument names, from its `parameters` JSON Schema.
 export const argNamesOf = (tool) => (isObj(tool?.parameters?.properties) ? Object.keys(tool.parameters.properties) : []);
 
-// What is wrong with the templates in a text: a root that doesn't exist, or a name the config doesn't have.
+// What looks wrong in the templates of a text: a root that doesn't exist in this place, or a name the config doesn't have. Every
+// finding is a HINT (`severity: 'hint'`): the names depend on where the text sits and on what the runtime supplies, so only the server
+// can say for certain, and it does, with a path, when the draft is checked.
 export function templateProblems(text, scope) {
   const problems = [];
   findTemplates(text).forEach((t) => {
-    if (!t.root) { problems.push({ ...t, reason: 'Empty or unreadable template.' }); return; }
-    if (!scope.roots.includes(t.root)) { problems.push({ ...t, reason: `“${t.root}” isn’t something a template can read. Use ${scope.roots.slice(0, 4).join(', ')}…` }); return; }
+    if (!t.root) { problems.push({ ...t, severity: 'hint', reason: 'Empty or unreadable template.' }); return; }
+    if (!scope.roots.includes(t.root)) {
+      if (scope.anyRoot) return;
+      problems.push({ ...t, severity: 'hint', reason: `“${t.root}” isn’t a name this config offers here (${scope.roots.slice(0, 4).join(', ')}…). If the runtime supplies it in this place, ignore this; the server checks it when you save.` });
+      return;
+    }
     const known = scope.names[t.root];
     if (Array.isArray(known) && t.name && !known.includes(t.name)) {
       const where = t.root === 'state' ? 'a state variable' : t.root === 'const' ? 'a constant' : 'an argument of this tool';
-      problems.push({ ...t, reason: `“${t.name}” isn’t ${where}${known.length ? ` (there is ${known.slice(0, 5).join(', ')}${known.length > 5 ? '…' : ''})` : ' (none are defined yet)'}.` });
+      problems.push({ ...t, severity: 'hint', reason: `“${t.name}” isn’t ${where}${known.length ? ` (there is ${known.slice(0, 5).join(', ')}${known.length > 5 ? '…' : ''})` : ' (none are defined yet)'}.` });
     }
   });
   return problems;
@@ -85,7 +108,7 @@ export function highlightSegments(text, scope) {
   let at = 0;
   findTemplates(source).forEach((t) => {
     if (t.start > at) segments.push({ kind: 'plain', text: source.slice(at, t.start) });
-    segments.push({ kind: bad.has(t.start) ? 'bad' : 'tpl', text: t.text });
+    segments.push({ kind: bad.has(t.start) ? 'unknown' : 'tpl', text: t.text });
     at = t.end;
   });
   if (at < source.length) segments.push({ kind: 'plain', text: source.slice(at) });
@@ -129,9 +152,15 @@ export const isPromptPath = (path) => Array.isArray(path) && (path.includes('ins
 
 export const wordCount = (text) => (String(text ?? '').trim().match(/\S+/g) || []).length;
 
-// Which tool (if any) a field sits inside, so `args` names are known there.
+// Which tool (if any) a field sits inside, so `args` names are known there, and which roots this place adds (PLACE_ROOTS).
 export function scopeAt(config, path) {
   const index = toolIndexOf(path);
   const tool = index === null ? null : config?.tools?.[index];
-  return templateScope(config, { argNames: index === null ? undefined : argNamesOf(tool) });
+  const where = Array.isArray(path) ? path.map(String) : [];
+  const places = PLACE_ROOTS.filter((place) => place.when(where));
+  return templateScope(config, {
+    argNames: index === null ? undefined : argNamesOf(tool),
+    extraRoots: places.flatMap((place) => place.roots || []),
+    anyRoot: places.some((place) => place.any),
+  });
 }

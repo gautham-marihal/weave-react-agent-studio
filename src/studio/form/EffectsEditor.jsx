@@ -1,4 +1,5 @@
 import React from 'react';
+import SmartSelect from '../SmartSelect.jsx';
 import { isObj } from './engine.js';
 import { useForm } from './ctx.js';
 import Node from './Node.jsx';
@@ -29,11 +30,8 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
             <li key={j} className="stAction" data-path={`${where}.${j}`}>
               <div className="stActionHead">
                 <span className="stActionNo" aria-hidden="true">{j + 1}</span>
-                <select className="stFInput small" value={branch ? type : ''} disabled={disabled} aria-label={`Step ${j + 1} of ${label}: what to do`}
-                  onChange={(event) => { if (event.target.value && event.target.value !== type) onChange(actions.map((a, k) => (k === j ? makeAction(event.target.value) : a))); }}>
-                  {!branch && <option value="">{type ? kindLabel(type) : 'Choose…'}</option>}
-                  {kinds.map((kind) => <option key={kind.type} value={kind.type}>{kind.label}</option>)}
-                </select>
+                <SmartSelect className="stFInput small" value={branch ? type : ''} disabled={disabled} ariaLabel={`Step ${j + 1} of ${label}: what to do`} placeholder={type ? kindLabel(type) : 'Choose…'}
+                  options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))} onChange={(chosen) => { if (chosen && chosen !== type) onChange(actions.map((a, k) => (k === j ? makeAction(chosen) : a))); }} />
                 {!disabled && (
                   <span className="stRuleActions">
                     <button type="button" className="stIconBtn" aria-label={`Move step ${j + 1} of ${label} up`} disabled={j === 0} onClick={() => onChange(moveItem(actions, j, j - 1))}>↑</button>
@@ -50,10 +48,7 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
       </ol>
       {actions.length === 0 && (engine.flatten(shape).minItems >= 1 ? <p className="stFWarn">Needs at least one step.</p> : <p className="stFEmpty">No steps yet.</p>)}
       {!disabled && (
-        <select className="stFInput small" value="" aria-label={`Add a step to ${label}`} onChange={(event) => { if (event.target.value) onChange([...actions, makeAction(event.target.value)]); }}>
-          <option value="">＋ Add a step…</option>
-          {kinds.map((kind) => <option key={kind.type} value={kind.type}>{kind.label}</option>)}
-        </select>
+        <SmartSelect action className="stFInput small" ariaLabel={`Add a step to ${label}`} placeholder="＋ Add a step…" options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))} onChange={(chosen) => { if (chosen) onChange([...actions, makeAction(chosen)]); }} />
       )}
     </>
   );

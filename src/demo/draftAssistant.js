@@ -88,7 +88,7 @@ export function generateDraft(description, base, { name } = {}) {
   assumptions.push(`Reachable by ${channels.map((c) => c.id.replace(/_/g, ' ')).join(' and ')}${voice ? '' : ', since no channel was mentioned'}.`);
   if (channels.some((c) => ['sip_voice', 'web_voice'].includes(c.type))) {
     config = setProvider(setProvider(config, 'stt', 'openai'), 'tts', 'openai');
-    assumptions.push('Speech uses OpenAI for listening and speaking, because voice needs both. Change it under AI Model.');
+    assumptions.push('Speech uses OpenAI for listening and speaking, because voice needs both. Change it under AI model.');
     config.persona = { ...config.persona, disclosures: { ...(config.persona.disclosures || {}), recording_notice: 'This call may be recorded to improve our service.' } };
     assumptions.push('A recording notice was added because the agent speaks. Remove it if calls are not recorded.');
   }

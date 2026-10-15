@@ -160,3 +160,13 @@ export function toggleSpoken(config, base, on) {
     next.defaults.language = language;
   });
 }
+
+// ---- channels
+export const addChannel = (config, channel) => edit(config, (next) => { next.channels = [...list(next.channels), clone(channel)]; });
+export function setChannelEnabled(config, index, on) {
+  return edit(config, (next) => {
+    const channel = list(next.channels)[index];
+    if (!isObj(channel)) return;
+    if (on) delete channel.enabled; else channel.enabled = false; // on is the default, so it is not written
+  });
+}

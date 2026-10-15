@@ -1,0 +1,82 @@
+import React, { useMemo, useState } from 'react';
+import { api } from '../../api/client.js';
+import { SCENARIOS, runScenarioChecks } from '../scenarios.js';
+import { formatWhen } from '../format.js';
+import { Notice } from '../ui.jsx';
+import { useAsync } from '../useAsync.js';
+import './checks.css';
+
+// "Checks": this agent's configuration read against everyday situations (a greeting, a way to end the call, reaching a person, a caller who goes quiet)
+// before it is made live. They only read what is configured: no conversation is run and no call is placed. (To talk to the agent use Test; to run
+// the conversations it must always get right use Scenarios.) The runs are kept in this browser, with the workspace, because the API has nowhere to keep them.
+const makeId = () => `SIM_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+export default function ChecksTab({ botId, name, runs = [], onRun }) {
+  const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId]);
+  const options = useMemo(() => [{ key: 'draft', label: 'The saved draft' }, ...(Array.isArray(versions.data) ? versions.data : []).map((v, i) => ({ key: v.version, label: `Version ${v.version}${i === 0 ? ' (latest)' : ''}` }))], [versions.data]);
+  const [picked, setPicked] = useState('draft');
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(null);
+  const mine = runs.filter((run) => run.agentId === botId);
+
+  const run = async () => {
+    if (running) return;
+    const option = options.find((o) => o.key === picked) || options[0];
+    setRunning(true); setError('');
+    try {
+      const config = option.key === 'draft' ? (await api.getDraft(botId)).config : (await api.getVersion(botId, option.key)).config;
+      const results = runScenarioChecks(config, SCENARIOS.length);
+      const record = { id: makeId(), agentId: botId, agentName: name, versionKey: option.key, versionLabel: option.label.replace(' (latest)', ''), ranAt: new Date().toISOString(), total: results.length, passed: results.filter((r) => r.passed).length, results };
+      onRun?.(record);
+      setOpen(record.id);
+    } catch (e) {
+      setError(`Couldn’t read that configuration: ${e.message}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="ckTab">
+      <section className="stCard ckIntro">
+        <h3>Readiness checks <span className="ckBeta">Beta</span></h3>
+        <p>Look at {name || 'this agent'}’s configuration against everyday situations before you put it live: a greeting, a way to end the call, reaching a person, a caller who goes quiet. These checks only read what is configured. No conversation is run and no call is placed. To really talk to the agent, use <strong>Test</strong>; to run the conversations it must always get right, use <strong>Scenarios</strong>.</p>
+        <div className="ckRunner">
+          <label><span>Check</span>
+            <select className="stFInput small" value={picked} onChange={(event) => setPicked(event.target.value)} aria-label="Which version to check">{options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</select>
+          </label>
+          <button type="button" className="primaryCta compactCta" onClick={run} disabled={running}>{running ? 'Checking…' : `Run ${SCENARIOS.length} checks`}</button>
+        </div>
+        {error && <Notice kind="error" title="Couldn’t run the checks">{error}</Notice>}
+      </section>
+
+      {mine.length === 0 ? (
+        <p className="stFEmpty ckEmpty">No checks run yet for this agent.</p>
+      ) : (
+        <ul className="ckRuns" aria-label="Earlier checks">
+          {mine.map((item) => {
+            const isOpen = open === item.id;
+            const all = item.passed === item.total;
+            return (
+              <li key={item.id} className={isOpen ? 'open' : ''}>
+                <button type="button" className="ckRunHead" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : item.id)}>
+                  <span className={`ckChip ${all ? 'pass' : 'warn'}`}>{all ? '✓' : '!'} Passed {item.passed} of {item.total}</span>
+                  <strong>{item.versionLabel}</strong>
+                  <time>{formatWhen(item.ranAt)}</time>
+                </button>
+                {isOpen && (
+                  <ul className="ckResults">
+                    {item.results.map((result) => (
+                      <li key={result.id} className={result.passed ? 'pass' : 'fail'}><b aria-hidden="true">{result.passed ? '✓' : '✕'}</b><span><strong>{result.name}</strong><small>{result.detail}</small></span></li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}

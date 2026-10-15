@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 // The Builder's own form pieces (help bubble, field, switch, card), shared by the Studio's screens. They are styled
 // by the `builder*` rules in styles.css.
 
-// Shared help tooltip. The bubble renders in a portal with fixed positioning, so scrolling
+// Shared help tooltip. A click opens it and never closes it: a mouse has already opened it by hovering, so a toggle would shut it on the click that was meant to read it; it closes on Escape, on scroll, on leaving or on moving focus away. The bubble renders in a portal with fixed positioning, so scrolling
 // panels and card edges can never clip it; it is clamped inside the viewport on both sides,
 // flips below the icon when there is no room above, and its arrow keeps pointing at the icon.
 export function HelpTooltip({ text: value, className = 'builderHelp', label = '?' }) {
@@ -56,7 +56,7 @@ export function HelpTooltip({ text: value, className = 'builderHelp', label = '?
         aria-describedby={open ? tooltipId : undefined}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpen((v) => !v); }}
+        onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpen(true); }}
       >{label}</button>
       {open && createPortal(
         <span

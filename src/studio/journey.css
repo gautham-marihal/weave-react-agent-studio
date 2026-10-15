@@ -1,0 +1,39 @@
+/* The journey: stages in the tab row, the line under the agent's name, the Next bar. Theme variables only. */
+
+.stTabs.stJourney { display: flex; align-items: stretch; gap: 0; padding: 6px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: var(--ds-card-shadow, none); overflow: visible; flex-wrap: wrap; }
+.stStage { position: relative; display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; padding: 8px 10px 8px; border-radius: 10px; }
+.stStage + .stStage::before { content: ''; position: absolute; left: -1px; top: 12px; bottom: 12px; width: 1px; background: var(--line); }
+.stStage.current { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.stStage.current::before, .stStage.current + .stStage::before { display: none; }
+.stStageHead { display: flex; align-items: center; gap: 7px; padding: 0 6px; font-size:var(--fs-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+.stStage.current .stStageHead { color: var(--accent-text); }
+.stStageHead b { font-weight: 700; }
+/* The question each stage answers is in its tooltip and its accessible name; showing it for the current stage only moved the tabs about. */
+.stStageHead small { display: none; }
+.stStageTabs { display: flex; flex-wrap: wrap; gap: 2px; }
+.stJourney .stStageTabs button { padding: 6px 12px; margin: 0; border: 0; border-radius: 8px; background: none; font-size:var(--fs-md); color: var(--muted); }
+.stJourney .stStageTabs button:hover { background: var(--surface2); color: var(--textStrong); }
+.stJourney .stStageTabs button.active { background: color-mix(in srgb, var(--accent) 20%, var(--panel)); color: var(--textStrong); font-weight: 600; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+.stJourney .stStageTabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+@media (max-width: 820px) {
+  .stStage { flex: 1 1 45%; }
+  .stJourney .stStageTabs button { padding: 6px 10px; font-size:var(--fs-sm); }
+}
+
+/* the line under the agent's name: facts in plain text, a dot between them; only a warning or a problem takes a colour */
+.stStatusLine { display: flex; flex-wrap: wrap; align-items: center; list-style: none; margin: 6px 0 0; padding: 0; font-size:var(--fs-sm); color: var(--muted); }
+.stStatusLine li:not(:last-child)::after { content: '·'; margin: 0 9px; color: var(--dim); }
+.stStatusLine li.warn { color: var(--warn-text); }
+.stStatusLine li.bad { color: var(--danger-text); }
+.stStatusLine li.ok { color: var(--muted); }
+.stStatusLine code { font-size: var(--fs-xs); color: var(--text); }
+
+/* the Next bar */
+.stNext { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 22px; padding: 14px 18px; border: 1px solid var(--line2); border-radius: 14px; background: color-mix(in srgb, var(--accent) 6%, var(--panel)); }
+.stNext > div { display: grid; gap: 1px; min-width: 0; }
+.stNext small { font-size:var(--fs-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+.stNext strong { font-size:var(--fs-md); color: var(--textStrong); }
+.stNext span { font-size:var(--fs-sm); color: var(--muted); }
+.stNext .primaryCta { display: inline-flex; align-items: center; gap: 8px; }
+.stNext.end { background: var(--surface); }

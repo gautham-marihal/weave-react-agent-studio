@@ -1,8 +1,13 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { groupIssues } from '../api/client.js';
 import { formatPath, formatWhen, prettyJson } from './format.js';
+import { useTechnicalNames } from './usePref.js';
+import { onSettingFocus, takeSettingFocus } from './settingFocus.js';
 import { lineOf, locatePath } from './jsonPath.js';
-import FormEditor from './form/FormEditor.jsx';
+// The form (with the catalogue of plain-language labels, the layout and the relationship views) and the plain-language problem list are loaded when they are
+// first shown: the Simple view needs neither.
+const FormEditor = lazy(() => import('./form/FormEditor.jsx'));
+const IssueRows = lazy(() => import('./validation/IssueRows.jsx'));
 import SimpleConfig from './simple/SimpleConfig.jsx';
 import ChatPreview from './preview/ChatPreview.jsx';
 import { splitUnsupported } from './preflight.js';
@@ -68,26 +73,7 @@ const JsonEditor = forwardRef(function JsonEditor({ text, onChange, errorLines }
   );
 });
 
-export function IssueList({ issues, onJump }) {
-  if (!issues.length) return null;
-  return (
-    <ul className="stIssues">
-      {issues.map((issue, index) => (
-        <li key={`${issue.severity}-${index}`} className={issue.severity}>
-          <button type="button" disabled={!issue.path} onClick={() => issue.path && onJump(issue.path)} title={issue.path ? 'Show this' : 'Applies to several places'}>
-            <b aria-hidden="true">{issue.severity === 'error' ? '!' : '▲'}</b>
-            <span>
-              {issue.path && <code>{formatPath(issue.path)}</code>}
-              <em>{issue.message}</em>
-            </span>
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, onFold }) {
+export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, onFold, onApply, onOpenModels }) {
   const { report, validating, parsed } = editor;
   const issues = useMemo(() => groupIssues(report), [report]);
   const errors = issues.filter((issue) => issue.severity === 'error');
@@ -99,8 +85,18 @@ export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, 
   else if (parsed.error) headline = { tone: 'bad', text: 'Not valid JSON' };
   else if (!editor.isObject) headline = { tone: 'bad', text: 'The config must be a JSON object' };
   else if (!report) headline = { tone: 'idle', text: 'Checking…' };
+  else if (report.valid && advice.length) headline = { tone: 'warn', text: `Valid, with ${advice.length} part${advice.length === 1 ? '' : 's'} that will not run` };
   else if (report.valid) headline = { tone: 'good', text: 'Valid. Ready to publish' };
   else headline = { tone: 'bad', text: `${errors.length} error${errors.length === 1 ? '' : 's'} to fix before publishing` };
+
+  // What the folded line says besides the verdict: so a hidden panel never hides that parts of the agent will not run, or that a key is missing.
+  const secretCount = (report?.secrets_required || []).length;
+  const summaryLine = parsed.error || !report ? '' : [
+    security.length ? `${security.length} not enforced` : '',
+    report.valid && advice.length ? '' : advice.length ? `${advice.length} not available yet` : '',
+    warnings.length ? `${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : '',
+    secretCount ? `${secretCount} secret${secretCount === 1 ? '' : 's'} needed` : '',
+  ].filter(Boolean).join(' · ');
 
   return (
     <aside className={`stValidation ${folded ? 'folded' : ''}`} aria-label="Validation">
@@ -108,6 +104,7 @@ export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, 
         <i aria-hidden="true" />
         <div>
           <strong>{headline.text}</strong>
+          {folded && summaryLine && <small className="stValidationSummary">{summaryLine}</small>}
           {!folded && <small>{validating ? 'Checking your latest edit…' : warnings.length ? `${warnings.length} warning${warnings.length === 1 ? '' : 's'}, which never block publishing` : 'Saving is always allowed, even with errors.'}</small>}
         </div>
         {onFold && <button type="button" className="stFoldBtn" aria-expanded={!folded} aria-label={folded ? 'Show the checks' : 'Hide the checks'} onClick={onFold}>{folded ? '▸' : '▾'}</button>}
@@ -134,12 +131,8 @@ export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, 
           ))}
         </ul>
       )}
-      {!parsed.error && <IssueList issues={errors} onJump={onJump} />}
-      {!parsed.error && warnings.length > 0 && (
-        <details className="stFold" open={errors.length === 0}>
-          <summary>Warnings ({warnings.length})</summary>
-          <IssueList issues={warnings} onJump={onJump} />
-        </details>
+      {!parsed.error && (errors.length > 0 || warnings.length > 0) && (
+        <Suspense fallback={<Spinner label="Reading the checks" />}><IssueRows issues={[...errors, ...warnings]} config={editor.parsed.value} onJump={onJump} onApply={onApply} onOpenModels={onOpenModels} foldAdvice /></Suspense>
       )}
 
       {advice.length > 0 && (
@@ -169,13 +162,22 @@ export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, 
 export default function ConfigTab({ editor, focusPath, botId, preview }) {
   const editorRef = useRef(null);
   const { text, parsed, report, dirty, saving, status } = editor;
-  // Simple (four cards for the everyday settings), All settings (the form built from the schema) or raw JSON. All of them edit the same
-  // draft; the choice is remembered. An older 'models' choice opens the Simple view on its AI Model card.
+  // Simple (cards for the everyday settings), All settings (the form built from the schema) or raw JSON. All of them edit the same
+  // draft; the choice is remembered. An older models choice opens the Simple view on its AI model card.
   const [mode, setModeState] = useState(() => { try { const saved = localStorage.getItem('weave_config_mode'); return saved === 'json' ? 'json' : saved === 'form' ? 'form' : 'simple'; } catch { return 'simple'; } });
   const [openCard, setOpenCard] = useState(() => { try { return localStorage.getItem('weave_config_mode') === 'models' ? 'model' : null; } catch { return null; } });
   const setMode = (next) => { setModeState(next); try { localStorage.setItem('weave_config_mode', next); } catch { /* storage unavailable */ } };
   const showModels = () => { setOpenCard('model'); setMode('simple'); };
+  const [technical, setTechnical] = useTechnicalNames();
+  // A fix from the checks is an ordinary edit of the draft, with a way back.
+  const [lastFix, setLastFix] = useState(null); // { label, previous }
+  const openInJson = (path) => { setMode('json'); window.setTimeout(() => editorRef.current?.jumpTo(path), 80); };
   const [focusReq, setFocusReq] = useState(null);
+  const applyFix = (next, label, jumpTo) => {
+    setLastFix({ label, previous: editor.parsed.value });
+    editor.setValue(next);
+    if (jumpTo) window.setTimeout(() => jump(jumpTo), 60);
+  };
   const jump = (path) => {
     if (mode === 'json') editorRef.current?.jumpTo(path);
     else {
@@ -222,6 +224,15 @@ export default function ConfigTab({ editor, focusPath, botId, preview }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusPath, status]);
 
+  // A setting found by the search is shown here, whichever tab the search was used from.
+  useEffect(() => {
+    if (status !== 'ready') return undefined;
+    const run = () => { const request = takeSettingFocus(botId); if (request) jump(request.path); };
+    run();
+    return onSettingFocus(run);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [botId, status, mode]);
+
   if (status === 'loading') return <Spinner label="Loading the draft" />;
   if (status === 'error') return <ErrorState error={editor.loadError} onRetry={editor.reload} what="the draft" />;
 
@@ -248,6 +259,7 @@ export default function ConfigTab({ editor, focusPath, botId, preview }) {
           Your changes were not saved. Overwriting replaces their version of the draft.
         </Notice>
       )}
+      {lastFix && <Notice kind="info" title={`${lastFix.label}.`} actions={<><button type="button" className="quietButton" onClick={() => { editor.setValue(lastFix.previous); setLastFix(null); }}>Undo</button><button type="button" className="quietButton" onClick={() => setLastFix(null)}>Dismiss</button></>}>The checks will run again on the change.</Notice>}
       {editor.saveError && <Notice kind="error" title="Couldn’t save the draft" actions={<button type="button" className="quietButton" onClick={editor.dismissSaveError}>Dismiss</button>}>{editor.saveError.message}</Notice>}
 
       <div className="stToolbar">
@@ -261,8 +273,14 @@ export default function ConfigTab({ editor, focusPath, botId, preview }) {
           <div className="stMode" role="group" aria-label="Editor">
             <button type="button" className={mode === 'simple' ? 'on' : ''} aria-pressed={mode === 'simple'} onClick={() => setMode('simple')} title="The everyday settings: instructions, voice and language, AI model, connections">Simple</button>
             <button type="button" className={mode === 'form' ? 'on' : ''} aria-pressed={mode === 'form'} onClick={() => setMode('form')} title="Every setting, as a form built from the schema">All settings</button>
-            <button type="button" className={mode === 'json' ? 'on' : ''} aria-pressed={mode === 'json'} onClick={() => setMode('json')}>JSON</button>
+            {/* The raw file is for people who work with it: it appears with technical names (or while it is the view in use), so a customer's first screen has no jargon. */}
+            {(technical || mode === 'json') && <button type="button" className={mode === 'json' ? 'on' : ''} aria-pressed={mode === 'json'} onClick={() => setMode('json')} title="The configuration file itself">JSON</button>}
           </div>
+          {mode !== 'json' && (
+            <label className="stTechSwitch" title="Show the name the configuration file uses beside every setting, and copy its path or open it in the JSON">
+              <input type="checkbox" checked={technical} onChange={(event) => setTechnical(event.target.checked)} /> Technical names
+            </label>
+          )}
           {preview && <button type="button" className="quietButton" aria-pressed={previewOpen} onClick={() => setPreviewOpen(!previewOpen)} title="Talk to the agent while you edit it">{previewOpen ? 'Hide preview' : 'Preview'}</button>}
           {mode === 'json' && <button type="button" className="quietButton" onClick={format} disabled={!!parsed.error || !editor.isObject}>Format</button>}
           <button type="button" className="quietButton" onClick={discard}>{dirty ? 'Discard changes' : 'Reload'}</button>
@@ -271,12 +289,12 @@ export default function ConfigTab({ editor, focusPath, botId, preview }) {
       </div>
 
       <div className="stConfigGrid">
-        {mode === 'simple' && <SimpleConfig key={openCard || 'simple'} editor={editor} initialOpen={openCard} onShowJson={() => setMode('json')} onOpenAll={(path) => { setMode('form'); setFocusReq({ path, nonce: Date.now() }); }} />}
-        {mode === 'form' && <FormEditor editor={editor} focusRequest={focusReq} onShowJson={() => setMode('json')} onShowModels={showModels} />}
+        {mode === 'simple' && <SimpleConfig key={openCard || 'simple'} editor={editor} initialOpen={openCard} onShowJson={() => setMode('json')} onOpenJson={openInJson} onOpenAll={(path) => { setMode('form'); setFocusReq({ path, nonce: Date.now() }); }} />}
+        {mode === 'form' && <Suspense fallback={<Spinner label="Loading the form" />}><FormEditor editor={editor} focusRequest={focusReq} onShowJson={() => setMode('json')} onOpenJson={openInJson} onShowModels={showModels} /></Suspense>}
         {mode === 'json' && <JsonEditor ref={editorRef} text={text} onChange={editor.setText} errorLines={errorLines} />}
         <div className="stRail">
           {preview && previewOpen && <ChatPreview session={preview.session} mode={preview.mode} modeLocked={preview.locked} onMode={preview.onMode} botId={botId} editor={editor} onClose={() => setPreviewOpen(false)} />}
-          <ValidationPanel editor={editor} folded={folded} onFold={() => setChecksFolded(!folded)} onJump={jump} onJumpOffset={(offset) => { if (mode !== 'json') setMode('json'); window.setTimeout(() => editorRef.current?.jumpToOffset(offset), 60); }} />
+          <ValidationPanel editor={editor} folded={folded} onFold={() => setChecksFolded(!folded)} onJump={jump} onApply={applyFix} onOpenModels={showModels} onJumpOffset={(offset) => { if (mode !== 'json') setMode('json'); window.setTimeout(() => editorRef.current?.jumpToOffset(offset), 60); }} />
         </div>
       </div>
     </div>

@@ -1080,9 +1080,113 @@
           "id": {
             "$ref": "#/$defs/id"
           },
+          "description": {
+            "type": "string",
+            "description": "What this scenario shows, for the person reading the results."
+          },
           "channel": {
             "type": "string",
             "x-ref": "channels"
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$",
+            "description": "Pretend it is this moment (with a time zone), so a schedule such as business hours is open or closed as the scenario needs. Without it the scenario runs on the real clock."
+          },
+          "state": {
+            "type": "object",
+            "description": "State values set before the conversation starts, over the config's own starting values: 'a caller who is already verified'."
+          },
+          "http_mocks": {
+            "type": "array",
+            "description": "Answers for the API calls the bot makes during this scenario, tried in order, first match wins. A test run never calls a real API unless it is told to (`allow_network`): a call that no mock matches is answered 404 and listed in the result as unmocked. This is what makes it safe to test a tool that creates a return or sends a payment link.",
+            "items": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "connection": {
+                  "type": "string",
+                  "x-ref": "http_connections",
+                  "description": "Only requests to this connection. Omit to match any."
+                },
+                "method": {
+                  "enum": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE"
+                  ],
+                  "description": "Omit to match any."
+                },
+                "path": {
+                  "type": "string",
+                  "description": "The request path, exactly or with * as a wildcard: /orders/* matches /orders/NB-1001."
+                },
+                "query": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Query parameters the request must have (others are allowed)."
+                },
+                "body_contains": {
+                  "type": "object",
+                  "description": "Fields the JSON body must have, with these values (others are allowed): tells two POSTs to the same path apart."
+                },
+                "status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599,
+                  "default": 200
+                },
+                "json": {
+                  "description": "The JSON the API answers with."
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Or a plain-text answer."
+                },
+                "times": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Answer only this many times, then this mock no longer matches (a call that fails the first time and works the second)."
+                }
+              }
+            }
+          },
+          "model_script": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Replaces the language model with a script, one item per model reply: a string (the model says it) or {tool, args} (the model calls that tool). The conversation runs through the real runtime, so prompts, tools, preconditions, effects, handoffs and state are tested exactly, with no model, no key, no cost and the same result every time. Without a script the scenario needs a live model.",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "tool"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "tool": {
+                      "type": "string",
+                      "x-ref": "tool_names"
+                    },
+                    "args": {
+                      "type": "object"
+                    }
+                  }
+                }
+              ]
+            }
           },
           "caller": {
             "type": "object",
@@ -1177,7 +1281,7 @@
                     "said_matches": {
                       "type": "string",
                       "format": "regex",
-                      "description": "Some assistant message matches this regex."
+                      "description": "Some assistant message matches this regex (ignoring case)."
                     }
                   }
                 },
@@ -1190,7 +1294,117 @@
                   "properties": {
                     "judge": {
                       "type": "string",
-                      "description": "Natural-language criterion graded by an LLM."
+                      "description": "Natural-language criterion graded by an LLM. Needs a live model, so it is skipped in a scenario that has a model_script."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "agent_is"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "agent_is": {
+                      "type": "string",
+                      "x-ref": "agents",
+                      "description": "The conversation ends with this agent in charge."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "tool_called_with"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "tool_called_with": {
+                      "type": "object",
+                      "required": [
+                        "tool",
+                        "args"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "tool": {
+                          "type": "string",
+                          "x-ref": "tool_names"
+                        },
+                        "args": {
+                          "type": "object",
+                          "description": "Arguments the call must include, with these values (others are allowed)."
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "http_called"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "http_called": {
+                      "type": "object",
+                      "required": [
+                        "path"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The bot made this API request (whether or not a mock answered it).",
+                      "properties": {
+                        "method": {
+                          "enum": [
+                            "GET",
+                            "POST",
+                            "PUT",
+                            "PATCH",
+                            "DELETE"
+                          ]
+                        },
+                        "path": {
+                          "type": "string",
+                          "description": "Exactly, or with * as a wildcard."
+                        },
+                        "times": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "description": "Exactly this many times. Omit for at least once."
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "http_not_called"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "http_not_called": {
+                      "type": "object",
+                      "required": [
+                        "path"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The bot never made this API request: the way to prove a guarded action (a return, a payment link) did not happen.",
+                      "properties": {
+                        "method": {
+                          "enum": [
+                            "GET",
+                            "POST",
+                            "PUT",
+                            "PATCH",
+                            "DELETE"
+                          ]
+                        },
+                        "path": {
+                          "type": "string",
+                          "description": "Exactly, or with * as a wildcard."
+                        }
+                      }
                     }
                   }
                 }
@@ -4747,7 +4961,21 @@
             "top_k": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20
+              "maximum": 20,
+              "description": "Overrides the knowledge base's own top_k for this tool."
+            },
+            "on_error": {
+              "type": "object",
+              "required": [
+                "tool_error"
+              ],
+              "additionalProperties": false,
+              "description": "Told to the model when the search fails (the service is down, it timed out, no index was built). Write it as an instruction to the model. Without it the model is told to answer only from what it surely knows, or to offer a person.",
+              "properties": {
+                "tool_error": {
+                  "type": "string"
+                }
+              }
             }
           },
           "unevaluatedProperties": false
@@ -4983,6 +5211,59 @@
         }
       ]
     },
+    "knowledgeRetrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How a search of this knowledge base behaves. Every field is optional.",
+      "properties": {
+        "timeout_s": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 30,
+          "default": 3,
+          "description": "The longest a search may take. In inject mode the caller waits for it on every turn, so keep it short on a phone line: past it the model answers without the material. In tool mode the model is told the search failed."
+        },
+        "min_score": {
+          "type": "number",
+          "description": "Drop passages the source scored below this (only for sources that return a score, higher = better). Leave unset to keep everything the source returns."
+        },
+        "max_chars": {
+          "type": "integer",
+          "minimum": 200,
+          "maximum": 50000,
+          "default": 4000,
+          "description": "At most this much passage text per search, whole passages best-first (the first one is cut rather than dropped if it alone is longer). Passages are prompt text the model reads on every turn in inject mode, so more is slower and costs more."
+        },
+        "strip_markdown": {
+          "type": "boolean",
+          "default": true,
+          "description": "Turn markdown in the passages into plain text. Material full of asterisks, pipes and headings makes a model answer in them, and a voice reads them out."
+        },
+        "query_from": {
+          "enum": [
+            "last_exchange",
+            "last_user"
+          ],
+          "default": "last_exchange",
+          "description": "Inject mode only. What is searched for. last_exchange = the bot's previous reply followed by the caller's newest words, so a follow-up such as 'and how much is that?' still carries its subject. last_user = the caller's newest words alone."
+        },
+        "role": {
+          "enum": [
+            "system",
+            "assistant"
+          ],
+          "default": "system",
+          "description": "Inject mode only. How the material is shown to the model. system works with every model provider. assistant shows it as the bot's own earlier note (what the website bot does); do not use it with Anthropic models, which treat a final assistant message as the start of the reply to continue."
+        },
+        "instruction": {
+          "type": "string",
+          "x-ui": {
+            "widget": "textarea"
+          },
+          "description": "Inject mode only. The sentence placed before the passages. Defaults to a short note that this is reference information, not instructions. May use {{...}} templates."
+        }
+      }
+    },
     "knowledgeBase": {
       "oneOf": [
         {
@@ -5013,7 +5294,31 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 20,
-              "description": "Chunks retrieved per query. Raise it when topics are split across many small files."
+              "description": "Chunks retrieved per query (default 4). Raise it when topics are split across many small files."
+            },
+            "retrieval": {
+              "$ref": "#/$defs/knowledgeRetrieval"
+            },
+            "chunking": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "How the sources are cut into passages when the index is built. Rebuild the index after changing it.",
+              "properties": {
+                "size": {
+                  "type": "integer",
+                  "minimum": 200,
+                  "maximum": 4000,
+                  "default": 1200,
+                  "description": "Target passage length in characters. Smaller passages match a question more exactly; larger ones carry more context."
+                },
+                "overlap": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000,
+                  "default": 150,
+                  "description": "Characters repeated from the end of one passage at the start of the next."
+                }
+              }
             },
             "sources": {
               "type": "array",
@@ -5114,7 +5419,11 @@
             "top_k": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20
+              "maximum": 20,
+              "description": "Passages asked for per search (default 4). Sent to the service as {{top_k}}."
+            },
+            "retrieval": {
+              "$ref": "#/$defs/knowledgeRetrieval"
             },
             "connection": {
               "type": "string",
@@ -5130,6 +5439,7 @@
                 "path"
               ],
               "additionalProperties": false,
+              "description": "The request sent for each search. In every string, {{query}} is the search text, {{top_k}} the number of passages and {{collection}} the field above. What the caller said is inserted as plain text, so {{...}} typed by a caller is never evaluated. A body value that is exactly \"{{top_k}}\" is sent as a number.",
               "properties": {
                 "method": {
                   "enum": [
@@ -5140,8 +5450,48 @@
                 "path": {
                   "type": "string"
                 },
+                "query": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "URL query parameters, e.g. {\"q\": \"{{query}}\"} for a GET."
+                },
+                "headers": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
                 "body": {
                   "description": "Template; {{query}}, {{top_k}} and {{collection}} are available."
+                }
+              }
+            },
+            "response": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Where the passages are in the service's JSON answer. Leave it out for the common shapes: a list, or an object whose chunks / results / documents / hits / matches / passages is a list of strings or of objects with text / content / chunk / passage / snippet; or an answer / final_answer string.",
+              "properties": {
+                "items": {
+                  "type": "string",
+                  "description": "Path of the list of results, e.g. $.data.matches."
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Path, inside each result, of the passage text, e.g. $.document.text."
+                },
+                "source": {
+                  "type": "string",
+                  "description": "Path, inside each result, of where it came from (shown in the call log only)."
+                },
+                "score": {
+                  "type": "string",
+                  "description": "Path, inside each result, of its relevance score (higher = better), used by retrieval.min_score."
+                },
+                "answer": {
+                  "type": "string",
+                  "description": "Path of a ready-made answer text, for a service that answers a question instead of returning passages. When it is present it is used and the results are ignored."
                 }
               }
             }

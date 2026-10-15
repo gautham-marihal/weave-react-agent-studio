@@ -4,6 +4,7 @@ import { assignBot, patchBot, refreshBots, switchWorkspace, useWorkspaces } from
 import { envLabel, Modal, Notice, Spinner } from '../ui.jsx';
 import { useAsync } from '../useAsync.js';
 import { configToText, copyText, downloadText, exportFileName } from './exportConfig.js';
+import { saveTemplate, templateFileName, templateToFile } from '../savedTemplates.js';
 
 // ---- Rename ---------------------------------------------------------------------------------------------
 // The display name is meta.name in the draft. The id is permanent (links and calls use it), and published
@@ -140,6 +141,78 @@ export function ExportDialog({ botId, name, editor, onClose }) {
       <p className="stMuted">Secrets are never part of a configuration: the file only contains their names, such as <code>OPENAI_API_KEY</code>.</p>
       {done && <Notice kind="good" title={done} />}
       {error && <Notice kind="error" title="Couldn’t export">{error.message}</Notice>}
+    </Modal>
+  );
+}
+
+// ---- Save as a template ---------------------------------------------------------------------------------
+// The agent's contents without what makes it THIS agent (id, name, version): the Create dialog then offers it next to the built-in starting
+// points. Kept in this browser, and exportable to a file, which is how templates are shared until the API has somewhere to keep them.
+
+export function SaveTemplateDialog({ botId, name, editor, onClose }) {
+  const [templateName, setTemplateName] = useState(`${name || botId} template`);
+  const [description, setDescription] = useState('');
+  const [source, setSource] = useState(editor?.dirty && !editor.parsed?.error && editor.isObject ? 'editor' : 'draft');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(null); // the saved template
+  const [error, setError] = useState(null);
+  const editorReady = !!editor && editor.dirty && !editor.parsed?.error && editor.isObject;
+  const problem = !templateName.trim() ? 'Give the template a name.' : templateName.trim().length > 80 ? 'Keep it to 80 characters or fewer.' : '';
+
+  const save = async () => {
+    if (problem || busy) return;
+    setBusy(true); setError(null);
+    try {
+      const config = source === 'editor' ? editor.parsed.value : (await api.getDraft(botId)).config;
+      const result = saveTemplate({ name: templateName, description, config, sourceName: config?.persona?.name || config?.meta?.name || name || '' });
+      if (!result.saved) throw new Error('This browser couldn’t keep it (its storage is full or switched off). Download the file instead.');
+      setDone(result.template);
+    } catch (err) { setError(err); } finally { setBusy(false); }
+  };
+
+  return (
+    <Modal
+      eyebrow="TEMPLATE"
+      title={`Save ${name || botId} as a template`}
+      subtitle="A template is a starting point for new agents. The id, name and version stay with this agent."
+      onClose={onClose}
+      busy={busy}
+      footer={done ? (
+        <>
+          <button type="button" className="modalCancel" onClick={onClose}>Close</button>
+          <button type="button" className="modalCreate" onClick={() => downloadText(templateFileName(done), templateToFile(done))}>Download the file</button>
+        </>
+      ) : (
+        <>
+          <button type="button" className="modalCancel" onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className="modalCreate" onClick={save} disabled={!!problem || busy}>{busy ? 'Saving…' : 'Save as template'}</button>
+        </>
+      )}
+    >
+      {done ? (
+        <Notice kind="good" title={`“${done.name}” is saved`}>It appears under “Your templates” when you create an agent, on this browser. To share it with a colleague, download the file: they can import it in the Create dialog.</Notice>
+      ) : (
+        <div className="stFormStack">
+          <label className={`workspaceField ${problem && templateName ? 'bad' : ''}`}>
+            <span>Template name</span>
+            <input autoFocus value={templateName} maxLength={120} onChange={(event) => setTemplateName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') save(); }} />
+            {problem && <small className="stFieldError">{problem}</small>}
+          </label>
+          <label className="workspaceField">
+            <span>What it is for <em>(optional)</em></span>
+            <input value={description} maxLength={200} onChange={(event) => setDescription(event.target.value)} placeholder="e.g. A front desk for our clinics, with booking and handoff" />
+          </label>
+          {editorReady && (
+            <fieldset className="stExportChoices">
+              <legend>Made from</legend>
+              <label className={source === 'draft' ? 'on' : ''}><input type="radio" name="tpl-source" checked={source === 'draft'} onChange={() => setSource('draft')} /><span><strong>The saved draft</strong><small>As last saved.</small></span></label>
+              <label className={source === 'editor' ? 'on' : ''}><input type="radio" name="tpl-source" checked={source === 'editor'} onChange={() => setSource('editor')} /><span><strong>What is in the editor now</strong><small>Includes edits you haven’t saved.</small></span></label>
+            </fieldset>
+          )}
+          <p className="stMuted">Secrets are never part of a configuration: only their names are. Test scenarios, tools, knowledge bases and channels are kept, so a new agent starts complete.</p>
+          {error && <Notice kind="error" title="Couldn’t save the template">{error.message}</Notice>}
+        </div>
+      )}
     </Modal>
   );
 }

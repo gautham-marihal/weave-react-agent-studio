@@ -3,7 +3,9 @@
 // understands):
 //   widget    textarea | template | jsonpath | phone | url | duration | secret-picker   how to draw the field (an unknown one is ignored)
 //   label     a human name, instead of the key made readable
-//   help      one more line of help, under the description
+//   help      one line saying what the setting is for, in plain words (it leads the help text, ahead of the catalogue's own)
+//   example   a value that makes it clear
+//   audience  guided | detailed | expert: how often someone needs it (expert ones sit under "Advanced")
 //   group     a heading the field is listed under, with the others of the same group
 //   order     a number: lower first (fields without one follow, in schema order)
 //   advanced  true: kept under an "Advanced" fold, out of the way until needed
@@ -11,6 +13,7 @@
 
 import { isObj } from './engine.js';
 
+export const AUDIENCES = ['guided', 'detailed', 'expert'];
 export const XUI_WIDGETS = ['textarea', 'template', 'jsonpath', 'phone', 'url', 'duration', 'secret-picker'];
 
 // The hints of one schema, cleaned: only well-formed values survive.
@@ -21,6 +24,8 @@ export function readXui(shape) {
     widget: XUI_WIDGETS.includes(raw.widget) ? raw.widget : undefined,
     label: text(raw.label),
     help: text(raw.help),
+    example: text(raw.example),
+    audience: AUDIENCES.includes(raw.audience) ? raw.audience : undefined,
     group: text(raw.group),
     order: typeof raw.order === 'number' && Number.isFinite(raw.order) ? raw.order : undefined,
     advanced: raw.advanced === true,

@@ -1,10 +1,14 @@
 import React from 'react';
 import { isObj } from './engine.js';
-import { useForm } from './ctx.js';
+import { useConfigSelect, useForm } from './ctx.js';
 import { StringList, Switch, TextInput } from './fields.jsx';
 import { IdChip } from './IdTools.jsx';
+import { useProviders } from '../models/useProviders.js';
+import { addDefaultSpeechModels } from '../models/config.js';
+import { providerLabel } from '../models/catalog.js';
 import { ObjectBody } from './Node.jsx';
 import { CHANNEL_TYPES, ENTRY_FIELDS, ENTRY_LABELS, TYPE_LABELS, changeChannelType, modalityNotes } from './presets.js';
+import { TechKey } from './TechName.jsx';
 
 // One channel, drawn for what it is: the type decides which fields are shown, so a phone line never offers a widget id
 // and a web chat never offers a phone number. The id is a permanent key (Rename… rewrites everything that points at it).
@@ -30,7 +34,16 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   const ctx = useForm();
   const obj = isObj(value) ? value : {};
   const type = obj.type;
-  const botId = ctx.config?.meta?.id || '';
+  const botId = useConfigSelect((c) => c?.meta?.id || '');
+  const notes = useConfigSelect((c) => modalityNotes(obj, c));
+  const { providers } = useProviders();
+  // A voice channel on an agent with no speech models: one click sets a default for each missing stage (from what the server can run)
+  const firstSpeech = notes.findIndex((note) => note.stage); // the button goes under the first of the notes about speech, once
+  const addSpeech = () => {
+    const { config: next, added, skipped } = addDefaultSpeechModels(ctx.store.get(), providers);
+    if (!added.length) return;
+    ctx.applyConfig(next, `Added default speech models: ${added.map((a) => `${a.stage === 'stt' ? 'listening' : 'speaking'} with ${providerLabel(a.provider)}${a.keySet ? '' : ' (its key may not be set on the server)'}`).join(', ')}.${skipped.length ? ' No provider is available for the rest.' : ''}`);
+  };
   const order = Object.keys(shape.properties);
 
   const handled = Object.fromEntries(Object.entries(obj).filter(([key]) => HANDLED.includes(key)));
@@ -66,7 +79,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
     const id = `${path.join('-')}-${key}`;
     return (
       <div className="stFRow wide" key={key} data-path={`${path.join('.')}.entry.${key}`}>
-        <div className="stFLabel"><label htmlFor={id}>{label}</label>{type === 'web_chat' && key === 'widget_id' && <abbr title="Required" className="stFReq">*</abbr>}<code className="stFKey">{key}</code></div>
+        <div className="stFLabel"><label htmlFor={id}>{label}</label>{type === 'web_chat' && key === 'widget_id' && <abbr title="Required" className="stFReq">*</abbr>}<TechKey name={key} path={[...path, 'entry', key]} /></div>
         {key === 'allowed_origins'
           ? <StringList values={Array.isArray(entry[key]) ? entry[key] : []} onChange={(v) => setEntry(key, v)} disabled={disabled} placeholder={example} />
           : <TextInput id={id} value={entry[key] ?? ''} onChange={(v) => setEntry(key, v)} disabled={disabled} placeholder={example} />}
@@ -77,7 +90,6 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
 
   const caps = isObj(obj.capabilities) ? obj.capabilities : {};
   const setCap = (key, on) => set({ capabilities: { ...caps, [key]: on } });
-  const notes = modalityNotes(obj, ctx.config);
 
   return (
     <div className="stFObject stChannel" data-channel-type={type}>
@@ -127,6 +139,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
             const explicit = cap.key in caps;
             return (
               <div className="stCap" key={cap.key}>
+                <strong className="stCapName" aria-hidden="true">{cap.label}</strong>
                 <Switch checked={explicit ? !!caps[cap.key] : cap.fallback(type)} onChange={(v) => setCap(cap.key, v)} disabled={disabled} label={cap.label} />
                 <p className="stFHelp">{cap.help}{explicit ? '' : ' (using the default for this kind)'}</p>
               </div>
@@ -144,6 +157,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
             <li key={index} className={note.level}>
               <span>{note.text}</span>
               {note.fix === 'models' && ctx.openModels && <button type="button" className="stLink" onClick={ctx.openModels}>Open Models</button>}
+              {index === firstSpeech && !disabled && <button type="button" className="stAddBtn" onClick={addSpeech}>Add default speech models</button>}
             </li>
           ))}
         </ul>

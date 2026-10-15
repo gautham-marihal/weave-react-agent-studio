@@ -1,6 +1,10 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { humanize, isObj } from './engine.js';
-import { isUnder, keyOf, omit, orderedSet, singular, uniqueId, useForm } from './ctx.js';
+import { OwnerCtx, isUnder, keyOf, omit, orderedSet, singular, uniqueId, useConfigSelect, useForm, useKeyedHandlers, useOwner, useStableCallback } from './ctx.js';
+import SmartSelect from '../SmartSelect.jsx';
+import ModelField from './ModelField.jsx';
+import { enumLabels } from './plainEnums.js';
+import { modelStageOf } from './modelFields.js';
 import { CheckGroup, FreeValue, JsonInput, MultiPick, NumberInput, Select, StringList, Switch, TextInput } from './fields.jsx';
 import ChannelBody from './ChannelBody.jsx';
 import ConditionBuilder from './ConditionBuilder.jsx';
@@ -9,16 +13,24 @@ import TemplateField from './TemplateField.jsx';
 import { PathInput } from './RequestResponse.jsx';
 import InlineCreate from './InlineCreate.jsx';
 import ToolBody from './ToolBody.jsx';
-import PromptPreview from './PromptPreview.jsx';
+import { PromptPreviewFromForm } from './PromptPreview.jsx';
+import AddPicker from './AddPicker.jsx';
+import { WHAT, pickerFor } from './pickerOptions.js';
+import { setRecordingNotice } from '../simple/simpleModel.js';
+import RecordingNoticeOffer from '../records/RecordingNoticeOffer.jsx';
+import ScheduleStrip from '../relations/ScheduleStrip.jsx';
+import TaskSteps from '../relations/TaskSteps.jsx';
+import UsedBy from '../relations/UsedBy.jsx';
 import { CREATABLE } from './inlineCreate.js';
-import { UNSUPPORTED_BUILTINS, UNSUPPORTED_KINDS, unusedTools } from './toolInfo.js';
+import { UNSUPPORTED_BUILTINS, UNSUPPORTED_KINDS, agentsUsingTool, toolKindCounts, toolMatches, unusedTools, usedByText } from './toolInfo.js';
 import { IdChip } from './IdTools.jsx';
-import { CHANNEL_PRESETS, buildChannel } from './presets.js';
 import { collectionAt, COLLECTIONS, lockedIdCollection } from './references.js';
 import { arrayStyle, carryOver, isActionList, isComplex, isRuleList, matchesDiscriminator, summarize } from './cardLogic.js';
 import EffectsEditor, { ActionSteps } from './EffectsEditor.jsx';
 import { isPromptPath, isTemplateString, scopeAt } from './templates.js';
 import { languageHint } from './messages.js';
+import { describeSetting } from './plainLanguage.js';
+import { TechName } from './TechName.jsx';
 import { groupKeys, looksLikePhone, looksLikeUrl, orderKeys, readXui, splitAdvanced } from './xui.js';
 
 // What "this collection lives in" for the hint under an empty reference list, and where Go there leads.
@@ -34,34 +46,67 @@ const REF_WORD = {
   http_connections: 'HTTP connections', mcp_connections: 'MCP connections', notifiers: 'SMS/email connections',
 };
 
-function Help({ text }) {
+// What a setting is for, in plain words, with an example when there is one. The schema's own description (the technical wording) is one click
+// away, or open already when technical names are on. When there is no hand-written purpose the lead is the schema's first sentence.
+function Help({ lead, example, full, moreLabel = 'Technical detail', open: startOpen = false }) {
   const [open, setOpen] = useState(false);
-  if (!text) return null;
-  const long = text.length > 170;
+  const more = full && full.trim() && full.trim() !== lead ? full.trim() : '';
+  const shown = open || (startOpen && !!more);
+  if (!lead && !example && !more) return null;
   return (
     <p className="stFHelp">
-      {long && !open ? `${text.slice(0, 170)}… ` : `${text} `}
-      {long && <button type="button" className="stLink" onClick={() => setOpen((v) => !v)}>{open ? 'Less' : 'More'}</button>}
+      {lead && <span>{lead} </span>}
+      {example && <span className="stFExample">For example: <em>{example}</em> </span>}
+      {more && <button type="button" className="stLink" aria-expanded={shown} onClick={() => setOpen((v) => !v)}>{shown ? 'Less' : moreLabel}</button>}
+      {more && shown && <span className="stFMore"> {more}</span>}
     </p>
   );
 }
 
-function Issues({ pathKey, deep = false }) {
-  const { exact, issuesUnder } = useForm();
-  const list = deep ? issuesUnder(pathKey) : exact.get(pathKey);
-  if (!list?.length) return null;
-  return list.map((issue, index) => <small key={index} className={issue.severity === 'error' ? 'stFErr' : 'stFWarn'}>{issue.message}</small>);
+// The words a setting is drawn with: the server's own hint when it sends one, else the catalogue, else a label made by rule.
+function useSettingWords(name, shape, label) {
+  const owner = useOwner();
+  const hints = readXui(shape);
+  const info = describeSetting(name, { owner, description: shape.description });
+  return {
+    title: label || hints.label || info.label,
+    lead: hints.help || info.purpose,
+    example: hints.example || info.example,
+    level: hints.audience || info.level,
+    full: shape.description,
+    moreLabel: info.curated || hints.help ? 'Technical detail' : 'More',
+  };
 }
 
-function Group({ pathKey, title, hint, count, onRemove, defaultOpen = true, actions, children, flat = false }) {
+// What is wrong with a field, in plain words, with a button to fix it where one is certain. The server's own sentence is in the tooltip, and shown
+// when technical names are on.
+function Issues({ pathKey, deep = false }) {
+  const { exact, issuesUnder, describe, applyFix, technical } = useForm();
+  const list = deep ? issuesUnder(pathKey) : exact.get(pathKey);
+  if (!list?.length) return null;
+  return list.map((issue, index) => {
+    const d = describe(issue);
+    return (
+      <small key={index} className={`stFIssue ${issue.severity === 'error' ? 'stFErr' : 'stFWarn'}`} title={d.recognised ? `The server said: ${issue.message}` : undefined}>
+        {d.text}
+        {technical && d.recognised && <span className="stFRawIssue"> ({issue.message})</span>}
+        {d.fixes.map((fix) => <button type="button" key={fix.id} className="vxFix small" onClick={() => applyFix(fix)}>{fix.label}</button>)}
+      </small>
+    );
+  });
+}
+
+function Group({ pathKey, title, hint, tooltip, count, onRemove, defaultOpen = true, actions, children, flat = false }) {
   const { focus, countUnder } = useForm();
   const [open, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focus && isUnder(focus.key, pathKey)) setOpen(true); }, [focus, pathKey]);
   const c = countUnder(pathKey);
+  // a problem inside is never left behind a closed group
+  useEffect(() => { if (c.errors > 0) setOpen(true); }, [c.errors]);
   return (
     <section className={`stFGroup ${c.errors ? 'hasErr' : ''} ${flat ? 'flat' : ''}`} data-path={pathKey}>
       <header>
-        <button type="button" className="stFGroupToggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <button type="button" className="stFGroupToggle" aria-expanded={open} title={tooltip || undefined} onClick={() => setOpen((v) => !v)}>
           <i aria-hidden="true">{open ? '▾' : '▸'}</i>
           <strong>{title}</strong>
           {hint && <span className="stFHint">{hint}</span>}
@@ -87,6 +132,7 @@ const isAgentPath = (path) => path.length === 3 && path[0] === 'agents' && path[
 
 export default function Node({ schema, value, path, onChange, disabled, id, invalid }) {
   const ctx = useForm();
+  const owner = useOwner();
   const { engine } = ctx;
   const shape = engine.resolveShape(schema, value);
   const kind = engine.kindOf(shape);
@@ -95,24 +141,34 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
   switch (kind) {
     case 'const': return <span className="stFConst">{String(shape.const)}</span>;
     case 'null': return <span className="stFConst">none</span>;
-    case 'boolean': return <Switch checked={!!value} onChange={onChange} disabled={disabled} label={shape.title || 'Setting'} />;
+    case 'boolean': return <Switch id={id} checked={!!value} onChange={onChange} disabled={disabled} label={id ? undefined : shape.title || 'Setting'} />;
     case 'number': {
       const input = <NumberInput id={id} value={value} onChange={onChange} min={shape.minimum ?? (shape.exclusiveMinimum !== undefined ? shape.exclusiveMinimum : undefined)} max={shape.maximum}
         integer={([].concat(shape.type)).includes('integer')} nullable={engine.isNullable(shape)} disabled={disabled} invalid={invalid} />;
       return readXui(shape).widget === 'duration' ? <span className="stFUnit">{input}<span className="stMuted">seconds</span></span> : input;
     }
-    case 'enum': return <Select id={id} value={value} options={shape.enum.map(String)} onChange={onChange} disabled={disabled} invalid={invalid}
-      labels={path[0] === 'tools' && path[path.length - 1] === 'builtin' ? Object.fromEntries(Object.keys(UNSUPPORTED_BUILTINS).map((name) => [name, `${name} (not available yet)`])) : undefined} />;
+    case 'enum': {
+      // The choices are drawn in words (plainEnums.js); the stored value is unchanged. A tool kind the runtime can't run says so, and the schema's default is marked.
+      const leaf = String(path[path.length - 1]);
+      const values = shape.enum.map(String);
+      const suffix = path[0] === 'tools' && leaf === 'builtin' ? Object.fromEntries(Object.keys(UNSUPPORTED_BUILTINS).map((name) => [name, '(not available yet)'])) : {};
+      const labels = enumLabels(leaf, values, { technical: ctx.technical, suffix });
+      const standard = shape.default !== undefined && shape.default !== null ? String(shape.default) : '';
+      if (standard && values.includes(standard)) labels[standard] = `${labels[standard] || standard} (default)`;
+      return <Select id={id} value={value} options={values} onChange={onChange} disabled={disabled} invalid={invalid} labels={labels} />;
+    }
     case 'string': {
       const widget = readXui(shape).widget;
       const multiline = widget === 'textarea' || String(value ?? '').includes('\n') || String(value ?? '').length > 90;
-      if (widget === 'jsonpath') return <PathInput value={value} onChange={onChange} disabled={disabled} label={humanize(String(path[path.length - 1]))} />;
+      if (widget === 'jsonpath') return <PathInput value={value} onChange={onChange} disabled={disabled} label={describeSetting(String(path[path.length - 1]), { owner }).label} />;
       if (widget === 'phone' || widget === 'url') return <ContactInput kind={widget} id={id} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} invalid={invalid} />;
       if (isTemplateString(path, shape, value)) {
         const prompt = isPromptPath(path);
-        return <TemplateField id={id} value={value} onChange={onChange} scope={scopeAt(ctx.config, path)} multiline={multiline} placeholder={placeholder} disabled={disabled} invalid={invalid}
+        return <ScopedTemplateField id={id} value={value} onChange={onChange} path={path} multiline={multiline} placeholder={placeholder} disabled={disabled} invalid={invalid}
           mono={['path', 'uri_template', 'body'].includes(String(path[path.length - 1]))} showCount={prompt} />;
       }
+      const modelStage = modelStageOf(path);
+      if (modelStage) return <ModelField stage={modelStage} leaf={String(path[path.length - 1])} path={path} id={id} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} invalid={invalid} />;
       return <TextInput id={id} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} multiline={multiline} invalid={invalid} />;
     }
     case 'ref': return <RefSelect shape={shape} value={value} onChange={onChange} disabled={disabled} id={id} invalid={invalid} path={path} />;
@@ -124,10 +180,12 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
         return (
           <>
             <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />
-            {isObj(value) && typeof value.id === 'string' && value.id && <PromptPreview agentId={value.id} />}
+            {isObj(value) && typeof value.id === 'string' && value.id && <PromptPreviewFromForm agentId={value.id} />}
           </>
         );
       }
+      if (path.length === 2 && path[0] === 'schedules') return <><ScheduleStrip value={value} /><ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} /></>;
+      if (path.length === 2 && path[0] === 'tasks') return <><TaskSteps value={value} /><ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} /></>;
       return <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />;
     case 'array': return <ArrayBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />;
     case 'map': return <MapBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />;
@@ -138,6 +196,13 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
     }
     default: return <JsonInput id={id} value={value} onChange={onChange} disabled={disabled} />;
   }
+}
+
+// A template box whose scope (the names a template may use here) comes from the config in the form's store, so it only re-renders when
+// those names change, not on every keystroke elsewhere.
+function ScopedTemplateField({ path, ...props }) {
+  const scope = useConfigSelect((c) => scopeAt(c, path));
+  return <TemplateField {...props} scope={scope} />;
 }
 
 function RefSelect({ shape, value, onChange, disabled, id, invalid, path }) {
@@ -219,29 +284,35 @@ function SecretInput({ value, onChange, disabled, id }) {
 
 // ---- objects ---------------------------------------------------------------------------------
 
-export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKeys }) {
-  const { engine, markDelete, issuesUnder } = useForm();
+// `onlyKeys` shows just those properties (a screen that is part of a section, see layout.js), and `showUnknown: false` leaves the keys the schema
+// doesn't know to another part of the same section.
+export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKeys, onlyKeys, showUnknown = true }) {
+  const { engine, markDelete, issuesUnder, expertHome } = useForm();
+  const owner = useOwner();
   const obj = isObj(value) ? value : {};
   const order = Object.keys(shape.properties);
   const flatOf = (k) => engine.flatten(shape.properties[k]);
-  const visible = order.filter((k) => flatOf(k).const === undefined);
+  const visible = order.filter((k) => flatOf(k).const === undefined && (!onlyKeys || onlyKeys.includes(k)));
   const required = shape.required || [];
-  const hintsOf = (k) => readXui(flatOf(k));
+  // A setting meant for experts or operators sits under "Advanced" (the server's `advanced`/`audience` hints, else the catalogue's level), unless
+  // this whole screen is the place for them.
+  const wordsOf = (k) => describeSetting(k, { owner, description: flatOf(k).description });
+  const hintsOf = (k) => { const h = readXui(flatOf(k)); return { ...h, advanced: h.advanced || (!expertHome && (h.audience || wordsOf(k).level) === 'expert') }; };
   const rows = orderKeys(visible.filter((k) => k in obj || required.includes(k)), hintsOf);
   const { main, advanced } = splitAdvanced(rows, hintsOf);
   const sections = groupKeys(main, hintsOf);
   const addable = visible.filter((k) => !(k in obj) && !required.includes(k) && !flatOf(k).deprecated);
-  const unknown = Object.keys(obj).filter((k) => !(k in shape.properties));
+  const unknown = showUnknown ? Object.keys(obj).filter((k) => !(k in shape.properties)) : [];
   const extra = isObj(shape.additionalProperties) ? shape.additionalProperties : null;
   const openExtra = shape.additionalProperties === undefined && shape.unevaluatedProperties === undefined;
 
   const setProp = (key, v) => onChange(v === undefined ? omit(obj, key) : orderedSet(obj, key, v, order));
-  const del = (key, label) => { markDelete(label || humanize(key)); setProp(key, undefined); };
+  const del = (key, label) => { markDelete(label || wordsOf(key).label); setProp(key, undefined); };
   // Fields that are set and optional can be deleted; required ones are always part of the object.
   const deletable = rows.filter((k) => k in obj && !required.includes(k));
   const renderRow = (key) => (
     <FieldRow key={key} name={key} schema={shape.properties[key]} value={obj[key]} path={[...path, key]}
-      required={required.includes(key)} missing={!(key in obj)} disabled={disabled} collapsed={collapsedKeys?.has(key)}
+      required={required.includes(key)} missing={!(key in obj)} disabled={disabled} collapsed={collapsedKeys?.has(key)} sole={rows.length === 1}
       onChange={(v) => setProp(key, v)} onAdd={() => setProp(key, engine.defaultFor(shape.properties[key]))}
       onRemove={!required.includes(key) ? () => del(key) : null} />
   );
@@ -275,16 +346,10 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
       {(addable.length > 0 || deletable.length > 0 || extra || openExtra) && (
         <div className="stFAddRow">
           {addable.length > 0 && (
-            <select className="stFInput small" value="" disabled={disabled} aria-label="Add a field" onChange={(event) => { const k = event.target.value; if (k) setProp(k, engine.defaultFor(shape.properties[k])); }}>
-              <option value="">＋ Add a field…</option>
-              {addable.map((k) => <option key={k} value={k}>{humanize(k)}</option>)}
-            </select>
+            <SmartSelect action className="stFInput small" disabled={disabled} ariaLabel="Add a field" placeholder="＋ Add a field…" options={addable.map((k) => ({ value: k, label: wordsOf(k).label }))} onChange={(k) => { if (k) setProp(k, engine.defaultFor(shape.properties[k])); }} />
           )}
           {deletable.length > 0 && (
-            <select className="stFInput small del" value="" disabled={disabled} aria-label="Delete a field" onChange={(event) => { const k = event.target.value; if (k) del(k); }}>
-              <option value="">− Delete a field…</option>
-              {deletable.map((k) => <option key={k} value={k}>{humanize(k)}</option>)}
-            </select>
+            <SmartSelect action className="stFInput small del" disabled={disabled} ariaLabel="Delete a field" placeholder="− Delete a field…" options={deletable.map((k) => ({ value: k, label: wordsOf(k).label }))} onChange={(k) => { if (k) del(k); }} />
           )}
           {(extra || openExtra) && <AddKey existing={Object.keys(obj)} disabled={disabled} label="custom field" onAdd={(k) => setProp(k, extra ? engine.defaultFor(extra) : '')} />}
         </div>
@@ -296,7 +361,7 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
 
 // ---- one labelled property of an object ------------------------------------------------------
 
-export function FieldRow({ name, schema, value, path, required, missing, disabled, onChange, onAdd, onRemove, label, collapsed }) {
+export function FieldRow({ name, schema, value, path, required, missing, disabled, onChange, onAdd, onRemove, label, collapsed, sole }) {
   const ctx = useForm();
   const { engine } = ctx;
   const key = keyOf(path);
@@ -304,27 +369,28 @@ export function FieldRow({ name, schema, value, path, required, missing, disable
   const shape = engine.resolveShape(schema, value);
   const kind = engine.kindOf(shape);
   const readOnly = ctx.readOnly.has(key);
+  const words = useSettingWords(name, shape, label);
   const lockedIn = name === 'id' && !missing && typeof value === 'string' && value ? lockedIdCollection(path) : null;
   if (lockedIn) return <div data-path={key}><IdChip id={value} disabled={disabled} onRename={() => ctx.requestRename(lockedIn, value)} /></div>;
-  const hints = readXui(shape);
-  const title = label || hints.label || humanize(name);
-  const showKey = title.toLowerCase() !== String(name).toLowerCase();
+  const { title } = words;
+  const technical = ctx.technical;
+  const helpLine = <Help lead={words.lead} example={words.example} full={words.full} moreLabel={words.moreLabel} open={technical} />;
   const tags = (
     <>
       {required && <abbr title="Required" className="stFReq">*</abbr>}
       {shape.deprecated && <span className="stFTag warn">deprecated</span>}
       {readOnly && <span className="stFTag">set by the server</span>}
-      {showKey && <code className="stFKey">{name}</code>}
+      {technical && <TechName name={name} path={path} />}
     </>
   );
 
   if (missing) {
     return (
-      <div className="stFRow wide missing" data-path={key}>
-        <div className="stFLabel"><label>{title}</label>{tags}<span className="stFTag bad">required, not set</span></div>
+      <div className={`stFRow wide ${required ? 'missing' : ''}`} data-path={key}>
+        <div className="stFLabel"><label title={words.lead || undefined}>{title}</label>{tags}{required && <span className="stFTag bad">required, not set</span>}</div>
         <button type="button" className="stAddBtn" disabled={disabled} onClick={onAdd}>＋ Set {title.toLowerCase()}</button>
         <Issues pathKey={key} />
-        <Help text={shape.description} />
+        {helpLine}
       </div>
     );
   }
@@ -335,10 +401,9 @@ export function FieldRow({ name, schema, value, path, required, missing, disable
     const count = kind === 'array' ? (Array.isArray(value) ? value.length : 0) : kind === 'map' ? Object.keys(isObj(value) ? value : {}).length : null;
     return (
       <div className="stFRow wide" data-grouprow={key}>
-        <Group pathKey={key} title={title} hint={showKey ? name : undefined} count={count} onRemove={onRemove} defaultOpen={collapsed ? false : kind !== 'array' || (Array.isArray(value) && value.length <= 4)}>
-          <Help text={shape.description} />
-          {hints.help && <p className="stFHelp">{hints.help}</p>}
-          <Node schema={schema} value={value} path={path} onChange={onChange} disabled={disabled || readOnly} />
+        <Group pathKey={key} title={title} tooltip={words.lead} actions={technical ? <TechName name={name} path={path} /> : null} count={count} onRemove={onRemove} defaultOpen={collapsed ? false : kind === 'array' ? Array.isArray(value) && value.length <= 4 : sole || words.level === 'guided'}>
+          {helpLine}
+          <OwnerCtx.Provider value={name}><Node schema={schema} value={value} path={path} onChange={onChange} disabled={disabled || readOnly} /></OwnerCtx.Provider>
         </Group>
       </div>
     );
@@ -349,14 +414,13 @@ export function FieldRow({ name, schema, value, path, required, missing, disable
   return (
     <div className={`stFRow ${wide ? 'wide' : ''} ${readOnly ? 'ro' : ''}`} data-path={key}>
       <div className="stFLabel">
-        <label htmlFor={inputId}>{title}</label>
+        <label htmlFor={inputId} title={words.lead || undefined}>{title}</label>
         {tags}
         {onRemove && !readOnly && <button type="button" className="stFDel small" aria-label={`Delete ${title}`} disabled={disabled} onClick={onRemove}>Delete</button>}
       </div>
-      <Node schema={schema} value={value} path={path} onChange={onChange} disabled={disabled || readOnly} id={inputId} invalid={(ctx.exact.get(key) || []).some((i) => i.severity === 'error')} />
+      <OwnerCtx.Provider value={name}><Node schema={schema} value={value} path={path} onChange={onChange} disabled={disabled || readOnly} id={inputId} invalid={(ctx.exact.get(key) || []).some((i) => i.severity === 'error')} /></OwnerCtx.Provider>
       <Issues pathKey={key} deep={deepIssues} />
-      <Help text={shape.description} />
-      {hints.help && <p className="stFHelp">{hints.help}</p>}
+      {helpLine}
       <FieldNote path={path} value={value} />
     </div>
   );
@@ -384,10 +448,8 @@ function UnionBody({ shape, value, path, onChange, disabled }) {
           ))}
         </div>
       ) : (
-        <select className="stFInput small" disabled={disabled} aria-label="Kind" value={fitsBranch ? picked : ''} onChange={(event) => { if (event.target.value !== '') choose(Number(event.target.value)); }}>
-          {!fitsBranch && <option value="">Choose a kind…</option>}
-          {labels.map((text, i) => <option key={i} value={i}>{text}</option>)}
-        </select>
+        <SmartSelect className="stFInput small" disabled={disabled} ariaLabel="Kind" value={fitsBranch ? String(picked) : ''} placeholder="Choose a kind…"
+          options={labels.map((text, i) => ({ value: String(i), label: text }))} onChange={(v) => { if (v !== '') choose(Number(v)); }} />
       ))}
       {fitsBranch ? (
         <Node schema={branches[picked]} value={value} path={path} onChange={onChange} disabled={disabled} />
@@ -404,7 +466,7 @@ function UnionBody({ shape, value, path, onChange, disabled }) {
 // ---- arrays ----------------------------------------------------------------------------------
 
 function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
-  const { engine, refOptions, goTo, markDelete } = useForm();
+  const { engine, refOptions, goTo, markDelete, technical } = useForm();
   // StringList and MultiPick say what was deleted so the Undo bar can name it.
   const onChange = (next, meta) => { if (meta?.deleted) markDelete(meta.deleted); setValue(next); };
   const list = Array.isArray(value) ? value : [];
@@ -415,7 +477,7 @@ function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
   if (isActionList(engine, shape)) return <ActionSteps shape={shape} value={list} path={path} onChange={setValue} disabled={disabled} label="the list" />;
   if (isRuleList(engine, shape)) return <EffectsEditor shape={shape} value={list} path={path} onChange={setValue} disabled={disabled} />;
   if (style === 'strings') return <StringList values={list} onChange={onChange} disabled={disabled} placeholder={Array.isArray(items.examples) ? String(items.examples[0]) : undefined} />;
-  if (style === 'checks') return <CheckGroup options={items.enum.map(String)} values={list} onChange={onChange} disabled={disabled} />;
+  if (style === 'checks') return <CheckGroup options={items.enum.map(String)} values={list} onChange={onChange} disabled={disabled} labels={enumLabels(String(path[path.length - 1]), items.enum.map(String), { technical })} />;
   if (style === 'pick') {
     const name = items['x-ref'];
     const options = refOptions[name] || [];
@@ -430,18 +492,60 @@ function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
   return <CardList shape={shape} items={items} list={list} path={path} onChange={setValue} disabled={disabled} />;
 }
 
+// One card of a list. It is memoised: an edit in another card gives it exactly the props it had (the list's items keep their identity, see
+// shareStructure, and the handlers are stable), so it does not render. It reads the few things it needs from the config itself.
+const sameCard = (a, b) => keyOf(a.basePath) === keyOf(b.basePath) && Object.keys(a).every((k) => k === 'basePath' || a[k] === b[k]);
+
+const CardItem = React.memo(function CardItem({ item, index, count, basePath, itemSchema, disabled, named, collection, fresh, onItemChange, onRemoveItem, onMoveItem }) {
+  const { title, hint: summary } = summarize(item, index);
+  const wantsLanguages = collection === 'messages' && isObj(item) && isObj(item.text);
+  const languages = useConfigSelect((c) => (wantsLanguages ? languageHint(item, c) : ''));
+  const baseHint = wantsLanguages ? languages : summary;
+  // a tool says which agents offer it (the data is in the config), so a long list can be read at a glance
+  const usedBy = useConfigSelect((c) => (collection === 'tools' && isObj(item) && item.id ? agentsUsingTool(c, item.id) : null));
+  const hint = usedBy ? [baseHint, usedByText(usedBy)].filter(Boolean).join(' · ') : baseHint;
+  const path = useMemo(() => [...basePath, index], [basePath, index]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Group pathKey={keyOf(path)} title={title} hint={hint} defaultOpen={fresh || (basePath.length > 1 ? index === 0 && count <= 3 : count <= 3)}
+      onRemove={disabled ? null : () => onRemoveItem(index)}
+      actions={!disabled && count > 1 ? (
+        <>
+          <button type="button" className="stIconBtn" aria-label={`Move ${title} up`} disabled={index === 0} onClick={() => onMoveItem(index, index - 1)}>↑</button>
+          <button type="button" className="stIconBtn" aria-label={`Move ${title} down`} disabled={index === count - 1} onClick={() => onMoveItem(index, index + 1)}>↓</button>
+        </>
+      ) : null}>
+      {named && isObj(item) && typeof item.id === 'string' && item.id && <UsedBy collection={named} id={item.id} />}
+      <Node schema={itemSchema} value={item} path={path} onChange={onItemChange} disabled={disabled} />
+    </Group>
+  );
+}, sameCard);
+
+// The question about a recording notice, asked in the form: it writes through the form's own undoable change.
+function NoticeOffer({ onDone }) {
+  const ctx = useForm();
+  const has = useConfigSelect((c) => !!(isObj(c?.persona?.disclosures) && c.persona.disclosures.recording_notice));
+  if (has) return null;
+  return <RecordingNoticeOffer onDone={onDone} onAdd={(text) => ctx.applyConfig(setRecordingNotice(ctx.store.get(), text), 'Added a recording notice. You can change it under Personality and rules › What callers are told.')} />;
+}
+
 function CardList({ shape, items, list, path, onChange, disabled }) {
   const ctx = useForm();
   const { engine, markDelete, requestDelete } = ctx;
   const collection = collectionAt(path);
-  const unused = collection === 'tools' ? new Set(unusedTools(ctx.config)) : null;
+  const unusedIds = useConfigSelect((c) => (collection === 'tools' ? unusedTools(c) : []));
+  const unused = useMemo(() => new Set(unusedIds), [unusedIds]);
   const named = collection && COLLECTIONS[collection].kind === 'list' ? collection : null;
   const [fresh, setFresh] = useState(-1);
+  const [offerNotice, setOfferNotice] = useState(false);
+  const [find, setFind] = useState({ query: '', kind: '', unusedOnly: false });
   const isUnion = engine.kindOf(items) === 'union';
   const branches = isUnion ? engine.branchesOf(items) : null;
   const lastKey = path[path.length - 1];
   const base = singular(lastKey === 'items' ? path[path.length - 2] : lastKey);
   const takenIds = list.filter(isObj).map((item) => item.id).filter((id) => typeof id === 'string');
+  // Some lists are added to by choosing a job from cards (tools, channels, guardrails), not a kind from a drop-down.
+  const pickerKey = collection === 'tools' ? 'tools' : named === 'channels' ? 'channels' : path.length === 2 && path[0] === 'guardrails' && ['input', 'output'].includes(path[1]) ? path.join('.') : null;
+  const picker = pickerKey ? pickerFor(pickerKey, { engine, branches, takenIds, botId: ctx.store.get()?.meta?.id || '' }) : null;
 
   const make = (branch) => {
     const made = engine.defaultFor(branch || shape.items);
@@ -450,47 +554,54 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
   };
   const add = (branch) => { onChange([...list, make(branch)]); setFresh(list.length); };
   const move = (from, to) => { if (to < 0 || to >= list.length) return; const next = [...list]; const [item] = next.splice(from, 1); next.splice(to, 0, item); onChange(next); };
+  // handlers that never change identity but always act on the latest list: so a card that did not change gets the same props and skips rendering
+  const itemChange = useKeyedHandlers((index, v) => onChange(list.map((x, i) => (i === index ? v : x))));
+  const removeItem = useStableCallback((index) => {
+    const item = list[index];
+    const { title } = summarize(item, index);
+    const remove = () => { markDelete(title); onChange(list.filter((_, i) => i !== index)); };
+    if (named && isObj(item) && typeof item.id === 'string') requestDelete(named, item.id, remove); else remove();
+  });
+  const moveItem = useStableCallback(move);
+
+  // A long list of tools needs finding things in: search, a filter by kind, and "only the ones no agent uses".
+  const searchable = collection === 'tools' && list.length > 6;
+  const filtering = searchable && (!!find.query.trim() || !!find.kind || find.unusedOnly);
+  const kinds = useMemo(() => (searchable ? toolKindCounts(list) : []), [searchable, list]);
+  const shown = list.map((item, index) => index).filter((index) => !filtering || toolMatches(list[index], find, unused));
 
   return (
     <div className="stFCards">
-      {list.map((item, index) => {
-        const { title, hint: summary } = summarize(item, index);
-        const baseHint = collection === 'messages' && isObj(item) && isObj(item.text) ? languageHint(item, ctx.config) : summary;
-        const hint = unused && isObj(item) && unused.has(item.id) ? [baseHint, 'not used by any agent'].filter(Boolean).join(' · ') : baseHint;
-        return (
-          <Group key={index} pathKey={keyOf([...path, index])} title={title} hint={hint} defaultOpen={list.length <= 3 || index === fresh}
-            onRemove={disabled ? null : () => {
-              const remove = () => { markDelete(title); onChange(list.filter((_, i) => i !== index)); };
-              if (named && isObj(item) && typeof item.id === 'string') requestDelete(named, item.id, remove); else remove();
-            }}
-            actions={!disabled && list.length > 1 ? (
-              <>
-                {list.length > 1 && <button type="button" className="stIconBtn" aria-label={`Move ${title} up`} disabled={index === 0} onClick={() => move(index, index - 1)}>↑</button>}
-                {list.length > 1 && <button type="button" className="stIconBtn" aria-label={`Move ${title} down`} disabled={index === list.length - 1} onClick={() => move(index, index + 1)}>↓</button>}
-              </>
-            ) : null}>
-            <Node schema={shape.items} value={item} path={[...path, index]} onChange={(v) => onChange(list.map((x, i) => (i === index ? v : x)))} disabled={disabled} />
-          </Group>
-        );
-      })}
+      {searchable && (
+        <div className="stFFind" role="search" aria-label="Search the tools">
+          <input className="stFInput small" type="search" value={find.query} placeholder="Find a tool by name or what it does" aria-label="Find a tool" onChange={(event) => setFind((old) => ({ ...old, query: event.target.value }))} />
+          <div className="stFFindKinds" role="group" aria-label="Kind of tool">
+            <button type="button" className={find.kind === '' ? 'on' : ''} aria-pressed={find.kind === ''} onClick={() => setFind((old) => ({ ...old, kind: '' }))}>All {list.length}</button>
+            {kinds.map((k) => <button type="button" key={k.kind} className={find.kind === k.kind ? 'on' : ''} aria-pressed={find.kind === k.kind} onClick={() => setFind((old) => ({ ...old, kind: old.kind === k.kind ? '' : k.kind }))}>{k.label} {k.count}</button>)}
+            <label className="stFFindUnused"><input type="checkbox" checked={find.unusedOnly} onChange={(event) => setFind((old) => ({ ...old, unusedOnly: event.target.checked }))} /> Not used by any agent ({unusedIds.length})</label>
+          </div>
+          {filtering && <small className="stMuted" role="status">Showing {shown.length} of {list.length}.{shown.length === 0 && ' Nothing matches: clear the search or a filter.'}</small>}
+        </div>
+      )}
+      {shown.map((index) => (
+        <CardItem key={index} item={list[index]} index={index} count={list.length} basePath={path} itemSchema={shape.items} disabled={disabled} named={named} collection={collection}
+          fresh={index === fresh} onItemChange={itemChange(index)} onRemoveItem={removeItem} onMoveItem={moveItem} />
+      ))}
       {list.length === 0 && <p className="stFEmpty">{collection === 'tools' ? 'No tools yet. Handing a caller over to another agent isn’t a tool: it is set up under the agent’s Handoffs.' : 'Nothing here yet.'}</p>}
-      {named === 'channels' ? (
-        <select className="stFInput small" value="" disabled={disabled} aria-label="Add channel" onChange={(event) => { if (event.target.value) { onChange([...list, buildChannel(event.target.value, { taken: takenIds, botId: ctx.config?.meta?.id || '' })]); setFresh(list.length); } }}>
-          <option value="">＋ Add channel…</option>
-          {CHANNEL_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label} — {preset.note}</option>)}
-        </select>
+      {picker ? (
+        <AddPicker what={WHAT[pickerKey]} options={picker} disabled={disabled}
+          onPick={(option, made) => { onChange([...list, made]); setFresh(list.length); if (pickerKey === 'channels' && (option.type === 'sip_voice' || option.type === 'web_voice')) setOfferNotice(true); }} />
       ) : isUnion ? (
-        <select className="stFInput small" value="" disabled={disabled} aria-label={`Add ${base}`} onChange={(event) => { if (event.target.value !== '') add(branches[Number(event.target.value)]); }}>
-          <option value="">＋ Add {base}…</option>
-          {branches.map((b, i) => {
+        <SmartSelect action className="stFInput small" disabled={disabled} ariaLabel={`Add ${base}`} placeholder={`＋ Add ${base}…`}
+          options={branches.map((b, i) => {
             const kind = engine.flatten(b).properties?.type?.const;
             const missing = collection === 'tools' && UNSUPPORTED_KINDS[kind];
-            return <option key={i} value={i}>{engine.branchLabel(b, i)}{missing ? ' (not available yet)' : ''}</option>;
-          })}
-        </select>
+            return { value: String(i), label: `${engine.branchLabel(b, i)}${missing ? ' (not available yet)' : ''}` };
+          })} onChange={(v) => { if (v !== '') add(branches[Number(v)]); }} />
       ) : (
         <button type="button" className="stAddBtn" disabled={disabled} onClick={() => add()}>＋ Add {base}</button>
       )}
+      {offerNotice && !disabled && <NoticeOffer onDone={() => setOfferNotice(false)} />}
     </div>
   );
 }
@@ -511,10 +622,7 @@ function AddKey({ existing, onAdd, pattern, options, disabled, label = 'entry' }
   if (options) {
     const left = options.filter((o) => !taken.has(o));
     return (
-      <select className="stFInput small" value="" disabled={disabled || left.length === 0} aria-label={`Add ${label}`} onChange={(event) => { if (event.target.value) onAdd(event.target.value); }}>
-        <option value="">{left.length ? `＋ Add ${label}…` : `No more ${label}s to add`}</option>
-        {left.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
+      <SmartSelect action className="stFInput small" disabled={disabled || left.length === 0} ariaLabel={`Add ${label}`} placeholder={left.length ? `＋ Add ${label}…` : `No more ${label}s to add`} options={left} onChange={(o) => { if (o) onAdd(o); }} />
     );
   }
   return (
@@ -586,6 +694,7 @@ function MapBody({ shape, value, path, onChange, disabled }) {
         if (complex) {
           return (
             <Group key={key} pathKey={pk} title={key} hint={named === 'state_vars' && isObj(obj[key]) && obj[key].sensitive === true ? <span className="stShield"><ShieldIcon /> sensitive</span> : undefined} defaultOpen={keys.length <= 3} onRemove={disabled ? null : () => removeEntry(key)}>
+              {named && <UsedBy collection={named} id={key} />}
               {!fixedKeys && <div className="stFRow"><div className="stFLabel"><label>Name</label></div><KeyInput value={key} taken={keys.filter((k) => k !== key)} pattern={pattern} onRename={(to) => rename(key, to)} disabled={disabled} /></div>}
               {control}
             </Group>

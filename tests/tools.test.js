@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { argNamesOf, findTemplates, highlightSegments, insertAt, insertables, templateProblems, templateScope } from '../src/studio/form/templates.js';
+import { toolKindCounts, toolMatches, usedByText } from '../src/studio/form/toolInfo.js';
+import { argNamesOf, findTemplates, highlightSegments, insertAt, insertables, scopeAt, templateProblems, templateScope } from '../src/studio/form/templates.js';
 import { describeMatches, evalPath, modelSees, parsePath, samplePaths, validatePath } from '../src/studio/form/jsonPaths.js';
 import { PARAM_KINDS, bodyFromParams, modelView, problems, readParams, writeParams } from '../src/studio/form/paramSchema.js';
 import { BUILTIN_HELP, agentsUsingTool, describeAdvice, kindOfTool, notAvailable, timeoutAdvice, unusedTools } from '../src/studio/form/toolInfo.js';
@@ -17,25 +18,47 @@ test('templates are found with their root and name, filters and spacing included
   assert.deepEqual(findTemplates(undefined), []);
 });
 
-test('a name the config doesn’t have is flagged, with what there is instead', () => {
+test('a name the config doesn’t have is hinted at, with what there is instead (never an error)', () => {
   const config = { state: { variables: { intent: {}, verified: {} } }, constants: { pay_url: 'x' } };
   const scope = templateScope(config, { argNames: ['order_id'] });
   assert.deepEqual(templateProblems('{{state.intent}} {{const.pay_url}} {{args.order_id}} {{result.balance}}', scope), []);
   const bad = templateProblems('{{state.intnt}} {{args.nope}} {{const.x}} {{foo.bar}}', scope);
   assert.equal(bad.length, 4);
+  assert.ok(bad.every((p) => p.severity === 'hint'), 'the browser only hints; the server decides what is an error');
   assert.match(bad[0].reason, /“intnt” isn’t a state variable \(there is intent, verified\)/);
   assert.match(bad[1].reason, /argument of this tool/);
   assert.match(bad[2].reason, /constant/);
-  assert.match(bad[3].reason, /“foo” isn’t something a template can read/);
+  assert.match(bad[3].reason, /“foo” isn’t a name this config offers here/);
   // outside a tool any argument name is possible
   assert.deepEqual(templateProblems('{{args.anything}}', templateScope(config)), []);
 });
 
-test('highlighting cuts the text into plain pieces and templates, bad ones marked', () => {
+test('highlighting cuts the text into plain pieces and templates, unknown ones marked', () => {
   const scope = templateScope({ state: { variables: { a: {} } } });
   const segments = highlightSegments('x {{state.a}} y {{state.b}} z', scope);
-  assert.deepEqual(segments.map((s) => s.kind), ['plain', 'tpl', 'plain', 'bad', 'plain']);
+  assert.deepEqual(segments.map((s) => s.kind), ['plain', 'tpl', 'plain', 'unknown', 'plain']);
   assert.equal(segments.map((s) => s.text).join(''), 'x {{state.a}} y {{state.b}} z'); // nothing is lost
+});
+
+test('which names exist depends on where the text sits: the places the review found are not flagged', () => {
+  const config = { state: { variables: { verified: {} } }, tools: [{ id: 't', parameters: { properties: { order_id: {} } } }] };
+  const flagged = (path, text) => templateProblems(text, scopeAt(config, path)).map((p) => p.text);
+  // a notification is given `with.…`
+  assert.deepEqual(flagged(['notifications', 0, 'subject'], 'Hello {{with.name}} {{with.phone}} {{with.ticket_id}}'), []);
+  // a transfer's address template reads pbx and target
+  assert.deepEqual(flagged(['telephony', 'transfers', 0, 'uri_template'], 'sip:{{target}}@{{pbx.host}};transport={{pbx.transport}}'), []);
+  // an event supplies what happened
+  assert.deepEqual(flagged(['events', 'on_error', 'do', 0, 'say'], '{{error}} {{reason}} {{tool}} {{transfer}} {{from}} {{to}}'), []);
+  // a task step's validation reads the answer just collected
+  assert.deepEqual(flagged(['tasks', 0, 'steps', 1, 'validate', 'args', 'code'], '{{value}}'), []);
+  // a tool's direct delivery reads the response's own field names
+  assert.deepEqual(flagged(['tools', 0, 'result', 'out_of_band', 'fields', 0, 'template'], '{{link}} {{order_id}}'), []);
+  // outside those places the same names are only hinted at, never red
+  const elsewhere = templateProblems('{{with.name}}', scopeAt(config, ['persona', 'tone']));
+  assert.equal(elsewhere.length, 1);
+  assert.equal(elsewhere[0].severity, 'hint');
+  // and a typo in a state name is still hinted at, where state names are known
+  assert.equal(flagged(['persona', 'tone'], '{{state.verifed}}').length, 1);
 });
 
 test('inserting puts the snippet at the caret or over the selection', () => {
@@ -54,11 +77,26 @@ test('the supported path grammar is read, and what isn’t supported says so', (
   assert.deepEqual(parsePath('$.a.b'), [{ key: 'a' }, { key: 'b' }]);
   assert.deepEqual(parsePath("$.a[0]['x-y'][*]"), [{ key: 'a' }, { index: 0 }, { key: 'x-y' }, { all: true }]);
   assert.deepEqual(parsePath('$'), []);
-  for (const [text, why] of [['', /Enter a path/], ['balance', /starts with \$/], ['$..a', /search everywhere/], ['$.a[?(@.x>1)]', /Filters/], ['$.a[0:2]', /Slices/], ['$.a-b', /Unexpected/], ['$.a[', /never closed/], ['$.', /field name/]]) {
+  for (const [text, why] of [['', /Enter a path/], ['$..a', /search everywhere/], ['$.a[?(@.x>1)]', /Filters/], ['$.a[0:2]', /Slices/], ['$.a[', /never closed/], ['$.', /field name/], ['a..b', /search everywhere/], ['a.', /field name/]]) {
     const result = validatePath(text);
     assert.equal(result.ok, false, text);
     assert.match(result.error, why, text);
   }
+});
+
+test('a bare field name is the same as $.name, the way the runtime reads it (every bot writes to_llm like this)', () => {
+  assert.deepEqual(parsePath('found'), [{ key: 'found' }]);
+  assert.deepEqual(parsePath('customer.name'), [{ key: 'customer' }, { key: 'name' }]);
+  assert.deepEqual(parsePath('items[*].id'), [{ key: 'items' }, { all: true }, { key: 'id' }]);
+  assert.deepEqual(parsePath('[0].id'), [{ index: 0 }, { key: 'id' }]);
+  assert.deepEqual(parsePath('$.a-b'), [{ key: 'a-b' }], 'a hyphen after a dot is fine, as in the runtime');
+  assert.deepEqual(parsePath('$.customer.tax-id'), [{ key: 'customer' }, { key: 'tax-id' }]);
+  for (const path of ['found', 'summary', 'status', 'order.items[0].sku', '$.found']) assert.equal(validatePath(path).ok, true, path);
+  assert.deepEqual(evalPath({ found: true, summary: 'Order NB-1003, shipped' }, 'found'), [true]);
+  assert.deepEqual(evalPath(response, 'customer.name'), ['Asha']);
+  // what the model is shown for the review's own example
+  const seen = modelSees({ found: true, summary: 'Order NB-1003, shipped', extra: 1 }, ['found', 'summary']);
+  assert.deepEqual(seen, { whole: false, value: { found: true, summary: 'Order NB-1003, shipped' }, missing: [] });
 });
 
 test('paths pick the right values out of a response, and nothing when they don’t match', () => {
@@ -148,7 +186,7 @@ test('"what the model sees" for the parameters, and a body built from them', () 
 test('which kinds the runtime can’t run yet', () => {
   assert.equal(notAvailable({ type: 'mcp' }), 'MCP server tools');
   assert.equal(notAvailable({ type: 'task' }), 'Task tools');
-  assert.equal(notAvailable({ type: 'knowledge' }), 'Knowledge search tools');
+  assert.equal(notAvailable({ type: 'knowledge' }), null, 'knowledge search runs now');
   assert.equal(notAvailable({ type: 'code' }), 'Custom code tools');
   assert.equal(notAvailable({ type: 'builtin', builtin: 'send_dtmf' }), 'Send keypad tones');
   assert.equal(notAvailable({ type: 'builtin', builtin: 'end_call' }), null);
@@ -174,4 +212,29 @@ test('advice on timeouts, retries and descriptions', () => {
   assert.equal(describeAdvice('Gets the bill').level, 'warn');
   assert.equal(describeAdvice('Fetches the current bill for the account number').level, 'hint');
   assert.equal(describeAdvice('Use when the caller asks what they owe, to fetch their current bill.').level, 'ok');
+});
+
+test('finding a tool in a long list: words in any order over its id, description, kind; a kind; only the unused; and who uses it', () => {
+  const tools = [
+    { id: 'find_order', type: 'http', description: 'Looks up an order by number' },
+    { id: 'refund_order', type: 'http', description: 'Starts a refund' },
+    { id: 'end_call', type: 'builtin', builtin: 'end_call', description: 'Ends the conversation' },
+    { id: 'faq', type: 'knowledge', description: 'Searches the help centre' },
+  ];
+  const ids = (filter, unused) => tools.filter((t) => toolMatches(t, filter, unused)).map((t) => t.id);
+  assert.deepEqual(ids({}), ['find_order', 'refund_order', 'end_call', 'faq'], 'no filter shows all');
+  assert.deepEqual(ids({ query: 'order' }), ['find_order', 'refund_order']);
+  assert.deepEqual(ids({ query: 'number order' }), ['find_order'], 'every word, any order');
+  assert.deepEqual(ids({ query: 'LOOKS' }), ['find_order'], 'ignoring case');
+  assert.deepEqual(ids({ query: 'built-in' }), ['end_call'], 'by kind name');
+  assert.deepEqual(ids({ kind: 'http' }), ['find_order', 'refund_order']);
+  assert.deepEqual(ids({ kind: 'http', query: 'refund' }), ['refund_order']);
+  assert.deepEqual(ids({ unusedOnly: true }, new Set(['faq', 'end_call'])), ['end_call', 'faq']);
+  assert.deepEqual(ids({ query: 'zzz' }), []);
+  assert.deepEqual(toolKindCounts(tools), [{ kind: 'http', label: 'HTTP', count: 2 }, { kind: 'builtin', label: 'Built-in', count: 1 }, { kind: 'knowledge', label: 'Knowledge', count: 1 }]);
+  assert.deepEqual(toolKindCounts(undefined), []);
+  assert.equal(usedByText([]), 'not used by any agent');
+  assert.equal(usedByText(['billing']), 'used by billing');
+  assert.equal(usedByText(['billing', 'support']), 'used by billing and support');
+  assert.equal(usedByText(['a', 'b', 'c', 'd']), 'used by 4 agents');
 });

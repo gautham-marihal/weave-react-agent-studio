@@ -34,6 +34,7 @@ const context = await browser.newContext({ viewport: { width: 1360, height: 900 
 await context.addInitScript(() => {
   if (sessionStorage.getItem('e2e-seeded')) return;
   sessionStorage.setItem('e2e-seeded', '1');
+  localStorage.setItem('weave_tech_names', '1'); // the raw JSON view is offered with technical names
   localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E Tester', email: 'e2e@example.com', workspaceName: 'E2E', role: 'dev' }));
 });
 const page = await context.newPage();
@@ -62,7 +63,8 @@ try {
 
   // ---- create an agent from a starter
   await page.getByRole('button', { name: /^\W*Agents/ }).first().click();
-  await page.waitForSelector('.agentRow');
+  // a fresh server has no agents yet: the list is then the empty state, not rows, and both are a loaded list
+  await page.waitForSelector('.agentRow, .emptyPanel');
   await page.getByRole('button', { name: /Create agent/ }).first().click();
   await page.getByPlaceholder('e.g. Acme Support').fill(agentName);
   await page.getByRole('radio', { name: /Customer care/ }).check();
@@ -83,7 +85,8 @@ try {
 
   // ---- publish, then deploy to development
   await page.getByRole('button', { name: 'Publish', exact: true }).first().click();
-  const dialog = page.locator('[role=dialog]');
+  const dialog = page.locator('.stPublishPanel'); // publishing is a step on the Versions page
+  await dialog.waitFor();
   await dialog.getByRole('button', { name: 'Publish', exact: true }).click();
   await dialog.getByText(/is published/).waitFor({ timeout: 15000 });
   const published = (await dialog.getByRole('heading', { name: /is published/ }).innerText()).replace(/^Version\s+/, '').replace(/\s+is published.*/, '').trim();

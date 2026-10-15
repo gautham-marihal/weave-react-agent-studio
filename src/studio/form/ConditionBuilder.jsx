@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { isObj } from './engine.js';
 import { FreeValue, Select, StringList } from './fields.jsx';
 import InlineCreate from './InlineCreate.jsx';
-import { useForm } from './ctx.js';
+import { useConfigSelect, useForm } from './ctx.js';
 import { argNamesOf } from './templates.js';
 
 // A condition ("when the caller is verified", "when the argument is at least 3") as one readable row instead of a
@@ -43,7 +43,7 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
   const subject = obj[source] ?? '';
   const operand = obj[operator];
   const toolIndex = path[0] === 'tools' && typeof path[1] === 'number' ? path[1] : null;
-  const argNames = toolIndex !== null ? argNamesOf(ctx.config?.tools?.[toolIndex]) : [];
+  const argNames = useConfigSelect((c) => (toolIndex !== null ? argNamesOf(c?.tools?.[toolIndex]) : []));
   const stateVars = ctx.refOptions.state_vars || [];
 
   const write = (next) => onChange(next);

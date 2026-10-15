@@ -4,6 +4,7 @@ import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from '../demo/demoMo
 import { navigate, routeHref } from './route.js';
 import { envLabel } from './ui.jsx';
 import { useAsync } from './useAsync.js';
+import { DENSITIES, useDensity, useTechnicalNames } from './usePref.js';
 
 // Workspace settings. A workspace here is a label kept in this browser, and so is which workspace an agent is in;
 // the agents themselves live on the Agent Builder API. This page says what is on the server and what is only local.
@@ -13,6 +14,8 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
   const [deleteText, setDeleteText] = useState('');
   useEffect(() => { setName(workspace?.name || ''); setDeleteText(''); }, [workspace?.id, workspace?.name]);
 
+  const [density, setDensity] = useDensity();
+  const [technical, setTechnical] = useTechnicalNames();
   const health = useAsync((signal) => api.health({ signal }), []);
   const envs = useAsync((signal) => api.environments({ signal }), []);
 
@@ -31,7 +34,7 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
 
   return (
     <>
-      <section className="welcomeBlock pageHeaderBlock"><div><h1>Settings</h1><p>This workspace, and the Agent Builder API your agents live on.</p></div></section>
+      <section className="welcomeBlock pageHeaderBlock"><div><h1>Settings</h1><p>This workspace, and what is running where.</p></div></section>
       <div className="settingsGrid">
         <section className="settingsCard" aria-labelledby="settings-general">
           <h2 id="settings-general">General</h2>
@@ -49,28 +52,27 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
           <p className="stMuted">Workspaces, and which workspace each agent is listed in, are kept in this browser, so two people see different lists. A workspace is a way to group agents, not access control: anyone who can open this app can open every agent. Each agent is in one workspace; the agent itself, its versions and its deployments are on the server.</p>
         </section>
 
-        <section className="settingsCard" aria-labelledby="settings-source">
-          <h2 id="settings-source">Data source</h2>
-          <p>{isDemoMode() ? DEMO_NOTE : 'Agents are read from and saved to the Agent Builder API. To try the studio without a backend, switch to demo data: sample agents kept in this browser, with simulated saving, publishing and deploying.'}</p>
-          <div className="demoSwitch" role="group" aria-label="Data source">
-            <button type="button" className={isDemoMode() ? 'quietButton' : 'primaryCta compactCta'} disabled={!isDemoMode()} aria-pressed={!isDemoMode()} onClick={() => setDemoMode(false)}>Real API</button>
-            <button type="button" className={isDemoMode() ? 'primaryCta compactCta' : 'quietButton'} disabled={isDemoMode()} aria-pressed={isDemoMode()} onClick={() => setDemoMode(true)}>Demo data</button>
-          </div>
-          {demoIsForced() && <p className="stMuted">This is a demo build, so the choice is fixed. Run <code>npm run dev</code> for the real API.</p>}
+        <section className="settingsCard" aria-labelledby="settings-look">
+          <h2 id="settings-look">How it looks and reads</h2>
+          <p className="stMuted">These are your own choices, kept in this browser.</p>
+          <fieldset className="settingsChoice">
+            <legend>Spacing</legend>
+            <div className="demoSwitch" role="group" aria-label="Spacing">
+              {DENSITIES.map((option) => (
+                <button key={option} type="button" className={density === option ? 'primaryCta compactCta' : 'quietButton'} aria-pressed={density === option} onClick={() => setDensity(option)}>{option === 'compact' ? 'Compact' : 'Comfortable'}</button>
+              ))}
+            </div>
+            <small className="stMuted">Compact fits more on a screen, for people who use the studio all day.</small>
+          </fieldset>
+          <label className="settingsCheck">
+            <input type="checkbox" checked={technical} onChange={(event) => setTechnical(event.target.checked)} />
+            <span><strong>Show technical names</strong><small className="stMuted">Beside every setting, show the name the configuration file uses for it, with a way to copy its path, offer the raw JSON view of the configuration, and show where the studio reads its data from.</small></span>
+          </label>
         </section>
 
-        <section className="settingsCard" aria-labelledby="settings-api">
-          <h2 id="settings-api">{isDemoMode() ? 'Agent Builder API (demo)' : 'Agent Builder API'}</h2>
-          <div className="stApiState" role="status">
-            <i className={health.loading && !health.data ? 'wait' : online ? 'ok' : 'bad'} aria-hidden="true" />
-            <div>
-              <strong>{isDemoMode() ? 'Demo, no server' : health.loading && !health.data ? 'Checking…' : online ? 'Connected' : 'Not reachable'}</strong>
-              <small>{isDemoMode() ? 'Nothing here talks to a server: it is an imitation kept in this browser.' : online ? 'Agents, drafts, versions and deployments are read from and saved to the server.' : health.error?.message || 'The API did not answer. Pages that need it will show an error until it is back.'}</small>
-            </div>
-            <button type="button" className="quietButton" onClick={health.reload}>Check again</button>
-          </div>
+        <section className="settingsCard" aria-labelledby="settings-running">
+          <h2 id="settings-running">What is running where</h2>
           <div className="settingsEnvironments">
-            <h3>What is running where</h3>
             <p>You choose this per agent on its Deploy tab.</p>
             {envs.loading && !envs.data ? <p className="stMuted">Loading…</p> : (
               <ul className="stEnvList">
@@ -102,6 +104,28 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
             </>
           )}
         </section>
+        {/* Where the data comes from is for people who work with the studio's plumbing: shown with technical names, and whenever the API cannot be reached (so nobody is left wondering why nothing loads). */}
+        {(technical || (!online && !health.loading)) && <details className="settingsCard settingsDev" open={isDemoMode() || (!online && !health.loading) || undefined} aria-labelledby="settings-dev">
+          <summary id="settings-dev"><strong>For developers</strong> <span className="stMuted">Data source and the connection to the Agent Builder API</span></summary>
+          <h3>Data source</h3>
+          <p>{isDemoMode() ? DEMO_NOTE : 'Agents are read from and saved to the Agent Builder API. To try the studio without a backend, switch to demo data: sample agents kept in this browser, with simulated saving, publishing and deploying.'}</p>
+          <div className="demoSwitch" role="group" aria-label="Data source">
+            <button type="button" className={isDemoMode() ? 'quietButton' : 'primaryCta compactCta'} disabled={!isDemoMode()} aria-pressed={!isDemoMode()} onClick={() => setDemoMode(false)}>Real API</button>
+            <button type="button" className={isDemoMode() ? 'primaryCta compactCta' : 'quietButton'} disabled={isDemoMode()} aria-pressed={isDemoMode()} onClick={() => setDemoMode(true)}>Demo data</button>
+          </div>
+          {demoIsForced() && <p className="stMuted">This is a demo build, so the choice is fixed. Run <code>npm run dev</code> for the real API.</p>}
+
+          <h3>{isDemoMode() ? 'Agent Builder API (demo)' : 'Agent Builder API'}</h3>
+          <div className="stApiState" role="status">
+            <i className={health.loading && !health.data ? 'wait' : online ? 'ok' : 'bad'} aria-hidden="true" />
+            <div>
+              <strong>{isDemoMode() ? 'Demo, no server' : health.loading && !health.data ? 'Checking…' : online ? 'Connected' : 'Not reachable'}</strong>
+              <small>{isDemoMode() ? 'Nothing here talks to a server: it is an imitation kept in this browser.' : online ? 'Agents, drafts, versions and deployments are read from and saved to the server.' : health.error?.message || 'The API did not answer. Pages that need it will show an error until it is back.'}</small>
+            </div>
+            <button type="button" className="quietButton" onClick={health.reload}>Check again</button>
+          </div>
+        </details>}
+
       </div>
     </>
   );

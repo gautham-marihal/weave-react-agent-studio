@@ -8,7 +8,6 @@ import { isObj } from './engine.js';
 export const UNSUPPORTED_KINDS = {
   task: 'Task tools',
   mcp: 'MCP server tools',
-  knowledge: 'Knowledge search tools',
   code: 'Custom code tools',
 };
 export const UNSUPPORTED_BUILTINS = { send_dtmf: 'Send keypad tones', collect_dtmf: 'Collect keypad digits' };
@@ -76,3 +75,33 @@ export const REPLY_CHOICES = [
   { value: 'model', label: 'The model answers', help: 'After the tool runs, the model reads its result and replies. Right for lookups.', example: 'The caller asks for their bill → the tool fetches it → the model says “You owe 42.50, due on 1 November.”' },
   { value: 'none', label: 'Nothing more is said', help: 'The model stays quiet this turn. Use it when the tool’s effects already spoke or showed something (a form, a transfer, a fixed goodbye), so the model doesn’t talk over it.', example: 'The caller asks for a person → the tool’s effect says “I’m putting you through” and transfers → the model adds nothing.' },
 ];
+
+// ---- finding a tool in a long list ----------------------------------------------------------------------------------------------------
+export const TOOL_KIND_LABEL = { http: 'HTTP', builtin: 'Built-in', task: 'Task', mcp: 'MCP', knowledge: 'Knowledge', code: 'Code' };
+
+// How many of each kind there are: [{ kind, label, count }], the most common first.
+export function toolKindCounts(tools) {
+  const counts = new Map();
+  (Array.isArray(tools) ? tools : []).forEach((tool) => { const kind = kindOfTool(tool) || 'other'; counts.set(kind, (counts.get(kind) || 0) + 1); });
+  return [...counts.entries()].map(([kind, count]) => ({ kind, label: TOOL_KIND_LABEL[kind] || kind, count })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+// Does this tool match what was typed, the kind chosen, and "only the unused"? The words are looked for in its id, name, description and kind
+// (and, for a built-in, which one), all of them, in any order, ignoring case.
+export function toolMatches(tool, { query = '', kind = '', unusedOnly = false } = {}, unused = new Set()) {
+  if (!isObj(tool)) return !query && !kind && !unusedOnly;
+  if (kind && (kindOfTool(tool) || 'other') !== kind) return false;
+  if (unusedOnly && !unused.has(tool.id)) return false;
+  const words = String(query).toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const haystack = [tool.id, tool.name, tool.description, kindOfTool(tool), TOOL_KIND_LABEL[kindOfTool(tool)], tool.builtin].filter((v) => typeof v === 'string').join(' ').toLowerCase();
+  return words.every((word) => haystack.includes(word));
+}
+
+// "used by billing and support", "used by 4 agents", or "not used by any agent".
+export function usedByText(agentIds) {
+  const ids = Array.isArray(agentIds) ? agentIds : [];
+  if (!ids.length) return 'not used by any agent';
+  if (ids.length <= 2) return `used by ${ids.join(' and ')}`;
+  return `used by ${ids.length} agents`;
+}

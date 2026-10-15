@@ -2,36 +2,36 @@
 .scHead { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .scHead h3 { margin: 0 0 4px; }
 .scBar { display: flex; flex-wrap: wrap; gap: 8px; }
-.scEmpty { display: grid; gap: 8px; justify-items: start; color: var(--muted); font-size: 13.5px; }
+.scEmpty { display: grid; gap: 8px; justify-items: start; color: var(--muted); font-size:var(--fs-md); }
 .scEmpty strong { color: var(--text, inherit); }
 .scList { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .scItem { border: 1px solid var(--line2, rgba(127,127,127,.3)); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
 .scItem > header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .scItem > header small { color: var(--muted); flex: 1 1 160px; }
 .scItemActions { display: inline-flex; gap: 6px; margin-left: auto; }
-.scSaid { margin: 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-.scChip { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line2, rgba(127,127,127,.35)); }
+.scSaid { margin: 0; font-size:var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
+.scChip { display: inline-block; font-size:var(--fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line2, rgba(127,127,127,.35)); }
 .scChip.good { color: var(--ok, #34d399); border-color: currentColor; }
 .scChip.bad { color: var(--danger, #f87171); border-color: currentColor; }
 .scChip.idle { color: var(--muted); }
 .scLast { border-top: 1px dashed var(--line2, rgba(127,127,127,.3)); padding-top: 8px; }
-.scLast p { margin: 0 0 6px; font-size: 12.5px; }
+.scLast p { margin: 0 0 6px; font-size:var(--fs-sm); }
 .scResults { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.scResults li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.scResults li { display: flex; gap: 8px; align-items: baseline; font-size:var(--fs-sm); }
 .scResults li b { width: 16px; text-align: center; }
 .scResults li small { display: block; color: var(--muted); }
 .scResults li.passed b { color: var(--ok, #34d399); }
 .scResults li.failed b, .scResults li.error b { color: var(--danger, #f87171); }
-.scTranscript { margin-top: 6px; font-size: 12.5px; }
+.scTranscript { margin-top: 6px; font-size:var(--fs-sm); }
 .scTranscript ol { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px; }
 .scTranscript li.user b { color: var(--accent, #22d3ee); }
 .scForm { display: grid; gap: 12px; }
 .scGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-.scGrid label, .scImport label { display: grid; gap: 4px; font-size: 12.5px; }
+.scGrid label, .scImport label { display: grid; gap: 4px; font-size:var(--fs-sm); }
 .scGrid label.wide { grid-column: 1 / -1; }
 .scGrid em { font-style: normal; color: var(--muted); }
 .scBlock { border: 1px solid var(--line2, rgba(127,127,127,.3)); border-radius: 10px; padding: 8px 12px 12px; display: grid; gap: 8px; }
-.scBlock legend { font-size: 12.5px; font-weight: 600; padding: 0 6px; }
+.scBlock legend { font-size:var(--fs-sm); font-weight: 600; padding: 0 6px; }
 .scTurns, .scExpects { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .scTurns li { display: flex; gap: 6px; }
 .scTurns input { flex: 1 1 auto; min-width: 0; }
@@ -40,10 +40,54 @@
 .scExpect textarea, .scExpect input[type=text] { flex: 1 1 200px; min-width: 0; }
 .scProblems { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
 .scActions { display: flex; gap: 8px; flex-wrap: wrap; }
-.scSummary h4, .scTab h4 { margin: 0 0 4px; font-size: 14px; display: flex; gap: 8px; align-items: center; }
-.scSummary p { margin: 2px 0; font-size: 13.5px; }
+.scSummary h4, .scTab h4 { margin: 0 0 4px; font-size:var(--fs-md); display: flex; gap: 8px; align-items: center; }
+.scSummary p { margin: 2px 0; font-size:var(--fs-md); }
 .scNum.good { color: var(--ok, #34d399); } .scNum.bad { color: var(--danger, #f87171); }
 .scFailed { color: var(--danger, #f87171); }
 .scHistory { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 4px; }
 .scHistory .quietButton.on { border-color: var(--accent, #22d3ee); }
-.scOk { color: var(--ok, #34d399); margin: 6px 0 0; font-size: 13px; }
+.scOk { color: var(--ok, #34d399); margin: 6px 0 0; font-size:var(--fs-sm); }
+
+/* ---- the real runner, results, and the fuller editor */
+.scChip.warn { color: var(--warn-text, #d6a53a); border-color: currentColor; }
+.scBanner { margin: 0; padding: 8px 12px; border-left: 3px solid var(--accent, #22d3ee); border-radius: 8px; background: var(--surface2); font-size:var(--fs-sm); line-height: 1.5; color: var(--muted); }
+.scVersionLine { margin: 0; font-size:var(--fs-md); }
+.scVersionLine.passed b { color: var(--ok, #34d399); }
+.scVersionLine.failed b { color: var(--danger-text, #f87171); }
+.scVersionLine.none { color: var(--muted); }
+.scPaid { border: 1px dashed var(--line2); border-radius: 10px; padding: 6px 12px; font-size:var(--fs-sm); }
+.scPaid summary { cursor: pointer; color: var(--muted); }
+.scCheck { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0; line-height: 1.5; }
+.scCheck input { margin-top: 3px; }
+.scProgress { height: 6px; border-radius: 99px; background: var(--surface2); overflow: hidden; margin: 6px 0; }
+.scProgress i { display: block; height: 100%; background: var(--accent, #22d3ee); transition: width .3s ease; }
+.scVerdict { margin: 0 0 8px; font-size:var(--fs-md); }
+.scUnmocked { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.scUnmocked li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.scNext { margin: 8px 0 0; padding-left: 18px; font-size:var(--fs-sm); color: var(--muted); display: grid; gap: 3px; }
+.scNotes { margin: 8px 0 0; padding-left: 18px; font-size:var(--fs-sm); color: var(--dim); }
+.scFinal { margin: 8px 0 0; font-size:var(--fs-sm); color: var(--muted); }
+.scDetail { margin-top: 8px; font-size:var(--fs-sm); }
+.scDetail > summary { cursor: pointer; color: var(--muted); }
+.scTable { width: 100%; border-collapse: collapse; margin-top: 6px; font-size:var(--fs-sm); }
+.scTable th, .scTable td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line2); }
+.scTable tr.bad td { color: var(--danger-text); }
+.scTools { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 3px; }
+.scErr { color: var(--danger-text); }
+.scTranscriptList { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px; }
+.scLast > summary { cursor: pointer; list-style: none; }
+.scLast > summary::-webkit-details-marker { display: none; }
+.scDesc { margin: 0; font-size:var(--fs-sm); color: var(--muted); }
+.scFormTop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.scJson { display: grid; gap: 4px; font-size:var(--fs-sm); }
+.scMore { border: 1px dashed var(--line2); border-radius: 10px; padding: 6px 12px; }
+.scMore > summary { cursor: pointer; color: var(--muted); font-size:var(--fs-sm); }
+.scMocks, .scScript { display: grid; gap: 8px; }
+.scMock { border: 1px solid var(--line2); border-radius: 10px; padding: 8px 12px 10px; display: grid; gap: 8px; }
+.scMock legend { font-size:var(--fs-sm); font-weight: 600; padding: 0 6px; }
+.scScriptList { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.scScriptList li { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
+.scScriptList li > input { flex: 1 1 220px; min-width: 0; }
+.scExpect.unknown { align-items: center; }
+.scUnknownCode { font-size:var(--fs-xs); overflow-wrap: anywhere; }
+.scGrid .scField { display: grid; gap: 2px; }

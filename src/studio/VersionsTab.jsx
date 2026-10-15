@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.js';
 import { formatDiffPath, formatWhen, truncate } from './format.js';
 import { navigate, routeHref } from './route.js';
 import { ErrorState, Modal, Notice, Spinner } from './ui.jsx';
 import { useAsync } from './useAsync.js';
+import { normalizeHeadline, testStatusOf } from './scenarios/runResults.js';
 
 const OP_LABEL = { add: 'Added', remove: 'Removed', change: 'Changed' };
 const OP_MARK = { add: '+', remove: '−', change: '~' };
@@ -120,6 +122,9 @@ function RestoreDialog({ botId, version, dirty, onClose, onDone }) {
 export default function VersionsTab({ botId, editor, refreshKey }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const list = versions.data || [];
+  // test runs say which exact configuration they tested, so a version can show whether IT passed (a read; nothing is run)
+  const runs = useAsync((signal) => api.listTestRuns(botId, 50, { signal }), [botId, refreshKey]);
+  const headlines = useMemo(() => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline) : []), [runs.data]);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('draft');
   const [restoreTarget, setRestoreTarget] = useState(null);
@@ -151,13 +156,14 @@ export default function VersionsTab({ botId, editor, refreshKey }) {
           <section className="stCard">
             <h3>Published versions</h3>
             <div className="stTable" role="table">
-              <div className="stRow head" role="row"><span>Version</span><span>Published</span><span>By</span><span>Checksum</span><span /></div>
+              <div className="stRow head" role="row"><span>Version</span><span>Published</span><span>By</span><span>Checksum</span><span>Tests</span><span /></div>
               {list.map((item, index) => (
                 <div className="stRow" role="row" key={item.version}>
                   <span><strong>{item.version}</strong>{index === 0 && <em className="stTag">latest</em>}</span>
                   <span title={item.published_at}>{formatWhen(item.published_at)}</span>
                   <span>{item.published_by || '—'}</span>
                   <span><code>{String(item.checksum || '').slice(0, 10)}</code></span>
+                  <span>{(() => { const t = testStatusOf(item, headlines); return <span className={`stTestChip ${t.state}`} title={t.state === 'none' ? 'No run has tested this exact version' : `The latest run on this exact version ${t.text.toLowerCase()}`}>{runs.error ? '—' : t.text}</span>; })()}</span>
                   <span className="stRowActions">
                     <button type="button" className="quietButton" onClick={() => { setFrom(item.version); setTo('draft'); }}>Compare</button>
                     <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'deploy', { version: item.version }), { guard: false })}>Deploy</button>
@@ -172,11 +178,11 @@ export default function VersionsTab({ botId, editor, refreshKey }) {
             <h3>Compare</h3>
             <div className="stCompare">
               <label><span>From</span>
-                <select value={from} onChange={(event) => setFrom(event.target.value)}>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+                <SmartSelect className="" value={from} ariaLabel="From" options={options} onChange={setFrom} />
               </label>
               <b aria-hidden="true">→</b>
               <label><span>To</span>
-                <select value={to} onChange={(event) => setTo(event.target.value)}>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+                <SmartSelect className="" value={to} ariaLabel="To" options={options} onChange={setTo} />
               </label>
             </div>
             {!canDiff && <p className="stMuted">Choose two different versions to compare.</p>}

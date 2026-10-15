@@ -5,6 +5,13 @@ import { api } from '../../api/client.js';
 let cached = null;
 let pending = null;
 
+// The schema, from the one shared copy: for code that is not a component (the settings search).
+export function loadSchema() {
+  if (cached) return Promise.resolve(cached);
+  if (!pending) pending = api.schema().then((schema) => { cached = schema; return schema; }).finally(() => { pending = null; });
+  return pending;
+}
+
 export function useSchema() {
   const [state, setState] = useState({ schema: cached, error: null, loading: !cached });
   const [tick, setTick] = useState(0);
@@ -13,10 +20,7 @@ export function useSchema() {
     if (cached) { setState({ schema: cached, error: null, loading: false }); return undefined; }
     let off = false;
     setState((old) => ({ ...old, loading: true, error: null }));
-    if (!pending) {
-      pending = api.schema().then((schema) => { cached = schema; return schema; }).finally(() => { pending = null; });
-    }
-    pending.then(
+    loadSchema().then(
       (schema) => { if (!off) setState({ schema, error: null, loading: false }); },
       (error) => { if (!off) setState({ schema: null, error, loading: false }); },
     );

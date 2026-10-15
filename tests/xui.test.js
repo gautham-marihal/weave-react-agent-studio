@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { groupKeys, looksLikePhone, looksLikeUrl, orderKeys, readXui, splitAdvanced } from '../src/studio/form/xui.js';
 
 test('only well-formed hints are read', () => {
-  assert.deepEqual(readXui({ 'x-ui': { widget: 'jsonpath', label: ' Path ', help: 'h', group: 'Source', order: 2, advanced: true } }), { widget: 'jsonpath', label: 'Path', help: 'h', group: 'Source', order: 2, advanced: true });
-  assert.deepEqual(readXui({ 'x-ui': { widget: 'sparkles', label: '', order: 'x', advanced: 'yes' } }), { widget: undefined, label: undefined, help: undefined, group: undefined, order: undefined, advanced: false });
+  assert.deepEqual(readXui({ 'x-ui': { widget: 'jsonpath', label: ' Path ', help: 'h', group: 'Source', order: 2, advanced: true } }), { widget: 'jsonpath', label: 'Path', help: 'h', example: undefined, audience: undefined, group: 'Source', order: 2, advanced: true });
+  assert.deepEqual(readXui({ 'x-ui': { widget: 'sparkles', label: '', order: 'x', advanced: 'yes' } }), { widget: undefined, label: undefined, help: undefined, example: undefined, audience: undefined, group: undefined, order: undefined, advanced: false });
   assert.equal(readXui({}).widget, undefined);
   assert.equal(readXui(undefined).advanced, false);
 });
@@ -32,4 +32,10 @@ test('phone and url shapes', () => {
   assert.equal(looksLikeUrl('https://api.example.com/x'), true);
   assert.equal(looksLikeUrl('example.com'), false);
   assert.equal(looksLikeUrl('ftp://x'), false);
+});
+
+test('the example and the audience hints are read, and a made-up audience is ignored', () => {
+  assert.equal(readXui({ 'x-ui': { example: ' 8 ', audience: 'expert' } }).example, '8');
+  assert.equal(readXui({ 'x-ui': { audience: 'expert' } }).audience, 'expert');
+  assert.equal(readXui({ 'x-ui': { audience: 'wizard' } }).audience, undefined);
 });

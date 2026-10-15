@@ -1,10 +1,11 @@
 import { useMemo, useSyncExternalStore } from 'react';
+import { TAB_IDS } from './journey.js';
 
 // Hash routes, so a bot has a link and a refresh keeps you where you were:
 //   #/bots                 the list      (#/bots?new=1 opens the create dialog)
 //   #/bots/{id}            a bot, on its Config tab
-//   #/bots/{id}/{tab}      config | versions | deploy | test | scenarios
-export const TABS = ['config', 'versions', 'deploy', 'test', 'scenarios'];
+//   #/bots/{id}/{tab}      config | knowledge | test | scenarios | checks | versions | deploy | calls   (the stages of the journey, see journey.js)
+export const TABS = TAB_IDS;
 
 export function parseRoute(hash) {
   const [pathPart, query = ''] = String(hash || '').replace(/^#/, '').split('?');

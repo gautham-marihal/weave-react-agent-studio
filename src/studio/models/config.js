@@ -6,7 +6,7 @@
 // temperature, fallbacks, ...) is left alone, and anything that only made sense for the old provider is removed.
 
 import { VOICE_CATALOG } from '../../voiceCatalog.js';
-import { RENAMED_PROVIDERS, STAGES, defaultModelFor, modelLabel, providerLabel, secretFor } from './catalog.js';
+import { RENAMED_PROVIDERS, STAGES, defaultModelFor, modelLabel, providerLabel, providersForStage, secretFor } from './catalog.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const isObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -123,4 +123,29 @@ export function setVoiceId(config, voiceId) {
   const value = String(voiceId || '').trim();
   if (readModels(config).tts.voiceId === value) return config;
   return edit(config, 'tts', (slot) => { if (value) slot.voice_id = value; else delete slot.voice_id; });
+}
+
+// ---- default speech models --------------------------------------------------------------------------------------------------------------
+// A phone or web-voice channel needs a speech-to-text and a text-to-speech model, and a new agent has neither. This picks, from what the
+// server says it can run (GET /providers), a provider for each missing stage: one that is installed and has its key set, else one that is
+// installed (its key can't be known, and the deploy check will say), never one that needs a base URL first. Returns null when there is none.
+export function bestProviderFor(stage, providers) {
+  const usable = providersForStage(providers, stage).filter((p) => p.installed !== false && p.name !== 'openai_compatible' && !!defaultModelFor(stage, p.name));
+  return usable.find((p) => p.key_available === true) || usable[0] || null;
+}
+
+// A copy of the config with the speech models that are missing set to a default of the best provider. Models already set are left alone.
+// -> { config, added: [{ stage, provider, keySet }], skipped: [stage] }
+export function addDefaultSpeechModels(config, providers) {
+  const models = isObject(config?.defaults?.models) ? config.defaults.models : {};
+  let next = config;
+  const added = []; const skipped = [];
+  ['stt', 'tts'].forEach((stage) => {
+    if (models[stage]?.provider) return;
+    const provider = bestProviderFor(stage, providers);
+    if (!provider) { skipped.push(stage); return; }
+    next = setProvider(next, stage, provider.name, providers);
+    added.push({ stage, provider: provider.name, keySet: provider.key_available === true });
+  });
+  return { config: next, added, skipped };
 }

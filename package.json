@@ -12,7 +12,9 @@
     "sync-fixtures": "node scripts/sync-fixtures.mjs",
     "e2e": "node e2e/smoke.mjs",
     "types": "node scripts/schemaTypes.mjs",
-    "sync-public": "node scripts/schemaCopies.mjs"
+    "sync-public": "node scripts/schemaCopies.mjs",
+    "e2e:typing": "node e2e/typing.mjs",
+    "e2e:firstrun": "node e2e/firstRun.mjs"
   },
   "dependencies": {
     "livekit-client": "^2.22.4",
@@ -24,5 +26,8 @@
     "jsdom": "^30.1.2",
     "playwright-core": "^1.64.0",
     "vite": "^7.1.7"
+  },
+  "engines": {
+    "node": ">=22.14"
   }
 }

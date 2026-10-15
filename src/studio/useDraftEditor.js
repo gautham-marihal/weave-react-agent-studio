@@ -3,6 +3,7 @@ import { api } from '../api/client.js';
 import { prettyJson } from './format.js';
 import { describeDuplicates, findDuplicateKeys } from './jsonDuplicates.js';
 import { lineOf } from './jsonPath.js';
+import { shareStructure } from './shareStructure.js';
 
 const canon = (value) => JSON.stringify(value);
 
@@ -27,6 +28,7 @@ export function useDraftEditor(botId) {
   revisionRef.current = revision;
   const textRef = useRef('');
   textRef.current = text;
+  const lastValue = useRef(undefined); // the previous parsed config, so unchanged parts keep their identity (see shareStructure)
 
   const applyDraft = useCallback((draft) => {
     setText(prettyJson(draft.config));
@@ -55,11 +57,12 @@ export function useDraftEditor(botId) {
   const parsed = useMemo(() => {
     if (status !== 'ready') return { value: undefined, error: null, duplicates: [] };
     try {
-      const value = JSON.parse(text);
+      const value = shareStructure(lastValue.current, JSON.parse(text));
       // JSON.parse keeps only the last of two equal keys. Treat a repeat like a syntax error, so nothing downstream
       // (save, validate, publish, the form) ever works from a copy that has silently lost a setting.
       const duplicates = findDuplicateKeys(text);
       if (duplicates.length) return { value: undefined, error: describeDuplicates(duplicates, (offset) => lineOf(text, offset)), duplicates };
+      lastValue.current = value;
       return { value, error: null, duplicates: [] };
     } catch (error) { return { value: undefined, error: error.message, duplicates: [] }; }
   }, [text, status]);

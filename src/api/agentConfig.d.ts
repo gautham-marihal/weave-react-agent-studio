@@ -802,7 +802,12 @@ export type Tool = ((ToolCommon) & {
 } | (ToolCommon) & {
   type?: "knowledge";
   source: string;
+  /** Overrides the knowledge base's own top_k for this tool. */
   top_k?: number;
+  /** Told to the model when the search fails (the service is down, it timed out, no index was built). Write it as an instruction to the model. Without it the model is told to answer only from what it surely knows, or to offer… */
+  on_error?: {
+    tool_error: string;
+  };
 } | (ToolCommon) & {
   type?: "code";
   runtime?: "python" | "javascript";
@@ -857,13 +862,39 @@ export type Connection = ({
   };
 });
 
+/** How a search of this knowledge base behaves. Every field is optional. */
+export type KnowledgeRetrieval = {
+  /** The longest a search may take. In inject mode the caller waits for it on every turn, so keep it short on a phone line: past it the model answers without the material. In tool mode the model is told the search failed. */
+  timeout_s?: number;
+  /** Drop passages the source scored below this (only for sources that return a score, higher = better). Leave unset to keep everything the source returns. */
+  min_score?: number;
+  /** At most this much passage text per search, whole passages best-first (the first one is cut rather than dropped if it alone is longer). Passages are prompt text the model reads on every turn in inject mode, so more is slo… */
+  max_chars?: number;
+  /** Turn markdown in the passages into plain text. Material full of asterisks, pipes and headings makes a model answer in them, and a voice reads them out. */
+  strip_markdown?: boolean;
+  /** Inject mode only. What is searched for. last_exchange = the bot's previous reply followed by the caller's newest words, so a follow-up such as 'and how much is that?' still carries its subject. last_user = the caller's n… */
+  query_from?: "last_exchange" | "last_user";
+  /** Inject mode only. How the material is shown to the model. system works with every model provider. assistant shows it as the bot's own earlier note (what the website bot does); do not use it with Anthropic models, which t… */
+  role?: "system" | "assistant";
+  /** Inject mode only. The sentence placed before the passages. Defaults to a short note that this is reference information, not instructions. May use {{...}} templates. */
+  instruction?: string;
+};
+
 export type KnowledgeBase = ({
   id: Id;
   type: "vector_store";
   /** tool = the model decides when to search (needs tool calling); inject = retrieve on every caller turn and add the chunks to the prompt (works without tool calling). */
   mode?: "tool" | "inject";
-  /** Chunks retrieved per query. Raise it when topics are split across many small files. */
+  /** Chunks retrieved per query (default 4). Raise it when topics are split across many small files. */
   top_k?: number;
+  retrieval?: KnowledgeRetrieval;
+  /** How the sources are cut into passages when the index is built. Rebuild the index after changing it. */
+  chunking?: {
+    /** Target passage length in characters. Smaller passages match a question more exactly; larger ones carry more context. */
+    size?: number;
+    /** Characters repeated from the end of one passage at the start of the next. */
+    overlap?: number;
+  };
   sources: (({
     type: "url";
     url: string;
@@ -881,14 +912,37 @@ export type KnowledgeBase = ({
   id: Id;
   type: "rag_api";
   mode?: "tool" | "inject";
+  /** Passages asked for per search (default 4). Sent to the service as {{top_k}}. */
   top_k?: number;
+  retrieval?: KnowledgeRetrieval;
   connection: string;
   collection?: string;
+  /** The request sent for each search. In every string, {{query}} is the search text, {{top_k}} the number of passages and {{collection}} the field above. What the caller said is inserted as plain text, so {{...}} typed by a … */
   request: {
     method: "GET" | "POST";
     path: string;
+    /** URL query parameters, e.g. {"q": "{{query}}"} for a GET. */
+    query?: {
+      [key: string]: string;
+    };
+    headers?: {
+      [key: string]: string;
+    };
     /** Template; {{query}}, {{top_k}} and {{collection}} are available. */
     body?: unknown;
+  };
+  /** Where the passages are in the service's JSON answer. Leave it out for the common shapes: a list, or an object whose chunks / results / documents / hits / matches / passages is a list of strings or of objects with text / … */
+  response?: {
+    /** Path of the list of results, e.g. $.data.matches. */
+    items?: string;
+    /** Path, inside each result, of the passage text, e.g. $.document.text. */
+    text?: string;
+    /** Path, inside each result, of where it came from (shown in the call log only). */
+    source?: string;
+    /** Path, inside each result, of its relevance score (higher = better), used by retrieval.min_score. */
+    score?: string;
+    /** Path of a ready-made answer text, for a service that answers a question instead of returning passages. When it is present it is used and the results are ignored. */
+    answer?: string;
   };
 });
 
@@ -1206,7 +1260,40 @@ export interface AgentConfig {
   };
   tests?: ({
     id: Id;
+    /** What this scenario shows, for the person reading the results. */
+    description?: string;
     channel: string;
+    /** Pretend it is this moment (with a time zone), so a schedule such as business hours is open or closed as the scenario needs. Without it the scenario runs on the real clock. */
+    now?: string;
+    /** State values set before the conversation starts, over the config's own starting values: 'a caller who is already verified'. */
+    state?: Record<string, unknown>;
+    /** Answers for the API calls the bot makes during this scenario, tried in order, first match wins. A test run never calls a real API unless it is told to (`allow_network`): a call that no mock matches is answered 404 and li… */
+    http_mocks?: ({
+      /** Only requests to this connection. Omit to match any. */
+      connection?: string;
+      /** Omit to match any. */
+      method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      /** The request path, exactly or with * as a wildcard: /orders/* matches /orders/NB-1001. */
+      path: string;
+      /** Query parameters the request must have (others are allowed). */
+      query?: {
+        [key: string]: string;
+      };
+      /** Fields the JSON body must have, with these values (others are allowed): tells two POSTs to the same path apart. */
+      body_contains?: Record<string, unknown>;
+      status?: number;
+      /** The JSON the API answers with. */
+      json?: unknown;
+      /** Or a plain-text answer. */
+      text?: string;
+      /** Answer only this many times, then this mock no longer matches (a call that fails the first time and works the second). */
+      times?: number;
+    })[];
+    /** Replaces the language model with a script, one item per model reply: a string (the model says it) or {tool, args} (the model calls that tool). The conversation runs through the real runtime, so prompts, tools, preconditi… */
+    model_script?: ((string | {
+      tool: string;
+      args?: Record<string, unknown>;
+    }))[];
     caller?: {
       phone?: string;
       persona?: string;
@@ -1224,11 +1311,36 @@ export interface AgentConfig {
         value: unknown;
       };
     } | {
-      /** Some assistant message matches this regex. */
+      /** Some assistant message matches this regex (ignoring case). */
       said_matches: string;
     } | {
-      /** Natural-language criterion graded by an LLM. */
+      /** Natural-language criterion graded by an LLM. Needs a live model, so it is skipped in a scenario that has a model_script. */
       judge: string;
+    } | {
+      /** The conversation ends with this agent in charge. */
+      agent_is: string;
+    } | {
+      tool_called_with: {
+        tool: string;
+        /** Arguments the call must include, with these values (others are allowed). */
+        args: Record<string, unknown>;
+      };
+    } | {
+      /** The bot made this API request (whether or not a mock answered it). */
+      http_called: {
+        method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+        /** Exactly, or with * as a wildcard. */
+        path: string;
+        /** Exactly this many times. Omit for at least once. */
+        times?: number;
+      };
+    } | {
+      /** The bot never made this API request: the way to prove a guarded action (a return, a payment link) did not happen. */
+      http_not_called: {
+        method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+        /** Exactly, or with * as a wildcard. */
+        path: string;
+      };
     }))[];
   })[];
   builder?: {

@@ -135,6 +135,8 @@ export const providerLabel = (provider = '') => PROVIDER_LABELS[String(provider)
   .replace(/\b\w/g, (letter) => letter.toUpperCase());
 export const modelsFor = (stage, provider) => MODEL_OPTIONS[stage]?.[provider] || [];
 export const defaultModelFor = (stage, provider) => modelsFor(stage, provider)[0]?.id || '';
+// The model the studio picks when someone chooses this provider (the first in its list): marked "Recommended" wherever the models are listed.
+export const isRecommendedModel = (stage, provider, id) => !!id && id === defaultModelFor(stage, provider);
 export const modelLabel = (stage, provider, id) => modelsFor(stage, provider).find((model) => model.id === id)?.label || id || '';
 
 // The providers of one stage out of a server list (or the fallback): the ones the runtime has a use for at that stage.

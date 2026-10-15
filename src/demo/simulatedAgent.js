@@ -35,12 +35,12 @@ export function speechText(speech, config) {
 
 const DEFAULT_STATE = (config) => Object.fromEntries(Object.entries(isObj(config?.state?.variables) ? config.state.variables : {}).map(([name, v]) => [name, isObj(v) ? v.default ?? null : null]));
 
-export function createSimulatedAgent(config, { channelId } = {}) {
+export function createSimulatedAgent(config, { channelId, state: startingState } = {}) {
   const agents = list(config?.agents?.items);
   const channels = list(config?.channels);
   const channel = channels.find((c) => c?.id === channelId) || channels.find((c) => c?.enabled !== false) || channels[0] || null;
   let current = agents.find((a) => a?.id === config?.agents?.entry) || agents[0] || null;
-  const state = DEFAULT_STATE(config);
+  const state = { ...DEFAULT_STATE(config), ...(isObj(startingState) ? startingState : {}) }; // a scenario can start with some values already set
   const calls = [];
   let ended = false;
 

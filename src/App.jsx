@@ -5,6 +5,7 @@ import { Login, ProfileSetup } from './pages/Login.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { AccountDialog, InfoDialogHost } from './pages/shared.jsx';
 import { DemoBadge } from './demo/DemoBadge.jsx';
+import { useDensity } from './studio/usePref.js';
 
 export class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -76,6 +77,9 @@ export function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme((value) => value === 'light' ? 'dark' : 'light');
+  // Comfortable or compact spacing (Settings): one attribute on the page, read by the spacing tokens.
+  const [density] = useDensity();
+  useEffect(() => { document.documentElement.dataset.density = density; }, [density]);
   const [profile, setProfile] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('weave_profile') || 'null');

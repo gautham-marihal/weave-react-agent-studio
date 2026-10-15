@@ -1,0 +1,48 @@
+.clView { display: grid; gap: 14px; min-width: 0; }
+/* On the Calls page the list sits inside a card under its heading: the card needs inner padding, and the page's own side padding would double up with
+   the shell's, which already pads its content. */
+.callsPanel > .clView { padding: 16px 18px 20px; }
+.dashboard .dashContent .sessionsContent.sessionsContent { max-width: none; padding: 0 0 72px; }
+.clPrivacy { margin: 0; padding: 8px 12px; border-left: 3px solid var(--warn-text, #d6a53a); border-radius: 8px; background: var(--surface2); font-size:var(--fs-sm); line-height: 1.5; color: var(--muted); }
+.clPrivacy b { color: var(--textStrong); }
+.clFilters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.clFilters label { display: grid; gap: 3px; font-size:var(--fs-sm); color: var(--muted); }
+.clFilterActions { display: inline-flex; gap: 10px; align-items: center; margin-left: auto; }
+.clAuto { display: inline-flex !important; grid-auto-flow: column; align-items: center; gap: 6px !important; }
+.clTableWrap { border: 1px solid var(--line2); border-radius: 12px; overflow-x: auto; background: var(--surface); }
+.clTable { width: 100%; border-collapse: collapse; font-size:var(--fs-md); min-width: 720px; }
+.clTable th { text-align: left; font-size:var(--fs-xs); font-weight: 600; color: var(--dim); padding: 9px 12px; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+.clTable td { padding: var(--control-pad) 12px; border-bottom: 1px solid var(--line2); vertical-align: middle; }
+.clRow { cursor: pointer; }
+.clRow:hover, .clRow:focus-visible, .clRow.on { background: var(--accent-soft); outline: none; }
+.clRow:last-child td { border-bottom: 0; }
+.clStatus { display: inline-block; font-size:var(--fs-xs); font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line2); color: var(--muted); }
+.clStatus.good { color: var(--good-text, #2f9e7a); border-color: currentColor; }
+.clStatus.warn { color: var(--warn-text, #d6a53a); border-color: currentColor; }
+.clStatus.bad { color: var(--danger-text, #ef6b6b); border-color: currentColor; }
+.clEmpty { display: grid; gap: 6px; justify-items: start; padding: 18px; color: var(--muted); font-size:var(--fs-md); margin: 0; }
+.clEmpty strong { color: var(--textStrong); }
+.clEmpty p { margin: 0; }
+.clMore { padding: 10px; text-align: center; border-top: 1px solid var(--line2); }
+.clDetail { display: grid; gap: 12px; }
+.clDetailHead { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.clDetailHead h3 { margin: 0 0 2px; }
+.clDetailHead p { margin: 0; }
+.clDetailActions { display: flex; gap: 8px; }
+.clDetailActions a { text-decoration: none; display: inline-flex; align-items: center; }
+.clFacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 16px; margin: 0; }
+.clFacts dt { font-size:var(--fs-xs); color: var(--dim); }
+.clFacts dd { margin: 2px 0 0; font-size:var(--fs-md); }
+.clState { margin: 0; font-size:var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
+
+.clCounts { margin: 0; font-size:var(--fs-sm); color: var(--muted); }
+.clViews { display: inline-flex; border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; background: var(--surface); width: max-content; }
+.clViews button { min-height: 34px; padding: 0 14px; border: 0; background: none; color: var(--muted); font-size:var(--fs-sm); cursor: pointer; }
+.clViews button + button { border-left: 1px solid var(--line2); }
+.clViews button.on { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); color: var(--textStrong); font-weight: 600; }
+.clTranscript { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
+.clTurn { padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.clTurn.caller { background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+.clTurn header { display: flex; justify-content: space-between; gap: 12px; font-size:var(--fs-xs); color: var(--dim); }
+.clTurn header strong { color: var(--textStrong); }
+.clTurn p { margin: 4px 0 0; font-size:var(--fs-md); line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }

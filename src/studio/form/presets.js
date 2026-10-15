@@ -17,8 +17,8 @@ export const ENTRY_FIELDS = {
 // The part of each list that is plain text, and the part that is a list of websites.
 export const ENTRY_LABELS = {
   dnis: ['Phone number', 'The number callers dial, for reference. It doesn’t connect a number.', '+15550100'],
-  sip_trunk: ['SIP trunk', 'The trunk the number arrives on, for reference.', 'trunk-main'],
-  dispatch_rule: ['Dispatch rule', 'The SIP dispatch rule that routes the call, for reference.', 'my-agent-inbound'],
+  sip_trunk: ['Phone line it arrives on', 'The line from your phone provider that the number arrives on, for reference.', 'trunk-main'],
+  dispatch_rule: ['Routing rule', 'The rule in your phone system that sends the call to this agent, for reference.', 'my-agent-inbound'],
   widget_id: ['Widget id', 'The id of the chat or voice widget this channel serves.', 'my-agent-widget'],
   allowed_origins: ['Allowed websites', 'The websites the widget may be placed on, for reference.', 'https://example.com'],
   phone_number_id: ['WhatsApp phone number id', 'The WhatsApp Business phone number id, for reference.', '1234567890'],
@@ -89,8 +89,8 @@ export function modalityNotes(channel, config) {
   const input = channel?.modalities?.input || [];
   const output = channel?.modalities?.output || [];
   const notes = [];
-  if (input.includes('audio') && !models.stt?.provider) notes.push({ level: 'warn', text: 'Audio in needs a speech-to-text model. None is set yet.', fix: 'models' });
-  if (output.includes('audio') && !models.tts?.provider) notes.push({ level: 'warn', text: 'Audio out needs a text-to-speech model. None is set yet.', fix: 'models' });
+  if (input.includes('audio') && !models.stt?.provider) notes.push({ level: 'warn', text: 'Audio in needs a speech-to-text model. None is set yet.', fix: 'models', stage: 'stt' });
+  if (output.includes('audio') && !models.tts?.provider) notes.push({ level: 'warn', text: 'Audio out needs a text-to-speech model. None is set yet.', fix: 'models', stage: 'tts' });
   if ((input.includes('image') || input.includes('video')) && models.llm?.vision !== true) notes.push({ level: 'warn', text: 'Images and video are only understood by a language model with vision. Turn on “vision” for the model.', fix: 'models' });
   if (input.includes('audio') || output.includes('audio')) notes.push({ level: 'info', text: 'Audio channels also use voice detection and the turn-taking settings in Defaults.' });
   return notes;

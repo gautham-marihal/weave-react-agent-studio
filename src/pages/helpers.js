@@ -1,9 +1,16 @@
+// The sidebar holds workspace-level things only: Home, Agents and the Calls of every agent; then the Library (what agents share: voices, integrations,
+// telephony) and Settings. Everything about ONE agent (building, testing, releasing, watching it) is inside that agent.
 export const NAV = [
-  { id: 'home', label: 'Overview', icon: '⌂' },
-  { id: 'agents', label: 'Agents', icon: '✦' },
-  { id: 'sessions', label: 'Sessions', icon: '◫' },
-  { id: 'readiness', label: 'Readiness checks', icon: '◉', badge: 'BETA' },
+  { id: 'home', label: 'Home', icon: 'home' },
+  { id: 'agents', label: 'Agents', icon: 'agent' },
+  { id: 'sessions', label: 'Calls', icon: 'phone' },
 ];
+export const LIBRARY_NAV = [
+  { id: 'voices', label: 'Voices', icon: 'voice' },
+  { id: 'integrations', label: 'Integrations', icon: 'plug' },
+  { id: 'telephony', label: 'Telephony', icon: 'dial' },
+];
+export const SETTINGS_NAV = [{ id: 'settings', label: 'Settings', icon: 'sliders' }];
 
 export function getInitials(name = '') {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || 'W';
@@ -45,18 +52,13 @@ export function makeRecordId(prefix) {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-export const WORKSPACE_NAV = [
-  { id: 'voices', label: 'Voices', icon: '◒' },
-  { id: 'telephony', label: 'Telephony', icon: '⌁' },
-  { id: 'integrations', label: 'Integrations', icon: '⌘' },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
-];
+export const WORKSPACE_NAV = [...LIBRARY_NAV, ...SETTINGS_NAV];
 
 export const TELEPHONY_SECTIONS = [
-  { id: 'calls', label: 'Calls', icon: '☎' },
-  { id: 'dispatch', label: 'Dispatch rules', icon: '⇢' },
-  { id: 'numbers', label: 'Phone numbers', icon: '#' },
-  { id: 'trunks', label: 'SIP trunks', icon: '▤' },
+  { id: 'calls', label: 'Simulated calls', icon: 'phone' },
+  { id: 'dispatch', label: 'Dispatch rules', icon: 'arrowRight' },
+  { id: 'numbers', label: 'Phone numbers', icon: 'dial' },
+  { id: 'trunks', label: 'SIP trunks', icon: 'plug' },
 ];
 
 export function compactDateTime(value) {

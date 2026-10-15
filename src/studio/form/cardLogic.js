@@ -1,6 +1,7 @@
 // How the form decides to draw a list or an object: as a card with a title, as chips, as a plain list of texts. Pure: no DOM.
 
 import { isObj } from './engine.js';
+import { plainKind, plainToolKind } from './plainKinds.js';
 
 const TITLE_KEYS = ['id', 'name', 'title', 'label'];
 const ALT_KEYS = ['type', 'on', 'tool', 'via', 'state', 'arg', 'result', 'event', 'from', 'channel', 'schedule', 'kind', 'to'];
@@ -13,7 +14,7 @@ export function summarize(item, index) {
   const alt = ALT_KEYS.map((k) => text(item[k])).find(Boolean);
   title = title || alt || `Item ${index + 1}`;
   let hint = '';
-  if (alt && alt !== title) hint = alt;
+  if (alt && alt !== title) hint = (item.type === 'builtin' && item.builtin) ? plainToolKind(item) : plainKind(alt);
   else {
     const note = text(item.description) || text(item.text) || text(item.text?.message) || text(item.ask) || text(item.instructions) || text(item.instructions?.role) || text(item.to);
     if (note) hint = note.length > 70 ? `${note.slice(0, 70)}…` : note;

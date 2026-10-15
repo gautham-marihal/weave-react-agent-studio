@@ -38,7 +38,8 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
   const state = previewState(session);
   const simulated = mode === 'simulated';
   const running = ['starting', 'connecting', 'waiting', 'live'].includes(session.status);
-  useEffect(() => { endRef.current?.scrollIntoView?.({ block: 'end' }); }, [session.messages]);
+  // the log scrolls itself; scrollIntoView would move the whole page too
+  useEffect(() => { const el = endRef.current?.parentElement; if (el) el.scrollTop = el.scrollHeight; }, [session.messages]);
 
   const start = () => session.startFor(botId, { ref: 'draft', identity: `preview-${Math.random().toString(36).slice(2, 6)}` });
   const send = async () => { const text = draft; if (!text.trim() || state !== 'live') return; setDraft(''); await session.sendText(text); };
@@ -87,6 +88,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
         <div className="pvError">
           <Notice kind="error" title={session.error?.title || 'The conversation didn’t start'} actions={<button type="button" className="quietButton" onClick={() => { session.clearError(); start(); }}>Try again</button>}>
             {session.error?.body || 'Something went wrong starting it.'}
+            {session.error?.details && <details className="stErrDetail"><summary>Details for the person who runs the server</summary><p>{session.error.details}</p></details>}
             {!simulated && !modeLocked && <> You can still try the <button type="button" className="stLink" onClick={() => { session.clearError(); onMode('simulated'); }}>simulated preview</button>.</>}
           </Notice>
         </div>

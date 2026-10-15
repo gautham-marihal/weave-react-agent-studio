@@ -2,6 +2,7 @@ import { HelpTooltip } from '../studio/builderUi.jsx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AGENT_LIFECYCLE, agentLifecycle } from './helpers.js';
+import Icon, { ICON_NAMES } from '../ui/Icon.jsx';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
@@ -410,7 +411,7 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
             <div className="searchNoResults">
               <div className="searchNoIcon" aria-hidden="true">⌕</div>
               <strong>No matches for “{query.trim()}”</strong>
-              <p>Search by agent name, workspace name, or a page such as Sessions.</p>
+              <p>Search by agent name, workspace name, or a page such as Calls.</p>
             </div>
           ) : groups.map((group) => (
             <div key={group.group} className="searchGroup" role="group" aria-label={group.group}>
@@ -432,7 +433,7 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
                       onMouseMove={() => { if (!isActive) setActiveIndex(index); }}
                       onClick={() => onSelect?.(item)}
                     >
-                      <span className="searchResultIcon" aria-hidden="true">{item.icon}</span>
+                      <span className="searchResultIcon" aria-hidden="true"><Glyph icon={item.icon} size={16} /></span>
                       <span className="searchResultText">
                         <strong>{item.title}</strong>
                         <small>{item.description}</small>
@@ -545,10 +546,15 @@ export function StatusBadge({ agent, status, size = 'md', title }) {
   );
 }
 
+// An icon given by name is drawn from the studio's icon set; any other text (an old saved glyph, an initial) is shown as it is.
+export function Glyph({ icon, size = 18 }) {
+  return ICON_NAMES.includes(icon) ? <Icon name={icon} size={size} /> : <>{icon}</>;
+}
+
 export function NavItem({ item, active, onClick }) {
   return (
     <button type="button" className={`sideLink ${active ? 'selected' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined} title={item.label}>
-      <i>{item.icon}</i><span>{item.label}</span>{item.badge && <em>{item.badge}</em>}
+      <i><Glyph icon={item.icon} /></i><span>{item.label}</span>{item.badge && <em>{item.badge}</em>}
     </button>
   );
 }
@@ -556,27 +562,17 @@ export function NavItem({ item, active, onClick }) {
 export function Activity({ title, detail, time, icon, muted = false }) {
   return (
     <div className={`activityRow ${muted ? 'muted' : ''}`}>
-      <span className="activityIcon">{icon}</span>
+      <span className="activityIcon"><Glyph icon={icon} size={16} /></span>
       <div><strong>{title}</strong><p>{detail}</p></div>
       <time>{time}</time>
     </div>
   );
 }
 
-export function ProgressItem({ index, title, done = false, active = false, onClick }) {
-  return (
-    <button type="button" className={`progressItem ${done ? 'done' : ''} ${active ? 'active' : ''}`} onClick={onClick} disabled={!done && !active}>
-      <span className="progressIndex">{done ? '✓' : index}</span>
-      <span>{title}</span>
-      <b>{done ? 'Done' : active ? 'Start' : 'Later'}</b>
-    </button>
-  );
-}
-
 export function QuickAction({ icon, title, subtitle, onClick }) {
   return (
     <button className="quickAction" type="button" onClick={onClick}>
-      <span className="quickIcon">{icon}</span>
+      <span className="quickIcon"><Glyph icon={icon} size={18} /></span>
       <span><strong>{title}</strong><small>{subtitle}</small></span>
       <b className="buttonArrow">→</b>
     </button>

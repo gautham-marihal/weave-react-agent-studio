@@ -1,0 +1,57 @@
+// The words for the KIND of a thing, for the grey hint on a card and the chips of the Simple view: "Looks something up", not "http"; "Phone line", not
+// "sip_voice". An id is the author's own word and is shown as written; a kind is the schema's, and a customer shouldn't have to read it.
+// A kind nobody has written a phrase for is shown as it is (so nothing is hidden), and the test checks every kind the schema has is covered.
+// Pure: no React, no DOM.
+
+export const PLAIN_KIND = {
+  // tools
+  http: 'Looks something up',
+  builtin: 'Built-in action',
+  knowledge: 'Searches your knowledge',
+  mcp: 'Uses another system’s tools',
+  task: 'Multi-step task',
+  code: 'Runs your own code',
+  // channels
+  sip_voice: 'Phone line',
+  web_voice: 'Web voice',
+  web_chat: 'Web chat',
+  whatsapp: 'WhatsApp',
+  sms: 'SMS',
+  email: 'Email',
+  custom: 'Custom',
+  // safety rules
+  prompt_injection: 'Refuses tricks to change its instructions',
+  pii_detect: 'Hides personal details',
+  field_firewall: 'Keeps secret fields out',
+  regex_block: 'Blocks words or patterns',
+  statement: 'A rule in words',
+  // connections
+  sms_service: 'Text messages',
+  // agents
+  router: 'Passes callers on',
+  specialist: 'Does one job',
+  standalone: 'Answers on its own',
+  // tasks
+  verification: 'Checks who the caller is',
+  collect_fields: 'Collects details',
+  confirmation: 'Asks the caller to confirm',
+};
+
+export const BUILTIN_WORDS = {
+  end_call: 'Ends the call',
+  transfer_or_callback: 'Hands over to a person',
+  return_to_entry: 'Back to the first agent',
+  send_form: 'Shows a form',
+  collect_dtmf: 'Collects keypad digits',
+  send_dtmf: 'Presses keypad tones',
+  noop: 'Only runs its rules',
+};
+
+export const plainKind = (kind) => PLAIN_KIND[kind] || String(kind || '');
+
+// What a tool is, in words: a built-in by what it does, any other by its kind.
+export function plainToolKind(tool) {
+  if (!tool || typeof tool !== 'object') return '';
+  if ((tool.type === 'builtin' || (!tool.type && tool.builtin)) && tool.builtin) return BUILTIN_WORDS[tool.builtin] || PLAIN_KIND.builtin;
+  return plainKind(tool.type);
+}

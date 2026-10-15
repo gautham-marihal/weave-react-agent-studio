@@ -7,6 +7,11 @@
 import { applyStarter } from '../studio/starters.js';
 import { diffConfigs } from './diff.js';
 import { secretsIn, validateDemo } from './demoValidate.js';
+import { baseStatus, overview as knowledgeOverview, preflightKnowledge, removeFile, searchBase, settle, startBuild, upload as uploadFile } from './demoKnowledge.js';
+import { previewPromptDemo, previewResultDemo } from './demoPreview.js';
+import { minimalConfig } from './minimalConfig.js';
+import { callFromConversation, followCallOf, getCallOf, listCallsOf, seedCalls, transcriptOf } from './demoCalls.js';
+import { STEP_MS, checksumOf, createRun, headlineOf, scenarioListOf, viewRun } from './demoTests.js';
 
 export const ENVIRONMENTS = ['development', 'staging', 'production'];
 export const RESERVED_IDS = ['transcripts', 'metrics', 'logs', 'sessions', 'tmp'];
@@ -18,15 +23,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const ok = (body, status = 200) => ({ status, body });
 const fail = (status, detail, extra = {}) => ({ status, body: { detail, ...extra } });
 
-export const minimalConfig = (id, name) => ({
-  schema_version: '1.2',
-  meta: { id, name, version: '0.1.0', status: 'draft' },
-  runtime: { engine: 'livekit-agents', provider_mode: 'plugins' },
-  defaults: { models: { llm: { provider: 'openai', model: 'gpt-4.1-mini', api_key: { secret: 'OPENAI_API_KEY' } } }, conversation: {} },
-  persona: { name },
-  channels: [{ id: 'web-chat', type: 'web_chat', enabled: true, entry: { widget_id: `${id}-widget` }, modalities: { input: ['text'], output: ['text'] }, greeting: { say: 'Hello! How can I help you today?' } }],
-  agents: { entry: 'assistant', items: [{ id: 'assistant', name, kind: 'standalone', instructions: { role: 'You are a helpful assistant. Answer briefly and politely.' }, tools: [] }] },
-});
+export { minimalConfig };
 
 export const bumpVersion = (version, kind = 'patch') => {
   const [major, minor, patch] = String(version).split('.').map(Number);
@@ -45,7 +42,7 @@ export function browserStorage(key = STORAGE_KEY) {
   };
 }
 
-export function createDemoApi({ storage = memoryStorage(), loadSchema = async () => ({}), now = () => new Date().toISOString(), seed = true } = {}) {
+export function createDemoApi({ storage = memoryStorage(), loadSchema = async () => ({}), now = () => new Date().toISOString(), seed = true, stepMs = STEP_MS } = {}) {
   let counter = 0;
   const uid = (prefix) => { counter += 1; return `${prefix}${Date.now().toString(36)}${counter}`; };
 
@@ -59,7 +56,7 @@ export function createDemoApi({ storage = memoryStorage(), loadSchema = async ()
     make('bookings', 'Bookings', 'appointment');
     // a little history, so the Versions and Deploy screens have something to show
     const publish = (bot, version) => {
-      bot.versions.unshift({ version, published_at: now(), published_by: DEMO_USER, checksum: uid('c'), config: { ...clone(bot.config), meta: { ...bot.config.meta, version } } });
+      { const config = { ...clone(bot.config), meta: { ...bot.config.meta, version } }; bot.versions.unshift({ version, published_at: now(), published_by: DEMO_USER, checksum: checksumOf(config), config }); }
       bot.config.meta.version = bumpVersion(version);
       bot.revision += 1;
     };
@@ -79,7 +76,13 @@ export function createDemoApi({ storage = memoryStorage(), loadSchema = async ()
   const summary = (bot) => ({ id: bot.id, name: bot.name, draft_revision: bot.revision, draft_saved_at: bot.savedAt, latest_version: bot.versions[0]?.version || null, deployed: bot.deployed });
   const draftOf = (bot) => ({ bot_id: bot.id, revision: bot.revision, saved_at: bot.savedAt, saved_by: bot.savedBy, config: bot.config });
 
+  // Every answer is a copy: the screens and tests may change what they are given, and that must never change what is stored here.
   async function handle(method, rawPath, body = {}) {
+    const answer = await route(method, rawPath, body);
+    return { status: answer.status, body: answer.body === undefined ? undefined : clone(answer.body) };
+  }
+
+  async function route(method, rawPath, body = {}) {
     const [path, query = ''] = String(rawPath).split('?');
     const params = new URLSearchParams(query);
     const state = read();
@@ -109,6 +112,16 @@ export function createDemoApi({ storage = memoryStorage(), loadSchema = async ()
       });
     }
     if (path === '/validate' && method === 'POST') return ok(validateDemo(body));
+    // previews: send `config` (what is in the editor) or name a saved agent (`bot`, `ref`)
+    if ((path === '/preview/prompt' || path === '/preview/result') && method === 'POST') {
+      const named = body.bot ? state.bots[body.bot] : null;
+      if (body.bot && !named) return fail(404, 'No such agent.');
+      const ref = body.ref || 'draft';
+      const config = body.config || (named ? (ref === 'draft' ? named.config : (named.versions.find((v) => v.version === ref || v.version === named.deployed[ref]) || named.versions[0])?.config) : null);
+      if (!config) return fail(422, 'Send a config, or name a bot.', { errors: [] });
+      const answer = path === '/preview/prompt' ? previewPromptDemo(config, body) : previewResultDemo(config, body);
+      return answer.status === 200 ? ok(answer.body) : fail(answer.status, answer.body.detail);
+    }
 
     if (path === '/bots' && method === 'GET') return ok(Object.values(state.bots).map(summary));
     if (path === '/bots' && method === 'POST') {
@@ -151,7 +164,8 @@ export function createDemoApi({ storage = memoryStorage(), loadSchema = async ()
           version = bumpVersion(latest, body.bump);
         } else version = bot.config.meta.version;
         if (bot.versions.some((v) => v.version === version)) return fail(409, `Version ${version} is already published.`);
-        const record = { version, published_at: now(), published_by: DEMO_USER, checksum: uid('c'), config: { ...clone(bot.config), meta: { ...bot.config.meta, version } } };
+        const published = { ...clone(bot.config), meta: { ...bot.config.meta, version } };
+        const record = { version, published_at: now(), published_by: DEMO_USER, checksum: checksumOf(published), config: published };
         bot.versions.unshift(record);
         bot.config = { ...bot.config, meta: { ...bot.config.meta, version: bumpVersion(version) } };
         bot.revision += 1;
@@ -183,7 +197,7 @@ export function createDemoApi({ storage = memoryStorage(), loadSchema = async ()
         bot.deployed[environment] = version;
         commit();
         const report = validateDemo(target.config, bot.id);
-        return ok({ deployment, preflight: { secrets_required: [...secretsIn(target.config)].sort(), secrets_missing: [], unsupported: report.unsupported } });
+        return ok({ deployment, preflight: { secrets_required: [...secretsIn(target.config)].sort(), secrets_missing: [], unsupported: report.unsupported, knowledge: preflightKnowledge(bot, target.config, Date.parse(now())) } });
       }
       if (rest === '/deployments' && method === 'GET') {
         const current = Object.fromEntries(Object.entries(bot.deployed).map(([env, version]) => {
@@ -196,12 +210,116 @@ export function createDemoApi({ storage = memoryStorage(), loadSchema = async ()
         const found = bot.deployments.find((d) => d.id === m[1]);
         return found ? ok(found) : fail(404, 'No such deployment.');
       }
+      // ---- knowledge (imitated: see demoKnowledge.js). Builds finish by the clock, so they are settled before every answer.
+      if (/^\/knowledge(\/|$)/.test(rest)) {
+        const nowMs = Date.parse(now());
+        if (settle(bot, nowMs)) commit();
+        const ref = params.get('ref') || body?.ref || 'draft';
+        const knowledgeConfig = ref === 'draft' ? bot.config : bot.versions.find((v) => v.version === ref || v.version === bot.deployed[ref])?.config || (ref === 'latest' ? bot.versions[0]?.config : null);
+        if (!knowledgeConfig) return fail(404, `There is no '${ref}' to read the knowledge from.`);
+        if (rest === '/knowledge' && method === 'GET') return ok(knowledgeOverview(bot, knowledgeConfig, ref, nowMs));
+        if (rest === '/knowledge/files' && method === 'GET') return ok(knowledgeOverview(bot, knowledgeConfig, ref, nowMs).files);
+        const fileMatch = rest.match(/^\/knowledge\/files\/(.+)$/);
+        if (fileMatch && method === 'PUT') {
+          const name = decodeURIComponent(fileMatch[1]);
+          if (!/\.(txt|md|markdown|html?|pdf|csv|json)$/i.test(name)) return fail(400, `'${name}' is not a kind of file knowledge can read: use text, markdown, HTML, PDF, CSV or JSON.`);
+          const file = body && body.__file;
+          const content = typeof file === 'string' ? file : file && typeof file.text === 'function' ? await file.text() : '';
+          const size = typeof file === 'string' ? file.length : file?.size ?? content.length;
+          if (size > 20 * 1024 * 1024) return fail(413, 'That file is larger than this server accepts (20 MB).');
+          const row = uploadFile(bot, name, content, size, now());
+          commit();
+          return ok(row, 201);
+        }
+        if (fileMatch && method === 'DELETE') {
+          const answer = removeFile(bot, bot.config, decodeURIComponent(fileMatch[1]), params.get('force') === 'true');
+          if (answer.status === 204) { commit(); return { status: 204, body: undefined }; }
+          return fail(answer.status, answer.detail);
+        }
+        const baseMatch = rest.match(/^\/knowledge\/([^/]+)\/(build|status|search)$/);
+        if (baseMatch) {
+          const baseId = decodeURIComponent(baseMatch[1]);
+          if (baseMatch[2] === 'status' && method === 'GET') { const answer = baseStatus(bot, knowledgeConfig, baseId, nowMs); return answer ? ok(answer) : fail(404, `There is no knowledge base '${baseId}'.`); }
+          if (baseMatch[2] === 'build' && method === 'POST') {
+            const answer = startBuild(bot, knowledgeConfig, baseId, nowMs, stepMs === 0 ? 0 : undefined);
+            if (answer.status !== 202) return fail(answer.status, answer.detail);
+            commit();
+            return ok(answer.job, 202);
+          }
+          if (baseMatch[2] === 'search' && method === 'POST') { const answer = searchBase(bot, knowledgeConfig, baseId, body || {}); return answer.status === 200 ? ok(answer.body) : fail(answer.status, answer.detail); }
+        }
+      }
+      // ---- call records (imitated: see demoCalls.js). Seeded the first time they are asked for, so older demo data gets some too.
+      if (/^\/calls(\/|$)/.test(rest)) {
+        if (!bot.calls) { bot.calls = seedCalls(bot.id, bot.config, now()); commit(); }
+        if (rest === '/calls' && method === 'GET') return ok(listCallsOf(bot.calls, params, Date.parse(now())));
+        const callMatch = rest.match(/^\/calls\/([^/]+)(\/transcript)?$/);
+        if (callMatch && method === 'GET') {
+          const key = decodeURIComponent(callMatch[1]);
+          const found = bot.calls.find((c) => c.summary.id === key) || bot.calls.filter((c) => c.summary.room === key).sort((x, y) => Date.parse(y.summary.started_at) - Date.parse(x.summary.started_at))[0];
+          if (!found) return fail(404, 'No such call.');
+          return ok(callMatch[2] ? transcriptOf(found) : getCallOf(found, params));
+        }
+      }
+      // ---- test scenarios (imitated: see demoTests.js)
+      const configAt = (ref) => (ref === 'draft' ? bot.config : ref === 'latest' ? bot.versions[0]?.config : bot.versions.find((v) => v.version === ref)?.config || bot.versions.find((v) => v.version === bot.deployed[ref])?.config);
+      if (rest === '/tests' && method === 'GET') {
+        const ref = params.get('ref') || 'draft';
+        const config = configAt(ref);
+        if (!config) return fail(404, `There is no '${ref}' to read the scenarios from.`);
+        return ok({ bot: bot.id, ref, scenarios: scenarioListOf(config, bot.testRuns || [], Date.parse(now())), network_allowed: false });
+      }
+      if (rest === '/tests/run' && method === 'POST') {
+        const nowMs = Date.parse(now());
+        bot.testRuns ||= [];
+        if (bot.testRuns.some((r) => viewRun(r, nowMs).status === 'running')) return fail(409, 'A test run is already in progress for this agent.');
+        const ref = body.config ? 'unsaved' : body.ref || 'draft';
+        const config = body.config || configAt(ref);
+        if (!config) return fail(404, `There is no '${ref}' to test.`);
+        if (!Array.isArray(config.tests) || !config.tests.length) return fail(400, 'This configuration has no test scenarios to run.');
+        const unknown = (body.scenarios || []).filter((id) => !config.tests.some((s) => s?.id === id));
+        if (unknown.length) return fail(400, `There is no scenario ${unknown.map((id) => `'${id}'`).join(', ')}.`);
+        const run = createRun({ id: uid('run_'), config: clone(config), ref, body, startedAt: now(), stepMs });
+        bot.testRuns.unshift(run);
+        bot.testRuns = bot.testRuns.slice(0, 20);
+        commit();
+        return ok(viewRun(run, nowMs), 202);
+      }
+      if (rest === '/tests/runs' && method === 'GET') {
+        const limit = Number(params.get('limit')) || 20;
+        return ok((bot.testRuns || []).slice(0, limit).map((r) => headlineOf(r, Date.parse(now()))));
+      }
+      if ((m = rest.match(/^\/tests\/runs\/([^/]+)$/)) && method === 'GET') {
+        const found = (bot.testRuns || []).find((r) => r.id === decodeURIComponent(m[1]));
+        return found ? ok(viewRun(found, Date.parse(now()))) : fail(404, 'No such test run.');
+      }
       if (rest === '/sessions' && method === 'POST') return fail(503, 'Demo mode has no LiveKit server, so there is no real conversation to join. Use the simulated preview.');
     }
     return fail(404, `Demo mode has no ${method} ${path}.`);
   }
 
-  return { handle, reset: () => storage.save(seed ? seedState() : { v: 1, bots: {} }) };
+  // Follows a call one record at a time, the way the stream endpoint does (the studio's followCall uses this in demo mode).
+  function follow(botId, callId, handlers) {
+    const bot = read().bots[botId];
+    const call = bot?.calls?.find((c) => c.summary.id === callId || c.summary.room === callId);
+    if (!call) { return () => {}; }
+    return followCallOf(call, handlers);
+  }
+
+  // A conversation had in the simulated preview becomes a call, so Sessions and the trace have it. Returns its id.
+  function recordConversation(botId, conversation) {
+    const state = read();
+    const bot = state.bots[botId];
+    if (!bot) return null;
+    if (!bot.calls) bot.calls = seedCalls(bot.id, bot.config, now());
+    const call = callFromConversation(botId, { ...conversation, startedAt: conversation.startedAt || now(), version: conversation.version || 'draft' });
+    bot.calls.unshift(call);
+    bot.calls = bot.calls.slice(0, 60);
+    storage.save(state);
+    return call.summary.id;
+  }
+
+  return { handle, follow, recordConversation, reset: () => storage.save(seed ? seedState() : { v: 1, bots: {} }) };
 }
 
 // ---- the instance the app uses in demo mode: kept in this browser, with the schema served from the app's own public copy

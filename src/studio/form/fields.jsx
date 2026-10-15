@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
+import SmartSelect from '../SmartSelect.jsx';
 import { prettyJson } from '../format.js';
 import { parseJsonStrict } from '../jsonDuplicates.js';
 
@@ -53,24 +54,21 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
   );
 }
 
-export function Switch({ checked, onChange, disabled, label }) {
+export function Switch({ checked, onChange, disabled, label, id }) {
   return (
-    <button type="button" role="switch" aria-checked={!!checked} aria-label={label} disabled={disabled} className={`stSwitch ${checked ? 'on' : ''}`} onClick={() => onChange(!checked)}>
+    <button type="button" id={id} role="switch" aria-checked={!!checked} aria-label={label} disabled={disabled} className={`stSwitch ${checked ? 'on' : ''}`} onClick={() => onChange(!checked)}>
       <i aria-hidden="true" />
       <span>{checked ? 'On' : 'Off'}</span>
     </button>
   );
 }
 
-export function Select({ value, options, onChange, disabled, placeholder, invalid, id, labels }) {
+// A choice from a list: the browser's own select for a few, a searchable list for many (see SmartSelect). A value that is no longer in the
+// list is still shown, marked "(not found)", so it is never silently changed.
+export function Select({ value, options, onChange, disabled, placeholder, invalid, id, labels, ariaLabel }) {
   const known = options.includes(value);
-  return (
-    <select id={id} className="stFInput" value={value ?? ''} disabled={disabled} aria-invalid={invalid || undefined} onChange={(event) => onChange(event.target.value)}>
-      {(!known || value === '' || value === undefined) && <option value="">{placeholder || 'Choose…'}</option>}
-      {!known && value !== '' && value !== undefined && <option value={value}>{String(value)} (not found)</option>}
-      {options.map((option) => <option key={option} value={option}>{labels?.[option] || option}</option>)}
-    </select>
-  );
+  const list = [...(!known && value !== '' && value !== undefined ? [{ value, label: `${String(value)} (not found)` }] : []), ...options.map((option) => ({ value: option, label: labels?.[option] || option }))];
+  return <SmartSelect id={id} value={value ?? ''} options={list} onChange={onChange} placeholder={placeholder || 'Choose…'} disabled={disabled} invalid={invalid} ariaLabel={ariaLabel} />;
 }
 
 // A list of plain strings, one row each.
@@ -106,16 +104,13 @@ export function MultiPick({ options, values, onChange, disabled, emptyText, labe
         ))}
       </div>
       {left.length > 0 && (
-        <select className="stFInput small" value="" disabled={disabled} aria-label="Add" onChange={(event) => { if (event.target.value) onChange([...list, event.target.value]); }}>
-          <option value="">＋ Add…</option>
-          {left.map((option) => <option key={option} value={option}>{labels?.[option] || option}</option>)}
-        </select>
+        <SmartSelect action className="stFInput small" ariaLabel="Add" placeholder="＋ Add…" disabled={disabled} options={left.map((option) => ({ value: option, label: labels?.[option] || option }))} onChange={(chosen) => { if (chosen) onChange([...list, chosen]); }} />
       )}
     </div>
   );
 }
 
-export function CheckGroup({ options, values, onChange, disabled }) {
+export function CheckGroup({ options, values, onChange, disabled, labels }) {
   const list = Array.isArray(values) ? values : [];
   const id = useId();
   return (
@@ -124,7 +119,7 @@ export function CheckGroup({ options, values, onChange, disabled }) {
         <label key={option} htmlFor={`${id}-${option}`} className={list.includes(option) ? 'on' : ''}>
           <input id={`${id}-${option}`} type="checkbox" disabled={disabled} checked={list.includes(option)}
             onChange={(event) => onChange(event.target.checked ? options.filter((o) => list.includes(o) || o === option) : list.filter((v) => v !== option))} />
-          {option}
+          {labels?.[option] || option}
         </label>
       ))}
     </div>

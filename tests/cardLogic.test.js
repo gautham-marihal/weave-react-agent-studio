@@ -43,7 +43,7 @@ test('a union of kinds is told apart by what the value is', () => {
 test('a card is titled by what the item calls itself, with a short hint', () => {
   assert.deepEqual(summarize({ id: 'lookup', description: 'Gets the bill' }, 0), { title: 'lookup', hint: 'Gets the bill' });
   assert.deepEqual(summarize({ type: 'say', text: 'Hello' }, 1), { title: 'say', hint: 'Hello' });
-  assert.deepEqual(summarize({ id: 'a', type: 'http' }, 2), { title: 'a', hint: 'http' });
+  assert.deepEqual(summarize({ id: 'a', type: 'http' }, 2), { title: 'a', hint: 'Looks something up' });
   assert.deepEqual(summarize({ x: 1 }, 3), { title: 'Item 4', hint: '' });
   assert.deepEqual(summarize(null, 0), { title: '#1', hint: 'none' });
   assert.deepEqual(summarize('plain', 1), { title: '#2', hint: '"plain"' });

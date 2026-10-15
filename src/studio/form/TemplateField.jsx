@@ -2,7 +2,8 @@ import React, { useRef } from 'react';
 import { RUNTIME_ROOTS, TEMPLATE_FILTERS, highlightSegments, insertAt, insertables, templateProblems, wordCount } from './templates.js';
 
 // A text box for a string the runtime reads as a template ({{state.x}}, {{args.x}}, {{const.x}}). It helps write one
-// (a click inserts a value at the caret), shows which parts are templates, and flags a name that points at nothing.
+// (a click inserts a value at the caret), shows which parts are templates, and hints at a name that may point at nothing (in amber, never
+// red: the names depend on where the text sits, so the server's check, with its path, is the one that counts).
 // `scope` says which names exist (see templateScope). `showCount` adds a word count (for the text a model is given).
 export default function TemplateField({ value, onChange, scope, multiline = false, placeholder, id, disabled, mono = true, rows, ariaLabel, invalid, showCount = false }) {
   const ref = useRef(null);
@@ -19,12 +20,12 @@ export default function TemplateField({ value, onChange, scope, multiline = fals
     onChange(result.text);
     window.requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(result.caret - back, result.caret - back); });
   };
-  const common = { id, value: text, disabled, placeholder, spellCheck: false, 'aria-label': ariaLabel, 'aria-invalid': problems.length || invalid ? true : undefined, onChange: (event) => onChange(event.target.value), ref };
+  const common = { id, value: text, disabled, placeholder, spellCheck: false, 'aria-label': ariaLabel, 'aria-invalid': invalid ? true : undefined, onChange: (event) => onChange(event.target.value), ref };
 
   return (
     <div className="stTpl">
       {multiline
-        ? <textarea className={`stFInput ${mono ? 'mono' : ''}`} rows={rows || Math.min(10, Math.max(3, text.split('\n').length + 1))} {...common} />
+        ? <textarea className={`stFInput ${mono ? 'mono' : ''}`} rows={rows || Math.min(10, Math.max(3, text.split('\n').reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / 90)), 0) + 1))} {...common} />
         : <input className={`stFInput ${mono ? 'mono' : ''}`} type="text" {...common} />}
       {text.includes('{{') && (
         <div className="stTplPreview" aria-label="Template preview">
@@ -32,7 +33,7 @@ export default function TemplateField({ value, onChange, scope, multiline = fals
         </div>
       )}
       {showCount && <small className="stMuted stTplCount">{wordCount(text)} word{wordCount(text) === 1 ? '' : 's'}</small>}
-      {problems.map((problem, index) => <small key={index} className="stFErr">{problem.text} {problem.reason}</small>)}
+      {problems.map((problem, index) => <small key={index} className="stFWarn stTplHint" role="note">{problem.text} {problem.reason}</small>)}
       {!disabled && (
         <details className="stTplInsert">
           <summary>Insert a value</summary>

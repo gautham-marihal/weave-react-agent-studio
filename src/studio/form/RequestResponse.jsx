@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import SmartSelect from '../SmartSelect.jsx';
 import { isObj } from './engine.js';
 import { JsonInput, Select } from './fields.jsx';
 import InlineCreate from './InlineCreate.jsx';
-import { useForm } from './ctx.js';
+import { useConfigSelect, useForm } from './ctx.js';
 import { parseJsonStrict } from '../jsonDuplicates.js';
-import { describeMatches, modelSees, samplePaths, validatePath } from './jsonPaths.js';
+import { describeMatches, samplePaths, validatePath } from './jsonPaths.js';
+import TryIt from './TryIt.jsx';
 import { bodyFromParams } from './paramSchema.js';
 import TemplateField from './TemplateField.jsx';
+import { TechKey } from './TechName.jsx';
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const CREDENTIAL_NAME = /authori[sz]ation|api[-_ ]?key|token|secret|password|passwd|bearer/i;
@@ -56,7 +59,7 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
     onChange(next);
   };
   const connections = ctx.refOptions.http_connections || [];
-  const base = ctx.config?.connections?.[connection]?.base_url;
+  const base = useConfigSelect((c) => c?.connections?.[connection]?.base_url);
   const hasBody = 'body' in req;
   const url = `${req.method || 'GET'} ${joinUrl(base, req.path, req.query)}`;
 
@@ -123,7 +126,7 @@ export function PathInput({ value, onChange, sample, disabled, label, placeholde
 }
 
 // ---- the response: what the model sees, which values go into state ------------------------------------------------------------------
-export function ResponsePanel({ result, onChange, outOfBand, disabled }) {
+export function ResponsePanel({ path: toolPath = [], result, onChange, outOfBand, disabled, toolId, parameters }) {
   const ctx = useForm();
   const value = isObj(result) ? result : {};
   const toLlm = Array.isArray(value.to_llm) ? value.to_llm : [];
@@ -131,13 +134,13 @@ export function ResponsePanel({ result, onChange, outOfBand, disabled }) {
   const stateVars = ctx.refOptions.state_vars || [];
   const [sampleText, setSampleText] = useState('');
   const [creating, setCreating] = useState(false);
+  const [sampleOpen, setSampleOpen] = useState(false);
   const parsed = useMemo(() => {
     if (!sampleText.trim()) return { sample: undefined, error: '' };
     try { return { sample: parseJsonStrict(sampleText), error: '' }; } catch (error) { return { sample: undefined, error: error.message }; }
   }, [sampleText]);
   const sample = parsed.sample;
   const paths = useMemo(() => (sample === undefined ? [] : samplePaths(sample)), [sample]);
-  const seen = sample === undefined ? null : modelSees(sample, toLlm);
 
   const set = (patch) => {
     const next = { ...value, ...patch };
@@ -158,7 +161,7 @@ export function ResponsePanel({ result, onChange, outOfBand, disabled }) {
       </div>
 
       <div className="stFRow wide">
-        <div className="stFLabel"><label>Fields the model sees</label><code className="stFKey">to_llm</code></div>
+        <div className="stFLabel"><label>Fields the model sees</label><TechKey name="to_llm" path={[...toolPath, 'result', 'to_llm']} /></div>
         {toLlm.map((path, index) => (
           <div className="stPathRow" key={index}>
             <PathInput value={path} sample={sample} disabled={disabled} label={`Model field ${index + 1}`} onChange={(v) => set({ to_llm: toLlm.map((p, i) => (i === index ? v : p)) })} />
@@ -169,7 +172,7 @@ export function ResponsePanel({ result, onChange, outOfBand, disabled }) {
       </div>
 
       <div className="stFRow wide">
-        <div className="stFLabel"><label>Values kept for later</label><code className="stFKey">to_state</code></div>
+        <div className="stFLabel"><label>Values kept for later</label><TechKey name="to_state" path={[...toolPath, 'result', 'to_state']} /></div>
         <p className="stFHelp">Copy a value from the response into a state variable, so later steps (and {'{{state.…}}'} in what the agent says) can use it.</p>
         {Object.keys(toState).map((variable) => (
           <div className="stPathRow" key={variable}>
@@ -180,10 +183,7 @@ export function ResponsePanel({ result, onChange, outOfBand, disabled }) {
         ))}
         {!disabled && (
           <div className="stFAddRow">
-            <select className="stFInput small" value="" aria-label="Keep a value in a state variable" onChange={(event) => { if (event.target.value) addToState(event.target.value, ''); }}>
-              <option value="">＋ Keep a value in…</option>
-              {unmapped.map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
+            <SmartSelect action className="stFInput small" ariaLabel="Keep a value in a state variable" placeholder="＋ Keep a value in…" options={unmapped} onChange={(name) => { if (name) addToState(name, ''); }} />
             <button type="button" className="stLink" onClick={() => setCreating((v) => !v)}>＋ New state variable</button>
           </div>
         )}
@@ -192,7 +192,7 @@ export function ResponsePanel({ result, onChange, outOfBand, disabled }) {
 
       {outOfBand}
 
-      <details className="stFold sample">
+      <details className="stFold sample" onToggle={(event) => setSampleOpen(event.currentTarget.open)}>
         <summary>Try it on a sample response{sample !== undefined ? ` (${paths.length} fields)` : ''}</summary>
         <p className="stFHelp">Paste an example of what the API sends back. It is only used on this screen to pick fields and check paths. <strong>It is never saved</strong>, but don’t paste real customer data anyway.</p>
         <textarea className="stFInput mono" rows={6} value={sampleText} spellCheck={false} aria-label="A sample response" placeholder={'{ "balance": 42.5, "customer": { "name": "Asha" } }'} onChange={(event) => setSampleText(event.target.value)} />
@@ -208,24 +208,16 @@ export function ResponsePanel({ result, onChange, outOfBand, disabled }) {
                     <span className="stSampleActions">
                       <button type="button" className="stLink" onClick={() => addToLlm(item.path)} disabled={toLlm.includes(item.path)}>{toLlm.includes(item.path) ? 'Shown to the model' : 'Show to the model'}</button>
                       {unmapped.length > 0 && item.kind !== 'list' && (
-                        <select className="stFInput small" value="" aria-label={`Keep ${item.path} in a variable`} onChange={(event) => { if (event.target.value) addToState(event.target.value, item.path); }}>
-                          <option value="">Keep in…</option>
-                          {unmapped.map((name) => <option key={name} value={name}>{name}</option>)}
-                        </select>
+                        <SmartSelect action className="stFInput small" ariaLabel={`Keep ${item.path} in a variable`} placeholder="Keep in…" options={unmapped} onChange={(name) => { if (name) addToState(name, item.path); }} />
                       )}
                     </span>
                   )}
                 </li>
               ))}
             </ul>
-            <div className="stModelView" aria-label="What the model would see">
-              <strong>What the model would see</strong>
-              {seen.whole && <p className="stFWarn">The whole response, because no fields are chosen.</p>}
-              <pre>{JSON.stringify(seen.value, null, 2)}</pre>
-              {seen.missing.length > 0 && <small className="stFWarn">Not found in the sample: {seen.missing.join(', ')}</small>}
-            </div>
           </>
         )}
+        {sampleOpen && toolId && <TryIt toolId={toolId} parameters={parameters} sample={sample} sampleError={parsed.error} hasSample={sample !== undefined} />}
       </details>
     </div>
   );

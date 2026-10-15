@@ -2,7 +2,7 @@
 // configuration says it is made of (the persona, the agent's role, opening, rules and conditional blocks, the channel's
 // addition, and the tools it may use) in that order, so an author can read it as one piece. It is labelled approximate
 // wherever it is shown: the runtime's wording, ordering and conditional blocks are its own, and an exact preview needs the
-// runtime itself (a `POST /preview-prompt` the API doesn't have yet).
+// runtime itself (`POST /preview/prompt` returns the exact text; see src/studio/form/serverPreview.js).
 // Pure: no network, no DOM.
 
 import { isObj } from './engine.js';

@@ -2,7 +2,7 @@ import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { $, $$, actions, byLabel, byText, setupDom, teardownDom, textOf } from './component/dom.js';
 import { applyStarter } from '../src/studio/starters.js';
-import { minimalConfig } from '../src/demo/demoApi.js';
+import { createDemoApi, minimalConfig } from '../src/demo/demoApi.js';
 
 // Component tests of the screens built on top of the form: the Simple view, the Scenarios tab and the preview beside the editor. Each
 // is mounted in jsdom with a config in state; clicks and typing are replayed and the config that comes out is read back.
@@ -17,12 +17,14 @@ const openCard = async (app, id) => { if (!$(card(app, id), '.smBody')) await a.
 
 // ---------------------------------------------------------------- Simple
 
-test('the Simple view is four cards, the first open, each saying in one line what it holds', async () => {
+test('the Simple view is a few cards in the customer’s words, the first open, each saying in one line what it holds', async () => {
   window.localStorage.clear();
   const app = await simple();
-  assert.deepEqual($$(app.container, '.smCard h3 strong').map(textOf), ['Instructions', 'Voice & Language', 'AI Model', 'Connections']);
+  assert.deepEqual($$(app.container, '.smCard h3 strong').map(textOf), ['Personality and instructions', 'Voice and language', 'AI model', 'What it can do', 'Where it is available', 'Call records']);
   const heads = $$(app.container, '.smHead');
-  assert.deepEqual(heads.map((h) => h.getAttribute('aria-expanded')), ['true', 'false', 'false', 'false']);
+  assert.deepEqual(heads.map((h) => h.getAttribute('aria-expanded')), ['true', 'false', 'false', 'false', 'false', 'false']);
+  assert.match(textOf($(card(app, 'where'), '.smTitle small')), /Web chat · 1 transfer/);
+  assert.match(textOf($(card(app, 'records'), '.smTitle small')), /^Call log kept$/);
   assert.match(textOf($(card(app, 'model'), '.smTitle small')), /STT: none · LLM: OpenAI gpt-4\.1-mini · TTS: none/);
   assert.match(textOf($(card(app, 'connections'), '.smTitle small')), /0 connections · 2 tools · 1 secret/);
   assert.match(textOf($(card(app, 'instructions'), '.smBody')), /What should it do\?/);
@@ -61,7 +63,7 @@ test('"Detailed settings" shows the ordinary form for just that part, and hides 
   assert.equal($(app.container, '[data-detail=instructions]'), null);
   await a.click(byText(card(app, 'instructions'), 'button', 'Detailed settings'));
   const chips = await (async () => { for (let i = 0; i < 50 && !$(app.container, '[data-detail=instructions] .stFChipBtn'); i += 1) await app.wait(10); return $$(app.container, '[data-detail=instructions] .stFChipBtn').map(textOf); })();
-  assert.deepEqual(chips.map((c) => c.replace(/\d+$/, '')), ['Persona', 'Agents', 'Messages', 'State']);
+  assert.deepEqual(chips.map((c) => c.replace(/\d+$/, '')), ['Personality and rules', 'Fixed lines', 'Agents', 'Things it remembers']);
   assert.equal($(app.container, '[data-detail=instructions] .stFNavGroups'), null, 'no group tabs: it is embedded');
   assert.equal($(app.container, '[data-detail=connections]'), null, 'other cards are untouched');
   await a.click(byText(card(app, 'instructions'), 'button', 'Hide detailed settings'));
@@ -69,7 +71,7 @@ test('"Detailed settings" shows the ordinary form for just that part, and hides 
   await app.unmount();
 });
 
-test('Voice & Language: the main language makes the agent speak it; the main language can’t be switched off', async () => {
+test('Voice and language: the main language makes the agent speak it; the main language can’t be switched off', async () => {
   window.localStorage.clear();
   const app = await simple();
   const voice = await openCard(app, 'voice');
@@ -81,19 +83,20 @@ test('Voice & Language: the main language makes the agent speak it; the main lan
   assert.deepEqual(app.config.defaults.language.speaks, ['es', 'fr']);
   await a.check(byLabel(card(app, 'voice'), 'French'));
   assert.deepEqual(app.config.defaults.language.speaks, ['es']);
-  assert.equal(byLabel(card(app, 'voice'), 'Recording notice'), null, 'a chat-only agent has no recording notice to set');
+  assert.equal(byLabel(card(app, 'records'), 'Recording notice'), null, 'a chat-only agent has no recording notice to set');
   await app.unmount();
 });
 
-test('Voice & Language: a voice agent asks for its recording notice, and a voice is chosen from its engine’s list', async () => {
+test('Voice and language: a voice is chosen from its engine’s list; the recording notice is under Call records', async () => {
   window.localStorage.clear();
   const config = agent();
   config.channels = [{ id: 'phone', type: 'sip_voice', enabled: true, modalities: { input: ['audio'], output: ['audio'] }, greeting: { say: 'Hi' } }];
   config.defaults.models = { ...config.defaults.models, stt: { provider: 'deepgram', model: 'nova-3' }, tts: { provider: 'elevenlabs', model: 'eleven_turbo_v2_5', voice_id: '' } };
   const app = await simple(config);
-  const voice = await openCard(app, 'voice');
-  await a.type(byLabel(voice, 'Recording notice'), 'Calls are recorded.');
+  const records = await openCard(app, 'records');
+  await a.type(byLabel(records, 'Recording notice'), 'Calls are recorded.');
   assert.equal(app.config.persona.disclosures.recording_notice, 'Calls are recorded.');
+  const voice = await openCard(app, 'voice');
   const select = byLabel(card(app, 'voice'), 'Voice');
   const rachel = [...select.options].find((o) => /^Rachel/.test(o.text));
   assert.ok(rachel, 'ElevenLabs voices are offered');
@@ -173,22 +176,30 @@ test('a problem inside a card shows as a number on its title', async () => {
 });
 
 // ---------------------------------------------------------------- Scenarios
+// The tab talks to the API like the app does. These tests switch the app to demo mode, so the answers come from the imitation API
+// (src/demo), in the same shapes the real one uses; nothing here reaches a network.
 
-const scenarios = (config = agent(), props = {}) => mountScreen('scenarios', config, { ready: '.scTab', props });
-
-test('Scenarios: it says runs are simulated, offers no real runner, and starts with an invitation', async () => {
+const demoStore = { load: () => JSON.parse(window.localStorage.getItem('weave_demo_state') || 'null'), save: (state) => window.localStorage.setItem('weave_demo_state', JSON.stringify(state)) };
+async function seedDemo(config) {
   window.localStorage.clear();
+  window.localStorage.setItem('weave_demo', '1');
+  const api = createDemoApi({ seed: false, storage: demoStore });
+  await api.handle('POST', '/bots', { id: 'x', name: 'X' });
+  await api.handle('PUT', '/bots/x/draft', { config: { ...config, meta: { ...config.meta, id: 'x' } } });
+}
+const scenarios = async (config = agent(), props = {}) => { await seedDemo(config); return mountScreen('scenarios', config, { ready: '.scTab', props: { pollMs: 40, ...props } }); };
+const until = async (app, check, tries = 80) => { for (let i = 0; i < tries && !check(); i += 1) await app.wait(60); return check(); };
+
+test('Scenarios: demo mode says runs are an imitation, and starts with an invitation', async () => {
   const app = await scenarios();
-  assert.match(textOf($(app.container, '.scTab')), /Simulated runs\./);
-  assert.match(textOf($(app.container, '.scTab')), /Real runs aren’t available yet/);
-  assert.equal(byText($(app.container, '.scRunner'), 'button', 'Real agent').disabled, true);
+  assert.match(textOf($(app.container, '.scTab')), /There is no runtime in demo mode/);
+  assert.match(textOf($(app.container, '.scTab')), /Demo imitation/);
   assert.match(textOf($(app.container, '.scEmpty')), /No scenarios yet/);
   assert.equal(byText(app.container, 'button', /Run all/).disabled, true);
   await app.unmount();
 });
 
-test('Scenarios: write one, it goes into the draft’s tests, run it, see what failed and why; the run is recorded', async () => {
-  window.localStorage.clear();
+test('Scenarios: write one, it goes into the draft’s tests, run it, results appear, and a failure says what and why', async () => {
   const app = await scenarios();
   await a.click(byText(app.container, 'button', '＋ New scenario'));
   await a.type(byLabel(app.container, 'Turn 1: what the caller says'), 'Can I speak to a human?');
@@ -202,20 +213,57 @@ test('Scenarios: write one, it goes into the draft’s tests, run it, see what f
   assert.deepEqual(app.config.tests[0].turns, [{ say: 'Can I speak to a human?' }]);
   assert.deepEqual(app.config.tests[0].expect, [{ tool_called: 'escalate_to_human' }, { said_matches: 'refund' }]);
   assert.equal(app.config.tests[0].channel, 'web-chat');
+  assert.match(textOf($(app.container, '.scItem')), /Live/, 'no model script: it is a live scenario');
+  // a live scenario is skipped unless live ones are included (it would call a paid model)
   await a.click(byText(app.container, 'button', /Run all \(1\)/));
+  assert.equal(await until(app, () => /Skipped/.test(textOf($(app.container, '.scItem')))), true);
+  assert.match(textOf($(app.container, '.scItem')), /no model script/);
+  // include live scenarios: it asks first, because it costs money
+  await a.click($(app.container, '.scPaid summary'));
+  await a.check($$(app.container, '.scPaid input[type=checkbox]')[0]);
+  assert.match(document.body.textContent, /Run live scenarios\?/);
+  assert.match(document.body.textContent, /billed by the model/);
+  await a.click(byText(document.body, 'button', 'Include live scenarios'));
+  assert.match(textOf(byText(app.container, 'button', /Run all/)), /uses a paid model/);
+  await a.click(byText(app.container, 'button', /Run all/));
+  assert.equal(await until(app, () => /Failed/.test(textOf($(app.container, '.scItem')))), true);
   const item = $(app.container, '.scItem');
-  assert.match(textOf(item), /Failed/);
   assert.match(textOf(item), /No agent message matches \/refund\//);
   assert.match(textOf(item), /“escalate_to_human” is called/);
-  assert.match(textOf($(app.container, '.scSummary')), /1 passed.*1 failed|0 passed · 1 failed/);
-  assert.match(textOf($(app.container, '.scSummary')), /simulated/);
-  assert.equal($$(app.container, '.scHistory li').length, 1);
-  assert.equal(JSON.parse(window.localStorage.getItem('weave_scenario_runs:x')).length, 1, 'kept per agent in this browser');
+  assert.match(textOf($(app.container, '.scSummary')), /0 passed · 1 failed/);
+  assert.match(textOf($(app.container, '.scSummary')), /imitation/);
+  assert.ok($(item, '.trView'), 'the same trace component shows what happened');
+  await app.unmount();
+});
+
+test('Scenarios: letting a run reach real systems is off by default, asks first, and says so on the Run button', async () => {
+  const config = { ...agent(), tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }], model_script: [{ say: 'hello' }] }] };
+  const app = await scenarios(config);
+  await a.click($(app.container, '.scPaid summary'));
+  const boxes = $$(app.container, '.scPaid input[type=checkbox]');
+  assert.equal(boxes.length, 3, 'live, reviewer checks, and real requests');
+  assert.equal(boxes[2].checked, false, 'off by default');
+  assert.match(textOf($(app.container, '.scPaid')), /Let requests reach real systems.*can change real data.*refuses it unless an operator has allowed it/);
+  const realConfirm = window.confirm;
+  const asked = [];
+  try {
+    window.confirm = (text) => { asked.push(text); return false; };
+    await a.check(boxes[2]);
+    assert.equal(asked.length, 1);
+    assert.match(asked[0], /real systems/);
+    assert.equal($$(app.container, '.scPaid input[type=checkbox]')[2].checked, false, 'declining leaves it off');
+    assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
+    window.confirm = () => true;
+    await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
+    assert.match(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
+    assert.match(textOf($(app.container, '.scPaid summary')), /\(on\)/);
+    await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
+    assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/, 'switching it off takes the words away');
+  } finally { window.confirm = realConfirm; }
   await app.unmount();
 });
 
 test('Scenarios: a scenario with mistakes isn’t added, and says what to fix; editing and deleting work', async () => {
-  window.localStorage.clear();
   const config = { ...agent(), tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }] }] };
   const app = await scenarios(config);
   await a.click(byText(app.container, 'button', '＋ New scenario'));
@@ -237,7 +285,6 @@ test('Scenarios: a scenario with mistakes isn’t added, and says what to fix; e
 });
 
 test('Scenarios: pasted scenarios are added, bad ones reported', async () => {
-  window.localStorage.clear();
   const app = await scenarios();
   await a.click(byText(app.container, 'button', 'Paste scenarios…'));
   await a.type(byLabel(app.container, 'Scenarios as JSON'), JSON.stringify([{ id: 'good', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: 'x' }] }, { id: 'bad', channel: 'nope', turns: [], expect: [] }]));
@@ -245,6 +292,57 @@ test('Scenarios: pasted scenarios are added, bad ones reported', async () => {
   assert.deepEqual(app.config.tests.map((s) => s.id), ['good']);
   assert.match(textOf($(app.container, '.scImport [role=status]')), /Added 1 scenario/);
   assert.match(textOf($(app.container, '.scImport [role=status]')), /bad: .*no channel “nope”/);
+  await app.unmount();
+});
+
+// the review's own example: newer expectations, mocks, a clock, a script, and a kind the form has never heard of
+const rich = () => ({
+  id: 'a_hazard_reaches_the_emergency_line', description: 'A hazard goes straight to the emergency line.', channel: 'web-chat', now: '2026-10-14T03:00:00+08:00', state: { verified: true },
+  http_mocks: [{ method: 'GET', path: '/orders/*', json: { found: true } }],
+  model_script: [{ tool: 'end_call' }, 'Goodbye.'],
+  turns: [{ say: 'There is a gas leak' }],
+  expect: [{ tool_called_with: { tool: 'end_call', args: {} } }, { agent_is: 'assistant' }, { http_called: { method: 'GET', path: '/orders/*', times: 1 } }, { http_not_called: { method: 'POST', path: '/tickets' } }, { sentiment_is: 'calm' }],
+});
+
+test('Scenarios: a scenario with the newer fields opens in the form, every part is shown, and saving it keeps all of it', async () => {
+  const config = { ...agent(), tests: [rich()] };
+  const app = await scenarios(config);
+  await a.click(byText($(app.container, '[data-scenario=a_hazard_reaches_the_emergency_line]'), 'button', 'Edit'));
+  const form = $(app.container, '.scForm');
+  assert.doesNotMatch(textOf(form), /Choose what to check/, 'no expectation is “unknown”');
+  assert.match(textOf(form), /Scripted/);
+  const kinds = $$(form, '.scExpect select[aria-label$="what to check"]').map((s) => s.value);
+  assert.deepEqual(kinds, ['tool_called_with', 'agent_is', 'http_called', 'http_not_called'], 'the kinds the form knows are editable');
+  assert.match(textOf($(form, '.scExpect.unknown')), /kept exactly as it is/, 'the one it does not know is kept, not an error');
+  assert.equal(byLabel(form, 'Pretend it is').value, '2026-10-14T03:00:00+08:00');
+  assert.equal(byLabel(form, 'Expectation 3: how many times').value, '1');
+  assert.equal(byLabel(form, 'Mock 1: path').value, '/orders/*');
+  assert.equal(byLabel(form, 'Model reply 1: tool').value, 'end_call');
+  // Save is not blocked, and nothing the form did not touch is lost
+  await a.type(byLabel(form, 'Turn 1: what the caller says'), 'There is a gas leak!');
+  await a.click(byText(app.container, 'button', 'Save the scenario'));
+  const saved = app.config.tests[0];
+  const expected = rich();
+  expected.turns = [{ say: 'There is a gas leak!' }];
+  assert.deepEqual(saved, expected);
+  await app.unmount();
+});
+
+test('Scenarios: a run shows a request no mock answered, offers “Add a mock”, and the mock goes into the scenario', async () => {
+  const config = agent();
+  config.connections = { api: { type: 'http', base_url: 'https://api.example.com' } };
+  config.tools = [...(config.tools || []), { id: 'find_order', type: 'http', description: 'Looks up an order', connection: 'api', request: { method: 'GET', path: '/orders/{{args.order_id}}' }, parameters: { type: 'object', properties: { order_id: { type: 'string' } } } }];
+  config.agents.items[0].tools = [...(config.agents.items[0].tools || []), 'find_order'];
+  config.tests = [{ id: 'lookup', channel: 'web-chat', model_script: [{ tool: 'find_order', args: { order_id: 'NB-1' } }, 'It shipped.'], turns: [{ say: 'Where is NB-1?' }], expect: [{ http_called: { method: 'GET', path: '/orders/*' } }] }];
+  const app = await scenarios(config);
+  await a.click(byText(app.container, 'button', /Run all/));
+  assert.equal(await until(app, () => /no mock answered/.test(textOf($(app.container, '.scItem')))), true);
+  const item = $(app.container, '[data-scenario=lookup]');
+  assert.match(textOf(item), /GET \/orders\/NB-1/);
+  assert.match(textOf(item), /A scenario never calls a real API/);
+  await a.click(byText(item, 'button', 'Add a mock'));
+  assert.deepEqual(app.config.tests[0].http_mocks, [{ path: '/orders/NB-1', status: 200, json: {}, method: 'GET', connection: 'api' }]);
+  assert.match(textOf(item), /Mock added: run it again/);
   await app.unmount();
 });
 
@@ -282,4 +380,81 @@ test('Preview: in demo mode the real agent can’t be chosen, and a configuratio
   assert.equal(byText($(locked.container, '.pvPanel'), 'button', 'Real agent').disabled, true);
   assert.match(textOf($(locked.container, '.pvPanel')), /demo mode has none/);
   await locked.unmount();
+});
+
+// ---------------------------------------------------------------- Simple: where it is available, call records, what is below the cards
+test('Personality and instructions names where conversations are processed, with a way to change it, and no internal id', async () => {
+  window.localStorage.clear();
+  const app = await simple();
+  const body = $(card(app, 'instructions'), '.smBody');
+  assert.match(textOf($(body, '[data-note=processing]')), /^Conversations are processed by .*OpenAI\./);
+  assert.doesNotMatch(textOf(body), /This is the role of|front_desk|greeter/, 'no internal id on a customer’s screen');
+  assert.equal($(card(app, 'model'), '.smBody'), null);
+  await a.click(byText($(body, '[data-note=processing]'), 'button', 'Change'));
+  assert.ok($(card(app, 'model'), '.smBody'), 'Change opens the AI model card');
+  await app.unmount();
+});
+
+test('Where it is available: channels are switched on and off, and a voice channel added from the cards asks about the recording notice', async () => {
+  window.localStorage.clear();
+  const app = await simple();
+  const where = await openCard(app, 'where');
+  const switches = $$(where, '.smChannels [role=switch]');
+  assert.equal(switches.length, 1);
+  await a.click(switches[0]);
+  assert.equal(app.config.channels[0].enabled, false, 'switched off');
+  await a.click($$(card(app, 'where'), '.smChannels [role=switch]')[0]);
+  assert.equal('enabled' in app.config.channels[0], false, 'switched on again: the default is not written');
+  await a.click(byText(card(app, 'where'), 'button.stAddBtn', /^＋ Add a channel/));
+  await a.click($(card(app, 'where'), '.stPickCard[data-option="phone"]'));
+  assert.equal(app.config.channels.at(-1).type, 'sip_voice');
+  const offer = $(card(app, 'where'), '.stFOffer');
+  assert.ok(offer, 'asks whether callers should be told');
+  await a.click(byText(offer, 'button', 'Add a notice'));
+  assert.match(app.config.persona.disclosures.recording_notice, /may be recorded/);
+  assert.equal($(card(app, 'where'), '.stFOffer'), null);
+  await app.unmount();
+});
+
+test('Call records: what is kept is said and can be changed here, and sensitive details can be hidden in what is saved', async () => {
+  window.localStorage.clear();
+  const config = agent();
+  config.state = { variables: { ...(config.state?.variables || {}), pin: { type: 'string', sensitive: true } } };
+  config.schema_version = '1.1';
+  const app = await simple(config);
+  const records = await openCard(app, 'records');
+  assert.match(textOf($(records, '[aria-label="What is kept"]')), /A log of each call is kept\. It records what callers say/);
+  assert.match(textOf($(records, '[aria-label="Things to look at"]')), /handles sensitive details/);
+  await a.type(byLabel(records, 'Delete call logs after (days)'), '30');
+  assert.equal(app.config.observability.session_log.retention_days, 30);
+  await a.click(byLabel(card(app, 'records'), 'Keep the transcript'));
+  assert.equal(app.config.post_call.recording.transcript, true);
+  await a.click(byText(card(app, 'records'), 'button', /^Hide sensitive details/));
+  assert.equal(app.config.post_call.redaction.enabled, true);
+  assert.equal(app.config.schema_version, '1.2', 'redaction needs 1.2, and the draft says so');
+  assert.match(textOf($(card(app, 'records'), '[role=status]')), /raised to 1\.2/);
+  assert.equal($(card(app, 'records'), '[aria-label="Things to look at"]'), null, 'nothing left to warn about');
+  await a.click(byLabel(card(app, 'records'), 'Keep a log of each call'));
+  assert.equal(app.config.observability.session_log.enabled, false);
+  assert.match(textOf($(card(app, 'records'), '[aria-label="What is kept"]')), /No log of each call is kept/);
+  await app.unmount();
+});
+
+test('below the cards, every other part of the agent is one click away: the everyday ones under More, the engine’s own under Advanced', async () => {
+  window.localStorage.clear();
+  const { readFileSync } = await import('node:fs');
+  const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
+  const app = await simple();
+  const more = $$($(app.container, '[aria-label=More]'), '[data-more]').map((el) => el.getAttribute('data-more'));
+  const advanced = $$($(app.container, '.smAdvanced'), '[data-more]').map((el) => el.getAttribute('data-more'));
+  assert.deepEqual(more.filter((k) => !advanced.includes(k)), ['guardrails', 'schedules', 'tasks', 'wrapups', 'events', 'tests', 'meta']);
+  assert.deepEqual(advanced, ['identity', 'constants', 'runtime', 'builder']);
+  assert.equal($(app.container, '.smAdvanced').open, false, 'Advanced is closed until asked for, but it is there and labelled');
+  assert.match(textOf($(app.container, '.smAdvanced summary')), /^Advanced$/);
+  // nothing is lost: each section of the schema is on a card, under More or under Advanced
+  const onCards = ['persona', 'agents', 'messages', 'state', 'defaults', 'connections', 'tools', 'knowledge', 'forms', 'notifications', 'channels', 'telephony', 'observability', 'post_call'];
+  const everything = new Set([...onCards, ...more, ...advanced]);
+  const missing = Object.keys(schema.properties).filter((k) => !['$schema', 'schema_version'].includes(k) && !everything.has(k));
+  assert.deepEqual(missing, [], 'every section of the schema is reachable from the Simple view');
+  await app.unmount();
 });

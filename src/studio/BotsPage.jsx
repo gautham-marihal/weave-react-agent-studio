@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.js';
 import { assignBot, refreshBots, restoreBot, useBots, useWorkspaces } from './agents.js';
 import { queueChange } from './pendingChange.js';
@@ -8,17 +9,25 @@ import { rememberNotes } from './assistantNotes.js';
 import { generateDraft } from '../demo/draftAssistant.js';
 import { setGreeting, setRole } from './simple/simpleModel.js';
 import { applyStarter, STARTERS } from './starters.js';
-import { botIdProblem, compareVersions, currentStage, formatWhen, slugify } from './format.js';
+import { botIdProblem, formatWhen, slugify } from './format.js';
+import { applyTemplate, deleteTemplate, loadTemplates, parseTemplateFile, saveTemplate } from './savedTemplates.js';
+import { PAGE_SIZE, SORTS, collectFacets, filterBots, paginate, sortBots } from './agentList.js';
+import { healthTitle } from './health/health.js';
+import { knownMeta, useAgentHealth } from './health/useAgentHealth.js';
 import Menu from './manage/Menu.jsx';
 import { useManage } from './manage/useManage.jsx';
 import { navigate, routeHref } from './route.js';
 import { EnvSlots, ErrorState, Modal, Notice, Spinner } from './ui.jsx';
+import StatePill from './StatePill.jsx';
+import { stateFromHealth } from './status.js';
 
 function CreateBotDialog({ existingIds, onClose }) {
   const [name, setName] = useState('');
   const [id, setId] = useState('');
   const [idTouched, setIdTouched] = useState(false);
   const [starter, setStarter] = useState('support');
+  const [templates, setTemplates] = useState(() => loadTemplates());
+  const [importNote, setImportNote] = useState('');
   const [how, setHow] = useState('template'); // template | describe
   const [description, setDescription] = useState('');
   const [generated, setGenerated] = useState(null); // { result, for }
@@ -49,6 +58,10 @@ function CreateBotDialog({ existingIds, onClose }) {
         config = setGreeting(config, edits.greeting);
         rememberNotes(effectiveId, { source: made.source, assumptions: made.assumptions, questions: made.questions, description });
         try { await api.saveDraft(effectiveId, config, draft.revision); } catch { queueChange(effectiveId, { kind: 'assistant', config }); }
+      } else if (starter.startsWith('tpl:')) {
+        // one of your own templates: its contents on top of the new agent's own id, name and version
+        const template = templates.find((t) => `tpl:${t.id}` === starter);
+        if (template) { try { await api.saveDraft(effectiveId, applyTemplate(draft.config, template), draft.revision); } catch { queueChange(effectiveId, { kind: 'assistant', config: applyTemplate(draft.config, template) }); } }
       } else if (starter !== 'blank') {
         // Every new agent starts from the same minimal draft; the starter is what makes it its own. If saving it
         // fails the agent still exists, and the starter is put into its draft unsaved for the person to review.
@@ -83,12 +96,16 @@ function CreateBotDialog({ existingIds, onClose }) {
           <small>What people will see in the list.</small>
           <input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') create(); }} placeholder="e.g. Acme Support" maxLength={80} />
         </label>
+        {/* The id is a technical key (it is permanent and used in links), so it is made from the name and tucked away; it opens by itself when there is a problem with it */}
+        <details className="stIdAdvanced" open={!!idProblem || idTouched || undefined}>
+          <summary>Advanced: the id <code>{effectiveId || '…'}</code> <span className="stMuted">{idTouched ? '(set by you)' : '(made from the name)'}</span></summary>
         <label className={`workspaceField ${idProblem ? 'bad' : ''}`}>
           <span>Id</span>
           <small>Permanent. Used in links and when a call asks for this agent. It can’t be changed later.</small>
           <input value={effectiveId} onChange={(event) => { setIdTouched(true); setId(event.target.value.toLowerCase()); }} onKeyDown={(event) => { if (event.key === 'Enter') create(); }} placeholder="acme-support" spellCheck={false} aria-invalid={!!idProblem} />
           {idProblem && <small className="stFieldError">{idProblem}</small>}
         </label>
+        </details>
         <div className="pvModes asHow" role="group" aria-label="How to start">
           <button type="button" className={!described ? 'on' : ''} aria-pressed={!described} onClick={() => setHow('template')} disabled={busy}>Start from a template</button>
           <button type="button" className={described ? 'on' : ''} aria-pressed={described} onClick={() => setHow('describe')} disabled={busy}>Describe it</button>
@@ -100,6 +117,26 @@ function CreateBotDialog({ existingIds, onClose }) {
               <label key={item.id} className={starter === item.id ? 'on' : ''}>
                 <input type="radio" name="starter" value={item.id} checked={starter === item.id} onChange={() => setStarter(item.id)} disabled={busy} />
                 <span><strong>{item.label}</strong><small>{item.blurb}</small></span>
+              </label>
+            ))}
+            <div className="stTemplatesHead">
+              <strong>Your templates</strong>
+              <label className="quietButton stImport">Import a file…<input type="file" accept=".json,application/json" hidden aria-label="Import a template file" onChange={async (event) => {
+                const file = event.target.files?.[0]; event.target.value = '';
+                if (!file) return;
+                const parsed = parseTemplateFile(await file.text(), file.name);
+                if (parsed.error) { setImportNote(parsed.error); return; }
+                const saved = saveTemplate(parsed.template);
+                setTemplates(saved.list); setStarter(`tpl:${saved.template.id}`); setImportNote(`Imported “${saved.template.name}”.`);
+              }} /></label>
+            </div>
+            {importNote && <small className="stMuted" role="status">{importNote}</small>}
+            {templates.length === 0 && <small className="stMuted">None yet. Save any agent as a template from its “⋯” menu, or import a file a colleague shared.</small>}
+            {templates.map((item) => (
+              <label key={item.id} className={starter === `tpl:${item.id}` ? 'on' : ''}>
+                <input type="radio" name="starter" value={`tpl:${item.id}`} checked={starter === `tpl:${item.id}`} onChange={() => setStarter(`tpl:${item.id}`)} disabled={busy} />
+                <span><strong>{item.name}</strong><small>{item.description || `Saved ${formatWhen(item.createdAt)} from ${item.sourceName || 'an agent'}`}</small></span>
+                <button type="button" className="stFDel small" aria-label={`Remove the template ${item.name}`} disabled={busy} onClick={(event) => { event.preventDefault(); if (window.confirm(`Remove the template “${item.name}” from this browser? Agents already made from it are not affected.`)) { setTemplates(deleteTemplate(item.id)); if (starter === `tpl:${item.id}`) setStarter('support'); } }}>Remove</button>
               </label>
             ))}
           </fieldset>
@@ -114,7 +151,8 @@ function CreateBotDialog({ existingIds, onClose }) {
 
 // One agent in a list: name and id, where it runs (one slot per environment), its latest published version and when
 // the draft was last saved. `menuItems` adds the "⋯" menu (Rename, Export, Remove). Also used on the Overview.
-export function BotRow({ bot, menuItems, onOpen }) {
+export function BotRow({ bot, menuItems, onOpen, health, tags }) {
+  const state = stateFromHealth(bot, health);
   // Another page (the Overview) passes onOpen so it can switch to the Agents area too; a hash change alone wouldn't.
   const open = () => (onOpen ? onOpen(bot) : navigate(routeHref(bot.id), { guard: false }));
   const name = bot.name || bot.id;
@@ -123,8 +161,13 @@ export function BotRow({ bot, menuItems, onOpen }) {
       <button type="button" className="agentRowMain" onClick={open} aria-label={`Open ${name}`}>
         <span className="agentRowAvatar" aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>
         <span className="agentRowCopy">
-          <strong>{name}</strong>
-          <small><code>{bot.id}</code></small>
+          <span className="stRowTitle"><strong>{name}</strong><StatePill state={state} /></span>
+          <small><code>{bot.id}</code>{tags?.length > 0 && tags.slice(0, 3).map((tag) => <span key={tag} className="stAgentTag">{tag}</span>)}</small>
+          {health && health.state !== 'unknown' && (
+            <span className={`stHealth ${health.state}`} title={healthTitle(health)} data-health={health.state}>
+              {health.parts.length === 0 ? <span className="stHealthOk">✓ no problems found</span> : health.parts.slice(0, 3).map((part) => <span key={part.id} className={`stHealthPart ${part.tone}`}>{part.text}</span>)}
+            </span>
+          )}
         </span>
         <EnvSlots deployed={bot.deployed} compact />
         <span className="stRowFacts">
@@ -138,22 +181,15 @@ export function BotRow({ bot, menuItems, onOpen }) {
   );
 }
 
-const STAGE_RANK = { production: 4, staging: 3, development: 2 };
-const stageRank = (bot) => {
-  const stage = currentStage(bot);
-  return stage.kind === 'env' ? STAGE_RANK[stage.env] || 1 : stage.kind === 'published' ? 1 : 0;
-};
-const SORTS = {
-  recent: { label: 'Recently saved', compare: (a, b) => String(b.draft_saved_at || '').localeCompare(String(a.draft_saved_at || '')) },
-  name: { label: 'Name', compare: (a, b) => (a.name || a.id).localeCompare(b.name || b.id, undefined, { sensitivity: 'base' }) },
-  stage: { label: 'Furthest along', compare: (a, b) => stageRank(b) - stageRank(a) || compareVersions(b.latest_version || '0.0.0', a.latest_version || '0.0.0') },
-};
-
 export default function BotsPage({ route }) {
   const { bots, removed, all, error, loading, refresh } = useBots();
   const manage = useManage();
   const [filter, setFilter] = useState('');
   const [sort, setSort] = useState('recent');
+  const [tag, setTag] = useState('');
+  const [owner, setOwner] = useState('');
+  const [attention, setAttention] = useState(false);
+  const [page, setPage] = useState(1);
   const wantsNew = route.params?.new === '1';
   const [creating, setCreating] = useState(wantsNew);
   // #/bots?new=1 (the "Create agent" buttons elsewhere in the app) opens the dialog.
@@ -162,12 +198,20 @@ export default function BotsPage({ route }) {
   useEffect(() => { refresh(); }, [refresh]);
 
   const list = useMemo(() => bots || [], [bots]);
-  const visible = useMemo(() => {
-    // The search box only exists with more than one agent; without it a leftover search must not hide anything.
-    const q = list.length > 1 ? filter.trim().toLowerCase() : '';
-    const matched = q ? list.filter((bot) => `${bot.name} ${bot.id}`.toLowerCase().includes(q)) : list;
-    return [...matched].sort(SORTS[sort].compare);
-  }, [list, filter, sort]);
+  // What is known beyond the list (tags, owner, health) is read for the agents on the page; with few agents, for all of them.
+  const everything = list.length <= 40;
+  const [wantAll, setWantAll] = useState(false);
+  const known = knownMeta(list);
+  const filters = { query: list.length > 1 ? filter : '', tag, owner, attention };
+  const { matched, unknown } = useMemo(() => filterBots(list, filters, known), [list, filter, tag, owner, attention, known]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sorted = useMemo(() => sortBots(matched, sort), [matched, sort]);
+  const paged = paginate(sorted, page, PAGE_SIZE);
+  const visible = paged.rows;
+  const health = useAgentHealth(everything || wantAll ? list : visible);
+  const facets = collectFacets(list, known);
+  const unread = list.filter((bot) => !known[bot.id]).length;
+  // a new search, filter or sort starts again from the first page
+  useEffect(() => { setPage(1); }, [filter, tag, owner, attention, sort]);
   const counts = useMemo(() => ({
     total: list.length,
     published: list.filter((bot) => bot.latest_version).length,
@@ -219,15 +263,40 @@ export default function BotsPage({ route }) {
                   {Object.entries(SORTS).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}
                 </select>
               </label>
+              {facets.tags.length > 0 && (
+                <label className="stSort"><span>Tag</span>
+                  <SmartSelect className="" value={tag} ariaLabel="Filter by tag" placeholder="Any" options={[{ value: '', label: 'Any' }, ...facets.tags.map((t) => ({ value: t.value, label: `${t.value} (${t.count})` }))]} onChange={setTag} />
+                </label>
+              )}
+              {facets.owners.length > 0 && (
+                <label className="stSort"><span>Owner</span>
+                  <SmartSelect className="" value={owner} ariaLabel="Filter by owner" placeholder="Anyone" options={[{ value: '', label: 'Anyone' }, ...facets.owners.map((o) => ({ value: o.value, label: `${o.value} (${o.count})` }))]} onChange={setOwner} />
+                </label>
+              )}
+              <label className="stAttention"><input type="checkbox" checked={attention} onChange={(event) => setAttention(event.target.checked)} /> Needs attention</label>
             </div>
+          )}
+          {(unknown > 0 || (!everything && !wantAll && unread > 0) || health.pending > 0) && (
+            <p className="stMuted stListNote" role="status">
+              {unknown > 0 && <>{unknown} agent{unknown === 1 ? ' hasn’t' : 's haven’t'} been checked yet, so the tag, owner and attention filters don’t cover {unknown === 1 ? 'it' : 'them'}. </>}
+              {!everything && !wantAll && unread > 0 && <>Tags, owners and health are read for the agents on this page ({list.length - unread} of {list.length} so far). <button type="button" className="stLink" onClick={() => setWantAll(true)}>Check all {list.length} agents</button> (a few requests each). </>}
+              {health.pending > 0 && <>Checking… {health.pending} left.</>}
+            </p>
           )}
           <div className="stAgentHead" aria-hidden="true">
             <span>Agent</span><span>Deployed to</span><span>Latest version</span><span />
           </div>
           <div className="agentRowList">
-            {visible.map((bot) => <BotRow key={bot.id} bot={bot} menuItems={manage.menuItems} />)}
-            {visible.length === 0 && <div className="agentRowEmpty">No agents match “{filter.trim()}”.</div>}
+            {visible.map((bot) => <BotRow key={bot.id} bot={bot} menuItems={manage.menuItems} health={known[bot.id]?.health} tags={known[bot.id]?.tags} />)}
+            {visible.length === 0 && <div className="agentRowEmpty">{filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.'}</div>}
           </div>
+          {paged.pages > 1 && (
+            <nav className="stPager" aria-label="Pages of agents">
+              <button type="button" className="quietButton" disabled={paged.page <= 1} onClick={() => setPage(paged.page - 1)}>Previous</button>
+              <span role="status">{paged.from}–{paged.to} of {paged.total}</span>
+              <button type="button" className="quietButton" disabled={paged.page >= paged.pages} onClick={() => setPage(paged.page + 1)}>Next</button>
+            </nav>
+          )}
         </>
       )}
 

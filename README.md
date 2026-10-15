@@ -5,6 +5,8 @@ test sessions live on the **Agent Builder API**, which this app calls.
 
 ## Run locally
 
+Needs **Node 22.14 or newer** (`engines` in `package.json`: the component tests use `jsdom@30`, which won't load on 22.13).
+
 ```bash
 npm install
 cp .env.example .env.local     # then set AGENT_BUILDER_URL and AGENT_BUILDER_API_KEY
@@ -30,25 +32,37 @@ needs SSO in front of the app and a proxy that adds the key and the identity: se
 
 The **Agents** area (`src/studio`) covers the four jobs of the front-end guide:
 
-| Tab | What you can do |
-|---|---|
-| **Config** | Edit the draft in **Simple** (four cards), **All settings** (a form built from the API's JSON Schema, `GET /schema`) or raw JSON, with an optional **preview** beside it. Validation runs as you type (`POST /validate`); an error jumps to its field. Save uses revision locking and handles a conflict. |
-| **Versions** | List published versions, compare any two (or the draft) with `GET /diff`, restore one as the draft. |
-| **Deploy** | See what runs in each environment, check a version before deploying it, deploy it (production asks twice), roll back, follow a `pending` deployment, read the history. |
-| **Scenarios** | Write test conversations (what the caller says, what must be true afterwards), run them and see which fail. They are the draft's `tests`. Runs are **simulated** today (see below). |
-| **Test** | Start a real conversation (`POST /sessions`, then LiveKit): chat, voice, camera/screen/picture input when the channel has it, and the forms the agent asks for. Only web chat and web voice channels can be tried here; a phone-only agent says so instead of failing. |
+The agent's tabs follow the order of the work, in four stages (`src/studio/journey.js`): **Build** it, **Test** it, **Release** it, **Monitor** it.
+Each stage says what question it answers, the line under the agent's name says where it stands (state, tests, where it is live, calls today),
+and every tab ends with a **Next: …** bar, so the whole path can be walked with that button. Every old link (`#/bots/{id}/deploy`) still works.
+
+| Stage | Tab | What you can do |
+|---|---|---|
+| **Build** | **Config** | Edit the draft in **Simple** (six cards in the customer's words), **All settings** (the whole schema, grouped by task, with plain labels) or raw JSON (offered once **Technical names** is on, so a customer's first screen has no jargon), with an optional **preview** beside it. Validation runs as you type (`POST /validate`); every problem names the setting by its label and offers a fix where one is certain. Save uses revision locking and handles a conflict. |
+| | **Knowledge** | Upload the files a knowledge base reads, build its index (a job you can watch), try a search and see each passage's score and what the model would be shown. See "Knowledge" below. |
+| **Test** | **Test** | Start a real conversation (`POST /sessions`, then LiveKit): chat, voice, camera/screen/picture input when the channel has it, and the forms the agent asks for, with a **live trace** of what the agent did beside it. "Save as a scenario" turns a conversation into a test. Only web chat and web voice channels can be tried here; a phone-only agent says so. |
+| | **Scenarios** | Write test conversations, run them on the **server's real runner** and see which fail and why. See "Test scenarios" below. |
+| | **Checks** | The readiness checks: the saved draft or a published version read against everyday situations (a greeting, a way to end the call, reaching a person). No conversation is run. Kept in this browser. |
+| **Release** | **Versions** | List published versions, see whether the tests passed on each **exact** version, compare any two (or the draft) with `GET /diff`, restore one as the draft. |
+| | **Deploy** | See what runs in each environment; the **release checklist** ("is it safe to put this live?") for the version, including where conversations are processed, what is kept about each call and whether callers are told they may be recorded; deploy it (production asks twice), roll back, follow a `pending` deployment, read the history. |
+| **Monitor** | **Calls** | This agent's calls (real callers and test conversations) with filters, and a trace of what happened in each. |
+
+The sidebar holds workspace-level things only: **Home** (the next step for the agent you were last working on, what is live, recent activity), **Agents**,
+**Calls** (every agent), the **Library** (Voices, Integrations, Telephony) and **Settings**.
 
 **Publish** (header) freezes the saved draft as a version. The dialog lists the validator's warnings first.
 
 ### The Simple view (the default)
 
-The Config tab opens on four cards: **Instructions** (name, what it should do, what it says first, tone, style rules, and the prompt
-preview), **Voice & Language** (main language and the others it speaks, its voice, the channels it talks on, the recording notice),
-**AI Model** (provider and model for listening, thinking and speaking) and **Connections** (connections, tools and the secrets it
-needs). A closed card sums itself up in one line; an open one shows the everyday settings; **Detailed settings** reveals everything the
-configuration holds about that part (the ordinary form, limited to the right sections). Everything else (guardrails, events, after the
-call, telephony…) is one click away under "Everything else". It edits the same draft as **All settings** and the JSON, so the three
-always agree (`src/studio/simple/`).
+The Config tab opens on six cards, worded for the customer: **Personality and instructions** (name, what it should do, what it says first, tone, style
+rules, where conversations are processed and a way to change it, and the prompt preview), **Voice and language**, **AI model** (provider and model for
+listening, thinking and speaking), **What it can do** (connections, tools, the secrets it needs), **Where it is available** (the channels, each switched
+on or off, added from a picker; adding a voice channel asks whether callers should be told they may be recorded) and **Call records** (the per-call log,
+recordings, how long they are kept, the recording notice, and a button that hides sensitive details in what is saved). A closed card sums itself up in one
+line; an open one shows the everyday settings; **Detailed settings** reveals everything the configuration holds about that part. Below the cards, **More**
+(safety rules, business hours, multi-step tasks, closing messages, events, test scenarios, name/tags/owner) and an **Advanced** fold (caller identity,
+fixed values, the engine, studio notes) put every other section one click away. It edits the same draft as **All settings** and the JSON, so the three
+always agree (`src/studio/simple/`). A test walks the schema and fails if a section is on no card, under More or under Advanced.
 
 ### The preview beside the editor
 
@@ -57,6 +71,39 @@ always visible: not started, connecting, live, reconnecting, ended, and errors w
 (a live conversation on the saved draft; it says so when you have unsaved edits) or a **simulated** one (made-up replies from simple
 rules, using your current edits, no server). The two are never confused: the panel says which, and every simulated reply carries a
 "Simulated" tag. Demo mode has no real agent, so it is simulated only (`src/studio/preview/`, `src/demo/simulatedAgent.js`).
+
+### All settings: grouped by task, in plain words
+
+"All settings" is the complete schema, but it is arranged by what a person came to do, not by the shape of the file (`form/layout.js`): **About this
+agent**, **How it talks** (fixed lines, language, AI models, conversation flow), **What it can do** (tools, knowledge, forms, messages it sends, tasks,
+connections), **How it behaves** (agents, safety rules, business hours, events, things it remembers), **Where it is available** (channels, phone
+transfers, caller identity), **After the call**, **Quality and records**, and last, marked advanced, **Engine and operator settings** (the engine, reliability,
+fixed values, studio notes). It opens on "About this agent". `tests/layout.test.js` fails if any property of the schema is on no screen or on two, so
+regrouping can never lose a setting; `tests/density.component.test.js` fails if a screen opens with more than 40 inputs.
+
+Every setting has a hand-written label, a one-sentence purpose and, where it helps, an example (`form/plainLanguage.js`), so `timeout_s` reads "Give up after
+(seconds)" and `stt` reads "Listening (speech-to-text)". The catalogue is checked against the schema: every setting name must have an entry, every
+place-specific entry must exist in the schema, and a name that means different things in different places (`type`, `name`, `enabled`) gets its own wording per
+place. The schema's own technical description is one click away ("Technical detail"). **Technical names** (a switch in the Config toolbar and in Settings,
+off by default) shows the key the file uses beside every label, with **Copy path** and **In JSON**; with it off no raw key is on screen
+(`tests/techNames.component.test.js` walks every screen of the sample agents to prove it). Settings meant for experts sit under **Advanced** in their place;
+the catalogue is read as a fallback behind the schema's own `x-ui` hints (`label`, `help`, `example`, `audience`, `advanced`), so a server that starts
+sending them takes over without a release.
+
+Adding things is a choice of **jobs on cards** (`form/AddPicker.jsx`, `form/pickerOptions.js`): "Hand over to a person", "Look something up in your systems",
+"Search your knowledge", "End the call"… for tools, the ways to be reached for channels, "Refuse tricks to change its instructions" for safety rules, each with a
+sentence on what it is for, grouped, searchable, and with what the runtime can't run yet marked on its card.
+
+**Relationship views** (`src/studio/relations/`): an **agent map** above the agents (boxes and arrows for who hands the caller to whom, the first agent marked,
+stranded agents called out, click to open), a **tool × agent grid** above the tools (tick to give or take a tool, with Undo), a week bar for each **schedule**,
+the **steps of a task** read top to bottom, and **Used by** on every tool, line, value and connection (chips that go there).
+
+**Problems in plain words** (`src/studio/validation/`): each message from the checks names the setting by its labels (`Agents › Who answers first`), says what is
+wrong in plain words, and offers one-click fixes where one is certain (use one of the ids that exist, add the missing setting, remove a setting that isn't there,
+raise `schema_version`, rename an id everywhere, offer an unused tool to an agent, hide sensitive details…). They are grouped by what to do (fix these first,
+then these which need you, worth a look), applied as ordinary undoable edits, and checked against the real validator
+(every fix was tried on a deliberately broken copy of the example agent and sent to the real `POST /validate`: 20 of 21 cleared their message without adding an error; the other adds a missing setting empty and takes you to it to be filled in). The server's own sentence
+is in a fold. **Search** (Ctrl K) also finds a setting of the open agent by what it is called, what it is for or its key, and takes you to it.
 
 ### The Config form
 
@@ -132,72 +179,117 @@ All pages read the same agent list (`src/studio/agents.js`): the API's agents, m
 
 | Page | What it does |
 |---|---|
-| **Overview**, search, workspace menu | Counts, rows and results come from the API. |
-| **Sessions** | Lists the test conversations started from this browser's Test tab, with transcripts. Real calls aren't listed (the API doesn't expose them yet). |
-| **Readiness checks** | Looks at an agent's saved draft or any published version against 12 everyday situations (`src/studio/scenarios.js`). No conversation is run and no call is placed. |
+| **Home**, search, workspace menu | The next step for the agent you last worked on (build, test, release, monitor), the agents, recent activity; counts, rows and results come from the API. |
+| **Calls** | Every conversation your agents have had (`GET /bots/{id}/calls`): who called, when, how long, how it ended, with filters, paging, "All agents" (it asks each agent, a few at a time) and a trace of what happened in each. The records hold what callers said, and the page says so. |
 | **Voices** | "Use in an agent" puts the voice on that agent's draft, unsaved, for you to review. "Used by" is read from the agents' configurations. |
 | **Integrations** | "Add to an agent" adds the saved connection to that agent's draft as an HTTP connection, unsaved. |
-| **Telephony** | **A preview, not connected**: numbers, trunks and dispatch rules are kept in this browser and route nothing. The page, the dialogs and the SIP address say so. |
-| **Settings** | Shows API status, counts, and what runs in each environment. |
+| **Telephony** (phone numbers, dispatch rules, SIP trunks) | **A preview, not connected**: numbers, trunks and dispatch rules are kept in this browser and route nothing. The page, the dialogs and the SIP address say so. |
+| **Settings** | The workspace, and what is running where. A collapsed **For developers** section holds the data source (real API or demo data) and the connection status. |
 
-Telephony, readiness-check runs, Sessions and Integrations details are **kept in this browser only** (the API has no
-endpoints for them), so two people see different lists.
+Phone numbers, readiness-check runs and Integrations details are **kept in this browser only** (the API has no
+endpoints for them), so two people see different lists. Saved templates and the workspaces are in this browser too.
 
 On a phone the sidebar opens from a menu button (`src/studio/MobileNav.jsx`).
 
-Sections that wait on something not built yet say so where you work: **Tests** (nothing runs the scenarios), **Tasks** (the runtime
+Sections that wait on something not built yet say so where you work: **Tasks** (the runtime
 doesn't run multi-stage flows yet; the ordinary form edits them and a visual stage editor can follow) and **Telephony** (numbers are
 not connected from the studio). A new agent's id can't be one the runtime reserves (`transcripts`, `metrics`, `logs`, `sessions`, `tmp`).
 
 ## Test scenarios
 
 The configuration has a `tests` section: conversations to check, each with a channel, the caller's turns, and what must hold afterwards
-(a tool was or wasn't called, a state variable ended up a certain way, something the agent said matches a pattern, or a criterion a
-model would grade). The Scenarios tab writes them (into the draft, so they are saved and versioned with it), accepts pasted JSON,
-runs them, records each outcome in this browser and shows failures with the reason and the conversation.
+(a tool was called, with what, or wasn't; a state variable ended up a certain way; something the agent said matches a pattern; the
+conversation ended with a given agent; an API request was or wasn't made; or a criterion a model would grade). A scenario can also carry
+a description, a pretend clock (`now`), starting `state`, answers for the bot's API calls (`http_mocks`) and a `model_script`.
 
-**Runs are simulated.** The runner plays each scenario against a simulated agent (simple rules), so a pass means the scenario is well
-formed and can be met by the simulation, **not** that the real agent would pass; "a reviewer agrees that…" criteria are never checked.
-The screen says so, labels every result with the runner that made it, and shows the real runner as unavailable: the API has no
-endpoint that runs test scenarios yet. When it has, add a runner in `src/studio/scenarios/runner.js` with the same signature
-(`src/studio/scenarios/`).
+The Scenarios tab writes them (into the draft, so they are saved and versioned with it) and runs them on the **server's real runner**
+(`POST /bots/{id}/tests/run`, polled until it is over; results appear as scenarios finish). A scenario with a `model_script` runs the real
+runtime with a scripted model: free and the same every time. One without is **live**: it uses a real model, costs money, and runs only
+when you tick "Include live scenarios" (which asks first). Runs never call a real API: the mocks answer, and a request no mock answered
+is shown with an **Add a mock** button. A run says which exact configuration it tested, so a version can show "tests passed on this exact
+version". What the form doesn't know (a new kind of expectation) is kept and never blocks Save. In demo mode an imitation plays the
+scenarios and every result says so (`src/studio/scenarios/`, `src/demo/demoTests.js`).
+
+## Knowledge
+
+A `vector_store` base is searched from an index built before calls. The Knowledge tab uploads the files (`PUT` with the file as the body),
+builds the index (`POST .../build`, then polls `.../status` while it runs and shows its log), and tests a search with scores and what the
+model would be shown. It works from the **saved** draft, because that is what the server builds and searches, and says so when you have
+unsaved changes. A base that asks your own search service has nothing to build (`src/studio/knowledge/`).
+
+## Calls and the trace
+
+One trace component (`src/studio/trace/`) shows what happened in a call, a Test conversation and a scenario run, because they are the same
+records: what was said, which tool ran with what, which API answered, what a knowledge search found, what changed, what went wrong, with
+filters by kind and every raw record one click away. A call still in progress is followed live (`GET .../calls/{id}/stream`; the proxy must
+not buffer that path). The call log's text currently arrives with the wrong character encoding (`Iâ€™m` for `I’m`); the trace repairs
+that pattern, and the transcript endpoint is fine.
+
+## What the model will be told
+
+The prompt preview and the tool "Try it" panel ask the server (`POST /preview/prompt`, `POST /preview/result`), which runs the runtime's
+own code on what is in the editor, so they are exact: the real instructions, which conditional blocks are in right now, the tools as the
+model sees them, how big it all is (with advice when it is too long), "Preview as…" a channel, a what-if state and a pretend time, and for a
+tool: the request that would go out and what the model would read of a sample answer. If the server can't be asked the prompt preview falls
+back to an approximate copy built in the browser and says so.
 
 ## Waiting for the API
 
-These need endpoints that don't exist yet; the UI is honest about it and will use them when they do:
+These need endpoints that don't exist yet; the UI is honest about it and will use them when they do. (Test runs, call records, knowledge,
+previews and the call stream are all served now and used.)
 
 | Wanted | Today |
 |---|---|
+| `GET /capabilities` (which tool kinds the runtime can run) | The Add-tool menu uses a short list in `toolInfo.js` that can go stale. |
+| `GET /status` (API, LiveKit, which keys are set) | The Home card says only "API reachable". |
+| Cross-agent call list and per-agent statistics | "All agents" asks each agent; the Telephony cards show no numbers. |
+| Tags and owner in `GET /bots` | They are read from each draft, a page at a time, or for all on request. |
 | Real phone numbers (a numbers page over `builder_api/sip.py`) | Telephony is labelled a preview. |
-| An endpoint that runs test scenarios | The Scenarios tab runs them in a simulation and says so. |
 | An AI assistant that drafts a configuration from a description | "Describe it" uses a rule-based demo assistant and says so. |
-| `POST /preview-result`, `POST /preview-prompt` | The response panel works on a pasted sample in the browser; the prompt preview is an approximation built in the browser, not the runtime's exact prompt. |
-| Call records and a live trace | Sessions lists only this browser's tests; the Test tab's log is client-side. |
+| `GET /templates` (and templates an organisation publishes) | Templates are saved in this browser and shared as files. |
+| `x-ui` for every setting (label, help, example, level) | The studio keeps its own catalogue, `form/plainLanguage.js`; the tests check it covers every setting in the schema. |
+| Validation messages with a `code` and a `fix` | Messages are shown with the field's label and a "show me" jump. |
+| A release policy per environment | The release checklist is advice only, and says so. |
 | Archive/delete a bot | "Remove from my list" hides it locally. |
 | `label` on channels and list items | Cards are titled by id. |
-| A trusted identity header and roles | The proxy sets the identity; see docs/PRODUCTION.md. |
+| A trusted identity header and roles | The proxy sets the identity; see docs/PRODUCTION.md. Nothing in the UI changes by role yet. |
 | The server blocking a production deploy over `severity: "security"` | The UI asks for a typed confirmation. |
+| Worker and `builder` settings marked ignored in the schema | The studio files them under "Engine and operator settings". |
 
 ## Layout
 
 ```
 src/main.jsx, src/App.jsx   entry, sign-in state, error boundary
-src/pages/                  one file per page: Landing, Login, Dashboard (the shell and Overview), Sessions, Readiness,
-                            Telephony, Voices, Integrations; shared.jsx (sidebar pieces, dialogs), helpers.js
+src/tokens.css              the design tokens: both themes' colours, the type scale, spacing and density (loaded before styles.css)
+src/ui/                     the icon set (Icon.jsx, iconPaths.js)
+src/pages/                  one file per page: Landing, Login, Dashboard (the one shell, and Home), Calls (Sessions.jsx), Telephony, Voices,
+                            Integrations; HomeJourney.jsx; shared.jsx (sidebar pieces, dialogs), helpers.js (the navigation)
 src/api/client.js           one function per API endpoint, error classification (JSDoc-typed)
 src/api/types.js            JSDoc types of the API's answers; agentConfig.d.ts is generated from the schema
-src/studio/                 the Agents area (list, workspace, Config, Versions, Deploy, Test)
-src/studio/form/            schema engine, the form, and the tool / channel / message / template editors
-src/studio/simple/          the Simple view (four cards) and the helpers that read and write it
+src/studio/                 the Agents area (list, workspace, Config, Versions, Deploy, Test); journey.js (the four stages and "Next"), status.js (one name for each state)
+src/studio/form/            schema engine, the form, layout.js (the groups), plainLanguage.js (the labels), the pickers, and the tool / channel / message / template editors
+src/studio/simple/          the Simple view (six cards) and the helpers that read and write it
+src/studio/relations/       the agent map, tool grid, schedule strip, task steps and "used by"
+src/studio/validation/      the checks described for a person: labels, plain sentences, one-click fixes
+src/studio/records/         what is kept about each call, where it is processed, the recording notice
+src/studio/checks/          the Checks tab (readiness checks of one agent)
 src/studio/preview/         the preview beside the editor
-src/studio/scenarios/       test scenarios: editing, the (simulated) runner, history
+src/studio/scenarios/       test scenarios: editing, the run hook, results (runs are the server's)
+src/studio/knowledge/       the Knowledge tab: files, index builds, test searches
+src/studio/calls/           the call list and one call's detail
+src/studio/trace/           one trace component for calls, test conversations and scenario runs
+src/studio/release/         the release checklist
+src/studio/health/          per-agent health for the Agents list
+src/studio/SmartSelect.jsx  the shared selector: a native select for a few choices, a searchable list for many
+src/studio/settingsSearch.js  find a setting by name (Ctrl K)
 src/studio/models/          provider and model pickers, and the model catalogue
-src/demo/                   demo mode: the imitation API, its validator, the simulated agent, the draft assistant
+src/demo/                   demo mode: the imitation API (agents, test runs, calls, knowledge, previews), its validator, the simulated agent, the draft assistant
 src/studio/test/            LiveKit session hook, Test tab, form prompt
-e2e/                        the end-to-end smoke test and its mock API
+e2e/                        the end-to-end smoke test, the typing-speed budget, the first-run click counter, and the mock API
 scripts/                    sync-fixtures (refresh the schema), schemaTypes (generate the types)
-tests/                      unit tests (node:test) and the schema/example fixtures
+tests/                      unit and component tests (node:test), the schema/example fixtures, and corpus/ (the configs the conformance tests run over)
 docs/PRODUCTION.md          how to run it for real: sign-in, proxy, identity
+docs/USABILITY_STUDY.md     the study to run with real people: tasks, measures, what good looks like
 ```
 
 `jsconfig.json` gives editors type hints; a few pure modules opt in to checking with `// @ts-check`.
@@ -210,12 +302,28 @@ npm test          # unit tests (schema engine, references, presets, tools, templ
                   # form and screens mounted in jsdom)
 npm run build
 npm run dev:demo   # the whole app with no backend (demo mode)
+npm run e2e:typing  # typing speed on a 100-tool agent in a real browser (see e2e/typing.mjs: measure a PRODUCTION build)
+npm run e2e:firstrun # clicks and fields from the workspace to the first test conversation, and any technical term on the way (demo build; see e2e/firstRun.mjs)
 npm run e2e       # needs the dev server running: signs in, creates an agent from a starter, edits, saves, publishes,
                   # deploys to development and has a (mocked) test conversation. E2E_MODE=live uses a real local API.
 npm run sync-fixtures   # fetch GET /schema and update every copy: the test fixture, public/config (the download) and the generated types
 npm run sync-public     # propagate what is already in tests/fixtures to public/config and the types, without asking the server
 npm run types           # regenerate src/api/agentConfig.d.ts from the fixture only
 ```
+
+**Conformance.** `tests/conformance.test.js` and `tests/conformance.component.test.js` run over a corpus of configs (the API's example, every
+starter, a 30-tool agent, an agent with every kind of tool and channel; add your own folder with `CONFORMANCE_DIR`): every id and key is
+renamed and renamed back, and every section is opened with everything expanded, failing on any red mark the studio draws on a config the
+server calls valid, on any logged error, and on any setting that can't be reached. `CONFORMANCE_SERVER=1` also sends each config to the
+server's `POST /validate` (a read) and holds the corpus to its word. This is what would have caught the false alarms found by the review.
+
+**Look and wording.** `tests/typeScale.test.js` reads every stylesheet and fails on a font size that is not one of the eight tokens (six interface sizes, none
+below 12 px, and two display sizes). `tests/plainLanguage.test.js` checks the label catalogue against the schema; `tests/layout.test.js` that no setting is lost
+by the grouping; `tests/techNames.component.test.js` that no raw key is on screen with technical names off.
+
+**Look and feel, in one place.** `src/tokens.css` holds the colours of both themes, the type scale (12, 13, 14, 16, 20, 28 and two display sizes) and the
+spacing that **Comfortable** and **Compact** (Settings) change. Icons are one set of inline SVGs (`src/ui/Icon.jsx`). An agent has one status vocabulary,
+Draft, Tested, Live in Development, Live in Staging, Live in Production and Needs attention, wherever it is shown (`src/studio/status.js`).
 
 `tests/fixtures/` holds the schema the API served and the example config. `tests/schema-copies.test.js` fails when the public download, the generated types or a built `dist/config` copy differ from it (`npm run build` refreshes dist). `tests/schema-drift.test.js` fails when the
 fixture differs from what the server serves (when `AGENT_BUILDER_URL` and a key are set), so the form engine's tests can't pass

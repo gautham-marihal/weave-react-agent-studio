@@ -33,7 +33,8 @@ export function describeStartError(error, ref) {
         : { title: 'The configuration has errors, so it can’t be tried', body: 'Fix these on the Config tab and save the draft.', errors: error.errors };
     }
     case 'unavailable':
-      return { title: 'The server can’t start browser sessions yet', body: `${error.message} It needs LiveKit to be configured on the server.` };
+      // What a customer needs is what to do; the names of the server's settings are for whoever runs it, one click away.
+      return { title: 'Live conversations aren’t set up on this server yet', body: 'Ask whoever runs the server to turn them on. Until then you can try the agent with the simulated preview.', details: error.message };
     case 'network':
       return { title: 'Can’t reach the Agent Builder API', body: error.message };
     case 'auth':

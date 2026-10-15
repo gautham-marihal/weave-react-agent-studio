@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useForm } from './ctx.js';
+import { useConfigSelect, useForm } from './ctx.js';
 import { CREATABLE, createAndPoint, createProblems } from './inlineCreate.js';
 
 // "＋ New message / state variable / HTTP connection" under a field that points at one: asks the few things needed, makes
@@ -7,16 +7,17 @@ import { CREATABLE, createAndPoint, createProblems } from './inlineCreate.js';
 export default function InlineCreate({ collection, target, defaultKind, onClose }) {
   const ctx = useForm();
   const spec = CREATABLE[collection];
+  const config = useConfigSelect((c) => c, Object.is); // small, and only here while something is being created
   const [answers, setAnswers] = useState({ kind: defaultKind || 'string' });
   const [tried, setTried] = useState(false);
   if (!spec) return null;
-  const problems = createProblems(collection, answers, ctx.config);
+  const problems = createProblems(collection, answers, config);
   const set = (key, value) => setAnswers((old) => ({ ...old, [key]: value }));
   const submit = () => {
     setTried(true);
     if (Object.keys(problems).length) return;
-    const { config, id } = createAndPoint(ctx.config, collection, answers, target);
-    ctx.applyConfig(config, `Created ${spec.word} “${id}”${target ? ' and pointed this field at it' : ''}.`);
+    const { config: made, id } = createAndPoint(ctx.store.get(), collection, answers, target);
+    ctx.applyConfig(made, `Created ${spec.word} “${id}”${target ? ' and pointed this field at it' : ''}.`);
     onClose();
   };
   return (

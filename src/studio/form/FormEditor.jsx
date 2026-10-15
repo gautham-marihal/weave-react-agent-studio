@@ -1,26 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { groupIssues } from '../../api/client.js';
 import { ErrorState, Notice, Spinner } from '../ui.jsx';
-import { FormCtx, isUnder, keyOf, omit, orderedSet } from './ctx.js';
+import { FormCtx, OwnerCtx, createConfigStore, isUnder, keyOf, omit, orderedSet, useStableCallback, useStableValue } from './ctx.js';
 import { collectRefOptions, collectSecretNames, createEngine, humanize, isObj } from './engine.js';
 import { DeleteDialog, RenameDialog } from './IdTools.jsx';
 import { COLLECTIONS, deleteItem, findUsage, removePointers, renameEverywhere } from './references.js';
-import Node from './Node.jsx';
+import Node, { ObjectBody } from './Node.jsx';
+import { FIRST_GROUP, SKIPPED_SECTIONS, VIEW_NOTES, layoutFor, viewById, viewForPath } from './layout.js';
+import { SETTINGS, describeSetting } from './plainLanguage.js';
+import { useTechnicalNames } from '../usePref.js';
+import { describeIssue } from '../validation/issues.js';
+import AgentMap from '../relations/AgentMap.jsx';
+import ToolGrid from '../relations/ToolGrid.jsx';
+import '../relations/relations.css';
 import { useSchema } from './useSchema.js';
 import './form.css';
 
-// Left-to-right order of the top-level sections, in groups. Anything the schema adds later lands in "Other".
-const GROUPS = [
-  ['Basics', ['meta', 'runtime', 'persona', 'defaults']],
-  ['Conversation', ['channels', 'agents', 'tasks', 'tools', 'messages', 'state', 'constants']],
-  ['Connections', ['connections', 'knowledge', 'forms', 'notifications', 'wrapups', 'schedules', 'identity', 'telephony']],
-  ['Rules and events', ['guardrails', 'events', 'post_call']],
-  ['Operations', ['observability', 'tests', 'builder']],
-];
-const SKIP = new Set(['$schema', 'schema_version']);
 // Sections whose content depends on something that isn't built yet, said where the author is working (see the API's "what is not there yet").
 export const SECTION_NOTES = {
-  tests: 'Scenarios written here are not run by anything yet: neither the studio nor the API can run them. To check an agent, try it in the Test tab.',
+  tests: 'Scenarios are conversations with what must be true afterwards. The Scenarios tab writes and runs them, so use that for everyday work; this is the same list in its raw fields.',
   tasks: 'The runtime does not run tasks (multi-stage flows) yet, so they are saved and checked but have no effect on a call. This is the ordinary form for them; a visual stage editor can follow when the runtime runs them.',
   telephony: 'Transfers defined here are used by tools. Phone numbers are not connected from the studio yet: they are set up with the platform’s SIP tool, and the channel’s entry fields are documentation only.',
 };
@@ -30,11 +28,20 @@ const READ_ONLY = new Set(['meta.id', 'meta.status', 'meta.created_at', 'meta.up
 
 // `only` (a list of top-level keys) limits the form to those sections and `embedded` draws it without the group tabs, for a place that
 // shows a part of the configuration (the Simple view's "More settings"). Without them it is the whole form.
-export default function FormEditor({ editor, focusRequest, onShowJson, onShowModels, only, embedded = false }) {
+export default function FormEditor({ editor, focusRequest, onShowJson, onShowModels, onOpenJson, only, embedded = false }) {
   const { schema, error, loading, reload } = useSchema();
   const config = editor.parsed.value;
+  // The config lives in a small store the form's parts read from (useConfigSelect), so the context itself never changes when a letter is
+  // typed. The store is set while rendering (so a part rendered in this same pass reads the new config) and told after the commit.
+  const storeRef = useRef(null);
+  if (!storeRef.current) storeRef.current = createConfigStore(config);
+  storeRef.current.set(config);
+  useLayoutEffect(() => { storeRef.current.notify(); }, [config]);
+  const configRef = useRef(config);
+  configRef.current = config;
   const contentRef = useRef(null);
-  const [section, setSection] = useState(() => (only && only.length ? only[0] : 'meta'));
+  const [viewId, setViewId] = useState(null); // null: the first screen of the first group
+  const [technical] = useTechnicalNames();
   const [focus, setFocus] = useState(null);
   // Deleting is always undoable: whoever deletes says what it was (markDelete), the next change to the config
   // keeps the previous one for the Undo bar, and any other edit dismisses the bar.
@@ -81,19 +88,19 @@ export default function FormEditor({ editor, focusRequest, onShowJson, onShowMod
   const engine = useMemo(() => (schema ? createEngine(schema) : null), [schema]);
   const sectionKeys = useMemo(() => {
     if (!schema) return [];
-    const all = Object.keys(schema.properties).filter((k) => !SKIP.has(k));
+    const all = Object.keys(schema.properties).filter((k) => !SKIPPED_SECTIONS.has(k));
     return only ? only.filter((k) => all.includes(k)) : all;
   }, [schema, only]);
-  const groups = useMemo(() => {
-    const listed = new Set(GROUPS.flatMap(([, keys]) => keys));
-    const known = GROUPS.map(([name, keys]) => [name, keys.filter((k) => sectionKeys.includes(k))]).filter(([, keys]) => keys.length);
-    const other = sectionKeys.filter((k) => !listed.has(k));
-    return other.length ? [...known, ['Other', other]] : known;
-  }, [sectionKeys]);
-  const [activeGroup, setActiveGroup] = useState('Basics');
+  // The screens of "All settings", grouped by task (layout.js). A screen is a whole section or part of one.
+  const groups = useMemo(() => layoutFor(sectionKeys, (key) => (engine && schema?.properties?.[key] ? Object.keys(engine.flatten(schema.properties[key]).properties || {}) : [])), [sectionKeys, engine, schema]);
+  const allViews = useMemo(() => groups.flatMap((g) => g.views), [groups]);
+  const view = (viewId && viewById(groups, viewId)) || (embedded ? allViews[0] : viewById(groups, groups.find((g) => g.id === FIRST_GROUP)?.views[0]?.id)) || allViews[0] || null;
+  const section = view?.key || '';
+  const activeGroup = view ? view.group : '';
 
-  const refOptions = useMemo(() => collectRefOptions(config), [config]);
-  const secretNames = useMemo(() => [...new Set([...collectSecretNames(config), ...(editor.report?.secrets_required || [])])].sort(), [config, editor.report]);
+  // Rebuilt on every change, but only a different list of ids is a different value, so they keep one identity while typing.
+  const refOptions = useStableValue(useMemo(() => collectRefOptions(config), [config]));
+  const secretNames = useStableValue(useMemo(() => [...new Set([...collectSecretNames(config), ...(editor.report?.secrets_required || [])])].sort(), [config, editor.report]));
   const issues = useMemo(() => groupIssues(editor.report), [editor.report]);
   const general = useMemo(() => issues.filter((issue) => !issue.path), [issues]);
 
@@ -118,20 +125,19 @@ export default function FormEditor({ editor, focusRequest, onShowJson, onShowMod
     return out;
   }, [exact]);
 
-  const goTo = useCallback((key) => {
-    setSection(key);
-    const group = groups.find(([, keys]) => keys.includes(key));
-    if (group) setActiveGroup(group[0]);
+  // `target` is a section's name ('tools') or a path (['defaults', 'conversation']): the screen that holds it is shown.
+  const goTo = useCallback((target) => {
+    const found = viewForPath(groups, Array.isArray(target) ? target : [target]);
+    if (found) setViewId(found.id);
     contentRef.current?.scrollIntoView({ block: 'nearest' });
   }, [groups]);
 
-  // "Show me" from the validation panel: switch to the section, open what is collapsed, scroll, flash, focus.
-  useEffect(() => {
-    if (!focusRequest || !schema) return undefined;
-    const { path } = focusRequest;
+  // Goes to a place in the form: the screen that holds it is shown, what is collapsed around it is opened, and it is scrolled into view, flashed and
+  // focused. Used for "Show me" on a problem, for a chip in "Used by", and for a box in the agent map.
+  const reveal = useCallback((path) => {
     if (!Array.isArray(path) || !path.length) return undefined;
-    if (sectionKeys.includes(path[0])) goTo(path[0]);
-    setFocus({ key: keyOf(path), nonce: focusRequest.nonce });
+    if (sectionKeys.includes(path[0])) goTo(path);
+    setFocus({ key: keyOf(path), nonce: Date.now() });
     let timer;
     const attempt = (n) => {
       const root = contentRef.current;
@@ -153,30 +159,52 @@ export default function FormEditor({ editor, focusRequest, onShowJson, onShowMod
     };
     timer = window.setTimeout(() => attempt(0), 100);
     return () => window.clearTimeout(timer);
-  }, [focusRequest, schema, sectionKeys, goTo]);
+  }, [sectionKeys, goTo]);
+  // "Show me" from the validation panel.
+  useEffect(() => {
+    if (!focusRequest || !schema) return undefined;
+    return reveal(focusRequest.path);
+  }, [focusRequest, schema, reveal]);
 
   // The ids and keys other parts of the config point at: renaming one rewrites every pointer, deleting one warns first.
   const requestRename = useCallback((collection, id) => setDialog({ type: 'rename', collection, id }), []);
   const requestDelete = useCallback((collection, id, proceed) => {
-    if (!engine || !isObj(config) || findUsage(engine, config, collection, id).length === 0) { proceed(); return; }
+    const now = configRef.current;
+    if (!engine || !isObj(now) || findUsage(engine, now, collection, id).length === 0) { proceed(); return; }
     setDialog({ type: 'delete', collection, id, proceed });
-  }, [engine, config]);
+  }, [engine]);
   const applyConfig = useCallback((next, message) => {
     editor.setValue(next);
-    setToast(message ? { message, previous: config } : null);
+    setToast(message ? { message, previous: configRef.current } : null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config]);
+  }, []);
   // A config that uses a 1.2 feature must say 1.2. The version isn't a field in the form, so the fix is offered where the problem shows.
   const canRaise = !!schema && isObj(config) && (schema.properties?.schema_version?.enum || []).includes('1.2') && config.schema_version !== '1.2';
-  const raiseVersion = useCallback(() => applyConfig({ ...config, schema_version: '1.2' }, 'Raised schema_version to 1.2.'), [config, applyConfig]);
+  const raiseVersion = useCallback(() => applyConfig({ ...configRef.current, schema_version: '1.2' }, 'Raised schema_version to 1.2.'), [applyConfig]);
   // Renames straight away (a key typed in a map): the pointers are rewritten and the toast says how many.
   const renameDirect = useCallback((collection, from, to) => {
+    const now = configRef.current;
     const word = COLLECTIONS[collection]?.word || 'item';
-    const count = engine && isObj(config) ? findUsage(engine, config, collection, from).length : 0;
-    applyConfig(renameEverywhere(engine, config, collection, from, to), `Renamed ${word} “${from}” to “${to}”${count ? ` and updated ${count} place${count === 1 ? '' : 's'}` : ''}.`);
-  }, [engine, config, applyConfig]);
+    const count = engine && isObj(now) ? findUsage(engine, now, collection, from).length : 0;
+    applyConfig(renameEverywhere(engine, now, collection, from, to), `Renamed ${word} “${from}” to “${to}”${count ? ` and updated ${count} place${count === 1 ? '' : 's'}` : ''}.`);
+  }, [engine, applyConfig]);
 
-  const ctx = useMemo(() => ({ engine, config, refOptions, secretNames, exact, countUnder, issuesUnder, focus, goTo, markDelete, readOnly: READ_ONLY, requestRename, requestDelete, renameDirect, applyConfig, raiseVersion: canRaise ? raiseVersion : null, openModels: onShowModels }), [onShowModels, canRaise, raiseVersion, engine, config, refOptions, secretNames, exact, countUnder, issuesUnder, focus, goTo, markDelete, requestRename, requestDelete, renameDirect, applyConfig]);
+  const store = storeRef.current;
+  const openModels = useStableCallback(() => onShowModels?.()); // a parent often passes a new function each render; the context must not change with it
+  const openInJson = useStableCallback((path) => onOpenJson?.(path));
+  // A problem, described for a person (plain words, and fixes where one is certain), and a fix applied as an ordinary undoable edit.
+  const describe = useCallback((issue) => describeIssue(issue, { config: store.get(), schema, engine }), [store, schema, engine]);
+  const applyFix = useCallback((fix) => {
+    if (fix.open) { openModels(); return; }
+    if (!fix.apply) return;
+    const next = fix.apply(configRef.current);
+    if (next === configRef.current) return;
+    applyConfig(next, `${fix.label}.`);
+    if (fix.jumpTo) reveal(fix.jumpTo);
+  }, [applyConfig, openModels, reveal]);
+  const expertHome = !!groups.find((g) => g.id === activeGroup)?.advanced;
+  const hasOpenJson = !!onOpenJson; // the function itself is new on every render of the Config tab; the context must not change with it
+  const ctx = useMemo(() => ({ engine, store, refOptions, secretNames, exact, countUnder, issuesUnder, focus, goTo, markDelete, readOnly: READ_ONLY, requestRename, requestDelete, renameDirect, applyConfig, raiseVersion: canRaise ? raiseVersion : null, openModels, technical, expertHome, openInJson: hasOpenJson ? openInJson : null, showPath: reveal, describe, applyFix }), [reveal, describe, applyFix, openModels, canRaise, raiseVersion, engine, store, refOptions, secretNames, exact, countUnder, issuesUnder, focus, goTo, markDelete, requestRename, requestDelete, renameDirect, applyConfig, technical, expertHome, openInJson, hasOpenJson]);
 
   if (loading && !schema) return <Spinner label="Loading the form" />;
   if (error && !schema) return <ErrorState error={error} onRetry={reload} what="the schema" />;
@@ -204,29 +232,34 @@ export default function FormEditor({ editor, focusRequest, onShowJson, onShowMod
   const shape = sectionSchema ? engine.resolveShape(sectionSchema, config[section]) : null;
   const present = section in config;
   const required = (schema.required || []).includes(section);
-  const visibleKeys = embedded ? sectionKeys : (groups.find(([name]) => name === activeGroup) || groups[0] || ['', []])[1];
+  const part = !!view?.only; // a screen that is only part of a section
+  const visibleViews = embedded ? allViews : (groups.find((g) => g.id === activeGroup) || groups[0] || { views: [] }).views;
+  // A section says what it is for in plain words; the schema's own description is the technical one, shown when technical names are on.
+  const lead = VIEW_NOTES[section] && !part ? VIEW_NOTES[section] : part ? describeSetting(view.only[0], { owner: section }).purpose : SETTINGS[section]?.purpose || shape?.description || '';
 
   return (
     <FormCtx.Provider value={ctx}>
       <div className={`stForm ${embedded ? 'embedded' : ''}`}>
         <nav className="stFNav" aria-label="Sections">
           {!embedded && <div className="stFNavGroups" role="tablist">
-            {groups.map(([name, keys]) => {
-              const c = keys.reduce((sum, k) => sum + countUnder(k).errors, 0);
+            {groups.map((group) => {
+              const c = group.views.reduce((sum, v) => sum + countUnder(v.key).errors, 0);
               return (
-                <button key={name} type="button" role="tab" aria-selected={name === activeGroup} className={name === activeGroup ? 'on' : ''} onClick={() => { setActiveGroup(name); if (!keys.includes(section)) setSection(keys[0]); }}>
-                  {name}{c > 0 && <b className="stFBadge" title={`${c} error${c === 1 ? '' : 's'}`}>{c}</b>}
+                <button key={group.id} type="button" role="tab" data-group={group.id} aria-selected={group.id === activeGroup} className={`${group.id === activeGroup ? 'on' : ''} ${group.advanced ? 'adv' : ''}`}
+                  title={group.advanced ? 'Settings for the voice engine and the people who run it. Most agents never need to change these.' : undefined}
+                  onClick={() => { if (group.id !== activeGroup) setViewId(group.views[0].id); }}>
+                  {group.label}{c > 0 && <b className="stFBadge" title={`${c} error${c === 1 ? '' : 's'}`}>{c}</b>}
                 </button>
               );
             })}
           </div>}
           <div className="stFNavChips">
-            {visibleKeys.map((key) => {
-              const c = countUnder(key);
-              const isSet = key in config;
+            {visibleViews.map((v) => {
+              const c = countUnder(v.key);
+              const isSet = v.key in config;
               return (
-                <button key={key} type="button" className={`stFChipBtn ${key === section ? 'on' : ''} ${isSet ? '' : 'unset'}`} aria-current={key === section ? 'true' : undefined} onClick={() => setSection(key)}>
-                  {humanize(key)}
+                <button key={v.id} type="button" data-section={v.id} className={`stFChipBtn ${v.id === view?.id ? 'on' : ''} ${isSet ? '' : 'unset'}`} aria-current={v.id === view?.id ? 'true' : undefined} onClick={() => setViewId(v.id)}>
+                  {v.label}
                   {c.errors > 0 ? <b className="stFBadge" title={`${c.errors} error${c.errors === 1 ? '' : 's'}`}>{c.errors}</b> : c.warnings > 0 ? <b className="stFBadge warn" title={`${c.warnings} warning${c.warnings === 1 ? '' : 's'}`}>{c.warnings}</b> : null}
                 </button>
               );
@@ -242,29 +275,36 @@ export default function FormEditor({ editor, focusRequest, onShowJson, onShowMod
         )}
 
         {general.length > 0 && (
-          <ul className="stFGeneral" aria-label="Problems that apply to the whole config">
+          <ul className={`stFGeneral${general.some((issue) => issue.severity === 'error') ? '' : ' warnOnly'}`} aria-label="Problems that apply to the whole config">
             {general.map((issue, i) => <li key={i} className={issue.severity}>{issue.message}</li>)}
           </ul>
         )}
 
-        <div className="stFSection" ref={contentRef} key={section}>
+        <div className="stFSection" ref={contentRef} key={view?.id}>
           <header className="stFSectionHead">
             <div>
-              <h2 tabIndex={-1}>{shape?.title || humanize(section)}</h2>
-              {SECTION_NOTES[section] && <p className="stFSectionNote" role="note">{SECTION_NOTES[section]}</p>}
-              {shape?.description && <p>{shape.description.length > 260 ? `${shape.description.slice(0, 260)}…` : shape.description}</p>}
+              <h2 tabIndex={-1}>{view?.label || humanize(section)}</h2>
+              {SECTION_NOTES[section] && !part && <p className="stFSectionNote" role="note">{SECTION_NOTES[section]}</p>}
+              {lead && <p className="stFLead">{lead}</p>}
+              {technical && !part && shape?.description && <p className="stFHelp stFMore">{shape.description.length > 260 ? `${shape.description.slice(0, 260)}…` : shape.description}</p>}
             </div>
-            {present && !required && <button type="button" className="stFDel" onClick={() => { markDelete(`the ${humanize(section)} section`); commit(section, undefined); }}>Delete section</button>}
-            {present && required && <span className="stFTag" title="The schema requires this section, so it can’t be deleted">required section</span>}
+            {present && !required && !part && <button type="button" className="stFDel" onClick={() => { markDelete(`the ${view.label} section`); commit(section, undefined); }}>Delete section</button>}
+            {present && required && !part && <span className="stFTag" title="The agent needs this section, so it can’t be deleted">needed</span>}
           </header>
           {present ? (
             <div data-path={section}>
-              <Node schema={sectionSchema} value={config[section]} path={[section]} onChange={(v) => commit(section, v)} />
+              <OwnerCtx.Provider value={section}>
+                {section === 'agents' && !part && <div className="stFPicture"><AgentMap onOpenAgent={(index) => reveal(['agents', 'items', index])} /></div>}
+                {section === 'tools' && !part && <div className="stFPicture"><ToolGrid /></div>}
+                {part
+                  ? <ObjectBody shape={shape} value={config[section]} path={[section]} onChange={(v) => commit(section, v)} onlyKeys={view.only} showUnknown={view.id === allViews.filter((x) => x.key === section).slice(-1)[0]?.id} />
+                  : <Node schema={sectionSchema} value={config[section]} path={[section]} onChange={(v) => commit(section, v)} />}
+              </OwnerCtx.Provider>
             </div>
           ) : (
             <div className="stFNotSet">
-              <p>This section isn’t part of the agent yet.</p>
-              <button type="button" className="primaryCta compactCta" onClick={() => commit(section, engine.defaultFor(sectionSchema))}>＋ Add {humanize(section).toLowerCase()}</button>
+              <p>This isn’t part of the agent yet.</p>
+              <button type="button" className="primaryCta compactCta" onClick={() => commit(section, engine.defaultFor(sectionSchema))}>＋ Add {(part ? humanize(section) : view?.label || humanize(section)).toLowerCase()}</button>
             </div>
           )}
         </div>

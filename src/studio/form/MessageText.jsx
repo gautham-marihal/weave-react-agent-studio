@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { isObj } from './engine.js';
-import { useForm } from './ctx.js';
+import { useConfigSelect, useForm } from './ctx.js';
 import TemplateField from './TemplateField.jsx';
 import { scopeAt } from './templates.js';
 import { LANGUAGE_PATTERN, hasLanguage, languageProblem, languageStatus, primaryOf, toLanguages, toPlain, wantedLanguages } from './messages.js';
@@ -9,19 +9,17 @@ import { LANGUAGE_PATTERN, hasLanguage, languageProblem, languageStatus, primary
 // has a row, so a missing one is plain to see (and one click adds it), and the primary language can't be left out by accident.
 export default function MessageText({ value, onChange, path, disabled }) {
   const ctx = useForm();
-  const scope = scopeAt(ctx.config, path);
   const perLanguage = isObj(value);
+  const { scope, primary, wanted, status } = useConfigSelect((c) => ({ scope: scopeAt(c, path), primary: primaryOf(c), wanted: wantedLanguages(c), status: isObj(value) ? languageStatus(value, c) : null }));
   const [adding, setAdding] = useState('');
   const [problem, setProblem] = useState('');
-  const primary = primaryOf(ctx.config);
-  const wanted = wantedLanguages(ctx.config);
 
   if (!perLanguage) {
     return (
       <div className="stMsgText">
         <TemplateField value={typeof value === 'string' ? value : ''} onChange={onChange} scope={scope} multiline mono={false} disabled={disabled} ariaLabel="Message text" />
         {!disabled && (
-          <button type="button" className="stLink" onClick={() => onChange(toLanguages(value, ctx.config))}>
+          <button type="button" className="stLink" onClick={() => onChange(toLanguages(value, ctx.store.get()))}>
             Write it in more than one language{wanted.length > 1 ? ` (${wanted.join(', ')})` : ''}
           </button>
         )}
@@ -29,7 +27,6 @@ export default function MessageText({ value, onChange, path, disabled }) {
     );
   }
 
-  const status = languageStatus(value, ctx.config);
   // Rows: the languages already written first (primary on top), then the ones still missing.
   const written = Object.keys(value).sort((a, b) => (hasLanguage({ [a]: 1 }, primary) ? -1 : 0) - (hasLanguage({ [b]: 1 }, primary) ? -1 : 0));
   const set = (code, text) => onChange({ ...value, [code]: text });
@@ -77,7 +74,7 @@ export default function MessageText({ value, onChange, path, disabled }) {
         </div>
       )}
       {!disabled && (
-        <button type="button" className="stLink" onClick={() => { ctx.markDelete('the other languages'); onChange(toPlain(value, ctx.config)); }}>
+        <button type="button" className="stLink" onClick={() => { ctx.markDelete('the other languages'); onChange(toPlain(value, ctx.store.get())); }}>
           Use one text for every language (keeps the {primary ? `${primary}` : 'first'} one)
         </button>
       )}

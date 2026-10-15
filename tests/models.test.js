@@ -208,3 +208,32 @@ test('voices come as Female and Male lists, and a provider starts on a female vo
   assert.equal(genderOfVoice('elevenlabs', 'not-a-known-voice'), 'Female');
   assert.equal(defaultVoiceFor('nobody'), undefined);
 });
+
+test('default speech models: the best provider the server can run is chosen for each missing stage, and what is set is left alone', async () => {
+  const { addDefaultSpeechModels, bestProviderFor } = await import('../src/studio/models/config.js');
+  const providers = [
+    { name: 'openai', stages: ['stt', 'llm', 'tts'], installed: true, default_secret: 'OPENAI_API_KEY', key_available: false },
+    { name: 'deepgram', stages: ['stt', 'tts'], installed: true, default_secret: 'DEEPGRAM_API_KEY', key_available: true },
+    { name: 'elevenlabs', stages: ['stt', 'tts'], installed: true, default_secret: 'ELEVEN_API_KEY', key_available: false },
+    { name: 'groq', stages: ['stt', 'llm', 'tts'], installed: false, default_secret: 'GROQ_API_KEY', key_available: true },
+    { name: 'openai_compatible', stages: ['stt', 'llm', 'tts'], installed: true, key_available: true },
+  ];
+  assert.equal(bestProviderFor('stt', providers).name, 'deepgram', 'installed and its key is set');
+  assert.equal(bestProviderFor('tts', providers).name, 'deepgram');
+  assert.equal(bestProviderFor('stt', providers.filter((p) => p.name !== 'deepgram')).name, 'elevenlabs', 'with no key set anywhere, an installed one still beats nothing');
+  assert.equal(bestProviderFor('stt', providers.filter((p) => p.name === 'groq' || p.name === 'openai_compatible')), null, 'not installed, or needing a base URL first: never chosen');
+  const config = { defaults: { models: { llm: { provider: 'openai', model: 'gpt-4.1-mini' } } } };
+  const out = addDefaultSpeechModels(config, providers);
+  assert.deepEqual(out.added.map((a) => [a.stage, a.provider, a.keySet]), [['stt', 'deepgram', true], ['tts', 'deepgram', true]]);
+  assert.equal(out.config.defaults.models.stt.provider, 'deepgram');
+  assert.ok(out.config.defaults.models.stt.model, 'a model comes with the provider');
+  assert.ok(out.config.defaults.models.tts.model, 'and for speaking, a model');
+  assert.equal(out.config.defaults.models.llm.provider, 'openai', 'the language model is untouched');
+  assert.equal(config.defaults.models.stt, undefined, 'the original is not changed');
+  const again = addDefaultSpeechModels(out.config, providers);
+  assert.deepEqual(again.added, []);
+  assert.equal(again.config, out.config, 'nothing to add: the same object comes back');
+  const none = addDefaultSpeechModels(config, [{ name: 'anthropic', stages: ['llm'], installed: true }]);
+  assert.deepEqual(none.skipped, ['stt', 'tts']);
+  assert.equal(none.config, config);
+});

@@ -64,14 +64,15 @@ export function classify(status, body) {
  * @param {{ body?: unknown, signal?: AbortSignal }} [options]
  * @returns {Promise<any>}
  */
-async function request(method, path, { body, signal } = {}) {
-  if (isDemoMode()) return demoRequest(method, path, body, signal);
+async function request(method, path, { body, signal, raw } = {}) {
+  if (isDemoMode()) return demoRequest(method, path, raw !== undefined ? { __file: raw } : body, signal);
   const headers = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (SEND_USER_HEADER && currentUser) headers['X-User'] = currentUser;
   let response;
   try {
-    response = await fetch(`${BASE}${path}`, { method, headers, signal, body: body === undefined ? undefined : JSON.stringify(body) });
+    // `raw` is a file: the body IS the file (knowledge uploads), not JSON and not a form
+    response = await fetch(`${BASE}${path}`, { method, headers, signal, body: raw !== undefined ? raw : body === undefined ? undefined : JSON.stringify(body) });
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
     throw new ApiError({ status: 0, kind: 'network', message: 'Could not reach the Agent Builder API.' });
@@ -93,7 +94,9 @@ async function demoRequest(method, path, body, signal) {
   const { getDemoApi } = await import('../demo/demoApi.js');
   await new Promise((resolve) => { setTimeout(resolve, 30); }); // a moment, so loading states are real
   if (signal?.aborted) throw aborted();
-  const { status, body: data } = await getDemoApi().handle(method, path, body === undefined ? undefined : JSON.parse(JSON.stringify(body)));
+  // a file for a knowledge upload is kept as it is; everything else is copied so the imitation can't change the caller's objects
+  const payload = body === undefined ? undefined : body && body.__file !== undefined ? body : JSON.parse(JSON.stringify(body));
+  const { status, body: data } = await getDemoApi().handle(method, path, payload);
   if (status >= 400) {
     const { kind, message, errors } = classify(status, data);
     throw new ApiError({ status, kind, message, errors, body: data });
@@ -102,6 +105,9 @@ async function demoRequest(method, path, body, signal) {
 }
 
 const enc = encodeURIComponent;
+
+// The address of a path on the API as the browser sees it (for a plain link, such as a file download). In demo mode there is none.
+export const apiUrl = (path) => (isDemoMode() ? null : `${BASE}${path}`);
 
 export const api = {
   /** @returns {Promise<{ ok: boolean }>} */
@@ -167,7 +173,85 @@ export const api = {
     ...opts,
     body: { ...(ref ? { ref } : {}), ...(identity ? { identity } : {}) },
   }),
+
+  // ---- test scenarios (the real runner): scripted scenarios replace the model with a script, live ones use a real model and cost money
+  // `{ scenarios, ref, network_allowed }`: each scenario with the result of its last run.
+  /** @param {string} id @param {{ ref?: string }} [query] @param {RequestOptions} [opts] @returns {Promise<any>} */
+  listTests: (id, { ref } = {}, opts) => request('GET', `/bots/${enc(id)}/tests${ref ? `?ref=${enc(ref)}` : ''}`, opts),
+  // Answers 202 with a run to poll. `config` tests what is in the editor without saving it (the run's ref is "unsaved"); `scenarios` is a
+  // list of ids; `live` also runs the scenarios that have no model_script against a real model (costs money); `judge` grades `judge` checks.
+  /** @param {string} id @param {{ ref?: string, config?: AgentConfig, scenarios?: string[], live?: boolean, judge?: boolean, allow_network?: boolean }} [run] @param {RequestOptions} [opts] @returns {Promise<any>} */
+  runTests: (id, run = {}, opts) => request('POST', `/bots/${enc(id)}/tests/run`, { ...opts, body: run }),
+  /** @param {string} id @param {number} [limit] @param {RequestOptions} [opts] @returns {Promise<any[]>} headlines only, newest first */
+  listTestRuns: (id, limit, opts) => request('GET', `/bots/${enc(id)}/tests/runs${limit ? `?limit=${limit}` : ''}`, opts),
+  /** @param {string} id @param {string} runId @param {RequestOptions} [opts] @returns {Promise<any>} */
+  getTestRun: (id, runId, opts) => request('GET', `/bots/${enc(id)}/tests/runs/${enc(runId)}`, opts),
+
+  // ---- call records: what callers said and what the bot did (these logs hold caller speech)
+  /** @param {string} id @param {{ limit?: number, cursor?: string, since?: string, until?: string, caller?: string, channel?: string, status?: string }} [filters] @param {RequestOptions} [opts] @returns {Promise<{ calls: any[], next: string | null }>} */
+  listCalls: (id, filters = {}, opts) => request('GET', `/bots/${enc(id)}/calls${queryOf(filters)}`, opts),
+  /** @param {string} id @param {string} callId @param {{ after?: number, limit?: number, kinds?: string }} [query] @param {RequestOptions} [opts] @returns {Promise<any>} */
+  getCall: (id, callId, query = {}, opts) => request('GET', `/bots/${enc(id)}/calls/${enc(callId)}${queryOf(query)}`, opts),
+  /** @param {string} id @param {string} callId @param {RequestOptions} [opts] @returns {Promise<any>} */
+  getTranscript: (id, callId, opts) => request('GET', `/bots/${enc(id)}/calls/${enc(callId)}/transcript`, opts),
+
+  // ---- previews: what the model would be told and shown (they call nothing and spend nothing; send `config` for what is in the editor)
+  /** @param {{ config?: AgentConfig, bot?: string, ref?: string, agent?: string, channel?: string, state?: object, caller_phone?: string, now?: string }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
+  previewPrompt: (body, opts) => request('POST', '/preview/prompt', { ...opts, body }),
+  /** @param {{ config?: AgentConfig, bot?: string, ref?: string, tool: string, args?: object, response?: unknown, state?: object, channel?: string, now?: string }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
+  previewResult: (body, opts) => request('POST', '/preview/result', { ...opts, body }),
+
+  // ---- knowledge: the files a `vector_store` base reads, its index, and a test search
+  /** @param {string} id @param {{ ref?: string }} [query] @param {RequestOptions} [opts] @returns {Promise<any>} */
+  getKnowledge: (id, { ref } = {}, opts) => request('GET', `/bots/${enc(id)}/knowledge${ref ? `?ref=${enc(ref)}` : ''}`, opts),
+  /** @param {string} id @param {RequestOptions} [opts] @returns {Promise<any[]>} */
+  listKnowledgeFiles: (id, opts) => request('GET', `/bots/${enc(id)}/knowledge/files`, opts),
+  // The body IS the file (`fetch(url, { method: 'PUT', body: file })`), not a form. 400 wrong type, 413 too big.
+  /** @param {string} id @param {string} name @param {Blob | string} file @param {RequestOptions} [opts] @returns {Promise<any>} */
+  uploadKnowledgeFile: (id, name, file, opts) => request('PUT', `/bots/${enc(id)}/knowledge/files/${enc(name)}`, { ...opts, raw: file }),
+  // 409 when a base reads the file, unless force.
+  /** @param {string} id @param {string} name @param {boolean} [force] @param {RequestOptions} [opts] @returns {Promise<any>} */
+  deleteKnowledgeFile: (id, name, force, opts) => request('DELETE', `/bots/${enc(id)}/knowledge/files/${enc(name)}${force ? '?force=true' : ''}`, opts),
+  // Answers 202 with a job to poll with knowledgeStatus; one build per base at a time (409).
+  /** @param {string} id @param {string} base @param {string} [ref] @param {RequestOptions} [opts] @returns {Promise<any>} */
+  buildKnowledge: (id, base, ref, opts) => request('POST', `/bots/${enc(id)}/knowledge/${enc(base)}/build`, { ...opts, body: ref ? { ref } : {} }),
+  /** @param {string} id @param {string} base @param {string} [ref] @param {RequestOptions} [opts] @returns {Promise<any>} */
+  knowledgeStatus: (id, base, ref, opts) => request('GET', `/bots/${enc(id)}/knowledge/${enc(base)}/status${ref ? `?ref=${enc(ref)}` : ''}`, opts),
+  /** @param {string} id @param {string} base @param {{ query: string, top_k?: number, previous_reply?: string, ref?: string }} search @param {RequestOptions} [opts] @returns {Promise<any>} */
+  searchKnowledge: (id, base, search, opts) => request('POST', `/bots/${enc(id)}/knowledge/${enc(base)}/search`, { ...opts, body: search }),
 };
+
+// ?a=1&b=2 from an object, leaving out what is empty
+function queryOf(values) {
+  const query = new URLSearchParams();
+  Object.entries(values || {}).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== '') query.set(key, String(value)); });
+  const text = query.toString();
+  return text ? `?${text}` : '';
+}
+
+// Follows a call that is in progress: one record at a time through server-sent events (the API's `/calls/{id}/stream`). `EventSource`
+// cannot set headers, so this relies on the proxy adding the key, and the proxy must not buffer this path. Demo mode follows an
+// imitation call instead. Returns a function that stops following.
+/**
+ * @param {string} id
+ * @param {string} callId
+ * @param {{ onOpen?: (call: any) => void, onRecord: (record: any) => void, onEnd?: () => void, onError?: () => void, after?: number }} handlers
+ */
+export function followCall(id, callId, { onOpen, onRecord, onEnd, onError, after } = { onRecord() {} }) {
+  if (isDemoMode()) {
+    let stop = () => {};
+    let stopped = false;
+    import('../demo/demoApi.js').then(({ getDemoApi }) => { if (!stopped) stop = getDemoApi().follow(id, callId, { onOpen, onRecord, onEnd }); });
+    return () => { stopped = true; stop(); };
+  }
+  const source = new EventSource(`${BASE}/bots/${enc(id)}/calls/${enc(callId)}/stream${after ? `?after=${after}` : ''}`);
+  const parse = (event) => { try { return JSON.parse(event.data); } catch { return null; } };
+  source.addEventListener('open', (event) => { const call = parse(event); if (call && onOpen) onOpen(call); });
+  source.onmessage = (event) => { const record = parse(event); if (record) onRecord(record); };
+  source.addEventListener('end', () => { source.close(); if (onEnd) onEnd(); });
+  source.addEventListener('error', () => { if (source.readyState === EventSource.CLOSED && onError) onError(); });
+  return () => source.close();
+}
 
 // A validation report (POST /validate, or `validation` in a saved draft) addresses a problem by `path`
 // ([] or null mean "general message"). Turns it into one flat list the editor can show per field.

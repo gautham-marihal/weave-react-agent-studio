@@ -1,6 +1,6 @@
 import React from 'react';
 import { isObj } from './engine.js';
-import { useForm } from './ctx.js';
+import { useConfigSelect, useForm } from './ctx.js';
 import { NumberInput, TextInput } from './fields.jsx';
 import { IdChip } from './IdTools.jsx';
 import { FieldRow, ObjectBody } from './Node.jsx';
@@ -10,6 +10,7 @@ import { RequestEditor, ResponsePanel } from './RequestResponse.jsx';
 import { argNamesOf, templateScope } from './templates.js';
 import { BUILTIN_HELP, ON_ERROR_HELP, REPLY_CHOICES, agentsUsingTool, describeAdvice, notAvailable, timeoutAdvice } from './toolInfo.js';
 import { readParams } from './paramSchema.js';
+import { TechKey } from './TechName.jsx';
 
 // One tool, drawn for what it is. The description (the text that tells the model when to use it) comes first, the
 // model-facing parts are in one place each (what it fills in, the request, the response, what happens on an error), and
@@ -39,9 +40,9 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
     onChange(sortByOrder({ ...obj, ...patch }, order));
   };
 
-  const scope = templateScope(ctx.config, { argNames: argNamesOf(obj) });
+  const scope = useConfigSelect((c) => templateScope(c, { argNames: argNamesOf(obj) }));
   const unavailable = notAvailable(obj);
-  const users = obj.id ? agentsUsingTool(ctx.config, obj.id) : [];
+  const users = useConfigSelect((c) => (obj.id ? agentsUsingTool(c, obj.id) : []));
   const advice = has('description') ? describeAdvice(obj.description) : null;
   const paramRows = has('parameters') ? readParams(obj.parameters).rows : [];
   const showName = has('name') && obj.name !== undefined && obj.name !== obj.id;
@@ -63,7 +64,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           <div className="stFRow wide">
             {showName ? (
               <>
-                <div className="stFLabel"><label htmlFor={`${path.join('-')}-name`}>Name the model sees</label><code className="stFKey">name</code>
+                <div className="stFLabel"><label htmlFor={`${path.join('-')}-name`}>Name the model sees</label><TechKey name="name" path={[...path, 'name']} />
                   <button type="button" className="stFDel small" disabled={disabled} onClick={() => set({ name: undefined }, { deleted: 'the model-facing name' })}>Delete</button></div>
                 <TextInput id={`${path.join('-')}-name`} value={obj.name} onChange={(v) => set({ name: v })} disabled={disabled} mono placeholder="snake_case" />
                 <p className="stFHelp">The name the model calls the tool by: lowercase letters, digits and _.</p>
@@ -79,7 +80,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
 
       {has('description') && (
         <div className="stFRow wide stDescRow" data-path={`${path.join('.')}.description`}>
-          <div className="stFLabel"><label htmlFor={`${path.join('-')}-desc`}>Description</label>{has('description') && (shape.required || []).includes('description') && <abbr title="Required" className="stFReq">*</abbr>}<code className="stFKey">description</code></div>
+          <div className="stFLabel"><label htmlFor={`${path.join('-')}-desc`}>Description</label>{has('description') && (shape.required || []).includes('description') && <abbr title="Required" className="stFReq">*</abbr>}<TechKey name="description" path={[...path, 'description']} /></div>
           <TextInput id={`${path.join('-')}-desc`} value={obj.description ?? ''} onChange={(v) => set({ description: v === '' ? undefined : v })} disabled={disabled} multiline placeholder="Use this when the caller asks for their current bill. It needs their account number." invalid={advice?.level === 'warn' && (shape.required || []).includes('description')} />
           <div className="stDescMeta">
             <span className={`stDescAdvice ${advice?.level}`}>{advice?.text || 'It tells the model when to reach for this tool.'}</span>
@@ -106,7 +107,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
       {isHttp && has('result') && (
         <fieldset className="stToolBlock">
           <legend>The response</legend>
-          <ResponsePanel result={obj.result} onChange={(next) => set({ result: next })} disabled={disabled}
+          <ResponsePanel path={path} result={obj.result} onChange={(next) => set({ result: next })} disabled={disabled} toolId={obj.id} parameters={obj.parameters}
             outOfBand={resultShape?.properties?.out_of_band ? (
               <FieldRow name="out_of_band" label="Sent straight to the caller" schema={resultShape.properties.out_of_band} value={obj.result?.out_of_band} path={[...path, 'result', 'out_of_band']}
                 missing={!isObj(obj.result) || !('out_of_band' in obj.result)} disabled={disabled}
@@ -122,7 +123,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           <legend>After it succeeds</legend>
           {has('reply') && (
             <div className="stFRow wide" data-path={`${path.join('.')}.reply`}>
-              <div className="stFLabel"><span>Who speaks next</span><code className="stFKey">reply</code></div>
+              <div className="stFLabel"><span>Who speaks next</span><TechKey name="reply" path={[...path, 'reply']} /></div>
               <div className="stReply" role="radiogroup" aria-label="Who speaks after the tool runs">
                 {REPLY_CHOICES.map((choice) => {
                   const checked = (obj.reply ?? 'model') === choice.value;
@@ -138,7 +139,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           )}
           {has('effects') && (
             <div className="stFRow wide" data-path={`${path.join('.')}.effects`}>
-              <div className="stFLabel"><span>Then, in order</span><code className="stFKey">effects</code></div>
+              <div className="stFLabel"><span>Then, in order</span><TechKey name="effects" path={[...path, 'effects']} /></div>
               <p className="stFHelp">Rules that run after the tool succeeds: each applies always or only when a condition holds, and then does its steps in order (say a line, change state, hand off, end the call…).</p>
               <EffectsEditor shape={shape.properties.effects} value={obj.effects} path={[...path, 'effects']} disabled={disabled}
                 emptyText="Nothing happens after this tool succeeds, apart from the model answering. Add a rule to say a line, change state, hand off or end the call."
@@ -153,7 +154,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           <legend>When it goes wrong</legend>
           {has('on_error') && (
             <div className="stFRow wide" data-path={`${path.join('.')}.on_error`}>
-              <div className="stFLabel"><label htmlFor={`${path.join('-')}-err`}>Message for the model</label><code className="stFKey">on_error.tool_error</code></div>
+              <div className="stFLabel"><label htmlFor={`${path.join('-')}-err`}>Message for the model</label><TechKey name="on_error.tool_error" path={[...path, 'on_error', 'tool_error']} /></div>
               <TextInput id={`${path.join('-')}-err`} value={obj.on_error?.tool_error ?? ''} multiline disabled={disabled} placeholder="Tell the caller you could not fetch the bill and offer a callback."
                 onChange={(v) => set({ on_error: v === '' ? undefined : { ...(obj.on_error || {}), tool_error: v } })} />
               <p className="stFHelp">{ON_ERROR_HELP}</p>
@@ -162,13 +163,13 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           <div className="stFGrid">
             {has('timeout_s') && (
               <div className="stFRow">
-                <div className="stFLabel"><label>Give up after (seconds)</label><code className="stFKey">timeout_s</code></div>
+                <div className="stFLabel"><label>Give up after (seconds)</label><TechKey name="timeout_s" path={[...path, 'timeout_s']} /></div>
                 <NumberInput value={obj.timeout_s} onChange={(v) => set({ timeout_s: v })} min={0.1} disabled={disabled} />
               </div>
             )}
             {has('retries') && (
               <div className="stFRow">
-                <div className="stFLabel"><label>Retries</label><code className="stFKey">retries</code></div>
+                <div className="stFLabel"><label>Retries</label><TechKey name="retries" path={[...path, 'retries']} /></div>
                 <NumberInput value={obj.retries} onChange={(v) => set({ retries: v })} min={0} integer disabled={disabled} />
               </div>
             )}

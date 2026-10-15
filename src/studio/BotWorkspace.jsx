@@ -1,29 +1,54 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.js';
 import ConfigTab from './ConfigTab.jsx';
-import DeployTab from './DeployTab.jsx';
-import VersionsTab from './VersionsTab.jsx';
-import TestTab from './test/TestTab.jsx';
-import ScenariosTab from './scenarios/ScenariosTab.jsx';
+import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { useLiveSession } from './test/useLiveSession.js';
 import { useSimulatedSession } from './test/useSimulatedSession.js';
 import { isDemoMode } from '../demo/demoMode.js';
 import { refreshBots } from './agents.js';
 import { applyChange, takeChange } from './pendingChange.js';
-import { compareVersions, currentStage, formatPath, nextVersion, publishOptions } from './format.js';
+import { compareVersions, currentStage, nextVersion, publishOptions } from './format.js';
 import Menu from './manage/Menu.jsx';
 import { useManage } from './manage/useManage.jsx';
 import { splitUnsupported } from './preflight.js';
 import { DemoNote } from '../demo/DemoBadge.jsx';
 import { dismissNotes, peekNotes } from './assistantNotes.js';
 import { navigate, routeHref, setLeaveGuard } from './route.js';
-import { EnvSlots, ErrorState, Modal, Notice } from './ui.jsx';
+import { EnvSlots, ErrorState, Modal, Notice, Spinner } from './ui.jsx';
 import { useAsync } from './useAsync.js';
 import { useDraftEditor } from './useDraftEditor.js';
+import JourneyNav, { NextBar } from './JourneyNav.jsx';
+import AgentStatusLine from './AgentStatusLine.jsx';
+import CallsView from './calls/CallsView.jsx';
 
-const TAB_LABELS = [['config', 'Config'], ['versions', 'Versions'], ['deploy', 'Deploy'], ['test', 'Test'], ['scenarios', 'Scenarios']];
+// The tabs other than Config are loaded when first opened, so the first screen doesn't carry the code of the test runner, the trace viewer
+// and the knowledge screen (the live-conversation library is loaded separately, only when a real conversation starts).
+const DeployTab = lazy(() => import('./DeployTab.jsx'));
+const VersionsTab = lazy(() => import('./VersionsTab.jsx'));
+const TestTab = lazy(() => import('./test/TestTab.jsx'));
+const ScenariosTab = lazy(() => import('./scenarios/ScenariosTab.jsx'));
+const KnowledgeTab = lazy(() => import('./knowledge/KnowledgeTab.jsx'));
+const ChecksTab = lazy(() => import('./checks/ChecksTab.jsx'));
+const PlainIssues = lazy(() => import('./validation/PlainIssues.jsx')); // problems named by their labels, not their paths
 
-function PublishDialog({ botId, editor, latestVersion, onClose, onPublished }) {
+// Publishing is a step of the Release stage, so it is drawn on the Versions page, in place, with the release checklist beside the choice of version.
+// (It used to be a dialog; the same content can still be shown in one: `inline` is false.)
+function PublishFrame({ inline, eyebrow, title, subtitle, onClose, busy, footer, children }) {
+  if (!inline) return <Modal eyebrow={eyebrow} title={title} subtitle={subtitle} onClose={onClose} busy={busy} footer={footer}>{children}</Modal>;
+  return (
+    <section className="stCard stPublishPanel" aria-label={title}>
+      <header>
+        {eyebrow && <small>{eyebrow}</small>}
+        <h3>{title}</h3>
+        {subtitle && <p className="stMuted">{subtitle}</p>}
+      </header>
+      {children}
+      {footer && <div className="stPublishFooter">{footer}</div>}
+    </section>
+  );
+}
+
+function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inline = false }) {
   // "draft" publishes under the draft's own version number. A bump is counted from the latest
   // published version, and the server refuses one until something has been published.
   const draftVersion = editor.parsed.value?.meta?.version;
@@ -57,7 +82,8 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished }) {
 
   if (phase === 'done' && result) {
     return (
-      <Modal
+      <PublishFrame
+        inline={inline}
         eyebrow="PUBLISHED"
         title={`Version ${result.version} is published`}
         subtitle="It is now frozen. Deploy it to an environment to put it in use."
@@ -69,15 +95,16 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished }) {
           </>
         )}
       >
-        {result.warnings?.length > 0 && <Notice kind="warn" title={`${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'}`}><ul className="stPlain">{result.warnings.map((w, i) => <li key={i}>{w.path ? <code>{formatPath(w.path)}</code> : null} {w.message}</li>)}</ul></Notice>}
+        {result.warnings?.length > 0 && <Notice kind="warn" title={`${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'}`}><Suspense fallback={null}><PlainIssues issues={result.warnings} /></Suspense></Notice>}
         {result.secrets_required?.length > 0 && <p className="stMuted">Needs {result.secrets_required.length} secret{result.secrets_required.length === 1 ? '' : 's'}: {result.secrets_required.join(', ')}.</p>}
         <p className="stMuted">The draft has moved on to {nextVersion(result.version, 'patch')}, so your next publish won’t collide.</p>
-      </Modal>
+      </PublishFrame>
     );
   }
 
   return (
-    <Modal
+    <PublishFrame
+      inline={inline}
       eyebrow="PUBLISH"
       title={`Publish version ${willPublish || ''}`.trim()}
       subtitle="Publishing freezes the saved draft as an immutable version. It does not change what callers get until you deploy it."
@@ -104,16 +131,17 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished }) {
         return (
           <Notice kind="warn" title={`${warnings.length} warning${warnings.length === 1 ? '' : 's'} before you publish`}>
             These don’t stop a publish, and they will be in the version. Fix them on the Config tab first if they matter.
-            <ul className="stPlain">{shown.map((w, i) => <li key={i}>{w.path?.length ? <code>{formatPath(w.path)}</code> : null} {w.message}</li>)}</ul>
+            <Suspense fallback={null}><PlainIssues issues={shown} config={editor.parsed.value} /></Suspense>
             {warnings.length > 5 && <button type="button" className="stLink" onClick={() => setAllWarnings((v) => !v)}>{allWarnings ? 'Show fewer' : `Show all ${warnings.length}`}</button>}
           </Notice>
         );
       })()}
+      {!blocked && <ReleaseChecklist botId={botId} config={editor.parsed.value} report={editor.report} target="draft" compact />}
       {editor.dirty && !blocked && <Notice kind="info" title="Unsaved edits">They will be saved first, then published.</Notice>}
       {error && (
         <Notice kind="error" title={error.kind === 'invalid' ? 'The server rejected this draft' : 'Couldn’t publish'}>
           {error.message}
-          {error.errors?.length > 0 && <ul className="stPlain">{error.errors.map((e, i) => <li key={i}>{e.path?.length ? <code>{formatPath(e.path)}</code> : null} {e.message}</li>)}</ul>}
+          {error.errors?.length > 0 && <Suspense fallback={null}><PlainIssues issues={error.errors} severity="error" config={editor.parsed.value} /></Suspense>}
         </Notice>
       )}
       {latestVersion ? (
@@ -133,11 +161,11 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished }) {
         <p className="stMuted">This is the first version of this agent, so it is published as {draftVersion}.</p>
       )}
       <p className="stMuted">Afterwards the draft moves on to {nextVersion(willPublish, 'patch')}, so your next publish won’t collide.</p>
-    </Modal>
+    </PublishFrame>
   );
 }
 
-export default function BotWorkspace({ botId, tab, params, onRecordSession }) {
+export default function BotWorkspace({ botId, tab, params, onRecordSession, readinessRuns = [], onRecordReadiness }) {
   const [refresh, setRefresh] = useState(0);
   const bot = useAsync((signal) => api.getBot(botId, { signal }), [botId, refresh]);
   const editor = useDraftEditor(botId);
@@ -146,7 +174,13 @@ export default function BotWorkspace({ botId, tab, params, onRecordSession }) {
   // The test conversation lives here, not in the Test tab, so switching tabs doesn't hang up.
   // A finished test conversation is handed to the page that keeps the Sessions list.
   const nameRef = useRef(botId);
-  const handleFinished = ({ info, messages, startedAt, endedAt }) => {
+  const handleFinished = ({ info, messages, startedAt, endedAt, tools, state, agent }) => {
+    // In demo mode a simulated conversation is kept as a call, so the Calls page and the trace have it (a real one is recorded by the runtime).
+    if (isDemoMode() && info?.simulated) {
+      import('../demo/demoApi.js').then(({ getDemoApi }) => getDemoApi().recordConversation(botId, {
+        startedAt: new Date(startedAt).toISOString(), channel: info.channel, messages, tools, state, agent, version: info.version === 'draft' ? 'draft' : info.version,
+      }));
+    }
     if (!onRecordSession) return;
     onRecordSession({
       id: `SES_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
@@ -181,7 +215,8 @@ export default function BotWorkspace({ botId, tab, params, onRecordSession }) {
   const setSessionMode = (next) => { if (!modeLocked || next === 'simulated') setSessionModeState(next); };
   const session = sessionMode === 'simulated' ? simSession : realSession;
   const live = [realSession.status, simSession.status].some((status) => ['starting', 'connecting', 'waiting', 'live'].includes(status));
-  const [publishOpen, setPublishOpen] = useState(false);
+  const publishOpen = tab === 'versions' && params?.publish === '1';
+  const closePublish = () => navigate(routeHref(botId, 'versions'), { guard: false });
 
   // Reloading the page would lose unsaved edits and hang up a running test conversation.
   useEffect(() => {
@@ -250,34 +285,23 @@ export default function BotWorkspace({ botId, tab, params, onRecordSession }) {
       <button type="button" className="agentBackLink stBack" onClick={leave}><span className="buttonBackArrow">←</span>Agents</button>
       <header className="stHeader">
         <span className="agentRowAvatar" aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>
-        <div className="stHeaderCopy">
-          <h1>{name}</h1>
-          {editor.parsed.value?.meta?.description && <p className="stHeaderDesc" title={editor.parsed.value.meta.description}>{editor.parsed.value.meta.description}</p>}
-          <div className="stMetaLine">
-            <code>{botId}</code>
-            <span>draft rev {editor.revision ?? '—'}</span>
-            {/* Where it runs is shown in the environment slots beside the title; this line only waits for them. */}
-            {!summary && <span className="stMuted">loading…</span>}
-            {summary && stage.kind === 'env' && summary?.latest_version && compareVersions(summary.latest_version, stage.version) > 0 && <span title="Published but not deployed there yet">newer v{summary.latest_version} published</span>}
-          </div>
-        </div>
+        <AgentStatusLine
+          botId={botId} name={name} description={editor.parsed.value?.meta?.description} summary={summary} editor={editor} refreshKey={refresh}
+          newerPublished={summary && stage.kind === 'env' && summary.latest_version && compareVersions(summary.latest_version, stage.version) > 0 ? summary.latest_version : ''}
+        />
         {summary && (
           <div className="stHeaderEnvs">
-            <EnvSlots deployed={summary.deployed} onPick={() => navigate(routeHref(botId, 'deploy'), { guard: false })} />
+            <EnvSlots compact deployed={summary.deployed} onPick={() => navigate(routeHref(botId, 'deploy'), { guard: false })} />
           </div>
         )}
         <div className="stHeaderActions">
           {editor.dirty && <span className="stDirtyDot" title="Unsaved edits">Unsaved</span>}
-          <button type="button" className="primaryCta compactCta" onClick={() => setPublishOpen(true)} disabled={editor.status !== 'ready'}>Publish</button>
+          <button type="button" className="primaryCta compactCta" onClick={() => navigate(routeHref(botId, 'versions', { publish: '1' }), { guard: false })} disabled={editor.status !== 'ready'}>Publish</button>
           <Menu label="Agent actions" items={manage.menuItems(manageBot, { dirty: editor.dirty })} className="stHeaderMenu" />
         </div>
       </header>
 
-      <nav className="stTabs" aria-label="Agent sections">
-        {TAB_LABELS.map(([id, label]) => (
-          <button key={id} type="button" className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => navigate(routeHref(botId, id), { guard: false })}>{label}{id === 'test' && live && <i className="stTLiveDot" title="A test conversation is running" />}</button>
-        ))}
-      </nav>
+      <JourneyNav botId={botId} tab={tab} live={live} />
 
       <div className="stTabBody">
         {/* The draft lives in useDraftEditor above the tabs, so edits survive switching tabs. */}
@@ -294,25 +318,25 @@ export default function BotWorkspace({ botId, tab, params, onRecordSession }) {
           </Notice>
         )}
         {tab === 'config' && <ConfigTab editor={editor} focusPath={applied?.where} botId={botId} preview={{ session, mode: sessionMode, locked: modeLocked, onMode: setSessionMode }} />}
+        <Suspense fallback={<Spinner label="Loading" />}>
+        {tab === 'versions' && publishOpen && (
+          <PublishDialog inline botId={botId} editor={editor} latestVersion={summary?.latest_version || null} onClose={closePublish} onPublished={() => { bump(); editor.reload(); }} />
+        )}
         {tab === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} />}
         {tab === 'deploy' && <DeployTab botId={botId} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
         {tab === 'scenarios' && <ScenariosTab botId={botId} name={name} editor={editor} />}
+        {tab === 'knowledge' && <KnowledgeTab botId={botId} name={name} editor={editor} />}
+        {tab === 'checks' && <ChecksTab botId={botId} name={name} runs={readinessRuns} onRun={onRecordReadiness} />}
+        {tab === 'calls' && <CallsView bots={[{ id: botId, name }]} fixedBotId={botId} onOpenAgent={() => navigate(routeHref(botId, 'test'), { guard: false })} />}
         {tab === 'test' && <TestTab botId={botId} name={name} summary={summary} editor={editor} session={session} mode={sessionMode} modeLocked={modeLocked} onMode={setSessionMode} />}
+        </Suspense>
+        <NextBar botId={botId} tab={tab} />
       </div>
 
       {manage.element}
       {/* The agent's voice is played from here, so it keeps playing when you switch tabs. */}
       <div ref={realSession.audioHostRef} className="stTAudio" aria-hidden="true" />
 
-      {publishOpen && (
-        <PublishDialog
-          botId={botId}
-          editor={editor}
-          latestVersion={summary?.latest_version || null}
-          onClose={() => setPublishOpen(false)}
-          onPublished={() => { bump(); editor.reload(); }}
-        />
-      )}
     </div>
   );
 }
