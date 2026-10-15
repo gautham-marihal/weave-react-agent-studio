@@ -27,6 +27,7 @@ const DeployTab = lazy(() => import('./DeployTab.jsx'));
 const VersionsTab = lazy(() => import('./VersionsTab.jsx'));
 const TestTab = lazy(() => import('./test/TestTab.jsx'));
 const ScenariosTab = lazy(() => import('./scenarios/ScenariosTab.jsx'));
+const WorkflowTab = lazy(() => import('./workflow/WorkflowTab.jsx'));
 const KnowledgeTab = lazy(() => import('./knowledge/KnowledgeTab.jsx'));
 const ChecksTab = lazy(() => import('./checks/ChecksTab.jsx'));
 const PlainIssues = lazy(() => import('./validation/PlainIssues.jsx')); // problems named by their labels, not their paths
@@ -319,6 +320,7 @@ export default function BotWorkspace({ botId, tab, params, onRecordSession, read
         )}
         {tab === 'config' && <ConfigTab editor={editor} focusPath={applied?.where} botId={botId} preview={{ session, mode: sessionMode, locked: modeLocked, onMode: setSessionMode }} />}
         <Suspense fallback={<Spinner label="Loading" />}>
+        {tab === 'workflow' && <WorkflowTab editor={editor} botId={botId} />}
         {tab === 'versions' && publishOpen && (
           <PublishDialog inline botId={botId} editor={editor} latestVersion={summary?.latest_version || null} onClose={closePublish} onPublished={() => { bump(); editor.reload(); }} />
         )}

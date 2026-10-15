@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.js';
-import { assignBot, refreshBots, restoreBot, useBots, useWorkspaces } from './agents.js';
+import { assignBot, dismissBot, refreshBots, restoreBot, undoDismissed, useBots, useWorkspaces } from './agents.js';
 import { queueChange } from './pendingChange.js';
 import AssistantPanel from './AssistantPanel.jsx';
 import './preview/preview.css';
@@ -181,8 +181,32 @@ export function BotRow({ bot, menuItems, onOpen, health, tags }) {
   );
 }
 
+// One agent in “Removed from your list”: bring it back, or delete it from the list for good. The API cannot delete an agent, so this only forgets it here
+// (it stays on the server), and says so before it does; “Bring them back” undoes it.
+function RemovedRow({ bot }) {
+  const [asking, setAsking] = useState(false);
+  const label = bot.name || bot.id;
+  return (
+    <li>
+      <span><strong>{label}</strong> <code>{bot.id}</code></span>
+      {asking ? (
+        <span className="stRemovedAsk" role="group" aria-label={`Delete ${label} from this list?`}>
+          <span className="stMuted">Delete from this list? It stays on the server.</span>
+          <button type="button" className="quietButton danger" onClick={() => dismissBot(bot.id)}>Delete</button>
+          <button type="button" className="quietButton" onClick={() => setAsking(false)}>Cancel</button>
+        </span>
+      ) : (
+        <span className="stRemovedActions">
+          <button type="button" className="quietButton" onClick={() => restoreBot(bot.id)}>Restore</button>
+          <button type="button" className="quietButton danger" aria-label={`Delete ${label} from this list`} onClick={() => setAsking(true)}>Delete</button>
+        </span>
+      )}
+    </li>
+  );
+}
+
 export default function BotsPage({ route }) {
-  const { bots, removed, all, error, loading, refresh } = useBots();
+  const { bots, removed, dismissedCount, dismissedIds, all, error, loading, refresh } = useBots();
   const manage = useManage();
   const [filter, setFilter] = useState('');
   const [sort, setSort] = useState('recent');
@@ -300,18 +324,19 @@ export default function BotsPage({ route }) {
         </>
       )}
 
-      {removed.length > 0 && (
-        <details className="stRemoved">
+      {(removed.length > 0 || dismissedCount > 0) && (
+        <details className="stRemoved" open={removed.length === 0 || undefined}>
           <summary>Removed from your list ({removed.length})</summary>
+          {removed.length === 0 && <p className="stMuted">Nothing is waiting here.</p>}
           <p className="stMuted">These are hidden on this browser only. They still exist on the server{removed.some((b) => Object.keys(b.deployed || {}).length) ? ', and the ones that are deployed keep running' : ''}.</p>
           <ul>
-            {removed.map((bot) => (
-              <li key={bot.id}>
-                <span><strong>{bot.name || bot.id}</strong> <code>{bot.id}</code></span>
-                <button type="button" className="quietButton" onClick={() => restoreBot(bot.id)}>Restore</button>
-              </li>
-            ))}
+            {removed.map((bot) => <RemovedRow key={bot.id} bot={bot} />)}
           </ul>
+          {dismissedCount > 0 && (
+            <p className="stMuted stRemovedUndo">
+              {dismissedCount} deleted from this list. <button type="button" className="linkButton" onClick={() => undoDismissed(dismissedIds)}>Bring {dismissedCount === 1 ? 'it' : 'them'} back</button>
+            </p>
+          )}
         </details>
       )}
 

@@ -24,6 +24,8 @@ export const entryAgentIndex = (config) => {
   const index = items.findIndex((agent) => agent?.id === config?.agents?.entry);
   return index >= 0 ? index : items.length ? 0 : -1;
 };
+// Where each of the everyday settings lives in the file, for the "Technical names" display.
+export const greetingChannelIndex = (config) => list(config?.channels).findIndex((c) => isObj(c) && c.greeting && c.greeting.say !== undefined);
 export const entryAgent = (config) => list(config?.agents?.items)[entryAgentIndex(config)] || null;
 
 // ---- the languages offered (a primary language is a locale; "also speaks" are base languages)

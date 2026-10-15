@@ -246,9 +246,10 @@ export default function FormEditor({ editor, focusRequest, onShowJson, onShowMod
               const c = group.views.reduce((sum, v) => sum + countUnder(v.key).errors, 0);
               return (
                 <button key={group.id} type="button" role="tab" data-group={group.id} aria-selected={group.id === activeGroup} className={`${group.id === activeGroup ? 'on' : ''} ${group.advanced ? 'adv' : ''}`}
-                  title={group.advanced ? 'Settings for the voice engine and the people who run it. Most agents never need to change these.' : undefined}
+                  title={group.advanced ? 'Engine and operator settings: for the voice engine and the people who run it. Most agents never need to change these.' : group.short ? group.label : undefined}
+                  aria-label={group.short ? `${group.label}${c > 0 ? `, ${c} error${c === 1 ? '' : 's'}` : ''}` : undefined}
                   onClick={() => { if (group.id !== activeGroup) setViewId(group.views[0].id); }}>
-                  {group.label}{c > 0 && <b className="stFBadge" title={`${c} error${c === 1 ? '' : 's'}`}>{c}</b>}
+                  {group.short || group.label}{c > 0 && <b className="stFBadge" title={`${c} error${c === 1 ? '' : 's'}`}>{c}</b>}
                 </button>
               );
             })}

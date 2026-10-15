@@ -83,6 +83,14 @@ test('with technical names on, every setting shows its name with a way to copy i
   assert.ok(keys.includes('turn_handling') || keys.includes('inactivity'), 'the file’s own names appear');
   assert.ok($$(app.container, '.stFTech button').some((b) => /^Copy path$/.test(textOf(b))), 'there is a way to copy a path');
   assert.ok(rows.length > 0);
+  // the parents of a setting are shown in front of its own name, so the whole path reads at once, and the title says the same
+  const heads = $$(app.container, '.stFTech .stFKeyHead').map(textOf);
+  assert.ok(heads.some((h) => /^defaults\.conversation\./.test(h)), 'a nested setting shows where it sits');
+  $$(app.container, '.stFTech').forEach((tech) => {
+    const key = $(tech, '.stFKey');
+    const head = $(tech, '.stFKeyHead');
+    assert.equal(key.getAttribute('title'), `Path: ${head ? textOf(head) : ''}${textOf(key)}`, 'the title is the head and the name together');
+  });
   // the title of a path is the path itself
   const first = $(app.container, '.stFTech .stFKey');
   assert.match(first.getAttribute('title'), /^Path: defaults\.conversation/);

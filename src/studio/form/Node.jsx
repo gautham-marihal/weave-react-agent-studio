@@ -119,7 +119,7 @@ function Group({ pathKey, title, hint, tooltip, count, onRemove, defaultOpen = t
           {onRemove && <button type="button" className="stFDel" aria-label={`Delete ${title}`} onClick={onRemove}>Delete</button>}
         </div>
       </header>
-      {open && <div className="stFGroupBody"><Issues pathKey={pathKey} />{children}</div>}
+      {(open || flat) && <div className="stFGroupBody"><Issues pathKey={pathKey} />{children}</div>}
     </section>
   );
 }
@@ -309,7 +309,6 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
   const setProp = (key, v) => onChange(v === undefined ? omit(obj, key) : orderedSet(obj, key, v, order));
   const del = (key, label) => { markDelete(label || wordsOf(key).label); setProp(key, undefined); };
   // Fields that are set and optional can be deleted; required ones are always part of the object.
-  const deletable = rows.filter((k) => k in obj && !required.includes(k));
   const renderRow = (key) => (
     <FieldRow key={key} name={key} schema={shape.properties[key]} value={obj[key]} path={[...path, key]}
       required={required.includes(key)} missing={!(key in obj)} disabled={disabled} collapsed={collapsedKeys?.has(key)} sole={rows.length === 1}
@@ -343,13 +342,10 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
             </div>
           )
       ))}
-      {(addable.length > 0 || deletable.length > 0 || extra || openExtra) && (
+      {(addable.length > 0 || extra || openExtra) && (
         <div className="stFAddRow">
           {addable.length > 0 && (
-            <SmartSelect action className="stFInput small" disabled={disabled} ariaLabel="Add a field" placeholder="＋ Add a field…" options={addable.map((k) => ({ value: k, label: wordsOf(k).label }))} onChange={(k) => { if (k) setProp(k, engine.defaultFor(shape.properties[k])); }} />
-          )}
-          {deletable.length > 0 && (
-            <SmartSelect action className="stFInput small del" disabled={disabled} ariaLabel="Delete a field" placeholder="− Delete a field…" options={deletable.map((k) => ({ value: k, label: wordsOf(k).label }))} onChange={(k) => { if (k) del(k); }} />
+            <SmartSelect action className="stFInput small" disabled={disabled} ariaLabel="Add a setting" placeholder="＋ Add a setting" options={addable.map((k) => ({ value: k, label: wordsOf(k).label }))} onChange={(k) => { if (k) setProp(k, engine.defaultFor(shape.properties[k])); }} />
           )}
           {(extra || openExtra) && <AddKey existing={Object.keys(obj)} disabled={disabled} label="custom field" onAdd={(k) => setProp(k, extra ? engine.defaultFor(extra) : '')} />}
         </div>
@@ -401,7 +397,7 @@ export function FieldRow({ name, schema, value, path, required, missing, disable
     const count = kind === 'array' ? (Array.isArray(value) ? value.length : 0) : kind === 'map' ? Object.keys(isObj(value) ? value : {}).length : null;
     return (
       <div className="stFRow wide" data-grouprow={key}>
-        <Group pathKey={key} title={title} tooltip={words.lead} actions={technical ? <TechName name={name} path={path} /> : null} count={count} onRemove={onRemove} defaultOpen={collapsed ? false : kind === 'array' ? Array.isArray(value) && value.length <= 4 : sole || words.level === 'guided'}>
+        <Group pathKey={key} title={title} tooltip={words.lead} actions={technical ? <TechName name={name} path={path} /> : null} count={count} onRemove={onRemove} flat={sole && !onRemove && kind !== 'array' && path.length <= 2} defaultOpen={collapsed ? false : kind === 'array' ? Array.isArray(value) && value.length <= 4 : sole || words.level === 'guided'}>
           {helpLine}
           <OwnerCtx.Provider value={name}><Node schema={schema} value={value} path={path} onChange={onChange} disabled={disabled || readOnly} /></OwnerCtx.Provider>
         </Group>

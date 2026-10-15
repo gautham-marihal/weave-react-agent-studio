@@ -12,7 +12,7 @@ test('the tabs are in four stages, each naming its question, and every old tab i
   const app = await show('config');
   const stages = $$(app.container, '.stStage');
   assert.deepEqual(stages.map((s) => s.getAttribute('data-stage')), ['build', 'test', 'release', 'monitor']);
-  assert.deepEqual($$(app.container, '.stStageTabs button').map(textOf), ['Config', 'Knowledge', 'Test', 'Scenarios', 'Checks', 'Versions', 'Deploy', 'Calls']);
+  assert.deepEqual($$(app.container, '.stStageTabs button').map(textOf), ['Config', 'Workflow', 'Knowledge', 'Test', 'Scenarios', 'Checks', 'Versions', 'Deploy', 'Calls']);
   assert.match(stages[0].getAttribute('aria-label'), /^Build: What is it, and what can it do\?$/);
   assert.equal($$(app.container, '.stStage.current').length, 1);
   assert.equal($(app.container, '.stStage.current').getAttribute('data-stage'), 'build');

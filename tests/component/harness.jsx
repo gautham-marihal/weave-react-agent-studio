@@ -8,6 +8,7 @@ import SimpleConfig from '../../src/studio/simple/SimpleConfig.jsx';
 import ScenariosTab from '../../src/studio/scenarios/ScenariosTab.jsx';
 import ChatPreview from '../../src/studio/preview/ChatPreview.jsx';
 import KnowledgeTab from '../../src/studio/knowledge/KnowledgeTab.jsx';
+import WorkflowTab from '../../src/studio/workflow/WorkflowTab.jsx';
 import CallsView from '../../src/studio/calls/CallsView.jsx';
 import TraceView from '../../src/studio/trace/TraceView.jsx';
 import { ValidationPanel } from '../../src/studio/ConfigTab.jsx';
@@ -32,6 +33,7 @@ const SCREENS = {
   smartselect: (editor, props) => <SmartSelect value={editor.parsed.value.picked ?? ''} options={props.options} ariaLabel="Pick one" action={!!props.action} placeholder={props.placeholder} onChange={(picked) => editor.setValue({ picked })} />,
   trace: (editor, props) => <TraceView records={props.records || []} live={!!props.live} />,
   journey: (editor, props) => <><JourneyNav botId="acme" tab={props.tab || 'config'} live={!!props.live} /><NextBar botId="acme" tab={props.tab || 'config'} /><StatePill state={agentState(props.state || {})} /></>,
+  workflow: (editor) => <WorkflowTab editor={editor} botId="x" />,
   preview: (editor, props) => <PreviewScreen editor={editor} mode={props.mode || 'simulated'} locked={!!props.locked} />,
 };
 
@@ -46,6 +48,9 @@ function Host({ initial, onConfig, screen, props, report }) {
     dirty,
     saving: false,
     save: async () => { setDirty(false); },
+    reload: () => {},
+    meta: {},
+    conflict: false,
     setValue: (next) => { setConfig(next); setDirty(true); onConfig(next); },
   };
   return SCREENS[screen](editor, props);

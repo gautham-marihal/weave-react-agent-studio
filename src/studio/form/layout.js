@@ -11,7 +11,7 @@
 const view = (key, label, extra = {}) => ({ id: extra.only ? `${key}.${extra.only.join('+')}` : key, key, label, ...extra });
 
 export const LAYOUT = [
-  { id: 'about', label: 'About this agent', views: [
+  { id: 'about', label: 'About this agent', short: 'About', views: [
     view('meta', 'Name and details'),
     view('persona', 'Personality and rules'),
   ] },
@@ -36,7 +36,7 @@ export const LAYOUT = [
     view('events', 'Events'),
     view('state', 'Things it remembers'),
   ] },
-  { id: 'where', label: 'Where it is available', views: [
+  { id: 'where', label: 'Where it is available', short: 'Availability', views: [
     view('channels', 'Channels'),
     view('telephony', 'Phone transfers'),
     view('identity', 'Caller identity'),
@@ -45,11 +45,11 @@ export const LAYOUT = [
     view('post_call', 'Summary, recording and redaction'),
     view('wrapups', 'Closing messages'),
   ] },
-  { id: 'quality', label: 'Quality and records', views: [
+  { id: 'quality', label: 'Quality and records', short: 'Quality', views: [
     view('tests', 'Test scenarios'),
     view('observability', 'Call records and logs'),
   ] },
-  { id: 'engine', label: 'Engine and operator settings', advanced: true, views: [
+  { id: 'engine', label: 'Engine and operator settings', short: 'Advanced', advanced: true, views: [
     view('runtime', 'Engine'),
     view('defaults', 'Reliability', { only: ['reliability'] }),
     view('constants', 'Fixed values'),

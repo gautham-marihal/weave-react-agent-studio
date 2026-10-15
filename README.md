@@ -64,6 +64,21 @@ line; an open one shows the everyday settings; **Detailed settings** reveals eve
 fixed values, the engine, studio notes) put every other section one click away. It edits the same draft as **All settings** and the JSON, so the three
 always agree (`src/studio/simple/`). A test walks the schema and fails if a section is on no card, under More or under Advanced.
 
+### The Workflow
+
+**Build → Workflow** draws how a call moves through the agent as a canvas you can edit: a **Start** block, an agent block (a "Subagent") for each agent, and what goes
+with them: lines an agent says and state it sets as it takes over (`on_enter`), and what it can do (its tools: end the call, hand over to a phone number, any other
+tool). An arrow is a way the caller is passed on: an agent's own hand-over (`handoffs`), or one made by a tool's rules or a safety rule (each can be pointed at another agent or taken away from its panel). Select an agent and press **＋** under it to add a **Subagent**, **Say**, **Update state**, **Agent transfer**, **Phone number transfer**, **Tool** or
+**End**; each writes ordinary settings (a new agent with a hand-over to it, an `on_enter` step, a transfer and the built-in tool that uses it…), so the form, the JSON and
+the runtime all read the same thing. Select a block or an arrow for its panel (name, what it does, when to pass the caller on, the number to transfer to…); the panel ends with **In the configuration**: the path the block lives at (for example `agents.items[1]`), its JSON as it is right now, and buttons to open it in All settings or in the file. It is one draft: what is changed in the Workflow is in All settings, Simple and the JSON at once, and what is changed there is what the Workflow draws.
+
+Blocks are moved by dragging them (or with the arrow keys once selected; Shift moves further). Where each block sits is saved in the draft under
+`builder.ui.graph_positions`, the place the schema keeps for it, and the blocks that go with an agent follow it unless they have a place of their own. **Tidy up**
+forgets the saved places; **Undo/Redo** step through everything done here (kept while the page is open, even after a visit to another tab, and dropped if the draft is changed elsewhere) (and the draft is saved with **Save draft**, Ctrl+S, like every other tab). Zoom with the
+buttons or Ctrl and the wheel, drag the empty space to move around; tools can be hidden when there are many. "As a list" says the same in sentences. The model is in
+`src/studio/workflow/workflowModel.js` and the edits in `workflowOps.js` (both pure, tested in `tests/workflow.test.js`); the screen is covered by
+`tests/workflow.component.test.js`.
+
 ### The preview beside the editor
 
 An optional, collapsible panel beside the settings (the **Preview** button) lets you talk to the agent while you edit it, with its state
@@ -71,6 +86,12 @@ always visible: not started, connecting, live, reconnecting, ended, and errors w
 (a live conversation on the saved draft; it says so when you have unsaved edits) or a **simulated** one (made-up replies from simple
 rules, using your current edits, no server). The two are never confused: the panel says which, and every simulated reply carries a
 "Simulated" tag. Demo mode has no real agent, so it is simulated only (`src/studio/preview/`, `src/demo/simulatedAgent.js`).
+
+What the box offers follows the channel's own settings (`modalities.input`, and `inputs.image` for pictures), so the preview never offers what the
+channel would refuse: a **microphone** when the channel takes audio (with the real agent it switches the call's microphone on; with the simulated one
+the browser's speech recognition types what you say into the message box, and the button says so where the browser has none), a **paperclip** when it
+takes pictures (checked against the channel's accepted types and size limit before anything is sent; the simulated agent answers and says its reply is made up),
+and a **camera** when it takes video (real agent only). A text-only channel shows none of them (`src/studio/preview/useDictation.js`).
 
 ### All settings: grouped by task, in plain words
 
@@ -85,7 +106,7 @@ Every setting has a hand-written label, a one-sentence purpose and, where it hel
 (seconds)" and `stt` reads "Listening (speech-to-text)". The catalogue is checked against the schema: every setting name must have an entry, every
 place-specific entry must exist in the schema, and a name that means different things in different places (`type`, `name`, `enabled`) gets its own wording per
 place. The schema's own technical description is one click away ("Technical detail"). **Technical names** (a switch in the Config toolbar and in Settings,
-off by default) shows the key the file uses beside every label, with **Copy path** and **In JSON**; with it off no raw key is on screen
+off by default) shows the key the file uses beside every label, in All settings and in Simple alike, as its whole path (for example `channels[0].modalities.input`), with **Copy path** and **In JSON**; with it off no raw key is on screen
 (`tests/techNames.component.test.js` walks every screen of the sample agents to prove it). Settings meant for experts sit under **Advanced** in their place;
 the catalogue is read as a fallback behind the schema's own `x-ui` hints (`label`, `help`, `example`, `audience`, `advanced`), so a server that starts
 sending them takes over without a release.
@@ -171,7 +192,7 @@ aren't saved yet. The model lists in `src/studio/models/catalog.js` are a **cata
   then needs the word "production" typed. **Roll back** only fills in the form with the previous version.
 - **Workspaces own agents.** The API has no workspaces, so which workspace an agent is in is kept in this browser. They group
   agents; they are **not access control**. **Move to workspace…** changes it.
-- **Remove from my list** hides the agent **in this browser only** (the API has no delete); hidden agents can be restored.
+- **Remove from my list** hides the agent **in this browser only** (the API has no delete); hidden agents can be restored. In “Removed from your list”, **Restore** brings one back and **Delete** (after a question) forgets it here for good: still only this browser, the agent stays on the server, and “Bring them back” undoes it.
 
 ## The other pages
 
@@ -274,6 +295,7 @@ src/studio/validation/      the checks described for a person: labels, plain sen
 src/studio/records/         what is kept about each call, where it is processed, the recording notice
 src/studio/checks/          the Checks tab (readiness checks of one agent)
 src/studio/preview/         the preview beside the editor
+src/studio/workflow/        the Workflow canvas: the model, the edits, the canvas, the panel
 src/studio/scenarios/       test scenarios: editing, the run hook, results (runs are the server's)
 src/studio/knowledge/       the Knowledge tab: files, index builds, test searches
 src/studio/calls/           the call list and one call's detail

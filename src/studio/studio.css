@@ -219,6 +219,12 @@ em.stTag { margin-left: 8px; font-style: normal; }
 .stRemoved li { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); }
 .stRemoved li code { color: var(--muted); font-size:var(--fs-xs); margin-left: 6px; }
 .stRemoved .stMuted { margin: 0 0 4px; }
+.stRemovedActions, .stRemovedAsk { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.stRemovedAsk .stMuted { margin: 0; }
+.stRemoved .quietButton.danger { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 40%, var(--line2)); }
+.stRemoved .quietButton.danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.stRemovedUndo { padding-bottom: 12px; }
+.stRemovedUndo .linkButton { margin: 0; text-decoration: underline; }
 
 /* Settings: API status and what runs where */
 .stApiState { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px; border: 1px solid var(--line2); border-radius: 12px; background: var(--surface); }
@@ -373,7 +379,7 @@ button.stEnvSlot:focus-visible { outline: 2px solid var(--accent); outline-offse
 .asFacts dd { margin: 0; overflow-wrap: anywhere; }
 
 /* ---- the rail beside the editor: preview and checks ---- */
-.stRail { display: grid; gap: 12px; position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; align-self: start; min-width: 0; }
+.stRail { display: grid; gap: 12px; position: static; align-self: start; min-width: 0; } /* sticky only on a tall window: see the end of this file */
 .stRail .stValidation { position: static; max-height: none; overflow: visible; }
 .stValidation.folded { padding: 10px 14px; }
 .stValidationHead { position: relative; }
@@ -444,3 +450,56 @@ button.stEnvSlot:focus-visible { outline: 2px solid var(--accent); outline-offse
 .stToolbarActions { align-items: center; gap: 8px; }
 .stTechSwitch { display: inline-flex; align-items: center; gap: 7px; padding: 0 6px; font-size:var(--fs-sm); color: var(--muted); cursor: pointer; white-space: nowrap; }
 .stTechSwitch:hover { color: var(--textStrong); }
+/* the checkbox drawn as a switch: on shows the names of the settings as the file spells them */
+.stTechSwitch input { appearance: none; -webkit-appearance: none; width: 30px; height: 18px; margin: 0; border-radius: 999px; background: var(--line2); position: relative; cursor: pointer; transition: background .15s; flex: none; }
+.stTechSwitch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.stTechSwitch input:checked { background: var(--accent); }
+.stTechSwitch input:checked::after { transform: translateX(12px); }
+.stTechSwitch input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stTechSwitch:has(input:checked) { color: var(--textStrong); }
+@media (prefers-reduced-motion: reduce) { .stTechSwitch input, .stTechSwitch input::after { transition: none; } }
+
+/* ---- Inside an agent: the sidebar is the agent's own menu, and the page is one calm column beside the preview ---- */
+.agentSideNav { display: flex; flex-direction: column; gap: 4px; }
+.agentBack { align-self: flex-start; margin: 2px 0 6px; padding: 6px 10px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size:var(--fs-sm); cursor: pointer; }
+.agentBack:hover { background: var(--surface2); color: var(--textStrong); }
+.agentSideName { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.agentSideName .agentRowAvatar { width: 30px; height: 30px; flex: 0 0 30px; font-size:var(--fs-sm); border-radius: 9px; }
+.agentSideName strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size:var(--fs-md); color: var(--textStrong); }
+.agentSideNav .stTabs.stJourney { flex-direction: column; flex-wrap: nowrap; gap: 14px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.agentSideNav .stStage { flex: none; padding: 0; background: none; border-radius: 0; gap: 2px; }
+.agentSideNav .stStage::before { display: none; }
+.agentSideNav .stStage.current { background: none; }
+.agentSideNav .stStageHead { padding: 0 10px 4px; font-size:var(--fs-xs); letter-spacing: .1em; }
+.agentSideNav .stStageHead svg { display: none; }
+.agentSideNav .stStageTabs { flex-direction: column; flex-wrap: nowrap; gap: 1px; }
+.agentSideNav .stJourney .stStageTabs button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 10px; text-align: left; border-radius: 9px; font-size:var(--fs-md); box-shadow: none; }
+.agentSideNav .stJourney .stStageTabs button.active { background: var(--accent-soft, color-mix(in srgb, var(--accent) 14%, transparent)); color: var(--textStrong); font-weight: 600; box-shadow: none; }
+@media (min-width: 901px) {
+  .dashboard .stBack { display: none; }
+}
+.agentSideNav .stTabs.stJourney { gap: 6px; }
+.agentSideNav .stStageHead { padding: 6px 10px 2px; }
+.agentSideNav .stJourney .stStageTabs button { padding: 6px 10px; }
+.agentSideName { margin-bottom: 2px; padding: 6px 10px; }
+.agentBack { margin: 0 0 2px; }
+@media (min-width: 901px) { .sideNavWorkspace { display: none; } }
+@media (max-width: 900px) { .agentSideNav { display: none; } }
+
+/* ---- Polish: a lighter header, a quieter toolbar, a preview that stays in view, and the demo marker out of the way ---- */
+.stHeaderCopy h1 { font-size:var(--fs-2xl); letter-spacing: -.4px; }
+.stHeader .agentRowAvatar { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 14px; }
+.stHeaderDesc { font-size:var(--fs-md); }
+/* the toolbar keeps two things strong (the view and Save); the rest are quiet */
+.stToolbarActions .quietButton { border-color: transparent; background: none; color: var(--muted); }
+.stToolbarActions .quietButton:hover:not(:disabled) { background: var(--surface2); color: var(--textStrong); }
+.stToolbarActions .quietButton[aria-pressed="true"] { color: var(--textStrong); }
+/* the preview and the checks stay beside the form while it is scrolled */
+@media (min-width: 1101px) and (min-height: 940px) {
+  .stRail { position: sticky; top: calc(var(--ds-topbar-h, 72px) + 84px); max-height: calc(100vh - var(--ds-topbar-h, 72px) - 100px); overflow-y: auto; align-self: start; padding-right: 2px; }
+}
+/* the demo marker sits in the top bar, not over the account menu */
+.demoBadgeWrap { left: auto; bottom: auto; top: 20px; right: 430px; z-index: 40; }
+@media (max-width: 1250px) { .demoBadgeWrap { right: auto; left: 300px; top: 78px; } }
+.dashboard .stToolbarActions .quietButton { border-color: transparent; background: none; color: var(--muted); }
+.dashboard .stToolbarActions .quietButton:hover:not(:disabled) { background: var(--surface2); color: var(--textStrong); }

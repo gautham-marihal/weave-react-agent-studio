@@ -130,10 +130,18 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
     return true;
   }, [addRecord, finish, later, log, push]);
 
+  // A picture sent in the preview: shown as what was sent, with a reply that says plainly it is made up (the real agent would look at the picture).
+  const sendImage = useCallback(async (file) => {
+    if (!agentRef.current || !file) return;
+    push({ role: 'user', text: `Sent a picture: ${file.name}` });
+    addRecord('user_sent_image', { name: file.name, type: file.type, size: file.size, simulated: true });
+    later(() => push({ role: 'bot', text: 'Thanks, I received your picture. (A simulated reply: the real agent would look at it.)' }), THINK_MS);
+  }, [addRecord, later, push]);
+
   const noop = useCallback(() => {}, []);
   return {
     status, info, messages, events, records, error, form: null, media: { mic: false, camera: false, screen: false }, agentHint: false, reconnecting: false, simulated: true,
     audioHostRef: useRef(null), localVideoRef: useRef(null),
-    startFor, stop, attachPreview: noop, sendText, sendImage: noop, toggle: noop, submitForm: noop, dismissForm: noop, clearError: () => setError(null),
+    startFor, stop, attachPreview: noop, sendText, sendImage, toggle: noop, submitForm: noop, dismissForm: noop, clearError: () => setError(null),
   };
 }

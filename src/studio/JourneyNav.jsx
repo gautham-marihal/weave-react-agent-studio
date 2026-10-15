@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from '../ui/Icon.jsx';
 import { STAGES, nextStep, stageOf } from './journey.js';
 import { navigate, routeHref } from './route.js';
@@ -8,7 +9,23 @@ const STAGE_ICONS = { build: 'build', test: 'test', release: 'release', monitor:
 
 // The agent's tabs, grouped into the four stages of its life: build it, test it, release it, watch it. Each stage says what question it answers; the one
 // you are in is marked. Every tab is still one click away and every link to a tab still works; the grouping only shows where each belongs.
-export default function JourneyNav({ botId, tab, live }) {
+// Inside an agent the dashboard's sidebar shows this menu (its #agentNavSlot), like the agent's own menu in a product built around one agent at a time;
+// where there is no such slot (a narrow window, a test) it is drawn above the page.
+export default function JourneyNav(props) {
+  const [slot, setSlot] = useState(null);
+  // only while the sidebar is on screen (it is hidden on a narrow window, where the menu stays above the page)
+  useLayoutEffect(() => {
+    const wide = window.matchMedia ? window.matchMedia('(min-width: 901px)') : { matches: true, addEventListener() {}, removeEventListener() {} };
+    const pick = () => setSlot(wide.matches ? document.getElementById('agentNavSlot') : null);
+    pick();
+    wide.addEventListener?.('change', pick);
+    return () => wide.removeEventListener?.('change', pick);
+  }, []);
+  const menu = <StageMenu {...props} />;
+  return slot ? createPortal(menu, slot) : menu;
+}
+
+function StageMenu({ botId, tab, live }) {
   const current = stageOf(tab);
   return (
     <nav className="stTabs stJourney" aria-label="Agent sections">

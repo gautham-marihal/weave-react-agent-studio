@@ -155,6 +155,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
   // A link to an agent that belongs to another workspace (a bookmark, a shared link) opens that workspace.
   const route = useRoute();
+  const inAgentView = active === 'agents' && route.view === 'bot'; // inside an agent the sidebar shows that agent's menu
   useEffect(() => { if (route.view === 'bot') rememberAgent(route.botId); }, [route.view, route.botId]);
   // An agent link opened while the app is already running (back/forward, pasted link) switches to Agents.
   useEffect(() => {
@@ -542,7 +543,14 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           </div>
         )}
 
-        <nav className="sideNav">
+        {inAgentView && (
+          <nav className="sideNav agentSideNav" aria-label="This agent">
+            <button type="button" className="agentBack" onClick={() => studioNavigate('#/bots')}><span aria-hidden="true">‹</span> Back to workspace</button>
+            <div className="agentSideName"><span className="agentRowAvatar" aria-hidden="true">{String((allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId).slice(0, 1).toUpperCase()}</span><strong>{(allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId}</strong></div>
+            <div id="agentNavSlot" />
+          </nav>
+        )}
+        <nav className={`sideNav${inAgentView ? ' sideNavWorkspace' : ''}`}>
           <div className="navLabel">WORKSPACE</div>
           {NAV.map((item) => (
             <NavItem key={item.id} item={item} active={active === item.id} onClick={() => activate(item.id)} />

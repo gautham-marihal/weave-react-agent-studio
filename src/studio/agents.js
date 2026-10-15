@@ -11,6 +11,7 @@ import { api } from '../api/client.js';
 
 const HIDDEN_KEY = 'weave_hidden_agents';
 const OWNERS_KEY = 'weave_agent_workspaces';
+const DISMISSED_KEY = 'weave_dismissed_agents';
 
 function readHidden() {
   try {
@@ -22,6 +23,19 @@ function readHidden() {
 }
 function writeHidden(ids) {
   try { window.localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids)); } catch { /* storage unavailable: the choice lasts until reload */ }
+}
+
+// Ids of agents deleted from the “Removed from your list” section: still on the server (the API cannot delete), but no longer listed anywhere here.
+function readDismissed() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(DISMISSED_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+function writeDismissed(ids) {
+  try { window.localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids)); } catch { /* storage unavailable: lasts until reload */ }
 }
 
 function readOwners() {
@@ -40,6 +54,7 @@ const browser = typeof window !== 'undefined';
 let state = {
   bots: null, error: null, loading: false,
   hidden: browser ? readHidden() : [],
+  dismissed: browser ? readDismissed() : [],
   owners: browser ? readOwners() : {},
   spaces: [], // [{ id, name }] in the order the workspace menu shows them
   current: null, // the open workspace's id
@@ -108,6 +123,19 @@ export function restoreBot(id) {
   set({ hidden });
 }
 
+// Delete from the removed list: the agent stays on the server and is only forgotten here. Undone together by `undoDismissed`, which puts them back in the removed list.
+export function dismissBot(id) {
+  if (state.dismissed.includes(id)) return;
+  const dismissed = [...state.dismissed, id];
+  writeDismissed(dismissed);
+  set({ dismissed });
+}
+export function undoDismissed(ids) {
+  const dismissed = Array.isArray(ids) ? state.dismissed.filter((id) => !ids.includes(id)) : [];
+  writeDismissed(dismissed);
+  set({ dismissed });
+}
+
 // For code that renders outside React's hook flow (a count in a menu): the agents a workspace shows right now.
 export const visibleCount = (workspaceId = state.current) => (state.bots || []).filter((bot) => !state.hidden.includes(bot.id) && inScope(bot, workspaceId)).length;
 
@@ -117,8 +145,9 @@ export function useBots() {
   useEffect(() => { if (s.bots === null && !s.loading && !s.error) refreshBots(); }, [s.bots, s.loading, s.error]);
   const mine = useMemo(() => (s.bots ? s.bots.filter((bot) => { const owner = ownerOfIn(s.owners, s.spaces, bot.id); return owner === null || owner === s.current; }) : null), [s.bots, s.owners, s.spaces, s.current]);
   const visible = useMemo(() => (mine ? mine.filter((bot) => !s.hidden.includes(bot.id)) : null), [mine, s.hidden]);
-  const removed = useMemo(() => (mine ? mine.filter((bot) => s.hidden.includes(bot.id)) : []), [mine, s.hidden]);
-  return { bots: visible, removed, all: s.bots, error: s.error, loading: s.loading, refresh: refreshBots };
+  const removed = useMemo(() => (mine ? mine.filter((bot) => s.hidden.includes(bot.id) && !s.dismissed.includes(bot.id)) : []), [mine, s.hidden, s.dismissed]);
+  const dismissedIds = useMemo(() => (mine ? mine.filter((bot) => s.hidden.includes(bot.id) && s.dismissed.includes(bot.id)).map((bot) => bot.id) : []), [mine, s.hidden, s.dismissed]);
+  return { bots: visible, removed, dismissedCount: dismissedIds.length, dismissedIds, all: s.bots, error: s.error, loading: s.loading, refresh: refreshBots };
 }
 
 // The workspaces to choose from when moving an agent, and where an agent is now.

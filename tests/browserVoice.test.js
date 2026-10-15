@@ -17,8 +17,8 @@ test('a browser voice’s gender is read from its name, and left unknown when th
 });
 
 test('a female voice is previewed with a female browser voice, not the default male one', () => {
-  const rachel = VOICE_CATALOG.find((x) => x.name === 'Rachel');
-  const pick = pickBrowserVoice(WINDOWS, rachel);
+  const sarah = VOICE_CATALOG.find((x) => x.name === 'Sarah');
+  const pick = pickBrowserVoice(WINDOWS, sarah);
   assert.equal(pick.voice.name, 'Microsoft Zira - English (United States)');
   assert.equal(pick.certain, true);
   assert.equal(pick.pitch, 1);

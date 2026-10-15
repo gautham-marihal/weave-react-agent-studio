@@ -3,7 +3,7 @@
 // old tab is still a tab, and every old link (#/bots/{id}/deploy) still opens it. Pure: no React, no DOM.
 
 export const STAGES = [
-  { id: 'build', label: 'Build', question: 'What is it, and what can it do?', tabs: [['config', 'Config'], ['knowledge', 'Knowledge']] },
+  { id: 'build', label: 'Build', question: 'What is it, and what can it do?', tabs: [['config', 'Config'], ['workflow', 'Workflow'], ['knowledge', 'Knowledge']] },
   { id: 'test', label: 'Test', question: 'Does it behave?', tabs: [['test', 'Test'], ['scenarios', 'Scenarios'], ['checks', 'Checks']] },
   { id: 'release', label: 'Release', question: 'Is it safe to put live, and what is live where?', tabs: [['versions', 'Versions'], ['deploy', 'Deploy']] },
   { id: 'monitor', label: 'Monitor', question: 'How is it doing?', tabs: [['calls', 'Calls']] },
@@ -17,6 +17,7 @@ export const stageOf = (tab) => STAGES.find((s) => s.tabs.some(([id]) => id === 
 // One step forward from each tab, so the whole path can be walked by pressing "Next". `then` is what the step is for, in the customer's words.
 export const NEXT = {
   config: { tab: 'test', label: 'Test it', then: 'Talk to the agent and see how it answers.' },
+  workflow: { tab: 'test', label: 'Test it', then: 'Talk to the agent and see the flow work.' },
   knowledge: { tab: 'test', label: 'Test it', then: 'Ask it a question your documents can answer.' },
   test: { tab: 'scenarios', label: 'Check it with scenarios', then: 'Write the conversations it must always get right, and run them.' },
   scenarios: { tab: 'checks', label: 'Run the readiness checks', then: 'Try the saved draft against everyday situations.' },

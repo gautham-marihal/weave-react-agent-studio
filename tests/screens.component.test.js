@@ -31,7 +31,51 @@ test('the Simple view is a few cards in the customer’s words, the first open, 
   await a.click($(card(app, 'instructions'), '.smHead'));
   assert.equal($(card(app, 'instructions'), '.smBody'), null, 'a card closes when its title is pressed');
   assert.equal($(card(app, 'instructions'), '.smHead').getAttribute('aria-expanded'), 'false');
-  assert.deepEqual(JSON.parse(window.localStorage.getItem('weave_simple_open')), [], 'which cards are open is remembered');
+  assert.deepEqual(JSON.parse(window.localStorage.getItem('weave_simple_open3')), [], 'which cards are open is remembered');
+  await app.unmount();
+});
+
+test('Simple: Technical names shows where each setting sits in the file (the real path, with copy and open-in-JSON), and switching it off removes them', async () => {
+  window.localStorage.clear();
+  const app = await simple();
+  assert.equal($$(app.container, '.stFTech').length, 0, 'off by default: plain words only');
+  window.localStorage.setItem('weave_tech_names', '1');
+  await act(async () => { window.dispatchEvent(new window.Event('storage')); });
+  const paths = $$(app.container, '.smFields .stFTech').map((el) => `${textOf($(el, '.stFKeyHead') || { textContent: '' })}${textOf($(el, '.stFKey'))}`);
+  for (const expected of ['meta.name', 'persona.tone', 'persona.style_rules']) assert.ok(paths.includes(expected), `${expected} is shown (${paths.join(', ')})`);
+  assert.ok(paths.some((p) => /^agents\.items\[\d+\]\.instructions\.role$/.test(p)), 'the role is at the entry agent');
+  assert.ok($$(app.container, '.smFields .stFTech button').some((b) => /^Copy path$/.test(textOf(b))), 'a path can be copied');
+  window.localStorage.setItem('weave_tech_names', '0');
+  await act(async () => { window.dispatchEvent(new window.Event('storage')); });
+  assert.equal($$(app.container, '.stFTech').length, 0, 'off again: they are gone');
+  await app.unmount();
+});
+
+test('Simple: a panel takes the keyboard in, keeps Tab inside it, closes on Escape (an open list first) and gives the keyboard back to the row that opened it', async () => {
+  window.localStorage.clear();
+  const app = await simple();
+  const head = $(card(app, 'voice'), '.smHead');
+  head.focus();
+  await a.click(head);
+  const body = () => $(card(app, 'voice'), '.smBody');
+  assert.equal(body().getAttribute('role'), 'dialog');
+  assert.equal(body().getAttribute('aria-modal'), 'true');
+  assert.ok(window.document.activeElement === $(body(), '.smClose'), 'the keyboard moves into the panel');
+  // Shift+Tab from the first control goes to the last one, and Tab from the last to the first: it does not leave the panel
+  const items = [...body().querySelectorAll('button, input, select, textarea, [tabindex]')].filter((el) => !el.disabled && el.tabIndex >= 0);
+  const tab = (shift) => act(async () => { window.document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey: shift, bubbles: true, cancelable: true })); });
+  items[0].focus();
+  await tab(true);
+  assert.ok(window.document.activeElement === items[items.length - 1], 'Shift+Tab from the first goes to the last');
+  await tab(false);
+  assert.ok(window.document.activeElement === items[0], 'Tab from the last goes to the first');
+  await act(async () => { window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); });
+  assert.equal(body(), null, 'Escape closes it');
+  assert.ok(window.document.activeElement === $(card(app, 'voice'), '.smHead'), 'and the keyboard is back where it was');
+  // an Escape that something inside already used (a list that was open) must not also close the panel
+  await a.click($(card(app, 'voice'), '.smHead'));
+  await act(async () => { const e = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }); e.preventDefault(); window.document.dispatchEvent(e); });
+  assert.ok(body(), 'the panel stays when the Escape was already handled');
   await app.unmount();
 });
 
@@ -98,18 +142,19 @@ test('Voice and language: a voice is chosen from its engine’s list; the record
   assert.equal(app.config.persona.disclosures.recording_notice, 'Calls are recorded.');
   const voice = await openCard(app, 'voice');
   const select = byLabel(card(app, 'voice'), 'Voice');
-  const rachel = [...select.options].find((o) => /^Rachel/.test(o.text));
-  assert.ok(rachel, 'ElevenLabs voices are offered');
-  await a.choose(select, rachel.value);
-  assert.equal(app.config.defaults.models.tts.voice_id, rachel.value);
-  assert.match(textOf(card(app, 'voice')), /Voice engine: ElevenLabs/);
+  const sarah = [...select.options].find((o) => /^Sarah/.test(o.text));
+  assert.ok(sarah, 'ElevenLabs voices are offered');
+  await a.choose(select, sarah.value);
+  assert.equal(app.config.defaults.models.tts.voice_id, sarah.value);
+  assert.equal(byLabel(card(app, 'voice'), 'Text-to-speech provider').value, 'elevenlabs', 'the voice engine is chosen right here');
+  assert.ok(byLabel(card(app, 'voice'), 'Text-to-speech model'), 'and so is its model');
   // Female and male voices are listed one gender at a time; the list starts on Female
   const toggle = (name) => [...card(app, 'voice').querySelectorAll('.vgToggle button')].find((b) => b.textContent.startsWith(name));
   const names = () => [...byLabel(card(app, 'voice'), 'Voice').options].map((o) => o.text.split(' · ')[0]).filter((n) => n && !/^(Choose|Custom)/.test(n));
   assert.equal(toggle('Female').getAttribute('aria-pressed'), 'true');
-  assert.deepEqual(names(), ['Rachel', 'Bella', 'Elli']);
+  assert.deepEqual(names(), ['Sarah', 'Jessica', 'Laura', 'Alice', 'Matilda', 'Lily', 'Bella']);
   await a.click(toggle('Male'));
-  assert.deepEqual(names(), ['Adam', 'Antoni', 'Josh', 'Arnold', 'Sam']);
+  assert.deepEqual(names(), ['Adam', 'Eric', 'Roger', 'George', 'Daniel', 'Brian', 'Chris', 'Will', 'Bill', 'Charlie', 'Liam', 'Callum', 'Harry']);
   const adam = [...byLabel(card(app, 'voice'), 'Voice').options].find((o) => /^Adam/.test(o.text));
   await a.choose(byLabel(card(app, 'voice'), 'Voice'), adam.value);
   assert.equal(app.config.defaults.models.tts.voice_id, adam.value);
@@ -371,6 +416,39 @@ test('Preview: idle, loading, live, a reply tagged Simulated, and ended with a w
   assert.equal($(app.container, '.pvPanel').getAttribute('data-state'), 'ended');
   assert.match(textOf($(app.container, '.pvEnded')), /The conversation ended/);
   assert.ok(byText(app.container, 'button', 'Start again'));
+  await app.unmount();
+});
+
+test('Preview: the microphone and the picture button appear exactly when the channel takes them, and a picture is checked against the channel’s limits', async () => {
+  window.localStorage.clear();
+  const plain = await mountScreen('preview', agent(), { ready: '.pvPanel' });
+  assert.equal($(plain.container, '.pvTools'), null, 'a text-only channel offers neither');
+  await plain.unmount();
+
+  const config = agent();
+  const channel = config.channels.find((c) => c.type === 'web_chat') || config.channels[0];
+  channel.modalities = { input: ['text', 'audio', 'image'], output: ['text'] };
+  channel.inputs = { image: { accepted_mime: ['image/png'], max_bytes: 1000, topic: 'pics' } };
+  const app = await mountScreen('preview', config, { ready: '.pvPanel' });
+  const panel = () => $(app.container, '.pvPanel');
+  assert.ok(byLabel(panel(), 'Speak to the agent') && byLabel(panel(), 'Attach a picture'), 'both are offered, before the conversation too');
+  assert.equal(byLabel(panel(), 'Attach a picture').disabled, true, 'but only once a conversation is running');
+  assert.equal(byLabel(panel(), 'Speak to the agent').disabled, true);
+  await a.click(byText(panel(), 'button', 'Start a simulated chat'));
+  for (let i = 0; i < 60 && panel().getAttribute('data-state') !== 'live'; i += 1) await app.wait(50);
+  assert.equal(byLabel(panel(), 'Attach a picture').disabled, false);
+  assert.match(byLabel(panel(), 'Speak to the agent').getAttribute('title'), /can.t turn speech into text/, 'a browser with no speech recognition says so (the real agent hears the microphone itself)');
+  assert.equal($(panel(), 'input[type=file]').getAttribute('accept'), 'image/png', 'the channel’s own accepted types');
+  const send = async (file) => { const input = $(panel(), 'input[type=file]'); Object.defineProperty(input, 'files', { value: [file], configurable: true }); await act(async () => { input.dispatchEvent(new window.Event('change', { bubbles: true })); }); };
+  await send(new window.File([new Uint8Array(2000)], 'big.png', { type: 'image/png' }));
+  assert.match(textOf($(panel(), '.pvHint.warn')), /2\.0 KB|0\.0 MB; this channel allows/);
+  await send(new window.File(['x'], 'a.gif', { type: 'image/gif' }));
+  assert.match(textOf($(panel(), '.pvHint.warn')), /accepts image\/png; that file is image\/gif/);
+  await send(new window.File(['x'], 'ok.png', { type: 'image/png' }));
+  assert.equal($(panel(), '.pvHint.warn'), null, 'a good picture clears the note');
+  assert.ok($$(panel(), '.pvMsg.me').some((m) => /Sent a picture: ok\.png/.test(textOf(m))), 'and is shown as sent');
+  await app.wait(900);
+  assert.ok($$(panel(), '.pvMsg.bot').some((m) => /received your picture/.test(textOf(m))), 'the simulated agent answers, and says it is simulated');
   await app.unmount();
 });
 

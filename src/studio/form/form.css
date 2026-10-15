@@ -384,3 +384,64 @@ select.stFInput { appearance: auto; }
 .stPromptParam em { color: var(--muted); font-style: normal; }
 .stTryWhatIf { margin: 6px 0; }
 .stTryWhatIf > summary { cursor: pointer; font-size:var(--fs-sm); color: var(--muted); }
+
+/* ---- Less boxes inside boxes. A group is a card only when it is a thing you can delete (a tool, an agent, an optional part); every other group is a plain
+   headed section, and one inside a card is set off by a thin rule on its left instead of a frame of its own. ---- */
+.stFGroup:not(:has(> header .stFDel)) { border: 0; border-radius: 0; background: none; }
+.stFGroup:not(:has(> header .stFDel)) > header { padding: 0; border-bottom: 1px solid var(--line); }
+.stFGroup:not(:has(> header .stFDel)) > header .stFGroupToggle { padding-left: 0; }
+.stFGroup:not(:has(> header .stFDel)) > header .stFGroupToggle strong { font-size:var(--fs-lg); }
+.stFGroup:not(:has(> header .stFDel)) > .stFGroupBody { padding: 14px 0 6px; border-top: 0; }
+.stFGroup:has(> header .stFDel) .stFGroup:not(:has(> header .stFDel)) { border-left: 2px solid var(--line); padding-left: 16px; }
+.stFGroup:has(> header .stFDel) .stFGroup:not(:has(> header .stFDel)) > header { border-bottom: 0; }
+.stFGroup:has(> header .stFDel) .stFGroup:not(:has(> header .stFDel)) > header .stFGroupToggle strong { font-size:var(--fs-md); }
+.stFGroup:has(> header .stFDel) .stFGroup:not(:has(> header .stFDel)) > .stFGroupBody { padding-top: 8px; }
+.stFGroup.hasErr:not(:has(> header .stFDel)) { border: 0; }
+/* a group that is the whole of its screen (the screen's own heading already names it) shows its fields and not a second heading */
+.stFGroup.flat > header { display: none; }
+.stFGroup.flat > .stFGroupBody { padding-top: 4px; }
+.stFGroup.flat > .stFGroupBody > .stFHelp:first-child { display: none; }
+
+/* One quiet button to add an optional setting; removing one is the Delete beside the setting itself */
+.stFAddRow select.stFInput.small { appearance: none; -webkit-appearance: none; width: auto; min-height: 34px; padding: 0 16px; border-style: dashed; border-radius: 999px; background: none; color: var(--accent-text); font-weight: 600; cursor: pointer; }
+.stFAddRow select.stFInput.small:hover { border-color: var(--accent); background: var(--accent-soft, color-mix(in srgb, var(--accent) 10%, transparent)); }
+.stFAddRow .stCombo { width: auto; min-width: 190px; }
+
+/* ---- All settings: one row of tabs instead of a wall of tiles, so the settings start near the top ---- */
+.stForm:not(.embedded) > .stFNav { position: sticky; top: calc(var(--ds-topbar-h, 72px) + 80px); z-index: 4; gap: 8px; padding: 4px 0 8px; background: var(--page); }
+.stFNavGroups { display: flex; flex-wrap: wrap; gap: 0 2px; border-bottom: 1px solid var(--line); } /* one row when it fits, two on a narrower window */
+.stFNavGroups button { flex: none; min-height: 42px; padding: 0 9px; gap: 6px; border: 0; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; background: none; color: var(--muted); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; box-shadow: none; }
+.stFNavGroups button:hover { color: var(--textStrong); background: var(--surface2); border-color: transparent; }
+.stFNavGroups button.on { color: var(--textStrong); font-weight: 650; background: none; border-bottom-color: var(--accent); box-shadow: none; }
+.stFNavGroups button.adv { border-style: solid; border-color: transparent; font-size: var(--fs-sm); color: var(--dim); }
+.stFNavGroups button.adv.on { border-bottom-color: var(--accent); color: var(--textStrong); }
+.stFNavChips { gap: 4px; padding-top: 0; }
+.stFChipBtn { min-height: 30px; padding: 0 12px; background: none; color: var(--muted); border-color: transparent; }
+.stFChipBtn:hover { background: var(--surface2); color: var(--textStrong); border-color: transparent; }
+.stFChipBtn.on { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.stFChipBtn.unset:not(.on) { border-style: solid; border-color: transparent; background: none; color: var(--dim); }
+
+/* a notice that applies to the whole config stays one quiet line (the Checks panel has the full list) */
+.stFGeneral.warnOnly { padding: 7px 12px 7px 26px; border-radius: 9px; font-size: var(--fs-xs); line-height: 1.45; background: none; border-color: var(--line2); }
+
+/* Delete is there when you want it and calm when you don't */
+.stFDel { border-color: transparent; background: none; color: var(--dim); font-weight: 500; }
+.stFDel.small { padding: 0 6px; }
+.stFSection .stFDel:not(:hover):not(:focus-visible) { border-color: transparent; }
+.stFSectionHead .stFDel { border-color: var(--line); }
+
+/* inside a channel the parts are headings with a line above, not boxes inside the box */
+.stChannelBlock { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; padding: 14px 0 4px; }
+.stChannelBlock legend { float: left; width: 100%; padding: 0 0 8px; margin: 0; }
+.stChannelBlock legend + * { clear: both; }
+/* a card inside a card is a section with a line above it */
+.stFGroup:has(> header .stFDel) .stFGroup:has(> header .stFDel) { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
+.stFGroup:has(> header .stFDel) .stFGroup:has(> header .stFDel) > header { background: none; border-bottom: 0; padding-left: 0; padding-right: 0; }
+.stFGroup:has(> header .stFDel) .stFGroup:has(> header .stFDel) > .stFGroupBody { border-top: 0; padding-left: 0; padding-right: 0; }
+
+/* Technical names: the setting's place in the file reads as one path, the parents quiet and its own name clear */
+.stFTech { max-width: 100%; gap: 6px 8px; margin-left: 6px; vertical-align: middle; }
+.stFTech .stFKeyHead { font: 500 var(--fs-xs) var(--mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace); color: var(--dim); opacity: .75; margin-right: -6px; overflow-wrap: anywhere; }
+.stFTech .stFKey { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 9%, transparent); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+.stFTech .stFKeyHead:empty { display: none; }
+.smField > span .stFTech, .smField > legend .stFTech, .smModelHead .stFTech { font-weight: 400; }

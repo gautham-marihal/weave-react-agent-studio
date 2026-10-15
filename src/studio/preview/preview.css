@@ -29,3 +29,53 @@
 .pvEnded { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size:var(--fs-sm); color: var(--muted); }
 .pvHint { margin: 0; font-size:var(--fs-xs); color: var(--muted); }
 .pvSave { align-self: flex-start; }
+
+/* ---- The preview as a conversation stage: a slim header, an orb to start from, a rounded message box at the bottom ---- */
+.pvPanel { gap: 12px; padding: 14px; min-height: min(600px, calc(100vh - 250px)); border-radius: 18px; }
+.pvHead { gap: 10px; flex-wrap: nowrap; }
+.pvHead > strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* named for screen readers; the panel needs no title */
+.pvModes { order: 1; border-radius: 999px; padding: 3px; background: var(--surface2); border: 0; gap: 2px; }
+.pvModes button { padding: 5px 14px; border-radius: 999px; font-size:var(--fs-sm); color: var(--muted); }
+.pvModes button.on { background: var(--panel); color: var(--textStrong); box-shadow: 0 1px 3px rgba(8, 20, 24, .16); }
+.pvHead .stIconBtn { order: 2; margin-left: auto; }
+.pvBanner { font-size:var(--fs-xs); padding: 6px 10px; line-height: 1.45; }
+.pvEmpty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; padding: 8px 4px; }
+.pvEmpty > span { max-width: 36ch; }
+.pvStage { position: relative; width: 100%; display: grid; place-items: center; padding: 4px 0 20px; background: repeating-linear-gradient(135deg, transparent 0 9px, color-mix(in srgb, var(--text) 4%, transparent) 9px 10px); border-radius: 14px; }
+.pvOrb { position: relative; width: 168px; height: 168px; border: 0; padding: 0; border-radius: 50%; cursor: pointer; background: conic-gradient(from 20deg, #35d3d9, #0a5fd1 18%, #ffffff 34%, #4cc8d6 52%, #0b4fb8 70%, #ffffff 86%, #35d3d9); animation: pvOrbTurn 16s linear infinite; box-shadow: 0 18px 40px -16px color-mix(in srgb, var(--accent) 60%, transparent); }
+.pvOrb::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, .55), transparent 46%); }
+.pvOrbCall { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; background: #0d1517; color: #fff; border: 3px solid var(--panel); animation: pvOrbKeep 16s linear infinite reverse; }
+@keyframes pvOrbTurn { to { transform: rotate(360deg); } }
+@keyframes pvOrbKeep { to { transform: translateX(-50%) rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pvOrb, .pvOrbCall { animation: none; } }
+.pvLog { flex: 1 1 auto; max-height: none; min-height: 200px; padding: 4px 2px; }
+.pvComposer { align-items: center; gap: 8px; padding: 8px 8px 8px 16px; border: 1px solid var(--line2); border-radius: 22px; background: var(--panel); box-shadow: 0 6px 20px -14px rgba(8, 20, 24, .4); }
+.pvComposer:focus-within { border-color: var(--accent); }
+.pvComposer input { border: 0; outline: 0; background: none; color: var(--textStrong); font-size:var(--fs-md); height: 38px; padding: 0; }
+.pvComposer .primaryCta { border-radius: 999px; min-height: 36px; padding: 0 18px; }
+.pvComposer .quietButton { border-radius: 999px; min-height: 36px; }
+.pvComposerIdle input { cursor: pointer; }
+.pvSendRound { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 0; display: grid; place-items: center; background: #0d1517; color: #fff; cursor: pointer; }
+[data-theme="dark"] .pvSendRound { background: var(--accent); color: #04282e; }
+.pvSendRound:hover { filter: brightness(1.15); }
+[data-theme="dark"] .pvModes button.on { background: color-mix(in srgb, var(--accent) 22%, var(--panel)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); }
+[data-theme="dark"] .pvModes button { color: var(--text); }
+.pvPanel { min-height: 480px; }
+
+/* what the channel lets a caller send: the microphone, a picture, the camera */
+.pvTools { display: inline-flex; gap: 2px; flex: none; }
+.pvTool { width: 34px; height: 34px; border: 0; border-radius: 50%; display: grid; place-items: center; background: none; color: var(--muted); cursor: pointer; }
+.pvTool:hover:not(:disabled) { background: var(--surface2); color: var(--textStrong); }
+.pvTool.on { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger-text); animation: pvPulse 1.4s ease-in-out infinite; }
+.pvTool:disabled { opacity: .45; cursor: not-allowed; }
+.pvComposer { padding-left: 10px; }
+.pvHint.warn { color: var(--warn-text); }
+@keyframes pvPulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger) 14%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .pvTool.on { animation: none; } }
+/* the box keeps room to type when it also holds the tools, Send and End */
+.pvComposer { gap: 4px; }
+.pvComposer:has(.pvTools) { padding: 6px 6px 6px 8px; }
+.pvComposer:has(.pvTools) .pvTool { width: 30px; height: 30px; }
+.pvComposer:has(.pvTools) .primaryCta { padding: 0 14px; }
+.pvComposer:has(.pvTools) .quietButton { padding: 0 12px; }
+.pvComposer:has(.pvTools) input { min-width: 90px; padding-left: 4px; }
