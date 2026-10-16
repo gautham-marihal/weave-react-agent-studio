@@ -26,7 +26,12 @@ export const ACTION_KINDS = [
 export const kindLabel = (type) => ACTION_KINDS.find((kind) => kind.type === type)?.label || String(type || 'Something');
 
 const quote = (value) => `“${String(value)}”`;
-const shortText = (value, max = 60) => { const text = String(value ?? '').replace(/\s+/g, ' ').trim(); return text.length > max ? `${text.slice(0, max)}…` : text; };
+const shortText = (value, max = 60) => {
+  const text = String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+};
 const speech = (value) => (isObj(value) && value.message ? `the message ${quote(value.message)}` : value ? quote(shortText(value)) : 'nothing yet');
 const show = (value) => (typeof value === 'string' ? quote(value) : JSON.stringify(value));
 
@@ -34,24 +39,38 @@ const show = (value) => (typeof value === 'string' ? quote(value) : JSON.stringi
 export function describeAction(action) {
   if (!isObj(action)) return 'Do something';
   switch (action.type) {
-    case 'say': return `Say ${speech(action.text)}`;
-    case 'generate': return `Have the model say something: ${quote(shortText(action.instructions) || 'no instructions yet')}`;
+    case 'say':
+      return `Say ${speech(action.text)}`;
+    case 'generate':
+      return `Have the model say something: ${quote(shortText(action.instructions) || 'no instructions yet')}`;
     case 'set_state': {
       const pairs = Object.entries(isObj(action.values) ? action.values : {}).map(([key, value]) => `${key} to ${show(value)}`);
       return pairs.length ? `Set ${pairs.join(', ')}` : 'Change state (nothing chosen yet)';
     }
-    case 'handoff': return `Hand off to ${action.to || 'an agent (none chosen yet)'}`;
-    case 'return_to_entry': return 'Return to the first agent';
-    case 'end_call': return action.say ? `Say ${speech(action.say)}, then end the call` : 'End the call';
-    case 'transfer': return `Transfer using ${action.transfer || 'a transfer (none chosen yet)'}`;
-    case 'notify': return `Send the notification ${action.notification || '(none chosen yet)'}`;
-    case 'send_form': return `Show the form ${action.form || '(none chosen yet)'}`;
-    case 'wrapup': return `Start the wrap-up ${action.wrapup || '(none chosen yet)'}`;
-    case 'play_sound': return `Play the sound ${action.sound || '(none chosen yet)'}`;
-    case 'http': return `Call ${action.method || 'GET'} ${action.path || '/'} on ${action.connection || 'a connection (none chosen yet)'}`;
-    case 'collect_dtmf': return `Collect keypad digits into ${action.into || 'a state variable (none chosen yet)'}`;
-    case 'log': return `Write to the log: ${quote(shortText(action.message))}`;
-    default: return kindLabel(action.type);
+    case 'handoff':
+      return `Hand off to ${action.to || 'an agent (none chosen yet)'}`;
+    case 'return_to_entry':
+      return 'Return to the first agent';
+    case 'end_call':
+      return action.say ? `Say ${speech(action.say)}, then end the call` : 'End the call';
+    case 'transfer':
+      return `Transfer using ${action.transfer || 'a transfer (none chosen yet)'}`;
+    case 'notify':
+      return `Send the notification ${action.notification || '(none chosen yet)'}`;
+    case 'send_form':
+      return `Show the form ${action.form || '(none chosen yet)'}`;
+    case 'wrapup':
+      return `Start the wrap-up ${action.wrapup || '(none chosen yet)'}`;
+    case 'play_sound':
+      return `Play the sound ${action.sound || '(none chosen yet)'}`;
+    case 'http':
+      return `Call ${action.method || 'GET'} ${action.path || '/'} on ${action.connection || 'a connection (none chosen yet)'}`;
+    case 'collect_dtmf':
+      return `Collect keypad digits into ${action.into || 'a state variable (none chosen yet)'}`;
+    case 'log':
+      return `Write to the log: ${quote(shortText(action.message))}`;
+    default:
+      return kindLabel(action.type);
   }
 }
 

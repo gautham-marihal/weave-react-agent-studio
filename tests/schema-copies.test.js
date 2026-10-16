@@ -20,9 +20,13 @@ test('the declarations are generated from that same schema', () => {
   assert.equal(committed, generateTypes(fixture));
 });
 
-test('a built copy (dist/config), when there is one, is not older than the public one (run `npm run build`)', { skip: !existsSync(new URL('../dist/config/agent-config.schema.json', import.meta.url)) && 'no build in dist/' }, () => {
-  assert.deepEqual(read('../dist/config/agent-config.schema.json'), fixture);
-});
+test(
+  'a built copy (dist/config), when there is one, is not older than the public one (run `npm run build`)',
+  { skip: !existsSync(new URL('../dist/config/agent-config.schema.json', import.meta.url)) && 'no build in dist/' },
+  () => {
+    assert.deepEqual(read('../dist/config/agent-config.schema.json'), fixture);
+  },
+);
 
 test('the schema names the features the newer copies must have', () => {
   const defs = Object.keys(fixture.$defs);

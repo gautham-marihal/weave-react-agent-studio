@@ -4,5 +4,9 @@ import React from 'react';
 // state, wherever an agent is shown. The meaning is in the words, never only in the colour.
 export default function StatePill({ state, className = '' }) {
   if (!state) return null;
-  return <span className={`stPill ${state.tone} ${className}`} data-state={state.id} title={state.hint}>{state.label}</span>;
+  return (
+    <span className={`stPill ${state.tone} ${className}`} data-state={state.id} title={state.hint}>
+      {state.label}
+    </span>
+  );
 }

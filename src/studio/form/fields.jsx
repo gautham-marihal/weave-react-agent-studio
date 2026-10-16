@@ -45,7 +45,10 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
         setText(raw);
         // Clearing the box never deletes the field (the × button does that): a nullable number becomes null,
         // any other keeps its last value until a new number is typed, and is shown again on blur.
-        if (raw.trim() === '') { if (nullable) onChange(null); return; }
+        if (raw.trim() === '') {
+          if (nullable) onChange(null);
+          return;
+        }
         const n = Number(raw);
         if (!Number.isNaN(n)) onChange(n);
       }}
@@ -56,7 +59,16 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
 
 export function Switch({ checked, onChange, disabled, label, id }) {
   return (
-    <button type="button" id={id} role="switch" aria-checked={!!checked} aria-label={label} disabled={disabled} className={`stSwitch ${checked ? 'on' : ''}`} onClick={() => onChange(!checked)}>
+    <button
+      type="button"
+      id={id}
+      role="switch"
+      aria-checked={!!checked}
+      aria-label={label}
+      disabled={disabled}
+      className={`stSwitch ${checked ? 'on' : ''}`}
+      onClick={() => onChange(!checked)}
+    >
       <i aria-hidden="true" />
       <span>{checked ? 'On' : 'Off'}</span>
     </button>
@@ -67,8 +79,22 @@ export function Switch({ checked, onChange, disabled, label, id }) {
 // list is still shown, marked "(not found)", so it is never silently changed.
 export function Select({ value, options, onChange, disabled, placeholder, invalid, id, labels, ariaLabel }) {
   const known = options.includes(value);
-  const list = [...(!known && value !== '' && value !== undefined ? [{ value, label: `${String(value)} (not found)` }] : []), ...options.map((option) => ({ value: option, label: labels?.[option] || option }))];
-  return <SmartSelect id={id} value={value ?? ''} options={list} onChange={onChange} placeholder={placeholder || 'Choose…'} disabled={disabled} invalid={invalid} ariaLabel={ariaLabel} />;
+  const list = [
+    ...(!known && value !== '' && value !== undefined ? [{ value, label: `${String(value)} (not found)` }] : []),
+    ...options.map((option) => ({ value: option, label: labels?.[option] || option })),
+  ];
+  return (
+    <SmartSelect
+      id={id}
+      value={value ?? ''}
+      options={list}
+      onChange={onChange}
+      placeholder={placeholder || 'Choose…'}
+      disabled={disabled}
+      invalid={invalid}
+      ariaLabel={ariaLabel}
+    />
+  );
 }
 
 // A list of plain strings, one row each.
@@ -78,12 +104,36 @@ export function StringList({ values, onChange, placeholder, disabled, addLabel =
     <div className="stFList">
       {list.map((item, index) => (
         <div className="stFListRow" key={index}>
-          <input className="stFInput" type="text" spellCheck={false} value={item} placeholder={placeholder} disabled={disabled} aria-label={`Item ${index + 1}`}
-            onChange={(event) => onChange(list.map((v, i) => (i === index ? event.target.value : v)))} />
-          <button type="button" className="stIconBtn danger" title="Delete this item" aria-label={`Delete item ${index + 1}`} disabled={disabled} onClick={() => onChange(list.filter((_, i) => i !== index), { deleted: `item ${index + 1}` })}>×</button>
+          <input
+            className="stFInput"
+            type="text"
+            spellCheck={false}
+            value={item}
+            placeholder={placeholder}
+            disabled={disabled}
+            aria-label={`Item ${index + 1}`}
+            onChange={(event) => onChange(list.map((v, i) => (i === index ? event.target.value : v)))}
+          />
+          <button
+            type="button"
+            className="stIconBtn danger"
+            title="Delete this item"
+            aria-label={`Delete item ${index + 1}`}
+            disabled={disabled}
+            onClick={() =>
+              onChange(
+                list.filter((_, i) => i !== index),
+                { deleted: `item ${index + 1}` },
+              )
+            }
+          >
+            ×
+          </button>
         </div>
       ))}
-      <button type="button" className="stAddBtn" disabled={disabled} onClick={() => onChange([...list, ''])}>＋ {addLabel}</button>
+      <button type="button" className="stAddBtn" disabled={disabled} onClick={() => onChange([...list, ''])}>
+        ＋ {addLabel}
+      </button>
     </div>
   );
 }
@@ -98,13 +148,37 @@ export function MultiPick({ options, values, onChange, disabled, emptyText, labe
         {list.length === 0 && <span className="stFNone">{emptyText || 'None selected'}</span>}
         {list.map((item) => (
           <span key={item} className={`stFChip ${options.includes(item) ? '' : 'bad'}`}>
-            {labels?.[item] || item}{!options.includes(item) && ' (not found)'}
-            <button type="button" title="Delete" aria-label={`Delete ${item}`} disabled={disabled} onClick={() => onChange(list.filter((v) => v !== item), { deleted: item })}>×</button>
+            {labels?.[item] || item}
+            {!options.includes(item) && ' (not found)'}
+            <button
+              type="button"
+              title="Delete"
+              aria-label={`Delete ${item}`}
+              disabled={disabled}
+              onClick={() =>
+                onChange(
+                  list.filter((v) => v !== item),
+                  { deleted: item },
+                )
+              }
+            >
+              ×
+            </button>
           </span>
         ))}
       </div>
       {left.length > 0 && (
-        <SmartSelect action className="stFInput small" ariaLabel="Add" placeholder="＋ Add…" disabled={disabled} options={left.map((option) => ({ value: option, label: labels?.[option] || option }))} onChange={(chosen) => { if (chosen) onChange([...list, chosen]); }} />
+        <SmartSelect
+          action
+          className="stFInput small"
+          ariaLabel="Add"
+          placeholder="＋ Add…"
+          disabled={disabled}
+          options={left.map((option) => ({ value: option, label: labels?.[option] || option }))}
+          onChange={(chosen) => {
+            if (chosen) onChange([...list, chosen]);
+          }}
+        />
       )}
     </div>
   );
@@ -117,8 +191,13 @@ export function CheckGroup({ options, values, onChange, disabled, labels }) {
     <div className="stFChecks" role="group">
       {options.map((option) => (
         <label key={option} htmlFor={`${id}-${option}`} className={list.includes(option) ? 'on' : ''}>
-          <input id={`${id}-${option}`} type="checkbox" disabled={disabled} checked={list.includes(option)}
-            onChange={(event) => onChange(event.target.checked ? options.filter((o) => list.includes(o) || o === option) : list.filter((v) => v !== option))} />
+          <input
+            id={`${id}-${option}`}
+            type="checkbox"
+            disabled={disabled}
+            checked={list.includes(option)}
+            onChange={(event) => onChange(event.target.checked ? options.filter((o) => list.includes(o) || o === option) : list.filter((v) => v !== option))}
+          />
           {labels?.[option] || option}
         </label>
       ))}
@@ -132,17 +211,38 @@ export function JsonInput({ value, onChange, disabled, id }) {
   const [error, setError] = useState('');
   const lastCommitted = useRef(value);
   useEffect(() => {
-    if (JSON.stringify(value) !== JSON.stringify(lastCommitted.current)) { lastCommitted.current = value; setText(prettyJson(value ?? {})); setError(''); }
+    if (JSON.stringify(value) !== JSON.stringify(lastCommitted.current)) {
+      lastCommitted.current = value;
+      setText(prettyJson(value ?? {}));
+      setError('');
+    }
   }, [value]);
   return (
     <div className="stFJson">
-      <textarea id={id} className="stFInput mono" rows={Math.min(14, Math.max(3, text.split('\n').length + 1))} spellCheck={false} value={text} disabled={disabled} aria-invalid={!!error || undefined}
+      <textarea
+        id={id}
+        className="stFInput mono"
+        rows={Math.min(14, Math.max(3, text.split('\n').length + 1))}
+        spellCheck={false}
+        value={text}
+        disabled={disabled}
+        aria-invalid={!!error || undefined}
         onChange={(event) => {
           const raw = event.target.value;
           setText(raw);
-          try { const parsed = parseJsonStrict(raw); lastCommitted.current = parsed; setError(''); onChange(parsed); } catch (e) { setError(e.message); }
+          try {
+            const parsed = parseJsonStrict(raw);
+            lastCommitted.current = parsed;
+            setError('');
+            onChange(parsed);
+          } catch (e) {
+            setError(e.message);
+          }
         }}
-        onBlur={() => { if (!error) setText(prettyJson(lastCommitted.current ?? {})); }} />
+        onBlur={() => {
+          if (!error) setText(prettyJson(lastCommitted.current ?? {}));
+        }}
+      />
       {error && <small className="stFErr">Not valid JSON yet, so this isn’t applied: {error}</small>}
     </div>
   );
@@ -156,28 +256,46 @@ export function FreeValue({ value, onChange, disabled, id }) {
   const [problem, setProblem] = useState('');
   const lastSent = useRef(value);
   useEffect(() => {
-    if (JSON.stringify(value) !== JSON.stringify(lastSent.current)) { lastSent.current = value; setText(show(value)); }
+    if (JSON.stringify(value) !== JSON.stringify(lastSent.current)) {
+      lastSent.current = value;
+      setText(show(value));
+    }
   }, [value]);
   const read = (raw) => {
     const t = raw.trim();
     if (/^(true|false|null|-?\d+(\.\d+)?)$/.test(t) || /^[[{]/.test(t)) {
-      try { return parseJsonStrict(t); } catch (e) { return /appears twice/.test(e.message) ? { repeated: e.message } : raw; }
+      try {
+        return parseJsonStrict(t);
+      } catch (e) {
+        return /appears twice/.test(e.message) ? { repeated: e.message } : raw;
+      }
     }
     return raw;
   };
   return (
     <>
-      <input id={id} className="stFInput" type="text" spellCheck={false} disabled={disabled} value={text} aria-invalid={!!problem || undefined}
+      <input
+        id={id}
+        className="stFInput"
+        type="text"
+        spellCheck={false}
+        disabled={disabled}
+        value={text}
+        aria-invalid={!!problem || undefined}
         onChange={(event) => {
           const raw = event.target.value;
           setText(raw);
           const v = read(raw);
           // A repeated key is not applied (it would silently lose a value); the text stays as typed until it is fixed.
-          if (v && typeof v === 'object' && 'repeated' in v && Object.keys(v).length === 1) { setProblem(v.repeated); return; }
+          if (v && typeof v === 'object' && 'repeated' in v && Object.keys(v).length === 1) {
+            setProblem(v.repeated);
+            return;
+          }
           setProblem('');
           lastSent.current = v;
           onChange(v);
-        }} />
+        }}
+      />
       {problem && <small className="stFErr">Not applied: {problem}</small>}
     </>
   );

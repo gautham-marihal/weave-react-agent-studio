@@ -12,7 +12,15 @@ const example = () => JSON.parse(readFileSync(new URL('./fixtures/agent-config.e
 // ---- templates ---------------------------------------------------------------------------------------------------------
 test('templates are found with their root and name, filters and spacing included', () => {
   const found = findTemplates("Hi {{ state.name | default('there') }}, order {{args.order_id}} {{const.url}} {{ call.id }}");
-  assert.deepEqual(found.map((t) => [t.root, t.name]), [['state', 'name'], ['args', 'order_id'], ['const', 'url'], ['call', 'id']]);
+  assert.deepEqual(
+    found.map((t) => [t.root, t.name]),
+    [
+      ['state', 'name'],
+      ['args', 'order_id'],
+      ['const', 'url'],
+      ['call', 'id'],
+    ],
+  );
   assert.equal(findTemplates('no templates, just {braces} and {{ }}')[0].root, ''); // an empty template is found, and has no root
   assert.equal(findTemplates('no templates, just {braces}').length, 0);
   assert.deepEqual(findTemplates(undefined), []);
@@ -24,7 +32,10 @@ test('a name the config doesn’t have is hinted at, with what there is instead 
   assert.deepEqual(templateProblems('{{state.intent}} {{const.pay_url}} {{args.order_id}} {{result.balance}}', scope), []);
   const bad = templateProblems('{{state.intnt}} {{args.nope}} {{const.x}} {{foo.bar}}', scope);
   assert.equal(bad.length, 4);
-  assert.ok(bad.every((p) => p.severity === 'hint'), 'the browser only hints; the server decides what is an error');
+  assert.ok(
+    bad.every((p) => p.severity === 'hint'),
+    'the browser only hints; the server decides what is an error',
+  );
   assert.match(bad[0].reason, /“intnt” isn’t a state variable \(there is intent, verified\)/);
   assert.match(bad[1].reason, /argument of this tool/);
   assert.match(bad[2].reason, /constant/);
@@ -36,7 +47,10 @@ test('a name the config doesn’t have is hinted at, with what there is instead 
 test('highlighting cuts the text into plain pieces and templates, unknown ones marked', () => {
   const scope = templateScope({ state: { variables: { a: {} } } });
   const segments = highlightSegments('x {{state.a}} y {{state.b}} z', scope);
-  assert.deepEqual(segments.map((s) => s.kind), ['plain', 'tpl', 'plain', 'unknown', 'plain']);
+  assert.deepEqual(
+    segments.map((s) => s.kind),
+    ['plain', 'tpl', 'plain', 'unknown', 'plain'],
+  );
   assert.equal(segments.map((s) => s.text).join(''), 'x {{state.a}} y {{state.b}} z'); // nothing is lost
 });
 
@@ -66,7 +80,10 @@ test('inserting puts the snippet at the caret or over the selection', () => {
   assert.deepEqual(insertAt('hello world', 6, 11, 'X'), { text: 'hello X', caret: 7 });
   assert.deepEqual(insertAt('abc', undefined, undefined, '!'), { text: 'abc!', caret: 4 });
   const chips = insertables(templateScope({ state: { variables: { a: {} } }, constants: { c: 1 } }, { argNames: ['q'] }));
-  assert.deepEqual(chips.map((c) => c.label), ['args.q', 'state.a', 'const.c']);
+  assert.deepEqual(
+    chips.map((c) => c.label),
+    ['args.q', 'state.a', 'const.c'],
+  );
   assert.deepEqual(argNamesOf({ parameters: { properties: { a: {}, b: {} } } }), ['a', 'b']);
 });
 
@@ -77,7 +94,16 @@ test('the supported path grammar is read, and what isn’t supported says so', (
   assert.deepEqual(parsePath('$.a.b'), [{ key: 'a' }, { key: 'b' }]);
   assert.deepEqual(parsePath("$.a[0]['x-y'][*]"), [{ key: 'a' }, { index: 0 }, { key: 'x-y' }, { all: true }]);
   assert.deepEqual(parsePath('$'), []);
-  for (const [text, why] of [['', /Enter a path/], ['$..a', /search everywhere/], ['$.a[?(@.x>1)]', /Filters/], ['$.a[0:2]', /Slices/], ['$.a[', /never closed/], ['$.', /field name/], ['a..b', /search everywhere/], ['a.', /field name/]]) {
+  for (const [text, why] of [
+    ['', /Enter a path/],
+    ['$..a', /search everywhere/],
+    ['$.a[?(@.x>1)]', /Filters/],
+    ['$.a[0:2]', /Slices/],
+    ['$.a[', /never closed/],
+    ['$.', /field name/],
+    ['a..b', /search everywhere/],
+    ['a.', /field name/],
+  ]) {
     const result = validatePath(text);
     assert.equal(result.ok, false, text);
     assert.match(result.error, why, text);
@@ -133,16 +159,41 @@ test('"what the model sees": only the fields named, the whole response when none
 
 // ---- parameters ---------------------------------------------------------------------------------------------------------------
 test('rows become a JSON Schema and back, without losing anything', () => {
-  const schema = { type: 'object', properties: { city: { type: 'string', description: 'City to look up' }, units: { type: 'string', enum: ['c', 'f'], description: 'Temperature units' }, days: { type: 'integer' }, urgent: { type: 'boolean' } }, required: ['city', 'days'] };
+  const schema = {
+    type: 'object',
+    properties: {
+      city: { type: 'string', description: 'City to look up' },
+      units: { type: 'string', enum: ['c', 'f'], description: 'Temperature units' },
+      days: { type: 'integer' },
+      urgent: { type: 'boolean' },
+    },
+    required: ['city', 'days'],
+  };
   const { rows, canEdit, rest } = readParams(schema);
   assert.equal(canEdit, true);
-  assert.deepEqual(rows.map((r) => [r.name, r.kind, r.required]), [['city', 'string', true], ['units', 'choice', false], ['days', 'integer', true], ['urgent', 'boolean', false]]);
+  assert.deepEqual(
+    rows.map((r) => [r.name, r.kind, r.required]),
+    [
+      ['city', 'string', true],
+      ['units', 'choice', false],
+      ['days', 'integer', true],
+      ['urgent', 'boolean', false],
+    ],
+  );
   assert.deepEqual(rows[1].choices, ['c', 'f']);
   assert.deepEqual(writeParams(rows, rest), schema);
 });
 
 test('keywords the rows don’t show are kept, and structured parameters are not flattened', () => {
-  const schema = { type: 'object', additionalProperties: false, properties: { zip: { type: 'string', pattern: '^\\d{5}$', description: 'ZIP' }, filters: { type: 'array', items: { type: 'string' } }, nested: { type: 'object', properties: { a: { type: 'string' } } } } };
+  const schema = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      zip: { type: 'string', pattern: '^\\d{5}$', description: 'ZIP' },
+      filters: { type: 'array', items: { type: 'string' } },
+      nested: { type: 'object', properties: { a: { type: 'string' } } },
+    },
+  };
   const { rows, rest } = readParams(schema);
   assert.equal(rest.additionalProperties, false);
   assert.deepEqual(rows[0].extra, { pattern: '^\\d{5}$' });
@@ -155,7 +206,11 @@ test('rows can be edited and the schema follows', () => {
   const { rows, rest } = readParams({ type: 'object', properties: {} });
   rows.push({ name: 'color', kind: 'choice', description: 'Favourite colour', choices: ['red', 'blue', ''], required: true, extra: {} });
   rows.push({ name: 'age', kind: 'number', description: '', choices: [], required: false, extra: {} });
-  assert.deepEqual(writeParams(rows, rest), { type: 'object', properties: { color: { type: 'string', description: 'Favourite colour', enum: ['red', 'blue'] }, age: { type: 'number' } }, required: ['color'] });
+  assert.deepEqual(writeParams(rows, rest), {
+    type: 'object',
+    properties: { color: { type: 'string', description: 'Favourite colour', enum: ['red', 'blue'] }, age: { type: 'number' } },
+    required: ['color'],
+  });
   assert.deepEqual(writeParams([], {}), { type: 'object', properties: {} });
   assert.equal(readParams(undefined).rows.length, 0);
   assert.equal(readParams({ type: 'array' }).canEdit, false);
@@ -171,11 +226,24 @@ test('problems with the rows are named, and a missing description is only a hint
     { name: 'ok', kind: 'string', description: 'dup', choices: [], required: false, extra: {} },
     { name: 'pick', kind: 'choice', description: 'x', choices: [], required: false, extra: {} },
   ]);
-  assert.deepEqual(found.map((f) => [f.index, f.level || 'error']), [[0, 'error'], [1, 'error'], [2, 'hint'], [3, 'error'], [4, 'error']]);
+  assert.deepEqual(
+    found.map((f) => [f.index, f.level || 'error']),
+    [
+      [0, 'error'],
+      [1, 'error'],
+      [2, 'hint'],
+      [3, 'error'],
+      [4, 'error'],
+    ],
+  );
 });
 
 test('"what the model sees" for the parameters, and a body built from them', () => {
-  const { rows } = readParams({ type: 'object', properties: { city: { type: 'string', description: 'City' }, units: { type: 'string', enum: ['c', 'f'] } }, required: ['city'] });
+  const { rows } = readParams({
+    type: 'object',
+    properties: { city: { type: 'string', description: 'City' }, units: { type: 'string', enum: ['c', 'f'] } },
+    required: ['city'],
+  });
   const view = modelView({ name: 'get_weather', description: 'Look up the weather.', rows });
   assert.equal(view.signature, 'get_weather(city, units)');
   assert.deepEqual(view.params, ['city (text, required): City', 'units (one of: c, f, optional)']);
@@ -231,7 +299,11 @@ test('finding a tool in a long list: words in any order over its id, description
   assert.deepEqual(ids({ kind: 'http', query: 'refund' }), ['refund_order']);
   assert.deepEqual(ids({ unusedOnly: true }, new Set(['faq', 'end_call'])), ['end_call', 'faq']);
   assert.deepEqual(ids({ query: 'zzz' }), []);
-  assert.deepEqual(toolKindCounts(tools), [{ kind: 'http', label: 'HTTP', count: 2 }, { kind: 'builtin', label: 'Built-in', count: 1 }, { kind: 'knowledge', label: 'Knowledge', count: 1 }]);
+  assert.deepEqual(toolKindCounts(tools), [
+    { kind: 'http', label: 'HTTP', count: 2 },
+    { kind: 'builtin', label: 'Built-in', count: 1 },
+    { kind: 'knowledge', label: 'Knowledge', count: 1 },
+  ]);
   assert.deepEqual(toolKindCounts(undefined), []);
   assert.equal(usedByText([]), 'not used by any agent');
   assert.equal(usedByText(['billing']), 'used by billing');

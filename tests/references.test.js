@@ -2,7 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createEngine } from '../src/studio/form/engine.js';
-import { COLLECTIONS, collectionAt, deleteItem, describeUsage, findReferences, findUsage, freshId, removePointers, renameEverywhere, sameIds } from '../src/studio/form/references.js';
+import {
+  COLLECTIONS,
+  collectionAt,
+  deleteItem,
+  describeUsage,
+  findReferences,
+  findUsage,
+  freshId,
+  removePointers,
+  renameEverywhere,
+  sameIds,
+} from '../src/studio/form/references.js';
 
 const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
 const example = () => JSON.parse(readFileSync(new URL('./fixtures/agent-config.example.json', import.meta.url), 'utf8'));
@@ -60,7 +71,10 @@ test('renaming a tool also changes the tool names a test expects', () => {
 
 test('renaming a state variable renames the key, the fields that name it, and the {{state.…}} text that mentions it', () => {
   const config = example();
-  config.messages.push({ id: 'intent_line', text: { en: 'You asked about {{state.intent | default("billing")}} and {{ state.intent }}. Not {{state.intent_other}}.' } });
+  config.messages.push({
+    id: 'intent_line',
+    text: { en: 'You asked about {{state.intent | default("billing")}} and {{ state.intent }}. Not {{state.intent_other}}.' },
+  });
   const next = renameEverywhere(engine, config, 'state_vars', 'intent', 'topic');
   assert.ok('topic' in next.state.variables && !('intent' in next.state.variables));
   assert.equal(next.telephony.transfers[0].target.lookup.state, 'topic');

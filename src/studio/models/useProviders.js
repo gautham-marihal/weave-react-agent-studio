@@ -8,24 +8,35 @@ import { FALLBACK_PROVIDERS } from './catalog.js';
 
 let state = { data: null, error: null, loading: false };
 const listeners = new Set();
-const set = (patch) => { state = { ...state, ...patch }; listeners.forEach((listener) => listener()); };
-const subscribe = (listener) => { listeners.add(listener); return () => listeners.delete(listener); };
+const set = (patch) => {
+  state = { ...state, ...patch };
+  listeners.forEach((listener) => listener());
+};
+const subscribe = (listener) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
 const snapshot = () => state;
 
 let inflight = null;
 export function refreshProviders() {
   if (inflight) return inflight;
   set({ loading: true });
-  inflight = api.providers()
+  inflight = api
+    .providers()
     .then((data) => set({ data, error: null, loading: false }))
     .catch((error) => set({ error, loading: false }))
-    .finally(() => { inflight = null; });
+    .finally(() => {
+      inflight = null;
+    });
   return inflight;
 }
 
 export function useProviders() {
   const s = useSyncExternalStore(subscribe, snapshot, snapshot);
-  useEffect(() => { if (!s.data && !s.loading && !s.error) refreshProviders(); }, [s.data, s.loading, s.error]);
+  useEffect(() => {
+    if (!s.data && !s.loading && !s.error) refreshProviders();
+  }, [s.data, s.loading, s.error]);
   return {
     providers: s.data?.providers || FALLBACK_PROVIDERS,
     note: s.data?.note || '',

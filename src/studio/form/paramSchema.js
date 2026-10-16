@@ -61,7 +61,9 @@ export function writeProperty(row) {
 
 export function writeParams(rows, rest = {}) {
   const properties = {};
-  rows.forEach((row) => { if (row.name) properties[row.name] = writeProperty(row); });
+  rows.forEach((row) => {
+    if (row.name) properties[row.name] = writeProperty(row);
+  });
   const required = rows.filter((row) => row.name && row.required).map((row) => row.name);
   const out = { type: 'object', properties };
   if (required.length) out.required = required;
@@ -73,22 +75,39 @@ export function problems(rows) {
   const seen = new Set();
   rows.forEach((row, index) => {
     if (!row.name) out.push({ index, text: 'Give this parameter a name.' });
-    else if (!PARAM_NAME.test(row.name)) out.push({ index, text: `“${row.name}” should be snake_case: lowercase letters, digits and _, starting with a letter.` });
+    else if (!PARAM_NAME.test(row.name))
+      out.push({ index, text: `“${row.name}” should be snake_case: lowercase letters, digits and _, starting with a letter.` });
     else if (seen.has(row.name)) out.push({ index, text: `“${row.name}” is used twice.` });
     seen.add(row.name);
-    if (row.kind === 'choice' && row.choices.filter(Boolean).length === 0) out.push({ index, text: `“${row.name || 'This parameter'}” is “one of a list” but has no choices.` });
-    if (row.name && row.kind !== 'advanced' && !row.description.trim()) out.push({ index, level: 'hint', text: `Say what “${row.name}” is for: the model reads this to decide what to fill in.` });
+    if (row.kind === 'choice' && row.choices.filter(Boolean).length === 0)
+      out.push({ index, text: `“${row.name || 'This parameter'}” is “one of a list” but has no choices.` });
+    if (row.name && row.kind !== 'advanced' && !row.description.trim())
+      out.push({ index, level: 'hint', text: `Say what “${row.name}” is for: the model reads this to decide what to fill in.` });
   });
   return out;
 }
 
 // What the model is shown for the tool: its name, what it is for, and the parameters as a plain list.
 export function modelView({ name, description, rows }) {
-  const params = rows.filter((row) => row.name).map((row) => {
-    const kind = row.kind === 'choice' ? `one of: ${row.choices.filter(Boolean).join(', ') || '…'}` : row.kind === 'advanced' ? 'structured' : (PARAM_KINDS.find((k) => k.id === row.kind)?.label || row.kind).toLowerCase();
-    return `${row.name} (${kind}${row.required ? ', required' : ', optional'})${row.description ? `: ${row.description}` : ''}`;
-  });
-  return { signature: `${name || 'tool_name'}(${rows.filter((row) => row.name).map((row) => row.name).join(', ')})`, description: description || '', params };
+  const params = rows
+    .filter((row) => row.name)
+    .map((row) => {
+      const kind =
+        row.kind === 'choice'
+          ? `one of: ${row.choices.filter(Boolean).join(', ') || '…'}`
+          : row.kind === 'advanced'
+            ? 'structured'
+            : (PARAM_KINDS.find((k) => k.id === row.kind)?.label || row.kind).toLowerCase();
+      return `${row.name} (${kind}${row.required ? ', required' : ', optional'})${row.description ? `: ${row.description}` : ''}`;
+    });
+  return {
+    signature: `${name || 'tool_name'}(${rows
+      .filter((row) => row.name)
+      .map((row) => row.name)
+      .join(', ')})`,
+    description: description || '',
+    params,
+  };
 }
 
 // A body for a request built from the parameters: { "city": "{{args.city}}", ... }.

@@ -22,7 +22,11 @@ function readHidden() {
   }
 }
 function writeHidden(ids) {
-  try { window.localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids)); } catch { /* storage unavailable: the choice lasts until reload */ }
+  try {
+    window.localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids));
+  } catch {
+    /* storage unavailable: the choice lasts until reload */
+  }
 }
 
 // Ids of agents deleted from the “Removed from your list” section: still on the server (the API cannot delete), but no longer listed anywhere here.
@@ -35,7 +39,11 @@ function readDismissed() {
   }
 }
 function writeDismissed(ids) {
-  try { window.localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids)); } catch { /* storage unavailable: lasts until reload */ }
+  try {
+    window.localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
+  } catch {
+    /* storage unavailable: lasts until reload */
+  }
 }
 
 function readOwners() {
@@ -47,12 +55,18 @@ function readOwners() {
   }
 }
 function writeOwners(owners) {
-  try { window.localStorage.setItem(OWNERS_KEY, JSON.stringify(owners)); } catch { /* storage unavailable: lasts until reload */ }
+  try {
+    window.localStorage.setItem(OWNERS_KEY, JSON.stringify(owners));
+  } catch {
+    /* storage unavailable: lasts until reload */
+  }
 }
 
 const browser = typeof window !== 'undefined';
 let state = {
-  bots: null, error: null, loading: false,
+  bots: null,
+  error: null,
+  loading: false,
   hidden: browser ? readHidden() : [],
   dismissed: browser ? readDismissed() : [],
   owners: browser ? readOwners() : {},
@@ -60,18 +74,27 @@ let state = {
   current: null, // the open workspace's id
 };
 const listeners = new Set();
-const set = (patch) => { state = { ...state, ...patch }; listeners.forEach((listener) => listener()); };
-const subscribe = (listener) => { listeners.add(listener); return () => listeners.delete(listener); };
+const set = (patch) => {
+  state = { ...state, ...patch };
+  listeners.forEach((listener) => listener());
+};
+const subscribe = (listener) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
 const snapshot = () => state;
 
 let inflight = null;
 export function refreshBots() {
   if (inflight) return inflight;
   set({ loading: true });
-  inflight = api.listBots()
+  inflight = api
+    .listBots()
     .then((bots) => set({ bots, error: null, loading: false }))
     .catch((error) => set({ error, loading: false }))
-    .finally(() => { inflight = null; });
+    .finally(() => {
+      inflight = null;
+    });
   return inflight;
 }
 
@@ -97,7 +120,9 @@ export function setWorkspaces(spaces, current, switchTo) {
   if (JSON.stringify(clean) === JSON.stringify(state.spaces) && current === state.current) return;
   set({ spaces: clean, current });
 }
-export const switchWorkspace = (workspaceId) => { if (switcher) switcher(workspaceId); };
+export const switchWorkspace = (workspaceId) => {
+  if (switcher) switcher(workspaceId);
+};
 
 export function assignBot(botId, workspaceId) {
   const owners = { ...state.owners, [botId]: workspaceId };
@@ -137,16 +162,32 @@ export function undoDismissed(ids) {
 }
 
 // For code that renders outside React's hook flow (a count in a menu): the agents a workspace shows right now.
-export const visibleCount = (workspaceId = state.current) => (state.bots || []).filter((bot) => !state.hidden.includes(bot.id) && inScope(bot, workspaceId)).length;
+export const visibleCount = (workspaceId = state.current) =>
+  (state.bots || []).filter((bot) => !state.hidden.includes(bot.id) && inScope(bot, workspaceId)).length;
 
 // The agents of the open workspace. `all` is every agent the API has, whichever workspace it is in.
 export function useBots() {
   const s = useSyncExternalStore(subscribe, snapshot, snapshot);
-  useEffect(() => { if (s.bots === null && !s.loading && !s.error) refreshBots(); }, [s.bots, s.loading, s.error]);
-  const mine = useMemo(() => (s.bots ? s.bots.filter((bot) => { const owner = ownerOfIn(s.owners, s.spaces, bot.id); return owner === null || owner === s.current; }) : null), [s.bots, s.owners, s.spaces, s.current]);
+  useEffect(() => {
+    if (s.bots === null && !s.loading && !s.error) refreshBots();
+  }, [s.bots, s.loading, s.error]);
+  const { bots: all, owners, spaces, current } = s;
+  const mine = useMemo(
+    () =>
+      all
+        ? all.filter((bot) => {
+            const owner = ownerOfIn(owners, spaces, bot.id);
+            return owner === null || owner === current;
+          })
+        : null,
+    [all, owners, spaces, current],
+  );
   const visible = useMemo(() => (mine ? mine.filter((bot) => !s.hidden.includes(bot.id)) : null), [mine, s.hidden]);
   const removed = useMemo(() => (mine ? mine.filter((bot) => s.hidden.includes(bot.id) && !s.dismissed.includes(bot.id)) : []), [mine, s.hidden, s.dismissed]);
-  const dismissedIds = useMemo(() => (mine ? mine.filter((bot) => s.hidden.includes(bot.id) && s.dismissed.includes(bot.id)).map((bot) => bot.id) : []), [mine, s.hidden, s.dismissed]);
+  const dismissedIds = useMemo(
+    () => (mine ? mine.filter((bot) => s.hidden.includes(bot.id) && s.dismissed.includes(bot.id)).map((bot) => bot.id) : []),
+    [mine, s.hidden, s.dismissed],
+  );
   return { bots: visible, removed, dismissedCount: dismissedIds.length, dismissedIds, all: s.bots, error: s.error, loading: s.loading, refresh: refreshBots };
 }
 

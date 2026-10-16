@@ -4,13 +4,26 @@
 const key = (botId) => `weave_assistant_notes:${botId}`;
 
 export function rememberNotes(botId, notes) {
-  try { window.sessionStorage.setItem(key(botId), JSON.stringify(notes)); } catch { /* the notes are simply not carried over */ }
+  try {
+    window.sessionStorage.setItem(key(botId), JSON.stringify(notes));
+  } catch {
+    /* the notes are simply not carried over */
+  }
 }
 
 export function peekNotes(botId) {
-  try { const raw = window.sessionStorage.getItem(key(botId)); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  try {
+    const raw = window.sessionStorage.getItem(key(botId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function dismissNotes(botId) {
-  try { window.sessionStorage.removeItem(key(botId)); } catch { /* nothing to remove */ }
+  try {
+    window.sessionStorage.removeItem(key(botId));
+  } catch {
+    /* nothing to remove */
+  }
 }

@@ -16,11 +16,18 @@ test('the generator turns the shapes of the schema into types', () => {
     $defs: {
       id: { type: 'string' },
       mode: { enum: ['a', 'b'] },
-      pair: { type: 'object', required: ['x'], properties: { x: { $ref: '#/$defs/id' }, y: { type: 'array', items: { type: 'integer' } } }, additionalProperties: false },
+      pair: {
+        type: 'object',
+        required: ['x'],
+        properties: { x: { $ref: '#/$defs/id' }, y: { type: 'array', items: { type: 'integer' } } },
+        additionalProperties: false,
+      },
       either: { oneOf: [{ type: 'string' }, { $ref: '#/$defs/pair' }] },
       deep: { $ref: '#/$defs/pair/properties/y' },
     },
-    type: 'object', required: ['name'], properties: { name: { type: 'string' }, mode: { $ref: '#/$defs/mode' } },
+    type: 'object',
+    required: ['name'],
+    properties: { name: { type: 'string' }, mode: { $ref: '#/$defs/mode' } },
   });
   assert.match(out, /export type Id = string;/);
   assert.match(out, /export type Mode = "a" \| "b";/);

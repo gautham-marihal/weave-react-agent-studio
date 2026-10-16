@@ -7,5 +7,5 @@ import { App, AppErrorBoundary } from './App.jsx';
 createRoot(document.getElementById('root')).render(
   <AppErrorBoundary>
     <App />
-  </AppErrorBoundary>
+  </AppErrorBoundary>,
 );

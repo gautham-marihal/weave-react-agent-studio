@@ -29,7 +29,8 @@ export function notAvailable(tool) {
 // One line on when to use each built-in action.
 export const BUILTIN_HELP = {
   end_call: 'Ends the conversation. It says a goodbye line first, which is done in code so it is never skipped. Give the agent this so it can hang up.',
-  transfer_or_callback: 'Hands the caller to a person, or runs its fallback (say a callback line, raise a ticket) when no one can take it: no target, closed hours, a failed transfer. Needs a transfer set up under Telephony.',
+  transfer_or_callback:
+    'Hands the caller to a person, or runs its fallback (say a callback line, raise a ticket) when no one can take it: no target, closed hours, a failed transfer. Needs a transfer set up under Telephony.',
   return_to_entry: 'A specialist sends the caller back to the agent that answers first, with a note of what is still needed.',
   send_dtmf: 'Sends keypad tones on the call (not available in the runtime yet).',
   collect_dtmf: 'Collects digits the caller presses (not available in the runtime yet).',
@@ -39,7 +40,10 @@ export const BUILTIN_HELP = {
 
 export function agentsUsingTool(config, toolId) {
   const items = Array.isArray(config?.agents?.items) ? config.agents.items : [];
-  return items.filter((agent) => isObj(agent) && Array.isArray(agent.tools) && agent.tools.includes(toolId)).map((agent) => agent.id).filter(Boolean);
+  return items
+    .filter((agent) => isObj(agent) && Array.isArray(agent.tools) && agent.tools.includes(toolId))
+    .map((agent) => agent.id)
+    .filter(Boolean);
 }
 
 // Tools that no agent offers (the validator warns about the same).
@@ -53,8 +57,12 @@ export function timeoutAdvice(tool) {
   const timeout = typeof tool?.timeout_s === 'number' ? tool.timeout_s : 10; // the runtime's default
   const retries = typeof tool?.retries === 'number' ? tool.retries : 0;
   const notes = [];
-  if (timeout > 8) notes.push(`${tool?.timeout_s === undefined ? 'The default of 10 s is' : `${timeout} s is`} a long time for a caller to wait on a phone call. 5–8 s suits most lookups.`);
-  if (retries > 1) notes.push('Each retry makes the caller wait longer. 0 or 1 is usual. Retries only happen on network errors and server (5xx) errors, never on a 4xx.');
+  if (timeout > 8)
+    notes.push(
+      `${tool?.timeout_s === undefined ? 'The default of 10 s is' : `${timeout} s is`} a long time for a caller to wait on a phone call. 5–8 s suits most lookups.`,
+    );
+  if (retries > 1)
+    notes.push('Each retry makes the caller wait longer. 0 or 1 is usual. Retries only happen on network errors and server (5xx) errors, never on a 4xx.');
   return notes;
 }
 
@@ -63,17 +71,29 @@ export function describeAdvice(description) {
   const text = String(description || '').trim();
   if (!text) return { level: 'warn', text: 'Add a description. It is what tells the model when to use this tool.' };
   if (text.length < 25) return { level: 'warn', text: 'Very short. Say when to use the tool, not only what it does.' };
-  if (!/\b(when|if|after|before|once|whenever|only)\b/i.test(text)) return { level: 'hint', text: 'Say when to use it (“when the caller asks…”), not only what it does.' };
+  if (!/\b(when|if|after|before|once|whenever|only)\b/i.test(text))
+    return { level: 'hint', text: 'Say when to use it (“when the caller asks…”), not only what it does.' };
   return { level: 'ok', text: '' };
 }
 
 // The advice for each field of the tool error message: it goes to the model, not the caller.
-export const ON_ERROR_HELP = 'This text is given to the model when the call fails (a timeout, a server error, even a 404 “no such account”). It is not read to the caller. Write it as an instruction: “Tell the caller you could not fetch the bill and offer a callback.” One message covers every kind of failure.';
+export const ON_ERROR_HELP =
+  'This text is given to the model when the call fails (a timeout, a server error, even a 404 “no such account”). It is not read to the caller. Write it as an instruction: “Tell the caller you could not fetch the bill and offer a callback.” One message covers every kind of failure.';
 
 // `reply`: who speaks after the tool has run. Each choice has an example, because the difference is hard to guess.
 export const REPLY_CHOICES = [
-  { value: 'model', label: 'The model answers', help: 'After the tool runs, the model reads its result and replies. Right for lookups.', example: 'The caller asks for their bill → the tool fetches it → the model says “You owe 42.50, due on 1 November.”' },
-  { value: 'none', label: 'Nothing more is said', help: 'The model stays quiet this turn. Use it when the tool’s effects already spoke or showed something (a form, a transfer, a fixed goodbye), so the model doesn’t talk over it.', example: 'The caller asks for a person → the tool’s effect says “I’m putting you through” and transfers → the model adds nothing.' },
+  {
+    value: 'model',
+    label: 'The model answers',
+    help: 'After the tool runs, the model reads its result and replies. Right for lookups.',
+    example: 'The caller asks for their bill → the tool fetches it → the model says “You owe 42.50, due on 1 November.”',
+  },
+  {
+    value: 'none',
+    label: 'Nothing more is said',
+    help: 'The model stays quiet this turn. Use it when the tool’s effects already spoke or showed something (a form, a transfer, a fixed goodbye), so the model doesn’t talk over it.',
+    example: 'The caller asks for a person → the tool’s effect says “I’m putting you through” and transfers → the model adds nothing.',
+  },
 ];
 
 // ---- finding a tool in a long list ----------------------------------------------------------------------------------------------------
@@ -82,8 +102,13 @@ export const TOOL_KIND_LABEL = { http: 'HTTP', builtin: 'Built-in', task: 'Task'
 // How many of each kind there are: [{ kind, label, count }], the most common first.
 export function toolKindCounts(tools) {
   const counts = new Map();
-  (Array.isArray(tools) ? tools : []).forEach((tool) => { const kind = kindOfTool(tool) || 'other'; counts.set(kind, (counts.get(kind) || 0) + 1); });
-  return [...counts.entries()].map(([kind, count]) => ({ kind, label: TOOL_KIND_LABEL[kind] || kind, count })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  (Array.isArray(tools) ? tools : []).forEach((tool) => {
+    const kind = kindOfTool(tool) || 'other';
+    counts.set(kind, (counts.get(kind) || 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([kind, count]) => ({ kind, label: TOOL_KIND_LABEL[kind] || kind, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }
 
 // Does this tool match what was typed, the kind chosen, and "only the unused"? The words are looked for in its id, name, description and kind
@@ -94,7 +119,10 @@ export function toolMatches(tool, { query = '', kind = '', unusedOnly = false } 
   if (unusedOnly && !unused.has(tool.id)) return false;
   const words = String(query).toLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) return true;
-  const haystack = [tool.id, tool.name, tool.description, kindOfTool(tool), TOOL_KIND_LABEL[kindOfTool(tool)], tool.builtin].filter((v) => typeof v === 'string').join(' ').toLowerCase();
+  const haystack = [tool.id, tool.name, tool.description, kindOfTool(tool), TOOL_KIND_LABEL[kindOfTool(tool)], tool.builtin]
+    .filter((v) => typeof v === 'string')
+    .join(' ')
+    .toLowerCase();
   return words.every((word) => haystack.includes(word));
 }
 

@@ -9,10 +9,18 @@ import './validation.css';
 export default function PlainIssues({ issues = [], config = null, severity = 'warning', limit = 0 }) {
   const { schema } = useSchema();
   const engine = useMemo(() => (schema ? createEngine(schema) : null), [schema]);
-  const shown = useMemo(() => (limit ? issues.slice(0, limit) : issues).map((issue) => describeIssue({ severity, ...issue }, { config, schema, engine })), [issues, config, schema, engine, severity, limit]);
+  const shown = useMemo(
+    () => (limit ? issues.slice(0, limit) : issues).map((issue) => describeIssue({ severity, ...issue }, { config, schema, engine })),
+    [issues, config, schema, engine, severity, limit],
+  );
   return (
     <ul className="stPlain vxPlain">
-      {shown.map((item, i) => <li key={i}>{item.where.text && <small className="vxWhere">{item.where.text}</small>}<span>{item.text}</span></li>)}
+      {shown.map((item, i) => (
+        <li key={i}>
+          {item.where.text && <small className="vxWhere">{item.where.text}</small>}
+          <span>{item.text}</span>
+        </li>
+      ))}
     </ul>
   );
 }

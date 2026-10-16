@@ -59,7 +59,11 @@ export function collectionAt(path) {
 function walk(engine, schema, value, path, parent, visit, depth = 0) {
   if (depth > 40 || value === undefined) return;
   let shape;
-  try { shape = engine.resolveShape(schema, value); } catch { return; }
+  try {
+    shape = engine.resolveShape(schema, value);
+  } catch {
+    return;
+  }
   const kind = engine.kindOf(shape);
   if (kind === 'ref') {
     if (typeof value === 'string') visit({ path, collection: shape['x-ref'], value, type: 'value', parent });
@@ -130,7 +134,26 @@ export function findUsage(engine, config, collection, id) {
 
 // ---- describing a place ---------------------------------------------------------------------------------------
 
-const wordFor = (section) => ({ agents: 'agent', tools: 'tool', channels: 'channel', tasks: 'task', forms: 'form', messages: 'message', wrapups: 'wrap-up', notifications: 'notification', knowledge: 'knowledge base', guardrails: 'guardrail', events: 'event', schedules: 'schedule', state: 'state', connections: 'connection', telephony: 'transfer', tests: 'test', post_call: 'post-call' }[section] || section);
+const wordFor = (section) =>
+  ({
+    agents: 'agent',
+    tools: 'tool',
+    channels: 'channel',
+    tasks: 'task',
+    forms: 'form',
+    messages: 'message',
+    wrapups: 'wrap-up',
+    notifications: 'notification',
+    knowledge: 'knowledge base',
+    guardrails: 'guardrail',
+    events: 'event',
+    schedules: 'schedule',
+    state: 'state',
+    connections: 'connection',
+    telephony: 'transfer',
+    tests: 'test',
+    post_call: 'post-call',
+  })[section] || section;
 
 // "tool “lookup”" for a path inside the tools list, "agent “billing”" for one inside an agent, and so on: the nearest
 // item with a name, so a person can find the place.
@@ -154,7 +177,10 @@ export function describeUsage(config, hits) {
   const seen = new Set();
   hits.forEach((hit) => {
     const text = placeLabel(config, hit.path);
-    if (!seen.has(text)) { seen.add(text); places.push(text); }
+    if (!seen.has(text)) {
+      seen.add(text);
+      places.push(text);
+    }
   });
   return places;
 }
@@ -163,7 +189,9 @@ export function describeUsage(config, hits) {
 
 function renameKey(parent, from, to) {
   const out = {};
-  Object.keys(parent).forEach((key) => { out[key === from ? to : key] = parent[key]; });
+  Object.keys(parent).forEach((key) => {
+    out[key === from ? to : key] = parent[key];
+  });
   return out;
 }
 
@@ -172,7 +200,13 @@ function rewriteTemplates(node, root, from, to) {
   const visit = (value) => {
     if (typeof value === 'string') return value.replace(/\{\{[^}]*\}\}/g, (block) => block.replace(pattern, `${root}.${to}`));
     if (Array.isArray(value)) return value.map(visit);
-    if (isObj(value)) { const out = {}; Object.keys(value).forEach((key) => { out[key] = visit(value[key]); }); return out; }
+    if (isObj(value)) {
+      const out = {};
+      Object.keys(value).forEach((key) => {
+        out[key] = visit(value[key]);
+      });
+      return out;
+    }
     return value;
   };
   return visit(node);
@@ -185,24 +219,34 @@ export function renameEverywhere(engine, config, collection, from, to) {
   let next = clone(config);
   // the pointers first (they are found by value, so the item must still carry the old name)
   const hits = findReferences(engine, next, collection, from).filter((hit) => hit.type === 'value');
-  hits.forEach((hit) => { const holder = getAt(next, hit.path.slice(0, -1)); holder[hit.path[hit.path.length - 1]] = to; });
-  // keys that are pointers themselves (a map keyed by an id), outermost last so paths stay valid
-  findReferences(engine, next, collection, from).filter((hit) => hit.type === 'key').forEach((hit) => {
-    const parentPath = hit.path.slice(0, -1);
-    const parent = getAt(next, parentPath);
-    const renamed = renameKey(parent, from, to);
-    if (parentPath.length) getAt(next, parentPath.slice(0, -1))[parentPath[parentPath.length - 1]] = renamed; else next = renamed;
+  hits.forEach((hit) => {
+    const holder = getAt(next, hit.path.slice(0, -1));
+    holder[hit.path[hit.path.length - 1]] = to;
   });
+  // keys that are pointers themselves (a map keyed by an id), outermost last so paths stay valid
+  findReferences(engine, next, collection, from)
+    .filter((hit) => hit.type === 'key')
+    .forEach((hit) => {
+      const parentPath = hit.path.slice(0, -1);
+      const parent = getAt(next, parentPath);
+      const renamed = renameKey(parent, from, to);
+      if (parentPath.length) getAt(next, parentPath.slice(0, -1))[parentPath[parentPath.length - 1]] = renamed;
+      else next = renamed;
+    });
   // then the item itself
   if (info?.kind === 'list') {
     const list = getAt(next, info.path);
-    if (Array.isArray(list)) list.forEach((item) => { if (isObj(item) && item.id === from) item.id = to; });
+    if (Array.isArray(list))
+      list.forEach((item) => {
+        if (isObj(item) && item.id === from) item.id = to;
+      });
   } else if (info?.kind === 'map') {
     const holder = getAt(next, info.path);
     if (isObj(holder) && from in holder) {
       const renamed = renameKey(holder, from, to);
       const parentPath = info.path.slice(0, -1);
-      if (parentPath.length) getAt(next, parentPath)[info.path[info.path.length - 1]] = renamed; else next[info.path[0]] = renamed;
+      if (parentPath.length) getAt(next, parentPath)[info.path[info.path.length - 1]] = renamed;
+      else next[info.path[0]] = renamed;
     }
   }
   // finally the text that mentions it
@@ -218,15 +262,23 @@ export function removePointers(engine, config, collection, id) {
   const hits = findReferences(engine, next, collection, id).filter((hit) => hit.type === 'value');
   const left = [];
   // arrays: remove from the highest index down so earlier indexes stay valid
-  hits.filter((hit) => hit.parent.kind === 'array').sort((a, b) => b.parent.index - a.parent.index).forEach((hit) => {
-    const list = getAt(next, hit.parent.path);
-    if (Array.isArray(list) && list[hit.parent.index] === id) list.splice(hit.parent.index, 1);
-  });
-  hits.filter((hit) => hit.parent.kind !== 'array').forEach((hit) => {
-    const holder = getAt(next, hit.parent.path);
-    if (hit.parent.required || !isObj(holder)) { left.push(hit); return; }
-    delete holder[hit.parent.key];
-  });
+  hits
+    .filter((hit) => hit.parent.kind === 'array')
+    .sort((a, b) => b.parent.index - a.parent.index)
+    .forEach((hit) => {
+      const list = getAt(next, hit.parent.path);
+      if (Array.isArray(list) && list[hit.parent.index] === id) list.splice(hit.parent.index, 1);
+    });
+  hits
+    .filter((hit) => hit.parent.kind !== 'array')
+    .forEach((hit) => {
+      const holder = getAt(next, hit.parent.path);
+      if (hit.parent.required || !isObj(holder)) {
+        left.push(hit);
+        return;
+      }
+      delete holder[hit.parent.key];
+    });
   return { config: next, left };
 }
 
@@ -236,7 +288,10 @@ export function deleteItem(config, collection, id) {
   const next = clone(config);
   if (info?.kind === 'list') {
     const list = getAt(next, info.path);
-    if (Array.isArray(list)) { const at = list.findIndex((item) => isObj(item) && item.id === id); if (at >= 0) list.splice(at, 1); }
+    if (Array.isArray(list)) {
+      const at = list.findIndex((item) => isObj(item) && item.id === id);
+      if (at >= 0) list.splice(at, 1);
+    }
   } else if (info?.kind === 'map') {
     const holder = getAt(next, info.path);
     if (isObj(holder)) delete holder[id];
@@ -248,7 +303,12 @@ export function deleteItem(config, collection, id) {
 
 // "phone", then "phone_2", "phone_3": a base, then a counter only when the base is taken.
 export function freshId(taken, base) {
-  const clean = String(base || 'item').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^[^a-z]+/, '').replace(/_+$/, '') || 'item';
+  const clean =
+    String(base || 'item')
+      .toLowerCase()
+      .replace(/[^a-z0-9_]+/g, '_')
+      .replace(/^[^a-z]+/, '')
+      .replace(/_+$/, '') || 'item';
   const set = new Set(taken);
   if (!set.has(clean)) return clean;
   let n = 2;

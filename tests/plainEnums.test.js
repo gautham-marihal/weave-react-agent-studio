@@ -10,7 +10,10 @@ const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.j
 function enumsOf(schema) {
   const found = [];
   const walk = (node, name) => {
-    if (Array.isArray(node)) { node.forEach((item) => walk(item, name)); return; }
+    if (Array.isArray(node)) {
+      node.forEach((item) => walk(item, name));
+      return;
+    }
     if (!node || typeof node !== 'object') return;
     if (Array.isArray(node.enum) && node.enum.every((v) => typeof v === 'string')) found.push({ name, values: node.enum });
     Object.entries(node).forEach(([key, value]) => {
@@ -24,18 +27,22 @@ function enumsOf(schema) {
 
 test('every choice of every setting in the schema has a plain label, or is kept as written on purpose', () => {
   const missing = [];
-  enumsOf(schema).forEach(({ name, values }) => values.forEach((value) => {
-    if (KEEP_AS_WRITTEN.has(value)) return;
-    if (enumLabel(name, value) === value && !ENUM_LABELS[name]?.[value]) missing.push(`${name || '(a list)'}: ${value}`);
-  }));
+  enumsOf(schema).forEach(({ name, values }) =>
+    values.forEach((value) => {
+      if (KEEP_AS_WRITTEN.has(value)) return;
+      if (enumLabel(name, value) === value && !ENUM_LABELS[name]?.[value]) missing.push(`${name || '(a list)'}: ${value}`);
+    }),
+  );
   assert.deepEqual([...new Set(missing)], [], `choices still in the machine’s words:\n  ${[...new Set(missing)].join('\n  ')}`);
 });
 
 test('a label never contains an underscore or leaves the value unrecognisable, and none is empty', () => {
-  Object.entries(ENUM_LABELS).forEach(([name, byValue]) => Object.entries(byValue).forEach(([value, label]) => {
-    assert.ok(label.trim().length > 0, `${name}.${value} has a label`);
-    assert.ok(!/_/.test(label), `${name}.${value}: “${label}” has an underscore`);
-  }));
+  Object.entries(ENUM_LABELS).forEach(([name, byValue]) =>
+    Object.entries(byValue).forEach(([value, label]) => {
+      assert.ok(label.trim().length > 0, `${name}.${value} has a label`);
+      assert.ok(!/_/.test(label), `${name}.${value}: “${label}” has an underscore`);
+    }),
+  );
 });
 
 test('enumLabels gives labels only where they differ, adds the value for technical names, and keeps a suffix', () => {

@@ -1,15 +1,94 @@
-.stCombo { position: relative; display: inline-block; min-width: 0; width: 100%; }
-.stComboInput { width: 100%; padding-right: 26px; text-overflow: ellipsis; cursor: text; }
-.stComboChevron { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--dim); font-size:var(--fs-xs); }
-.stComboList { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); max-height: 280px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--line2); border-radius: 10px; background: var(--panel, var(--surface)); box-shadow: var(--shadow-md, 0 10px 30px rgba(0,0,0,.25)); min-width: 220px; }
-.stComboOption { display: grid; gap: 1px; padding: 7px 10px; border-radius: 7px; font-size:var(--fs-md); cursor: pointer; }
-.stComboOption small { color: var(--muted); font-size:var(--fs-xs); line-height: 1.35; }
-.stComboOption.active { background: var(--accent-soft); color: var(--accent-text); }
-.stComboOption[aria-selected="true"] > span::after { content: ' ✓'; color: var(--good-text, #2f9e7a); }
-.stComboOption.off { opacity: .5; cursor: not-allowed; }
-.stComboGroup { padding: 8px 10px 3px; font-size:var(--fs-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
-.stComboEmpty { padding: 10px; font-size:var(--fs-sm); color: var(--muted); }
+.stCombo {
+  position: relative;
+  display: inline-block;
+  min-width: 0;
+  width: 100%;
+}
+.stComboInput {
+  width: 100%;
+  padding-right: 26px;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+.stComboChevron {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--dim);
+  font-size: var(--fs-xs);
+}
+.stComboList {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--panel, var(--surface));
+  box-shadow: var(--shadow-md, 0 10px 30px rgba(0, 0, 0, 0.25));
+  min-width: 220px;
+}
+.stComboOption {
+  display: grid;
+  gap: 1px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.stComboOption small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.35;
+}
+.stComboOption.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.stComboOption[aria-selected="true"] > span::after {
+  content: " ✓";
+  color: var(--good-text, #2f9e7a);
+}
+.stComboOption.off {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.stComboGroup {
+  padding: 8px 10px 3px;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.stComboEmpty {
+  padding: 10px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
 /* The chevron of a text box with suggestions is a button: it opens the list without typing. */
-button.stComboChevron { pointer-events: auto; top: 0; right: 0; bottom: 0; width: 34px; transform: none; border: 0; background: none; cursor: pointer; border-radius: 0 10px 10px 0; }
-button.stComboChevron:hover { color: var(--textStrong); }
-button.stComboChevron:disabled { cursor: not-allowed; }
+button.stComboChevron {
+  pointer-events: auto;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 34px;
+  transform: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 0 10px 10px 0;
+}
+button.stComboChevron:hover {
+  color: var(--textStrong);
+}
+button.stComboChevron:disabled {
+  cursor: not-allowed;
+}

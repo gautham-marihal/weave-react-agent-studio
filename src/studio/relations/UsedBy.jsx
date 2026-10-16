@@ -12,7 +12,11 @@ export default function UsedBy({ collection, id }) {
   return (
     <p className="rlUsed">
       <span>Used by</span>
-      {uses.map((use) => <button type="button" key={use.place} className="rlChip" onClick={() => ctx.showPath?.(use.path)} title="Go there">{use.place}</button>)}
+      {uses.map((use) => (
+        <button type="button" key={use.place} className="rlChip" onClick={() => ctx.showPath?.(use.path)} title="Go there">
+          {use.place}
+        </button>
+      ))}
     </p>
   );
 }

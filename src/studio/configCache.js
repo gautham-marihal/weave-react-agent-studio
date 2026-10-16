@@ -19,8 +19,12 @@ export async function loadConfig(id) {
   const hit = cache.get(id);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.config;
   if (inflight.has(id)) return inflight.get(id);
-  const request = api.getDraft(id)
-    .then((draft) => { cache.set(id, { config: draft.config, at: Date.now() }); return draft.config; })
+  const request = api
+    .getDraft(id)
+    .then((draft) => {
+      cache.set(id, { config: draft.config, at: Date.now() });
+      return draft.config;
+    })
     .catch(() => (hit ? hit.config : null))
     .finally(() => inflight.delete(id));
   inflight.set(id, request);

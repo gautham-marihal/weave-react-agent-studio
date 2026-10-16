@@ -9,7 +9,11 @@ export function requestSettingFocus(botId, path) {
 }
 
 export function takeSettingFocus(botId) {
-  if (pending && pending.botId === botId) { const taken = pending; pending = null; return taken; }
+  if (pending && pending.botId === botId) {
+    const taken = pending;
+    pending = null;
+    return taken;
+  }
   return null;
 }
 

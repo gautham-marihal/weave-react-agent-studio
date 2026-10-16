@@ -15,14 +15,21 @@ export const TOOL = {
       config: { type: 'object', description: 'The COMPLETE agent configuration document (not a patch), valid against the schema.' },
       summary: { type: 'string', description: 'Two to four plain sentences for a non-technical reader: what you built or changed. No JSON, no field names.' },
       assumptions: { type: 'array', items: { type: 'string' }, description: 'Things you had to assume because the request did not say. Plain words.' },
-      questions: { type: 'array', items: { type: 'string' }, description: 'Things you could not decide and need the person to answer. Plain words. Empty when nothing is open.' },
+      questions: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Things you could not decide and need the person to answer. Plain words. Empty when nothing is open.',
+      },
     },
   },
 };
 
 // The schema without what costs tokens and teaches nothing: UI hints, examples, long prose cut to its first sentences.
 export function compactSchema(schema) {
-  const trim = (text) => { const t = String(text).replace(/\s+/g, ' ').trim(); return t.length > 220 ? `${t.slice(0, 219)}…` : t; };
+  const trim = (text) => {
+    const t = String(text).replace(/\s+/g, ' ').trim();
+    return t.length > 220 ? `${t.slice(0, 219)}…` : t;
+  };
   const walk = (value) => {
     if (Array.isArray(value)) return value.map(walk);
     if (!isObj(value)) return value;
@@ -62,7 +69,13 @@ const asText = (value) => JSON.stringify(value, null, 1);
 // The first message: the current draft and what is wanted. `earlier` is what the person asked before in this session, for context.
 export function requestMessage({ request, config, earlier = [] }) {
   const parts = [];
-  if (earlier.length) parts.push(`Earlier in this session the person asked for (oldest first):\n${earlier.slice(-6).map((r, i) => `${i + 1}. ${r}`).join('\n')}`);
+  if (earlier.length)
+    parts.push(
+      `Earlier in this session the person asked for (oldest first):\n${earlier
+        .slice(-6)
+        .map((r, i) => `${i + 1}. ${r}`)
+        .join('\n')}`,
+    );
   parts.push(`CURRENT DRAFT (edit this; keep what the request does not touch):\n${asText(config)}`);
   parts.push(`REQUEST:\n${request.trim()}`);
   return parts.join('\n\n');
@@ -80,11 +93,24 @@ export function readAnswer(reply) {
   const call = reply.content.find((block) => block.type === 'tool_use' && block.name === TOOL.name);
   if (!call) {
     if (reply.stop_reason === 'max_tokens') throw new Error('The answer was cut off because the agent is very large. Ask for part of it at a time.');
-    const said = reply.content.filter((b) => b.type === 'text').map((b) => b.text).join(' ').trim();
-    throw new Error(said ? `The assistant replied with words instead of a configuration: “${said.slice(0, 240)}”` : 'The assistant did not return a configuration.');
+    const said = reply.content
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text)
+      .join(' ')
+      .trim();
+    throw new Error(
+      said ? `The assistant replied with words instead of a configuration: “${said.slice(0, 240)}”` : 'The assistant did not return a configuration.',
+    );
   }
   const input = call.input;
   if (!isObj(input) || !isObj(input.config)) throw new Error('The assistant returned something that is not a configuration.');
   const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim()) : []);
-  return { config: input.config, summary: typeof input.summary === 'string' ? input.summary.trim() : '', assumptions: list(input.assumptions), questions: list(input.questions), toolUseId: call.id, usage: reply.usage || null };
+  return {
+    config: input.config,
+    summary: typeof input.summary === 'string' ? input.summary.trim() : '',
+    assumptions: list(input.assumptions),
+    questions: list(input.questions),
+    toolUseId: call.id,
+    usage: reply.usage || null,
+  };
 }

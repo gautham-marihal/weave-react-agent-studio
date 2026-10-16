@@ -10,7 +10,11 @@ const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.j
 const engine = createEngine(schema);
 
 // every discriminator (`type` const) of the lists whose cards carry their kind as a hint
-const kindsOf = (shape) => engine.branchesOf(shape).map((b) => engine.flatten(b).properties?.type?.const).filter(Boolean);
+const kindsOf = (shape) =>
+  engine
+    .branchesOf(shape)
+    .map((b) => engine.flatten(b).properties?.type?.const)
+    .filter(Boolean);
 
 test('every kind of tool, channel and safety rule the schema has is written in words', () => {
   const tools = kindsOf(engine.flatten(schema.properties.tools.items));
@@ -19,7 +23,9 @@ test('every kind of tool, channel and safety rule the schema has is written in w
   engine.flatten(schema.properties.channels.items).properties.type.enum.forEach((k) => assert.ok(PLAIN_KIND[k], `channel type ${k}`));
   const guard = engine.flatten(schema.properties.guardrails);
   ['input', 'output'].forEach((side) => kindsOf(engine.flatten(guard.properties[side].items)).forEach((k) => assert.ok(PLAIN_KIND[k], `safety rule ${k}`)));
-  const builtins = engine.flatten(engine.branchesOf(engine.flatten(schema.properties.tools.items)).find((b) => engine.flatten(b).properties.type?.const === 'builtin')).properties.builtin.enum;
+  const builtins = engine.flatten(
+    engine.branchesOf(engine.flatten(schema.properties.tools.items)).find((b) => engine.flatten(b).properties.type?.const === 'builtin'),
+  ).properties.builtin.enum;
   builtins.forEach((b) => assert.ok(BUILTIN_WORDS[b], `built-in ${b}`));
   ['router', 'specialist', 'standalone'].forEach((k) => assert.ok(PLAIN_KIND[k]));
 });

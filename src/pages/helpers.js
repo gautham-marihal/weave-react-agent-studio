@@ -11,10 +11,20 @@ export const LIBRARY_NAV = [
   { id: 'integrations', label: 'Integrations', icon: 'plug' },
   { id: 'telephony', label: 'Telephony', icon: 'dial' },
 ];
-export const SETTINGS_NAV = [{ id: 'settings', label: 'Settings', icon: 'sliders' }];
+export const SETTINGS_NAV = [
+  { id: 'team', label: 'Team', icon: 'team' },
+  { id: 'settings', label: 'Settings', icon: 'sliders' },
+];
 
 export function getInitials(name = '') {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || 'W';
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0].toUpperCase())
+      .join('') || 'W'
+  );
 }
 
 // Telephony records saved with each workspace: phone numbers, dispatch rules and SIP trunks.

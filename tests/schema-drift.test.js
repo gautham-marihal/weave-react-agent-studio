@@ -11,7 +11,12 @@ const reachable = !!env.AGENT_BUILDER_API_KEY || /localhost|127\.0\.0\.1/.test(e
 
 test('the saved schema matches what the server serves', { skip: !reachable && 'no Agent Builder API to compare with' }, async (t) => {
   let live;
-  try { live = await fetchSchema(env); } catch (error) { t.skip(`the server couldn’t be reached (${error.message})`); return; }
+  try {
+    live = await fetchSchema(env);
+  } catch (error) {
+    t.skip(`the server couldn’t be reached (${error.message})`);
+    return;
+  }
   const saved = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
   assert.deepEqual(saved, live, 'tests/fixtures/agent-config.schema.json is out of date: run `npm run sync-fixtures`');
 });

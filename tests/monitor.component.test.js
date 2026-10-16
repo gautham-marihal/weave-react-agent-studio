@@ -10,7 +10,10 @@ const { mountScreen, act } = await setupDom();
 const a = actions(act);
 after(() => teardownDom());
 
-const demoStore = { load: () => JSON.parse(window.localStorage.getItem('weave_demo_state') || 'null'), save: (state) => window.localStorage.setItem('weave_demo_state', JSON.stringify(state)) };
+const demoStore = {
+  load: () => JSON.parse(window.localStorage.getItem('weave_demo_state') || 'null'),
+  save: (state) => window.localStorage.setItem('weave_demo_state', JSON.stringify(state)),
+};
 async function seedDemo(config) {
   window.localStorage.clear();
   window.localStorage.setItem('weave_demo', '1');
@@ -20,7 +23,10 @@ async function seedDemo(config) {
   await api.handle('PUT', '/bots/x/draft', { config: { ...config, meta: { ...config.meta, id: 'x' } } });
   return api;
 }
-const until = async (app, check, tries = 80) => { for (let i = 0; i < tries && !check(); i += 1) await app.wait(60); return check(); };
+const until = async (app, check, tries = 80) => {
+  for (let i = 0; i < tries && !check(); i += 1) await app.wait(60);
+  return check();
+};
 const agent = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
 
 // ---------------------------------------------------------------- the trace
@@ -46,7 +52,11 @@ test('Trace: every record has a row, what went wrong is marked, the text is repa
   const chips = $$(app.container, '.trChip').map((c) => textOf(c));
   assert.deepEqual(chips, ['Conversation 2', 'Tools 1', 'API requests 1', 'Call 1']);
   await a.click(byText(app.container, '.trChip', /^Tools/));
-  assert.deepEqual(rows().map((r) => r.getAttribute('data-kind')), ['tool_called', 'sentiment_scored'], 'only that kind, and the unknown kind stays');
+  assert.deepEqual(
+    rows().map((r) => r.getAttribute('data-kind')),
+    ['tool_called', 'sentiment_scored'],
+    'only that kind, and the unknown kind stays',
+  );
   await a.click(byText(app.container, '.trChip', /^Conversation/));
   assert.equal(rows().filter((r) => ['user_said', 'agent_said', 'tool_called'].includes(r.getAttribute('data-kind'))).length, 3);
   await a.click(byText(app.container, 'button', 'Show all'));
@@ -110,10 +120,33 @@ test('Calls: the calls of an agent, newest first, filters that narrow them, and 
 test('Calls: more than a page is loaded a page at a time, and “All agents” asks each agent', async () => {
   const api = await seedDemo(agent());
   await api.handle('POST', '/bots', { id: 'y', name: 'Y' });
-  for (let i = 0; i < 30; i += 1) api.recordConversation('x', { startedAt: new Date(Date.now() - i * 1000).toISOString(), channel: { id: 'web-chat', type: 'web_chat' }, messages: [{ role: 'assistant', text: 'Hi' }, { role: 'user', text: `n${i}` }] });
-  const app = await mountScreen('calls', {}, { ready: '.clView', props: { bots: [{ id: 'x', name: 'X' }, { id: 'y', name: 'Y' }] } });
+  for (let i = 0; i < 30; i += 1)
+    api.recordConversation('x', {
+      startedAt: new Date(Date.now() - i * 1000).toISOString(),
+      channel: { id: 'web-chat', type: 'web_chat' },
+      messages: [
+        { role: 'assistant', text: 'Hi' },
+        { role: 'user', text: `n${i}` },
+      ],
+    });
+  const app = await mountScreen(
+    'calls',
+    {},
+    {
+      ready: '.clView',
+      props: {
+        bots: [
+          { id: 'x', name: 'X' },
+          { id: 'y', name: 'Y' },
+        ],
+      },
+    },
+  );
   assert.equal(await until(app, () => $$(app.container, '.clRow').length >= 25), true);
-  assert.ok($$(app.container, 'th').some((th) => textOf(th) === 'Agent'), 'a column for the agent when several are shown');
+  assert.ok(
+    $$(app.container, 'th').some((th) => textOf(th) === 'Agent'),
+    'a column for the agent when several are shown',
+  );
   assert.ok($(app.container, '.clMore button'), 'there is more');
   const first = $$(app.container, '.clRow').length;
   await a.click($(app.container, '.clMore button'));
@@ -123,14 +156,23 @@ test('Calls: more than a page is loaded a page at a time, and “All agents” a
 });
 
 // ---------------------------------------------------------------- knowledge
-const FAQ = 'Refunds are paid back within five working days to the original card. To get a refund, ask the support team and give your order number.\n\nOur opening hours are nine to five on weekdays.\n\nDelivery usually takes three days.';
-const withKnowledge = () => ({ ...agent(), knowledge: [{ id: 'faq', type: 'vector_store', mode: 'tool', retrieval: { min_score: 0.5 }, sources: [{ type: 'file', file_id: 'faq.md' }] }] });
-const kw = async (config = withKnowledge()) => { await seedDemo(config); return mountScreen('knowledge', config, { ready: '.kwTab', props: { pollMs: 40 } }); };
+const FAQ =
+  'Refunds are paid back within five working days to the original card. To get a refund, ask the support team and give your order number.\n\nOur opening hours are nine to five on weekdays.\n\nDelivery usually takes three days.';
+const withKnowledge = () => ({
+  ...agent(),
+  knowledge: [{ id: 'faq', type: 'vector_store', mode: 'tool', retrieval: { min_score: 0.5 }, sources: [{ type: 'file', file_id: 'faq.md' }] }],
+});
+const kw = async (config = withKnowledge()) => {
+  await seedDemo(config);
+  return mountScreen('knowledge', config, { ready: '.kwTab', props: { pollMs: 40 } });
+};
 const pickFile = async (app, name, text) => {
   const input = $(app.container, 'input[type=file]');
   const file = new window.File([text], name);
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
-  await act(async () => { input.dispatchEvent(new window.Event('change', { bubbles: true })); });
+  await act(async () => {
+    input.dispatchEvent(new window.Event('change', { bubbles: true }));
+  });
 };
 
 test('Knowledge: a base that isn’t built says what to do, a file is uploaded, the index is built with progress, and it is ready', async () => {
@@ -190,7 +232,10 @@ test('Knowledge: a file that is wrong is refused with a reason, and “Use in a 
   assert.equal(await until(app, () => !!$(app.container, '.kwTable')), true);
   // a new base from the file goes into the draft
   await a.choose(byLabel(app.container, 'Use Return policy.md in a base'), '__new');
-  assert.deepEqual(app.config.knowledge.map((b) => [b.id, b.type, b.sources]), [['return-policy', 'vector_store', [{ type: 'file', file_id: 'Return policy.md' }]]]);
+  assert.deepEqual(
+    app.config.knowledge.map((b) => [b.id, b.type, b.sources]),
+    [['return-policy', 'vector_store', [{ type: 'file', file_id: 'Return policy.md' }]]],
+  );
   assert.match(textOf($(app.container, '.kwDone')), /Made the base “return-policy”/);
   assert.match(textOf($(app.container, '.stNotice')), /Knowledge works from the saved draft/);
   await app.unmount();
@@ -199,7 +244,16 @@ test('Knowledge: a file that is wrong is refused with a reason, and “Use in a 
 // ---------------------------------------------------------------- the checks panel
 test('Checks: a valid agent with parts that will not run is not called ready, and the folded line still says what is hidden', async () => {
   window.localStorage.clear();
-  const report = { valid: true, errors: [], warnings: [{ path: ['a'], message: 'w' }], secrets_required: ['OPENAI_API_KEY', 'CRM_TOKEN'], unsupported: [{ feature: 'MCP server tools', where: 'tools[3]' }, { feature: 'Custom code tools', where: 'tools[4]' }] };
+  const report = {
+    valid: true,
+    errors: [],
+    warnings: [{ path: ['a'], message: 'w' }],
+    secrets_required: ['OPENAI_API_KEY', 'CRM_TOKEN'],
+    unsupported: [
+      { feature: 'MCP server tools', where: 'tools[3]' },
+      { feature: 'Custom code tools', where: 'tools[4]' },
+    ],
+  };
   const open = await mountScreen('validation', agent(), { ready: '.stValidation', report, props: { folded: false } });
   assert.match(textOf($(open.container, '.stValidationHead strong')), /^Valid, with 2 parts that will not run$/);
   assert.doesNotMatch(textOf($(open.container, '.stValidationHead')), /Ready to publish/);
@@ -210,11 +264,19 @@ test('Checks: a valid agent with parts that will not run is not called ready, an
   assert.match(textOf($(folded.container, '.stValidationSummary')), /^1 warning · 2 secrets needed$/);
   assert.match(textOf($(folded.container, '.stValidationHead strong')), /2 parts that will not run/, 'the verdict itself carries it');
   await folded.unmount();
-  const clean = await mountScreen('validation', agent(), { ready: '.stValidation', report: { valid: true, errors: [], warnings: [], secrets_required: [], unsupported: [] }, props: { folded: true } });
+  const clean = await mountScreen('validation', agent(), {
+    ready: '.stValidation',
+    report: { valid: true, errors: [], warnings: [], secrets_required: [], unsupported: [] },
+    props: { folded: true },
+  });
   assert.match(textOf($(clean.container, '.stValidationHead strong')), /^Valid\. Ready to publish$/);
   assert.equal($(clean.container, '.stValidationSummary'), null, 'nothing to add');
   await clean.unmount();
-  const security = await mountScreen('validation', agent(), { ready: '.stValidation', report: { valid: true, errors: [], warnings: [], secrets_required: [], unsupported: [{ feature: 'Redaction', where: 'post_call', severity: 'security' }] }, props: { folded: true } });
+  const security = await mountScreen('validation', agent(), {
+    ready: '.stValidation',
+    report: { valid: true, errors: [], warnings: [], secrets_required: [], unsupported: [{ feature: 'Redaction', where: 'post_call', severity: 'security' }] },
+    props: { folded: true },
+  });
   assert.match(textOf($(security.container, '.stSecurity')), /declared but not enforced/, 'a security item is never folded away');
   assert.match(textOf($(security.container, '.stValidationSummary')), /1 not enforced/);
   await security.unmount();

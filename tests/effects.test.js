@@ -7,7 +7,10 @@ import { createEngine } from '../src/studio/form/engine.js';
 test('every kind of action the schema allows has a plain name, and no name is invented', () => {
   const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
   const engine = createEngine(schema);
-  const types = engine.branchesOf(engine.flatten(schema.$defs.action)).map((branch) => engine.flatten(branch).properties.type.const).sort();
+  const types = engine
+    .branchesOf(engine.flatten(schema.$defs.action))
+    .map((branch) => engine.flatten(branch).properties.type.const)
+    .sort();
   assert.deepEqual(ACTION_KINDS.map((kind) => kind.type).sort(), types);
   assert.equal(new Set(ACTION_KINDS.map((kind) => kind.label)).size, ACTION_KINDS.length);
   assert.equal(kindLabel('end_call'), 'End the call');
@@ -28,7 +31,10 @@ test('an action is written as a short sentence', () => {
 
 test('a rule is one sentence: when it applies, then its steps in order', () => {
   assert.equal(describeRule({ do: [{ type: 'say', text: 'Hi' }, { type: 'end_call' }] }), 'Always: say “Hi”, then end the call.');
-  assert.equal(describeRule({ when: { result: '$.status', equals: 'ok' }, do: [{ type: 'set_state', values: { paid: true } }] }), 'When the result $.status is “ok”: set paid to true.');
+  assert.equal(
+    describeRule({ when: { result: '$.status', equals: 'ok' }, do: [{ type: 'set_state', values: { paid: true } }] }),
+    'When the result $.status is “ok”: set paid to true.',
+  );
   assert.equal(describeRule({ do: [] }), 'Always: nothing yet');
 });
 

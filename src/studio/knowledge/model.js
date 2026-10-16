@@ -11,7 +11,14 @@ const text = (v) => (typeof v === 'string' ? v : v === undefined || v === null ?
 // The kinds of file a knowledge base can read (the API refuses others with a 400).
 export const ACCEPTED_EXTENSIONS = ['.txt', '.md', '.markdown', '.html', '.htm', '.pdf', '.csv', '.json'];
 export const ACCEPT_ATTRIBUTE = ACCEPTED_EXTENSIONS.join(',');
-export const fileTypeProblem = (name) => (ACCEPTED_EXTENSIONS.some((ext) => String(name || '').toLowerCase().endsWith(ext)) ? '' : `“${name}” isn’t a kind of file knowledge can read. Use text, markdown, HTML, PDF, CSV or JSON (${ACCEPTED_EXTENSIONS.join(', ')}).`);
+export const fileTypeProblem = (name) =>
+  ACCEPTED_EXTENSIONS.some((ext) =>
+    String(name || '')
+      .toLowerCase()
+      .endsWith(ext),
+  )
+    ? ''
+    : `“${name}” isn’t a kind of file knowledge can read. Use text, markdown, HTML, PDF, CSV or JSON (${ACCEPTED_EXTENSIONS.join(', ')}).`;
 
 export function formatBytes(bytes) {
   if (typeof bytes !== 'number' || Number.isNaN(bytes)) return '';
@@ -40,21 +47,33 @@ export const isBuilding = (build) => build?.status === 'running';
 export function normalizeBase(raw, keyAvailable = true) {
   const b = isObj(raw) ? raw : {};
   const type = text(b.type);
-  const index = isObj(b.index) ? {
-    builtAt: text(b.index.built_at),
-    passages: typeof b.index.passages === 'number' ? b.index.passages : 0,
-    embedding: isObj(b.index.embedding) ? `${text(b.index.embedding.provider)} ${text(b.index.embedding.model)}`.trim() : text(b.index.embedding),
-    documents: list(b.index.documents).map((d) => (typeof d === 'string' ? { name: d, passages: undefined } : { name: text(d?.name || d?.source || d?.file), passages: typeof d?.passages === 'number' ? d.passages : undefined })),
-  } : null;
+  const index = isObj(b.index)
+    ? {
+        builtAt: text(b.index.built_at),
+        passages: typeof b.index.passages === 'number' ? b.index.passages : 0,
+        embedding: isObj(b.index.embedding) ? `${text(b.index.embedding.provider)} ${text(b.index.embedding.model)}`.trim() : text(b.index.embedding),
+        documents: list(b.index.documents).map((d) =>
+          typeof d === 'string'
+            ? { name: d, passages: undefined }
+            : { name: text(d?.name || d?.source || d?.file), passages: typeof d?.passages === 'number' ? d.passages : undefined },
+        ),
+      }
+    : null;
   return {
     id: text(b.id),
     type,
     mode: text(b.mode) || 'tool',
     usedBy: { agents: list(b.used_by?.agents).map(text), tools: list(b.used_by?.tools).map(text) },
-    sources: list(b.sources).map((s) => (s?.type === 'url' ? { kind: 'url', label: text(s.url), uploaded: undefined } : { kind: 'file', label: text(s?.file_id || s?.name), uploaded: typeof s?.uploaded === 'boolean' ? s.uploaded : undefined })),
+    sources: list(b.sources).map((s) =>
+      s?.type === 'url'
+        ? { kind: 'url', label: text(s.url), uploaded: undefined }
+        : { kind: 'file', label: text(s?.file_id || s?.name), uploaded: typeof s?.uploaded === 'boolean' ? s.uploaded : undefined },
+    ),
     index,
     build: normalizeBuild(b.build),
-    problems: list(b.problems).map((p) => (typeof p === 'string' ? { problem: p, fix: '' } : { problem: text(p?.problem), fix: text(p?.fix) })).filter((p) => p.problem),
+    problems: list(b.problems)
+      .map((p) => (typeof p === 'string' ? { problem: p, fix: '' } : { problem: text(p?.problem), fix: text(p?.fix) }))
+      .filter((p) => p.problem),
     keyAvailable: typeof b.embedding_key_available === 'boolean' ? b.embedding_key_available : keyAvailable,
     buildable: type === 'vector_store',
   };
@@ -90,7 +109,14 @@ export function fixActionFor(problem) {
 export function normalizeKnowledge(raw) {
   const keyAvailable = raw?.embedding_key_available === false ? false : true;
   const bases = list(raw?.bases).map((b) => normalizeBase(b, keyAvailable));
-  const files = list(raw?.files).map((f) => ({ name: text(f?.name), size: typeof f?.size === 'number' ? f.size : undefined, modified: text(f?.modified), usedBy: list(f?.used_by).map(text) })).filter((f) => f.name);
+  const files = list(raw?.files)
+    .map((f) => ({
+      name: text(f?.name),
+      size: typeof f?.size === 'number' ? f.size : undefined,
+      modified: text(f?.modified),
+      usedBy: list(f?.used_by).map(text),
+    }))
+    .filter((f) => f.name);
   return { ref: text(raw?.ref), bases, files, keyAvailable: keyAvailable && bases.every((b) => b.keyAvailable !== false) };
 }
 
@@ -113,7 +139,8 @@ export function normalizeSearch(raw) {
   return {
     hits: list(r.hits).map((h) => ({ text: text(h?.text), source: text(h?.source), score: typeof h?.score === 'number' ? h.score : undefined })),
     ms: typeof r.ms === 'number' ? r.ms : undefined,
-    modelIsShown: typeof r.the_model_is_shown === 'string' ? r.the_model_is_shown : r.the_model_is_shown == null ? '' : JSON.stringify(r.the_model_is_shown, null, 2),
+    modelIsShown:
+      typeof r.the_model_is_shown === 'string' ? r.the_model_is_shown : r.the_model_is_shown == null ? '' : JSON.stringify(r.the_model_is_shown, null, 2),
     query: text(r.query),
   };
 }
@@ -136,7 +163,11 @@ export function describeScore(score) {
 // What is set in the config for one base, so the screen can show it next to the scores.
 export const settingsOf = (config, baseId) => {
   const base = list(config?.knowledge).find((b) => b?.id === baseId);
-  return { minScore: typeof base?.retrieval?.min_score === 'number' ? base.retrieval.min_score : undefined, topK: typeof base?.top_k === 'number' ? base.top_k : undefined, mode: base?.mode || 'tool' };
+  return {
+    minScore: typeof base?.retrieval?.min_score === 'number' ? base.retrieval.min_score : undefined,
+    topK: typeof base?.top_k === 'number' ? base.top_k : undefined,
+    mode: base?.mode || 'tool',
+  };
 };
 
 // Adds an uploaded file to a base's sources (once).

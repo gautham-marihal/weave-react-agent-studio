@@ -8,8 +8,11 @@ import { useAsync } from './useAsync.js';
 import { isFinished, normalizeHeadline, testStatusOf } from './scenarios/runResults.js';
 import ShipFlow from './release/ShipFlow.jsx';
 import { shipSteps } from './release/shipFlow.js';
+import { useGate } from './release/gate.js';
 import { useLatestPublished } from './changes/useLatestPublished.js';
 import { changesSince } from './changes/sinceRelease.js';
+import PlainDiff from './compare/PlainDiff.jsx';
+import { plainChanges } from './compare/plainCompare.js';
 
 const OP_LABEL = { add: 'Added', remove: 'Removed', change: 'Changed' };
 const OP_MARK = { add: '+', remove: '−', change: '~' };
@@ -21,7 +24,11 @@ function Value({ value }) {
   return (
     <div className="stValue">
       <pre>{open || !long ? full : truncate(full, 240)}</pre>
-      {long && <button type="button" className="linkButton" onClick={() => setOpen((v) => !v)}>{open ? 'Show less' : 'Show all'}</button>}
+      {long && (
+        <button type="button" className="linkButton" onClick={() => setOpen((v) => !v)}>
+          {open ? 'Show less' : 'Show all'}
+        </button>
+      )}
     </div>
   );
 }
@@ -30,6 +37,8 @@ function Value({ value }) {
 // so they differ in every comparison with the draft. They are real but rarely what you came to see.
 const BOOKKEEPING = new Set(['version', 'status', 'created_at', 'updated_at']);
 const isBookkeeping = (change) => change.path?.[0] === 'meta' && change.path.length === 2 && BOOKKEEPING.has(change.path[1]);
+
+const sideName = (v) => (String(v) === 'draft' ? 'the draft' : `version ${v}`);
 
 function DiffView({ diff }) {
   const [showMeta, setShowMeta] = useState(false);
@@ -47,32 +56,81 @@ function DiffView({ diff }) {
     return [...map.entries()];
   }, [shown]);
 
+  const [technical, setTechnical] = useState(false);
+  const plain = useMemo(() => plainChanges(diff?.changes || []), [diff]);
   if (!diff) return null;
   const toggle = hiddenCount > 0 && (
     <button type="button" className="linkButton" onClick={() => setShowMeta((v) => !v)}>
       {showMeta ? 'Hide' : 'Show'} version bookkeeping ({hiddenCount}, set by the server on publish)
     </button>
   );
+  if (!technical) {
+    if (plain.total === 0) {
+      return (
+        <div className="stDiff">
+          <p className="stMuted">
+            {sideName(diff.from)} and {sideName(diff.to)} are the same{hiddenCount ? ', apart from details the server sets when a version is published' : ''}.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <div className="stDiff">
+        <p className="stMuted">
+          {plain.total} change{plain.total === 1 ? '' : 's'} from {sideName(diff.from)} to {sideName(diff.to)}.{' '}
+          <button type="button" className="linkButton" onClick={() => setTechnical(true)}>
+            Show the technical view
+          </button>
+        </p>
+        <PlainDiff plain={plain} />
+      </div>
+    );
+  }
   if (!shown.length) {
     return (
       <div className="stDiff">
-        <p className="stMuted">No differences between {diff.from} and {diff.to}{hiddenCount ? ' apart from version bookkeeping' : ''}.</p>
+        <p className="stMuted">
+          No differences between {diff.from} and {diff.to}
+          {hiddenCount ? ' apart from version bookkeeping' : ''}.
+        </p>
         {toggle}
       </div>
     );
   }
   return (
     <div className="stDiff">
-      <p className="stMuted">{shown.length} change{shown.length === 1 ? '' : 's'} in {groups.length} section{groups.length === 1 ? '' : 's'}. {toggle}</p>
+      <p className="stMuted">
+        {shown.length} change{shown.length === 1 ? '' : 's'} in {groups.length} section{groups.length === 1 ? '' : 's'}.{' '}
+        <button type="button" className="linkButton" onClick={() => setTechnical(false)}>
+          Back to the plain view
+        </button>{' '}
+        {toggle}
+      </p>
       {groups.map(([section, changes]) => (
         <details key={section} className="stDiffGroup" open={groups.length <= 3}>
-          <summary><strong>{section}</strong><span>{changes.length}</span></summary>
+          <summary>
+            <strong>{section}</strong>
+            <span>{changes.length}</span>
+          </summary>
           {changes.map((change, index) => (
             <div key={index} className={`stChange ${change.op}`}>
-              <div className="stChangeHead"><b aria-label={OP_LABEL[change.op]}>{OP_MARK[change.op]}</b><code>{formatDiffPath(change.path)}</code></div>
+              <div className="stChangeHead">
+                <b aria-label={OP_LABEL[change.op]}>{OP_MARK[change.op]}</b>
+                <code>{formatDiffPath(change.path)}</code>
+              </div>
               <div className="stChangeBody">
-                {change.op !== 'add' && <div><small>{change.op === 'remove' ? 'Removed' : 'Before'}</small><Value value={change.before} /></div>}
-                {change.op !== 'remove' && <div><small>{change.op === 'add' ? 'Added' : 'After'}</small><Value value={change.after} /></div>}
+                {change.op !== 'add' && (
+                  <div>
+                    <small>{change.op === 'remove' ? 'Removed' : 'Before'}</small>
+                    <Value value={change.before} />
+                  </div>
+                )}
+                {change.op !== 'remove' && (
+                  <div>
+                    <small>{change.op === 'add' ? 'Added' : 'After'}</small>
+                    <Value value={change.after} />
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -110,22 +168,34 @@ function RestoreDialog({ botId, version, dirty, onClose, onDone }) {
       subtitle="The draft is replaced with this version’s configuration. Nothing is published or deployed until you do that yourself."
       onClose={onClose}
       busy={busy}
-      footer={(
+      footer={
         <>
-          <button type="button" className="modalCancel" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="button" className="modalCreate" onClick={restore} disabled={busy}>{busy ? 'Restoring…' : 'Restore as draft'}</button>
+          <button type="button" className="modalCancel" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button type="button" className="modalCreate" onClick={restore} disabled={busy}>
+            {busy ? 'Restoring…' : 'Restore as draft'}
+          </button>
         </>
-      )}
+      }
     >
-      {dirty && <Notice kind="warn" title="You have unsaved edits">They will be lost if you restore.</Notice>}
-      {error && <Notice kind="error" title="Couldn’t restore">{error.kind === 'conflict' ? 'The draft changed while you were restoring. Try again.' : error.message}</Notice>}
+      {dirty && (
+        <Notice kind="warn" title="You have unsaved edits">
+          They will be lost if you restore.
+        </Notice>
+      )}
+      {error && (
+        <Notice kind="error" title="Couldn’t restore">
+          {error.kind === 'conflict' ? 'The draft changed while you were restoring. Try again.' : error.message}
+        </Notice>
+      )}
     </Modal>
   );
 }
 
 export default function VersionsTab({ botId, editor, refreshKey, summary }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
-  const list = versions.data || [];
+  const list = useMemo(() => versions.data || [], [versions.data]);
   // test runs say which exact configuration they tested, so a version can show whether IT passed (a read; nothing is run)
   const runs = useAsync((signal) => api.listTestRuns(botId, 50, { signal }), [botId, refreshKey]);
   const headlines = useMemo(() => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline) : []), [runs.data]);
@@ -141,6 +211,7 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
 
   // where the draft stands on the way to callers: saved, valid, tested, published, deployed
   const latest = useLatestPublished(botId, refreshKey);
+  const [gateOn] = useGate(botId);
   const flow = useMemo(() => {
     const draft = editor.parsed.value;
     const pub = latest.published;
@@ -152,24 +223,33 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
       latestRun: Array.isArray(runs.data) ? runs.data.find((run) => isFinished(run.status)) || null : null,
       published: pub?.config ? { version: pub.version, changes: draft ? changesSince(pub.config, draft).total : 0 } : null,
       deployed: summary?.deployed || {},
+      gate: { enabled: gateOn, savedAt: editor.meta?.savedAt || '' },
     });
-  }, [editor.dirty, editor.parsed, editor.report, runs.data, latest.published, summary]);
+  }, [editor.dirty, editor.parsed, editor.report, editor.meta?.savedAt, runs.data, latest.published, summary, gateOn]);
   const goTo = (action) => navigate(action.publish ? routeHref(botId, 'versions', { publish: '1' }) : routeHref(botId, action.tab), { guard: false });
 
   const canDiff = !!from && !!to && from !== to;
-  const diff = useAsync((signal) => (canDiff ? api.diff(botId, from, to, { signal }) : Promise.resolve(null)), [botId, from, to, canDiff, editor.savedTick, refreshKey]);
+  const diff = useAsync(
+    (signal) => (canDiff ? api.diff(botId, from, to, { signal }) : Promise.resolve(null)),
+    [botId, from, to, canDiff, editor.savedTick, refreshKey],
+  );
 
   if (versions.loading && !versions.data) return <Spinner label="Loading versions" />;
   if (versions.error && !versions.data) return <ErrorState error={versions.error} onRetry={versions.reload} what="the versions" />;
 
-  const options = [{ value: 'draft', label: 'Draft (working copy)' }, ...list.map((item, index) => ({ value: item.version, label: `Version ${item.version}${index === 0 ? ' (latest)' : ''}` }))];
+  const options = [
+    { value: 'draft', label: 'Draft (working copy)' },
+    ...list.map((item, index) => ({ value: item.version, label: `Version ${item.version}${index === 0 ? ' (latest)' : ''}` })),
+  ];
 
   return (
     <div className="stVersions">
       {!latest.loading && <ShipFlow flow={flow} onAction={goTo} />}
       {list.length === 0 ? (
         <section className="emptyPanel">
-          <div className="emptyPanelIcon" aria-hidden="true">◫</div>
+          <div className="emptyPanelIcon" aria-hidden="true">
+            ◫
+          </div>
           <h2>Nothing published yet</h2>
           <p>Publishing freezes the draft as an immutable version you can compare, restore and deploy.</p>
         </section>
@@ -178,18 +258,59 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
           <section className="stCard">
             <h3>Published versions</h3>
             <div className="stTable" role="table">
-              <div className="stRow head" role="row"><span>Version</span><span>Published</span><span>By</span><span>Checksum</span><span>Tests</span><span /></div>
+              <div className="stRow head" role="row">
+                <span>Version</span>
+                <span>Published</span>
+                <span>By</span>
+                <span>Checksum</span>
+                <span>Tests</span>
+                <span />
+              </div>
               {list.map((item, index) => (
                 <div className="stRow" role="row" key={item.version}>
-                  <span><strong>{item.version}</strong>{index === 0 && <em className="stTag">latest</em>}</span>
+                  <span>
+                    <strong>{item.version}</strong>
+                    {index === 0 && <em className="stTag">latest</em>}
+                  </span>
                   <span title={item.published_at}>{formatWhen(item.published_at)}</span>
                   <span>{item.published_by || '—'}</span>
-                  <span><code>{String(item.checksum || '').slice(0, 10)}</code></span>
-                  <span>{(() => { const t = testStatusOf(item, headlines); return <span className={`stTestChip ${t.state}`} title={t.state === 'none' ? 'No run has tested this exact version' : `The latest run on this exact version ${t.text.toLowerCase()}`}>{runs.error ? '—' : t.text}</span>; })()}</span>
+                  <span>
+                    <code>{String(item.checksum || '').slice(0, 10)}</code>
+                  </span>
+                  <span>
+                    {(() => {
+                      const t = testStatusOf(item, headlines);
+                      return (
+                        <span
+                          className={`stTestChip ${t.state}`}
+                          title={t.state === 'none' ? 'No run has tested this exact version' : `The latest run on this exact version ${t.text.toLowerCase()}`}
+                        >
+                          {runs.error ? '—' : t.text}
+                        </span>
+                      );
+                    })()}
+                  </span>
                   <span className="stRowActions">
-                    <button type="button" className="quietButton" onClick={() => { setFrom(item.version); setTo('draft'); }}>Compare</button>
-                    <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'deploy', { version: item.version }), { guard: false })}>Deploy</button>
-                    <button type="button" className="quietButton" onClick={() => setRestoreTarget(item.version)}>Restore</button>
+                    <button
+                      type="button"
+                      className="quietButton"
+                      onClick={() => {
+                        setFrom(item.version);
+                        setTo('draft');
+                      }}
+                    >
+                      Compare
+                    </button>
+                    <button
+                      type="button"
+                      className="quietButton"
+                      onClick={() => navigate(routeHref(botId, 'deploy', { version: item.version }), { guard: false })}
+                    >
+                      Deploy
+                    </button>
+                    <button type="button" className="quietButton" onClick={() => setRestoreTarget(item.version)}>
+                      Restore
+                    </button>
                   </span>
                 </div>
               ))}
@@ -199,11 +320,13 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
           <section className="stCard">
             <h3>Compare</h3>
             <div className="stCompare">
-              <label><span>From</span>
+              <label>
+                <span>From</span>
                 <SmartSelect className="" value={from} ariaLabel="From" options={options} onChange={setFrom} />
               </label>
               <b aria-hidden="true">→</b>
-              <label><span>To</span>
+              <label>
+                <span>To</span>
                 <SmartSelect className="" value={to} ariaLabel="To" options={options} onChange={setTo} />
               </label>
             </div>
@@ -221,7 +344,11 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
           version={restoreTarget}
           dirty={editor.dirty}
           onClose={() => setRestoreTarget(null)}
-          onDone={() => { setRestoreTarget(null); editor.reload(); navigate(routeHref(botId, 'config'), { guard: false }); }}
+          onDone={() => {
+            setRestoreTarget(null);
+            editor.reload();
+            navigate(routeHref(botId, 'config'), { guard: false });
+          }}
         />
       )}
     </div>

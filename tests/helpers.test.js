@@ -9,12 +9,30 @@ import { classify, groupIssues } from '../src/api/client.js';
 const example = JSON.parse(readFileSync(new URL('./fixtures/agent-config.example.json', import.meta.url), 'utf8'));
 const text = JSON.stringify(example, null, 2);
 const at = (obj, path) => path.reduce((o, k) => o[k], obj);
-const valueAt = (path) => { const span = locatePath(text, path); return span && JSON.parse(text.slice(span[0], span[1])); };
+const valueAt = (path) => {
+  const span = locatePath(text, path);
+  return span && JSON.parse(text.slice(span[0], span[1]));
+};
+
+// the layout an agent opens in is read from the browser's storage; here a stand-in for it
+function withLayout(value, fn) {
+  globalThis.window = { localStorage: { getItem: () => value } };
+  try {
+    fn();
+  } finally {
+    delete globalThis.window;
+  }
+}
 
 test('locatePath finds the value an error path points at', () => {
   const paths = [
-    ['meta', 'id'], ['agents', 'items', 0, 'tools', 1], ['agents', 'items', 0, 'handoffs'], ['channels', 1, 'overrides', 'models'],
-    ['defaults', 'models', 'realtime'], ['guardrails', 'limits'], ['schedules', 'support_hours', 'weekly', 1, 'days'],
+    ['meta', 'id'],
+    ['agents', 'items', 0, 'tools', 1],
+    ['agents', 'items', 0, 'handoffs'],
+    ['channels', 1, 'overrides', 'models'],
+    ['defaults', 'models', 'realtime'],
+    ['guardrails', 'limits'],
+    ['schedules', 'support_hours', 'weekly', 1, 'days'],
     ['tools', example.tools.findIndex((t) => t.id === 'report_hazard'), 'request', 'body'],
   ];
   for (const path of paths) assert.deepEqual(valueAt(path), at(example, path), formatPath(path));
@@ -28,7 +46,10 @@ test('locatePath falls back to the nearest ancestor', () => {
 
 test('locatePath copes with escapes, odd whitespace and minified JSON', () => {
   const tricky = '{"a\\"b":{"x":"}{,\\"]"},  "c" :\n [ 1 , {"d": [true,null]} ] }';
-  const get = (p) => { const r = locatePath(tricky, p); return r && JSON.parse(tricky.slice(r[0], r[1])); };
+  const get = (p) => {
+    const r = locatePath(tricky, p);
+    return r && JSON.parse(tricky.slice(r[0], r[1]));
+  };
   assert.equal(get(['a"b', 'x']), '}{,"]');
   assert.deepEqual(get(['c', 1, 'd']), [true, null]);
   assert.equal(get(['c', 0]), 1);
@@ -52,12 +73,13 @@ test('versions and ids', () => {
 
 test('hash routes', () => {
   assert.deepEqual(parseRoute('#/bots?new=1'), { view: 'list', params: { new: '1' } });
-  assert.deepEqual(parseRoute('#/bots/acme/versions'), { view: 'bot', botId: 'acme', tab: 'versions', params: {} });
+  assert.deepEqual(parseRoute('#/bots/acme/versions'), { view: 'bot', botId: 'acme', tab: 'versions', bare: false, params: {} });
   assert.equal(parseRoute('#/bots/acme/zzz').tab, 'config');
   assert.equal(parseRoute('').view, 'list');
   assert.equal(routeHref('acme', 'deploy', { version: '0.1.0' }), '#/bots/acme/deploy?version=0.1.0');
   assert.equal(routeHref(), '#/bots');
-  assert.equal(routeHref('acme', 'config'), '#/bots/acme');
+  withLayout('classic', () => assert.equal(routeHref('acme', 'config'), '#/bots/acme'));
+  withLayout('new', () => assert.equal(routeHref('acme', 'config'), '#/bots/acme/config'));
 });
 
 test('API errors are told apart', () => {
@@ -75,8 +97,21 @@ test('API errors are told apart', () => {
 });
 
 test('validation reports become one flat list; empty and null paths mean "general"', () => {
-  const issues = groupIssues({ errors: [{ path: [], message: 'a' }, { path: ['x', 0], message: 'b' }], warnings: [{ path: null, message: 'c' }] });
-  assert.deepEqual(issues.map((i) => [i.severity, i.path]), [['error', null], ['error', ['x', 0]], ['warning', null]]);
+  const issues = groupIssues({
+    errors: [
+      { path: [], message: 'a' },
+      { path: ['x', 0], message: 'b' },
+    ],
+    warnings: [{ path: null, message: 'c' }],
+  });
+  assert.deepEqual(
+    issues.map((i) => [i.severity, i.path]),
+    [
+      ['error', null],
+      ['error', ['x', 0]],
+      ['warning', null],
+    ],
+  );
 });
 
 import { botIdProblem } from '../src/studio/format.js';

@@ -30,14 +30,38 @@ export const entryAgent = (config) => list(config?.agents?.items)[entryAgentInde
 
 // ---- the languages offered (a primary language is a locale; "also speaks" are base languages)
 export const LANGUAGES = [
-  ['en-US', 'English (United States)'], ['en-GB', 'English (United Kingdom)'], ['en-AU', 'English (Australia)'], ['en-IN', 'English (India)'], ['en-NG', 'English (Nigeria)'],
-  ['es-ES', 'Spanish (Spain)'], ['es-MX', 'Spanish (Mexico)'], ['fr-FR', 'French (France)'], ['fr-CA', 'French (Canada)'], ['de-DE', 'German'], ['it-IT', 'Italian'],
-  ['pt-BR', 'Portuguese (Brazil)'], ['pt-PT', 'Portuguese (Portugal)'], ['nl-NL', 'Dutch'], ['sv-SE', 'Swedish'], ['pl-PL', 'Polish'], ['tr-TR', 'Turkish'],
-  ['ar-SA', 'Arabic'], ['hi-IN', 'Hindi'], ['ja-JP', 'Japanese'], ['ko-KR', 'Korean'], ['zh-CN', 'Chinese (Mandarin)'], ['id-ID', 'Indonesian'], ['sw-KE', 'Swahili'],
+  ['en-US', 'English (United States)'],
+  ['en-GB', 'English (United Kingdom)'],
+  ['en-AU', 'English (Australia)'],
+  ['en-IN', 'English (India)'],
+  ['en-NG', 'English (Nigeria)'],
+  ['es-ES', 'Spanish (Spain)'],
+  ['es-MX', 'Spanish (Mexico)'],
+  ['fr-FR', 'French (France)'],
+  ['fr-CA', 'French (Canada)'],
+  ['de-DE', 'German'],
+  ['it-IT', 'Italian'],
+  ['pt-BR', 'Portuguese (Brazil)'],
+  ['pt-PT', 'Portuguese (Portugal)'],
+  ['nl-NL', 'Dutch'],
+  ['sv-SE', 'Swedish'],
+  ['pl-PL', 'Polish'],
+  ['tr-TR', 'Turkish'],
+  ['ar-SA', 'Arabic'],
+  ['hi-IN', 'Hindi'],
+  ['ja-JP', 'Japanese'],
+  ['ko-KR', 'Korean'],
+  ['zh-CN', 'Chinese (Mandarin)'],
+  ['id-ID', 'Indonesian'],
+  ['sw-KE', 'Swahili'],
 ];
-export const languageName = (code) => LANGUAGES.find(([c]) => c === code)?.[1] || LANGUAGES.find(([c]) => baseOf(c) === baseOf(code))?.[1]?.replace(/ \(.*\)$/, '') || code || '';
+export const languageName = (code) =>
+  LANGUAGES.find(([c]) => c === code)?.[1] || LANGUAGES.find(([c]) => baseOf(c) === baseOf(code))?.[1]?.replace(/ \(.*\)$/, '') || code || '';
 // Base languages for the "also speaks" choices, one per language.
-export const BASE_LANGUAGES = [...new Map(LANGUAGES.map(([code, name]) => [baseOf(code), name.replace(/ \(.*\)$/, '')]))].map(([code, name]) => ({ code, name }));
+export const BASE_LANGUAGES = [...new Map(LANGUAGES.map(([code, name]) => [baseOf(code), name.replace(/ \(.*\)$/, '')]))].map(([code, name]) => ({
+  code,
+  name,
+}));
 
 const CHANNEL_NAMES = { sip_voice: 'Phone', web_voice: 'Web voice', web_chat: 'Web chat', whatsapp: 'WhatsApp', sms: 'SMS', email: 'Email' };
 export const channelName = (type) => CHANNEL_NAMES[type] || String(type || 'Channel');
@@ -49,7 +73,9 @@ export function readSimple(config) {
   const greetingChannel = channels.find((c) => c.greeting && c.greeting.say !== undefined) || null;
   const greetingSay = greetingChannel?.greeting?.say;
   const languages = isObj(config?.defaults?.language) ? config.defaults.language : {};
-  const voiceChannel = channels.some((c) => c.enabled !== false && (['sip_voice', 'web_voice'].includes(c.type) || list(c.modalities?.output).includes('audio')));
+  const voiceChannel = channels.some(
+    (c) => c.enabled !== false && (['sip_voice', 'web_voice'].includes(c.type) || list(c.modalities?.output).includes('audio')),
+  );
   return {
     name: typeof config?.meta?.name === 'string' ? config.meta.name : '',
     persona: typeof config?.persona?.name === 'string' ? config.persona.name : '',
@@ -74,13 +100,25 @@ export function readConnections(config) {
     id,
     type: isObj(c) ? c.type || 'connection' : 'connection',
     detail: isObj(c) ? c.base_url || c.url || c.server_url || c.provider || '' : '',
-    secrets: isObj(c) ? JSON.stringify(c).match(/"secret":"([A-Z0-9_]+)"/g)?.map((m) => m.slice(10, -1)) || [] : [],
+    secrets: isObj(c)
+      ? JSON.stringify(c)
+          .match(/"secret":"([A-Z0-9_]+)"/g)
+          ?.map((m) => m.slice(10, -1)) || []
+      : [],
   }));
 }
 
 export function readTools(config) {
   const used = new Set(list(config?.agents?.items).flatMap((a) => list(a?.tools)));
-  return list(config?.tools).filter((t) => isObj(t)).map((t) => ({ id: t.id, kind: t.type || (t.builtin ? 'builtin' : 'tool'), builtin: t.builtin || '', description: t.description || '', used: used.has(t.id) }));
+  return list(config?.tools)
+    .filter((t) => isObj(t))
+    .map((t) => ({
+      id: t.id,
+      kind: t.type || (t.builtin ? 'builtin' : 'tool'),
+      builtin: t.builtin || '',
+      description: t.description || '',
+      used: used.has(t.id),
+    }));
 }
 
 // ---- writing
@@ -96,7 +134,12 @@ export function setAgentName(config, name) {
 export function setRole(config, text) {
   const index = entryAgentIndex(config);
   if (index < 0) return config;
-  return edit(config, (next) => { next.agents.items[index].instructions = { ...(isObj(next.agents.items[index].instructions) ? next.agents.items[index].instructions : {}), role: String(text ?? '') }; });
+  return edit(config, (next) => {
+    next.agents.items[index].instructions = {
+      ...(isObj(next.agents.items[index].instructions) ? next.agents.items[index].instructions : {}),
+      role: String(text ?? ''),
+    };
+  });
 }
 
 // The first thing the agent says. A channel whose greeting points at a message gets that message's text changed; a channel without a
@@ -110,7 +153,11 @@ export function setGreeting(config, text) {
       if (typeof say === 'string') channel.greeting.say = value;
       else if (isObj(say) && say.message) {
         const message = list(next.messages).find((m) => m?.id === say.message);
-        if (message) message.text = typeof message.text === 'string' || !isObj(message.text) ? value : { ...message.text, [Object.keys(message.text).find((k) => baseOf(k) === baseOf(primaryOf(next))) || Object.keys(message.text)[0]]: value };
+        if (message)
+          message.text =
+            typeof message.text === 'string' || !isObj(message.text)
+              ? value
+              : { ...message.text, [Object.keys(message.text).find((k) => baseOf(k) === baseOf(primaryOf(next))) || Object.keys(message.text)[0]]: value };
       }
     });
   });
@@ -118,12 +165,20 @@ export function setGreeting(config, text) {
 
 export function setTone(config, tone) {
   const value = String(tone ?? '');
-  return edit(config, (next) => { next.persona = { ...(isObj(next.persona) ? next.persona : {}) }; if (value) next.persona.tone = value; else delete next.persona.tone; });
+  return edit(config, (next) => {
+    next.persona = { ...(isObj(next.persona) ? next.persona : {}) };
+    if (value) next.persona.tone = value;
+    else delete next.persona.tone;
+  });
 }
 
 export function setStyleRules(config, rules) {
   const value = list(rules).map((r) => String(r ?? ''));
-  return edit(config, (next) => { next.persona = { ...(isObj(next.persona) ? next.persona : {}) }; if (value.length) next.persona.style_rules = value; else delete next.persona.style_rules; });
+  return edit(config, (next) => {
+    next.persona = { ...(isObj(next.persona) ? next.persona : {}) };
+    if (value.length) next.persona.style_rules = value;
+    else delete next.persona.style_rules;
+  });
 }
 
 export function setRecordingNotice(config, text) {
@@ -131,8 +186,10 @@ export function setRecordingNotice(config, text) {
   return edit(config, (next) => {
     next.persona = { ...(isObj(next.persona) ? next.persona : {}) };
     const disclosures = { ...(isObj(next.persona.disclosures) ? next.persona.disclosures : {}) };
-    if (value) disclosures.recording_notice = value; else delete disclosures.recording_notice;
-    if (Object.keys(disclosures).length) next.persona.disclosures = disclosures; else delete next.persona.disclosures;
+    if (value) disclosures.recording_notice = value;
+    else delete disclosures.recording_notice;
+    if (Object.keys(disclosures).length) next.persona.disclosures = disclosures;
+    else delete next.persona.disclosures;
   });
 }
 
@@ -158,17 +215,21 @@ export function toggleSpoken(config, base, on) {
     const speaks = list(language.speaks).filter((c) => typeof c === 'string');
     const primary = baseOf(primaryOf(next));
     const without = speaks.filter((c) => baseOf(c) !== base);
-    language.speaks = on ? [...without, base] : (base === primary ? [...without, base] : without); // the primary language can't be switched off
+    language.speaks = on ? [...without, base] : base === primary ? [...without, base] : without; // the primary language can't be switched off
     next.defaults.language = language;
   });
 }
 
 // ---- channels
-export const addChannel = (config, channel) => edit(config, (next) => { next.channels = [...list(next.channels), clone(channel)]; });
+export const addChannel = (config, channel) =>
+  edit(config, (next) => {
+    next.channels = [...list(next.channels), clone(channel)];
+  });
 export function setChannelEnabled(config, index, on) {
   return edit(config, (next) => {
     const channel = list(next.channels)[index];
     if (!isObj(channel)) return;
-    if (on) delete channel.enabled; else channel.enabled = false; // on is the default, so it is not written
+    if (on) delete channel.enabled;
+    else channel.enabled = false; // on is the default, so it is not written
   });
 }

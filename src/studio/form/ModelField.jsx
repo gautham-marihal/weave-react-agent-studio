@@ -4,7 +4,6 @@ import { useProviders } from '../models/useProviders.js';
 import { useConfigSelect } from './ctx.js';
 import { TextInput } from './fields.jsx';
 import SuggestInput from './SuggestInput.jsx';
-import { modelStageOf } from './modelFields.js';
 
 // The Provider and Model boxes of the speech, language and voice settings: a list of what the studio knows (the providers the server can run, the models
 // the catalogue lists for the chosen provider), and any other value can be typed. Nothing here limits what is saved: the server does not check model ids.
@@ -18,10 +17,20 @@ export default function ModelField({ stage, leaf, path, value, onChange, disable
       return providersForStage(providers, stage).map((p) => ({
         value: p.name,
         label: providerLabel(p.name),
-        description: [p.name !== providerLabel(p.name) ? p.name : '', p.installed === false ? 'not installed on this server' : '', p.key_available === false ? 'no key set on the server' : ''].filter(Boolean).join(' · '),
+        description: [
+          p.name !== providerLabel(p.name) ? p.name : '',
+          p.installed === false ? 'not installed on this server' : '',
+          p.key_available === false ? 'no key set on the server' : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
       }));
     }
-    return modelsFor(stage, provider).map((m) => ({ value: m.id, label: isRecommendedModel(stage, provider, m.id) ? `${m.label} · Recommended` : m.label, description: [m.id !== m.label ? m.id : '', m.note].filter(Boolean).join(' · ') }));
+    return modelsFor(stage, provider).map((m) => ({
+      value: m.id,
+      label: isRecommendedModel(stage, provider, m.id) ? `${m.label} · Recommended` : m.label,
+      description: [m.id !== m.label ? m.id : '', m.note].filter(Boolean).join(' · '),
+    }));
   }, [leaf, stage, provider, providers]);
 
   // a provider with no list of its own (any OpenAI-compatible service) is simply typed
@@ -29,9 +38,16 @@ export default function ModelField({ stage, leaf, path, value, onChange, disable
     return <TextInput id={id} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} invalid={invalid} />;
   }
   return (
-    <SuggestInput id={id} value={value} onChange={onChange} options={options} disabled={disabled} invalid={invalid}
+    <SuggestInput
+      id={id}
+      value={value}
+      onChange={onChange}
+      options={options}
+      disabled={disabled}
+      invalid={invalid}
       placeholder={leaf === 'provider' ? 'Choose a provider or type one' : 'Choose a model or type its id'}
       ariaLabel={leaf === 'provider' ? 'Provider' : 'Model'}
-      footer={leaf === 'provider' ? 'Or type the name of any other provider.' : 'Or type any other model id: the server doesn’t check them.'} />
+      footer={leaf === 'provider' ? 'Or type the name of any other provider.' : 'Or type any other model id: the server doesn’t check them.'}
+    />
   );
 }

@@ -17,8 +17,10 @@ const engine = createEngine(schema);
 const entries = corpus(engine);
 const LIMIT = 40;
 
-const visibleControls = (root) => $$(root, '.stFSection input, .stFSection select, .stFSection textarea, .stFSection [role=combobox], .stFSection [role=switch]')
-  .filter((el) => !el.closest('details:not([open])') && el.type !== 'hidden' && el.type !== 'radio').length;
+const visibleControls = (root) =>
+  $$(root, '.stFSection input, .stFSection select, .stFSection textarea, .stFSection [role=combobox], .stFSection [role=switch]').filter(
+    (el) => !el.closest('details:not([open])') && el.type !== 'hidden' && el.type !== 'radio',
+  ).length;
 
 for (const entry of entries.filter((e) => ['example', 'scaled', 'stress'].includes(e.source))) {
   test(`${entry.name}: no screen of “All settings” opens with more than ${LIMIT} inputs`, async () => {
@@ -46,11 +48,17 @@ test('every card of the Simple view opens with at most 20 inputs, on the biggest
     for (const head of $$(app.container, '.smHead')) {
       await a.click(head);
       const card = head.closest('.smCard');
-      const n = $$(card, '.smBody input, .smBody select, .smBody textarea, .smBody [role=combobox], .smBody [role=switch]').filter((el) => el.type !== 'hidden' && el.type !== 'radio' && el.type !== 'checkbox').length;
+      const n = $$(card, '.smBody input, .smBody select, .smBody textarea, .smBody [role=combobox], .smBody [role=switch]').filter(
+        (el) => el.type !== 'hidden' && el.type !== 'radio' && el.type !== 'checkbox',
+      ).length;
       counts.push([card.getAttribute('data-card'), n]);
       await a.click(head);
     }
-    assert.deepEqual(counts.filter(([, n]) => n > 20), [], `${entry.name}: cards over 20 inputs; all: ${counts.map(([id, n]) => `${id}=${n}`).join(' ')}`);
+    assert.deepEqual(
+      counts.filter(([, n]) => n > 20),
+      [],
+      `${entry.name}: cards over 20 inputs; all: ${counts.map(([id, n]) => `${id}=${n}`).join(' ')}`,
+    );
     await app.unmount();
   }
 });
@@ -64,8 +72,15 @@ test('no native drop-down on any screen has more than 8 choices: a longer list i
       await a.click(group);
       for (const chip of $$(app.container, '.stFChipBtn')) {
         await a.click(chip);
-        for (let pass = 0; pass < 4; pass += 1) { const closed = $$(app.container, '.stFGroupToggle[aria-expanded=false]'); if (!closed.length) break; for (const t of closed) await a.click(t); }
-        $$(app.container, 'select').forEach((sel) => { const choices = [...sel.options].filter((o) => o.value !== '').length; if (choices > 8) over.push(`${entry.name} › ${chip.getAttribute('data-section')}: ${sel.getAttribute('aria-label') || sel.className} (${choices})`); });
+        for (let pass = 0; pass < 4; pass += 1) {
+          const closed = $$(app.container, '.stFGroupToggle[aria-expanded=false]');
+          if (!closed.length) break;
+          for (const t of closed) await a.click(t);
+        }
+        $$(app.container, 'select').forEach((sel) => {
+          const choices = [...sel.options].filter((o) => o.value !== '').length;
+          if (choices > 8) over.push(`${entry.name} › ${chip.getAttribute('data-section')}: ${sel.getAttribute('aria-label') || sel.className} (${choices})`);
+        });
       }
     }
     await app.unmount();

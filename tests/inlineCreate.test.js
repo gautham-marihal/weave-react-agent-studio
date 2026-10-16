@@ -28,7 +28,12 @@ test('a new message is added with an id from its first words, and the field poin
 test('a new state variable is typed for what it holds, and a counter starts at zero', () => {
   const text = createAndPoint({}, 'state_vars', { name: 'verified_name', kind: 'string' });
   assert.deepEqual(text.config.state.variables.verified_name, { type: 'string', nullable: true, default: null });
-  const counter = createAndPoint({ state: { variables: { a: { type: 'string' } } } }, 'state_vars', { name: 'attempts', kind: 'integer' }, ['tools', 0, 'limits', 'count_attempts_in']);
+  const counter = createAndPoint({ state: { variables: { a: { type: 'string' } } } }, 'state_vars', { name: 'attempts', kind: 'integer' }, [
+    'tools',
+    0,
+    'limits',
+    'count_attempts_in',
+  ]);
   assert.deepEqual(counter.config.state.variables.attempts, { type: 'integer', default: 0 });
   assert.ok('a' in counter.config.state.variables); // existing variables stay
   assert.equal(counter.config.tools[0].limits.count_attempts_in, 'attempts');
@@ -36,7 +41,11 @@ test('a new state variable is typed for what it holds, and a counter starts at z
 });
 
 test('a new HTTP connection is added with its base URL', () => {
-  const { config, id } = createAndPoint({ tools: [{ id: 't' }] }, 'http_connections', { name: 'billing', base_url: ' https://api.example.com ' }, ['tools', 0, 'connection']);
+  const { config, id } = createAndPoint({ tools: [{ id: 't' }] }, 'http_connections', { name: 'billing', base_url: ' https://api.example.com ' }, [
+    'tools',
+    0,
+    'connection',
+  ]);
   assert.equal(id, 'billing');
   assert.deepEqual(config.connections.billing, { type: 'http', base_url: 'https://api.example.com' });
   assert.equal(config.tools[0].connection, 'billing');
@@ -48,7 +57,10 @@ test('what is typed is checked before anything is created', () => {
   assert.equal(createProblems('state_vars', { name: 'taken', kind: 'string' }, { state: { variables: { taken: {} } } }).name, 'That variable already exists.');
   assert.match(createProblems('http_connections', { name: 'ok', base_url: 'ftp://x' }, {}).base_url, /Use e\.g\. https/);
   assert.equal(createProblems('http_connections', { name: 'ok', base_url: 'https://x.io' }, {}).name, undefined);
-  assert.equal(createProblems('http_connections', { name: 'dup', base_url: 'https://x.io' }, { connections: { dup: {} } }).name, 'That connection already exists.');
+  assert.equal(
+    createProblems('http_connections', { name: 'dup', base_url: 'https://x.io' }, { connections: { dup: {} } }).name,
+    'That connection already exists.',
+  );
   assert.deepEqual(createProblems('messages', { text: '  ' }, {}), { text: 'Required.' });
   assert.deepEqual(createProblems('unknown', {}, {}), {});
   assert.ok(CREATABLE.messages && CREATABLE.state_vars && CREATABLE.http_connections);

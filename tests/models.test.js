@@ -1,7 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { FALLBACK_PROVIDERS, MODEL_OPTIONS, PROVIDER_LABELS, RENAMED_PROVIDERS, STAGES, defaultModelFor, modelLabel, modelsFor, providerLabel, providersForStage, secretFor } from '../src/studio/models/catalog.js';
-import { SECRET_PATTERN, applyRenamedProvider, applyVoice, readModels, renamedProvider, sameModels, setBaseUrl, setModel, setProvider, setSecret, setVoiceId, summarizeModels, voicesFor } from '../src/studio/models/config.js';
+import {
+  FALLBACK_PROVIDERS,
+  MODEL_OPTIONS,
+  PROVIDER_LABELS,
+  RENAMED_PROVIDERS,
+  STAGES,
+  defaultModelFor,
+  modelLabel,
+  modelsFor,
+  providerLabel,
+  providersForStage,
+  secretFor,
+} from '../src/studio/models/catalog.js';
+import {
+  SECRET_PATTERN,
+  applyRenamedProvider,
+  applyVoice,
+  readModels,
+  renamedProvider,
+  sameModels,
+  setBaseUrl,
+  setModel,
+  setProvider,
+  setSecret,
+  setVoiceId,
+  summarizeModels,
+  voicesFor,
+} from '../src/studio/models/config.js';
 
 // What the server's own voice agent looks like.
 const agent = () => ({
@@ -11,7 +37,13 @@ const agent = () => ({
     models: {
       stt: { provider: 'openai', model: 'gpt-realtime-whisper', language: 'en', api_key: { secret: 'OPENAI_API_KEY' }, options: { x: 1 } },
       llm: { provider: 'openai', model: 'gpt-4.1-mini', api_key: { secret: 'OPENAI_API_KEY' }, fallbacks: [{ provider: 'openai', model: 'gpt-4o-mini' }] },
-      tts: { provider: 'elevenlabs', model: 'eleven_flash_v2_5', voice_id: 'Z8dg0fyk7p6js7cQ7lgi', text_transforms: ['filter_markdown'], api_key: { secret: 'ELEVEN_API_KEY' } },
+      tts: {
+        provider: 'elevenlabs',
+        model: 'eleven_flash_v2_5',
+        voice_id: 'Z8dg0fyk7p6js7cQ7lgi',
+        text_transforms: ['filter_markdown'],
+        api_key: { secret: 'ELEVEN_API_KEY' },
+      },
       vad: { provider: 'silero' },
     },
     conversation: {},
@@ -35,9 +67,24 @@ test('only providers the runtime can run are offered, never the older XML names'
     assert.ok(!(gone in PROVIDER_LABELS), `${gone} must not have a label`);
     for (const stage of ['stt', 'llm', 'tts']) assert.ok(!(gone in MODEL_OPTIONS[stage]), `${gone} must have no models for ${stage}`);
   }
-  assert.deepEqual(providersForStage(null, 'stt').map((p) => p.name).sort(), ['cartesia', 'deepgram', 'elevenlabs', 'openai', 'openai_compatible']);
-  assert.deepEqual(providersForStage(null, 'llm').map((p) => p.name).sort(), ['anthropic', 'openai', 'openai_compatible']);
-  assert.deepEqual(providersForStage(null, 'tts').map((p) => p.name).sort(), ['cartesia', 'deepgram', 'elevenlabs', 'openai', 'openai_compatible']);
+  assert.deepEqual(
+    providersForStage(null, 'stt')
+      .map((p) => p.name)
+      .sort(),
+    ['cartesia', 'deepgram', 'elevenlabs', 'openai', 'openai_compatible'],
+  );
+  assert.deepEqual(
+    providersForStage(null, 'llm')
+      .map((p) => p.name)
+      .sort(),
+    ['anthropic', 'openai', 'openai_compatible'],
+  );
+  assert.deepEqual(
+    providersForStage(null, 'tts')
+      .map((p) => p.name)
+      .sort(),
+    ['cartesia', 'deepgram', 'elevenlabs', 'openai', 'openai_compatible'],
+  );
 });
 
 test('every provider the runtime can run has a label, and the ones with known models list them properly', () => {
@@ -45,7 +92,10 @@ test('every provider the runtime can run has a label, and the ones with known mo
   for (const stage of ['stt', 'llm', 'tts']) {
     for (const [provider, models] of Object.entries(MODEL_OPTIONS[stage])) {
       assert.equal(new Set(models.map((x) => x.id)).size, models.length, `${stage}/${provider} repeats a model id`);
-      assert.ok(models.every((x) => x.id && x.label && x.note), `${stage}/${provider} has an incomplete entry`);
+      assert.ok(
+        models.every((x) => x.id && x.label && x.note),
+        `${stage}/${provider} has an incomplete entry`,
+      );
       assert.equal(defaultModelFor(stage, provider), models[0]?.id || '');
     }
   }
@@ -57,8 +107,14 @@ test('every provider the runtime can run has a label, and the ones with known mo
 test('the server’s list drives the picker: provider order, installed first', () => {
   const stt = providersForStage(SERVER, 'stt').map((p) => p.name);
   assert.deepEqual(stt, ['deepgram', 'openai', 'groq']); // installed ones first, alphabetical by label; groq last
-  assert.deepEqual(providersForStage(SERVER, 'llm').map((p) => p.name), ['anthropic', 'openai', 'groq']);
-  assert.deepEqual(providersForStage(SERVER, 'vad').map((p) => p.name), ['silero']);
+  assert.deepEqual(
+    providersForStage(SERVER, 'llm').map((p) => p.name),
+    ['anthropic', 'openai', 'groq'],
+  );
+  assert.deepEqual(
+    providersForStage(SERVER, 'vad').map((p) => p.name),
+    ['silero'],
+  );
 });
 
 test('names, labels and secret names (the server’s own name wins)', () => {
@@ -80,7 +136,14 @@ test('reads the three stages, and an agent with none set up reads as empty', () 
   assert.deepEqual(read.tts, { provider: 'elevenlabs', model: 'eleven_flash_v2_5', secret: 'ELEVEN_API_KEY', baseUrl: '', voiceId: 'Z8dg0fyk7p6js7cQ7lgi' });
   assert.deepEqual(readModels({}).stt, { provider: '', model: '', secret: '', baseUrl: '' });
   const summary = summarizeModels(agent());
-  assert.deepEqual(summary.map((s) => [s.label, s.providerName, s.modelName]), [['Speech-to-text', 'OpenAI', 'GPT Realtime Whisper'], ['Language model', 'OpenAI', 'GPT-4.1 Mini'], ['Text-to-speech', 'ElevenLabs', 'Flash v2.5']]);
+  assert.deepEqual(
+    summary.map((s) => [s.label, s.providerName, s.modelName]),
+    [
+      ['Speech-to-text', 'OpenAI', 'GPT Realtime Whisper'],
+      ['Language model', 'OpenAI', 'GPT-4.1 Mini'],
+      ['Text-to-speech', 'ElevenLabs', 'Flash v2.5'],
+    ],
+  );
   assert.equal(summarizeModels({})[0].set, false);
 });
 
@@ -130,7 +193,10 @@ test('a provider the runtime doesn’t know is offered the fix, and the fix prod
   assert.equal(fixedLlm.defaults.models.llm.base_url, undefined); // where Phi-4 is hosted is the person's to say
   const mistral = { ...agent(), defaults: { models: { ...agent().defaults.models, llm: { provider: 'mistral', model: 'mistral-large-latest' } } } };
   const fixedMistral = applyRenamedProvider(mistral, 'llm').defaults.models.llm;
-  assert.deepEqual([fixedMistral.provider, fixedMistral.model, fixedMistral.base_url, fixedMistral.api_key.secret], ['openai_compatible', 'mistral-small-latest', 'https://api.mistral.ai/v1', 'MISTRAL_API_KEY']);
+  assert.deepEqual(
+    [fixedMistral.provider, fixedMistral.model, fixedMistral.base_url, fixedMistral.api_key.secret],
+    ['openai_compatible', 'mistral-small-latest', 'https://api.mistral.ai/v1', 'MISTRAL_API_KEY'],
+  );
   assert.equal(applyRenamedProvider(agent(), 'stt').defaults.models.stt.provider, 'openai'); // nothing to fix
   assert.ok(Object.values(RENAMED_PROVIDERS).every((fix) => fix.why.length > 20));
 });
@@ -220,11 +286,31 @@ test('default speech models: the best provider the server can run is chosen for 
   ];
   assert.equal(bestProviderFor('stt', providers).name, 'deepgram', 'installed and its key is set');
   assert.equal(bestProviderFor('tts', providers).name, 'deepgram');
-  assert.equal(bestProviderFor('stt', providers.filter((p) => p.name !== 'deepgram')).name, 'elevenlabs', 'with no key set anywhere, an installed one still beats nothing');
-  assert.equal(bestProviderFor('stt', providers.filter((p) => p.name === 'groq' || p.name === 'openai_compatible')), null, 'not installed, or needing a base URL first: never chosen');
+  assert.equal(
+    bestProviderFor(
+      'stt',
+      providers.filter((p) => p.name !== 'deepgram'),
+    ).name,
+    'elevenlabs',
+    'with no key set anywhere, an installed one still beats nothing',
+  );
+  assert.equal(
+    bestProviderFor(
+      'stt',
+      providers.filter((p) => p.name === 'groq' || p.name === 'openai_compatible'),
+    ),
+    null,
+    'not installed, or needing a base URL first: never chosen',
+  );
   const config = { defaults: { models: { llm: { provider: 'openai', model: 'gpt-4.1-mini' } } } };
   const out = addDefaultSpeechModels(config, providers);
-  assert.deepEqual(out.added.map((a) => [a.stage, a.provider, a.keySet]), [['stt', 'deepgram', true], ['tts', 'deepgram', true]]);
+  assert.deepEqual(
+    out.added.map((a) => [a.stage, a.provider, a.keySet]),
+    [
+      ['stt', 'deepgram', true],
+      ['tts', 'deepgram', true],
+    ],
+  );
   assert.equal(out.config.defaults.models.stt.provider, 'deepgram');
   assert.ok(out.config.defaults.models.stt.model, 'a model comes with the provider');
   assert.ok(out.config.defaults.models.tts.model, 'and for speaking, a model');

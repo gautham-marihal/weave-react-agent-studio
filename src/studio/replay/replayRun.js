@@ -14,13 +14,30 @@ const list = (v) => (Array.isArray(v) ? v : []);
 // The caller's turns through the simulated agent on `config`. Stops where the agent ends the conversation (the rest are said not to be reached).
 export function playSimulated(config, original) {
   const agent = createSimulatedAgent(config, { channelId: original.channelId });
-  const facts = { source: 'simulated', channelId: agent.channel?.id || original.channelId, startAgent: agent.currentAgent || '', finalAgent: '', finalState: {}, ended: false, handoffs: 0, opening: agent.greeting().map((m) => m.text), turns: [], errors: [], notReached: 0 };
+  const facts = {
+    source: 'simulated',
+    channelId: agent.channel?.id || original.channelId,
+    startAgent: agent.currentAgent || '',
+    finalAgent: '',
+    finalState: {},
+    ended: false,
+    handoffs: 0,
+    opening: agent.greeting().map((m) => m.text),
+    turns: [],
+    errors: [],
+    notReached: 0,
+  };
   let finished = false;
   list(original.turns).forEach((turn) => {
-    if (finished) { facts.notReached += 1; return; }
+    if (finished) {
+      facts.notReached += 1;
+      return;
+    }
     const out = agent.reply(turn.say);
     facts.turns.push({
-      say: turn.say, at: undefined, waitMs: null,
+      say: turn.say,
+      at: undefined,
+      waitMs: null,
       said: out.messages.map((m) => m.text),
       tools: out.toolCalls.map((c) => ({ tool: c.id || c.tool, args: c.args || {}, result: undefined, error: '', handoff: c.handoff || '' })),
     });
@@ -38,8 +55,17 @@ export function playSimulated(config, original) {
 export function factsFromResult(result, { channelId = '' } = {}) {
   if (!result) return null;
   const events = list(result.events);
-  const base = events.length ? readCall(events) : readTranscript({ transcript: result.transcript, tools: result.tools, finalAgent: result.final_agent, finalState: result.final_state, channelId });
-  return { ...base, source: 'runner', channelId: base.channelId || channelId, finalAgent: result.final_agent || base.finalAgent, finalState: Object.keys(result.final_state || {}).length ? result.final_state : base.finalState, notReached: 0 };
+  const base = events.length
+    ? readCall(events)
+    : readTranscript({ transcript: result.transcript, tools: result.tools, finalAgent: result.final_agent, finalState: result.final_state, channelId });
+  return {
+    ...base,
+    source: 'runner',
+    channelId: base.channelId || channelId,
+    finalAgent: result.final_agent || base.finalAgent,
+    finalState: Object.keys(result.final_state || {}).length ? result.final_state : base.finalState,
+    notReached: 0,
+  };
 }
 
 // The caller's turns as a scenario the runner can play, with a name that cannot clash with the agent's own. It is run from the editor's contents
@@ -51,7 +77,9 @@ export function scenarioForReplay(config, original, { id = '' } = {}) {
     id: id || freshScenarioId(config?.tests, 'replay'),
     description: 'A replay of a call',
     channel: channel?.id || original.channelId || '',
-    turns: list(original.turns).map((t) => ({ say: t.say })).filter((t) => t.say),
+    turns: list(original.turns)
+      .map((t) => ({ say: t.say }))
+      .filter((t) => t.say),
     expect: [{ said_matches: '.+' }],
   };
 }
@@ -60,4 +88,3 @@ export function scenarioForReplay(config, original, { id = '' } = {}) {
 export function configWithScenario(config, scenario) {
   return { ...config, tests: [...list(config?.tests), scenario] };
 }
-

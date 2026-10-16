@@ -10,7 +10,11 @@ const deref = (schema, node) => {
   let n = node;
   for (let i = 0; i < 24 && isObj(n) && n.$ref; i += 1) {
     const { $ref, ...rest } = n;
-    const target = $ref.replace(/^#\/?/, '').split('/').filter(Boolean).reduce((x, k) => x?.[decodeURIComponent(k)], schema);
+    const target = $ref
+      .replace(/^#\/?/, '')
+      .split('/')
+      .filter(Boolean)
+      .reduce((x, k) => x?.[decodeURIComponent(k)], schema);
     n = { ...(target || {}), ...rest };
   }
   return isObj(n) ? n : {};
@@ -27,7 +31,10 @@ export function buildSettingsIndex(schema) {
   const walk = (node, trail, owner, stack) => {
     if (!isObj(node)) return;
     let here = stack;
-    if (node.$ref) { if (stack.includes(node.$ref)) return; here = [...stack, node.$ref]; }
+    if (node.$ref) {
+      if (stack.includes(node.$ref)) return;
+      here = [...stack, node.$ref];
+    }
     const n = deref(schema, node);
     Object.entries(n.properties || {}).forEach(([name, sub]) => {
       const next = [...trail, name];
@@ -36,7 +43,15 @@ export function buildSettingsIndex(schema) {
       if (!found.has(key)) {
         const words = describeSetting(name, { owner, description: flat.description });
         const stop = next.findIndex((part) => part === '[]' || part === '{}');
-        found.set(key, { name, trail: next, jump: stop === -1 ? next : next.slice(0, stop), label: words.label, purpose: words.purpose, level: flat['x-ui']?.audience || words.level, example: words.example });
+        found.set(key, {
+          name,
+          trail: next,
+          jump: stop === -1 ? next : next.slice(0, stop),
+          label: words.label,
+          purpose: words.purpose,
+          level: flat['x-ui']?.audience || words.level,
+          example: words.example,
+        });
       }
       walk(sub, next, name, here);
     });
@@ -58,14 +73,27 @@ export function buildSettingsIndex(schema) {
     const containers = entry.trail.slice(0, -1).filter((p) => p !== '[]' && p !== '{}');
     const crumbs = [];
     let owner = '';
-    containers.forEach((name, i) => { if (i === 0 && view && !view.only) return; if (i === 0 && view?.only) return; crumbs.push(describeSetting(name, { owner }).label); owner = name; });
-    return { ...entry, screen: view ? { id: view.id, label: view.label } : null, group: group ? { id: group.id, label: group.label, advanced: !!group.advanced } : null, where: [group?.label, view?.label, ...crumbs].filter(Boolean).join(' › ') };
+    containers.forEach((name, i) => {
+      if (i === 0 && view && !view.only) return;
+      if (i === 0 && view?.only) return;
+      crumbs.push(describeSetting(name, { owner }).label);
+      owner = name;
+    });
+    return {
+      ...entry,
+      screen: view ? { id: view.id, label: view.label } : null,
+      group: group ? { id: group.id, label: group.label, advanced: !!group.advanced } : null,
+      where: [group?.label, view?.label, ...crumbs].filter(Boolean).join(' › '),
+    };
   });
   return entries;
 }
 
 const norm = (text) => String(text || '').toLowerCase();
-const wordsOf = (text) => norm(text).split(/[^a-z0-9]+/).filter(Boolean);
+const wordsOf = (text) =>
+  norm(text)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
 
 // Settings matching what was typed, best first. Every typed word must match somewhere; a word that starts a word of the label counts most, then
 // one in the label, the technical name, the purpose, or where the setting lives.
@@ -90,7 +118,10 @@ export function searchSettings(index, query, limit = 8) {
       else if (nameWords.some((w) => w.startsWith(word)) || norm(entry.name).includes(word)) best = 5;
       else if (purpose.includes(word)) best = 3;
       else if (where.includes(word)) best = 2;
-      if (!best) { all = false; break; }
+      if (!best) {
+        all = false;
+        break;
+      }
       total += best;
     }
     if (!all) continue;

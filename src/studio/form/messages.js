@@ -8,7 +8,10 @@ import { isObj } from './engine.js';
 export const LANGUAGE_PATTERN = /^[a-z]{2,3}(-[A-Za-z0-9]+)?$/;
 
 // "en-US" -> "en"
-export const baseOf = (code) => String(code || '').split('-')[0].toLowerCase();
+export const baseOf = (code) =>
+  String(code || '')
+    .split('-')[0]
+    .toLowerCase();
 
 // The language the agent mainly speaks, as it is written in the config ('' when none is set).
 export const primaryOf = (config) => {

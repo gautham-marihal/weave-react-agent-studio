@@ -23,26 +23,41 @@ export function buildAgentMap(config) {
   const ids = new Set(agents.map((a) => a.id));
   const entry = ids.has(config?.agents?.entry) ? config.agents.entry : agents[0]?.id || '';
   const edges = [];
-  const add = (edge) => { if (ids.has(edge.from) && ids.has(edge.to) && edge.from !== edge.to) edges.push(edge); else if (ids.has(edge.from) && ids.has(edge.to)) edges.push({ ...edge, self: true }); };
+  const add = (edge) => {
+    if (ids.has(edge.from) && ids.has(edge.to) && edge.from !== edge.to) edges.push(edge);
+    else if (ids.has(edge.from) && ids.has(edge.to)) edges.push({ ...edge, self: true });
+  };
 
-  agents.forEach((agent) => list(agent.handoffs).filter(isObj).forEach((h) => {
-    if (typeof h.to === 'string') add({ kind: 'handoff', from: agent.id, to: h.to, label: h.id || h.tool || '', title: h.description || '' });
-  }));
+  agents.forEach((agent) =>
+    list(agent.handoffs)
+      .filter(isObj)
+      .forEach((h) => {
+        if (typeof h.to === 'string') add({ kind: 'handoff', from: agent.id, to: h.to, label: h.id || h.tool || '', title: h.description || '' });
+      }),
+  );
   // a tool whose rules hand the caller on: drawn from every agent that offers the tool
-  list(config?.tools).filter(isObj).forEach((tool) => {
-    const targets = [...new Set(handoffSteps(tool.effects))];
-    if (!targets.length) return;
-    agents.filter((a) => list(a.tools).includes(tool.id)).forEach((agent) => targets.forEach((to) => add({ kind: 'tool', from: agent.id, to, label: tool.id, title: tool.description || '' })));
-  });
+  list(config?.tools)
+    .filter(isObj)
+    .forEach((tool) => {
+      const targets = [...new Set(handoffSteps(tool.effects))];
+      if (!targets.length) return;
+      agents
+        .filter((a) => list(a.tools).includes(tool.id))
+        .forEach((agent) => targets.forEach((to) => add({ kind: 'tool', from: agent.id, to, label: tool.id, title: tool.description || '' })));
+    });
   // a safety rule that passes the caller to an agent: from whichever agent answers first (the rule applies to every call)
-  list(config?.guardrails?.escalation).filter(isObj).forEach((rule) => {
-    if (rule.action === 'handoff' && typeof rule.to === 'string') add({ kind: 'rule', from: entry, to: rule.to, label: rule.id || 'safety rule', title: '' });
-  });
+  list(config?.guardrails?.escalation)
+    .filter(isObj)
+    .forEach((rule) => {
+      if (rule.action === 'handoff' && typeof rule.to === 'string') add({ kind: 'rule', from: entry, to: rule.to, label: rule.id || 'safety rule', title: '' });
+    });
   // one arrow per pair and kind, with the labels together
   const merged = [];
   edges.forEach((edge) => {
     const found = merged.find((m) => m.from === edge.from && m.to === edge.to && m.kind === edge.kind);
-    if (found) { if (edge.label && !found.labels.includes(edge.label)) found.labels.push(edge.label); } else merged.push({ ...edge, labels: edge.label ? [edge.label] : [] });
+    if (found) {
+      if (edge.label && !found.labels.includes(edge.label)) found.labels.push(edge.label);
+    } else merged.push({ ...edge, labels: edge.label ? [edge.label] : [] });
   });
 
   // layers by distance from the agent that answers first
@@ -52,23 +67,48 @@ export function buildAgentMap(config) {
     const queue = [entry];
     while (queue.length) {
       const at = queue.shift();
-      merged.filter((e) => e.from === at && !e.self && !layer.has(e.to)).forEach((e) => { layer.set(e.to, layer.get(at) + 1); queue.push(e.to); });
+      merged
+        .filter((e) => e.from === at && !e.self && !layer.has(e.to))
+        .forEach((e) => {
+          layer.set(e.to, layer.get(at) + 1);
+          queue.push(e.to);
+        });
     }
   }
   const unreachable = agents.filter((a) => !layer.has(a.id)).map((a) => a.id);
   const lastLayer = Math.max(-1, ...layer.values());
   const columns = [];
-  agents.forEach((a) => { if (layer.has(a.id)) { (columns[layer.get(a.id)] ||= []).push(a.id); } });
+  agents.forEach((a) => {
+    if (layer.has(a.id)) {
+      (columns[layer.get(a.id)] ||= []).push(a.id);
+    }
+  });
   if (unreachable.length) columns[lastLayer + 1] = unreachable;
   const cols = columns.filter(Boolean);
   const nodes = [];
-  cols.forEach((ids2, c) => ids2.forEach((id, r) => {
-    const agent = agents.find((a) => a.id === id);
-    nodes.push({ id, name: agent.name || id, kind: agent.kind || '', entry: id === entry, reachable: !unreachable.includes(id), index: agents.indexOf(agent), column: c, row: r, x: NODE.pad + c * (NODE.width + NODE.gapX), y: NODE.pad + r * (NODE.height + NODE.gapY) });
-  }));
+  cols.forEach((ids2, c) =>
+    ids2.forEach((id, r) => {
+      const agent = agents.find((a) => a.id === id);
+      nodes.push({
+        id,
+        name: agent.name || id,
+        kind: agent.kind || '',
+        entry: id === entry,
+        reachable: !unreachable.includes(id),
+        index: agents.indexOf(agent),
+        column: c,
+        row: r,
+        x: NODE.pad + c * (NODE.width + NODE.gapX),
+        y: NODE.pad + r * (NODE.height + NODE.gapY),
+      });
+    }),
+  );
   const tallest = Math.max(1, ...cols.map((c) => c.length));
   return {
-    nodes, edges: merged, entry, unreachable,
+    nodes,
+    edges: merged,
+    entry,
+    unreachable,
     width: NODE.pad * 2 + Math.max(1, cols.length) * NODE.width + Math.max(0, cols.length - 1) * NODE.gapX,
     height: NODE.pad * 2 + tallest * NODE.height + (tallest - 1) * NODE.gapY,
   };

@@ -9,10 +9,10 @@ browser, or a test workspace on a test server. **Never use real customer data or
 
 ## Who
 
-| Group | How many | Who they should be |
-|---|---|---|
-| Customers | 5 | Run a support team, a front desk or a service line. Have never configured a voice agent or written JSON. Different jobs and companies if you can. |
-| Developers | 3 | Have built an integration or a chatbot. Know what an API, a JSON file and a webhook are. |
+| Group      | How many | Who they should be                                                                                                                                |
+| ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customers  | 5        | Run a support team, a front desk or a service line. Have never configured a voice agent or written JSON. Different jobs and companies if you can. |
+| Developers | 3        | Have built an integration or a chatbot. Know what an API, a JSON file and a webhook are.                                                          |
 
 Do not use anyone who helped build or review the Studio. A person who has seen a screen before tells you nothing about the first minute.
 
@@ -38,33 +38,33 @@ being stuck, and write down that you did.
 
 Give each as a short card, one at a time, in this order. Start the clock when they have read it.
 
-| # | Task | Done when |
-|---|---|---|
-| 1 | **Create a support agent** for a company called “Harbour Plumbing” that answers calls about bookings. | The agent exists and its instructions mention bookings. |
-| 2 | **Change what it says first**, and **choose a different voice.** | The greeting is changed and a voice is chosen. |
-| 3 | **Let it look up a booking** in the company's booking system (`https://api.harbour.example`). | A lookup tool exists, is offered to the agent, and points at that address. |
-| 4 | **Try it:** talk to the agent and see it answer. | They have had a test conversation (chat is fine). |
-| 5 | **Put it live for testing** (publish it, and deploy it to Development). | A version is published and deployed to Development. |
-| 6 | **Find yesterday's calls** and open one to see what happened. | They open a call and say what the agent did in it. |
+| #   | Task                                                                                                  | Done when                                                                  |
+| --- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | **Create a support agent** for a company called “Harbour Plumbing” that answers calls about bookings. | The agent exists and its instructions mention bookings.                    |
+| 2   | **Change what it says first**, and **choose a different voice.**                                      | The greeting is changed and a voice is chosen.                             |
+| 3   | **Let it look up a booking** in the company's booking system (`https://api.harbour.example`).         | A lookup tool exists, is offered to the agent, and points at that address. |
+| 4   | **Try it:** talk to the agent and see it answer.                                                      | They have had a test conversation (chat is fine).                          |
+| 5   | **Put it live for testing** (publish it, and deploy it to Development).                               | A version is published and deployed to Development.                        |
+| 6   | **Find yesterday's calls** and open one to see what happened.                                         | They open a call and say what the agent did in it.                         |
 
 Developers do the same six, then two more:
 
-| # | Task | Done when |
-|---|---|---|
-| 7 | **Find the setting that controls how long the agent waits before it asks “are you still there?”** and change it to 12 seconds. | The value is 12, whichever way they got there. |
-| 8 | **Show the setting's name in the configuration file**, and copy its path. | They turn on technical names or open the JSON, and name the key. |
+| #   | Task                                                                                                                           | Done when                                                        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| 7   | **Find the setting that controls how long the agent waits before it asks “are you still there?”** and change it to 12 seconds. | The value is 12, whichever way they got there.                   |
+| 8   | **Show the setting's name in the configuration file**, and copy its path.                                                      | They turn on technical names or open the JSON, and name the key. |
 
 ## What to write down for every task
 
-| Measure | How |
-|---|---|
-| **Time** | From reading the card to “done”, in seconds. Stop at 5 minutes and mark it **not finished**. |
-| **Finished?** | Yes, yes with help, no. |
-| **Wrong turns** | Each time they open a screen, tab or menu that was not on the way. |
+| Measure                       | How                                                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Time**                      | From reading the card to “done”, in seconds. Stop at 5 minutes and mark it **not finished**.                           |
+| **Finished?**                 | Yes, yes with help, no.                                                                                                |
+| **Wrong turns**               | Each time they open a screen, tab or menu that was not on the way.                                                     |
 | **Where did you look first?** | The first place they went, in their words (“the sidebar”, “the Config tab”, “the search box”). Exactly what they said. |
-| **Help given** | When, and what you said. |
-| **Words they stumbled on** | Any label or sentence they read aloud and puzzled over. Copy it exactly. |
-| **Surprises** | Anything they expected that did not happen, or that happened and they did not expect. |
+| **Help given**                | When, and what you said.                                                                                               |
+| **Words they stumbled on**    | Any label or sentence they read aloud and puzzled over. Copy it exactly.                                               |
+| **Surprises**                 | Anything they expected that did not happen, or that happened and they did not expect.                                  |
 
 A one-line recording sheet per person and task is enough:
 
@@ -72,8 +72,8 @@ A one-line recording sheet per person and task is enough:
 person | group | task | seconds | finished | wrong turns | looked first | help | stumbled on | surprise
 ```
 
-After the last task ask three things and write the answers down: *What was the easiest part? What was the most confusing part? What did you
-expect to find that you did not?*
+After the last task ask three things and write the answers down: _What was the easiest part? What was the most confusing part? What did you
+expect to find that you did not?_
 
 ## What good looks like
 

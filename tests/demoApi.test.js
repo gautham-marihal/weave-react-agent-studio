@@ -61,7 +61,11 @@ test('publishing needs a valid draft, freezes it, and moves the draft on; bumps 
   assert.equal(first.body.version, '0.1.0');
   assert.equal((await call(api, 'GET', '/bots/a/draft')).body.config.meta.version, '0.1.1', 'the draft moved on');
   assert.equal((await call(api, 'POST', '/bots/a/publish', { bump: 'minor' })).body.version, '0.2.0');
-  assert.deepEqual((await call(api, 'GET', '/bots/a/versions')).body.map((v) => v.version), ['0.2.0', '0.1.0'], 'newest first');
+  assert.deepEqual(
+    (await call(api, 'GET', '/bots/a/versions')).body.map((v) => v.version),
+    ['0.2.0', '0.1.0'],
+    'newest first',
+  );
   assert.equal((await call(api, 'GET', '/bots/a/versions/0.1.0')).body.config.meta.version, '0.1.0');
 });
 
@@ -95,11 +99,20 @@ test('the diff addresses id lists by id, like the API', () => {
   const a = { persona: { name: 'A', tone: 'warm' }, tools: [{ id: 'x', description: 'one' }, { id: 'y' }], tags: ['a'] };
   const b = { persona: { name: 'A', tone: 'calm' }, tools: [{ id: 'x', description: 'two' }, { id: 'z' }], tags: ['a', 'b'] };
   const changes = diffConfigs(a, b);
-  assert.deepEqual(changes.find((c) => c.path.join('.') === 'persona.tone'), { op: 'change', path: ['persona', 'tone'], before: 'warm', after: 'calm' });
-  assert.deepEqual(changes.find((c) => c.path.join('.') === 'tools.id=x.description'), { op: 'change', path: ['tools', 'id=x', 'description'], before: 'one', after: 'two' });
+  assert.deepEqual(
+    changes.find((c) => c.path.join('.') === 'persona.tone'),
+    { op: 'change', path: ['persona', 'tone'], before: 'warm', after: 'calm' },
+  );
+  assert.deepEqual(
+    changes.find((c) => c.path.join('.') === 'tools.id=x.description'),
+    { op: 'change', path: ['tools', 'id=x', 'description'], before: 'one', after: 'two' },
+  );
   assert.equal(changes.find((c) => c.path.join('.') === 'tools.id=y').op, 'remove');
   assert.equal(changes.find((c) => c.path.join('.') === 'tools.id=z').op, 'add');
-  assert.deepEqual(changes.find((c) => c.path.join('.') === 'tags.1'), { op: 'add', path: ['tags', 1], after: 'b' });
+  assert.deepEqual(
+    changes.find((c) => c.path.join('.') === 'tags.1'),
+    { op: 'add', path: ['tags', 1], after: 'b' },
+  );
   assert.deepEqual(diffConfigs(a, a), []);
 });
 
@@ -109,7 +122,10 @@ test('the demo validator says it is a demo, and catches the cheap mistakes the r
   assert.match(ok.warnings[0].message, /not by the real validator/);
   assert.equal(validateDemo(minimalConfig('a', 'A'), 'other').errors[0].path.join('.'), 'meta.id');
   const dup = minimalConfig('a', 'A');
-  dup.tools = [{ id: 't', type: 'builtin', builtin: 'noop' }, { id: 't', type: 'builtin', builtin: 'noop' }];
+  dup.tools = [
+    { id: 't', type: 'builtin', builtin: 'noop' },
+    { id: 't', type: 'builtin', builtin: 'noop' },
+  ];
   dup.agents.items[0].tools = ['t', 'ghost'];
   const report = validateDemo(dup, 'a');
   assert.ok(report.errors.some((e) => /duplicate tool id 't'/.test(e.message)));

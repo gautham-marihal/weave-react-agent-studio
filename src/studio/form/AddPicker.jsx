@@ -20,15 +20,31 @@ export default function AddPicker({ what, options, disabled, onPick, className =
     target?.focus();
   }, [open, searchable]);
 
-  const close = (refocus = true) => { setOpen(false); setQuery(''); if (refocus) window.requestAnimationFrame(() => buttonRef.current?.focus()); };
-  const choose = (option) => { onPick(option, option.make()); close(false); };
+  const close = (refocus = true) => {
+    setOpen(false);
+    setQuery('');
+    if (refocus) window.requestAnimationFrame(() => buttonRef.current?.focus());
+  };
+  const choose = (option) => {
+    onPick(option, option.make());
+    close(false);
+  };
   const move = (event) => {
     const keys = ['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'];
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return; }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      return;
+    }
     if (!keys.includes(event.key)) return;
     const cards = [...(panelRef.current?.querySelectorAll('.stPickCard') || [])];
     const at = cards.indexOf(document.activeElement);
-    if (at === -1 && event.target.matches?.('input[type=search]') && (event.key === 'ArrowDown') && cards[0]) { event.preventDefault(); cards[0].focus(); return; }
+    if (at === -1 && event.target.matches?.('input[type=search]') && event.key === 'ArrowDown' && cards[0]) {
+      event.preventDefault();
+      cards[0].focus();
+      return;
+    }
     if (at === -1) return;
     event.preventDefault();
     const next = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? Math.min(cards.length - 1, at + 1) : Math.max(0, at - 1);
@@ -37,12 +53,33 @@ export default function AddPicker({ what, options, disabled, onPick, className =
 
   return (
     <div className={`stPicker ${className}`}>
-      <button ref={buttonRef} type="button" className="stAddBtn" disabled={disabled} aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => (open ? close() : setOpen(true))}>＋ Add {what}</button>
+      <button
+        ref={buttonRef}
+        type="button"
+        className="stAddBtn"
+        disabled={disabled}
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
+        onClick={() => (open ? close() : setOpen(true))}
+      >
+        ＋ Add {what}
+      </button>
       {open && (
         <section id={panelId} ref={panelRef} className="stPickPanel" aria-label={`Add ${what}`} onKeyDown={move}>
           <header>
-            {searchable && <input className="stFInput small" type="search" value={query} placeholder="Search what it does" aria-label={`Search the choices for ${what}`} onChange={(event) => setQuery(event.target.value)} />}
-            <button type="button" className="stLink" onClick={() => close()}>Cancel</button>
+            {searchable && (
+              <input
+                className="stFInput small"
+                type="search"
+                value={query}
+                placeholder="Search what it does"
+                aria-label={`Search the choices for ${what}`}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            )}
+            <button type="button" className="stLink" onClick={() => close()}>
+              Cancel
+            </button>
           </header>
           {groups.map((group) => (
             <div key={group.name} className="stPickGroup" role="group" aria-label={group.name}>
@@ -50,7 +87,12 @@ export default function AddPicker({ what, options, disabled, onPick, className =
               <ul>
                 {group.options.map((option) => (
                   <li key={option.id}>
-                    <button type="button" className={`stPickCard ${option.unavailable ? 'unavailable' : ''}`} data-option={option.id} onClick={() => choose(option)}>
+                    <button
+                      type="button"
+                      className={`stPickCard ${option.unavailable ? 'unavailable' : ''}`}
+                      data-option={option.id}
+                      onClick={() => choose(option)}
+                    >
                       <strong>{option.label}</strong>
                       {option.help && <span>{option.help}</span>}
                       {option.badge && <em className="stPickBadge">{option.badge}</em>}
@@ -60,7 +102,14 @@ export default function AddPicker({ what, options, disabled, onPick, className =
               </ul>
             </div>
           ))}
-          {shown.length === 0 && <p className="stFEmpty" role="status">Nothing matches “{query}”. <button type="button" className="stLink" onClick={() => setQuery('')}>Show all {options.length}</button></p>}
+          {shown.length === 0 && (
+            <p className="stFEmpty" role="status">
+              Nothing matches “{query}”.{' '}
+              <button type="button" className="stLink" onClick={() => setQuery('')}>
+                Show all {options.length}
+              </button>
+            </p>
+          )}
         </section>
       )}
     </div>

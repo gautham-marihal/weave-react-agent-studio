@@ -52,7 +52,10 @@ export function useDraftEditor(botId) {
     }
   }, [botId, applyDraft]);
 
-  useEffect(() => { setReport(null); load(); }, [load]);
+  useEffect(() => {
+    setReport(null);
+    load();
+  }, [load]);
 
   const parsed = useMemo(() => {
     if (status !== 'ready') return { value: undefined, error: null, duplicates: [] };
@@ -64,60 +67,102 @@ export function useDraftEditor(botId) {
       if (duplicates.length) return { value: undefined, error: describeDuplicates(duplicates, (offset) => lineOf(text, offset)), duplicates };
       lastValue.current = value;
       return { value, error: null, duplicates: [] };
-    } catch (error) { return { value: undefined, error: error.message, duplicates: [] }; }
+    } catch (error) {
+      return { value: undefined, error: error.message, duplicates: [] };
+    }
   }, [text, status]);
 
   // The configuration as last saved (for comparing with what is being edited).
-  const savedConfig = useMemo(() => { try { return savedCanon ? JSON.parse(savedCanon) : undefined; } catch { return undefined; } }, [savedCanon]);
+  const savedConfig = useMemo(() => {
+    try {
+      return savedCanon ? JSON.parse(savedCanon) : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [savedCanon]);
 
   const isObject = !!parsed.value && typeof parsed.value === 'object' && !Array.isArray(parsed.value);
   const dirty = status === 'ready' && (parsed.error ? true : canon(parsed.value) !== savedCanon);
 
   // Validate 500 ms after the last edit.
   useEffect(() => {
-    if (status !== 'ready' || parsed.error || !isObject) { setValidating(false); return undefined; }
+    if (status !== 'ready' || parsed.error || !isObject) {
+      setValidating(false);
+      return undefined;
+    }
     const controller = new AbortController();
     setValidating(true);
     const timer = window.setTimeout(() => {
       api.validate(parsed.value, { signal: controller.signal }).then(
-        (result) => { setReport(result); setValidating(false); },
-        (error) => { if (error?.name !== 'AbortError') setValidating(false); },
+        (result) => {
+          setReport(result);
+          setValidating(false);
+        },
+        (error) => {
+          if (error?.name !== 'AbortError') setValidating(false);
+        },
       );
     }, 500);
-    return () => { window.clearTimeout(timer); controller.abort(); };
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [parsed, isObject, status]);
 
-  const save = useCallback(async ({ overwrite = false } = {}) => {
-    if (parsed.error || !isObject) return null;
-    setSaving(true);
-    setSaveError(null);
-    const textAtStart = textRef.current;
-    try {
-      const result = await api.saveDraft(botId, parsed.value, overwrite ? undefined : revisionRef.current);
-      const saved = result.draft;
-      setRevision(saved.revision);
-      setMeta({ savedAt: saved.saved_at, savedBy: saved.saved_by });
-      setSavedCanon(canon(saved.config));
-      setSavedName(saved.config?.meta?.name || '');
-      // The server may hand back a normalized copy. Show it, unless more was typed while the save was running.
-      if (canon(saved.config) !== canon(parsed.value) && textRef.current === textAtStart) setText(prettyJson(saved.config));
-      if (result.validation) setReport(result.validation);
-      setConflict(false);
-      setSavedTick((n) => n + 1);
-      return saved;
-    } catch (error) {
-      if (error.kind === 'conflict') setConflict(true); else setSaveError(error);
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  }, [botId, parsed, isObject]);
+  const save = useCallback(
+    async ({ overwrite = false } = {}) => {
+      if (parsed.error || !isObject) return null;
+      setSaving(true);
+      setSaveError(null);
+      const textAtStart = textRef.current;
+      try {
+        const result = await api.saveDraft(botId, parsed.value, overwrite ? undefined : revisionRef.current);
+        const saved = result.draft;
+        setRevision(saved.revision);
+        setMeta({ savedAt: saved.saved_at, savedBy: saved.saved_by });
+        setSavedCanon(canon(saved.config));
+        setSavedName(saved.config?.meta?.name || '');
+        // The server may hand back a normalized copy. Show it, unless more was typed while the save was running.
+        if (canon(saved.config) !== canon(parsed.value) && textRef.current === textAtStart) setText(prettyJson(saved.config));
+        if (result.validation) setReport(result.validation);
+        setConflict(false);
+        setSavedTick((n) => n + 1);
+        return saved;
+      } catch (error) {
+        if (error.kind === 'conflict') setConflict(true);
+        else setSaveError(error);
+        return null;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [botId, parsed, isObject],
+  );
 
   const setValue = useCallback((value) => setText(prettyJson(value)), []);
 
   return {
-    botId, status, loadError, text, setText, setValue, savedConfig, revision, meta, savedName, report, validating, parsed, isObject,
-    dirty, saving, saveError, conflict, savedTick,
-    save, reload: load, dismissSaveError: () => setSaveError(null),
+    botId,
+    status,
+    loadError,
+    text,
+    setText,
+    setValue,
+    savedConfig,
+    revision,
+    meta,
+    savedName,
+    report,
+    validating,
+    parsed,
+    isObject,
+    dirty,
+    saving,
+    saveError,
+    conflict,
+    savedTick,
+    save,
+    reload: load,
+    dismissSaveError: () => setSaveError(null),
   };
 }

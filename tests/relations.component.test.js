@@ -31,7 +31,9 @@ test('the agent map shows every agent, marks the one that answers first, and ope
 });
 
 test('the map is not drawn for a single agent, and a stranded agent is called out', async () => {
-  const one = clone(example); one.agents.items = [one.agents.items[0]]; one.agents.entry = one.agents.items[0].id;
+  const one = clone(example);
+  one.agents.items = [one.agents.items[0]];
+  one.agents.entry = one.agents.items[0].id;
   const app = await mountForm(one);
   await a.section(app.container, 'agents');
   assert.equal($(app.container, '.rlMap'), null);
@@ -99,7 +101,11 @@ test('every tool says what uses it, as buttons that go there, and what nothing u
 test('a problem beside a field is said in plain words with a button that fixes it', async () => {
   const config = clone(example);
   config.agents.entry = 'greter';
-  const report = { valid: false, errors: [{ path: ['agents', 'entry'], message: "'greter' is not a declared agents id (declared: billing, greeter, safety_watch, tech_support)" }], warnings: [] };
+  const report = {
+    valid: false,
+    errors: [{ path: ['agents', 'entry'], message: "'greter' is not a declared agents id (declared: billing, greeter, safety_watch, tech_support)" }],
+    warnings: [],
+  };
   const app = await mountScreen('form', config, { report });
   await a.section(app.container, 'agents');
   const issue = $(app.container, '.stFIssue');
@@ -118,7 +124,10 @@ test('the checks panel names each problem by its labels, puts what a click fixes
   config.agents.entry = 'greter';
   const report = {
     valid: false,
-    errors: [{ path: ['agents', 'entry'], message: "'greter' is not a declared agents id (declared: billing, greeter, safety_watch, tech_support)" }, { path: ['tools', 5, 'timeout_s'], message: '-1 is less than or equal to the minimum of 0' }],
+    errors: [
+      { path: ['agents', 'entry'], message: "'greter' is not a declared agents id (declared: billing, greeter, safety_watch, tech_support)" },
+      { path: ['tools', 5, 'timeout_s'], message: '-1 is less than or equal to the minimum of 0' },
+    ],
     warnings: [{ path: ['tools', config.tools.length - 1], message: "tool 'spare' is not used by any agent, task or guardrail" }],
     unsupported: [],
   };
@@ -130,7 +139,9 @@ test('the checks panel names each problem by its labels, puts what a click fixes
   assert.match(text, /Fix these first/);
   assert.match(text, /Agents › Who answers first/, 'the place is named by labels');
   assert.doesNotMatch(text, /agents\.entry|agents\["entry"\]/, 'no raw path is shown');
-  const heads = $$(app.container, '.vxList > section, .vxList > details').map((s) => s.getAttribute('aria-label') || textOf($(s, 'summary')).replace(/\d+$/, '').trim());
+  const heads = $$(app.container, '.vxList > section, .vxList > details').map(
+    (s) => s.getAttribute('aria-label') || textOf($(s, 'summary')).replace(/\d+$/, '').trim(),
+  );
   assert.deepEqual(heads, ['Can be fixed here', 'Needs your input', 'Worth a look']);
   assert.equal($(app.container, 'details.vxFold').open, false, 'the advice is folded while there are errors');
   await a.click(byText(app.container, 'button.vxFix', 'Use “greeter”'));

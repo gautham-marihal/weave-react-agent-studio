@@ -27,7 +27,16 @@ export const CREATABLE = {
     word: 'state variable',
     ask: [
       { key: 'name', label: 'Name', hint: 'lowercase letters, digits and _', pattern: '^[a-z][a-z0-9_]{0,63}$', required: true },
-      { key: 'kind', label: 'Holds', options: [['string', 'Text'], ['integer', 'A number'], ['boolean', 'Yes / no']], required: true },
+      {
+        key: 'kind',
+        label: 'Holds',
+        options: [
+          ['string', 'Text'],
+          ['integer', 'A number'],
+          ['boolean', 'Yes / no'],
+        ],
+        required: true,
+      },
     ],
   },
   http_connections: {
@@ -39,7 +48,15 @@ export const CREATABLE = {
   },
 };
 
-const slug = (text) => String(text || '').toLowerCase().split(/\s+/).filter(Boolean).slice(0, 3).join('_').replace(/[^a-z0-9_]+/g, '').replace(/^[^a-z]+/, '');
+const slug = (text) =>
+  String(text || '')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .join('_')
+    .replace(/[^a-z0-9_]+/g, '')
+    .replace(/^[^a-z]+/, '');
 
 // Problems with what was typed, by field key.
 export function createProblems(collection, answers, config) {
@@ -51,8 +68,10 @@ export function createProblems(collection, answers, config) {
     if (field.required && !value) out[field.key] = 'Required.';
     else if (field.pattern && value && !new RegExp(field.pattern).test(value)) out[field.key] = field.hint ? `Use ${field.hint}.` : 'Not in the right form.';
   });
-  if (collection === 'state_vars' && !out.name && answers.name && isObj(config?.state?.variables) && String(answers.name).trim() in config.state.variables) out.name = 'That variable already exists.';
-  if (collection === 'http_connections' && !out.name && answers.name && isObj(config?.connections) && String(answers.name).trim() in config.connections) out.name = 'That connection already exists.';
+  if (collection === 'state_vars' && !out.name && answers.name && isObj(config?.state?.variables) && String(answers.name).trim() in config.state.variables)
+    out.name = 'That variable already exists.';
+  if (collection === 'http_connections' && !out.name && answers.name && isObj(config?.connections) && String(answers.name).trim() in config.connections)
+    out.name = 'That connection already exists.';
   return out;
 }
 
@@ -62,12 +81,20 @@ export function createAndPoint(config, collection, answers, target) {
   let id;
   if (collection === 'messages') {
     const messages = Array.isArray(next.messages) ? next.messages : [];
-    id = freshId(messages.map((m) => m?.id), slug(answers.text) || 'message');
+    id = freshId(
+      messages.map((m) => m?.id),
+      slug(answers.text) || 'message',
+    );
     next.messages = [...messages, { id, text: String(answers.text).trim() }];
   } else if (collection === 'state_vars') {
     id = String(answers.name).trim();
     const kind = answers.kind || 'string';
-    const variable = kind === 'string' ? { type: 'string', nullable: true, default: null } : kind === 'integer' ? { type: 'integer', default: 0 } : { type: 'boolean', default: false };
+    const variable =
+      kind === 'string'
+        ? { type: 'string', nullable: true, default: null }
+        : kind === 'integer'
+          ? { type: 'integer', default: 0 }
+          : { type: 'boolean', default: false };
     next.state = { ...(isObj(next.state) ? next.state : {}), variables: { ...(isObj(next.state?.variables) ? next.state.variables : {}), [id]: variable } };
   } else if (collection === 'http_connections') {
     id = String(answers.name).trim();

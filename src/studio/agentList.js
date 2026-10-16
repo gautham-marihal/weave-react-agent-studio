@@ -17,7 +17,10 @@ const stageRank = (bot) => {
 export const SORTS = {
   recent: { label: 'Recently saved', compare: (a, b) => String(b.draft_saved_at || '').localeCompare(String(a.draft_saved_at || '')) },
   name: { label: 'Name', compare: (a, b) => (a.name || a.id).localeCompare(b.name || b.id, undefined, { sensitivity: 'base' }) },
-  stage: { label: 'Furthest along', compare: (a, b) => stageRank(b) - stageRank(a) || compareVersions(b.latest_version || '0.0.0', a.latest_version || '0.0.0') },
+  stage: {
+    label: 'Furthest along',
+    compare: (a, b) => stageRank(b) - stageRank(a) || compareVersions(b.latest_version || '0.0.0', a.latest_version || '0.0.0'),
+  },
 };
 
 // The tags and owners found so far, each with how many agents have it: [{ value, count }], the most common first.
@@ -35,14 +38,17 @@ export function collectFacets(bots, meta) {
 export function filterBots(bots, { query = '', tag = '', owner = '', attention = false } = {}, meta = {}) {
   const words = String(query).toLowerCase().split(/\s+/).filter(Boolean);
   const matched = bots.filter((bot) => {
-    if (words.length) { const text = `${bot.name || ''} ${bot.id}`.toLowerCase(); if (!words.every((w) => text.includes(w))) return false; }
+    if (words.length) {
+      const text = `${bot.name || ''} ${bot.id}`.toLowerCase();
+      if (!words.every((w) => text.includes(w))) return false;
+    }
     const m = meta[bot.id];
     if (tag && !(m?.tags || []).includes(tag)) return false;
     if (owner && m?.owner !== owner) return false;
     if (attention && !needsAttention(m?.health)) return false;
     return true;
   });
-  const unknown = (tag || owner || attention) ? bots.filter((bot) => !meta[bot.id]).length : 0;
+  const unknown = tag || owner || attention ? bots.filter((bot) => !meta[bot.id]).length : 0;
   return { matched, unknown };
 }
 
@@ -50,7 +56,14 @@ export function paginate(items, page = 1, size = PAGE_SIZE) {
   const pages = Math.max(1, Math.ceil(items.length / size));
   const current = Math.min(Math.max(1, page), pages);
   const start = (current - 1) * size;
-  return { rows: items.slice(start, start + size), page: current, pages, from: items.length ? start + 1 : 0, to: Math.min(items.length, start + size), total: items.length };
+  return {
+    rows: items.slice(start, start + size),
+    page: current,
+    pages,
+    from: items.length ? start + 1 : 0,
+    to: Math.min(items.length, start + size),
+    total: items.length,
+  };
 }
 
 export const sortBots = (bots, sort) => [...bots].sort((SORTS[sort] || SORTS.recent).compare);

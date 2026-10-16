@@ -21,40 +21,85 @@ export function useBuilds(botId, { ref = 'draft', onChange, pollMs = POLL_MS } =
   const alive = useRef(true);
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
-  useEffect(() => { alive.current = true; return () => { alive.current = false; Object.values(timers.current).forEach(clearTimeout); }; }, []);
-  useEffect(() => { Object.values(timers.current).forEach(clearTimeout); timers.current = {}; setBuilds({}); setErrors({}); }, [botId]);
-
-  const follow = useCallback((baseId) => {
-    clearTimeout(timers.current[baseId]);
-    const tick = async () => {
-      if (!alive.current) return;
-      try {
-        const status = await api.knowledgeStatus(botId, baseId, ref);
-        if (!alive.current) return;
-        const build = normalizeBuild(status?.build);
-        setBuilds((old) => ({ ...old, [baseId]: build }));
-        if (isBuilding(build)) { timers.current[baseId] = setTimeout(tick, pollMs); return; }
-        changeRef.current?.(baseId, build);
-      } catch (e) {
-        if (alive.current) setErrors((old) => ({ ...old, [baseId]: e?.message || 'Lost track of the build.' }));
-      }
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      Object.values(timers.current).forEach(clearTimeout);
     };
-    timers.current[baseId] = setTimeout(tick, pollMs);
-  }, [botId, ref, pollMs]);
+  }, []);
+  useEffect(() => {
+    Object.values(timers.current).forEach(clearTimeout);
+    timers.current = {};
+    setBuilds({});
+    setErrors({});
+  }, [botId]);
 
-  const start = useCallback(async (baseId) => {
-    setErrors((old) => { const next = { ...old }; delete next[baseId]; return next; });
-    try {
-      const job = await api.buildKnowledge(botId, baseId, ref);
-      if (!alive.current) return;
-      setBuilds((old) => ({ ...old, [baseId]: normalizeBuild(job) }));
-      follow(baseId);
-    } catch (e) {
-      if (!alive.current) return;
-      if (e?.kind === 'conflict') { setErrors((old) => ({ ...old, [baseId]: 'A build of this base is already running. Following it.' })); follow(baseId); return; }
-      setErrors((old) => ({ ...old, [baseId]: e?.kind === 'unavailable' ? `${e.message} An operator has to set the embedding key on the server before indexes can be built.` : e?.message || 'The build didn’t start.' }));
-    }
-  }, [botId, ref, follow]);
+  const follow = useCallback(
+    (baseId) => {
+      clearTimeout(timers.current[baseId]);
+      const tick = async () => {
+        if (!alive.current) return;
+        try {
+          const status = await api.knowledgeStatus(botId, baseId, ref);
+          if (!alive.current) return;
+          const build = normalizeBuild(status?.build);
+          setBuilds((old) => ({ ...old, [baseId]: build }));
+          if (isBuilding(build)) {
+            timers.current[baseId] = setTimeout(tick, pollMs);
+            return;
+          }
+          changeRef.current?.(baseId, build);
+        } catch (e) {
+          if (alive.current) setErrors((old) => ({ ...old, [baseId]: e?.message || 'Lost track of the build.' }));
+        }
+      };
+      timers.current[baseId] = setTimeout(tick, pollMs);
+    },
+    [botId, ref, pollMs],
+  );
 
-  return { builds, errors, start, follow, clearError: (baseId) => setErrors((old) => { const next = { ...old }; delete next[baseId]; return next; }) };
+  const start = useCallback(
+    async (baseId) => {
+      setErrors((old) => {
+        const next = { ...old };
+        delete next[baseId];
+        return next;
+      });
+      try {
+        const job = await api.buildKnowledge(botId, baseId, ref);
+        if (!alive.current) return;
+        setBuilds((old) => ({ ...old, [baseId]: normalizeBuild(job) }));
+        follow(baseId);
+      } catch (e) {
+        if (!alive.current) return;
+        if (e?.kind === 'conflict') {
+          setErrors((old) => ({ ...old, [baseId]: 'A build of this base is already running. Following it.' }));
+          follow(baseId);
+          return;
+        }
+        setErrors((old) => ({
+          ...old,
+          [baseId]:
+            e?.kind === 'unavailable'
+              ? `${e.message} An operator has to set the embedding key on the server before indexes can be built.`
+              : e?.message || 'The build didn’t start.',
+        }));
+      }
+    },
+    [botId, ref, follow],
+  );
+
+  return {
+    builds,
+    errors,
+    start,
+    follow,
+    clearError: (baseId) =>
+      setErrors((old) => {
+        const next = { ...old };
+        delete next[baseId];
+        return next;
+      }),
+  };
 }

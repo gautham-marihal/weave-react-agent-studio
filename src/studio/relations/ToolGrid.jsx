@@ -15,23 +15,43 @@ export default function ToolGrid() {
   };
   return (
     <details className="rlGrid">
-      <summary>Who can use which tool <small>{grid.agents.length} agents · {grid.rows.length} tools{grid.unused.length ? ` · ${grid.unused.length} nobody has` : ''}</small></summary>
+      <summary>
+        Who can use which tool{' '}
+        <small>
+          {grid.agents.length} agents · {grid.rows.length} tools{grid.unused.length ? ` · ${grid.unused.length} nobody has` : ''}
+        </small>
+      </summary>
       <div className="rlGridScroll">
         <table>
           <caption className="rlSr">A tick means the agent offers the tool to the model.</caption>
           <thead>
             <tr>
-              <th scope="col" className="rlCorner">Tool</th>
-              {grid.agents.map((agent) => <th scope="col" key={agent.id} title={agent.id}><span>{agent.name}</span><small>{agent.count}</small></th>)}
+              <th scope="col" className="rlCorner">
+                Tool
+              </th>
+              {grid.agents.map((agent) => (
+                <th scope="col" key={agent.id} title={agent.id}>
+                  <span>{agent.name}</span>
+                  <small>{agent.count}</small>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {grid.rows.map((row) => (
               <tr key={row.id} className={row.agents.length === 0 ? 'unused' : ''}>
-                <th scope="row" title={row.description || undefined}><span>{row.id}</span>{row.agents.length === 0 && <small>nobody has it</small>}</th>
+                <th scope="row" title={row.description || undefined}>
+                  <span>{row.id}</span>
+                  {row.agents.length === 0 && <small>nobody has it</small>}
+                </th>
                 {grid.agents.map((agent, i) => (
                   <td key={agent.id}>
-                    <input type="checkbox" checked={row.cells[i]} aria-label={`${agent.name} can use ${row.id}`} onChange={(event) => toggle(agent, row, event.target.checked)} />
+                    <input
+                      type="checkbox"
+                      checked={row.cells[i]}
+                      aria-label={`${agent.name} can use ${row.id}`}
+                      onChange={(event) => toggle(agent, row, event.target.checked)}
+                    />
                   </td>
                 ))}
               </tr>

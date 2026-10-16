@@ -7,7 +7,8 @@
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
 
-export const DEMO_VALIDATOR_NOTE = 'Demo mode: checked by a few simple rules in your browser, not by the real validator. A real check happens when you use the real API.';
+export const DEMO_VALIDATOR_NOTE =
+  'Demo mode: checked by a few simple rules in your browser, not by the real validator. A real check happens when you use the real API.';
 export const KNOWN_PROVIDERS = ['anthropic', 'assemblyai', 'cartesia', 'deepgram', 'elevenlabs', 'google', 'groq', 'openai', 'openai_compatible', 'silero'];
 const REQUIRED_SECTIONS = ['schema_version', 'meta', 'runtime', 'defaults', 'persona', 'channels', 'agents'];
 const UNSUPPORTED_TOOL_KINDS = { task: 'Task tools', mcp: 'MCP server tools', knowledge: 'Knowledge search tools', code: 'Custom code tools' };
@@ -31,7 +32,9 @@ export function validateDemo(config, botId) {
   if (!isObj(config)) {
     return { valid: false, errors: [{ path: null, message: 'The configuration must be a JSON object.' }], warnings, unsupported, secrets_required: [] };
   }
-  REQUIRED_SECTIONS.forEach((key) => { if (!(key in config)) err([key], `${key} is required`); });
+  REQUIRED_SECTIONS.forEach((key) => {
+    if (!(key in config)) err([key], `${key} is required`);
+  });
   if (isObj(config.meta) && botId && config.meta.id !== botId) err(['meta', 'id'], `meta.id must be '${botId}' (it is '${config.meta.id}')`);
   if (isObj(config.meta) && !config.meta.name) err(['meta', 'name'], 'meta.name is required');
 
@@ -52,19 +55,29 @@ export function validateDemo(config, botId) {
 
   // who answers first, and the tools each agent offers
   const agentIds = ids(config.agents?.items);
-  if (isObj(config.agents) && !agentIds.includes(config.agents.entry)) err(['agents', 'entry'], `'${config.agents.entry}' is not a declared agents id (declared: ${agentIds.filter(Boolean).join(', ') || 'none'})`);
+  if (isObj(config.agents) && !agentIds.includes(config.agents.entry))
+    err(['agents', 'entry'], `'${config.agents.entry}' is not a declared agents id (declared: ${agentIds.filter(Boolean).join(', ') || 'none'})`);
   const toolIds = ids(config.tools).filter(Boolean);
   list(config.agents?.items).forEach((agent, index) => {
-    list(agent?.tools).forEach((tool, t) => { if (!toolIds.includes(tool)) err(['agents', 'items', index, 'tools', t], `'${tool}' is not a declared tools id (declared: ${toolIds.join(', ') || 'none'})`); });
+    list(agent?.tools).forEach((tool, t) => {
+      if (!toolIds.includes(tool))
+        err(['agents', 'items', index, 'tools', t], `'${tool}' is not a declared tools id (declared: ${toolIds.join(', ') || 'none'})`);
+    });
   });
   const used = new Set(list(config.agents?.items).flatMap((agent) => list(agent?.tools)));
-  list(config.tools).forEach((tool, index) => { if (isObj(tool) && tool.id && !used.has(tool.id)) warnings.push({ path: ['tools', index], message: `tool '${tool.id}' is not used by any agent, task or guardrail` }); });
+  list(config.tools).forEach((tool, index) => {
+    if (isObj(tool) && tool.id && !used.has(tool.id))
+      warnings.push({ path: ['tools', index], message: `tool '${tool.id}' is not used by any agent, task or guardrail` });
+  });
 
   // channels need something to talk with
   list(config.channels).forEach((channel, index) => {
     const modalities = channel?.modalities;
     if (isObj(modalities) && (list(modalities.input).length === 0 || list(modalities.output).length === 0)) {
-      err(['channels', index, 'modalities', list(modalities.input).length === 0 ? 'input' : 'output'], 'a channel needs at least one input and one output modality');
+      err(
+        ['channels', index, 'modalities', list(modalities.input).length === 0 ? 'input' : 'output'],
+        'a channel needs at least one input and one output modality',
+      );
     }
   });
 
@@ -72,25 +85,35 @@ export function validateDemo(config, botId) {
   const models = config.defaults?.models;
   if (isObj(config.defaults)) {
     if (!isObj(models) || !isObj(models.llm)) err(['defaults', 'models', 'llm'], 'defaults.models.llm is required');
-    else ['stt', 'llm', 'tts'].forEach((stage) => {
-      const slot = models[stage];
-      if (!isObj(slot)) return;
-      if (!slot.provider) err(['defaults', 'models', stage, 'provider'], `${stage} needs a provider`);
-      else if (!KNOWN_PROVIDERS.includes(slot.provider)) err(['defaults', 'models', stage, 'provider'], `provider '${slot.provider}' is not known to the runtime (known: ${KNOWN_PROVIDERS.join(', ')})`);
-      if (!slot.model) err(['defaults', 'models', stage, 'model'], `${stage} needs a model`);
-    });
+    else
+      ['stt', 'llm', 'tts'].forEach((stage) => {
+        const slot = models[stage];
+        if (!isObj(slot)) return;
+        if (!slot.provider) err(['defaults', 'models', stage, 'provider'], `${stage} needs a provider`);
+        else if (!KNOWN_PROVIDERS.includes(slot.provider))
+          err(['defaults', 'models', stage, 'provider'], `provider '${slot.provider}' is not known to the runtime (known: ${KNOWN_PROVIDERS.join(', ')})`);
+        if (!slot.model) err(['defaults', 'models', stage, 'model'], `${stage} needs a model`);
+      });
   }
 
   // features that need schema 1.2, and what the runtime can't do yet
   const variables = isObj(config.state?.variables) ? config.state.variables : {};
   const sensitive = Object.entries(variables).filter(([, variable]) => isObj(variable) && variable.sensitive === true);
-  if (sensitive.length && config.schema_version === '1.1') err(['schema_version'], 'this config uses features that need schema_version 1.2 (sensitive state variables), but says 1.1');
+  if (sensitive.length && config.schema_version === '1.1')
+    err(['schema_version'], 'this config uses features that need schema_version 1.2 (sensitive state variables), but says 1.1');
   list(config.tools).forEach((tool, index) => {
     const kind = isObj(tool) ? tool.type : undefined;
     if (UNSUPPORTED_TOOL_KINDS[kind]) unsupported.push({ feature: UNSUPPORTED_TOOL_KINDS[kind], where: `tools[${index}]` });
   });
-  sensitive.forEach(([name]) => unsupported.push({ feature: 'sensitive state variable: declared, but NOT yet enforced (the model, transcripts and logs can still see its value)', where: `state.variables.${name}`, severity: 'security' }));
-  if (isObj(config.post_call) && isObj(config.post_call.redaction)) unsupported.push({ feature: 'post_call.redaction: declared, but NOT yet enforced', where: 'post_call.redaction', severity: 'security' });
+  sensitive.forEach(([name]) =>
+    unsupported.push({
+      feature: 'sensitive state variable: declared, but NOT yet enforced (the model, transcripts and logs can still see its value)',
+      where: `state.variables.${name}`,
+      severity: 'security',
+    }),
+  );
+  if (isObj(config.post_call) && isObj(config.post_call.redaction))
+    unsupported.push({ feature: 'post_call.redaction: declared, but NOT yet enforced', where: 'post_call.redaction', severity: 'security' });
 
   const valid = errors.length === 0;
   return { valid, errors, warnings, unsupported: valid ? unsupported : [], secrets_required: [...secretsIn(config)].sort() };

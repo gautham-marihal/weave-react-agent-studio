@@ -16,7 +16,10 @@ export default function Menu({ label = 'More actions', items, className = '' }) 
   }, []);
 
   useLayoutEffect(() => {
-    if (!open) { setPos(null); return; }
+    if (!open) {
+      setPos(null);
+      return;
+    }
     const rect = buttonRef.current.getBoundingClientRect();
     const width = menuRef.current?.offsetWidth || 220;
     const left = Math.min(Math.max(12, rect.right - width), window.innerWidth - width - 12);
@@ -28,8 +31,15 @@ export default function Menu({ label = 'More actions', items, className = '' }) 
 
   useEffect(() => {
     if (!open) return undefined;
-    const onDown = (event) => { if (!menuRef.current?.contains(event.target) && !buttonRef.current?.contains(event.target)) close(); };
-    const onKey = (event) => { if (event.key === 'Escape') { event.stopPropagation(); close(true); } };
+    const onDown = (event) => {
+      if (!menuRef.current?.contains(event.target) && !buttonRef.current?.contains(event.target)) close();
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        close(true);
+      }
+    };
     const onMove = () => close();
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey, true);
@@ -43,15 +53,29 @@ export default function Menu({ label = 'More actions', items, className = '' }) 
     };
   }, [open, close]);
 
-  useEffect(() => { if (pos) menuRef.current?.querySelector('[role="menuitem"]:not(:disabled)')?.focus(); }, [pos]);
+  useEffect(() => {
+    if (pos) menuRef.current?.querySelector('[role="menuitem"]:not(:disabled)')?.focus();
+  }, [pos]);
 
   const onMenuKey = (event) => {
     const enabled = [...menuRef.current.querySelectorAll('[role="menuitem"]:not(:disabled)')];
     const index = enabled.indexOf(document.activeElement);
-    if (event.key === 'ArrowDown') { event.preventDefault(); enabled[(index + 1) % enabled.length]?.focus(); }
-    if (event.key === 'ArrowUp') { event.preventDefault(); enabled[(index - 1 + enabled.length) % enabled.length]?.focus(); }
-    if (event.key === 'Home') { event.preventDefault(); enabled[0]?.focus(); }
-    if (event.key === 'End') { event.preventDefault(); enabled[enabled.length - 1]?.focus(); }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      enabled[(index + 1) % enabled.length]?.focus();
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      enabled[(index - 1 + enabled.length) % enabled.length]?.focus();
+    }
+    if (event.key === 'Home') {
+      event.preventDefault();
+      enabled[0]?.focus();
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      enabled[enabled.length - 1]?.focus();
+    }
     if (event.key === 'Tab') close();
   };
 
@@ -65,40 +89,54 @@ export default function Menu({ label = 'More actions', items, className = '' }) 
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        onClick={(event) => { event.stopPropagation(); setOpen((v) => !v); }}
-        onKeyDown={(event) => { if (event.key === 'ArrowDown' && !open) { event.preventDefault(); setOpen(true); } }}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' && !open) {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
       >
         <span aria-hidden="true">⋯</span>
       </button>
-      {open && createPortal(
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
-          aria-label={label}
-          className="stMenu"
-          style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0 }}
-          onKeyDown={onMenuKey}
-        >
-          {items.map((item, index) => (item.divider
-            ? <hr key={`d${index}`} />
-            : (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                className={item.danger ? 'danger' : ''}
-                disabled={item.disabled}
-                title={item.disabled ? item.hint : undefined}
-                onClick={() => { close(); item.onClick?.(); }}
-              >
-                <span>{item.label}</span>
-                {item.hint && !item.disabled && <small>{item.hint}</small>}
-              </button>
-            )))}
-        </div>,
-        document.body,
-      )}
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            id={menuId}
+            role="menu"
+            aria-label={label}
+            className="stMenu"
+            style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0 }}
+            onKeyDown={onMenuKey}
+          >
+            {items.map((item, index) =>
+              item.divider ? (
+                <hr key={`d${index}`} />
+              ) : (
+                <button
+                  key={item.label}
+                  type="button"
+                  role="menuitem"
+                  className={item.danger ? 'danger' : ''}
+                  disabled={item.disabled}
+                  title={item.disabled ? item.hint : undefined}
+                  onClick={() => {
+                    close();
+                    item.onClick?.();
+                  }}
+                >
+                  <span>{item.label}</span>
+                  {item.hint && !item.disabled && <small>{item.hint}</small>}
+                </button>
+              ),
+            )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

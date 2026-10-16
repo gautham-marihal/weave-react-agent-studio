@@ -27,12 +27,13 @@ export function formatWhen(iso) {
   return new Date(iso).toLocaleDateString();
 }
 
-export const slugify = (value) => String(value || '')
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^[^a-z]+/, '')
-  .replace(/-+$/, '')
-  .slice(0, 64);
+export const slugify = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^[^a-z]+/, '')
+    .replace(/-+$/, '')
+    .slice(0, 64);
 
 export const BOT_ID_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 // The folders the runtime writes call data to: the API answers 400 for an agent with one of these ids.
@@ -56,7 +57,9 @@ export function truncate(text, max = 400) {
 
 // Next semantic version: bump is 'major' | 'minor' | 'patch'.
 export function nextVersion(version, bump) {
-  const parts = String(version || '0.1.0').split('.').map((p) => Number.parseInt(p, 10) || 0);
+  const parts = String(version || '0.1.0')
+    .split('.')
+    .map((p) => Number.parseInt(p, 10) || 0);
   while (parts.length < 3) parts.push(0);
   if (bump === 'major') return `${parts[0] + 1}.0.0`;
   if (bump === 'minor') return `${parts[0]}.${parts[1] + 1}.0`;
@@ -68,8 +71,12 @@ export const isSemver = (value) => SEMVER.test(String(value || ''));
 
 // -1, 0 or 1. Compares numerically, so 1.10.0 is newer than 1.9.0.
 export function compareVersions(a, b) {
-  const pa = String(a || '0.0.0').split('.').map((p) => Number.parseInt(p, 10) || 0);
-  const pb = String(b || '0.0.0').split('.').map((p) => Number.parseInt(p, 10) || 0);
+  const pa = String(a || '0.0.0')
+    .split('.')
+    .map((p) => Number.parseInt(p, 10) || 0);
+  const pb = String(b || '0.0.0')
+    .split('.')
+    .map((p) => Number.parseInt(p, 10) || 0);
   for (let i = 0; i < 3; i += 1) {
     const diff = (pa[i] || 0) - (pb[i] || 0);
     if (diff) return diff < 0 ? -1 : 1;
@@ -104,7 +111,11 @@ export function publishOptions(latestVersion, draftVersion) {
       value: 'draft',
       label: 'Use the draft’s version',
       version: draftOk ? draftVersion : '—',
-      hint: draftIsNewer ? 'The number already in the draft' : draftOk ? `Not newer than ${latestVersion}, so it can’t be published` : 'The draft has no valid version number',
+      hint: draftIsNewer
+        ? 'The number already in the draft'
+        : draftOk
+          ? `Not newer than ${latestVersion}, so it can’t be published`
+          : 'The draft has no valid version number',
       disabled: !draftIsNewer,
     });
   }

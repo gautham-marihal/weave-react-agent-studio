@@ -1,13 +1,103 @@
 /* The list of changes since the published version */
-.chgList { display: grid; gap: 16px; max-height: min(520px, 60vh); overflow: auto; padding: 4px 2px; }
-.chgGroup { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-.chgGroup > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; background: var(--surface2); }
-.chgGroup h3 { margin: 0; font-size: var(--fs-md); }
-.chgCount { margin-left: 6px; color: var(--muted); font-size: var(--fs-xs); font-weight: 500; }
-.chgGroup ul { list-style: none; margin: 0; padding: 0; }
-.chgGroup li { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; padding: 9px 14px; border-top: 1px solid var(--line); font-size: var(--fs-sm); line-height: 1.5; }
-.chgVerb { font-weight: 600; }
-.chgGroup li.added .chgVerb { color: var(--good-text); }
-.chgGroup li.removed .chgVerb { color: var(--danger-text); }
-.chgGroup li.changed .chgVerb { color: var(--warn-text); }
-.chgText small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.chgList {
+  display: grid;
+  gap: 16px;
+  max-height: min(520px, 60vh);
+  overflow: auto;
+  padding: 4px 2px;
+}
+.chgGroup {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.chgGroup > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface2);
+}
+.chgGroup h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.chgCount {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.chgGroup ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.chgGroup li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.chgVerb {
+  font-weight: 600;
+}
+.chgGroup li.added .chgVerb {
+  color: var(--good-text);
+}
+.chgGroup li.removed .chgVerb {
+  color: var(--danger-text);
+}
+.chgGroup li.changed .chgVerb {
+  color: var(--warn-text);
+}
+.chgText small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.cmpWording {
+  margin-top: 6px;
+}
+.cmpWording summary {
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  font-size: var(--fs-xs);
+}
+.cmpWording div {
+  margin-top: 6px;
+}
+.cmpWording small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.cmpWording p {
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-sm);
+}
+.cmpList {
+  max-height: none;
+}
+.cmpList .chgGroup li {
+  grid-template-columns: 22px minmax(0, 1fr);
+}
+.cmpMark {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--surface2);
+  font-family: var(--mono, monospace);
+}

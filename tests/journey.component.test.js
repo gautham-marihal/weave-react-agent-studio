@@ -11,8 +11,22 @@ const show = (tab, props = {}) => mountScreen('journey', {}, { props: { tab, ...
 test('the tabs are in four stages, each naming its question, and every old tab is still a button', async () => {
   const app = await show('config');
   const stages = $$(app.container, '.stStage');
-  assert.deepEqual(stages.map((s) => s.getAttribute('data-stage')), ['build', 'test', 'release', 'monitor']);
-  assert.deepEqual($$(app.container, '.stStageTabs button').map(textOf), ['Describe', 'Config', 'Workflow', 'Knowledge', 'Test', 'Scenarios', 'Checks', 'Versions', 'Deploy', 'Calls']);
+  assert.deepEqual(
+    stages.map((s) => s.getAttribute('data-stage')),
+    ['build', 'test', 'release', 'monitor'],
+  );
+  assert.deepEqual($$(app.container, '.stStageTabs button').map(textOf), [
+    'Describe',
+    'Config',
+    'Workflow',
+    'Knowledge',
+    'Test',
+    'Scenarios',
+    'Checks',
+    'Versions',
+    'Deploy',
+    'Calls',
+  ]);
   assert.match(stages[0].getAttribute('aria-label'), /^Build: What is it, and what can it do\?$/);
   assert.equal($$(app.container, '.stStage.current').length, 1);
   assert.equal($(app.container, '.stStage.current').getAttribute('data-stage'), 'build');
@@ -39,7 +53,11 @@ test('pressing a tab goes to it, and "Next" walks from Build to Monitor and then
     const here = await show(tab);
     walked.push(tab);
     const next = $(here.container, '.stNext .primaryCta');
-    if (!next) { assert.match(textOf($(here.container, '.stNext')), /That is the whole path/); await here.unmount(); break; }
+    if (!next) {
+      assert.match(textOf($(here.container, '.stNext')), /That is the whole path/);
+      await here.unmount();
+      break;
+    }
     await a.click(next);
     tab = window.location.hash.split('/').pop();
     await here.unmount();

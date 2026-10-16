@@ -9,7 +9,11 @@ export function shareStructure(previous, next) {
   if (previous === next) return next;
   if (Array.isArray(next) && Array.isArray(previous)) {
     let same = previous.length === next.length;
-    const out = next.map((item, i) => { const shared = shareStructure(previous[i], item); if (shared !== previous[i]) same = false; return shared; });
+    const out = next.map((item, i) => {
+      const shared = shareStructure(previous[i], item);
+      if (shared !== previous[i]) same = false;
+      return shared;
+    });
     return same ? previous : out;
   }
   if (isObj(next) && isObj(previous)) {

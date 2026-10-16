@@ -19,18 +19,45 @@ export function createMockApi() {
     const method = req.method();
     log.push(`${method} ${url.pathname.replace(/^\/api/, '')}`);
     let body;
-    if (method !== 'GET') { try { body = req.postDataJSON() || {}; } catch { body = {}; } }
+    if (method !== 'GET') {
+      try {
+        body = req.postDataJSON() || {};
+      } catch {
+        body = {};
+      }
+    }
     const session = /^\/bots\/([^/]+)\/sessions$/.exec(url.pathname.replace(/^\/api/, ''));
     if (session && method === 'POST') {
       const exists = await demo.handle('GET', `/bots/${session[1]}`);
       if (exists.status !== 200) return route.fulfill(json(exists.body, exists.status));
-      return route.fulfill(json({ livekit_url: 'wss://fake.example', token: 'fake-token-for-the-e2e-run', room: `test-${session[1]}-1`, identity: 'tester', expires_in_s: 900, bot: session[1], ref: body.ref || 'draft', version: 'draft', channel: { id: 'web-chat', type: 'web_chat', input: ['text'], output: ['text'] } }, 201));
+      return route.fulfill(
+        json(
+          {
+            livekit_url: 'wss://fake.example',
+            token: 'fake-token-for-the-e2e-run',
+            room: `test-${session[1]}-1`,
+            identity: 'tester',
+            expires_in_s: 900,
+            bot: session[1],
+            ref: body.ref || 'draft',
+            version: 'draft',
+            channel: { id: 'web-chat', type: 'web_chat', input: ['text'], output: ['text'] },
+          },
+          201,
+        ),
+      );
     }
     const answer = await demo.handle(method, path, body);
     return route.fulfill(json(answer.body, answer.status));
   }
 
   // what the fake holds, for assertions
-  const bots = { get: async (id) => { const draft = await demo.handle('GET', `/bots/${id}/draft`); const summary = await demo.handle('GET', `/bots/${id}`); return draft.status === 200 ? { config: draft.body.config, deployed: summary.body.deployed, revision: draft.body.revision } : undefined; } };
+  const bots = {
+    get: async (id) => {
+      const draft = await demo.handle('GET', `/bots/${id}/draft`);
+      const summary = await demo.handle('GET', `/bots/${id}`);
+      return draft.status === 200 ? { config: draft.body.config, deployed: summary.body.deployed, revision: draft.body.revision } : undefined;
+    },
+  };
   return { handle, bots, log };
 }

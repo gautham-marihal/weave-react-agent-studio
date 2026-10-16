@@ -8,25 +8,47 @@ export function deepEqual(a, b) {
   if (a === b) return true;
   if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object') return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
-  const ak = Object.keys(a); const bk = Object.keys(b);
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
   return ak.length === bk.length && ak.every((k) => deepEqual(a[k], b[k]));
 }
 
 export const humanize = (key) => {
-  const text = String(key).replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim();
+  const text = String(key)
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .trim();
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
 // Names for the branches of the schema's unions where the schema itself gives none.
 const BRANCH_LABELS = {
-  state: 'State variable', arg: 'Tool argument', result: 'Tool result', event: 'Event detail', channel: 'Channel',
-  schedule: 'Business hours', all: 'All of', any: 'Any of', not: 'Not', message: 'Message', secret: 'Secret', lookup: 'Lookup by state',
-  file: 'File', url: 'Web address', from: 'Source', task: 'Task', server: 'MCP server',
+  state: 'State variable',
+  arg: 'Tool argument',
+  result: 'Tool result',
+  event: 'Event detail',
+  channel: 'Channel',
+  schedule: 'Business hours',
+  all: 'All of',
+  any: 'Any of',
+  not: 'Not',
+  message: 'Message',
+  secret: 'Secret',
+  lookup: 'Lookup by state',
+  file: 'File',
+  url: 'Web address',
+  from: 'Source',
+  task: 'Task',
+  server: 'MCP server',
 };
 
 export function createEngine(root) {
   const pointer = (ref) => {
-    const parts = ref.replace(/^#\/?/, '').split('/').filter(Boolean).map((p) => decodeURIComponent(p).replace(/~1/g, '/').replace(/~0/g, '~'));
+    const parts = ref
+      .replace(/^#\/?/, '')
+      .split('/')
+      .filter(Boolean)
+      .map((p) => decodeURIComponent(p).replace(/~1/g, '/').replace(/~0/g, '~'));
     let node = root;
     for (const part of parts) node = node?.[part];
     return node;
@@ -45,7 +67,8 @@ export function createEngine(root) {
   }
 
   function mergePair(a, b) {
-    const A = deref(a); const B = deref(b);
+    const A = deref(a);
+    const B = deref(b);
     const out = { ...A, ...B };
     if (A.properties || B.properties) out.properties = mergeProps(A.properties || {}, B.properties || {});
     if (A.required || B.required) out.required = union(A.required, B.required);
@@ -57,7 +80,24 @@ export function createEngine(root) {
     return out;
   }
 
-  const INHERITED = ['type', 'additionalProperties', 'unevaluatedProperties', 'propertyNames', 'items', 'enum', 'const', 'title', 'description', 'x-ui', 'x-ref', 'minimum', 'maximum', 'minLength', 'pattern', 'format'];
+  const INHERITED = [
+    'type',
+    'additionalProperties',
+    'unevaluatedProperties',
+    'propertyNames',
+    'items',
+    'enum',
+    'const',
+    'title',
+    'description',
+    'x-ui',
+    'x-ref',
+    'minimum',
+    'maximum',
+    'minLength',
+    'pattern',
+    'format',
+  ];
 
   // One flat description of a schema: $ref followed, allOf folded in, if/then collected (not yet applied).
   // Results are cached by schema object (the schema never changes while the editor is open) and must be
@@ -78,7 +118,10 @@ export function createEngine(root) {
     const s = deref(schema);
     if (depth > 24) throw new Error('allOf nesting too deep');
     const out = { ...s };
-    delete out.allOf; delete out.if; delete out.then; delete out.else;
+    delete out.allOf;
+    delete out.if;
+    delete out.then;
+    delete out.else;
     out.properties = { ...(s.properties || {}) };
     out.required = [...(s.required || [])];
     out.conds = [];
@@ -107,13 +150,22 @@ export function createEngine(root) {
     return out;
   }
 
-  const typeOk = (type, value) => (type === 'string' ? typeof value === 'string'
-    : type === 'number' ? typeof value === 'number'
-      : type === 'integer' ? Number.isInteger(value)
-        : type === 'boolean' ? typeof value === 'boolean'
-          : type === 'null' ? value === null
-            : type === 'array' ? Array.isArray(value)
-              : type === 'object' ? isObj(value) : true);
+  const typeOk = (type, value) =>
+    type === 'string'
+      ? typeof value === 'string'
+      : type === 'number'
+        ? typeof value === 'number'
+        : type === 'integer'
+          ? Number.isInteger(value)
+          : type === 'boolean'
+            ? typeof value === 'boolean'
+            : type === 'null'
+              ? value === null
+              : type === 'array'
+                ? Array.isArray(value)
+                : type === 'object'
+                  ? isObj(value)
+                  : true;
 
   // Does `value` satisfy `schema`? Covers the keywords that decide a oneOf branch (type, const, enum,
   // required, properties, additionalProperties/unevaluatedProperties false, nested oneOf); ignores the rest.
@@ -122,12 +174,14 @@ export function createEngine(root) {
     const s = resolveShape(schema, value);
     if (s.const !== undefined && !deepEqual(s.const, value)) return false;
     if (s.enum && !s.enum.some((item) => deepEqual(item, value))) return false;
-    if (s.type && !([].concat(s.type)).some((type) => typeOk(type, value))) return false;
+    if (s.type && ![].concat(s.type).some((type) => typeOk(type, value))) return false;
     if (isObj(value)) {
       if (s.required.some((key) => !(key in value))) return false;
       const closed = s.additionalProperties === false || s.unevaluatedProperties === false;
       for (const [key, item] of Object.entries(value)) {
-        if (key in s.properties) { if (!fits(s.properties[key], item, depth + 1)) return false; } else if (closed) return false;
+        if (key in s.properties) {
+          if (!fits(s.properties[key], item, depth + 1)) return false;
+        } else if (closed) return false;
       }
     }
     if (Array.isArray(value) && s.items && value.some((item) => !fits(s.items, item, depth + 1))) return false;
@@ -136,7 +190,9 @@ export function createEngine(root) {
   }
 
   // A oneOf whose branches are themselves oneOfs (recipients -> lookupValue) is listed as one flat set.
-  function isPureUnion(f) { return !!f.oneOf && !f.type && !Object.keys(f.properties).length && f.const === undefined && !f.enum; }
+  function isPureUnion(f) {
+    return !!f.oneOf && !f.type && !Object.keys(f.properties).length && f.const === undefined && !f.enum;
+  }
   const branchCache = new WeakMap();
   function branchesOf(shape) {
     const cached = isObj(shape) ? branchCache.get(shape) : null;
@@ -144,7 +200,8 @@ export function createEngine(root) {
     const out = [];
     for (const branch of shape.oneOf || []) {
       const f = flatten(branch);
-      if (isPureUnion(f)) out.push(...branchesOf(f)); else out.push(branch);
+      if (isPureUnion(f)) out.push(...branchesOf(f));
+      else out.push(branch);
     }
     if (isObj(shape)) branchCache.set(shape, out);
     return out;
@@ -153,10 +210,13 @@ export function createEngine(root) {
   function score(schema, value) {
     const s = resolveShape(schema, value);
     let points = 0;
-    if (s.type && ([].concat(s.type)).some((type) => typeOk(type, value))) points += 2;
+    if (s.type && [].concat(s.type).some((type) => typeOk(type, value))) points += 2;
     if (isObj(value)) {
       for (const [key, item] of Object.entries(value)) {
-        if (!(key in s.properties)) { points -= 1; continue; }
+        if (!(key in s.properties)) {
+          points -= 1;
+          continue;
+        }
         const sub = flatten(s.properties[key]);
         points += sub.const !== undefined ? (deepEqual(sub.const, item) ? 4 : -10) : 1;
       }
@@ -167,8 +227,15 @@ export function createEngine(root) {
 
   function pickBranch(branches, value) {
     for (let i = 0; i < branches.length; i += 1) if (fits(branches[i], value)) return i;
-    let best = 0; let bestScore = -Infinity;
-    branches.forEach((branch, i) => { const points = score(branch, value); if (points > bestScore) { best = i; bestScore = points; } });
+    let best = 0;
+    let bestScore = -Infinity;
+    branches.forEach((branch, i) => {
+      const points = score(branch, value);
+      if (points > bestScore) {
+        best = i;
+        bestScore = points;
+      }
+    });
     return best;
   }
 
@@ -221,7 +288,10 @@ export function createEngine(root) {
     if (s.default !== undefined) return JSON.parse(JSON.stringify(s.default));
     const kind = kindOf(s);
     if (kind === 'enum') return s.enum[0];
-    if (kind === 'union') { const branches = branchesOf(s); return branches.length ? defaultFor(branches[0], depth + 1) : null; }
+    if (kind === 'union') {
+      const branches = branchesOf(s);
+      return branches.length ? defaultFor(branches[0], depth + 1) : null;
+    }
     if (kind === 'string' || kind === 'ref' || kind === 'secret') {
       if (kind === 'secret') return { secret: '' };
       return '';
@@ -252,7 +322,10 @@ export function collectRefOptions(config) {
   const c = isObj(config) ? config : {};
   const ids = (list) => (Array.isArray(list) ? list.map((item) => item?.id).filter((id) => typeof id === 'string') : []);
   const keys = (object) => (isObj(object) ? Object.keys(object) : []);
-  const connectionsOfType = (type) => Object.entries(isObj(c.connections) ? c.connections : {}).filter(([, v]) => v?.type === type).map(([k]) => k);
+  const connectionsOfType = (type) =>
+    Object.entries(isObj(c.connections) ? c.connections : {})
+      .filter(([, v]) => v?.type === type)
+      .map(([k]) => k);
   const handoffTools = (c.agents?.items || []).flatMap((agent) => (agent?.handoffs || []).map((h) => h?.tool)).filter((t) => typeof t === 'string');
   return {
     agents: ids(c.agents?.items),

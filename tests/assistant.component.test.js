@@ -14,32 +14,62 @@ function serve({ configured = true, answers, errors = () => [] }) {
   const calls = { status: 0, messages: [], validate: 0 };
   globalThis.fetch = async (url, init) => {
     const u = String(url);
-    if (u.endsWith('/llm/status')) { calls.status += 1; return new Response(JSON.stringify({ configured, model: 'claude-sonnet-5-5', models: ['claude-sonnet-5-5', 'claude-opus-5-5'] }), { status: 200, headers: { 'content-type': 'application/json' } }); }
+    if (u.endsWith('/llm/status')) {
+      calls.status += 1;
+      return new Response(JSON.stringify({ configured, model: 'claude-sonnet-5-5', models: ['claude-sonnet-5-5', 'claude-opus-5-5'] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
     if (u.endsWith('/llm/v1/messages')) {
-      const body = JSON.parse(init.body); calls.messages.push(body);
+      const body = JSON.parse(init.body);
+      calls.messages.push(body);
       const out = answers.shift();
       if (out instanceof Error) throw out;
       if (typeof out === 'number') return new Response(JSON.stringify({ error: 'x' }), { status: out });
       return new Response(JSON.stringify(out(body)), { status: 200, headers: { 'content-type': 'application/json' } });
     }
-    if (u.endsWith('/validate')) { calls.validate += 1; const body = JSON.parse(init.body); return new Response(JSON.stringify({ valid: true, errors: errors(body), warnings: [] }), { status: 200, headers: { 'content-type': 'application/json' } }); }
+    if (u.endsWith('/validate')) {
+      calls.validate += 1;
+      const body = JSON.parse(init.body);
+      return new Response(JSON.stringify({ valid: true, errors: errors(body), warnings: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
     return realFetch(url, init);
   };
   return calls;
 }
-const reply = (mutate, extra = {}) => (body) => {
-  const text = body.messages[0].content;
-  const current = JSON.parse(text.split('CURRENT DRAFT (edit this; keep what the request does not touch):\n')[1].split('\n\nREQUEST:')[0]);
-  const config = JSON.parse(JSON.stringify(current)); mutate(config);
-  return { content: [{ type: 'tool_use', id: 'tu', name: 'submit_config', input: { config, summary: 'Made it formal.', assumptions: ['English only.'], questions: ['Opening hours?'], ...extra } }], usage: { input_tokens: 2100, output_tokens: 300 } };
-};
+const reply =
+  (mutate, extra = {}) =>
+  (body) => {
+    const text = body.messages[0].content;
+    const current = JSON.parse(text.split('CURRENT DRAFT (edit this; keep what the request does not touch):\n')[1].split('\n\nREQUEST:')[0]);
+    const config = JSON.parse(JSON.stringify(current));
+    mutate(config);
+    return {
+      content: [
+        {
+          type: 'tool_use',
+          id: 'tu',
+          name: 'submit_config',
+          input: { config, summary: 'Made it formal.', assumptions: ['English only.'], questions: ['Opening hours?'], ...extra },
+        },
+      ],
+      usage: { input_tokens: 2100, output_tokens: 300 },
+    };
+  };
 const mount = (config = minimalConfig('acme', 'Acme')) => mountScreen('assistant', config, { ready: '.asTab' });
-const settle = async (app, ms = 60) => { await app.wait(ms); };
+const settle = async (app, ms = 60) => {
+  await app.wait(ms);
+};
 
 test('with no AI set up the built-in rules are offered and called what they are; the first use of the AI asks before anything is sent', async () => {
   window.localStorage.clear();
   const calls = serve({ configured: false, answers: [] });
-  let app = await mount(); await settle(app);
+  let app = await mount();
+  await settle(app);
   assert.match(textOf($(app.container, '.asEngine')), /Built-in rules, not AI/);
   assert.match(textOf($(app.container, '.asTab')), /No AI model is set up on this server/);
   assert.match(textOf($(app.container, '.asTab')), /ANTHROPIC_API_KEY/);
@@ -48,7 +78,8 @@ test('with no AI set up the built-in rules are offered and called what they are;
   await app.unmount();
 
   serve({ configured: true, answers: [] });
-  app = await mount(); await settle(app);
+  app = await mount();
+  await settle(app);
   assert.match(textOf($(app.container, '.asEngine')), /AI/);
   assert.match(textOf($(app.container, '.asTab')), /Before you use the AI/);
   await a.type($(app.container, '#as-input'), 'Make it formal please');
@@ -61,10 +92,18 @@ test('with no AI set up the built-in rules are offered and called what they are;
 });
 
 test('a request is sent with the draft, the answer is checked and shown as a proposal, nothing is in the draft until Apply, and Undo puts it back', async () => {
-  window.localStorage.clear(); window.localStorage.setItem('weave_ai_consent', '1');
+  window.localStorage.clear();
+  window.localStorage.setItem('weave_ai_consent', '1');
   const base = minimalConfig('acme', 'Acme');
-  const calls = serve({ answers: [reply((c) => { c.persona.tone = 'formal and calm'; })] });
-  const app = await mount(base); await settle(app);
+  const calls = serve({
+    answers: [
+      reply((c) => {
+        c.persona.tone = 'formal and calm';
+      }),
+    ],
+  });
+  const app = await mount(base);
+  await settle(app);
   await a.type($(app.container, '#as-input'), 'Make it more formal and calm.');
   await a.click(byText(app.container, 'button', /Build it/));
   for (let i = 0; i < 40 && !$(app.container, '.asBot:not(.working)'); i += 1) await settle(app, 25);
@@ -90,7 +129,11 @@ test('a request is sent with the draft, the answer is checked and shown as a pro
   assert.match(done, /It is now in/i);
   assert.match(done, /Settings\s*Personality/, 'it says which parts of the settings changed');
   assert.match(done, /Workflow\s*1 agent, 0 hand-overs/, 'and what the Workflow now shows');
-  assert.ok(byText($(app.container, '.asWhere'), 'button', 'Open in All settings') && byText($(app.container, '.asWhere'), 'button', 'Open in JSON') && byText($(app.container, '.asWhere'), 'button', 'See the workflow'));
+  assert.ok(
+    byText($(app.container, '.asWhere'), 'button', 'Open in All settings') &&
+      byText($(app.container, '.asWhere'), 'button', 'Open in JSON') &&
+      byText($(app.container, '.asWhere'), 'button', 'See the workflow'),
+  );
   const ledger = textOf($(app.container, '.asAside'));
   assert.match(ledger, /Changes made here/);
   assert.match(ledger, /Make it more formal and calm\./, 'and the side panel keeps a running list of what was changed and why');
@@ -104,12 +147,28 @@ test('a request is sent with the draft, the answer is checked and shown as a pro
 });
 
 test('problems the checker finds are handed back to the AI; what remains is shown, not hidden; failures of the call are said in words; Not this changes nothing', async () => {
-  window.localStorage.clear(); window.localStorage.setItem('weave_ai_consent', '1');
+  window.localStorage.clear();
+  window.localStorage.setItem('weave_ai_consent', '1');
   const base = minimalConfig('acme', 'Acme');
   let first = true;
-  const calls = serve({ answers: [reply((c) => { c.agents.entry = 'nobody'; }), reply((c) => { c.agents.entry = 'nobody'; }), reply((c) => { c.agents.entry = 'nobody'; }), 503, new Error('offline')],
-    errors: (c) => (c.agents.entry === 'nobody' ? [{ path: ['agents', 'entry'], message: 'unknown agent' }] : []) });
-  const app = await mount(base); await settle(app);
+  const calls = serve({
+    answers: [
+      reply((c) => {
+        c.agents.entry = 'nobody';
+      }),
+      reply((c) => {
+        c.agents.entry = 'nobody';
+      }),
+      reply((c) => {
+        c.agents.entry = 'nobody';
+      }),
+      503,
+      new Error('offline'),
+    ],
+    errors: (c) => (c.agents.entry === 'nobody' ? [{ path: ['agents', 'entry'], message: 'unknown agent' }] : []),
+  });
+  const app = await mount(base);
+  await settle(app);
   await a.type($(app.container, '#as-input'), 'Break it');
   await a.click(byText(app.container, 'button', /Build it/));
   for (let i = 0; i < 60 && !$(app.container, '.asBot:not(.working)'); i += 1) await settle(app, 25);
@@ -138,7 +197,8 @@ test('the built-in rules make a first draft that says it replaces the draft, and
   window.localStorage.clear();
   serve({ configured: false, answers: [] });
   const base = minimalConfig('acme', 'Acme');
-  const app = await mount(base); await settle(app);
+  const app = await mount(base);
+  await settle(app);
   await a.click($$(app.container, '.asExamples button')[0]);
   await a.click(byText(app.container, 'button', /Make a first draft/));
   for (let i = 0; i < 40 && !$(app.container, '.asBot:not(.working)'); i += 1) await settle(app, 25);

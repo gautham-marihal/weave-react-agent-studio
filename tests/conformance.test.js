@@ -28,14 +28,20 @@ const idsOf = (config, collection) => {
 // pointers whose value is not an id that exists (a "dangling" pointer)
 function dangling(config) {
   const options = collectRefOptions(config);
-  return allReferences(engine, config).filter((hit) => hit.type === 'value' && typeof hit.value === 'string' && hit.value && !(options[hit.collection] || []).includes(hit.value)).map((hit) => `${hit.path.join('.')} -> ${hit.value}`);
+  return allReferences(engine, config)
+    .filter((hit) => hit.type === 'value' && typeof hit.value === 'string' && hit.value && !(options[hit.collection] || []).includes(hit.value))
+    .map((hit) => `${hit.path.join('.')} -> ${hit.value}`);
 }
 
 const serverEnv = readEnv();
 const askServer = process.env.CONFORMANCE_SERVER === '1';
 async function validate(config) {
   const base = (serverEnv.AGENT_BUILDER_URL || 'http://localhost:8100').replace(/\/$/, '');
-  const response = await fetch(`${base}/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(serverEnv.AGENT_BUILDER_API_KEY ? { Authorization: `Bearer ${serverEnv.AGENT_BUILDER_API_KEY}` } : {}) }, body: JSON.stringify(config) });
+  const response = await fetch(`${base}/validate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(serverEnv.AGENT_BUILDER_API_KEY ? { Authorization: `Bearer ${serverEnv.AGENT_BUILDER_API_KEY}` } : {}) },
+    body: JSON.stringify(config),
+  });
   if (!response.ok && response.status !== 422) throw new Error(`POST /validate answered ${response.status}`);
   return response.json();
 }
@@ -67,21 +73,37 @@ test('the corpus has the shapes the review found trouble with: HTTP tools, hando
   const all = entries.map((e) => e.config);
   const kinds = new Set(all.flatMap((c) => (c.tools || []).map((t) => t.type)));
   ['http', 'builtin'].forEach((k) => assert.ok(kinds.has(k), `a corpus tool of kind ${k}`));
-  assert.ok(all.some((c) => (c.tools || []).length >= 30), 'a config with 30 or more tools');
-  assert.ok(all.some((c) => (c.agents?.items || []).length >= 6), 'a config with several agents');
-  assert.ok(all.some((c) => (c.channels || []).length >= 5), 'a config with every kind of channel');
+  assert.ok(
+    all.some((c) => (c.tools || []).length >= 30),
+    'a config with 30 or more tools',
+  );
+  assert.ok(
+    all.some((c) => (c.agents?.items || []).length >= 6),
+    'a config with several agents',
+  );
+  assert.ok(
+    all.some((c) => (c.channels || []).length >= 5),
+    'a config with every kind of channel',
+  );
   assert.ok(entries.length >= 10);
 });
 
-test('the server agrees with the corpus: what is called valid is valid, and a rename never makes it worse', { skip: !askServer && 'set CONFORMANCE_SERVER=1 (and point AGENT_BUILDER_URL at an API) to ask the server' }, async () => {
-  for (const entry of entries.filter((e) => e.valid)) {
-    const report = await validate(entry.config);
-    assert.equal(report.valid, true, `${entry.name}: the server says it is not valid: ${JSON.stringify((report.errors || []).slice(0, 3))}`);
-    const collection = Object.keys(COLLECTIONS).find((c) => idsOf(entry.config, c).length > 0);
-    if (!collection) continue;
-    const id = idsOf(entry.config, collection)[0];
-    const next = renameEverywhere(engine, clone(entry.config), collection, id, `${id}_renamed`);
-    const after = await validate(next);
-    assert.ok((after.errors || []).length <= (report.errors || []).length, `${entry.name}: renaming ${collection} “${id}” added errors: ${JSON.stringify((after.errors || []).slice(0, 3))}`);
-  }
-});
+test(
+  'the server agrees with the corpus: what is called valid is valid, and a rename never makes it worse',
+  { skip: !askServer && 'set CONFORMANCE_SERVER=1 (and point AGENT_BUILDER_URL at an API) to ask the server' },
+  async () => {
+    for (const entry of entries.filter((e) => e.valid)) {
+      const report = await validate(entry.config);
+      assert.equal(report.valid, true, `${entry.name}: the server says it is not valid: ${JSON.stringify((report.errors || []).slice(0, 3))}`);
+      const collection = Object.keys(COLLECTIONS).find((c) => idsOf(entry.config, c).length > 0);
+      if (!collection) continue;
+      const id = idsOf(entry.config, collection)[0];
+      const next = renameEverywhere(engine, clone(entry.config), collection, id, `${id}_renamed`);
+      const after = await validate(next);
+      assert.ok(
+        (after.errors || []).length <= (report.errors || []).length,
+        `${entry.name}: renaming ${collection} “${id}” added errors: ${JSON.stringify((after.errors || []).slice(0, 3))}`,
+      );
+    }
+  },
+);

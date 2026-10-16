@@ -1,11 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_TEMPLATES, applyTemplate, deleteTemplate, loadTemplates, parseTemplateFile, saveTemplate, templateFileName, templateToFile, toTemplateConfig } from '../src/studio/savedTemplates.js';
+import {
+  MAX_TEMPLATES,
+  applyTemplate,
+  deleteTemplate,
+  loadTemplates,
+  parseTemplateFile,
+  saveTemplate,
+  templateFileName,
+  templateToFile,
+  toTemplateConfig,
+} from '../src/studio/savedTemplates.js';
 import { applyStarter } from '../src/studio/starters.js';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
 
-const memory = () => { const data = new Map(); return { getItem: (k) => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, String(v)), removeItem: (k) => data.delete(k) }; };
-const acme = () => ({ ...applyStarter(minimalConfig('acme-support', 'Acme Support'), 'support'), meta: { id: 'acme-support', name: 'Acme Support', version: '0.4.2', status: 'published', created_at: 'x', updated_at: 'y', tags: ['care'], owner: 'team-a', description: 'Care' } });
+const memory = () => {
+  const data = new Map();
+  return { getItem: (k) => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, String(v)), removeItem: (k) => data.delete(k) };
+};
+const acme = () => ({
+  ...applyStarter(minimalConfig('acme-support', 'Acme Support'), 'support'),
+  meta: {
+    id: 'acme-support',
+    name: 'Acme Support',
+    version: '0.4.2',
+    status: 'published',
+    created_at: 'x',
+    updated_at: 'y',
+    tags: ['care'],
+    owner: 'team-a',
+    description: 'Care',
+  },
+});
 
 test('a template keeps everything that makes an agent what it is and nothing that makes it THIS agent', () => {
   const config = acme();
@@ -25,14 +51,40 @@ test('templates are saved newest first with unique ids, listed, and removed', ()
   assert.equal(one.template.id, 'clinic-front-desk');
   const two = saveTemplate({ name: 'Clinic front desk', config: acme() }, store);
   assert.equal(two.template.id, 'clinic-front-desk-2', 'the same name does not overwrite');
-  assert.deepEqual(loadTemplates(store).map((t) => t.id), ['clinic-front-desk-2', 'clinic-front-desk'], 'newest first');
+  assert.deepEqual(
+    loadTemplates(store).map((t) => t.id),
+    ['clinic-front-desk-2', 'clinic-front-desk'],
+    'newest first',
+  );
   assert.equal(loadTemplates(store)[1].description, 'For clinics');
-  assert.deepEqual(deleteTemplate('clinic-front-desk-2', store).map((t) => t.id), ['clinic-front-desk']);
+  assert.deepEqual(
+    deleteTemplate('clinic-front-desk-2', store).map((t) => t.id),
+    ['clinic-front-desk'],
+  );
   assert.equal(loadTemplates(store).length, 1);
   for (let i = 0; i < MAX_TEMPLATES + 5; i += 1) saveTemplate({ name: `t${i}`, config: acme() }, store);
   assert.equal(loadTemplates(store).length, MAX_TEMPLATES, 'a few dozen at most');
-  assert.equal(saveTemplate({ name: 'x', config: acme() }, { getItem: () => null, setItem: () => { throw new Error('full'); } }).saved, false, 'a full or disabled storage is reported, not hidden');
-  assert.deepEqual(loadTemplates({ getItem: () => { throw new Error('no storage'); } }), []);
+  assert.equal(
+    saveTemplate(
+      { name: 'x', config: acme() },
+      {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('full');
+        },
+      },
+    ).saved,
+    false,
+    'a full or disabled storage is reported, not hidden',
+  );
+  assert.deepEqual(
+    loadTemplates({
+      getItem: () => {
+        throw new Error('no storage');
+      },
+    }),
+    [],
+  );
   assert.deepEqual(loadTemplates({ getItem: () => '{"not":"a list"}' }), []);
   assert.deepEqual(loadTemplates({ getItem: () => 'not json' }), []);
 });

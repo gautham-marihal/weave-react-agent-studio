@@ -13,16 +13,29 @@ after(() => teardownDom());
 const agent = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
 const simple = (config = agent(), options = {}) => mountScreen('simple', config, { ready: '.smView', ...options });
 const card = (app, id) => $(app.container, `[data-card=${id}]`);
-const openCard = async (app, id) => { if (!$(card(app, id), '.smBody')) await a.click($(card(app, id), '.smHead')); return card(app, id); };
+const openCard = async (app, id) => {
+  if (!$(card(app, id), '.smBody')) await a.click($(card(app, id), '.smHead'));
+  return card(app, id);
+};
 
 // ---------------------------------------------------------------- Simple
 
 test('the Simple view is a few cards in the customer’s words, the first open, each saying in one line what it holds', async () => {
   window.localStorage.clear();
   const app = await simple();
-  assert.deepEqual($$(app.container, '.smCard h3 strong').map(textOf), ['Personality and instructions', 'Voice and language', 'AI model', 'What it can do', 'Where it is available', 'Call records']);
+  assert.deepEqual($$(app.container, '.smCard h3 strong').map(textOf), [
+    'Personality and instructions',
+    'Voice and language',
+    'AI model',
+    'What it can do',
+    'Where it is available',
+    'Call records',
+  ]);
   const heads = $$(app.container, '.smHead');
-  assert.deepEqual(heads.map((h) => h.getAttribute('aria-expanded')), ['true', 'false', 'false', 'false', 'false', 'false']);
+  assert.deepEqual(
+    heads.map((h) => h.getAttribute('aria-expanded')),
+    ['true', 'false', 'false', 'false', 'false', 'false'],
+  );
   assert.match(textOf($(card(app, 'where'), '.smTitle small')), /Web chat · 1 transfer/);
   assert.match(textOf($(card(app, 'records'), '.smTitle small')), /^Call log kept$/);
   assert.match(textOf($(card(app, 'model'), '.smTitle small')), /STT: none · LLM: OpenAI gpt-4\.1-mini · TTS: none/);
@@ -40,13 +53,24 @@ test('Simple: Technical names shows where each setting sits in the file (the rea
   const app = await simple();
   assert.equal($$(app.container, '.stFTech').length, 0, 'off by default: plain words only');
   window.localStorage.setItem('weave_tech_names', '1');
-  await act(async () => { window.dispatchEvent(new window.Event('storage')); });
+  await act(async () => {
+    window.dispatchEvent(new window.Event('storage'));
+  });
   const paths = $$(app.container, '.smFields .stFTech').map((el) => `${textOf($(el, '.stFKeyHead') || { textContent: '' })}${textOf($(el, '.stFKey'))}`);
-  for (const expected of ['meta.name', 'persona.tone', 'persona.style_rules']) assert.ok(paths.includes(expected), `${expected} is shown (${paths.join(', ')})`);
-  assert.ok(paths.some((p) => /^agents\.items\[\d+\]\.instructions\.role$/.test(p)), 'the role is at the entry agent');
-  assert.ok($$(app.container, '.smFields .stFTech button').some((b) => /^Copy path$/.test(textOf(b))), 'a path can be copied');
+  for (const expected of ['meta.name', 'persona.tone', 'persona.style_rules'])
+    assert.ok(paths.includes(expected), `${expected} is shown (${paths.join(', ')})`);
+  assert.ok(
+    paths.some((p) => /^agents\.items\[\d+\]\.instructions\.role$/.test(p)),
+    'the role is at the entry agent',
+  );
+  assert.ok(
+    $$(app.container, '.smFields .stFTech button').some((b) => /^Copy path$/.test(textOf(b))),
+    'a path can be copied',
+  );
   window.localStorage.setItem('weave_tech_names', '0');
-  await act(async () => { window.dispatchEvent(new window.Event('storage')); });
+  await act(async () => {
+    window.dispatchEvent(new window.Event('storage'));
+  });
   assert.equal($$(app.container, '.stFTech').length, 0, 'off again: they are gone');
   await app.unmount();
 });
@@ -63,18 +87,27 @@ test('Simple: a panel takes the keyboard in, keeps Tab inside it, closes on Esca
   assert.ok(window.document.activeElement === $(body(), '.smClose'), 'the keyboard moves into the panel');
   // Shift+Tab from the first control goes to the last one, and Tab from the last to the first: it does not leave the panel
   const items = [...body().querySelectorAll('button, input, select, textarea, [tabindex]')].filter((el) => !el.disabled && el.tabIndex >= 0);
-  const tab = (shift) => act(async () => { window.document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey: shift, bubbles: true, cancelable: true })); });
+  const tab = (shift) =>
+    act(async () => {
+      window.document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey: shift, bubbles: true, cancelable: true }));
+    });
   items[0].focus();
   await tab(true);
   assert.ok(window.document.activeElement === items[items.length - 1], 'Shift+Tab from the first goes to the last');
   await tab(false);
   assert.ok(window.document.activeElement === items[0], 'Tab from the last goes to the first');
-  await act(async () => { window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); });
+  await act(async () => {
+    window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  });
   assert.equal(body(), null, 'Escape closes it');
   assert.ok(window.document.activeElement === $(card(app, 'voice'), '.smHead'), 'and the keyboard is back where it was');
   // an Escape that something inside already used (a list that was open) must not also close the panel
   await a.click($(card(app, 'voice'), '.smHead'));
-  await act(async () => { const e = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }); e.preventDefault(); window.document.dispatchEvent(e); });
+  await act(async () => {
+    const e = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    e.preventDefault();
+    window.document.dispatchEvent(e);
+  });
   assert.ok(body(), 'the panel stays when the Escape was already handled');
   await app.unmount();
 });
@@ -106,8 +139,14 @@ test('"Detailed settings" shows the ordinary form for just that part, and hides 
   const app = await simple();
   assert.equal($(app.container, '[data-detail=instructions]'), null);
   await a.click(byText(card(app, 'instructions'), 'button', 'Detailed settings'));
-  const chips = await (async () => { for (let i = 0; i < 50 && !$(app.container, '[data-detail=instructions] .stFChipBtn'); i += 1) await app.wait(10); return $$(app.container, '[data-detail=instructions] .stFChipBtn').map(textOf); })();
-  assert.deepEqual(chips.map((c) => c.replace(/\d+$/, '')), ['Personality and rules', 'Fixed lines', 'Agents', 'Things it remembers']);
+  const chips = await (async () => {
+    for (let i = 0; i < 50 && !$(app.container, '[data-detail=instructions] .stFChipBtn'); i += 1) await app.wait(10);
+    return $$(app.container, '[data-detail=instructions] .stFChipBtn').map(textOf);
+  })();
+  assert.deepEqual(
+    chips.map((c) => c.replace(/\d+$/, '')),
+    ['Personality and rules', 'Fixed lines', 'Agents', 'Things it remembers'],
+  );
   assert.equal($(app.container, '[data-detail=instructions] .stFNavGroups'), null, 'no group tabs: it is embedded');
   assert.equal($(app.container, '[data-detail=connections]'), null, 'other cards are untouched');
   await a.click(byText(card(app, 'instructions'), 'button', 'Hide detailed settings'));
@@ -135,12 +174,16 @@ test('Voice and language: a voice is chosen from its engine’s list; the record
   window.localStorage.clear();
   const config = agent();
   config.channels = [{ id: 'phone', type: 'sip_voice', enabled: true, modalities: { input: ['audio'], output: ['audio'] }, greeting: { say: 'Hi' } }];
-  config.defaults.models = { ...config.defaults.models, stt: { provider: 'deepgram', model: 'nova-3' }, tts: { provider: 'elevenlabs', model: 'eleven_turbo_v2_5', voice_id: '' } };
+  config.defaults.models = {
+    ...config.defaults.models,
+    stt: { provider: 'deepgram', model: 'nova-3' },
+    tts: { provider: 'elevenlabs', model: 'eleven_turbo_v2_5', voice_id: '' },
+  };
   const app = await simple(config);
   const records = await openCard(app, 'records');
   await a.type(byLabel(records, 'Recording notice'), 'Calls are recorded.');
   assert.equal(app.config.persona.disclosures.recording_notice, 'Calls are recorded.');
-  const voice = await openCard(app, 'voice');
+  await openCard(app, 'voice');
   const select = byLabel(card(app, 'voice'), 'Voice');
   const sarah = [...select.options].find((o) => /^Sarah/.test(o.text));
   assert.ok(sarah, 'ElevenLabs voices are offered');
@@ -212,7 +255,16 @@ test('Connections: a connection is added from the card, a bad address is refused
 
 test('a problem inside a card shows as a number on its title', async () => {
   window.localStorage.clear();
-  const report = { valid: false, errors: [{ path: ['defaults', 'models', 'llm', 'model'], message: 'needs a model' }, { path: ['tools', 0, 'description'], message: 'bad' }], warnings: [], unsupported: [], secrets_required: [] };
+  const report = {
+    valid: false,
+    errors: [
+      { path: ['defaults', 'models', 'llm', 'model'], message: 'needs a model' },
+      { path: ['tools', 0, 'description'], message: 'bad' },
+    ],
+    warnings: [],
+    unsupported: [],
+    secrets_required: [],
+  };
   const app = await simple(agent(), { report });
   assert.equal(textOf($(card(app, 'model'), '.stFBadge')), '1');
   assert.equal(textOf($(card(app, 'connections'), '.stFBadge')), '1');
@@ -224,7 +276,10 @@ test('a problem inside a card shows as a number on its title', async () => {
 // The tab talks to the API like the app does. These tests switch the app to demo mode, so the answers come from the imitation API
 // (src/demo), in the same shapes the real one uses; nothing here reaches a network.
 
-const demoStore = { load: () => JSON.parse(window.localStorage.getItem('weave_demo_state') || 'null'), save: (state) => window.localStorage.setItem('weave_demo_state', JSON.stringify(state)) };
+const demoStore = {
+  load: () => JSON.parse(window.localStorage.getItem('weave_demo_state') || 'null'),
+  save: (state) => window.localStorage.setItem('weave_demo_state', JSON.stringify(state)),
+};
 async function seedDemo(config) {
   window.localStorage.clear();
   window.localStorage.setItem('weave_demo', '1');
@@ -232,8 +287,14 @@ async function seedDemo(config) {
   await api.handle('POST', '/bots', { id: 'x', name: 'X' });
   await api.handle('PUT', '/bots/x/draft', { config: { ...config, meta: { ...config.meta, id: 'x' } } });
 }
-const scenarios = async (config = agent(), props = {}) => { await seedDemo(config); return mountScreen('scenarios', config, { ready: '.scTab', props: { pollMs: 40, ...props } }); };
-const until = async (app, check, tries = 80) => { for (let i = 0; i < tries && !check(); i += 1) await app.wait(60); return check(); };
+const scenarios = async (config = agent(), props = {}) => {
+  await seedDemo(config);
+  return mountScreen('scenarios', config, { ready: '.scTab', props: { pollMs: 40, ...props } });
+};
+const until = async (app, check, tries = 80) => {
+  for (let i = 0; i < tries && !check(); i += 1) await app.wait(60);
+  return check();
+};
 
 test('Scenarios: demo mode says runs are an imitation, and starts with an invitation', async () => {
   const app = await scenarios();
@@ -282,7 +343,10 @@ test('Scenarios: write one, it goes into the draft’s tests, run it, results ap
 });
 
 test('Scenarios: letting a run reach real systems is off by default, asks first, and says so on the Run button', async () => {
-  const config = { ...agent(), tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }], model_script: [{ say: 'hello' }] }] };
+  const config = {
+    ...agent(),
+    tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }], model_script: [{ say: 'hello' }] }],
+  };
   const app = await scenarios(config);
   await a.click($(app.container, '.scPaid summary'));
   const boxes = $$(app.container, '.scPaid input[type=checkbox]');
@@ -292,7 +356,10 @@ test('Scenarios: letting a run reach real systems is off by default, asks first,
   const realConfirm = window.confirm;
   const asked = [];
   try {
-    window.confirm = (text) => { asked.push(text); return false; };
+    window.confirm = (text) => {
+      asked.push(text);
+      return false;
+    };
     await a.check(boxes[2]);
     assert.equal(asked.length, 1);
     assert.match(asked[0], /real systems/);
@@ -304,7 +371,9 @@ test('Scenarios: letting a run reach real systems is off by default, asks first,
     assert.match(textOf($(app.container, '.scPaid summary')), /\(on\)/);
     await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
     assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/, 'switching it off takes the words away');
-  } finally { window.confirm = realConfirm; }
+  } finally {
+    window.confirm = realConfirm;
+  }
   await app.unmount();
 });
 
@@ -332,9 +401,18 @@ test('Scenarios: a scenario with mistakes isn’t added, and says what to fix; e
 test('Scenarios: pasted scenarios are added, bad ones reported', async () => {
   const app = await scenarios();
   await a.click(byText(app.container, 'button', 'Paste scenarios…'));
-  await a.type(byLabel(app.container, 'Scenarios as JSON'), JSON.stringify([{ id: 'good', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: 'x' }] }, { id: 'bad', channel: 'nope', turns: [], expect: [] }]));
+  await a.type(
+    byLabel(app.container, 'Scenarios as JSON'),
+    JSON.stringify([
+      { id: 'good', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: 'x' }] },
+      { id: 'bad', channel: 'nope', turns: [], expect: [] },
+    ]),
+  );
   await a.click(byText(app.container, 'button', 'Add them'));
-  assert.deepEqual(app.config.tests.map((s) => s.id), ['good']);
+  assert.deepEqual(
+    app.config.tests.map((s) => s.id),
+    ['good'],
+  );
   assert.match(textOf($(app.container, '.scImport [role=status]')), /Added 1 scenario/);
   assert.match(textOf($(app.container, '.scImport [role=status]')), /bad: .*no channel “nope”/);
   await app.unmount();
@@ -342,11 +420,21 @@ test('Scenarios: pasted scenarios are added, bad ones reported', async () => {
 
 // the review's own example: newer expectations, mocks, a clock, a script, and a kind the form has never heard of
 const rich = () => ({
-  id: 'a_hazard_reaches_the_emergency_line', description: 'A hazard goes straight to the emergency line.', channel: 'web-chat', now: '2026-10-14T03:00:00+08:00', state: { verified: true },
+  id: 'a_hazard_reaches_the_emergency_line',
+  description: 'A hazard goes straight to the emergency line.',
+  channel: 'web-chat',
+  now: '2026-10-14T03:00:00+08:00',
+  state: { verified: true },
   http_mocks: [{ method: 'GET', path: '/orders/*', json: { found: true } }],
   model_script: [{ tool: 'end_call' }, 'Goodbye.'],
   turns: [{ say: 'There is a gas leak' }],
-  expect: [{ tool_called_with: { tool: 'end_call', args: {} } }, { agent_is: 'assistant' }, { http_called: { method: 'GET', path: '/orders/*', times: 1 } }, { http_not_called: { method: 'POST', path: '/tickets' } }, { sentiment_is: 'calm' }],
+  expect: [
+    { tool_called_with: { tool: 'end_call', args: {} } },
+    { agent_is: 'assistant' },
+    { http_called: { method: 'GET', path: '/orders/*', times: 1 } },
+    { http_not_called: { method: 'POST', path: '/tickets' } },
+    { sentiment_is: 'calm' },
+  ],
 });
 
 test('Scenarios: a scenario with the newer fields opens in the form, every part is shown, and saving it keeps all of it', async () => {
@@ -376,9 +464,27 @@ test('Scenarios: a scenario with the newer fields opens in the form, every part 
 test('Scenarios: a run shows a request no mock answered, offers “Add a mock”, and the mock goes into the scenario', async () => {
   const config = agent();
   config.connections = { api: { type: 'http', base_url: 'https://api.example.com' } };
-  config.tools = [...(config.tools || []), { id: 'find_order', type: 'http', description: 'Looks up an order', connection: 'api', request: { method: 'GET', path: '/orders/{{args.order_id}}' }, parameters: { type: 'object', properties: { order_id: { type: 'string' } } } }];
+  config.tools = [
+    ...(config.tools || []),
+    {
+      id: 'find_order',
+      type: 'http',
+      description: 'Looks up an order',
+      connection: 'api',
+      request: { method: 'GET', path: '/orders/{{args.order_id}}' },
+      parameters: { type: 'object', properties: { order_id: { type: 'string' } } },
+    },
+  ];
   config.agents.items[0].tools = [...(config.agents.items[0].tools || []), 'find_order'];
-  config.tests = [{ id: 'lookup', channel: 'web-chat', model_script: [{ tool: 'find_order', args: { order_id: 'NB-1' } }, 'It shipped.'], turns: [{ say: 'Where is NB-1?' }], expect: [{ http_called: { method: 'GET', path: '/orders/*' } }] }];
+  config.tests = [
+    {
+      id: 'lookup',
+      channel: 'web-chat',
+      model_script: [{ tool: 'find_order', args: { order_id: 'NB-1' } }, 'It shipped.'],
+      turns: [{ say: 'Where is NB-1?' }],
+      expect: [{ http_called: { method: 'GET', path: '/orders/*' } }],
+    },
+  ];
   const app = await scenarios(config);
   await a.click(byText(app.container, 'button', /Run all/));
   assert.equal(await until(app, () => /no mock answered/.test(textOf($(app.container, '.scItem')))), true);
@@ -437,18 +543,34 @@ test('Preview: the microphone and the picture button appear exactly when the cha
   await a.click(byText(panel(), 'button', 'Start a simulated chat'));
   for (let i = 0; i < 60 && panel().getAttribute('data-state') !== 'live'; i += 1) await app.wait(50);
   assert.equal(byLabel(panel(), 'Attach a picture').disabled, false);
-  assert.match(byLabel(panel(), 'Speak to the agent').getAttribute('title'), /can.t turn speech into text/, 'a browser with no speech recognition says so (the real agent hears the microphone itself)');
+  assert.match(
+    byLabel(panel(), 'Speak to the agent').getAttribute('title'),
+    /can.t turn speech into text/,
+    'a browser with no speech recognition says so (the real agent hears the microphone itself)',
+  );
   assert.equal($(panel(), 'input[type=file]').getAttribute('accept'), 'image/png', 'the channel’s own accepted types');
-  const send = async (file) => { const input = $(panel(), 'input[type=file]'); Object.defineProperty(input, 'files', { value: [file], configurable: true }); await act(async () => { input.dispatchEvent(new window.Event('change', { bubbles: true })); }); };
+  const send = async (file) => {
+    const input = $(panel(), 'input[type=file]');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    await act(async () => {
+      input.dispatchEvent(new window.Event('change', { bubbles: true }));
+    });
+  };
   await send(new window.File([new Uint8Array(2000)], 'big.png', { type: 'image/png' }));
   assert.match(textOf($(panel(), '.pvHint.warn')), /2\.0 KB|0\.0 MB; this channel allows/);
   await send(new window.File(['x'], 'a.gif', { type: 'image/gif' }));
   assert.match(textOf($(panel(), '.pvHint.warn')), /accepts image\/png; that file is image\/gif/);
   await send(new window.File(['x'], 'ok.png', { type: 'image/png' }));
   assert.equal($(panel(), '.pvHint.warn'), null, 'a good picture clears the note');
-  assert.ok($$(panel(), '.pvMsg.me').some((m) => /Sent a picture: ok\.png/.test(textOf(m))), 'and is shown as sent');
+  assert.ok(
+    $$(panel(), '.pvMsg.me').some((m) => /Sent a picture: ok\.png/.test(textOf(m))),
+    'and is shown as sent',
+  );
   await app.wait(900);
-  assert.ok($$(panel(), '.pvMsg.bot').some((m) => /received your picture/.test(textOf(m))), 'the simulated agent answers, and says it is simulated');
+  assert.ok(
+    $$(panel(), '.pvMsg.bot').some((m) => /received your picture/.test(textOf(m))),
+    'the simulated agent answers, and says it is simulated',
+  );
   await app.unmount();
 });
 
@@ -525,12 +647,30 @@ test('below the cards, every other part of the agent is one click away: the ever
   const app = await simple();
   const more = $$($(app.container, '[aria-label=More]'), '[data-more]').map((el) => el.getAttribute('data-more'));
   const advanced = $$($(app.container, '.smAdvanced'), '[data-more]').map((el) => el.getAttribute('data-more'));
-  assert.deepEqual(more.filter((k) => !advanced.includes(k)), ['guardrails', 'schedules', 'tasks', 'wrapups', 'events', 'tests', 'meta']);
+  assert.deepEqual(
+    more.filter((k) => !advanced.includes(k)),
+    ['guardrails', 'schedules', 'tasks', 'wrapups', 'events', 'tests', 'meta'],
+  );
   assert.deepEqual(advanced, ['identity', 'constants', 'runtime', 'builder']);
   assert.equal($(app.container, '.smAdvanced').open, false, 'Advanced is closed until asked for, but it is there and labelled');
   assert.match(textOf($(app.container, '.smAdvanced summary')), /^Advanced$/);
   // nothing is lost: each section of the schema is on a card, under More or under Advanced
-  const onCards = ['persona', 'agents', 'messages', 'state', 'defaults', 'connections', 'tools', 'knowledge', 'forms', 'notifications', 'channels', 'telephony', 'observability', 'post_call'];
+  const onCards = [
+    'persona',
+    'agents',
+    'messages',
+    'state',
+    'defaults',
+    'connections',
+    'tools',
+    'knowledge',
+    'forms',
+    'notifications',
+    'channels',
+    'telephony',
+    'observability',
+    'post_call',
+  ];
   const everything = new Set([...onCards, ...more, ...advanced]);
   const missing = Object.keys(schema.properties).filter((k) => !['$schema', 'schema_version'].includes(k) && !everything.has(k));
   assert.deepEqual(missing, [], 'every section of the schema is reachable from the Simple view');

@@ -11,8 +11,14 @@ const items = [
 
 test('security items are split from ordinary advice, and nothing is lost', () => {
   const { security, advice } = splitUnsupported(items);
-  assert.deepEqual(security.map((i) => i.where), ['state.variables.pin', 'post_call.redaction']);
-  assert.deepEqual(advice.map((i) => i.where), ['tools[3]', 'tools[1]']);
+  assert.deepEqual(
+    security.map((i) => i.where),
+    ['state.variables.pin', 'post_call.redaction'],
+  );
+  assert.deepEqual(
+    advice.map((i) => i.where),
+    ['tools[3]', 'tools[1]'],
+  );
   assert.equal(security.length + advice.length, items.length);
   assert.equal(isSecurity(items[1]), true);
   assert.equal(isSecurity(items[0]), false);
@@ -34,7 +40,10 @@ test('a production deploy needs the word typed while a security item stands; oth
 });
 
 test('secrets: a key the server says is not set is marked, one it can’t know about is just listed', () => {
-  const providers = [{ name: 'openai', default_secret: 'OPENAI_API_KEY', key_available: true }, { name: 'anthropic', default_secret: 'ANTHROPIC_API_KEY', key_available: false }];
+  const providers = [
+    { name: 'openai', default_secret: 'OPENAI_API_KEY', key_available: true },
+    { name: 'anthropic', default_secret: 'ANTHROPIC_API_KEY', key_available: false },
+  ];
   assert.deepEqual(secretsStatus(['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'CRM_TOKEN'], providers), [
     { name: 'OPENAI_API_KEY', missing: false, known: true },
     { name: 'ANTHROPIC_API_KEY', missing: true, known: true },
@@ -48,7 +57,11 @@ test('rollback target: the version this environment ran before, if any', async (
   const { rollbackTarget } = await import('../src/studio/preflight.js');
   const data = {
     current: { production: { id: 'd3', version: '1.2.0' }, staging: { id: 'd1', version: '1.0.0' } },
-    history: [{ id: 'd1', version: '1.0.0', environment: 'staging', previous_version: null }, { id: 'd2', version: '1.1.0', environment: 'production', previous_version: null }, { id: 'd3', version: '1.2.0', environment: 'production', previous_version: '1.1.0' }],
+    history: [
+      { id: 'd1', version: '1.0.0', environment: 'staging', previous_version: null },
+      { id: 'd2', version: '1.1.0', environment: 'production', previous_version: null },
+      { id: 'd3', version: '1.2.0', environment: 'production', previous_version: '1.1.0' },
+    ],
   };
   assert.equal(rollbackTarget(data, 'production'), '1.1.0');
   assert.equal(rollbackTarget(data, 'staging'), null);

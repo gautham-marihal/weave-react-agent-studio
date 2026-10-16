@@ -2,13 +2,22 @@
 
 export const SEARCH_AFTER = 8;
 
-export const normalizeOptions = (options) => (Array.isArray(options) ? options : []).map((o) => (typeof o === 'string' || typeof o === 'number'
-  ? { value: String(o), label: String(o) }
-  : { value: String(o.value), label: o.label ?? String(o.value), description: o.description || '', group: o.group || '', disabled: !!o.disabled }));
+export const normalizeOptions = (options) =>
+  (Array.isArray(options) ? options : []).map((o) =>
+    typeof o === 'string' || typeof o === 'number'
+      ? { value: String(o), label: String(o) }
+      : { value: String(o.value), label: o.label ?? String(o.value), description: o.description || '', group: o.group || '', disabled: !!o.disabled },
+  );
 
 // the options that match what was typed: every word, anywhere in the label, value, description or group, ignoring case
 export function filterOptions(options, query) {
-  const words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const words = String(query || '')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
   if (!words.length) return options;
-  return options.filter((o) => { const text = `${o.label} ${o.value} ${o.description || ''} ${o.group || ''}`.toLowerCase(); return words.every((w) => text.includes(w)); });
+  return options.filter((o) => {
+    const text = `${o.label} ${o.value} ${o.description || ''} ${o.group || ''}`.toLowerCase();
+    return words.every((w) => text.includes(w));
+  });
 }

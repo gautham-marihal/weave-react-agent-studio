@@ -14,12 +14,17 @@ test('it greets with the channel’s greeting, and says the recording notice fir
   assert.ok(hello.every((m) => m.simulated === true && m.role === 'assistant'));
 
   const config = support();
-  config.channels = [{ id: 'phone', type: 'sip_voice', enabled: true, modalities: { input: ['audio'], output: ['audio'] }, greeting: { say: { message: 'hi' } } }];
+  config.channels = [
+    { id: 'phone', type: 'sip_voice', enabled: true, modalities: { input: ['audio'], output: ['audio'] }, greeting: { say: { message: 'hi' } } },
+  ];
   config.messages = [...config.messages, { id: 'hi', text: { en: 'Thanks for calling.', es: 'Gracias por llamar.' } }];
   config.persona.disclosures = { recording_notice: 'This call may be recorded.' };
   config.defaults.language = { primary: 'en-US', speaks: ['en', 'es'] };
   const voice = createSimulatedAgent(config).greeting();
-  assert.deepEqual(voice.map((m) => m.text), ['This call may be recorded.', 'Thanks for calling.']);
+  assert.deepEqual(
+    voice.map((m) => m.text),
+    ['This call may be recorded.', 'Thanks for calling.'],
+  );
 });
 
 test('every reply is marked simulated and none claims to be the real agent', () => {
@@ -53,8 +58,24 @@ test('asking for a person uses the callback tool when the agent has one, and say
 test('a tool whose description matches is "called", its set_state effects apply, and nothing is requested', () => {
   const config = minimalConfig('a', 'A');
   config.state = { variables: { outcome: { type: 'string', nullable: true, default: null } } };
-  config.tools = [{ id: 'get_bill', type: 'http', description: 'Looks up the caller’s bill balance', connection: 'c', request: { method: 'GET', path: '/b' }, parameters: { type: 'object', properties: { account_id: { type: 'string' } } },
-    effects: [{ do: [{ type: 'set_state', values: { outcome: 'billed' } }, { type: 'say', text: 'Your bill is ready.' }] }] }];
+  config.tools = [
+    {
+      id: 'get_bill',
+      type: 'http',
+      description: 'Looks up the caller’s bill balance',
+      connection: 'c',
+      request: { method: 'GET', path: '/b' },
+      parameters: { type: 'object', properties: { account_id: { type: 'string' } } },
+      effects: [
+        {
+          do: [
+            { type: 'set_state', values: { outcome: 'billed' } },
+            { type: 'say', text: 'Your bill is ready.' },
+          ],
+        },
+      ],
+    },
+  ];
   config.agents.items[0].tools = ['get_bill'];
   const agent = createSimulatedAgent(config);
   const out = agent.reply('How much is my bill?');
@@ -69,7 +90,13 @@ test('a tool whose description matches is "called", its set_state effects apply,
 test('a handoff changes who answers next', () => {
   const config = minimalConfig('a', 'A');
   config.agents.items = [
-    { id: 'assistant', name: 'Front', instructions: { role: 'Route people.' }, tools: [], handoffs: [{ id: 'h', tool: 'go_billing', description: 'When they ask about billing or invoices', to: 'billing' }] },
+    {
+      id: 'assistant',
+      name: 'Front',
+      instructions: { role: 'Route people.' },
+      tools: [],
+      handoffs: [{ id: 'h', tool: 'go_billing', description: 'When they ask about billing or invoices', to: 'billing' }],
+    },
     { id: 'billing', name: 'Billing', instructions: { role: 'Answer billing questions.' }, tools: [] },
   ];
   const agent = createSimulatedAgent(config);
@@ -80,6 +107,9 @@ test('a handoff changes who answers next', () => {
 });
 
 test('it is deterministic: the same conversation gives the same replies', () => {
-  const run = () => { const a = createSimulatedAgent(support()); return [a.reply('hi').messages[0].text, a.reply('speak to a person').messages[0].text, a.reply('bye').messages[0].text]; };
+  const run = () => {
+    const a = createSimulatedAgent(support());
+    return [a.reply('hi').messages[0].text, a.reply('speak to a person').messages[0].text, a.reply('bye').messages[0].text];
+  };
   assert.deepEqual(run(), run());
 });

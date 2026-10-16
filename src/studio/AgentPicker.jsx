@@ -16,12 +16,25 @@ export default function AgentPicker({ title, subtitle, agents, onPick, onClose }
       title={title}
       subtitle={subtitle}
       onClose={onClose}
-      footer={<button type="button" className="modalCancel" onClick={onClose}>Cancel</button>}
+      footer={
+        <button type="button" className="modalCancel" onClick={onClose}>
+          Cancel
+        </button>
+      }
     >
       {agents.length === 0 ? (
         <div className="stPickEmpty">
           <p className="stMuted">There are no agents yet.</p>
-          <button type="button" className="primaryCta compactCta" onClick={() => { onClose(); navigate(routeHref(undefined, undefined, { new: '1' }), { guard: false }); }}>Create an agent</button>
+          <button
+            type="button"
+            className="primaryCta compactCta"
+            onClick={() => {
+              onClose();
+              navigate(routeHref(undefined, undefined, { new: '1' }), { guard: false });
+            }}
+          >
+            Create an agent
+          </button>
         </div>
       ) : (
         <>
@@ -34,9 +47,20 @@ export default function AgentPicker({ title, subtitle, agents, onPick, onClose }
           <ul className="stPickList">
             {shown.map((bot) => (
               <li key={bot.id}>
-                <button type="button" onClick={() => { onPick(bot.id); onClose(); }}>
-                  <span className="agentRowAvatar" aria-hidden="true">{(bot.name || bot.id).slice(0, 1).toUpperCase()}</span>
-                  <span><strong>{bot.name || bot.id}</strong><small>{bot.id}</small></span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPick(bot.id);
+                    onClose();
+                  }}
+                >
+                  <span className="agentRowAvatar" aria-hidden="true">
+                    {(bot.name || bot.id).slice(0, 1).toUpperCase()}
+                  </span>
+                  <span>
+                    <strong>{bot.name || bot.id}</strong>
+                    <small>{bot.id}</small>
+                  </span>
                 </button>
               </li>
             ))}

@@ -19,17 +19,28 @@ export function usePromptPreview({ config, agentId, channel = '', state, nowLoca
     setResult((old) => ({ ...old, loading: true }));
     const timer = setTimeout(async () => {
       try {
-        const raw = await api.previewPrompt(promptRequest({ config, agent: agentId, channel, state, now: withLocalOffset(nowLocal), callerPhone }), { signal: controller.signal });
+        const raw = await api.previewPrompt(promptRequest({ config, agent: agentId, channel, state, now: withLocalOffset(nowLocal), callerPhone }), {
+          signal: controller.signal,
+        });
         if (controller.signal.aborted) return;
-        setResult({ data: normalizePrompt(raw), loading: false, error: null, source: raw?.demo ? 'demo' : 'server', note: typeof raw?.note === 'string' ? raw.note : '' });
+        setResult({
+          data: normalizePrompt(raw),
+          loading: false,
+          error: null,
+          source: raw?.demo ? 'demo' : 'server',
+          note: typeof raw?.note === 'string' ? raw.note : '',
+        });
       } catch (error) {
         if (error?.name === 'AbortError' || controller.signal.aborted) return;
         const local = assemblePrompt(config, agentId, { channelId: channel });
         setResult({ data: local ? fromApproximate(local, config) : null, loading: false, error, source: 'approximate', note: '' });
       }
     }, PAUSE_MS);
-    return () => { clearTimeout(timer); controller.abort(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, config, agentId, channel, stateKey, nowLocal, callerPhone]);
   return result;
 }
@@ -45,18 +56,34 @@ export function useResultPreview({ config, tool, args, response, state, channel 
     setResult((old) => ({ ...old, loading: true }));
     const timer = setTimeout(async () => {
       try {
-        const body = { config, tool, args: args || {}, ...(state && Object.keys(state).length ? { state } : {}), ...(channel ? { channel } : {}), ...(nowLocal ? { now: withLocalOffset(nowLocal) } : {}) };
+        const body = {
+          config,
+          tool,
+          args: args || {},
+          ...(state && Object.keys(state).length ? { state } : {}),
+          ...(channel ? { channel } : {}),
+          ...(nowLocal ? { now: withLocalOffset(nowLocal) } : {}),
+        };
         if (response !== undefined) body.response = response;
         const raw = await api.previewResult(body, { signal: controller.signal });
         if (controller.signal.aborted) return;
-        setResult({ data: normalizeResultPreview(raw), loading: false, error: null, source: raw?.demo ? 'demo' : 'server', note: typeof raw?.note === 'string' ? raw.note : '' });
+        setResult({
+          data: normalizeResultPreview(raw),
+          loading: false,
+          error: null,
+          source: raw?.demo ? 'demo' : 'server',
+          note: typeof raw?.note === 'string' ? raw.note : '',
+        });
       } catch (error) {
         if (error?.name === 'AbortError' || controller.signal.aborted) return;
         setResult({ data: null, loading: false, error, source: '', note: '' });
       }
     }, PAUSE_MS);
-    return () => { clearTimeout(timer); controller.abort(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, config, tool, args, response, stateKey, channel, nowLocal]);
   return result;
 }

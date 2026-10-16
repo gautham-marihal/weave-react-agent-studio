@@ -31,17 +31,20 @@ export function useMonitoring({ bots = [], days = 7 }) {
     const since = new Date(nowMs - 2 * days * 24 * 3600 * 1000).toISOString();
     let truncated = false;
     const listed = await inChunks(ids, AT_A_TIME, async (id) => {
-      const calls = []; let cursor; let error = null;
+      const calls = [];
+      let cursor;
+      let error = null;
       try {
         for (let page = 0; page < MAX_PAGES; page += 1) {
-          // eslint-disable-next-line no-await-in-loop
           const answer = await api.listCalls(id, { limit: PAGE, cursor, since });
           calls.push(...(Array.isArray(answer?.calls) ? answer.calls : []));
           cursor = answer?.next;
           if (!cursor) break;
           if (page === MAX_PAGES - 1) truncated = true;
         }
-      } catch (e) { error = e?.message || 'This agent’s calls could not be read.'; }
+      } catch (e) {
+        error = e?.message || 'This agent’s calls could not be read.';
+      }
       return { id, calls: calls.map((c) => ({ ...c, bot: c.bot || id })), error };
     });
     if (mine !== generation.current) return;
@@ -50,19 +53,33 @@ export function useMonitoring({ bots = [], days = 7 }) {
     setState({ loading: false, calls, samples: {}, errors, nowMs, truncated });
 
     // the records of the newest calls of each agent, read in the background so the page is already useful
-    const wanted = listed.flatMap((l) => [...l.calls].sort((a, b) => Date.parse(b.started_at) - Date.parse(a.started_at)).filter((c) => c.status !== 'in_progress').slice(0, SAMPLE_PER_AGENT)).slice(0, SAMPLE_CAP);
+    const wanted = listed
+      .flatMap((l) =>
+        [...l.calls]
+          .sort((a, b) => Date.parse(b.started_at) - Date.parse(a.started_at))
+          .filter((c) => c.status !== 'in_progress')
+          .slice(0, SAMPLE_PER_AGENT),
+      )
+      .slice(0, SAMPLE_CAP);
     const samples = {};
     await inChunks(wanted, AT_A_TIME, async (c) => {
       try {
         const page = await api.getCall(c.bot, c.id, { limit: 500 });
         samples[`${c.bot}/${c.id}`] = readCall(Array.isArray(page?.events) ? page.events : []);
-      } catch { /* one call that cannot be read is left out of the sample */ }
+      } catch {
+        /* one call that cannot be read is left out of the sample */
+      }
     });
     if (mine !== generation.current) return;
     setState((old) => ({ ...old, samples }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  useEffect(() => { load(); return () => { generation.current += 1; }; }, [load]);
+  useEffect(() => {
+    load();
+    return () => {
+      generation.current += 1;
+    };
+  }, [load]);
   return { ...state, reload: load };
 }

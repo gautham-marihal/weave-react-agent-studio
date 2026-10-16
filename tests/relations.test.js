@@ -23,10 +23,13 @@ test('the agents of the example are boxes in columns by distance from the one th
   assert.equal(first.column, 0);
   assert.equal(first.x, NODE.pad);
   assert.ok(map.edges.length >= 3, 'hand-overs are drawn');
-  map.edges.filter((e) => e.kind === 'handoff').forEach((e) => {
-    const from = map.nodes.find((n) => n.id === e.from); const to = map.nodes.find((n) => n.id === e.to);
-    assert.ok(from && to);
-  });
+  map.edges
+    .filter((e) => e.kind === 'handoff')
+    .forEach((e) => {
+      const from = map.nodes.find((n) => n.id === e.from);
+      const to = map.nodes.find((n) => n.id === e.to);
+      assert.ok(from && to);
+    });
   assert.ok(map.width > 0 && map.height > 0);
   // a node never overlaps another
   const boxes = map.nodes.map((n) => `${n.x},${n.y}`);
@@ -45,13 +48,30 @@ test('an agent nothing can reach is shown, in a column of its own, and said to b
 
 test('a tool whose rules hand over, and a safety rule that does, are drawn as their own kinds of arrow; a hand-over to nobody is not drawn', () => {
   const config = {
-    agents: { entry: 'front', items: [{ id: 'front', name: 'Front desk', tools: ['escalate'], handoffs: [{ id: 'bad', to: 'ghost' }] }, { id: 'billing' }, { id: 'safety' }] },
+    agents: {
+      entry: 'front',
+      items: [{ id: 'front', name: 'Front desk', tools: ['escalate'], handoffs: [{ id: 'bad', to: 'ghost' }] }, { id: 'billing' }, { id: 'safety' }],
+    },
     tools: [{ id: 'escalate', effects: [{ do: [{ type: 'say' }, { type: 'handoff', to: 'billing' }] }] }],
-    guardrails: { escalation: [{ id: 'abuse', action: 'handoff', to: 'safety' }, { id: 'x', action: 'end_call' }] },
+    guardrails: {
+      escalation: [
+        { id: 'abuse', action: 'handoff', to: 'safety' },
+        { id: 'x', action: 'end_call' },
+      ],
+    },
   };
   const map = buildAgentMap(config);
-  assert.deepEqual(map.edges.map((e) => [e.kind, e.from, e.to]), [['tool', 'front', 'billing'], ['rule', 'front', 'safety']]);
-  assert.deepEqual(describeEdges(map), ['Front desk can pass the caller to billing (escalate).', 'Front desk passes the caller, under a safety rule, to safety (abuse).']);
+  assert.deepEqual(
+    map.edges.map((e) => [e.kind, e.from, e.to]),
+    [
+      ['tool', 'front', 'billing'],
+      ['rule', 'front', 'safety'],
+    ],
+  );
+  assert.deepEqual(describeEdges(map), [
+    'Front desk can pass the caller to billing (escalate).',
+    'Front desk passes the caller, under a safety rule, to safety (abuse).',
+  ]);
 });
 
 test('arrows between the same two agents are merged, and an empty or odd configuration doesn’t break the picture', () => {
@@ -101,31 +121,62 @@ test('a week is shown as open windows per day, in words and as bars', () => {
   assert.equal(openAt(hours, 'tue', 9 * 60), true);
   assert.equal(openAt(hours, 'tue', 20 * 60), false, 'the end is exclusive');
   assert.equal(openAt(hours, 'sun', 12 * 60), false);
-  assert.equal(describeWeek({ weekly: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], start: '00:00', end: '24:00' }] }), 'Open all day, every day.');
+  assert.equal(
+    describeWeek({ weekly: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], start: '00:00', end: '24:00' }] }),
+    'Open all day, every day.',
+  );
   assert.equal(describeWeek({ weekly: [] }), 'Never open.');
-  assert.deepEqual(weekWindows({ weekly: [{ days: ['mon'], start: '09:00', end: '12:00' }, { days: ['mon'], start: '11:00', end: '14:00' }, { days: ['mon'], start: '15:00', end: '16:00' }] }).mon, [[540, 840], [900, 960]], 'overlapping windows are merged');
+  assert.deepEqual(
+    weekWindows({
+      weekly: [
+        { days: ['mon'], start: '09:00', end: '12:00' },
+        { days: ['mon'], start: '11:00', end: '14:00' },
+        { days: ['mon'], start: '15:00', end: '16:00' },
+      ],
+    }).mon,
+    [
+      [540, 840],
+      [900, 960],
+    ],
+    'overlapping windows are merged',
+  );
   assert.equal(minutesOf('24:00'), 1440);
-  assert.equal(minutesOf('25:00'), 1500 > 1440 ? null : 1500);
+  assert.equal(minutesOf('25:00'), null, 'past the end of the day is not a time');
   assert.equal(minutesOf('nope'), null);
 });
 
 test('holidays and one-off exceptions are listed in date order, a holiday winning over an exception', () => {
-  assert.deepEqual(exceptions(example.schedules.support_hours), [{ date: '2026-12-24', text: 'Open 09:00–13:00' }, { date: '2026-12-25', text: 'Closed all day' }]);
-  assert.deepEqual(exceptions({ holidays: ['2026-01-01'], overrides: { '2026-01-01': 'closed', '2026-01-02': 'closed' } }), [{ date: '2026-01-01', text: 'Closed all day' }, { date: '2026-01-02', text: 'Closed all day' }]);
+  assert.deepEqual(exceptions(example.schedules.support_hours), [
+    { date: '2026-12-24', text: 'Open 09:00–13:00' },
+    { date: '2026-12-25', text: 'Closed all day' },
+  ]);
+  assert.deepEqual(exceptions({ holidays: ['2026-01-01'], overrides: { '2026-01-01': 'closed', '2026-01-02': 'closed' } }), [
+    { date: '2026-01-01', text: 'Closed all day' },
+    { date: '2026-01-02', text: 'Closed all day' },
+  ]);
 });
 
 // ---------------------------------------------------------------- task steps
 test('a task reads top to bottom: what is asked, how it is checked, when it is skipped, and how it ends', () => {
   const task = describeTask(example.tasks[0]);
   assert.equal(task.summary, 'Checks who the caller is in 2 steps.');
-  assert.deepEqual(task.steps.map((s) => [s.number, s.id]), [[1, 'account'], [2, 'surname']]);
+  assert.deepEqual(
+    task.steps.map((s) => [s.number, s.id]),
+    [
+      [1, 'account'],
+      [2, 'surname'],
+    ],
+  );
   assert.deepEqual(task.steps[0].notes, ['skipped when “customer” is already known', 'checked by the tool “lookup_account”', 'up to 3 tries']);
   assert.equal(task.steps[1].ask, 'Ask for the surname on the account.');
-  assert.deepEqual(task.outcomes.map((o) => [o.label, o.text]), [
-    ['When it works', 'remembers verified = true, goes back to the agent that started it, says nothing'],
-    ['If it fails', 'result “failed”, goes back to the agent that started it'],
-    ['If the caller declines', 'result “declined”, goes back to the agent that started it'],
-  ]);
+  assert.deepEqual(
+    task.outcomes.map((o) => [o.label, o.text]),
+    [
+      ['When it works', 'remembers verified = true, goes back to the agent that started it, says nothing'],
+      ['If it fails', 'result “failed”, goes back to the agent that started it'],
+      ['If the caller declines', 'result “declined”, goes back to the agent that started it'],
+    ],
+  );
   assert.deepEqual(describeTask(null), { summary: '', steps: [], outcomes: [] });
 });
 
@@ -137,7 +188,10 @@ test('what uses a tool, a fixed line, a remembered value or a connection is foun
   assert.ok(uses.every((u) => /^agent “[a-z_]+”$/.test(u.place) || u.place.length > 0));
   assert.ok(Array.isArray(uses[0].path));
   const conn = usedBy(engine, example, 'connections', 'billing_api');
-  assert.ok(conn.some((u) => /tool/.test(u.place)), 'a connection says which tools call it');
+  assert.ok(
+    conn.some((u) => /tool/.test(u.place)),
+    'a connection says which tools call it',
+  );
   const variable = usedBy(engine, example, 'state_vars', 'verified');
   assert.ok(variable.length >= 1, 'a remembered value is found in rules and text');
   assert.deepEqual(usedBy(engine, example, 'tools', 'nobody_has_this'), []);

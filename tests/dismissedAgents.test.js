@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 // The store reads this browser's storage when it loads, so the storage has to exist first.
-const store = new Map([['weave_hidden_agents', JSON.stringify(['a', 'b'])], ['weave_dismissed_agents', JSON.stringify(['old', 7])]]);
+const store = new Map([
+  ['weave_hidden_agents', JSON.stringify(['a', 'b'])],
+  ['weave_dismissed_agents', JSON.stringify(['old', 7])],
+]);
 globalThis.window = { localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) } };
 const { dismissBot, undoDismissed, hideBot, restoreBot } = await import('../src/studio/agents.js');
 
@@ -26,9 +29,14 @@ test('restoring and removing still work beside it', () => {
 });
 
 test('bringing back deleted agents can be limited to the ones the page shows', () => {
-  dismissBot('x'); dismissBot('y'); dismissBot('z');
+  dismissBot('x');
+  dismissBot('y');
+  dismissBot('z');
   undoDismissed(['x', 'z']);
-  assert.deepEqual(JSON.parse(store.get('weave_dismissed_agents')).filter((id) => ['x', 'y', 'z'].includes(id)), ['y']);
+  assert.deepEqual(
+    JSON.parse(store.get('weave_dismissed_agents')).filter((id) => ['x', 'y', 'z'].includes(id)),
+    ['y'],
+  );
   undoDismissed();
   assert.deepEqual(JSON.parse(store.get('weave_dismissed_agents')), []);
 });

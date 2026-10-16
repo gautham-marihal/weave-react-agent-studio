@@ -33,7 +33,14 @@ test('the path goes through arrays as indexes, and the same key in different obj
 
 test('several repeats are all reported, in the order they appear', () => {
   const found = findDuplicateKeys('{"a":1,"a":2,"b":{"c":1,"c":2},"a":3}');
-  assert.deepEqual(found.map((f) => [f.path.join('.'), f.key]), [['', 'a'], ['b', 'c'], ['', 'a']]);
+  assert.deepEqual(
+    found.map((f) => [f.path.join('.'), f.key]),
+    [
+      ['', 'a'],
+      ['b', 'c'],
+      ['', 'a'],
+    ],
+  );
 });
 
 test('keys that look equal only after unescaping are equal, and a lookalike inside a string is not a key', () => {

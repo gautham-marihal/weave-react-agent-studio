@@ -63,7 +63,12 @@ export const SETTINGS = {
   style_rules: E('Style rules', 'Short rules about how it talks, such as “one question at a time”.', 'guided'),
   shared_rules: E('Rules for every agent', 'Rules added to every agent’s instructions, such as what it must never promise.', 'detailed'),
   disclosures: E('What callers are told', 'Statements the agent makes up front, such as that the call may be recorded.', 'guided'),
-  recording_notice: E('Recording notice', 'Said at the start of voice conversations when calls are recorded.', 'guided', 'This call may be recorded to improve our service.'),
+  recording_notice: E(
+    'Recording notice',
+    'Said at the start of voice conversations when calls are recorded.',
+    'guided',
+    'This call may be recorded to improve our service.',
+  ),
 
   // models and conversation
   models: E('AI models', 'Which AI listens, thinks and speaks for this agent.', 'guided'),
@@ -157,7 +162,11 @@ export const SETTINGS = {
   widget_id: E('Chat widget id', 'Identifies the chat widget on your website that talks to this agent.', 'guided'),
   allowed_origins: E('Websites allowed to use it', 'Only chat widgets on these websites may start a conversation.', 'detailed', 'https://www.example.com'),
   phone_number_id: E('WhatsApp number id', 'The id of the WhatsApp business number this channel uses.', 'detailed'),
-  match: E('How a visitor is matched to this channel', 'Rules for deciding which channel a connecting person belongs to. The defaults suit most agents.', 'expert'),
+  match: E(
+    'How a visitor is matched to this channel',
+    'Rules for deciding which channel a connecting person belongs to. The defaults suit most agents.',
+    'expert',
+  ),
   attributes: E('Attributes to match', 'Details of the connection that must match.', 'expert'),
   participant_kind: E('Kinds of visitor to match', 'Which kinds of connection belong to this channel.', 'expert'),
   modalities: E('What it can hear and say', 'Whether this channel carries text, audio, images or video, in and out.', 'guided'),
@@ -175,9 +184,12 @@ export const SETTINGS = {
   capabilities: E('What this channel can do', 'Switch features on or off for this channel, such as keypad tones and forms.', 'detailed'),
   dtmf: E('Keypad tones', 'Callers can press keys and the agent can send tones. Phone and voice channels only.', 'detailed'),
   human_transfer: E('Hand over to a person', 'Off: a transfer skips the handover and runs its fallback straight away.', 'detailed'),
-  forms: E('Show forms', 'Whether this channel can show a form. Where it cannot, the form’s “otherwise” steps run.', 'detailed'),
   greeting: E('What it says first', 'The first thing the agent says on this channel.', 'guided', 'Hi, I’m Sam. How can I help you today?'),
-  instructions_append: E('Extra instructions for this channel', 'Added to every agent’s instructions on this channel, such as “the caller has no camera”.', 'detailed'),
+  instructions_append: E(
+    'Extra instructions for this channel',
+    'Added to every agent’s instructions on this channel, such as “the caller has no camera”.',
+    'detailed',
+  ),
   overrides: E('Exceptions', 'Settings that replace the defaults for this one channel or agent.', 'detailed'),
 
   // agents
@@ -218,12 +230,21 @@ export const SETTINGS = {
   headers: E('Extra request headers', 'Additional details sent with the request. Never put a secret here: use a connection’s sign-in.', 'detailed'),
   query: E('Search parameters', 'Details added to the address, such as ?status=open.', 'detailed'),
   body: E('What is sent', 'The content of the request. It can use the values the model supplied.', 'detailed'),
-  path: E('Address path', 'The part of the address after the connection’s base address, such as /orders/{{args.order_id}}.', 'guided', '/orders/{{args.order_id}}'),
+  path: E(
+    'Address path',
+    'The part of the address after the connection’s base address, such as /orders/{{args.order_id}}.',
+    'guided',
+    '/orders/{{args.order_id}}',
+  ),
   method: E('Request kind', 'Whether this reads (GET) or changes (POST, PUT, PATCH, DELETE) something.', 'guided'),
   result: E('What it returns', 'What the agent does with the answer: what the model sees, what is remembered.', 'guided'),
   to_llm: E('What the model is shown', 'Only these parts of the answer are shown to the model; the rest is dropped.', 'guided'),
   to_state: E('What is remembered', 'Parts of the answer to keep for later in the call.', 'detailed'),
-  out_of_band: E('Sent straight to the caller', 'Parts of the answer sent to the caller directly, by text or email, without the model seeing them.', 'detailed'),
+  out_of_band: E(
+    'Sent straight to the caller',
+    'Parts of the answer sent to the caller directly, by text or email, without the model seeing them.',
+    'detailed',
+  ),
   template: E('Message', 'The text sent. It can use the values from the answer.', 'detailed'),
   via: E('Sent by', 'Which connection delivers it.', 'detailed'),
   fields: E('Fields', 'The individual details.', 'detailed'),
@@ -496,9 +517,16 @@ export const CONTEXT = {
   'meta.name': E('Name', 'What people see in lists. The agent speaks as this unless the personality sets another name.', 'guided'),
   'persona.name': E('The agent’s name', 'How the agent introduces itself.', 'guided', 'Sam'),
   'identity.caller_id': E('Caller’s number', 'How the caller’s number is worked out.', 'detailed'),
-  'tools.description': E('When to use it', 'Tells the model when to use this tool, not only what it does. Say when, in a sentence.', 'guided', 'Looks up an order when the caller asks where it is.'),
+  'tools.description': E(
+    'When to use it',
+    'Tells the model when to use this tool, not only what it does. Say when, in a sentence.',
+    'guided',
+    'Looks up an order when the caller asks where it is.',
+  ),
   'handoffs.description': E('When to hand over', 'Tells the model when to pass the caller to this agent.', 'guided'),
   'tools.type': E('Kind of tool', 'What this tool does: look something up (HTTP), a ready-made one, search knowledge…', 'guided'),
+  // "forms" is a section of the agent (Forms) and also a switch of a channel's capabilities (Show forms)
+  'capabilities.forms': E('Show forms', 'Whether this channel can show a form. Where it cannot, the form’s “otherwise” steps run.', 'detailed'),
   'channels.type': E('Kind of channel', 'Phone, web chat, web voice, WhatsApp…', 'guided'),
   'connections.type': E('Kind of connection', 'A web service, a tool server or an email/text service.', 'guided'),
   'knowledge.type': E('Kind of knowledge', 'Files and web pages, or a search service you already run.', 'guided'),
@@ -528,30 +556,66 @@ export const CONTEXT = {
   'fields.options': E('Choices', 'The answers a person can pick from, when this detail is a choice.', 'guided'),
   'http_mocks.status': E('Answer status', 'The status code the pretend answer returns: 200 for success, 404 for not found.', 'detailed', '200'),
   'http_mocks.text': E('Plain-text answer', 'A plain-text answer, instead of JSON.', 'detailed'),
-  'variables.type': E('Kind of value', 'What it holds: text, a whole number, a number with decimals, yes/no, one of a list of choices, or a structure.', 'detailed'),
-  'retrieval.role': E('How passages are shown', 'Whether the passages are placed in the instructions (works with every provider) or as the agent’s own earlier note (not for Anthropic models).', 'expert'),
-  'vision.mode': E('How the camera is used', 'Attach the latest picture to each caller turn, or stream video to a model that can speak up by itself.', 'detailed'),
+  'variables.type': E(
+    'Kind of value',
+    'What it holds: text, a whole number, a number with decimals, yes/no, one of a list of choices, or a structure.',
+    'detailed',
+  ),
+  'retrieval.role': E(
+    'How passages are shown',
+    'Whether the passages are placed in the instructions (works with every provider) or as the agent’s own earlier note (not for Anthropic models).',
+    'expert',
+  ),
+  'vision.mode': E(
+    'How the camera is used',
+    'Attach the latest picture to each caller turn, or stream video to a model that can speak up by itself.',
+    'detailed',
+  ),
   'response.text': E('Where the passage text is', 'Where, inside each result, the passage’s words are found.', 'expert', '$.document.text'),
   'response.source': E('Where each passage came from', 'Where, inside each result, its source is found. It is shown in the call log only.', 'expert'),
   'analysis.type': E('Kind of answer', 'What kind of value to pull out of the call: yes/no, one of a list of choices, text or a number.', 'detailed'),
   // “enabled” on different things
-  'preemptive_generation.enabled': E('Start answering early', 'Begin writing the reply before the caller has quite finished, so it feels quicker. Some of that work is thrown away.', 'expert'),
-  'thinking.enabled': E('Play a sound while thinking', 'A short sound while the agent works out an answer, so silence doesn’t feel like a dropped call.', 'detailed'),
+  'preemptive_generation.enabled': E(
+    'Start answering early',
+    'Begin writing the reply before the caller has quite finished, so it feels quicker. Some of that work is thrown away.',
+    'expert',
+  ),
+  'thinking.enabled': E(
+    'Play a sound while thinking',
+    'A short sound while the agent works out an answer, so silence doesn’t feel like a dropped call.',
+    'detailed',
+  ),
   'ambient.enabled': E('Play background sound', 'A quiet background sound, such as an office, under the conversation.', 'detailed'),
   'noise_cancellation.enabled': E('Reduce background noise', 'Cleans the caller’s audio before it is understood.', 'detailed'),
   'channels.enabled': E('Switched on', 'Turn a channel off without deleting it.', 'guided'),
   'summary.enabled': E('Write a call summary', 'A short summary written after each call.', 'guided'),
   'redaction.enabled': E('Hide sensitive details', 'Replace sensitive text before a transcript is written.', 'guided'),
   'artifacts.enabled': E('Save this file', 'Write this file when a call ends.', 'detailed'),
-  'session_log.enabled': E('Keep a log of each call', 'One file per call with what was said, which tools ran and which requests were made. It holds what callers say.', 'guided'),
+  'session_log.enabled': E(
+    'Keep a log of each call',
+    'One file per call with what was said, which tools ran and which requests were made. It holds what callers say.',
+    'guided',
+  ),
   'otel.enabled': E('Send to a monitoring service', 'Send metrics and traces to the service named below.', 'expert'),
   // found by reading every label the form draws for the biggest sample configurations
-  'guardrails.input': E('Checks on what the caller says', 'Rules applied to the caller’s words before the agent answers, such as hiding card numbers or refusing tricks to change its instructions.', 'guided'),
-  'guardrails.output': E('Checks on what the agent says', 'Rules applied to the agent’s own words, such as never promising a refund or reading out an internal id.', 'guided'),
+  'guardrails.input': E(
+    'Checks on what the caller says',
+    'Rules applied to the caller’s words before the agent answers, such as hiding card numbers or refusing tricks to change its instructions.',
+    'guided',
+  ),
+  'guardrails.output': E(
+    'Checks on what the agent says',
+    'Rules applied to the agent’s own words, such as never promising a refund or reading out an internal id.',
+    'guided',
+  ),
   'input.text': E('The rule', 'The rule, in a sentence.', 'guided'),
   'output.text': E('The rule', 'The rule, in a sentence.', 'guided'),
   'agents.entry': E('Who answers first', 'The agent that answers a new caller first.', 'guided'),
-  'interruption.mode': E('How interruptions are noticed', 'Adaptive needs the LiveKit Cloud service; choose voice detection if you run the engine yourself.', 'detailed'),
+  'interruption.mode': E(
+    'How interruptions are noticed',
+    'Adaptive needs the LiveKit Cloud service; choose voice detection if you run the engine yourself.',
+    'detailed',
+  ),
   'lookup.state': E('Decided by', 'The remembered value that decides which entry is used.', 'detailed'),
   'lookup.default': E('If nothing matches', 'What to use when no entry fits.', 'detailed'),
   'connections.kind': E('Kind of service', 'Text messages or email.', 'guided'),
@@ -569,19 +633,40 @@ export const CONTEXT = {
 
 // ---- the words used when there is no entry: a label made by rule --------------------------------------------------------------------------------
 export const GLOSSARY = {
-  stt: 'listening', tts: 'speaking', llm: 'thinking', vad: 'voice detection', dtmf: 'keypad', sip: 'phone', pbx: 'phone system', uri: 'address', url: 'address', api: 'API',
-  otp: 'one-time code', otel: 'monitoring', pii: 'personal details', mime: 'file type', mb: 'MB', ivr: 'phone menu', ui: 'screen', id: 'id',
+  stt: 'listening',
+  tts: 'speaking',
+  llm: 'thinking',
+  vad: 'voice detection',
+  dtmf: 'keypad',
+  sip: 'phone',
+  pbx: 'phone system',
+  uri: 'address',
+  url: 'address',
+  api: 'API',
+  otp: 'one-time code',
+  otel: 'monitoring',
+  pii: 'personal details',
+  mime: 'file type',
+  mb: 'MB',
+  ivr: 'phone menu',
+  ui: 'screen',
+  id: 'id',
 };
 const UNITS = { s: ' (seconds)', ms: ' (milliseconds)', mb: ' (MB)', days: ' (days)', chars: ' (characters)', bytes: ' (bytes)' };
 const upperFirst = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 
 // A label for a name nobody has written one for: words, glossary terms, and a trailing unit in brackets.
 export function ruleLabel(name) {
-  const parts = String(name || '').split('_').filter(Boolean);
+  const parts = String(name || '')
+    .split('_')
+    .filter(Boolean);
   if (!parts.length) return '';
   let unit = '';
   const last = parts[parts.length - 1];
-  if (parts.length > 1 && UNITS[last]) { unit = UNITS[last]; parts.pop(); }
+  if (parts.length > 1 && UNITS[last]) {
+    unit = UNITS[last];
+    parts.pop();
+  }
   const words = parts.map((p) => GLOSSARY[p] || p);
   if (words[0] === 'max') words.splice(0, 1, 'most');
   else if (words[0] === 'min') words.splice(0, 1, 'least');
@@ -592,14 +677,19 @@ export function ruleLabel(name) {
 // The nearest named container above a property, from its path: ['tools', 0, 'timeout_s'] -> 'tools'. A path through a map holds a name the
 // author chose (['connections', 'my_crm', 'type']), which is not a place in the schema, so the form passes the owner it already knows
 // (the property it is drawing, see OwnerCtx) and this is only for callers that have nothing better.
-export const parentOf = (path) => { const names = (Array.isArray(path) ? path : []).slice(0, -1).filter((p) => typeof p === 'string'); return names[names.length - 1] || ''; };
+export const parentOf = (path) => {
+  const names = (Array.isArray(path) ? path : []).slice(0, -1).filter((p) => typeof p === 'string');
+  return names[names.length - 1] || '';
+};
 
 // What the catalogue says about a setting: the most specific entry wins ('owner.name', then name), else a rule label and the schema's own words.
 // `owner` is the schema property the setting lives under; without it, it is read from `path`.
 export function describeSetting(name, { owner, path, description } = {}) {
   const parent = owner !== undefined ? owner : parentOf(path);
   const hit = CONTEXT[`${parent}.${name}`] || SETTINGS[name];
-  const schemaPurpose = String(description || '').split(/\n|(?<=[.!?])\s/)[0].trim();
+  const schemaPurpose = String(description || '')
+    .split(/\n|(?<=[.!?])\s/)[0]
+    .trim();
   if (hit) return { ...hit, curated: true };
   return { label: ruleLabel(name), purpose: schemaPurpose, level: 'detailed', example: '', curated: false };
 }

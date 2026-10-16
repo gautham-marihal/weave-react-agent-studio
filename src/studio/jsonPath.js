@@ -4,7 +4,9 @@
 
 export function locatePath(text, path) {
   let i = 0;
-  const skipWs = () => { while (i < text.length && ' \t\r\n'.includes(text[i])) i += 1; };
+  const skipWs = () => {
+    while (i < text.length && ' \t\r\n'.includes(text[i])) i += 1;
+  };
 
   const readString = () => {
     const start = i;
@@ -17,14 +19,26 @@ export function locatePath(text, path) {
   const skipValue = () => {
     skipWs();
     const ch = text[i];
-    if (ch === '"') { readString(); return; }
+    if (ch === '"') {
+      readString();
+      return;
+    }
     if (ch === '{' || ch === '[') {
       let depth = 0;
       while (i < text.length) {
         const c = text[i];
-        if (c === '"') { readString(); continue; }
+        if (c === '"') {
+          readString();
+          continue;
+        }
         if (c === '{' || c === '[') depth += 1;
-        if (c === '}' || c === ']') { depth -= 1; if (depth === 0) { i += 1; return; } }
+        if (c === '}' || c === ']') {
+          depth -= 1;
+          if (depth === 0) {
+            i += 1;
+            return;
+          }
+        }
         i += 1;
       }
       return;
@@ -35,17 +49,25 @@ export function locatePath(text, path) {
   const walk = (rest) => {
     skipWs();
     const start = i;
-    if (rest.length === 0) { skipValue(); return [start, i]; }
+    if (rest.length === 0) {
+      skipValue();
+      return [start, i];
+    }
     const ch = text[i];
     if (ch === '{') {
       i += 1;
       for (;;) {
         skipWs();
-        if (i >= text.length || text[i] === '}') { i += 1; break; }
+        if (i >= text.length || text[i] === '}') {
+          i += 1;
+          break;
+        }
         const key = readString();
-        skipWs(); i += 1; // the colon
+        skipWs();
+        i += 1; // the colon
         if (String(rest[0]) === key.value) return walk(rest.slice(1));
-        skipValue(); skipWs();
+        skipValue();
+        skipWs();
         if (text[i] === ',') i += 1;
       }
       return [start, i];
@@ -55,9 +77,13 @@ export function locatePath(text, path) {
       let index = 0;
       for (;;) {
         skipWs();
-        if (i >= text.length || text[i] === ']') { i += 1; break; }
+        if (i >= text.length || text[i] === ']') {
+          i += 1;
+          break;
+        }
         if (Number(rest[0]) === index) return walk(rest.slice(1));
-        skipValue(); skipWs();
+        skipValue();
+        skipWs();
         if (text[i] === ',') i += 1;
         index += 1;
       }

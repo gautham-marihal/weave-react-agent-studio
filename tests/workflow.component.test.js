@@ -16,8 +16,17 @@ const example = () => JSON.parse(readFileSync(new URL('./fixtures/agent-config.e
 const mount = (config = agent()) => mountScreen('workflow', config, { ready: '.wfTab' });
 const node = (app, id) => $$(app.container, '.wfNode').find((el) => el.dataset.node === id);
 // a block is selected by pressing and letting go of it without moving
-const press = async (el) => { await act(async () => { el.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 5, clientY: 5 })); el.dispatchEvent(new window.MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 5, clientY: 5 })); }); };
-const key = async (el, k, shift = false) => { await act(async () => { el.dispatchEvent(new window.KeyboardEvent('keydown', { key: k, shiftKey: shift, bubbles: true, cancelable: true })); }); };
+const press = async (el) => {
+  await act(async () => {
+    el.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 5, clientY: 5 }));
+    el.dispatchEvent(new window.MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 5, clientY: 5 }));
+  });
+};
+const key = async (el, k, shift = false) => {
+  await act(async () => {
+    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: k, shiftKey: shift, bubbles: true, cancelable: true }));
+  });
+};
 const plus = (app) => $$(app.container, '.wfPlus')[0];
 const menuItem = (app, name) => $$(app.container, '.wfMenu [role=menuitem]').find((el) => new RegExp(`^${name}`).test(textOf(el)));
 
@@ -58,7 +67,15 @@ test('the ＋ under an agent offers the seven kinds; Subagent adds a real agent,
   await press(node(app, first));
   assert.equal($$(app.container, '.wfMenu').length, 0, 'closed until asked');
   await a.click(plus(app));
-  assert.deepEqual($$(app.container, '.wfMenu [role=menuitem] strong').map(textOf), ['Subagent', 'Say', 'Update state', 'Agent transfer', 'Phone number transfer', 'Tool', 'End']);
+  assert.deepEqual($$(app.container, '.wfMenu [role=menuitem] strong').map(textOf), [
+    'Subagent',
+    'Say',
+    'Update state',
+    'Agent transfer',
+    'Phone number transfer',
+    'Tool',
+    'End',
+  ]);
   assert.equal(menuItem(app, 'Agent transfer').disabled, true, 'with one agent there is nobody to pass the caller to');
   await a.click(menuItem(app, 'Subagent'));
   assert.equal(app.config.agents.items.length, 2);
@@ -75,13 +92,18 @@ test('Say, Update state (with a new variable), a phone number (checked first), a
   config.tools = [...(config.tools || []), { id: 'lookup', type: 'http', description: 'Look something up.' }];
   const app = await mount(config);
   const id = app.config.agents.items[0].id;
-  const open = async () => { await press(node(app, id)); await a.click(plus(app)); };
+  const open = async () => {
+    await press(node(app, id));
+    await a.click(plus(app));
+  };
 
-  await open(); await a.click(menuItem(app, 'Say'));
+  await open();
+  await a.click(menuItem(app, 'Say'));
   await a.type($(app.container, '.wfInspector textarea'), 'Welcome back!');
   assert.deepEqual(app.config.agents.items[0].on_enter, [{ type: 'say', text: 'Welcome back!' }]);
 
-  await open(); await a.click(menuItem(app, 'Update state'));
+  await open();
+  await a.click(menuItem(app, 'Update state'));
   await a.click(byText(app.container, 'button', '＋ New variable'));
   await a.type(byLabel(app.container, 'Variable name'), 'caller_intent');
   await a.click(byText(app.container, 'button', 'Add it'));
@@ -90,7 +112,8 @@ test('Say, Update state (with a new variable), a phone number (checked first), a
   assert.ok(app.config.state.variables.caller_intent);
 
   const transfersBefore = (app.config.telephony?.transfers || []).length;
-  await open(); await a.click(menuItem(app, 'Phone number transfer'));
+  await open();
+  await a.click(menuItem(app, 'Phone number transfer'));
   await a.click(byText(app.container, 'button', 'Add the transfer'));
   assert.match(textOf($(app.container, '.wfMenu')), /Type a number/, 'an empty number is refused with help');
   assert.equal((app.config.telephony?.transfers || []).length, transfersBefore, 'nothing is added without a number');
@@ -100,11 +123,13 @@ test('Say, Update state (with a new variable), a phone number (checked first), a
   assert.equal(transfer.target, '+1 800 555 0100');
   assert.ok(app.config.agents.items[0].tools.some((t) => app.config.tools.find((x) => x.id === t)?.params?.transfer === transfer.id));
 
-  await open(); await a.click(menuItem(app, 'Tool'));
+  await open();
+  await a.click(menuItem(app, 'Tool'));
   await a.click($$(app.container, '.wfMenu [role=menuitem]').find((el) => /lookup/.test(textOf(el))));
   assert.ok(app.config.agents.items[0].tools.includes('lookup'));
 
-  await open(); await a.click(menuItem(app, 'End'));
+  await open();
+  await a.click(menuItem(app, 'End'));
   assert.ok(app.config.agents.items[0].tools.some((t) => app.config.tools.find((x) => x.id === t)?.builtin === 'end_call'));
   await open();
   assert.equal(menuItem(app, 'End').disabled, true, 'it can already end the call');
@@ -161,7 +186,10 @@ test('deleting: a step goes at once, an agent only after it is asked, and the la
 
   await press(node(app, 'billing'));
   await a.click(byLabel(app.container, 'Delete Billing'));
-  assert.ok(app.config.agents.items.some((x) => x.id === 'billing'), 'asked first');
+  assert.ok(
+    app.config.agents.items.some((x) => x.id === 'billing'),
+    'asked first',
+  );
   assert.ok($(app.container, '[role=alertdialog]'));
   await a.click(byText($(app.container, '[role=alertdialog]'), 'button', 'Cancel'));
   assert.ok(app.config.agents.items.some((x) => x.id === 'billing'));
@@ -170,7 +198,10 @@ test('deleting: a step goes at once, an agent only after it is asked, and the la
   assert.ok(!app.config.agents.items.some((x) => x.id === 'billing'));
   assert.ok(!app.config.agents.items.find((x) => x.id === 'greeter').handoffs.some((h) => h.to === 'billing'), 'the hand-over to it went too');
   await a.click(byLabel(app.container, 'Undo'));
-  assert.ok(app.config.agents.items.some((x) => x.id === 'billing'), 'Undo brings the agent back');
+  assert.ok(
+    app.config.agents.items.some((x) => x.id === 'billing'),
+    'Undo brings the agent back',
+  );
   await app.unmount();
 
   const lone = await mount();
@@ -206,7 +237,11 @@ test('every block says where it lives in the configuration, shows that JSON as i
   const code = () => JSON.parse($(where, '.wfCode pre').textContent);
   assert.equal(code().name, 'Billing');
   await a.type($(app.container, '.wfInspector input[id$="-name"]'), 'Billing desk');
-  assert.equal(JSON.parse($(app.container, '.wfWhere .wfCode pre').textContent).name, 'Billing desk', 'a change made here is in the JSON shown, and in the draft');
+  assert.equal(
+    JSON.parse($(app.container, '.wfWhere .wfCode pre').textContent).name,
+    'Billing desk',
+    'a change made here is in the JSON shown, and in the draft',
+  );
   assert.equal(app.config.agents.items[1].name, 'Billing desk');
   assert.ok(byText($(app.container, '.wfWhere'), 'button', 'Open in All settings') && byText($(app.container, '.wfWhere'), 'button', 'Open in JSON'));
   await press(node(app, 'greeter::tool::end_call'));
@@ -215,7 +250,10 @@ test('every block says where it lives in the configuration, shows that JSON as i
 });
 
 // ---- the mouse: pressing, moving and letting go are replayed as pointer events at the zoom the person chose
-const pointer = (el, type, x, y, extra = {}) => act(async () => { el.dispatchEvent(new window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y, ...extra })); });
+const pointer = (el, type, x, y, extra = {}) =>
+  act(async () => {
+    el.dispatchEvent(new window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y, ...extra }));
+  });
 const place = (el) => [parseFloat(el.style.left), parseFloat(el.style.top)];
 
 test('dragging a block with the mouse moves it by what the pointer moved (at the chosen zoom), saves only that block’s place, and the blocks that go with it follow', async () => {

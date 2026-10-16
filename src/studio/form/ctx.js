@@ -23,9 +23,16 @@ export function createConfigStore(initial) {
   const listeners = new Set();
   return {
     get: () => value,
-    set(next) { value = next; },
-    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
-    notify() { listeners.forEach((listener) => listener()); },
+    set(next) {
+      value = next;
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    notify() {
+      listeners.forEach((listener) => listener());
+    },
   };
 }
 
@@ -63,7 +70,10 @@ export function useKeyedHandlers(call) {
   const cache = useRef(new Map());
   return useCallback((key) => {
     let handler = cache.current.get(key);
-    if (!handler) { handler = (...args) => latest.current(key, ...args); cache.current.set(key, handler); }
+    if (!handler) {
+      handler = (...args) => latest.current(key, ...args);
+      cache.current.set(key, handler);
+    }
     return handler;
   }, []);
 }
@@ -91,7 +101,12 @@ export function singular(word) {
 }
 
 export function uniqueId(taken, base) {
-  const clean = String(base || 'item').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^[^a-z]+/, '').replace(/_+$/, '') || 'item';
+  const clean =
+    String(base || 'item')
+      .toLowerCase()
+      .replace(/[^a-z0-9_]+/g, '_')
+      .replace(/^[^a-z]+/, '')
+      .replace(/_+$/, '') || 'item';
   const set = new Set(taken);
   let n = 1;
   while (set.has(`${clean}_${n}`)) n += 1;
@@ -102,9 +117,16 @@ export function uniqueId(taken, base) {
 export function orderedSet(obj, key, value, order) {
   if (key in obj) return { ...obj, [key]: value };
   const merged = { ...obj, [key]: value };
-  const rank = (k) => { const i = order.indexOf(k); return i === -1 ? order.length + 1 : i; };
+  const rank = (k) => {
+    const i = order.indexOf(k);
+    return i === -1 ? order.length + 1 : i;
+  };
   const out = {};
-  Object.keys(merged).sort((a, b) => rank(a) - rank(b) || Object.keys(merged).indexOf(a) - Object.keys(merged).indexOf(b)).forEach((k) => { out[k] = merged[k]; });
+  Object.keys(merged)
+    .sort((a, b) => rank(a) - rank(b) || Object.keys(merged).indexOf(a) - Object.keys(merged).indexOf(b))
+    .forEach((k) => {
+      out[k] = merged[k];
+    });
   return out;
 }
 

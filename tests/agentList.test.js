@@ -6,11 +6,28 @@ import { healthFrom, healthKey, healthTitle, needsAttention } from '../src/studi
 // 300 generated agents, the way a big organisation has them: a few teams, a few tags, most in development, some live
 const TEAMS = ['support', 'sales', 'billing', 'onboarding'];
 const bots = Array.from({ length: 300 }, (_, i) => ({
-  id: `agent-${String(i).padStart(3, '0')}`, name: `${['Care', 'Booking', 'Billing', 'Welcome'][i % 4]} agent ${i}`, draft_revision: 1 + (i % 5),
-  draft_saved_at: new Date(Date.UTC(2026, 9, 1) + i * 3600 * 1000).toISOString(), latest_version: i % 3 === 0 ? `1.${i % 7}.0` : null,
+  id: `agent-${String(i).padStart(3, '0')}`,
+  name: `${['Care', 'Booking', 'Billing', 'Welcome'][i % 4]} agent ${i}`,
+  draft_revision: 1 + (i % 5),
+  draft_saved_at: new Date(Date.UTC(2026, 9, 1) + i * 3600 * 1000).toISOString(),
+  latest_version: i % 3 === 0 ? `1.${i % 7}.0` : null,
   deployed: i % 10 === 0 ? { production: '1.0.0', development: '1.0.0' } : i % 3 === 0 ? { development: '1.0.0' } : {},
 }));
-const meta = Object.fromEntries(bots.map((b, i) => [b.id, { tags: [TEAMS[i % 4], ...(i % 7 === 0 ? ['voice'] : [])], owner: `team-${i % 3}`, health: i % 9 === 0 ? { state: 'bad', parts: [{ id: 'invalid', tone: 'bad', text: '2 errors', tab: 'config' }], checked: ['validity'] } : i % 5 === 0 ? { state: 'warn', parts: [{ id: 'unsupported', tone: 'warn', text: '1 won’t run' }], checked: ['validity'] } : { state: 'ok', parts: [], checked: ['validity'] } }]));
+const meta = Object.fromEntries(
+  bots.map((b, i) => [
+    b.id,
+    {
+      tags: [TEAMS[i % 4], ...(i % 7 === 0 ? ['voice'] : [])],
+      owner: `team-${i % 3}`,
+      health:
+        i % 9 === 0
+          ? { state: 'bad', parts: [{ id: 'invalid', tone: 'bad', text: '2 errors', tab: 'config' }], checked: ['validity'] }
+          : i % 5 === 0
+            ? { state: 'warn', parts: [{ id: 'unsupported', tone: 'warn', text: '1 won’t run' }], checked: ['validity'] }
+            : { state: 'ok', parts: [], checked: ['validity'] },
+    },
+  ]),
+);
 
 test('300 agents are searched by words in the name or id, in any order, and nothing is lost', () => {
   assert.equal(filterBots(bots, {}, meta).matched.length, 300);
@@ -39,7 +56,13 @@ test('filters by tag, by owner, and by needs attention narrow the list, and agen
 
 test('facets list each tag and owner with how many agents have it, the most common first', () => {
   const facets = collectFacets(bots, meta);
-  assert.deepEqual(facets.tags.slice(0, 4).map((t) => t.value).sort(), ['billing', 'onboarding', 'sales', 'support']);
+  assert.deepEqual(
+    facets.tags
+      .slice(0, 4)
+      .map((t) => t.value)
+      .sort(),
+    ['billing', 'onboarding', 'sales', 'support'],
+  );
   assert.equal(facets.tags.find((t) => t.value === 'support').count, 75);
   assert.equal(facets.tags.find((t) => t.value === 'voice').count, 43);
   assert.deepEqual(facets.owners.map((o) => o.value).sort(), ['team-0', 'team-1', 'team-2']);
@@ -55,7 +78,11 @@ test('sorting by name, recently saved and furthest along is stable and complete'
   const furthest = sortBots(bots, 'stage');
   assert.ok(Object.keys(furthest[0].deployed).includes('production'), 'production first');
   assert.ok(furthest.slice(-1)[0].latest_version === null, 'unpublished last');
-  assert.deepEqual(bots.slice(0, 2).map((b) => b.id), ['agent-000', 'agent-001'], 'the input is not reordered');
+  assert.deepEqual(
+    bots.slice(0, 2).map((b) => b.id),
+    ['agent-000', 'agent-001'],
+    'the input is not reordered',
+  );
   assert.equal(sortBots(bots, 'nonsense')[0].id, 'agent-299', 'an unknown sort falls back to recent');
 });
 
@@ -94,7 +121,16 @@ test('health says only what it checked: a badge for each problem, nothing for wh
   assert.match(healthTitle(ok), /^No problems found in: validity, what will run$/);
   const invalid = healthFrom({ config: {}, report: { valid: false, errors: [{}, {}, {}] } });
   assert.deepEqual([invalid.state, invalid.parts[0].text, invalid.parts[0].tab], ['bad', '3 errors', 'config']);
-  const wontRun = healthFrom({ config: {}, report: { valid: true, unsupported: [{ feature: 'MCP', where: 'tools[1]' }, { feature: 'code', where: 'tools[2]' }] } });
+  const wontRun = healthFrom({
+    config: {},
+    report: {
+      valid: true,
+      unsupported: [
+        { feature: 'MCP', where: 'tools[1]' },
+        { feature: 'code', where: 'tools[2]' },
+      ],
+    },
+  });
   assert.deepEqual([wontRun.state, wontRun.parts[0].text], ['warn', '2 won’t run']);
   const security = healthFrom({ config: {}, report: { valid: true, unsupported: [{ feature: 'Redaction', where: 'post_call', severity: 'security' }] } });
   assert.deepEqual([security.state, security.parts[0].text], ['bad', '1 not enforced']);
@@ -106,16 +142,48 @@ test('health says only what it checked: a badge for each problem, nothing for wh
 test('test results and knowledge indexes add a badge only for an agent that has scenarios or knowledge', () => {
   const config = { tests: [{ id: 'a' }, { id: 'b' }], knowledge: [{ id: 'faq' }] };
   const report = { valid: true, unsupported: [] };
-  const failing = healthFrom({ config, report, tests: { scenarios: [{ id: 'a', last: { status: 'failed', checks: [] } }, { id: 'b', last: { status: 'passed', checks: [] } }] } });
-  assert.deepEqual(failing.parts.map((p) => [p.id, p.text, p.tab]), [['tests_failing', '1 test failing', 'scenarios']]);
+  const failing = healthFrom({
+    config,
+    report,
+    tests: {
+      scenarios: [
+        { id: 'a', last: { status: 'failed', checks: [] } },
+        { id: 'b', last: { status: 'passed', checks: [] } },
+      ],
+    },
+  });
+  assert.deepEqual(
+    failing.parts.map((p) => [p.id, p.text, p.tab]),
+    [['tests_failing', '1 test failing', 'scenarios']],
+  );
   const neverRun = healthFrom({ config, report, tests: { scenarios: [{ id: 'a' }, { id: 'b' }] } });
-  assert.deepEqual(neverRun.parts.map((p) => p.id), ['tests_not_run']);
-  const passing = healthFrom({ config, report, tests: { scenarios: [{ id: 'a', last: { status: 'passed' } }, { id: 'b', last: { status: 'passed' } }] } });
+  assert.deepEqual(
+    neverRun.parts.map((p) => p.id),
+    ['tests_not_run'],
+  );
+  const passing = healthFrom({
+    config,
+    report,
+    tests: {
+      scenarios: [
+        { id: 'a', last: { status: 'passed' } },
+        { id: 'b', last: { status: 'passed' } },
+      ],
+    },
+  });
   assert.deepEqual(passing.parts, []);
   assert.deepEqual(passing.checked, ['validity', 'what will run', 'tests']);
   const noTests = healthFrom({ config: { knowledge: [{ id: 'faq' }] }, report, tests: { scenarios: [] } });
   assert.ok(!noTests.checked.includes('tests'), 'no scenarios, no tests badge');
-  const unbuilt = healthFrom({ config, report, tests: null, knowledge: { bases: [{ id: 'faq', type: 'vector_store', problems: [{ problem: 'No index has been built.' }] }], files: [] } });
-  assert.deepEqual(unbuilt.parts.map((p) => [p.id, p.text, p.tab]), [['knowledge', '1 index to build', 'knowledge']]);
+  const unbuilt = healthFrom({
+    config,
+    report,
+    tests: null,
+    knowledge: { bases: [{ id: 'faq', type: 'vector_store', problems: [{ problem: 'No index has been built.' }] }], files: [] },
+  });
+  assert.deepEqual(
+    unbuilt.parts.map((p) => [p.id, p.text, p.tab]),
+    [['knowledge', '1 index to build', 'knowledge']],
+  );
   assert.equal(healthKey({ id: 'x', draft_revision: 4 }), 'x@4', 'an edit (a new revision) asks again');
 });

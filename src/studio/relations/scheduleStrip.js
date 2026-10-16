@@ -14,20 +14,30 @@ export function minutesOf(text) {
   const minutes = Number(m[1]) * 60 + Number(m[2]);
   return minutes <= 1440 && Number(m[2]) < 60 ? minutes : null;
 }
-const clock = (minutes) => `${String(Math.floor(minutes / 60) % 24 === 0 && minutes >= 1440 ? 24 : Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+const clock = (minutes) =>
+  `${String(Math.floor(minutes / 60) % 24 === 0 && minutes >= 1440 ? 24 : Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 
 // For each day, the open windows [from, to) in minutes, merged and sorted.
 export function weekWindows(schedule) {
   const week = Object.fromEntries(DAYS.map((d) => [d, []]));
-  list(schedule?.weekly).filter(isObj).forEach((rule) => {
-    const from = minutesOf(rule.start); const to = minutesOf(rule.end);
-    if (from === null || to === null || to <= from) return;
-    list(rule.days).forEach((day) => { if (week[day]) week[day].push([from, to]); });
-  });
+  list(schedule?.weekly)
+    .filter(isObj)
+    .forEach((rule) => {
+      const from = minutesOf(rule.start);
+      const to = minutesOf(rule.end);
+      if (from === null || to === null || to <= from) return;
+      list(rule.days).forEach((day) => {
+        if (week[day]) week[day].push([from, to]);
+      });
+    });
   DAYS.forEach((day) => {
     const sorted = week[day].sort((a, b) => a[0] - b[0]);
     const merged = [];
-    sorted.forEach((w) => { const last = merged[merged.length - 1]; if (last && w[0] <= last[1]) last[1] = Math.max(last[1], w[1]); else merged.push([...w]); });
+    sorted.forEach((w) => {
+      const last = merged[merged.length - 1];
+      if (last && w[0] <= last[1]) last[1] = Math.max(last[1], w[1]);
+      else merged.push([...w]);
+    });
     week[day] = merged;
   });
   return week;
@@ -54,10 +64,11 @@ export function describeWeek(schedule) {
 export function exceptions(schedule) {
   const out = [];
   list(schedule?.holidays).forEach((date) => out.push({ date, text: 'Closed all day' }));
-  if (isObj(schedule?.overrides)) Object.entries(schedule.overrides).forEach(([date, value]) => {
-    if (list(schedule?.holidays).includes(date)) return; // a holiday wins
-    out.push({ date, text: value === 'closed' ? 'Closed all day' : isObj(value) ? `Open ${value.start}–${value.end}` : 'Different hours' });
-  });
+  if (isObj(schedule?.overrides))
+    Object.entries(schedule.overrides).forEach(([date, value]) => {
+      if (list(schedule?.holidays).includes(date)) return; // a holiday wins
+      out.push({ date, text: value === 'closed' ? 'Closed all day' : isObj(value) ? `Open ${value.start}–${value.end}` : 'Different hours' });
+    });
   return out.sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
 

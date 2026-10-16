@@ -11,7 +11,15 @@ import { corpus } from './corpus/corpus.js';
 
 const example = () => JSON.parse(readFileSync(new URL('./fixtures/agent-config.example.json', import.meta.url), 'utf8'));
 const single = () => minimalConfig('solo', 'Solo');
-const overlaps = (nodes) => { const out = []; nodes.forEach((a, i) => nodes.slice(i + 1).forEach((b) => { if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) out.push(`${a.id} / ${b.id}`); })); return out; };
+const overlaps = (nodes) => {
+  const out = [];
+  nodes.forEach((a, i) =>
+    nodes.slice(i + 1).forEach((b) => {
+      if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) out.push(`${a.id} / ${b.id}`);
+    }),
+  );
+  return out;
+};
 const errorsOf = (config) => validateDemo(config, 'solo').errors;
 
 test('a single agent is drawn as Start, the agent and what it can do, with Start leading to it', () => {
@@ -20,7 +28,10 @@ test('a single agent is drawn as Start, the agent and what it can do, with Start
   const agents = flow.nodes.filter((n) => n.type === 'agent');
   assert.equal(agents.length, 1);
   assert.ok(agents[0].entry);
-  assert.deepEqual(flow.edges.filter((e) => e.kind === 'start').map((e) => [e.from, e.to]), [['start', agents[0].id]]);
+  assert.deepEqual(
+    flow.edges.filter((e) => e.kind === 'start').map((e) => [e.from, e.to]),
+    [['start', agents[0].id]],
+  );
   assert.equal(flow.empty, false);
   assert.equal(buildWorkflow({ agents: { entry: '', items: [] } }).empty, true);
 });
@@ -30,11 +41,26 @@ test('the example agent: every hand-over, tool and safety rule that moves a call
   const agentIds = flow.nodes.filter((n) => n.type === 'agent').map((n) => n.id);
   assert.deepEqual(agentIds, ['greeter', 'billing', 'tech_support', 'safety_watch']);
   const handoffs = flow.edges.filter((e) => e.kind === 'handoff');
-  assert.deepEqual(handoffs.map((e) => [e.from, e.to, e.ref.handoff]), [['greeter', 'billing', 0], ['greeter', 'tech_support', 1]]);
+  assert.deepEqual(
+    handoffs.map((e) => [e.from, e.to, e.ref.handoff]),
+    [
+      ['greeter', 'billing', 0],
+      ['greeter', 'tech_support', 1],
+    ],
+  );
   assert.ok(handoffs[0].full.startsWith('The caller asks about a bill'), 'the arrow carries when it is taken');
-  assert.ok(flow.edges.some((e) => e.kind === 'return' && e.from === 'billing' && e.to === 'greeter'), '"back to menu" is an arrow back to the first agent');
-  assert.ok(flow.nodes.some((n) => n.type === 'end' && n.agent === 'greeter'), 'the end_call tool is an End block');
-  assert.ok(flow.nodes.some((n) => n.type === 'transfer' && n.agent === 'billing'), 'a transfer_or_callback tool is a phone transfer block');
+  assert.ok(
+    flow.edges.some((e) => e.kind === 'return' && e.from === 'billing' && e.to === 'greeter'),
+    '"back to menu" is an arrow back to the first agent',
+  );
+  assert.ok(
+    flow.nodes.some((n) => n.type === 'end' && n.agent === 'greeter'),
+    'the end_call tool is an End block',
+  );
+  assert.ok(
+    flow.nodes.some((n) => n.type === 'transfer' && n.agent === 'billing'),
+    'a transfer_or_callback tool is a phone transfer block',
+  );
   assert.ok(flow.nodes.some((n) => n.type === 'tool' && n.id === toolNodeId('billing', 'get_bill_summary')));
   const hidden = buildWorkflow(example(), { tools: false });
   assert.equal(hidden.nodes.filter((n) => n.type === 'tool').length, 0, 'tools can be left out');
@@ -45,19 +71,36 @@ test('the example agent: every hand-over, tool and safety rule that moves a call
 test('what an agent does as it takes over (on_enter) is drawn before it; a hand-over or a return there is an arrow instead', () => {
   const config = single();
   const id = config.agents.items[0].id;
-  config.agents.items[0].on_enter = [{ type: 'say', text: 'Hello there' }, { type: 'set_state', values: { a: 1 } }, { type: 'send_form', form: 'callback' }, { type: 'return_to_entry' }];
+  config.agents.items[0].on_enter = [
+    { type: 'say', text: 'Hello there' },
+    { type: 'set_state', values: { a: 1 } },
+    { type: 'send_form', form: 'callback' },
+    { type: 'return_to_entry' },
+  ];
   const flow = buildWorkflow(config);
   const enters = flow.nodes.filter((n) => n.role === 'enter');
-  assert.deepEqual(enters.map((n) => [n.id, n.type, n.sub]), [[enterId(id, 0), 'say', 'Hello there'], [enterId(id, 1), 'state', 'a = 1'], [enterId(id, 2), 'step', 'callback']]);
-  assert.ok(flow.edges.some((e) => e.kind === 'enter' && e.from === enterId(id, 0) && e.to === id), 'each runs into the agent');
+  assert.deepEqual(
+    enters.map((n) => [n.id, n.type, n.sub]),
+    [
+      [enterId(id, 0), 'say', 'Hello there'],
+      [enterId(id, 1), 'state', 'a = 1'],
+      [enterId(id, 2), 'step', 'callback'],
+    ],
+  );
+  assert.ok(
+    flow.edges.some((e) => e.kind === 'enter' && e.from === enterId(id, 0) && e.to === id),
+    'each runs into the agent',
+  );
 });
 
 test('the default layout never puts one block on top of another, with or without tools', () => {
-  [example(), single()].forEach((config) => [true, false].forEach((tools) => {
-    const stripped = JSON.parse(JSON.stringify(config));
-    delete stripped.builder;
-    assert.deepEqual(overlaps(buildWorkflow(stripped, { tools }).nodes), []);
-  }));
+  [example(), single()].forEach((config) =>
+    [true, false].forEach((tools) => {
+      const stripped = JSON.parse(JSON.stringify(config));
+      delete stripped.builder;
+      assert.deepEqual(overlaps(buildWorkflow(stripped, { tools }).nodes), []);
+    }),
+  );
 });
 
 test('a place saved for a block is kept; the blocks that go with an agent follow it unless they have a place of their own; nothing ends up covered', () => {
@@ -75,7 +118,11 @@ test('a place saved for a block is kept; the blocks that go with an agent follow
   const dx = moved.nodes.find((n) => n.id === id).x - before.nodes.find((n) => n.id === id).x;
   assert.equal(moved.nodes.find((n) => n.id === enterId(id, 0)).x - before.nodes.find((n) => n.id === enterId(id, 0)).x, dx, 'the step follows the agent');
   const own = buildWorkflow(ops.setPositions(ops.setPositions(c, { [id]: { x: 700, y: 500 } }), { [enterId(id, 0)]: { x: 50, y: 50 } }));
-  assert.deepEqual([own.nodes.find((n) => n.id === enterId(id, 0)).x, own.nodes.find((n) => n.id === enterId(id, 0)).y], [50, 50], 'a block with its own place stays there');
+  assert.deepEqual(
+    [own.nodes.find((n) => n.id === enterId(id, 0)).x, own.nodes.find((n) => n.id === enterId(id, 0)).y],
+    [50, 50],
+    'a block with its own place stays there',
+  );
   assert.deepEqual(overlaps(buildWorkflow(config).nodes.filter((n) => !n.moved)), [], 'blocks placed automatically never cover each other');
   assert.equal(base.crowded, true, 'a saved layout with no room for the blocks that go with the agents is reported');
 });
@@ -95,9 +142,14 @@ test('arrows leave the sides that face each other and the curve ends on the bloc
   const g = routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 });
   assert.match(g.d, /^M 50 50 C .* 50 200$/);
   assert.ok(g.ly > 50 && g.ly < 200, 'the label sits between the blocks');
-  const l0 = routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 }, { lane: 0, lanes: 2 }); const l1 = routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 }, { lane: 1, lanes: 2 });
+  const l0 = routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 }, { lane: 0, lanes: 2 });
+  const l1 = routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 }, { lane: 1, lanes: 2 });
   assert.ok(l1.ly - l0.ly >= 24, 'and so are their words');
-  assert.notEqual(routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 }, { lane: 0, lanes: 2 }).d, routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 }, { lane: 1, lanes: 2 }).d, 'arrows between the same two blocks do not lie on one another');
+  assert.notEqual(
+    routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 }, { lane: 0, lanes: 2 }).d,
+    routeEdge(a, { id: 'b', x: 0, y: 200, w: 100, h: 50 }, { lane: 1, lanes: 2 }).d,
+    'arrows between the same two blocks do not lie on one another',
+  );
 });
 
 // ---- editing
@@ -121,7 +173,11 @@ test('Subagent: a real agent with a hand-over from the one it was added to; the 
   assert.notEqual(again.id, id, 'a second one gets its own id');
   const tools = again.config.agents.items[0].handoffs.map((h) => h.tool);
   assert.equal(new Set(tools).size, tools.length, 'and its own hand-over tool name');
-  assert.deepEqual(ops.addSubagent(config, from, { at: { x: 10.4, y: 20.6 } }).config.builder.ui.graph_positions[ops.addSubagent(config, from).id], { x: 10, y: 21 }, 'a place can be given');
+  assert.deepEqual(
+    ops.addSubagent(config, from, { at: { x: 10.4, y: 20.6 } }).config.builder.ui.graph_positions[ops.addSubagent(config, from).id],
+    { x: 10, y: 21 },
+    'a place can be given',
+  );
 });
 
 test('Agent transfer links two existing agents, never an agent to itself, and a second link gets its own id', () => {
@@ -130,7 +186,10 @@ test('Agent transfer links two existing agents, never an agent to itself, and a 
   assert.equal(ops.addAgentTransfer(config, a, a), config, 'not to itself');
   assert.equal(ops.addAgentTransfer(config, a, 'nobody'), config);
   const back = ops.addAgentTransfer(config, b, a, 'The caller wants to start over.');
-  assert.deepEqual(back.agents.items[1].handoffs.map((h) => [h.to, h.description]), [[a, 'The caller wants to start over.']]);
+  assert.deepEqual(
+    back.agents.items[1].handoffs.map((h) => [h.to, h.description]),
+    [[a, 'The caller wants to start over.']],
+  );
   const twice = ops.addAgentTransfer(ops.addAgentTransfer(config, b, a), b, a);
   assert.equal(new Set(twice.agents.items[1].handoffs.map((h) => h.id)).size, 2);
   assert.deepEqual(errorsOf(twice), []);
@@ -159,11 +218,18 @@ test('Say, Update state, Phone number transfer, Tool and End write ordinary sett
   assert.deepEqual(errorsOf(phone.config), []);
 
   const end = ops.addEnd(base, a);
-  assert.ok(end.config.tools.some((t) => t.builtin === 'end_call') && end.config.agents.items[0].tools.includes(end.config.tools.find((t) => t.builtin === 'end_call').id));
+  assert.ok(
+    end.config.tools.some((t) => t.builtin === 'end_call') &&
+      end.config.agents.items[0].tools.includes(end.config.tools.find((t) => t.builtin === 'end_call').id),
+  );
   assert.equal(ops.addEnd(end.config, a).config, end.config, 'it is not added twice');
   const other = ops.addSubagent(end.config, a);
   const second = ops.addEnd(other.config, other.id);
-  assert.equal(second.config.tools.filter((t) => t.builtin === 'end_call').length, end.config.tools.filter((t) => t.builtin === 'end_call').length, 'the same way of ending the call is shared, not copied');
+  assert.equal(
+    second.config.tools.filter((t) => t.builtin === 'end_call').length,
+    end.config.tools.filter((t) => t.builtin === 'end_call').length,
+    'the same way of ending the call is shared, not copied',
+  );
   assert.deepEqual(errorsOf(second.config), []);
 
   const lookup = { ...base, tools: [{ id: 'lookup', type: 'http', description: 'Look something up.' }] };
@@ -191,17 +257,26 @@ test('taking things away: a step, a tool block (and the transfer behind it when 
   const other = ops.addTool(shared.config, shared.id, toolId);
   assert.ok(other.id, 'the other agent can offer it too');
   const keep = ops.removeNode(other.config, phone.id);
-  assert.ok(keep.tools.some((t) => t.id === toolId), 'while another agent still offers it, it stays');
+  assert.ok(
+    keep.tools.some((t) => t.id === toolId),
+    'while another agent still offers it, it stays',
+  );
 
   const two = ops.addSubagent(single(), single().agents.items[0].id);
   const [first, second] = two.config.agents.items.map((x) => x.id);
   let wired = ops.addAgentTransfer(two.config, second, first);
-  wired.agents.items[1].on_enter = [{ type: 'handoff', to: first }, { type: 'say', text: 'x' }];
+  wired.agents.items[1].on_enter = [
+    { type: 'handoff', to: first },
+    { type: 'say', text: 'x' },
+  ];
   wired.tools = [...list(wired.tools), { id: 'route', type: 'builtin', builtin: 'noop', effects: [{ do: [{ type: 'handoff', to: second }] }] }];
   wired.guardrails = { escalation: [{ id: 'r', when: { keywords: ['x'] }, action: 'handoff', to: second }] };
   wired = ops.setPositions(ops.setEntry(wired, second), { [second]: { x: 1, y: 1 }, [`${second}::tool::x`]: { x: 2, y: 2 }, [first]: { x: 3, y: 3 } });
   const removed = ops.removeNode(wired, second);
-  assert.deepEqual(removed.agents.items.map((x) => x.id), [first]);
+  assert.deepEqual(
+    removed.agents.items.map((x) => x.id),
+    [first],
+  );
   assert.equal(removed.agents.entry, first, 'the agent that answers first moves on to the one that is left');
   assert.equal(removed.agents.items[0].handoffs, undefined);
   assert.equal(removed.tools.find((t) => t.id === 'route').effects, undefined, 'a tool rule that handed over to it goes');
@@ -257,12 +332,23 @@ test('every agent in the corpus can be drawn: unique block ids, every arrow join
 test('a hand-over made by a tool’s rules or a safety rule can be pointed somewhere else or taken away, and every hand-over id is unique across the agent', () => {
   const config = example();
   const moved = ops.retargetToolHandoff(config, 'report_hazard_chat', 'safety_watch', 'billing');
-  assert.deepEqual(buildWorkflow(moved).edges.filter((e) => e.kind === 'tool').map((e) => [e.from, e.to]), [['tech_support', 'billing']]);
+  assert.deepEqual(
+    buildWorkflow(moved)
+      .edges.filter((e) => e.kind === 'tool')
+      .map((e) => [e.from, e.to]),
+    [['tech_support', 'billing']],
+  );
   assert.equal(ops.retargetToolHandoff(config, 'report_hazard_chat', 'safety_watch', 'nobody'), config, 'only to an agent that exists');
   const stopped = ops.removeToolHandoff(config, 'report_hazard_chat', 'safety_watch');
   assert.equal(buildWorkflow(stopped).edges.filter((e) => e.kind === 'tool').length, 0);
-  assert.ok(!JSON.stringify(stopped.tools.find((t) => t.id === 'report_hazard_chat').effects || []).includes('"handoff"'), 'only the hand-over goes; the tool’s other steps stay');
-  assert.ok(stopped.tools.some((t) => t.id === 'report_hazard_chat'), 'the tool itself stays');
+  assert.ok(
+    !JSON.stringify(stopped.tools.find((t) => t.id === 'report_hazard_chat').effects || []).includes('"handoff"'),
+    'only the hand-over goes; the tool’s other steps stay',
+  );
+  assert.ok(
+    stopped.tools.some((t) => t.id === 'report_hazard_chat'),
+    'the tool itself stays',
+  );
 
   const withRule = JSON.parse(JSON.stringify(config));
   withRule.guardrails.escalation.push({ id: 'to_watch', when: { keywords: ['smoke'] }, action: 'handoff', to: 'safety_watch' });
@@ -278,14 +364,24 @@ test('a hand-over made by a tool’s rules or a safety rule can be pointed somew
   const copy = ops.duplicateAgent(config, 'greeter').config;
   const copyIds = copy.agents.items.flatMap((a) => (a.handoffs || []).map((h) => h.id));
   assert.equal(new Set(copyIds).size, copyIds.length);
-  assert.ok(ops.addPhoneTransfer(single(), single().agents.items[0].id, '+1 800').config.tools.at(-1).params.fallback.length > 0, 'a transfer says what happens when it cannot be made');
+  assert.ok(
+    ops.addPhoneTransfer(single(), single().agents.items[0].id, '+1 800').config.tools.at(-1).params.fallback.length > 0,
+    'a transfer says what happens when it cannot be made',
+  );
 });
 
 test('Update state starts from a value that fits the variable, whatever its type', () => {
-  assert.deepEqual(['string', 'integer', 'number', 'boolean', 'object', 'array', 'enum'].map((type) => ops.blankValue({ type, values: ['a', 'b'] })), ['', 0, 0, false, {}, [], 'a']);
+  assert.deepEqual(
+    ['string', 'integer', 'number', 'boolean', 'object', 'array', 'enum'].map((type) => ops.blankValue({ type, values: ['a', 'b'] })),
+    ['', 0, 0, false, {}, [], 'a'],
+  );
   const config = single();
   const a = config.agents.items[0].id;
-  [['n', { type: 'number' }, 0], ['e', { type: 'enum', values: ['x', 'y'] }, 'x'], ['o', { type: 'object' }, {}]].forEach(([name, variable, value]) => {
+  [
+    ['n', { type: 'number' }, 0],
+    ['e', { type: 'enum', values: ['x', 'y'] }, 'x'],
+    ['o', { type: 'object' }, {}],
+  ].forEach(([name, variable, value]) => {
     const withVar = { ...config, state: { variables: { [name]: variable } } };
     assert.deepEqual(ops.addUpdateState(withVar, a).config.agents.items[0].on_enter[0].values, { [name]: value });
   });
@@ -307,13 +403,35 @@ test('deleting an agent leaves nothing pointing at it, however deep, and takes t
   const two = ops.addSubagent(single(), single().agents.items[0].id);
   const [first, second] = two.config.agents.items.map((x) => x.id);
   const config = JSON.parse(JSON.stringify(two.config));
-  config.tools = [{ id: 'route', type: 'builtin', builtin: 'noop', effects: [{ when: { state: { x: 1 } }, do: [{ type: 'if_then', then: [{ type: 'handoff', to: second }] }, { type: 'set_state', values: {} }] }] }];
-  config.agents.items[0].on_enter = [{ type: 'handoff', to: second }, { type: 'say', text: 'a' }, { type: 'say', text: 'b' }];
+  config.tools = [
+    {
+      id: 'route',
+      type: 'builtin',
+      builtin: 'noop',
+      effects: [
+        {
+          when: { state: { x: 1 } },
+          do: [
+            { type: 'if_then', then: [{ type: 'handoff', to: second }] },
+            { type: 'set_state', values: {} },
+          ],
+        },
+      ],
+    },
+  ];
+  config.agents.items[0].on_enter = [
+    { type: 'handoff', to: second },
+    { type: 'say', text: 'a' },
+    { type: 'say', text: 'b' },
+  ];
   config.tests = [{ id: 't', steps: [], expect: { agent_is: second } }];
   const placed = ops.setPositions(config, { [`${first}::enter::2`]: { x: 1, y: 1 } });
   const removed = ops.removeAgent(placed, second);
   assert.ok(!JSON.stringify(removed).includes(`"to":"${second}"`), 'no hand-over to it is left, even one nested in another step');
-  assert.deepEqual(removed.agents.items[0].on_enter.map((x) => x.type), ['say', 'say']);
+  assert.deepEqual(
+    removed.agents.items[0].on_enter.map((x) => x.type),
+    ['say', 'say'],
+  );
   assert.equal(removed.tests[0].expect.agent_is, undefined);
   assert.equal(removed.builder?.ui?.graph_positions?.[`${first}::enter::2`], undefined, 'a saved place for a step that is now another step is forgotten');
   const gone = ops.removeHandoff(placed, first, { enter: 0 });

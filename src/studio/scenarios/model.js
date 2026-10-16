@@ -20,39 +20,85 @@ export const HTTP_METHODS = METHODS;
 export const EXPECT_KINDS = [
   { key: 'tool_called', label: 'A tool was called', hint: 'The agent used this tool at some point.', shape: 'tool' },
   { key: 'tool_not_called', label: 'A tool was not called', hint: 'The agent never used this tool.', shape: 'tool' },
-  { key: 'tool_called_with', label: 'A tool was called with…', hint: 'The agent used this tool, and the arguments included these values (others are allowed).', shape: 'tool_args' },
+  {
+    key: 'tool_called_with',
+    label: 'A tool was called with…',
+    hint: 'The agent used this tool, and the arguments included these values (others are allowed).',
+    shape: 'tool_args',
+  },
   { key: 'state_equals', label: 'A state variable ends up as', hint: 'After the conversation, this variable has this value.', shape: 'state' },
-  { key: 'said_matches', label: 'The agent said something matching', hint: 'A pattern (a regular expression) that some agent message matches, ignoring case.', shape: 'regex' },
+  {
+    key: 'said_matches',
+    label: 'The agent said something matching',
+    hint: 'A pattern (a regular expression) that some agent message matches, ignoring case.',
+    shape: 'regex',
+  },
   { key: 'agent_is', label: 'The conversation ends with this agent', hint: 'This agent is in charge at the end (after any handoffs).', shape: 'agent' },
-  { key: 'http_called', label: 'The bot made an API request', hint: 'The bot made this request, whether or not a mock answered it. Leave “times” empty for at least once.', shape: 'http' },
-  { key: 'http_not_called', label: 'The bot never made an API request', hint: 'The way to prove a guarded action (a return, a payment link) did not happen.', shape: 'http' },
-  { key: 'judge', label: 'A reviewer would agree that…', hint: 'A criterion in plain words, graded by a language model. It needs a live model, so it is skipped in a scenario with a model script.', shape: 'text' },
+  {
+    key: 'http_called',
+    label: 'The bot made an API request',
+    hint: 'The bot made this request, whether or not a mock answered it. Leave “times” empty for at least once.',
+    shape: 'http',
+  },
+  {
+    key: 'http_not_called',
+    label: 'The bot never made an API request',
+    hint: 'The way to prove a guarded action (a return, a payment link) did not happen.',
+    shape: 'http',
+  },
+  {
+    key: 'judge',
+    label: 'A reviewer would agree that…',
+    hint: 'A criterion in plain words, graded by a language model. It needs a live model, so it is skipped in a scenario with a model script.',
+    shape: 'text',
+  },
 ];
 export const kindOfExpectation = (expectation) => (isObj(expectation) ? EXPECT_KINDS.find((kind) => kind.key in expectation)?.key || '' : '');
 export const kindInfo = (key) => EXPECT_KINDS.find((kind) => kind.key === key) || null;
 // An expectation this file doesn't know: kept as it is, never an error.
 export const isUnknownExpectation = (expectation) => isObj(expectation) && !kindOfExpectation(expectation);
 
-const shortJson = (value, max = 80) => { const text = JSON.stringify(value); return text.length > max ? `${text.slice(0, max)}…` : text; };
+const shortJson = (value, max = 80) => {
+  const text = JSON.stringify(value);
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+};
 const httpWords = (e) => `${e.method ? `${e.method} ` : ''}${e.path || '(a path)'}`;
 
 // An expectation in words.
 export function describeExpectation(expectation) {
   switch (kindOfExpectation(expectation)) {
-    case 'tool_called': return `the tool “${expectation.tool_called}” is called`;
-    case 'tool_not_called': return `the tool “${expectation.tool_not_called}” is not called`;
-    case 'tool_called_with': return `the tool “${expectation.tool_called_with?.tool || '…'}” is called with ${shortJson(expectation.tool_called_with?.args ?? {})}`;
-    case 'state_equals': return `${expectation.state_equals?.state || 'a state variable'} ends up as ${JSON.stringify(expectation.state_equals?.value)}`;
-    case 'said_matches': return `the agent says something matching /${expectation.said_matches}/`;
-    case 'agent_is': return `the conversation ends with the agent “${expectation.agent_is}”`;
-    case 'http_called': { const e = expectation.http_called || {}; return `the bot calls ${httpWords(e)}${e.times ? ` ${e.times} time${e.times === 1 ? '' : 's'}` : ''}`; }
-    case 'http_not_called': return `the bot never calls ${httpWords(expectation.http_not_called || {})}`;
-    case 'judge': return `a reviewer agrees that ${expectation.judge}`;
-    default: return isObj(expectation) ? `something else is expected (${shortJson(expectation, 60)})` : 'something is expected';
+    case 'tool_called':
+      return `the tool “${expectation.tool_called}” is called`;
+    case 'tool_not_called':
+      return `the tool “${expectation.tool_not_called}” is not called`;
+    case 'tool_called_with':
+      return `the tool “${expectation.tool_called_with?.tool || '…'}” is called with ${shortJson(expectation.tool_called_with?.args ?? {})}`;
+    case 'state_equals':
+      return `${expectation.state_equals?.state || 'a state variable'} ends up as ${JSON.stringify(expectation.state_equals?.value)}`;
+    case 'said_matches':
+      return `the agent says something matching /${expectation.said_matches}/`;
+    case 'agent_is':
+      return `the conversation ends with the agent “${expectation.agent_is}”`;
+    case 'http_called': {
+      const e = expectation.http_called || {};
+      return `the bot calls ${httpWords(e)}${e.times ? ` ${e.times} time${e.times === 1 ? '' : 's'}` : ''}`;
+    }
+    case 'http_not_called':
+      return `the bot never calls ${httpWords(expectation.http_not_called || {})}`;
+    case 'judge':
+      return `a reviewer agrees that ${expectation.judge}`;
+    default:
+      return isObj(expectation) ? `something else is expected (${shortJson(expectation, 60)})` : 'something is expected';
   }
 }
 
-export const slugId = (text) => String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^[^a-z]+/, '').replace(/_+$/, '').slice(0, 64);
+export const slugId = (text) =>
+  String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^[^a-z]+/, '')
+    .replace(/_+$/, '')
+    .slice(0, 64);
 const ID = /^[a-z][a-z0-9_-]{0,63}$/;
 
 export function freshScenarioId(scenarios, base = 'scenario') {
@@ -74,18 +120,30 @@ export function newScenario(config, id) {
 export function newExpectation(kind, config) {
   const tools = toolIdsOf(config);
   const states = Object.keys(isObj(config?.state?.variables) ? config.state.variables : {});
-  const agents = list(config?.agents?.items).map((a) => a?.id).filter(Boolean);
+  const agents = list(config?.agents?.items)
+    .map((a) => a?.id)
+    .filter(Boolean);
   switch (kind) {
-    case 'tool_called': return { tool_called: tools[0] || '' };
-    case 'tool_not_called': return { tool_not_called: tools[0] || '' };
-    case 'tool_called_with': return { tool_called_with: { tool: tools[0] || '', args: {} } };
-    case 'state_equals': return { state_equals: { state: states[0] || '', value: '' } };
-    case 'said_matches': return { said_matches: '' };
-    case 'agent_is': return { agent_is: config?.agents?.entry || agents[0] || '' };
-    case 'http_called': return { http_called: { method: 'GET', path: '' } };
-    case 'http_not_called': return { http_not_called: { method: 'POST', path: '' } };
-    case 'judge': return { judge: '' };
-    default: return { said_matches: '' };
+    case 'tool_called':
+      return { tool_called: tools[0] || '' };
+    case 'tool_not_called':
+      return { tool_not_called: tools[0] || '' };
+    case 'tool_called_with':
+      return { tool_called_with: { tool: tools[0] || '', args: {} } };
+    case 'state_equals':
+      return { state_equals: { state: states[0] || '', value: '' } };
+    case 'said_matches':
+      return { said_matches: '' };
+    case 'agent_is':
+      return { agent_is: config?.agents?.entry || agents[0] || '' };
+    case 'http_called':
+      return { http_called: { method: 'GET', path: '' } };
+    case 'http_not_called':
+      return { http_not_called: { method: 'POST', path: '' } };
+    case 'judge':
+      return { judge: '' };
+    default:
+      return { said_matches: '' };
   }
 }
 
@@ -98,12 +156,18 @@ export function toolIdsOf(config) {
 
 // Valid regular expression? ('' when fine, else why not)
 export function regexProblem(source) {
-  try { new RegExp(source); return ''; } catch (error) { return error.message.replace(/^Invalid regular expression: /, ''); }
+  try {
+    new RegExp(source);
+    return '';
+  } catch (error) {
+    return error.message.replace(/^Invalid regular expression: /, '');
+  }
 }
 
 // "2026-10-14T03:00:00+08:00": the pattern the schema asks of `now` (a date and time WITH a time zone).
 export const NOW_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
-export const nowProblem = (text) => (text && !NOW_PATTERN.test(text) ? 'Write a date and time with a time zone, like 2026-10-14T03:00:00+08:00 or 2026-10-14T03:00Z.' : '');
+export const nowProblem = (text) =>
+  text && !NOW_PATTERN.test(text) ? 'Write a date and time with a time zone, like 2026-10-14T03:00:00+08:00 or 2026-10-14T03:00Z.' : '';
 
 // What is wrong with one expectation, by what this file KNOWS. An unknown kind is never wrong, only "edit in JSON".
 function expectationProblem(e, index, config) {
@@ -115,7 +179,8 @@ function expectationProblem(e, index, config) {
   const stateNames = Object.keys(isObj(config?.state?.variables) ? config.state.variables : {});
   const agentIds = list(config?.agents?.items).map((a) => a?.id);
   switch (kind) {
-    case 'tool_called': case 'tool_not_called':
+    case 'tool_called':
+    case 'tool_not_called':
       if (!e[kind]) return `${where}choose a tool.`;
       return toolIds.includes(e[kind]) ? '' : `${where}there is no tool “${e[kind]}”.`;
     case 'tool_called_with': {
@@ -137,15 +202,19 @@ function expectationProblem(e, index, config) {
     case 'agent_is':
       if (!e.agent_is) return `${where}choose an agent.`;
       return agentIds.includes(e.agent_is) ? '' : `${where}there is no agent “${e.agent_is}”.`;
-    case 'http_called': case 'http_not_called': {
+    case 'http_called':
+    case 'http_not_called': {
       const v = e[kind];
       if (!isObj(v) || !String(v.path || '').trim()) return `${where}write the request path (a * matches anything).`;
       if (v.method && !METHODS.includes(v.method)) return `${where}the method must be one of ${METHODS.join(', ')}.`;
-      if (kind === 'http_called' && v.times !== undefined && (!Number.isInteger(v.times) || v.times < 1)) return `${where}“times” must be a whole number of 1 or more, or empty.`;
+      if (kind === 'http_called' && v.times !== undefined && (!Number.isInteger(v.times) || v.times < 1))
+        return `${where}“times” must be a whole number of 1 or more, or empty.`;
       return '';
     }
-    case 'judge': return String(e.judge || '').trim() ? '' : `${where}write the criterion.`;
-    default: return '';
+    case 'judge':
+      return String(e.judge || '').trim() ? '' : `${where}write the criterion.`;
+    default:
+      return '';
   }
 }
 
@@ -155,9 +224,11 @@ export function mockProblem(mock, index) {
   if (!isObj(mock)) return `${where}this isn’t an object.`;
   if (!String(mock.path || '').trim()) return `${where}write the request path it answers (a * matches anything).`;
   if (mock.method && !METHODS.includes(mock.method)) return `${where}the method must be one of ${METHODS.join(', ')}.`;
-  if (mock.status !== undefined && (!Number.isInteger(mock.status) || mock.status < 100 || mock.status > 599)) return `${where}the status must be a number from 100 to 599.`;
+  if (mock.status !== undefined && (!Number.isInteger(mock.status) || mock.status < 100 || mock.status > 599))
+    return `${where}the status must be a number from 100 to 599.`;
   if (mock.times !== undefined && (!Number.isInteger(mock.times) || mock.times < 1)) return `${where}“times” must be a whole number of 1 or more, or empty.`;
-  if (mock.query !== undefined && !(isObj(mock.query) && Object.values(mock.query).every((v) => typeof v === 'string'))) return `${where}the query must be text values.`;
+  if (mock.query !== undefined && !(isObj(mock.query) && Object.values(mock.query).every((v) => typeof v === 'string')))
+    return `${where}the query must be text values.`;
   if (mock.body_contains !== undefined && !isObj(mock.body_contains)) return `${where}“body contains” must be an object.`;
   return '';
 }
@@ -166,7 +237,8 @@ export function mockProblem(mock, index) {
 export function scriptProblem(item, index) {
   const where = `Model reply ${index + 1}: `;
   if (typeof item === 'string') return item.trim() ? '' : `${where}write what the model says.`;
-  if (isObj(item)) return item.tool ? (item.args === undefined || isObj(item.args) ? '' : `${where}the arguments must be an object.`) : `${where}choose the tool it calls.`;
+  if (isObj(item))
+    return item.tool ? (item.args === undefined || isObj(item.args) ? '' : `${where}the arguments must be an object.`) : `${where}choose the tool it calls.`;
   return `${where}it must be a message or a tool call.`;
 }
 
@@ -185,9 +257,15 @@ export function scenarioProblems(scenario, config, others = []) {
   const expect = list(scenario.expect);
   const problems = [];
   if (!expect.length) problems.push('Add at least one thing that must be true afterwards.');
-  expect.forEach((e, index) => { const why = expectationProblem(e, index, config); if (why) problems.push(why); });
+  expect.forEach((e, index) => {
+    const why = expectationProblem(e, index, config);
+    if (why) problems.push(why);
+  });
   if (problems.length) out.expect = problems;
-  if (scenario.now !== undefined && typeof scenario.now === 'string') { const why = nowProblem(scenario.now); if (why) out.now = why; }
+  if (scenario.now !== undefined && typeof scenario.now === 'string') {
+    const why = nowProblem(scenario.now);
+    if (why) out.now = why;
+  }
   if (scenario.state !== undefined && !isObj(scenario.state)) out.state = 'The starting state must be an object, like {"verified": true}.';
   const mocks = list(scenario.http_mocks).map(mockProblem).filter(Boolean);
   if (mocks.length) out.mocks = mocks;
@@ -201,18 +279,33 @@ export const hasProblems = (problems) => Object.keys(problems).length > 0;
 // Pasted JSON -> { scenarios, problems: [string] }. Accepts a list, or an object with a `tests` list. Ids that clash are renamed.
 export function parseImport(text, config) {
   let value;
-  try { value = JSON.parse(text); } catch (error) { return { scenarios: [], problems: [`That isn’t valid JSON (${error.message}).`] }; }
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    return { scenarios: [], problems: [`That isn’t valid JSON (${error.message}).`] };
+  }
   const items = Array.isArray(value) ? value : isObj(value) && Array.isArray(value.tests) ? value.tests : isObj(value) ? [value] : null;
   if (!items) return { scenarios: [], problems: ['Paste a list of scenarios, or one scenario.'] };
   const taken = [...list(config?.tests)];
-  const scenarios = []; const problems = [];
+  const scenarios = [];
+  const problems = [];
   items.forEach((item, index) => {
-    if (!isObj(item)) { problems.push(`Item ${index + 1} isn’t a scenario.`); return; }
-    const scenario = { ...item, id: taken.some((s) => s?.id === item.id) || !item.id ? freshScenarioId(taken, item.id || slugId(`scenario ${index + 1}`) || 'scenario') : item.id };
+    if (!isObj(item)) {
+      problems.push(`Item ${index + 1} isn’t a scenario.`);
+      return;
+    }
+    const scenario = {
+      ...item,
+      id: taken.some((s) => s?.id === item.id) || !item.id ? freshScenarioId(taken, item.id || slugId(`scenario ${index + 1}`) || 'scenario') : item.id,
+    };
     const found = scenarioProblems(scenario, config, taken);
     const flat = Object.values(found).flat();
-    if (flat.length) { problems.push(`${scenario.id}: ${flat.join(' ')}`); return; }
-    taken.push(scenario); scenarios.push(scenario);
+    if (flat.length) {
+      problems.push(`${scenario.id}: ${flat.join(' ')}`);
+      return;
+    }
+    taken.push(scenario);
+    scenarios.push(scenario);
   });
   return { scenarios, problems };
 }
@@ -221,7 +314,11 @@ export function parseImport(text, config) {
 export function parseValue(text) {
   const value = String(text ?? '').trim();
   if (value === '') return '';
-  try { return JSON.parse(value); } catch { return value; }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
 }
 export const showValue = (value) => (typeof value === 'string' ? value : JSON.stringify(value));
 
@@ -229,7 +326,12 @@ export const showValue = (value) => (typeof value === 'string' ? value : JSON.st
 export function parseObject(text) {
   const source = String(text ?? '').trim();
   if (!source) return { value: undefined };
-  try { const value = JSON.parse(source); return isObj(value) ? { value } : { error: 'This must be a JSON object, like {"verified": true}.' }; } catch (error) { return { error: `Not valid JSON (${error.message}).` }; }
+  try {
+    const value = JSON.parse(source);
+    return isObj(value) ? { value } : { error: 'This must be a JSON object, like {"verified": true}.' };
+  } catch (error) {
+    return { error: `Not valid JSON (${error.message}).` };
+  }
 }
 
 // ---- mocks ---------------------------------------------------------------------------------------------------------------------------
@@ -241,7 +343,9 @@ export function stubMock(request, existing = []) {
   if (request?.connection) mock.connection = request.connection;
   if (isObj(request?.query) && Object.keys(request.query).length) mock.query = request.query;
   // the same mock twice would never be reached (the first match wins), so a duplicate is not added
-  const same = list(existing).some((m) => isObj(m) && m.path === mock.path && (m.method || '') === (mock.method || '') && JSON.stringify(m.query || {}) === JSON.stringify(mock.query || {}));
+  const same = list(existing).some(
+    (m) => isObj(m) && m.path === mock.path && (m.method || '') === (mock.method || '') && JSON.stringify(m.query || {}) === JSON.stringify(mock.query || {}),
+  );
   return same ? null : mock;
 }
 
@@ -255,13 +359,23 @@ export function addMockTo(scenario, request) {
 // It is a starting point the author edits: the caller's turns, a `tool_called` for every tool used, and `state_equals` for the final
 // state. Nothing is invented: only what the conversation shows.
 export function scenarioFromConversation(config, { id, channel, messages = [], tools = [], finalState = {} } = {}) {
-  const turns = messages.filter((m) => m.role === 'user' || m.role === 'caller').map((m) => ({ say: String(m.text || '').trim() })).filter((t) => t.say);
+  const turns = messages
+    .filter((m) => m.role === 'user' || m.role === 'caller')
+    .map((m) => ({ say: String(m.text || '').trim() }))
+    .filter((t) => t.say);
   const expect = [];
   [...new Set(tools.filter(Boolean))].forEach((tool) => expect.push({ tool_called: tool }));
   const variables = isObj(config?.state?.variables) ? config.state.variables : {};
   Object.entries(isObj(finalState) ? finalState : {}).forEach(([state, value]) => {
-    if (state in variables && value !== undefined && value !== null && value !== '' && JSON.stringify(value) !== JSON.stringify(variables[state]?.initial)) expect.push({ state_equals: { state, value } });
+    if (state in variables && value !== undefined && value !== null && value !== '' && JSON.stringify(value) !== JSON.stringify(variables[state]?.initial))
+      expect.push({ state_equals: { state, value } });
   });
   if (!expect.length) expect.push({ said_matches: '.+' });
-  return { id: id || freshScenarioId(config?.tests, 'from_a_test'), channel: channel || newScenario(config).channel, description: 'Made from a test conversation: edit what it checks.', turns: turns.length ? turns : [{ say: 'Hello' }], expect };
+  return {
+    id: id || freshScenarioId(config?.tests, 'from_a_test'),
+    channel: channel || newScenario(config).channel,
+    description: 'Made from a test conversation: edit what it checks.',
+    turns: turns.length ? turns : [{ say: 'Hello' }],
+    expect,
+  };
 }

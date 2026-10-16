@@ -47,7 +47,11 @@ export function parsePath(text) {
 }
 
 export function validatePath(text) {
-  try { return { ok: true, segments: parsePath(text) }; } catch (error) { return { ok: false, error: error.message }; }
+  try {
+    return { ok: true, segments: parsePath(text) };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
 }
 
 // All the values a path picks out of `value` (empty when nothing matches).
@@ -56,7 +60,11 @@ export function evalPath(value, text) {
   for (const seg of parsePath(text)) {
     const next = [];
     nodes.forEach((node) => {
-      if (seg.all) { if (Array.isArray(node)) next.push(...node); } else if ('index' in seg) { if (Array.isArray(node) && seg.index < node.length) next.push(node[seg.index]); } else if (node !== null && typeof node === 'object' && !Array.isArray(node) && seg.key in node) next.push(node[seg.key]);
+      if (seg.all) {
+        if (Array.isArray(node)) next.push(...node);
+      } else if ('index' in seg) {
+        if (Array.isArray(node) && seg.index < node.length) next.push(node[seg.index]);
+      } else if (node !== null && typeof node === 'object' && !Array.isArray(node) && seg.key in node) next.push(node[seg.key]);
     });
     nodes = next;
   }
@@ -71,12 +79,24 @@ export function samplePaths(sample, { max = 200 } = {}) {
   const walk = (node, path, depth) => {
     if (out.length >= max || depth > 8) return;
     if (Array.isArray(node)) {
-      if (!node.length) { out.push({ path, kind: 'list', preview: '[]' }); return; }
+      if (!node.length) {
+        out.push({ path, kind: 'list', preview: '[]' });
+        return;
+      }
       const first = node[0];
       if (first !== null && typeof first === 'object') {
         out.push({ path: `${path}[*]`, kind: 'list', preview: `${node.length} item${node.length === 1 ? '' : 's'}` });
         walk(first, `${path}[*]`, depth + 1);
-      } else out.push({ path: `${path}[*]`, kind: 'list', preview: node.slice(0, 3).map((x) => JSON.stringify(x)).join(', ') + (node.length > 3 ? '…' : '') });
+      } else
+        out.push({
+          path: `${path}[*]`,
+          kind: 'list',
+          preview:
+            node
+              .slice(0, 3)
+              .map((x) => JSON.stringify(x))
+              .join(', ') + (node.length > 3 ? '…' : ''),
+        });
     } else if (node !== null && typeof node === 'object') {
       Object.keys(node).forEach((key) => walk(node[key], `${path}${step(key)}`, depth + 1));
     } else out.push({ path, kind: node === null ? 'null' : typeof node, preview: node === null ? 'null' : String(node).slice(0, 60) });
@@ -91,8 +111,16 @@ export function describeMatches(sample, text) {
     const found = evalPath(sample, text);
     if (!found.length) return { ok: false, text: 'matches nothing in the sample' };
     if (found.length === 1) return { ok: true, text: JSON.stringify(found[0]).slice(0, 80) };
-    return { ok: true, text: `${found.length} values: ${found.slice(0, 3).map((x) => JSON.stringify(x)).join(', ')}${found.length > 3 ? '…' : ''}` };
-  } catch (error) { return { ok: false, text: error.message }; }
+    return {
+      ok: true,
+      text: `${found.length} values: ${found
+        .slice(0, 3)
+        .map((x) => JSON.stringify(x))
+        .join(', ')}${found.length > 3 ? '…' : ''}`,
+    };
+  } catch (error) {
+    return { ok: false, text: error.message };
+  }
 }
 
 // What the model would be shown: only the fields `to_llm` names (or the whole response when it names none).
@@ -104,8 +132,11 @@ export function modelSees(sample, toLlm) {
   paths.forEach((path) => {
     try {
       const found = evalPath(sample, path);
-      if (!found.length) missing.push(path); else value[path] = found.length === 1 ? found[0] : found;
-    } catch { missing.push(path); }
+      if (!found.length) missing.push(path);
+      else value[path] = found.length === 1 ? found[0] : found;
+    } catch {
+      missing.push(path);
+    }
   });
   return { whole: false, value, missing };
 }

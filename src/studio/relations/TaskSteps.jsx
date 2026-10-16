@@ -17,7 +17,16 @@ export default function TaskSteps({ value }) {
           </li>
         ))}
       </ol>
-      {task.outcomes.length > 0 && <dl>{task.outcomes.map((o) => <React.Fragment key={o.key}><dt>{o.label}</dt><dd>{o.text}</dd></React.Fragment>)}</dl>}
+      {task.outcomes.length > 0 && (
+        <dl>
+          {task.outcomes.map((o) => (
+            <React.Fragment key={o.key}>
+              <dt>{o.label}</dt>
+              <dd>{o.text}</dd>
+            </React.Fragment>
+          ))}
+        </dl>
+      )}
     </section>
   );
 }

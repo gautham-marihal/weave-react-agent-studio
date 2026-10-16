@@ -12,7 +12,15 @@ import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
 
 function Marked({ text }) {
   const parts = String(text).split(/(‹[^›]*›)/);
-  return parts.map((part, index) => (part.startsWith('‹') ? <mark key={index} className="stPromptHole">{part}</mark> : <React.Fragment key={index}>{part}</React.Fragment>));
+  return parts.map((part, index) =>
+    part.startsWith('‹') ? (
+      <mark key={index} className="stPromptHole">
+        {part}
+      </mark>
+    ) : (
+      <React.Fragment key={index}>{part}</React.Fragment>
+    ),
+  );
 }
 
 const SOURCE = {
@@ -31,53 +39,111 @@ export default function PromptPreview({ agentId, config }) {
   const [open, setOpen] = useState(false);
   const [exactOpen, setExactOpen] = useState(false);
   const what = useWhatIf(config);
-  const preview = usePromptPreview({ config, agentId, channel: what.channel, state: what.state, nowLocal: what.nowLocal, callerPhone: what.callerPhone, enabled: open });
+  const preview = usePromptPreview({
+    config,
+    agentId,
+    channel: what.channel,
+    state: what.state,
+    nowLocal: what.nowLocal,
+    callerPhone: what.callerPhone,
+    enabled: open,
+  });
   const prompt = preview.data;
   const advice = useMemo(() => promptAdvice(prompt), [prompt]);
   const source = SOURCE[preview.source];
 
   return (
     <details className="stPromptPreview" onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary>Preview the prompt {source && <span className={`stTag ${preview.source === 'server' ? 'good' : ''}`} title={source.title}>{source.text}</span>}</summary>
+      <summary>
+        Preview the prompt{' '}
+        {source && (
+          <span className={`stTag ${preview.source === 'server' ? 'good' : ''}`} title={source.title}>
+            {source.text}
+          </span>
+        )}
+      </summary>
       {open && (
         <div className="stPromptBody">
           <WhatIfBar config={config} what={what} />
 
           {preview.source === 'approximate' && (
-            <p className="stFWarn" role="note">The server couldn’t be asked ({preview.error?.message || 'no answer'}), so this is an <strong>approximate</strong> preview built in your browser: the runtime’s own wording and order may differ.</p>
+            <p className="stFWarn" role="note">
+              The server couldn’t be asked ({preview.error?.message || 'no answer'}), so this is an <strong>approximate</strong> preview built in your browser:
+              the runtime’s own wording and order may differ.
+            </p>
           )}
-          {preview.note && <p className="stFWarn" role="note">{preview.note}</p>}
+          {preview.note && (
+            <p className="stFWarn" role="note">
+              {preview.note}
+            </p>
+          )}
 
-          {!prompt ? (preview.loading ? <p className="stFEmpty" role="status">Asking the server…</p> : <p className="stFEmpty">Give this agent an id to preview its prompt.</p>) : (
+          {!prompt ? (
+            preview.loading ? (
+              <p className="stFEmpty" role="status">
+                Asking the server…
+              </p>
+            ) : (
+              <p className="stFEmpty">Give this agent an id to preview its prompt.</p>
+            )
+          ) : (
             <>
               <p className="stPromptTotal" role="status">
-                <strong>{prompt.stats.words.toLocaleString()}</strong> word{prompt.stats.words === 1 ? '' : 's'} · about <strong>{prompt.stats.tokens.toLocaleString()}</strong> tokens · <strong>{prompt.stats.toolsOffered}</strong> tool{prompt.stats.toolsOffered === 1 ? '' : 's'} offered
+                <strong>{prompt.stats.words.toLocaleString()}</strong> word{prompt.stats.words === 1 ? '' : 's'} · about{' '}
+                <strong>{prompt.stats.tokens.toLocaleString()}</strong> tokens · <strong>{prompt.stats.toolsOffered}</strong> tool
+                {prompt.stats.toolsOffered === 1 ? '' : 's'} offered
                 {preview.loading && <span className="stMuted"> · updating…</span>}
               </p>
-              {advice.map((item) => <p key={item.id} className="stFWarn" role="note" data-advice={item.id}>{item.text}</p>)}
+              {advice.map((item) => (
+                <p key={item.id} className="stFWarn" role="note" data-advice={item.id}>
+                  {item.text}
+                </p>
+              ))}
 
               {prompt.sections.length === 0 && <p className="stFEmpty">Nothing to show yet: this agent has no role or persona text.</p>}
               {prompt.sections.map((section) => (
                 <section key={section.id} className={`stPromptSection ${section.active ? '' : 'conditional off'}`} data-section={section.kind}>
                   <header>
                     <strong>{section.label}</strong>
-                    <small>{section.active ? (section.when ? `in now · ${section.when}` : 'in the prompt') : `not in right now${section.when ? ` · only ${section.when}` : ''}`}</small>
+                    <small>
+                      {section.active
+                        ? section.when
+                          ? `in now · ${section.when}`
+                          : 'in the prompt'
+                        : `not in right now${section.when ? ` · only ${section.when}` : ''}`}
+                    </small>
                   </header>
-                  <pre><Marked text={section.text} /></pre>
+                  <pre>
+                    <Marked text={section.text} />
+                  </pre>
                 </section>
               ))}
 
               {(prompt.opening || prompt.greeting) && (
                 <section className="stPromptSection" data-section="spoken">
-                  <header><strong>What it says first</strong><small>not part of the instructions</small></header>
-                  {prompt.greeting && <p className="stPromptSay"><b>Greeting:</b> {prompt.greeting}</p>}
-                  {prompt.opening && <p className="stPromptSay"><b>When it takes over:</b> {prompt.opening}</p>}
+                  <header>
+                    <strong>What it says first</strong>
+                    <small>not part of the instructions</small>
+                  </header>
+                  {prompt.greeting && (
+                    <p className="stPromptSay">
+                      <b>Greeting:</b> {prompt.greeting}
+                    </p>
+                  )}
+                  {prompt.opening && (
+                    <p className="stPromptSay">
+                      <b>When it takes over:</b> {prompt.opening}
+                    </p>
+                  )}
                 </section>
               )}
 
               {prompt.tools.length > 0 && (
                 <details className="stPromptTools">
-                  <summary>The tools it is offered ({prompt.tools.filter((t) => t.offered).length}{prompt.tools.some((t) => !t.offered) ? ` of ${prompt.tools.length}` : ''})</summary>
+                  <summary>
+                    The tools it is offered ({prompt.tools.filter((t) => t.offered).length}
+                    {prompt.tools.some((t) => !t.offered) ? ` of ${prompt.tools.length}` : ''})
+                  </summary>
                   <ul>
                     {prompt.tools.map((tool) => (
                       <li key={tool.name} className={tool.offered ? '' : 'off'}>
@@ -95,7 +161,19 @@ export default function PromptPreview({ agentId, config }) {
               <details className="stPromptExact" open={exactOpen || undefined} onToggle={(event) => setExactOpen(event.currentTarget.open)}>
                 <summary>The exact text the model receives</summary>
                 <pre aria-label="The exact instructions">{prompt.instructions}</pre>
-                <button type="button" className="quietButton" onClick={() => { try { navigator.clipboard.writeText(prompt.instructions); } catch { /* clipboard blocked */ } }}>Copy</button>
+                <button
+                  type="button"
+                  className="quietButton"
+                  onClick={() => {
+                    try {
+                      navigator.clipboard.writeText(prompt.instructions);
+                    } catch {
+                      /* clipboard blocked */
+                    }
+                  }}
+                >
+                  Copy
+                </button>
               </details>
             </>
           )}

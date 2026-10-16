@@ -19,11 +19,21 @@ export const RANGES = [
   { id: '30d', label: 'Past 30 days', hours: 24 * 30 },
   { id: 'all', label: 'All time', hours: null },
 ];
-export const sinceFor = (rangeId, nowMs = Date.now()) => { const r = RANGES.find((x) => x.id === rangeId); return r?.hours ? new Date(nowMs - r.hours * 3600 * 1000).toISOString() : undefined; };
+export const sinceFor = (rangeId, nowMs = Date.now()) => {
+  const r = RANGES.find((x) => x.id === rangeId);
+  return r?.hours ? new Date(nowMs - r.hours * 3600 * 1000).toISOString() : undefined;
+};
 
 // The filters of the screen -> the query of GET /bots/{id}/calls.
 export function queryFor({ range = '7d', caller = '', channel = '', status = '' } = {}, { limit = 25, cursor, nowMs } = {}) {
-  return { limit, cursor, since: sinceFor(range, nowMs), caller: String(caller || '').trim() || undefined, channel: channel || undefined, status: status || undefined };
+  return {
+    limit,
+    cursor,
+    since: sinceFor(range, nowMs),
+    caller: String(caller || '').trim() || undefined,
+    channel: channel || undefined,
+    status: status || undefined,
+  };
 }
 
 export function formatSeconds(seconds) {
@@ -45,13 +55,39 @@ export const turnsOf = (call) => `${call?.caller_turns ?? 0} / ${call?.agent_tur
 // One row for the table, with the agent's name when it is known.
 export function rowOf(call, botName) {
   const s = statusOf(call?.status);
-  return { id: call?.id, bot: call?.bot, botName: botName || call?.bot || '', startedAt: call?.started_at, caller: call?.caller || '', channel: channelLabel(call?.channel), duration: formatSeconds(call?.duration_s), turns: turnsOf(call), handoffs: call?.handoffs ?? 0, statusLabel: s.label, tone: s.tone, hint: s.hint, version: call?.version || '', ref: call?.ref || '', raw: call };
+  return {
+    id: call?.id,
+    bot: call?.bot,
+    botName: botName || call?.bot || '',
+    startedAt: call?.started_at,
+    caller: call?.caller || '',
+    channel: channelLabel(call?.channel),
+    duration: formatSeconds(call?.duration_s),
+    turns: turnsOf(call),
+    handoffs: call?.handoffs ?? 0,
+    statusLabel: s.label,
+    tone: s.tone,
+    hint: s.hint,
+    version: call?.version || '',
+    ref: call?.ref || '',
+    raw: call,
+  };
 }
 
 // Pages from several agents -> one list, newest first, with the same call never twice.
 export function mergeCalls(pages) {
-  const seen = new Set(); const out = [];
-  list(pages).flatMap((p) => list(p?.calls)).sort((a, b) => Date.parse(b?.started_at || 0) - Date.parse(a?.started_at || 0)).forEach((c) => { const key = `${c.bot}/${c.id}`; if (!seen.has(key)) { seen.add(key); out.push(c); } });
+  const seen = new Set();
+  const out = [];
+  list(pages)
+    .flatMap((p) => list(p?.calls))
+    .sort((a, b) => Date.parse(b?.started_at || 0) - Date.parse(a?.started_at || 0))
+    .forEach((c) => {
+      const key = `${c.bot}/${c.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(c);
+      }
+    });
   return out;
 }
 
@@ -59,17 +95,40 @@ export const ALL_AGENTS_LIMIT = 30; // asking every agent is one request each: p
 export const PER_AGENT_PAGE = 25;
 
 // The distinct channels seen in some calls, for the channel filter.
-export const channelsIn = (calls) => [...new Map(list(calls).map((c) => [c?.channel?.id, c?.channel]).filter(([id]) => id)).values()];
+export const channelsIn = (calls) => [
+  ...new Map(
+    list(calls)
+      .map((c) => [c?.channel?.id, c?.channel])
+      .filter(([id]) => id),
+  ).values(),
+];
 
 // NDJSON of a call's records, for "Download" in demo mode (the real API serves its own file).
-export const ndjson = (events) => `${list(events).map((e) => JSON.stringify(e)).join('\n')}\n`;
+export const ndjson = (events) =>
+  `${list(events)
+    .map((e) => JSON.stringify(e))
+    .join('\n')}\n`;
 
 // What a call's records were, in words: "12 records: 3 from the caller, 3 from the agent, 2 tool calls". `counts` is the server's tally per kind of record.
-const COUNT_WORDS = { user_said: ['from the caller', 'from the caller'], agent_said: ['from the agent', 'from the agent'], tool_called: ['tool call', 'tool calls'], http_request: ['API request', 'API requests'], knowledge_search: ['knowledge search', 'knowledge searches'], state_changed: ['state change', 'state changes'], error: ['error', 'errors'] };
+const COUNT_WORDS = {
+  user_said: ['from the caller', 'from the caller'],
+  agent_said: ['from the agent', 'from the agent'],
+  tool_called: ['tool call', 'tool calls'],
+  http_request: ['API request', 'API requests'],
+  knowledge_search: ['knowledge search', 'knowledge searches'],
+  state_changed: ['state change', 'state changes'],
+  error: ['error', 'errors'],
+};
 export function countsLine(counts) {
   const entries = Object.entries(counts && typeof counts === 'object' ? counts : {}).filter(([, n]) => typeof n === 'number' && n > 0);
   if (!entries.length) return '';
   const total = entries.reduce((sum, [, n]) => sum + n, 0);
-  const known = Object.keys(COUNT_WORDS).filter((kind) => entries.some(([k]) => k === kind)).map((kind) => { const n = counts[kind]; const [one, many] = COUNT_WORDS[kind]; return `${n} ${n === 1 ? one : many}`; });
+  const known = Object.keys(COUNT_WORDS)
+    .filter((kind) => entries.some(([k]) => k === kind))
+    .map((kind) => {
+      const n = counts[kind];
+      const [one, many] = COUNT_WORDS[kind];
+      return `${n} ${n === 1 ? one : many}`;
+    });
   return `${total} record${total === 1 ? '' : 's'}${known.length ? `: ${known.join(', ')}` : ''}`;
 }

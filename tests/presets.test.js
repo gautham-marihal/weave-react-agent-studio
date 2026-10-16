@@ -49,7 +49,12 @@ test('changing the type clears the entry fields that belong to the old type and 
 });
 
 test('changing the type keeps what the person set, and does not ask about empty values', () => {
-  const custom = { ...buildChannel('web_chat', { botId: 'acme' }), modalities: { input: ['text', 'image'], output: ['text'] }, greeting: { say: 'Welcome to Acme!' }, entry: { widget_id: 'x', allowed_origins: [] } };
+  const custom = {
+    ...buildChannel('web_chat', { botId: 'acme' }),
+    modalities: { input: ['text', 'image'], output: ['text'] },
+    greeting: { say: 'Welcome to Acme!' },
+    entry: { widget_id: 'x', allowed_origins: [] },
+  };
   const { channel, cleared } = changeChannelType(custom, 'web_voice', 'acme');
   assert.deepEqual(channel.modalities, custom.modalities); // customised, so left alone
   assert.equal(channel.greeting.say, 'Welcome to Acme!');
@@ -71,8 +76,16 @@ test('each type says which entry fields apply, and none applies to sms or email'
 test('modalities say what they need from the rest of the config', () => {
   const channel = { modalities: { input: ['audio', 'image'], output: ['audio'] } };
   const none = modalityNotes(channel, { defaults: { models: { llm: { provider: 'openai' } } } });
-  assert.deepEqual(none.filter((n) => n.level === 'warn').map((n) => n.text.split(' ').slice(0, 2).join(' ')), ['Audio in', 'Audio out', 'Images and']);
-  const ready = modalityNotes(channel, { defaults: { models: { stt: { provider: 'openai' }, tts: { provider: 'openai' }, llm: { provider: 'openai', vision: true } } } });
-  assert.deepEqual(ready.filter((n) => n.level === 'warn'), []);
+  assert.deepEqual(
+    none.filter((n) => n.level === 'warn').map((n) => n.text.split(' ').slice(0, 2).join(' ')),
+    ['Audio in', 'Audio out', 'Images and'],
+  );
+  const ready = modalityNotes(channel, {
+    defaults: { models: { stt: { provider: 'openai' }, tts: { provider: 'openai' }, llm: { provider: 'openai', vision: true } } },
+  });
+  assert.deepEqual(
+    ready.filter((n) => n.level === 'warn'),
+    [],
+  );
   assert.deepEqual(modalityNotes({ modalities: { input: ['text'], output: ['text'] } }, {}), []);
 });

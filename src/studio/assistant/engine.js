@@ -34,7 +34,11 @@ export function pruneStalePlaces(config) {
   if (Object.keys(kept).length === Object.keys(places).length) return config;
   const next = clone(config);
   if (Object.keys(kept).length) next.builder.ui.graph_positions = kept;
-  else { delete next.builder.ui.graph_positions; if (!Object.keys(next.builder.ui).length) delete next.builder.ui; if (!Object.keys(next.builder).length) delete next.builder; }
+  else {
+    delete next.builder.ui.graph_positions;
+    if (!Object.keys(next.builder.ui).length) delete next.builder.ui;
+    if (!Object.keys(next.builder).length) delete next.builder;
+  }
   return next;
 }
 
@@ -43,19 +47,29 @@ export async function askAssistant({ request, config, schema, model, post, valid
   const system = [{ type: 'text', text: systemPrompt(schema), cache_control: { type: 'ephemeral' } }];
   const messages = [{ role: 'user', content: requestMessage({ request, config, earlier }) }];
   const usage = { input: 0, output: 0, cached: 0 };
-  let answer = null; let report = { errors: [], warnings: [] }; let repairs = 0;
+  let answer = null;
+  let report = { errors: [], warnings: [] };
+  let repairs = 0;
   for (let round = 0; round <= maxRepairs; round += 1) {
     onStep?.(round === 0 ? 'thinking' : 'fixing');
-    const reply = await post({ model, max_tokens: 24000, system, messages, tools: [TOOL], tool_choice: { type: 'tool', name: TOOL.name }, temperature: 0.2 }, signal);
+    const reply = await post(
+      { model, max_tokens: 24000, system, messages, tools: [TOOL], tool_choice: { type: 'tool', name: TOOL.name }, temperature: 0.2 },
+      signal,
+    );
     answer = readAnswer(reply);
-    usage.input += reply.usage?.input_tokens || 0; usage.output += reply.usage?.output_tokens || 0; usage.cached += reply.usage?.cache_read_input_tokens || 0;
+    usage.input += reply.usage?.input_tokens || 0;
+    usage.output += reply.usage?.output_tokens || 0;
+    usage.cached += reply.usage?.cache_read_input_tokens || 0;
     answer.config = keepStudioNotes(config, answer.config);
     onStep?.('checking');
     const checked = await validate(answer.config, signal);
     report = { errors: checked?.errors || [], warnings: checked?.warnings || [] };
     if (!report.errors.length || round === maxRepairs) break;
     repairs += 1;
-    messages.push({ role: 'assistant', content: reply.content }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: answer.toolUseId, is_error: true, content: repairMessage(report.errors) }] });
+    messages.push(
+      { role: 'assistant', content: reply.content },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: answer.toolUseId, is_error: true, content: repairMessage(report.errors) }] },
+    );
   }
   return { ...answer, issues: report, repairs, usage };
 }
@@ -74,13 +88,19 @@ export function explainFailure(status, body) {
 // The call to the model through the server's /llm route (the key is added there, never here).
 export async function postToModel(body, signal, fetchImpl = fetch) {
   let res;
-  try { res = await fetchImpl('/llm/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal }); } catch (error) {
+  try {
+    res = await fetchImpl('/llm/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal });
+  } catch (error) {
     if (error?.name === 'AbortError') throw error;
-    throw new Error('The studio could not reach the AI service. Is the server running?');
+    throw new Error('The studio could not reach the AI service. Is the server running?', { cause: error });
   }
   const text = await res.text();
   let json = null;
-  try { json = JSON.parse(text); } catch { /* not JSON */ }
+  try {
+    json = JSON.parse(text);
+  } catch {
+    /* not JSON */
+  }
   if (!res.ok) throw new Error(explainFailure(res.status, json));
   if (!json) throw new Error('The AI service answered with something that is not JSON.');
   return json;
@@ -92,5 +112,7 @@ export async function loadStatus(fetchImpl = fetch) {
     if (!res.ok) return { configured: false };
     const json = await res.json();
     return json && typeof json === 'object' && 'configured' in json ? json : { configured: false };
-  } catch { return { configured: false }; }
+  } catch {
+    return { configured: false };
+  }
 }

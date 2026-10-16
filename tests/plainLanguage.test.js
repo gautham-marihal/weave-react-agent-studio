@@ -6,7 +6,15 @@ import { CONTEXT, SETTINGS, describeSetting, labelOf, levelOf, parentOf, ruleLab
 // The plain-language layer must cover EVERY setting the schema has, so a new field or a new schema can't quietly bring back a label like
 // "Timeout s" or "Top k". The schema is walked here the way the inventory in the review was: every property of every object it describes.
 const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
-const deref = (node) => { let n = node; for (let i = 0; i < 20 && n && n.$ref; i += 1) n = n.$ref.split('/').slice(1).reduce((x, k) => x?.[k], schema); return n; };
+const deref = (node) => {
+  let n = node;
+  for (let i = 0; i < 20 && n && n.$ref; i += 1)
+    n = n.$ref
+      .split('/')
+      .slice(1)
+      .reduce((x, k) => x?.[k], schema);
+  return n;
+};
 
 // Every property of every object the schema describes, with the property it lives under (its owner): the same notion the form uses when it
 // draws a setting (the property it is inside, not the keys an author chose). A definition used in several places is walked under each.
@@ -21,16 +29,25 @@ function inventory() {
   const walk = (node, parent, stack) => {
     if (!node || typeof node !== 'object') return;
     let here = stack;
-    if (node.$ref) { if (stack.includes(node.$ref)) return; here = [...stack, node.$ref]; }
+    if (node.$ref) {
+      if (stack.includes(node.$ref)) return;
+      here = [...stack, node.$ref];
+    }
     const n = deref(node);
     if (!n || typeof n !== 'object') return;
-    Object.entries(n.properties || {}).forEach(([prop, sub]) => { add(prop, (deref(sub)?.description || sub.description || ''), parent); walk(sub, prop, here); });
+    Object.entries(n.properties || {}).forEach(([prop, sub]) => {
+      add(prop, deref(sub)?.description || sub.description || '', parent);
+      walk(sub, prop, here);
+    });
     ['oneOf', 'anyOf', 'allOf'].forEach((k) => (n[k] || []).forEach((b) => walk(b, parent, here)));
     if (n.items) walk(n.items, parent, here);
     if (n.additionalProperties && typeof n.additionalProperties === 'object') walk(n.additionalProperties, parent, here);
     ['then', 'else', 'if'].forEach((k) => walk(n[k], parent, here));
   };
-  Object.entries(schema.properties).forEach(([name, sub]) => { add(name, deref(sub)?.description || sub.description || '', ''); walk(sub, name, []); });
+  Object.entries(schema.properties).forEach(([name, sub]) => {
+    add(name, deref(sub)?.description || sub.description || '', '');
+    walk(sub, name, []);
+  });
   return found;
 }
 
@@ -70,7 +87,10 @@ test('every curated setting is a real one, levels are from the three allowed, an
     assert.ok(entry.purpose.length <= 190, `${name}: the purpose is one sentence or so (${entry.purpose.length} characters)`);
   });
   // each place-specific entry names a place the schema really has: the setting, directly inside that property
-  const nowhere = Object.keys(CONTEXT).filter((key) => { const [parent, name] = key.split('.'); return !names.get(name)?.parents.has(parent); });
+  const nowhere = Object.keys(CONTEXT).filter((key) => {
+    const [parent, name] = key.split('.');
+    return !names.get(name)?.parents.has(parent);
+  });
   assert.deepEqual(nowhere, [], 'entries for a place the schema does not have (they would never be used)');
 });
 
@@ -129,14 +149,40 @@ test('a setting nobody has written a label for still gets a readable one, with i
 // A name that means different things in different places must not wear the label of its commonest meaning. Each of these was found by looking at
 // where the schema uses the name; the label is what a person reading THAT place needs.
 const CLASHES = {
-  'agents.items': 'The agents', 'items.kind': 'Kind of agent', 'items.name': 'Name', 'tools.name': 'Name the model sees', 'tools.runtime': 'Code language', 'tools.type': 'Kind of tool',
-  'fields.type': 'Kind of answer', 'fields.options': 'Choices', 'fields.name': 'Field name', 'http_mocks.status': 'Answer status',
-  'variables.type': 'Kind of value', 'retrieval.role': 'How passages are shown', 'vision.mode': 'How the camera is used', 'request.method': 'Request kind',
-  'greeting.say': 'What it says', 'session_log.enabled': 'Keep a log of each call', 'summary.enabled': 'Write a call summary', 'channels.enabled': 'Switched on',
-  'thinking.enabled': 'Play a sound while thinking', 'redaction.enabled': 'Hide sensitive details',
-  'guardrails.input': 'Checks on what the caller says', 'guardrails.output': 'Checks on what the agent says', 'agents.entry': 'Who answers first', 'interruption.mode': 'How interruptions are noticed',
-  'lookup.state': 'Decided by', 'lookup.default': 'If nothing matches', 'connections.kind': 'Kind of service', 'attachments.kind': 'What is attached', 'artifacts.kind': 'What is saved',
-  'tools.source': 'Which knowledge', 'turns.say': 'What the caller says', 'log_file.path': 'File location', 'reliability.connection': 'Connection to each service', 'connections.from': 'Sent from',
+  'agents.items': 'The agents',
+  'items.kind': 'Kind of agent',
+  'items.name': 'Name',
+  'tools.name': 'Name the model sees',
+  'tools.runtime': 'Code language',
+  'tools.type': 'Kind of tool',
+  'fields.type': 'Kind of answer',
+  'fields.options': 'Choices',
+  'fields.name': 'Field name',
+  'http_mocks.status': 'Answer status',
+  'variables.type': 'Kind of value',
+  'retrieval.role': 'How passages are shown',
+  'vision.mode': 'How the camera is used',
+  'request.method': 'Request kind',
+  'greeting.say': 'What it says',
+  'session_log.enabled': 'Keep a log of each call',
+  'summary.enabled': 'Write a call summary',
+  'channels.enabled': 'Switched on',
+  'thinking.enabled': 'Play a sound while thinking',
+  'redaction.enabled': 'Hide sensitive details',
+  'guardrails.input': 'Checks on what the caller says',
+  'guardrails.output': 'Checks on what the agent says',
+  'agents.entry': 'Who answers first',
+  'interruption.mode': 'How interruptions are noticed',
+  'lookup.state': 'Decided by',
+  'lookup.default': 'If nothing matches',
+  'connections.kind': 'Kind of service',
+  'attachments.kind': 'What is attached',
+  'artifacts.kind': 'What is saved',
+  'tools.source': 'Which knowledge',
+  'turns.say': 'What the caller says',
+  'log_file.path': 'File location',
+  'reliability.connection': 'Connection to each service',
+  'connections.from': 'Sent from',
 };
 
 test('where one name means different things, the label that is shown is the one for that place', () => {

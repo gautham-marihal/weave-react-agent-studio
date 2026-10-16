@@ -6,21 +6,38 @@ import { runScenarioChecks } from '../src/studio/scenarios.js';
 import { ownerOfIn } from '../src/studio/agents.js';
 import { applyChange } from '../src/studio/pendingChange.js';
 
-const blank = JSON.parse(JSON.stringify({
-  schema_version: '1.1',
-  meta: { id: 'gm', name: 'GM', version: '0.1.0', status: 'draft' },
-  persona: { name: 'GM' },
-  channels: [{ id: 'web-chat', type: 'web_chat', enabled: true, greeting: { say: 'Hello! How can I help you today?' } }],
-  agents: { entry: 'assistant', items: [{ id: 'assistant', name: 'GM', kind: 'standalone', instructions: { role: 'You are a helpful assistant.' }, tools: [] }] },
-}));
+const blank = JSON.parse(
+  JSON.stringify({
+    schema_version: '1.1',
+    meta: { id: 'gm', name: 'GM', version: '0.1.0', status: 'draft' },
+    persona: { name: 'GM' },
+    channels: [{ id: 'web-chat', type: 'web_chat', enabled: true, greeting: { say: 'Hello! How can I help you today?' } }],
+    agents: {
+      entry: 'assistant',
+      items: [{ id: 'assistant', name: 'GM', kind: 'standalone', instructions: { role: 'You are a helpful assistant.' }, tools: [] }],
+    },
+  }),
+);
 
 test('every starter makes a different agent', () => {
   const made = STARTERS.filter((s) => s.id !== 'blank').map((s) => applyStarter(blank, s.id));
   const unique = (pick) => new Set(made.map(pick)).size;
-  assert.equal(unique((c) => c.agents.items[0].instructions.role), made.length);
-  assert.equal(unique((c) => c.channels[0].greeting.say), made.length);
-  assert.equal(unique((c) => c.messages[0].text), made.length);
-  assert.equal(unique((c) => c.persona.tone), made.length);
+  assert.equal(
+    unique((c) => c.agents.items[0].instructions.role),
+    made.length,
+  );
+  assert.equal(
+    unique((c) => c.channels[0].greeting.say),
+    made.length,
+  );
+  assert.equal(
+    unique((c) => c.messages[0].text),
+    made.length,
+  );
+  assert.equal(
+    unique((c) => c.persona.tone),
+    made.length,
+  );
 });
 
 test('a starter keeps the agent’s own identity and does not change the input', () => {
@@ -98,11 +115,22 @@ test('starters that may need a person give the agent a tool for it (the "person"
     const tool = out.tools.find((t) => t.builtin === 'transfer_or_callback');
     assert.ok(tool, id);
     assert.ok(out.agents.items[0].tools.includes(tool.id), id);
-    assert.ok(out.telephony.transfers.some((t) => t.id === tool.params.transfer), `${id}: the transfer it points at exists`);
-    assert.ok(out.messages.some((m) => m.id === tool.params.fallback[0].text.message), `${id}: the fallback line exists`);
+    assert.ok(
+      out.telephony.transfers.some((t) => t.id === tool.params.transfer),
+      `${id}: the transfer it points at exists`,
+    );
+    assert.ok(
+      out.messages.some((m) => m.id === tool.params.fallback[0].text.message),
+      `${id}: the fallback line exists`,
+    );
     assert.equal(runScenarioChecks(out).find((c) => c.id === 'person').passed, true, id);
   }
-  for (const id of ['lead', 'feedback']) assert.equal(applyStarter(blank, id).tools.some((t) => t.builtin === 'transfer_or_callback'), false, id);
+  for (const id of ['lead', 'feedback'])
+    assert.equal(
+      applyStarter(blank, id).tools.some((t) => t.builtin === 'transfer_or_callback'),
+      false,
+      id,
+    );
 });
 
 test('a recording notice is added only when voice is in use, and an existing one is kept', () => {

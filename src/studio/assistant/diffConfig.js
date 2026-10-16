@@ -20,7 +20,8 @@ export function diffConfigs(before, after, path = [], out = []) {
   if (Array.isArray(before) && Array.isArray(after) && (byId(before) || before.length === 0) && (byId(after) || after.length === 0)) {
     const ids = new Set([...before.map((x) => x?.id), ...after.map((x) => x?.id)]);
     ids.forEach((id) => {
-      const b = before.find((x) => x?.id === id); const a = after.find((x) => x?.id === id);
+      const b = before.find((x) => x?.id === id);
+      const a = after.find((x) => x?.id === id);
       const at = [...path, { id }];
       if (b === undefined) out.push({ path: at, kind: 'added', after: a });
       else if (a === undefined) out.push({ path: at, kind: 'removed', before: b });
@@ -33,14 +34,40 @@ export function diffConfigs(before, after, path = [], out = []) {
 }
 
 const SECTIONS = {
-  meta: 'Name and details', persona: 'Personality', defaults: 'Defaults', messages: 'Fixed lines', channels: 'Channels', agents: 'Agents', tools: 'Tools', connections: 'Connections',
-  knowledge: 'Knowledge', forms: 'Forms', notifications: 'Messages it sends', wrapups: 'Closing messages', guardrails: 'Safety rules', schedules: 'Business hours', telephony: 'Phone transfers',
-  state: 'Things it remembers', tasks: 'Multi-step tasks', events: 'Events', post_call: 'After the call', observability: 'Records', tests: 'Test scenarios', identity: 'Caller identity',
-  runtime: 'Engine', constants: 'Fixed values', builder: 'Studio notes', schema_version: 'Schema version',
+  meta: 'Name and details',
+  persona: 'Personality',
+  defaults: 'Defaults',
+  messages: 'Fixed lines',
+  channels: 'Channels',
+  agents: 'Agents',
+  tools: 'Tools',
+  connections: 'Connections',
+  knowledge: 'Knowledge',
+  forms: 'Forms',
+  notifications: 'Messages it sends',
+  wrapups: 'Closing messages',
+  guardrails: 'Safety rules',
+  schedules: 'Business hours',
+  telephony: 'Phone transfers',
+  state: 'Things it remembers',
+  tasks: 'Multi-step tasks',
+  events: 'Events',
+  post_call: 'After the call',
+  observability: 'Records',
+  tests: 'Test scenarios',
+  identity: 'Caller identity',
+  runtime: 'Engine',
+  constants: 'Fixed values',
+  builder: 'Studio notes',
+  schema_version: 'Schema version',
 };
 export const sectionOf = (change) => SECTIONS[change.path[0]] || String(change.path[0] || 'Settings');
 
-const label = (path) => path.map((p, i) => (isObj(p) ? `“${p.id}”` : typeof p === 'number' ? `#${p + 1}` : (i === 0 || p === 'items' ? '' : String(p).replace(/_/g, ' ')))).filter(Boolean).join(' › ');
+const label = (path) =>
+  path
+    .map((p, i) => (isObj(p) ? `“${p.id}”` : typeof p === 'number' ? `#${p + 1}` : i === 0 || p === 'items' ? '' : String(p).replace(/_/g, ' ')))
+    .filter(Boolean)
+    .join(' › ');
 
 const preview = (value) => {
   if (value === undefined) return '';
@@ -48,13 +75,28 @@ const preview = (value) => {
   return text.length > 90 ? `${text.slice(0, 89)}…` : text;
 };
 
-const NOUN = { agents: 'agent', tools: 'tool', channels: 'channel', messages: 'fixed line', knowledge: 'knowledge base', forms: 'form', notifications: 'message', wrapups: 'closing message', tasks: 'task', transfers: 'transfer', guardrails: 'safety rule' };
+const NOUN = {
+  agents: 'agent',
+  tools: 'tool',
+  channels: 'channel',
+  messages: 'fixed line',
+  knowledge: 'knowledge base',
+  forms: 'form',
+  notifications: 'message',
+  wrapups: 'closing message',
+  tasks: 'task',
+  transfers: 'transfer',
+  guardrails: 'safety rule',
+};
 const plainList = (v) => Array.isArray(v) && v.every((x) => ['string', 'number', 'boolean'].includes(typeof x));
 // A value as a person would read it: text as it is, a short list joined, a number or yes/no plainly. Anything bigger is not quoted (null).
 const quote = (v) => {
   if (typeof v === 'string') return `“${v.length > 70 ? `${v.slice(0, 69)}…` : v}”`;
   if (typeof v === 'number' || typeof v === 'boolean') return `“${v}”`;
-  if (plainList(v)) { const t = v.join('; '); return `“${t.length > 70 ? `${t.slice(0, 69)}…` : t}”`; }
+  if (plainList(v)) {
+    const t = v.join('; ');
+    return `“${t.length > 70 ? `${t.slice(0, 69)}…` : t}”`;
+  }
   return null;
 };
 
@@ -74,8 +116,11 @@ function sentence(change) {
     return quote(change.after) === null ? `Added “${label}”${ownerPhrase}` : `Set “${label}”${ownerPhrase} to ${quote(change.after)}`;
   }
   if (change.kind === 'removed') return lastIsItem ? `Removed the ${noun} ${quote(named(change.before) || leaf.id)}` : `Removed “${label}”${ownerPhrase}`;
-  const from = quote(change.before); const to = quote(change.after);
-  return from !== null && to !== null ? `Changed “${label}”${ownerPhrase} from ${from} to ${to}` : `Changed “${label}”${ownerPhrase} (open it in the settings to see how)`;
+  const from = quote(change.before);
+  const to = quote(change.after);
+  return from !== null && to !== null
+    ? `Changed “${label}”${ownerPhrase} from ${from} to ${to}`
+    : `Changed “${label}”${ownerPhrase} (open it in the settings to see how)`;
 }
 
 // "Added Agents › “billing”", "Changed Personality › tone: friendly → calm"; `text` is the same as a sentence.
@@ -90,13 +135,23 @@ export function describeChange(change) {
 // The changes without the studio's own notes, grouped by the part of the agent they belong to.
 export function groupChanges(changes) {
   const groups = new Map();
-  changes.filter((c) => c.path[0] !== 'builder').forEach((c) => { const key = sectionOf(c); groups.set(key, [...(groups.get(key) || []), describeChange(c)]); });
+  changes
+    .filter((c) => c.path[0] !== 'builder')
+    .forEach((c) => {
+      const key = sectionOf(c);
+      groups.set(key, [...(groups.get(key) || []), describeChange(c)]);
+    });
   return [...groups].map(([section, items]) => ({ section, items }));
 }
 
 // How many were added, changed and removed, for a one-line summary.
 export function countChanges(groups) {
   const out = { added: 0, changed: 0, removed: 0, total: 0 };
-  groups.forEach((g) => g.items.forEach((i) => { out[i.verb.toLowerCase()] += 1; out.total += 1; }));
+  groups.forEach((g) =>
+    g.items.forEach((i) => {
+      out[i.verb.toLowerCase()] += 1;
+      out.total += 1;
+    }),
+  );
   return out;
 }

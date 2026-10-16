@@ -9,7 +9,10 @@ const { mountScreen, act } = await setupDom();
 const a = actions(act);
 after(() => teardownDom());
 
-const demoStore = { load: () => JSON.parse(window.localStorage.getItem('weave_demo_state') || 'null'), save: (state) => window.localStorage.setItem('weave_demo_state', JSON.stringify(state)) };
+const demoStore = {
+  load: () => JSON.parse(window.localStorage.getItem('weave_demo_state') || 'null'),
+  save: (state) => window.localStorage.setItem('weave_demo_state', JSON.stringify(state)),
+};
 async function seedDemo(config) {
   window.localStorage.clear();
   window.localStorage.setItem('weave_demo', '1');
@@ -18,7 +21,10 @@ async function seedDemo(config) {
   await api.handle('PUT', '/bots/x/draft', { config: { ...config, meta: { ...config.meta, id: 'x' } } });
   return api;
 }
-const until = async (app, check, tries = 100) => { for (let i = 0; i < tries && !check(); i += 1) await app.wait(60); return check(); };
+const until = async (app, check, tries = 100) => {
+  for (let i = 0; i < tries && !check(); i += 1) await app.wait(60);
+  return check();
+};
 const agent = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
 const nameField = () => document.body.querySelector('[aria-label="Test name"]');
 
@@ -83,13 +89,18 @@ test('without the agent’s draft open, a call offers to open it in the agent in
 test('the monitoring page counts the calls, names what needs attention and links each to its agent', async () => {
   await seedDemo(agent());
   const opened = [];
-  const app = await mountScreen('monitoring', agent(), { ready: '.mnPage', props: { bots: [{ id: 'x', name: 'X' }], onOpenCall: (...args) => opened.push(args) } });
+  const app = await mountScreen('monitoring', agent(), {
+    ready: '.mnPage',
+    props: { bots: [{ id: 'x', name: 'X' }], onOpenCall: (...args) => opened.push(args) },
+  });
   assert.equal(await until(app, () => $$(app.container, '.mnKpi').length === 6), true);
   assert.equal(await until(app, () => Number(textOf($(app.container, '.mnKpi strong'))) > 5), true, 'the calls are counted');
   assert.equal(await until(app, () => $$(app.container, '.mnList > li').length > 0), true, 'calls with something wrong are listed');
   assert.ok($$(app.container, '.mnBar, .mnBarCut').length > 3, 'a bar for each day with calls');
   assert.match(textOf($(app.container, '.mnBasis')), /newest .* calls whose records were read/);
   await a.click(byText($(app.container, '.mnList'), 'button', 'Replay'));
-  assert.equal(opened.length, 1); assert.equal(opened[0][0], 'x'); assert.equal(opened[0][2], 'replay', 'Replay opens that call on its replay');
+  assert.equal(opened.length, 1);
+  assert.equal(opened[0][0], 'x');
+  assert.equal(opened[0][2], 'replay', 'Replay opens that call on its replay');
   await app.unmount();
 });

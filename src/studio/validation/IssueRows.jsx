@@ -12,7 +12,10 @@ import './validation.css';
 function Row({ item, config, onJump, onApply, onOpenModels }) {
   const [technical] = useTechnicalNames();
   const apply = (fix) => {
-    if (fix.open) { onOpenModels?.(fix.open.stage); return; }
+    if (fix.open) {
+      onOpenModels?.(fix.open.stage);
+      return;
+    }
     if (!fix.apply) return;
     const next = fix.apply(config);
     if (next !== config) onApply?.(next, fix.label, fix.jumpTo);
@@ -23,8 +26,16 @@ function Row({ item, config, onJump, onApply, onOpenModels }) {
         {item.where.text && <small className="vxWhere">{item.where.text}</small>}
         <p>{item.text}</p>
         <div className="vxActions">
-          {item.fixes.map((fix) => <button type="button" key={fix.id} className="vxFix" onClick={() => apply(fix)}>{fix.label}</button>)}
-          {item.path && <button type="button" className="stLink" onClick={() => onJump?.(item.path)}>Show me</button>}
+          {item.fixes.map((fix) => (
+            <button type="button" key={fix.id} className="vxFix" onClick={() => apply(fix)}>
+              {fix.label}
+            </button>
+          ))}
+          {item.path && (
+            <button type="button" className="stLink" onClick={() => onJump?.(item.path)}>
+              Show me
+            </button>
+          )}
         </div>
         {item.raw !== item.text && (
           <details className="vxRaw" open={technical || undefined}>
@@ -48,27 +59,52 @@ export default function IssueRows({ issues, config, onJump, onApply, onOpenModel
     <div className="vxList">
       {shown.fixNow.length > 0 && (
         <section aria-label="Can be fixed here">
-          <h5>Fix these first <span>{shown.fixNow.length}</span></h5>
-          <ul>{shown.fixNow.map((item, i) => <Row key={`f${i}`} item={item} {...rowProps} />)}</ul>
+          <h5>
+            Fix these first <span>{shown.fixNow.length}</span>
+          </h5>
+          <ul>
+            {shown.fixNow.map((item, i) => (
+              <Row key={`f${i}`} item={item} {...rowProps} />
+            ))}
+          </ul>
         </section>
       )}
       {shown.needsYou.length > 0 && (
         <section aria-label="Needs your input">
-          <h5>{shown.fixNow.length ? 'Then these, which need you' : 'Fix these first'} <span>{shown.needsYou.length}</span></h5>
-          <ul>{shown.needsYou.map((item, i) => <Row key={`n${i}`} item={item} {...rowProps} />)}</ul>
+          <h5>
+            {shown.fixNow.length ? 'Then these, which need you' : 'Fix these first'} <span>{shown.needsYou.length}</span>
+          </h5>
+          <ul>
+            {shown.needsYou.map((item, i) => (
+              <Row key={`n${i}`} item={item} {...rowProps} />
+            ))}
+          </ul>
         </section>
       )}
-      {shown.worthALook.length > 0 && (foldAdvice ? (
-        <details className="vxFold" open={shown.fixNow.length + shown.needsYou.length === 0}>
-          <summary>Worth a look <span>{shown.worthALook.length}</span></summary>
-          <ul>{shown.worthALook.map((item, i) => <Row key={`w${i}`} item={item} {...rowProps} />)}</ul>
-        </details>
-      ) : (
-        <section aria-label="Worth a look">
-          <h5>Worth a look <span>{shown.worthALook.length}</span></h5>
-          <ul>{shown.worthALook.map((item, i) => <Row key={`w${i}`} item={item} {...rowProps} />)}</ul>
-        </section>
-      ))}
+      {shown.worthALook.length > 0 &&
+        (foldAdvice ? (
+          <details className="vxFold" open={shown.fixNow.length + shown.needsYou.length === 0}>
+            <summary>
+              Worth a look <span>{shown.worthALook.length}</span>
+            </summary>
+            <ul>
+              {shown.worthALook.map((item, i) => (
+                <Row key={`w${i}`} item={item} {...rowProps} />
+              ))}
+            </ul>
+          </details>
+        ) : (
+          <section aria-label="Worth a look">
+            <h5>
+              Worth a look <span>{shown.worthALook.length}</span>
+            </h5>
+            <ul>
+              {shown.worthALook.map((item, i) => (
+                <Row key={`w${i}`} item={item} {...rowProps} />
+              ))}
+            </ul>
+          </section>
+        ))}
     </div>
   );
 }

@@ -3,10 +3,120 @@
 // Windows). So to preview a female voice as female and a male voice as male, the voice is picked by the gender its name is known for.
 // Pure: no DOM, so the tests run it in Node.
 
-const FEMALE = ['zira', 'hazel', 'susan', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'fiona', 'allison', 'ava', 'catherine', 'linda', 'heera', 'jenny', 'aria', 'sonia', 'libby', 'maisie', 'natasha', 'clara', 'emma', 'michelle', 'ana', 'elena', 'helena', 'laura', 'paulina', 'monica', 'sabina', 'hortense', 'julie', 'amelie', 'denise', 'katja', 'hedda', 'anna', 'zosia', 'paola', 'elsa', 'female', 'woman', 'serena', 'kate', 'nicole', 'joanna', 'salli', 'kimberly', 'ivy', 'amy', 'emily', 'raveena', 'veena', 'kalpana', 'swara', 'neerja', 'yelda', 'lekha', 'siri'];
-const MALE = ['david', 'mark', 'george', 'james', 'richard', 'ravi', 'daniel', 'alex', 'fred', 'tom', 'oliver', 'guy', 'ryan', 'eric', 'christopher', 'sean', 'rishi', 'male', 'man', 'jorge', 'pablo', 'diego', 'stefan', 'claude', 'hans', 'luca', 'thomas', 'jacques', 'paul', 'brian', 'matthew', 'joey', 'justin', 'kevin', 'russell', 'geraint', 'arthur', 'hemant', 'prabhat', 'madhur', 'ravi', 'liam', 'connor', 'neil', 'william'];
+const FEMALE = [
+  'zira',
+  'hazel',
+  'susan',
+  'samantha',
+  'victoria',
+  'karen',
+  'moira',
+  'tessa',
+  'fiona',
+  'allison',
+  'ava',
+  'catherine',
+  'linda',
+  'heera',
+  'jenny',
+  'aria',
+  'sonia',
+  'libby',
+  'maisie',
+  'natasha',
+  'clara',
+  'emma',
+  'michelle',
+  'ana',
+  'elena',
+  'helena',
+  'laura',
+  'paulina',
+  'monica',
+  'sabina',
+  'hortense',
+  'julie',
+  'amelie',
+  'denise',
+  'katja',
+  'hedda',
+  'anna',
+  'zosia',
+  'paola',
+  'elsa',
+  'female',
+  'woman',
+  'serena',
+  'kate',
+  'nicole',
+  'joanna',
+  'salli',
+  'kimberly',
+  'ivy',
+  'amy',
+  'emily',
+  'raveena',
+  'veena',
+  'kalpana',
+  'swara',
+  'neerja',
+  'yelda',
+  'lekha',
+  'siri',
+];
+const MALE = [
+  'david',
+  'mark',
+  'george',
+  'james',
+  'richard',
+  'ravi',
+  'daniel',
+  'alex',
+  'fred',
+  'tom',
+  'oliver',
+  'guy',
+  'ryan',
+  'eric',
+  'christopher',
+  'sean',
+  'rishi',
+  'male',
+  'man',
+  'jorge',
+  'pablo',
+  'diego',
+  'stefan',
+  'claude',
+  'hans',
+  'luca',
+  'thomas',
+  'jacques',
+  'paul',
+  'brian',
+  'matthew',
+  'joey',
+  'justin',
+  'kevin',
+  'russell',
+  'geraint',
+  'arthur',
+  'hemant',
+  'prabhat',
+  'madhur',
+  'ravi',
+  'liam',
+  'connor',
+  'neil',
+  'william',
+];
 
-const words = (name) => String(name || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
+const words = (name) =>
+  String(name || '')
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter(Boolean);
 
 // 'female' | 'male' | '' (unknown) for a browser voice, from its name.
 export function genderOfBrowserVoice(voice) {
@@ -18,8 +128,18 @@ export function genderOfBrowserVoice(voice) {
   return '';
 }
 
-const base = (lang) => String(lang || '').toLowerCase().replace('_', '-').split('-')[0];
-const same = (a, b) => String(a || '').toLowerCase().replace('_', '-') === String(b || '').toLowerCase().replace('_', '-');
+const base = (lang) =>
+  String(lang || '')
+    .toLowerCase()
+    .replace('_', '-')
+    .split('-')[0];
+const same = (a, b) =>
+  String(a || '')
+    .toLowerCase()
+    .replace('_', '-') ===
+  String(b || '')
+    .toLowerCase()
+    .replace('_', '-');
 
 // Chooses the browser voice for a catalogue voice ({ locale: 'en-US', gender: 'Female' | 'Male' }).
 // Returns { voice, certain, pitch }: `certain` is true when the voice is known to be of that gender; otherwise `pitch` nudges whatever

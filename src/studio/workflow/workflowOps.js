@@ -18,7 +18,9 @@ export function setPositions(config, positions) {
   const next = clone(config);
   const ui = { ...(isObj(next.builder?.ui) ? next.builder.ui : {}) };
   const graph = { ...(isObj(ui.graph_positions) ? ui.graph_positions : {}) };
-  Object.entries(positions).forEach(([id, p]) => { graph[id] = { x: round(p.x), y: round(p.y) }; });
+  Object.entries(positions).forEach(([id, p]) => {
+    graph[id] = { x: round(p.x), y: round(p.y) };
+  });
   next.builder = { ...(isObj(next.builder) ? next.builder : {}), ui: { ...ui, graph_positions: graph } };
   return next;
 }
@@ -33,7 +35,9 @@ export function clearPositions(config) {
 const forgetPositions = (next, ids) => {
   const graph = next.builder?.ui?.graph_positions;
   if (!isObj(graph)) return;
-  ids.forEach((id) => { delete graph[id]; });
+  ids.forEach((id) => {
+    delete graph[id];
+  });
 };
 export const hasSavedPositions = (config) => isObj(config?.builder?.ui?.graph_positions) && Object.keys(config.builder.ui.graph_positions).length > 0;
 
@@ -45,7 +49,10 @@ export function addSubagent(config, fromId, { name = 'New subagent', when = '', 
   const next = clone(config);
   const items = agentsOf(next);
   const from = agentAt(next, fromId);
-  const id = freshId(items.map((a) => a.id), name === 'New subagent' ? 'subagent' : name);
+  const id = freshId(
+    items.map((a) => a.id),
+    name === 'New subagent' ? 'subagent' : name,
+  );
   const agent = { id, name, kind: 'specialist', instructions: { role: DEFAULT_ROLE }, tools: [] };
   next.agents = { ...(isObj(next.agents) ? next.agents : {}), items: [...items, agent] };
   if (!next.agents.entry) next.agents.entry = id;
@@ -58,7 +65,11 @@ export function addSubagent(config, fromId, { name = 'New subagent', when = '', 
 }
 
 function addHandoffTo(next, from, toId, description) {
-  const tools = new Set([...list(next.tools).map((t) => t?.id), ...agentsOf(next).flatMap((a) => list(a.handoffs).map((h) => h?.tool)), ...agentsOf(next).flatMap((a) => list(a.tools))]);
+  const tools = new Set([
+    ...list(next.tools).map((t) => t?.id),
+    ...agentsOf(next).flatMap((a) => list(a.handoffs).map((h) => h?.tool)),
+    ...agentsOf(next).flatMap((a) => list(a.tools)),
+  ]);
   const used = new Set(agentsOf(next).flatMap((a) => list(a.handoffs).map((h) => h?.id))); // the validator wants a hand-over id to be unique across the whole agent
   const id = freshId(used, `to_${toId}`);
   from.handoffs = [...list(from.handoffs), { id, tool: freshId(tools, `go_to_${toId.replace(/-/g, '_')}`), description, to: toId, carry_context: true }];
@@ -85,12 +96,19 @@ export const addSay = (config, agentId, text = 'Hello! How can I help you today?
 // A value that suits a state variable's type, to start from.
 export function blankValue(variable) {
   switch (variable?.type) {
-    case 'integer': case 'number': return 0;
-    case 'boolean': return false;
-    case 'enum': return Array.isArray(variable.values) && variable.values.length ? variable.values[0] : '';
-    case 'object': return {};
-    case 'array': return [];
-    default: return '';
+    case 'integer':
+    case 'number':
+      return 0;
+    case 'boolean':
+      return false;
+    case 'enum':
+      return Array.isArray(variable.values) && variable.values.length ? variable.values[0] : '';
+    case 'object':
+      return {};
+    case 'array':
+      return [];
+    default:
+      return '';
   }
 }
 export function addUpdateState(config, agentId) {
@@ -104,12 +122,29 @@ export const addStateVariable = (config, name, kind) => createAndPoint(config, '
 export function addPhoneTransfer(config, agentId, number) {
   if (!agentAt(config, agentId) || !String(number || '').trim()) return { config, id: '' };
   const next = clone(config);
-  const digits = String(number).replace(/[^0-9a-z]+/gi, '').toLowerCase();
+  const digits = String(number)
+    .replace(/[^0-9a-z]+/gi, '')
+    .toLowerCase();
   const transfers = list(next.telephony?.transfers);
-  const transferId = freshId(transfers.map((t) => t?.id), `transfer_to_${digits || 'person'}`);
-  next.telephony = { ...(isObj(next.telephony) ? next.telephony : {}), transfers: [...transfers, { id: transferId, description: 'Hand the caller to a person.', method: 'sip_refer', target: String(number).trim() }] };
+  const transferId = freshId(
+    transfers.map((t) => t?.id),
+    `transfer_to_${digits || 'person'}`,
+  );
+  next.telephony = {
+    ...(isObj(next.telephony) ? next.telephony : {}),
+    transfers: [...transfers, { id: transferId, description: 'Hand the caller to a person.', method: 'sip_refer', target: String(number).trim() }],
+  };
   const toolId = freshId([...list(next.tools).map((t) => t?.id), ...agentsOf(next).flatMap((a) => list(a.tools))], `transfer_${digits || 'person'}`);
-  next.tools = [...list(next.tools), { id: toolId, type: 'builtin', builtin: 'transfer_or_callback', description: 'The caller asks for a person, or you cannot help.', params: { transfer: transferId, fallback: [{ type: 'say', text: 'Sorry, I can’t put you through right now. Someone will call you back.' }] } }];
+  next.tools = [
+    ...list(next.tools),
+    {
+      id: toolId,
+      type: 'builtin',
+      builtin: 'transfer_or_callback',
+      description: 'The caller asks for a person, or you cannot help.',
+      params: { transfer: transferId, fallback: [{ type: 'say', text: 'Sorry, I can’t put you through right now. Someone will call you back.' }] },
+    },
+  ];
   const agent = agentAt(next, agentId);
   agent.tools = [...list(agent.tools), toolId];
   return { config: next, id: `${agentId}::tool::${toolId}` };
@@ -138,7 +173,16 @@ export function addEnd(config, agentId) {
   let toolId = existing?.id;
   if (!toolId) {
     toolId = freshId([...list(next.tools).map((t) => t?.id), ...agentsOf(next).flatMap((a) => list(a.tools))], 'end_call');
-    next.tools = [...list(next.tools), { id: toolId, type: 'builtin', builtin: 'end_call', description: 'The conversation is finished: the caller has nothing more to ask.', params: { say: 'Thanks for calling. Goodbye!' } }];
+    next.tools = [
+      ...list(next.tools),
+      {
+        id: toolId,
+        type: 'builtin',
+        builtin: 'end_call',
+        description: 'The conversation is finished: the caller has nothing more to ask.',
+        params: { say: 'Thanks for calling. Goodbye!' },
+      },
+    ];
   }
   target.tools = [...list(target.tools), toolId];
   return { config: next, id: `${agentId}::tool::${toolId}` };
@@ -158,13 +202,28 @@ export function duplicateAgent(config, agentId, at) {
   if (!source) return { config, id: '' };
   const next = clone(config);
   const items = agentsOf(next);
-  const id = freshId(items.map((a) => a?.id), `${agentId}_copy`);
+  const id = freshId(
+    items.map((a) => a?.id),
+    `${agentId}_copy`,
+  );
   const copy = clone(source);
   copy.id = id;
   copy.name = `${source.name || agentId} (copy)`;
-  const taken = new Set([...list(next.tools).map((t) => t?.id), ...items.flatMap((a) => list(a.handoffs).map((h) => h?.tool)), ...items.flatMap((a) => list(a.tools))]);
+  const taken = new Set([
+    ...list(next.tools).map((t) => t?.id),
+    ...items.flatMap((a) => list(a.handoffs).map((h) => h?.tool)),
+    ...items.flatMap((a) => list(a.tools)),
+  ]);
   const ids = new Set(items.flatMap((a) => list(a.handoffs).map((h) => h?.id)));
-  copy.handoffs = list(copy.handoffs).filter(isObj).map((h) => { const tool = freshId(taken, `${h.tool || `go_to_${h.to || 'agent'}`}_copy`); taken.add(tool); const hid = freshId(ids, `${h.id || `to_${h.to || 'agent'}`}_copy`); ids.add(hid); return { ...h, id: hid, tool }; });
+  copy.handoffs = list(copy.handoffs)
+    .filter(isObj)
+    .map((h) => {
+      const tool = freshId(taken, `${h.tool || `go_to_${h.to || 'agent'}`}_copy`);
+      taken.add(tool);
+      const hid = freshId(ids, `${h.id || `to_${h.to || 'agent'}`}_copy`);
+      ids.add(hid);
+      return { ...h, id: hid, tool };
+    });
   if (!copy.handoffs.length) delete copy.handoffs;
   next.agents.items = [...items, copy];
   return { config: at ? setPositions(next, { [id]: at }) : next, id };
@@ -173,7 +232,10 @@ export function duplicateAgent(config, agentId, at) {
 // A hand-over made by a tool's own rules (an `effects` step) or by a safety rule (guardrails.escalation): pointed somewhere else, or taken away.
 const mapHandoffs = (value, fn) => {
   if (Array.isArray(value)) return value.map((v) => mapHandoffs(v, fn)).filter((v) => v !== undefined);
-  if (isObj(value)) { if (value.type === 'handoff' && typeof value.to === 'string') return fn(value); return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapHandoffs(v, fn)])); }
+  if (isObj(value)) {
+    if (value.type === 'handoff' && typeof value.to === 'string') return fn(value);
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapHandoffs(v, fn)]));
+  }
   return value;
 };
 const tidyEffects = (tool) => {
@@ -185,12 +247,16 @@ const tidyEffects = (tool) => {
 export function retargetToolHandoff(config, toolId, from, to) {
   if (!agentAt(config, to)) return config;
   const next = clone(config);
-  next.tools = list(next.tools).map((t) => (t?.id === toolId && Array.isArray(t.effects) ? { ...t, effects: mapHandoffs(t.effects, (x) => (x.to === from ? { ...x, to } : x)) } : t));
+  next.tools = list(next.tools).map((t) =>
+    t?.id === toolId && Array.isArray(t.effects) ? { ...t, effects: mapHandoffs(t.effects, (x) => (x.to === from ? { ...x, to } : x)) } : t,
+  );
   return next;
 }
 export function removeToolHandoff(config, toolId, to) {
   const next = clone(config);
-  next.tools = list(next.tools).map((t) => (t?.id === toolId && Array.isArray(t.effects) ? tidyEffects({ ...t, effects: mapHandoffs(t.effects, (x) => (x.to === to ? undefined : x)) }) : t));
+  next.tools = list(next.tools).map((t) =>
+    t?.id === toolId && Array.isArray(t.effects) ? tidyEffects({ ...t, effects: mapHandoffs(t.effects, (x) => (x.to === to ? undefined : x)) }) : t,
+  );
   return next;
 }
 export function retargetRule(config, ruleId, to) {
@@ -207,8 +273,6 @@ export function removeRule(config, ruleId) {
 }
 
 // ---- taking away
-const targets = (action, id) => isObj(action) && action.to === id && (action.type === 'handoff' || action.action === 'handoff');
-
 // Every step anywhere in the configuration that hands the caller to this agent (an on_enter step, a tool's rules, a transfer's steps, a safety rule), taken out;
 // a rule block left with nothing to do goes, and a list left empty is not kept (the schema wants at least one step in them).
 const GONE = Symbol('gone');
@@ -216,7 +280,11 @@ const isHandoffTo = (v, id) => isObj(v) && v.to === id && (v.type === 'handoff' 
 function dropHandoffsTo(value, id) {
   if (Array.isArray(value)) {
     const out = [];
-    value.forEach((v) => { if (isHandoffTo(v, id)) return; const r = dropHandoffsTo(v, id); if (r !== GONE) out.push(r); });
+    value.forEach((v) => {
+      if (isHandoffTo(v, id)) return;
+      const r = dropHandoffsTo(v, id);
+      if (r !== GONE) out.push(r);
+    });
     return out;
   }
   if (isObj(value)) {
@@ -224,14 +292,19 @@ function dropHandoffsTo(value, id) {
     let emptied = false;
     Object.entries(value).forEach(([k, v]) => {
       const r = dropHandoffsTo(v, id);
-      if (Array.isArray(v) && v.length && Array.isArray(r) && r.length === 0) emptied = true; else out[k] = r;
+      if (Array.isArray(v) && v.length && Array.isArray(r) && r.length === 0) emptied = true;
+      else out[k] = r;
     });
     if (emptied && 'do' in value && !('do' in out)) return GONE;
     return out;
   }
   return value;
 }
-const forgetEnterPositions = (next, agentId) => forgetPositions(next, Object.keys(next.builder?.ui?.graph_positions || {}).filter((k) => k.startsWith(`${agentId}::enter::`)));
+const forgetEnterPositions = (next, agentId) =>
+  forgetPositions(
+    next,
+    Object.keys(next.builder?.ui?.graph_positions || {}).filter((k) => k.startsWith(`${agentId}::enter::`)),
+  );
 
 // Deletes an agent and every hand-over that led to it; the agent that answers first moves on to the next one when it was the one deleted.
 export function removeAgent(config, agentId) {
@@ -240,14 +313,33 @@ export function removeAgent(config, agentId) {
   const next = clone(config);
   next.agents.items = items.filter((a) => isObj(a) && a.id !== agentId);
   next.agents.items.forEach((a) => {
-    if (Array.isArray(a.handoffs)) { a.handoffs = a.handoffs.filter((h) => !(isObj(h) && h.to === agentId)); if (!a.handoffs.length) delete a.handoffs; }
+    if (Array.isArray(a.handoffs)) {
+      a.handoffs = a.handoffs.filter((h) => !(isObj(h) && h.to === agentId));
+      if (!a.handoffs.length) delete a.handoffs;
+    }
   });
   const before = new Map(next.agents.items.map((a) => [a.id, JSON.stringify(a.on_enter)]));
-  Object.keys(next).forEach((key) => { if (key !== 'agents') next[key] = dropHandoffsTo(next[key], agentId); });
-  next.agents.items = next.agents.items.map((a) => { const r = dropHandoffsTo({ on_enter: a.on_enter }, agentId); const copy = { ...a }; if (Array.isArray(r.on_enter) && r.on_enter.length) copy.on_enter = r.on_enter; else delete copy.on_enter; return copy; });
-  next.agents.items.forEach((a) => { if (JSON.stringify(a.on_enter) !== before.get(a.id)) forgetEnterPositions(next, a.id); });
+  Object.keys(next).forEach((key) => {
+    if (key !== 'agents') next[key] = dropHandoffsTo(next[key], agentId);
+  });
+  next.agents.items = next.agents.items.map((a) => {
+    const r = dropHandoffsTo({ on_enter: a.on_enter }, agentId);
+    const copy = { ...a };
+    if (Array.isArray(r.on_enter) && r.on_enter.length) copy.on_enter = r.on_enter;
+    else delete copy.on_enter;
+    return copy;
+  });
+  next.agents.items.forEach((a) => {
+    if (JSON.stringify(a.on_enter) !== before.get(a.id)) forgetEnterPositions(next, a.id);
+  });
   // a test that expected this agent to be the one in charge at the end no longer has anything to point at
-  const clearExpectations = (value) => { if (Array.isArray(value)) value.forEach(clearExpectations); else if (isObj(value)) { if (value.agent_is === agentId) delete value.agent_is; Object.values(value).forEach(clearExpectations); } };
+  const clearExpectations = (value) => {
+    if (Array.isArray(value)) value.forEach(clearExpectations);
+    else if (isObj(value)) {
+      if (value.agent_is === agentId) delete value.agent_is;
+      Object.values(value).forEach(clearExpectations);
+    }
+  };
   clearExpectations(next.tests);
   if (next.agents.entry === agentId) next.agents.entry = next.agents.items[0].id;
   forgetPositions(next, [agentId, ...Object.keys(next.builder?.ui?.graph_positions || {}).filter((k) => k.startsWith(`${agentId}::`))]);
@@ -259,9 +351,14 @@ export function removeHandoff(config, agentId, ref) {
   if (!agentAt(config, agentId)) return config;
   const next = clone(config);
   const agent = agentAt(next, agentId);
-  if (ref.handoff !== undefined && Array.isArray(agent.handoffs)) { agent.handoffs.splice(ref.handoff, 1); if (!agent.handoffs.length) delete agent.handoffs; }
-  else if (ref.enter !== undefined && Array.isArray(agent.on_enter)) { agent.on_enter.splice(ref.enter, 1); if (!agent.on_enter.length) delete agent.on_enter; forgetEnterPositions(next, agentId); }
-  else if (ref.tool) agent.tools = list(agent.tools).filter((t) => t !== ref.tool);
+  if (ref.handoff !== undefined && Array.isArray(agent.handoffs)) {
+    agent.handoffs.splice(ref.handoff, 1);
+    if (!agent.handoffs.length) delete agent.handoffs;
+  } else if (ref.enter !== undefined && Array.isArray(agent.on_enter)) {
+    agent.on_enter.splice(ref.enter, 1);
+    if (!agent.on_enter.length) delete agent.on_enter;
+    forgetEnterPositions(next, agentId);
+  } else if (ref.tool) agent.tools = list(agent.tools).filter((t) => t !== ref.tool);
   return next;
 }
 
@@ -288,10 +385,18 @@ export function removeNode(config, nodeId) {
   if (!agentAt(config, at.agent)) return config;
   const next = clone(config);
   const agent = agentAt(next, at.agent);
-  if (at.kind === 'enter') { agent.on_enter = list(agent.on_enter).filter((_, i) => i !== at.index); if (!agent.on_enter.length) delete agent.on_enter; }
-  else { agent.tools = list(agent.tools).filter((t) => t !== at.tool); dropIfOrphan(next, at.tool); }
+  if (at.kind === 'enter') {
+    agent.on_enter = list(agent.on_enter).filter((_, i) => i !== at.index);
+    if (!agent.on_enter.length) delete agent.on_enter;
+  } else {
+    agent.tools = list(agent.tools).filter((t) => t !== at.tool);
+    dropIfOrphan(next, at.tool);
+  }
   // the blocks after a removed on-enter step change number, so their saved places go with them
-  forgetPositions(next, Object.keys(next.builder?.ui?.graph_positions || {}).filter((k) => k === nodeId || (at.kind === 'enter' && k.startsWith(`${at.agent}::enter::`))));
+  forgetPositions(
+    next,
+    Object.keys(next.builder?.ui?.graph_positions || {}).filter((k) => k === nodeId || (at.kind === 'enter' && k.startsWith(`${at.agent}::enter::`))),
+  );
   return next;
 }
 

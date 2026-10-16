@@ -19,11 +19,21 @@ import '../preview/preview.css';
 import '../models/models.css';
 
 const STATUS_TEXT = {
-  idle: 'Not started', starting: 'Starting…', connecting: 'Connecting…', waiting: 'Waiting for the agent', live: 'Live', ended: 'Ended', error: 'Failed',
+  idle: 'Not started',
+  starting: 'Starting…',
+  connecting: 'Connecting…',
+  waiting: 'Waiting for the agent',
+  live: 'Live',
+  ended: 'Ended',
+  error: 'Failed',
 };
 
 function makeIdentity() {
-  const base = (getApiUser() || 'tester').replace(/[^A-Za-z0-9_.@-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'tester';
+  const base =
+    (getApiUser() || 'tester')
+      .replace(/[^A-Za-z0-9_.@-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 50) || 'tester';
   return `${base}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
@@ -32,14 +42,33 @@ function clock(ms) {
 }
 
 function Bubble({ message, botName }) {
-  if (message.role === 'system') return <div className="stTSystem" role="note">{message.text}</div>;
+  if (message.role === 'system')
+    return (
+      <div className="stTSystem" role="note">
+        {message.text}
+      </div>
+    );
   const mine = message.role === 'user';
   return (
     <div className={`stTMsg ${mine ? 'me' : 'bot'}`}>
-      {!mine && <span className="stTAvatar" aria-hidden="true">{(botName || 'A').slice(0, 1).toUpperCase()}</span>}
+      {!mine && (
+        <span className="stTAvatar" aria-hidden="true">
+          {(botName || 'A').slice(0, 1).toUpperCase()}
+        </span>
+      )}
       <div className="stTBubble">
-        <small>{mine ? 'You' : botName}{message.simulated && <b className="pvSimTag" title="Made up by a simulation in your browser, not by the real agent">Simulated</b>}</small>
-        <p>{message.text || '…'}{!message.final && message.text && <i className="stTCaret" aria-hidden="true" />}</p>
+        <small>
+          {mine ? 'You' : botName}
+          {message.simulated && (
+            <b className="pvSimTag" title="Made up by a simulation in your browser, not by the real agent">
+              Simulated
+            </b>
+          )}
+        </small>
+        <p>
+          {message.text || '…'}
+          {!message.final && message.text && <i className="stTCaret" aria-hidden="true" />}
+        </p>
       </div>
     </div>
   );
@@ -61,14 +90,16 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
   const running = ['starting', 'connecting', 'waiting', 'live'].includes(status);
   const connected = status === 'waiting' || status === 'live';
-  const deployed = summary?.deployed || {};
+  const deployed = useMemo(() => summary?.deployed || {}, [summary]);
   const options = useMemo(() => {
     const list = [{ value: 'draft', label: 'Draft (the saved working copy)' }];
     if (summary?.latest_version) list.push({ value: 'latest', label: `Latest published (v${summary.latest_version})` });
     Object.entries(deployed).forEach(([env, version]) => list.push({ value: env, label: `${envLabel(env)} (v${version})` }));
     return list;
   }, [summary, deployed]);
-  useEffect(() => { if (!options.some((o) => o.value === ref)) setRef('draft'); }, [options, ref]);
+  useEffect(() => {
+    if (!options.some((o) => o.value === ref)) setRef('draft');
+  }, [options, ref]);
 
   // The saved draft is what a draft test runs; edits that aren't saved yet are not part of it.
   const config = editor.parsed.value;
@@ -83,19 +114,32 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   // a published version or an environment runs that version, whatever the draft says now.
   const version = ref === 'draft' ? null : ref === 'latest' ? summary?.latest_version : summary?.deployed?.[ref];
   const versionLoad = useAsync((signal) => (version ? api.getVersion(botId, version, { signal }) : Promise.resolve(null)), [botId, version]);
-  const testConfig = ref === 'draft' ? (editor.savedConfig || config) : versionLoad.data?.config;
+  const testConfig = ref === 'draft' ? editor.savedConfig || config : versionLoad.data?.config;
   const reach = testability(testConfig);
   const simulated = mode === 'simulated';
   const noWebChannel = !simulated && reach.state === 'none' && !running;
   const modelsUnsaved = ref === 'draft' && !!config && !!editor.savedConfig && !sameModels(config, editor.savedConfig);
-  const shownModels = running || status === 'ended' ? used : (testConfig ? summarizeModels(testConfig) : null);
-  const openModels = () => { try { sessionStorage.setItem('weave_open_models', '1'); } catch { /* storage unavailable */ } navigate(routeHref(botId, 'config'), { guard: false }); };
+  const shownModels = running || status === 'ended' ? used : testConfig ? summarizeModels(testConfig) : null;
+  const openModels = () => {
+    try {
+      sessionStorage.setItem('weave_open_models', '1');
+    } catch {
+      /* storage unavailable */
+    }
+    navigate(routeHref(botId, 'config'), { guard: false });
+  };
 
-  useEffect(() => { if (media.camera) session.attachPreview(); }, [media.camera, session.attachPreview]);
+  const { attachPreview } = session;
+  useEffect(() => {
+    if (media.camera) attachPreview();
+  }, [media.camera, attachPreview]);
 
   // Keep the newest message in view, unless you scrolled up to read.
   // (the list is scrolled itself: scrollIntoView would also scroll the whole page to the end of an empty chat)
-  useEffect(() => { const el = listRef.current; if (stickRef.current && el) el.scrollTop = el.scrollHeight; }, [messages, form]);
+  useEffect(() => {
+    const el = listRef.current;
+    if (stickRef.current && el) el.scrollTop = el.scrollHeight;
+  }, [messages, form]);
   const onScroll = () => {
     const el = listRef.current;
     if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -126,7 +170,12 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   // A finished conversation becomes a starting scenario (the caller's turns, the tools used, the final state) for the author to edit.
   const canSave = messages.some((m) => m.role === 'user') && !running && !!config && editor.isObject && !editor.parsed.error;
   const saveAsScenario = () => {
-    const made = scenarioFromConversation(config, { channel: info?.channel?.id, messages, tools: toolsUsedIn(trace.records), finalState: finalStateOf(trace.records) });
+    const made = scenarioFromConversation(config, {
+      channel: info?.channel?.id,
+      messages,
+      tools: toolsUsedIn(trace.records),
+      finalState: finalStateOf(trace.records),
+    });
     editor.setValue({ ...config, tests: [...(Array.isArray(config.tests) ? config.tests : []), made] });
     setSaved(made.id);
   };
@@ -136,33 +185,73 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
       <section className="stCard stTHead">
         <div className="stTIntro">
           <h3>Try this agent</h3>
-          <p className="stMuted">{simulated
-            ? <>Starts a <strong>simulated</strong> conversation with {name} in your browser: made-up replies from simple rules, using your current edits. It is not the agent running, so tools and hand-offs are only imitated.</>
-            : <>Starts a real conversation with {name} in your browser. It uses the actual runtime, so tools, handoffs and forms really run.</>}</p>
+          <p className="stMuted">
+            {simulated ? (
+              <>
+                Starts a <strong>simulated</strong> conversation with {name} in your browser: made-up replies from simple rules, using your current edits. It is
+                not the agent running, so tools and hand-offs are only imitated.
+              </>
+            ) : (
+              <>Starts a real conversation with {name} in your browser. It uses the actual runtime, so tools, handoffs and forms really run.</>
+            )}
+          </p>
           {onMode && (
             <div className="pvModes stTMode" role="group" aria-label="What to talk to">
-              <button type="button" className={!simulated ? 'on' : ''} aria-pressed={!simulated} disabled={modeLocked || running} onClick={() => onMode('real')} title={modeLocked ? 'Demo mode has no real agent to talk to' : undefined}>Real agent</button>
-              <button type="button" className={simulated ? 'on' : ''} aria-pressed={simulated} disabled={running} onClick={() => onMode('simulated')}>Simulated</button>
+              <button
+                type="button"
+                className={!simulated ? 'on' : ''}
+                aria-pressed={!simulated}
+                disabled={modeLocked || running}
+                onClick={() => onMode('real')}
+                title={modeLocked ? 'Demo mode has no real agent to talk to' : undefined}
+              >
+                Real agent
+              </button>
+              <button type="button" className={simulated ? 'on' : ''} aria-pressed={simulated} disabled={running} onClick={() => onMode('simulated')}>
+                Simulated
+              </button>
             </div>
           )}
         </div>
         <div className="stTControls">
-          <label><span>Version to try</span>
+          <label>
+            <span>Version to try</span>
             <select value={ref} onChange={(event) => setRef(event.target.value)} disabled={running}>
-              {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </label>
-          {running
-            ? <button type="button" className="dangerButton" onClick={session.stop}>End conversation</button>
-            : <button type="button" className="primaryCta compactCta" onClick={start} disabled={noWebChannel} title={noWebChannel ? 'This agent has no web channel to try' : undefined}>{status === 'ended' || status === 'error' ? 'Start again' : 'Start conversation'}</button>}
-          <span className={`stTStatus ${status}`} role="status"><i aria-hidden="true" />{STATUS_TEXT[status]}</span>
+          {running ? (
+            <button type="button" className="dangerButton" onClick={session.stop}>
+              End conversation
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="primaryCta compactCta"
+              onClick={start}
+              disabled={noWebChannel}
+              title={noWebChannel ? 'This agent has no web channel to try' : undefined}
+            >
+              {status === 'ended' || status === 'error' ? 'Start again' : 'Start conversation'}
+            </button>
+          )}
+          <span className={`stTStatus ${status}`} role="status">
+            <i aria-hidden="true" />
+            {STATUS_TEXT[status]}
+          </span>
         </div>
       </section>
 
       {noWebChannel && (
         <Notice kind="info" title="This agent can’t be tried in the browser">
-          The Test tab talks to the agent over the web, so it needs a web chat or web voice channel{reach.phone.length ? `. This one only has a phone line (${reach.phone.join(', ')}), and a phone line is tried by calling its number` : ''}.
-          {' '}Add a web channel under Config → Channels to test here. Phone numbers aren’t connected from the studio yet: for now they are set up with the platform’s SIP tool.
+          The Test tab talks to the agent over the web, so it needs a web chat or web voice channel
+          {reach.phone.length ? `. This one only has a phone line (${reach.phone.join(', ')}), and a phone line is tried by calling its number` : ''}. Add a web
+          channel under Config → Channels to test here. Phone numbers aren’t connected from the studio yet: for now they are set up with the platform’s SIP
+          tool.
         </Notice>
       )}
       {reach.state === 'off' && !running && (
@@ -172,12 +261,28 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
       )}
       {simulated && <DemoNote kind="test">Replies in this conversation are made up in your browser. Nothing here is the real agent or its models.</DemoNote>}
       {!simulated && modelsUnsaved && !running && (
-        <Notice kind="warn" title="The models you chose aren’t saved yet" actions={<button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving || !!editor.parsed.error}>{editor.saving ? 'Saving…' : 'Save draft'}</button>}>
+        <Notice
+          kind="warn"
+          title="The models you chose aren’t saved yet"
+          actions={
+            <button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving || !!editor.parsed.error}>
+              {editor.saving ? 'Saving…' : 'Save draft'}
+            </button>
+          }
+        >
           A draft test uses the saved draft, so it would still run with the models listed on the right. Save the draft to test the new ones.
         </Notice>
       )}
       {!simulated && ref === 'draft' && editor.dirty && !modelsUnsaved && !running && (
-        <Notice kind="warn" title="You have unsaved edits" actions={<button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving || !!editor.parsed.error}>{editor.saving ? 'Saving…' : 'Save draft'}</button>}>
+        <Notice
+          kind="warn"
+          title="You have unsaved edits"
+          actions={
+            <button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving || !!editor.parsed.error}>
+              {editor.saving ? 'Saving…' : 'Save draft'}
+            </button>
+          }
+        >
           A draft conversation uses the saved draft, which doesn’t include them yet.
         </Notice>
       )}
@@ -187,15 +292,36 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
         </Notice>
       )}
       {error && (
-        <Notice kind="error" title={error.title} actions={<button type="button" className="quietButton" onClick={session.clearError}>Dismiss</button>}>
+        <Notice
+          kind="error"
+          title={error.title}
+          actions={
+            <button type="button" className="quietButton" onClick={session.clearError}>
+              Dismiss
+            </button>
+          }
+        >
           {error.body}
-          {error.details && <details className="stErrDetail"><summary>Details for the person who runs the server</summary><p>{error.details}</p></details>}
+          {error.details && (
+            <details className="stErrDetail">
+              <summary>Details for the person who runs the server</summary>
+              <p>{error.details}</p>
+            </details>
+          )}
           {error.errors?.length > 0 && <PlainIssues issues={error.errors} severity="error" config={editor.parsed.value} />}
         </Notice>
       )}
 
       {saved && (
-        <Notice kind="good" title={`Added the scenario “${saved}” to the draft`} actions={<button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'scenarios'), { guard: false })}>Open Scenarios</button>}>
+        <Notice
+          kind="good"
+          title={`Added the scenario “${saved}” to the draft`}
+          actions={
+            <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'scenarios'), { guard: false })}>
+              Open Scenarios
+            </button>
+          }
+        >
           It has what you said, the tools that were used and the final state. Edit what it checks, then run it. The draft isn’t saved yet.
         </Notice>
       )}
@@ -203,8 +329,20 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
       <div className="stTGrid">
         <section className="stCard stTChat" aria-label="Conversation">
           {status !== 'idle' && (
-            <div className={`pvHud stTHud ${status === 'live' ? 'live' : status === 'ended' || status === 'error' ? 'ended' : 'reconnecting'}`} aria-hidden="true">
-              <span className="pvMiniOrb" /><span className="pvBars"><i /><i /><i /><i /><i /><i /><i /></span>
+            <div
+              className={`pvHud stTHud ${status === 'live' ? 'live' : status === 'ended' || status === 'error' ? 'ended' : 'reconnecting'}`}
+              aria-hidden="true"
+            >
+              <span className="pvMiniOrb" />
+              <span className="pvBars">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
               <small>{status === 'live' ? 'Linked' : status === 'ended' ? 'Signal closed' : status === 'error' ? 'No signal' : 'Linking…'}</small>
             </div>
           )}
@@ -212,19 +350,55 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
             {messages.length === 0 && (
               <div className="stTEmpty">
                 {['idle', 'ended', 'error'].includes(status) && (
-                  <div className="pvStage stTStage" aria-hidden="true"><i className="pvRing r1" /><i className="pvRing r2" /><i className="pvRing r3" /><i className="pvSat" /><span className="pvOrb" /></div>
+                  <div className="pvStage stTStage" aria-hidden="true">
+                    <i className="pvRing r1" />
+                    <i className="pvRing r2" />
+                    <i className="pvRing r3" />
+                    <i className="pvSat" />
+                    <span className="pvOrb" />
+                  </div>
                 )}
-                {status === 'idle' && <><strong>No conversation yet</strong><span>Press “Start conversation”. The agent greets you first, then you can reply here{inputs.includes('audio') ? ' or by speaking' : ''}.</span></>}
-                {(status === 'starting' || status === 'connecting') && <><strong>{STATUS_TEXT[status]}</strong><span>Asking the server for a session…</span></>}
-                {status === 'waiting' && <><strong>Waiting for the agent to join…</strong><span>It usually greets you within a few seconds.</span></>}
-                {status === 'live' && <><strong>Connected</strong><span>Say hello.</span></>}
-                {(status === 'error' || status === 'ended') && <><strong>{status === 'ended' ? 'The conversation ended' : 'The conversation didn’t start'}</strong><span>You can start again.</span></>}
+                {status === 'idle' && (
+                  <>
+                    <strong>No conversation yet</strong>
+                    <span>
+                      Press “Start conversation”. The agent greets you first, then you can reply here{inputs.includes('audio') ? ' or by speaking' : ''}.
+                    </span>
+                  </>
+                )}
+                {(status === 'starting' || status === 'connecting') && (
+                  <>
+                    <strong>{STATUS_TEXT[status]}</strong>
+                    <span>Asking the server for a session…</span>
+                  </>
+                )}
+                {status === 'waiting' && (
+                  <>
+                    <strong>Waiting for the agent to join…</strong>
+                    <span>It usually greets you within a few seconds.</span>
+                  </>
+                )}
+                {status === 'live' && (
+                  <>
+                    <strong>Connected</strong>
+                    <span>Say hello.</span>
+                  </>
+                )}
+                {(status === 'error' || status === 'ended') && (
+                  <>
+                    <strong>{status === 'ended' ? 'The conversation ended' : 'The conversation didn’t start'}</strong>
+                    <span>You can start again.</span>
+                  </>
+                )}
               </div>
             )}
-            {messages.map((message) => <Bubble key={message.id} message={message} botName={botName} />)}
+            {messages.map((message) => (
+              <Bubble key={message.id} message={message} botName={botName} />
+            ))}
             {agentHint && status === 'waiting' && (
               <Notice kind="warn" title="The agent hasn’t joined yet">
-                If nothing arrives soon, the runtime may not be running for this agent, or the deployed version is still starting. Try ending and starting again.
+                If nothing arrives soon, the runtime may not be running for this agent, or the deployed version is still starting. Try ending and starting
+                again.
               </Notice>
             )}
             {form && <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} />}
@@ -238,11 +412,18 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
               placeholder={connected ? 'Type a message…' : 'Start a conversation to type here'}
               aria-label="Message"
               onChange={(event) => setDraftText(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent?.isComposing) { event.preventDefault(); send(); } }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent?.isComposing) {
+                  event.preventDefault();
+                  send();
+                }
+              }}
             />
             <div className="stTComposerRow">
               <small>Enter to send · Shift+Enter for a new line</small>
-              <button type="button" className="primaryCta compactCta" onClick={send} disabled={!connected || !draftText.trim()}>Send</button>
+              <button type="button" className="primaryCta compactCta" onClick={send} disabled={!connected || !draftText.trim()}>
+                Send
+              </button>
             </div>
           </div>
         </section>
@@ -251,9 +432,13 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
           <section className="stTModels" aria-label="Models">
             <div className="stTModelsHead">
               <h3>{running || status === 'ended' ? 'Models in this conversation' : 'Models for this test'}</h3>
-              <button type="button" className="stLink" onClick={openModels}>Change</button>
+              <button type="button" className="stLink" onClick={openModels}>
+                Change
+              </button>
             </div>
-            {!shownModels ? <p className="stMuted">{versionLoad.error ? 'Couldn’t load this version’s models.' : 'Loading…'}</p> : (
+            {!shownModels ? (
+              <p className="stMuted">{versionLoad.error ? 'Couldn’t load this version’s models.' : 'Loading…'}</p>
+            ) : (
               <ul>
                 {shownModels.map((item) => (
                   <li key={item.stage} className={item.set ? '' : 'unset'}>
@@ -264,42 +449,127 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                 ))}
               </ul>
             )}
-            {ref !== 'draft' && <p className="stMuted">This runs {version ? `version ${version}` : 'that version'} with the models it was published with. Publish and deploy to test new ones this way.</p>}
+            {ref !== 'draft' && (
+              <p className="stMuted">
+                This runs {version ? `version ${version}` : 'that version'} with the models it was published with. Publish and deploy to test new ones this way.
+              </p>
+            )}
           </section>
           <h3>Session</h3>
           {info ? (
             <dl className="stTDetails">
-              <div><dt>Room</dt><dd><code>{info.room}</code></dd></div>
-              <div><dt>Version</dt><dd>{info.version === 'draft' ? 'Draft' : `v${info.version}`} <span className="stMuted">({info.ref})</span></dd></div>
-              <div><dt>Channel</dt><dd>{info.channel?.id} <span className="stMuted">({info.channel?.type})</span></dd></div>
-              {info.expiresInS && <div><dt>Join window</dt><dd>{Math.round(info.expiresInS / 60)} min to connect</dd></div>}
+              <div>
+                <dt>Room</dt>
+                <dd>
+                  <code>{info.room}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Version</dt>
+                <dd>
+                  {info.version === 'draft' ? 'Draft' : `v${info.version}`} <span className="stMuted">({info.ref})</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Channel</dt>
+                <dd>
+                  {info.channel?.id} <span className="stMuted">({info.channel?.type})</span>
+                </dd>
+              </div>
+              {info.expiresInS && (
+                <div>
+                  <dt>Join window</dt>
+                  <dd>{Math.round(info.expiresInS / 60)} min to connect</dd>
+                </div>
+              )}
             </dl>
-          ) : <p className="stMuted">Details appear once a conversation starts.</p>}
+          ) : (
+            <p className="stMuted">Details appear once a conversation starts.</p>
+          )}
 
           {(isVoice || inputs.includes('video') || inputs.includes('image')) && (
             <div className="stTMedia">
-              {isVoice && <button type="button" className={`stTMediaBtn ${media.mic ? 'on' : ''}`} onClick={() => session.toggle('mic')} disabled={!connected} aria-pressed={media.mic}><Icon name="mic" size={16} /> {media.mic ? 'Microphone on' : 'Microphone off'}</button>}
-              {inputs.includes('video') && <button type="button" className={`stTMediaBtn ${media.camera ? 'on' : ''}`} onClick={() => session.toggle('camera')} disabled={!connected} aria-pressed={media.camera}><Icon name="camera" size={16} /> {media.camera ? 'Camera on' : 'Camera off'}</button>}
-              {inputs.includes('video') && channelCfg?.inputs?.video?.screen_share !== false && ref === 'draft' && channelCfg?.inputs?.video?.screen_share && <button type="button" className={`stTMediaBtn ${media.screen ? 'on' : ''}`} onClick={() => session.toggle('screen')} disabled={!connected} aria-pressed={media.screen}><Icon name="monitor" size={16} /> {media.screen ? 'Sharing screen' : 'Share screen'}</button>}
+              {isVoice && (
+                <button
+                  type="button"
+                  className={`stTMediaBtn ${media.mic ? 'on' : ''}`}
+                  onClick={() => session.toggle('mic')}
+                  disabled={!connected}
+                  aria-pressed={media.mic}
+                >
+                  <Icon name="mic" size={16} /> {media.mic ? 'Microphone on' : 'Microphone off'}
+                </button>
+              )}
+              {inputs.includes('video') && (
+                <button
+                  type="button"
+                  className={`stTMediaBtn ${media.camera ? 'on' : ''}`}
+                  onClick={() => session.toggle('camera')}
+                  disabled={!connected}
+                  aria-pressed={media.camera}
+                >
+                  <Icon name="camera" size={16} /> {media.camera ? 'Camera on' : 'Camera off'}
+                </button>
+              )}
+              {inputs.includes('video') && channelCfg?.inputs?.video?.screen_share !== false && ref === 'draft' && channelCfg?.inputs?.video?.screen_share && (
+                <button
+                  type="button"
+                  className={`stTMediaBtn ${media.screen ? 'on' : ''}`}
+                  onClick={() => session.toggle('screen')}
+                  disabled={!connected}
+                  aria-pressed={media.screen}
+                >
+                  <Icon name="monitor" size={16} /> {media.screen ? 'Sharing screen' : 'Share screen'}
+                </button>
+              )}
               {inputs.includes('image') && (
                 <>
-                  <button type="button" className="stTMediaBtn" onClick={() => fileRef.current?.click()} disabled={!connected || !imageCfg} title={imageCfg ? 'Send a picture' : 'Pictures can be sent when testing the draft'}><Icon name="paperclip" size={16} /> Send a picture</button>
+                  <button
+                    type="button"
+                    className="stTMediaBtn"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={!connected || !imageCfg}
+                    title={imageCfg ? 'Send a picture' : 'Pictures can be sent when testing the draft'}
+                  >
+                    <Icon name="paperclip" size={16} /> Send a picture
+                  </button>
                   <input ref={fileRef} type="file" accept={(imageCfg?.accepted_mime || ['image/*']).join(',')} hidden onChange={onFile} />
                 </>
               )}
-              {pictureNote && <p className="stTNote" role="alert">{pictureNote}</p>}
+              {pictureNote && (
+                <p className="stTNote" role="alert">
+                  {pictureNote}
+                </p>
+              )}
               {media.camera && <video ref={session.localVideoRef} className="stTPreview" autoPlay muted playsInline aria-label="Your camera" />}
             </div>
           )}
 
-          {canSave && <button type="button" className="quietButton stTSaveScenario" onClick={saveAsScenario} disabled={!!saved} title="Turns what you said and what the agent did into a test scenario in the draft">{saved ? 'Saved as a scenario' : 'Save as a scenario'}</button>}
+          {canSave && (
+            <button
+              type="button"
+              className="quietButton stTSaveScenario"
+              onClick={saveAsScenario}
+              disabled={!!saved}
+              title="Turns what you said and what the agent did into a test scenario in the draft"
+            >
+              {saved ? 'Saved as a scenario' : 'Save as a scenario'}
+            </button>
+          )}
 
           <div className="stTLog">
-            <button type="button" className="stLink" onClick={() => setLogOpen((v) => !v)} aria-expanded={logOpen}>{logOpen ? 'Hide' : 'Show'} connection log ({events.length})</button>
+            <button type="button" className="stLink" onClick={() => setLogOpen((v) => !v)} aria-expanded={logOpen}>
+              {logOpen ? 'Hide' : 'Show'} connection log ({events.length})
+            </button>
             {logOpen && (
               <ol>
                 {events.length === 0 && <li className="stMuted">Nothing yet.</li>}
-                {events.map((event) => <li key={event.id} className={event.kind}><time>{clock(event.at)}</time><span>{event.text}</span></li>)}
+                {events.map((event) => (
+                  <li key={event.id} className={event.kind}>
+                    <time>{clock(event.at)}</time>
+                    <span>{event.text}</span>
+                  </li>
+                ))}
               </ol>
             )}
           </div>
@@ -308,9 +578,20 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
       {(status !== 'idle' || trace.records.length > 0) && (
         <section className="stCard stTTrace" aria-label="Trace">
-          <TraceView records={trace.records} live={trace.following} title="What happened in this conversation" emptyText={running ? 'Waiting for the first record…' : 'Nothing was recorded.'}
-            note={session.simulated ? 'These records were made by the simulated conversation, in the same shape a real call has. No runtime wrote them.' : undefined} />
-          {trace.problem && <p className="stMuted" role="status">{trace.problem}</p>}
+          <TraceView
+            records={trace.records}
+            live={trace.following}
+            title="What happened in this conversation"
+            emptyText={running ? 'Waiting for the first record…' : 'Nothing was recorded.'}
+            note={
+              session.simulated ? 'These records were made by the simulated conversation, in the same shape a real call has. No runtime wrote them.' : undefined
+            }
+          />
+          {trace.problem && (
+            <p className="stMuted" role="status">
+              {trace.problem}
+            </p>
+          )}
         </section>
       )}
     </div>

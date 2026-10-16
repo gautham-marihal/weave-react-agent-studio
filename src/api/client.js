@@ -14,7 +14,9 @@ const BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.me
 // the user: who saved, published or deployed is decided by the proxy in front of the API from the verified sign-in,
 // never by the browser (anyone can set a header). For development only, VITE_SEND_USER_HEADER=true sends it anyway.
 let currentUser = '';
-export const setApiUser = (name) => { currentUser = String(name || '').trim(); };
+export const setApiUser = (name) => {
+  currentUser = String(name || '').trim();
+};
 export const getApiUser = () => currentUser;
 const SEND_USER_HEADER = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SEND_USER_HEADER) === 'true';
 
@@ -72,14 +74,25 @@ async function request(method, path, { body, signal, raw } = {}) {
   let response;
   try {
     // `raw` is a file: the body IS the file (knowledge uploads), not JSON and not a form
-    response = await fetch(`${BASE}${path}`, { method, headers, signal, body: raw !== undefined ? raw : body === undefined ? undefined : JSON.stringify(body) });
+    response = await fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      signal,
+      body: raw !== undefined ? raw : body === undefined ? undefined : JSON.stringify(body),
+    });
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
     throw new ApiError({ status: 0, kind: 'network', message: 'Could not reach the Agent Builder API.' });
   }
   const text = await response.text();
   let data = null;
-  if (text) { try { data = JSON.parse(text); } catch { data = text; } }
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
   if (!response.ok) {
     const { kind, message, errors } = classify(response.status, data);
     throw new ApiError({ status: response.status, kind, message, errors, body: data });
@@ -92,7 +105,9 @@ async function demoRequest(method, path, body, signal) {
   const aborted = () => new DOMException('Aborted', 'AbortError');
   if (signal?.aborted) throw aborted();
   const { getDemoApi } = await import('../demo/demoApi.js');
-  await new Promise((resolve) => { setTimeout(resolve, 30); }); // a moment, so loading states are real
+  await new Promise((resolve) => {
+    setTimeout(resolve, 30);
+  }); // a moment, so loading states are real
   if (signal?.aborted) throw aborted();
   // a file for a knowledge upload is kept as it is; everything else is copied so the imitation can't change the caller's objects
   const payload = body === undefined ? undefined : body && body.__file !== undefined ? body : JSON.parse(JSON.stringify(body));
@@ -138,10 +153,11 @@ export const api = {
   getDraft: (id, opts) => request('GET', `/bots/${enc(id)}/draft`, opts),
   // Omit baseRevision to overwrite; send it to get a 409 if someone saved in between.
   /** @param {string} id @param {AgentConfig} config @param {number | null} [baseRevision] @param {RequestOptions} [opts] @returns {Promise<import('./types').SavedDraft>} */
-  saveDraft: (id, config, baseRevision, opts) => request('PUT', `/bots/${enc(id)}/draft`, {
-    ...opts,
-    body: baseRevision === undefined || baseRevision === null ? { config } : { config, base_revision: baseRevision },
-  }),
+  saveDraft: (id, config, baseRevision, opts) =>
+    request('PUT', `/bots/${enc(id)}/draft`, {
+      ...opts,
+      body: baseRevision === undefined || baseRevision === null ? { config } : { config, base_revision: baseRevision },
+    }),
 
   // `bump` ("major" | "minor" | "patch") is counted from the latest published version; the server refuses it
   // until something has been published. Without it the draft's own meta.version is published.
@@ -157,10 +173,11 @@ export const api = {
 
   // Answers 200 today; may become 202 with status "pending" (poll getDeployment until active / failed).
   /** @param {string} id @param {{ version: string, environment: string, note?: string }} deployment @param {RequestOptions} [opts] @returns {Promise<import('./types').DeployResult>} */
-  deploy: (id, { version, environment, note }, opts) => request('POST', `/bots/${enc(id)}/deploy`, {
-    ...opts,
-    body: { version, environment, ...(note ? { note } : {}) },
-  }),
+  deploy: (id, { version, environment, note }, opts) =>
+    request('POST', `/bots/${enc(id)}/deploy`, {
+      ...opts,
+      body: { version, environment, ...(note ? { note } : {}) },
+    }),
   // history is oldest first.
   /** @param {string} id @param {RequestOptions} [opts] @returns {Promise<import('./types').Deployments>} oldest first */
   listDeployments: (id, opts) => request('GET', `/bots/${enc(id)}/deployments`, opts),
@@ -169,10 +186,11 @@ export const api = {
 
   // ref: "draft" (default), "latest", a version, or an environment name.
   /** @param {string} id @param {{ ref?: string, identity?: string }} [session] @param {RequestOptions} [opts] @returns {Promise<import('./types').Session>} */
-  startSession: (id, { ref, identity } = {}, opts) => request('POST', `/bots/${enc(id)}/sessions`, {
-    ...opts,
-    body: { ...(ref ? { ref } : {}), ...(identity ? { identity } : {}) },
-  }),
+  startSession: (id, { ref, identity } = {}, opts) =>
+    request('POST', `/bots/${enc(id)}/sessions`, {
+      ...opts,
+      body: { ...(ref ? { ref } : {}), ...(identity ? { identity } : {}) },
+    }),
 
   // ---- test scenarios (the real runner): scripted scenarios replace the model with a script, live ones use a real model and cost money
   // `{ scenarios, ref, network_allowed }`: each scenario with the result of its last run.
@@ -224,7 +242,9 @@ export const api = {
 // ?a=1&b=2 from an object, leaving out what is empty
 function queryOf(values) {
   const query = new URLSearchParams();
-  Object.entries(values || {}).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== '') query.set(key, String(value)); });
+  Object.entries(values || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+  });
   const text = query.toString();
   return text ? `?${text}` : '';
 }
@@ -241,15 +261,37 @@ export function followCall(id, callId, { onOpen, onRecord, onEnd, onError, after
   if (isDemoMode()) {
     let stop = () => {};
     let stopped = false;
-    import('../demo/demoApi.js').then(({ getDemoApi }) => { if (!stopped) stop = getDemoApi().follow(id, callId, { onOpen, onRecord, onEnd }); });
-    return () => { stopped = true; stop(); };
+    import('../demo/demoApi.js').then(({ getDemoApi }) => {
+      if (!stopped) stop = getDemoApi().follow(id, callId, { onOpen, onRecord, onEnd });
+    });
+    return () => {
+      stopped = true;
+      stop();
+    };
   }
   const source = new EventSource(`${BASE}/bots/${enc(id)}/calls/${enc(callId)}/stream${after ? `?after=${after}` : ''}`);
-  const parse = (event) => { try { return JSON.parse(event.data); } catch { return null; } };
-  source.addEventListener('open', (event) => { const call = parse(event); if (call && onOpen) onOpen(call); });
-  source.onmessage = (event) => { const record = parse(event); if (record) onRecord(record); };
-  source.addEventListener('end', () => { source.close(); if (onEnd) onEnd(); });
-  source.addEventListener('error', () => { if (source.readyState === EventSource.CLOSED && onError) onError(); });
+  const parse = (event) => {
+    try {
+      return JSON.parse(event.data);
+    } catch {
+      return null;
+    }
+  };
+  source.addEventListener('open', (event) => {
+    const call = parse(event);
+    if (call && onOpen) onOpen(call);
+  });
+  source.onmessage = (event) => {
+    const record = parse(event);
+    if (record) onRecord(record);
+  };
+  source.addEventListener('end', () => {
+    source.close();
+    if (onEnd) onEnd();
+  });
+  source.addEventListener('error', () => {
+    if (source.readyState === EventSource.CLOSED && onError) onError();
+  });
   return () => source.close();
 }
 

@@ -12,8 +12,12 @@ export function useAsync(load, deps = []) {
     const controller = new AbortController();
     setState((old) => ({ ...old, loading: true, error: null }));
     loadRef.current(controller.signal).then(
-      (data) => { if (!controller.signal.aborted) setState({ data, error: null, loading: false }); },
-      (error) => { if (error?.name !== 'AbortError' && !controller.signal.aborted) setState((old) => ({ data: old.data, error, loading: false })); },
+      (data) => {
+        if (!controller.signal.aborted) setState({ data, error: null, loading: false });
+      },
+      (error) => {
+        if (error?.name !== 'AbortError' && !controller.signal.aborted) setState((old) => ({ data: old.data, error, loading: false }));
+      },
     );
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -63,7 +63,10 @@ export const MODEL_OPTIONS = {
     elevenlabs: [m('scribe_v1', 'Scribe v1', 'ElevenLabs speech recognition')],
     assemblyai: [m('universal-streaming', 'Universal Streaming', 'Real-time streaming transcription')],
     google: [m('chirp_2', 'Chirp 2', 'Multilingual speech recognition'), m('latest_long', 'Latest Long', 'Long-form conversation')],
-    groq: [m('whisper-large-v3', 'Whisper Large v3', 'High-accuracy multilingual recognition'), m('whisper-large-v3-turbo', 'Whisper Large v3 Turbo', 'Faster large-model variant')],
+    groq: [
+      m('whisper-large-v3', 'Whisper Large v3', 'High-accuracy multilingual recognition'),
+      m('whisper-large-v3-turbo', 'Whisper Large v3 Turbo', 'Faster large-model variant'),
+    ],
     openai_compatible: [],
   },
   llm: {
@@ -80,8 +83,15 @@ export const MODEL_OPTIONS = {
       m('claude-opus-5-5', 'Claude Opus 5.5', 'Most capable, for complex tasks', ['most capable']),
       m('claude-fable-5-1', 'Claude Fable 5.1', 'Latest generation'),
     ],
-    google: [m('gemini-2.5-flash', 'Gemini 2.5 Flash', 'Fast, general purpose'), m('gemini-2.5-pro', 'Gemini 2.5 Pro', 'Advanced reasoning'), m('gemini-2.0-flash', 'Gemini 2.0 Flash', 'Previous generation, low latency')],
-    groq: [m('llama-3.3-70b-versatile', 'Llama 3.3 70B', 'Capable open model, fast on Groq'), m('llama-3.1-8b-instant', 'Llama 3.1 8B', 'Lightweight, lowest latency')],
+    google: [
+      m('gemini-2.5-flash', 'Gemini 2.5 Flash', 'Fast, general purpose'),
+      m('gemini-2.5-pro', 'Gemini 2.5 Pro', 'Advanced reasoning'),
+      m('gemini-2.0-flash', 'Gemini 2.0 Flash', 'Previous generation, low latency'),
+    ],
+    groq: [
+      m('llama-3.3-70b-versatile', 'Llama 3.3 70B', 'Capable open model, fast on Groq'),
+      m('llama-3.1-8b-instant', 'Llama 3.1 8B', 'Lightweight, lowest latency'),
+    ],
     openai_compatible: [],
   },
   tts: {
@@ -96,7 +106,11 @@ export const MODEL_OPTIONS = {
       m('sonic-2', 'Sonic 2', 'Previous generation, widely compatible'),
       m('sonic-turbo', 'Sonic Turbo', 'Lowest latency', ['fast']),
     ],
-    openai: [m('gpt-4o-mini-tts', 'GPT-4o Mini TTS', 'Steerable, natural voices'), m('tts-1', 'TTS 1', 'Fast, standard quality'), m('tts-1-hd', 'TTS 1 HD', 'Higher quality')],
+    openai: [
+      m('gpt-4o-mini-tts', 'GPT-4o Mini TTS', 'Steerable, natural voices'),
+      m('tts-1', 'TTS 1', 'Fast, standard quality'),
+      m('tts-1-hd', 'TTS 1 HD', 'Higher quality'),
+    ],
     deepgram: [m('aura-2-thalia-en', 'Aura 2 Thalia', 'English voice, Aura 2'), m('aura-asteria-en', 'Aura Asteria', 'English voice, Aura')],
     google: [],
     groq: [],
@@ -107,32 +121,81 @@ export const MODEL_OPTIONS = {
 // Names that used to be offered (they come from the older XML configuration) and what the runtime calls the same
 // thing. The server refuses them, so an agent that has one is offered the fix.
 export const RENAMED_PROVIDERS = {
-  whisper: { stages: ['stt'], provider: 'openai', model: 'whisper-1', why: '“Whisper” is an OpenAI model, not a provider. Use OpenAI with the model whisper-1.' },
-  'gpt-transcribe': { stages: ['stt'], provider: 'openai', model: 'gpt-4o-transcribe', why: '“GPT Transcribe” is an OpenAI model, not a provider. Use OpenAI with the model gpt-4o-transcribe.' },
-  mistral: { stages: ['llm'], provider: 'openai_compatible', model: 'mistral-small-latest', baseUrl: 'https://api.mistral.ai/v1', secret: 'MISTRAL_API_KEY', needsBaseUrl: true, why: 'Mistral is reached through an OpenAI-compatible endpoint. The switch fills in Mistral’s address and a model; check them and make sure MISTRAL_API_KEY is set on the server.' },
-  'microsoft phi-4': { stages: ['llm'], provider: 'openai_compatible', model: 'phi-4', needsBaseUrl: true, why: 'Phi-4 is reached through an OpenAI-compatible endpoint. The switch moves it to OpenAI-compatible; then enter the base URL of where Phi-4 is hosted.' },
+  whisper: {
+    stages: ['stt'],
+    provider: 'openai',
+    model: 'whisper-1',
+    why: '“Whisper” is an OpenAI model, not a provider. Use OpenAI with the model whisper-1.',
+  },
+  'gpt-transcribe': {
+    stages: ['stt'],
+    provider: 'openai',
+    model: 'gpt-4o-transcribe',
+    why: '“GPT Transcribe” is an OpenAI model, not a provider. Use OpenAI with the model gpt-4o-transcribe.',
+  },
+  mistral: {
+    stages: ['llm'],
+    provider: 'openai_compatible',
+    model: 'mistral-small-latest',
+    baseUrl: 'https://api.mistral.ai/v1',
+    secret: 'MISTRAL_API_KEY',
+    needsBaseUrl: true,
+    why: 'Mistral is reached through an OpenAI-compatible endpoint. The switch fills in Mistral’s address and a model; check them and make sure MISTRAL_API_KEY is set on the server.',
+  },
+  'microsoft phi-4': {
+    stages: ['llm'],
+    provider: 'openai_compatible',
+    model: 'phi-4',
+    needsBaseUrl: true,
+    why: 'Phi-4 is reached through an OpenAI-compatible endpoint. The switch moves it to OpenAI-compatible; then enter the base URL of where Phi-4 is hosted.',
+  },
 };
 
 // The name, in the server's vault, of the secret that holds a provider's key (credentials are never in the
 // configuration, only this name). The server's own list says which one each provider uses; this is the fallback.
-export const SECRET_BY_PROVIDER = Object.fromEntries(FALLBACK_PROVIDERS.filter((provider) => provider.default_secret).map((provider) => [provider.name, provider.default_secret]));
+export const SECRET_BY_PROVIDER = Object.fromEntries(
+  FALLBACK_PROVIDERS.filter((provider) => provider.default_secret).map((provider) => [provider.name, provider.default_secret]),
+);
 export function secretFor(provider, providers) {
   const known = (providers || []).find((item) => item.name === provider)?.default_secret;
   if (known) return known;
   if (SECRET_BY_PROVIDER[provider]) return SECRET_BY_PROVIDER[provider];
-  const name = String(provider || '').toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const name = String(provider || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
   return /^[A-Z]/.test(name) ? `${name}_API_KEY` : '';
 }
 
 export const STAGES = [
-  { id: 'stt', title: 'Speech-to-text (STT)', short: 'Speech-to-text', subtitle: 'Choose a provider, then choose the specific speech recognition model.', modelHeading: 'Speech recognition model' },
-  { id: 'llm', title: 'Language model (LLM)', short: 'Language model', subtitle: 'Choose a provider, then select the model that best fits your assistant.', modelHeading: 'Reasoning model' },
-  { id: 'tts', title: 'Text-to-speech (TTS)', short: 'Text-to-speech', subtitle: 'Choose a provider, then the voice model, then the voice.', modelHeading: 'Voice model' },
+  {
+    id: 'stt',
+    title: 'Speech-to-text (STT)',
+    short: 'Speech-to-text',
+    subtitle: 'Choose a provider, then choose the specific speech recognition model.',
+    modelHeading: 'Speech recognition model',
+  },
+  {
+    id: 'llm',
+    title: 'Language model (LLM)',
+    short: 'Language model',
+    subtitle: 'Choose a provider, then select the model that best fits your assistant.',
+    modelHeading: 'Reasoning model',
+  },
+  {
+    id: 'tts',
+    title: 'Text-to-speech (TTS)',
+    short: 'Text-to-speech',
+    subtitle: 'Choose a provider, then the voice model, then the voice.',
+    modelHeading: 'Voice model',
+  },
 ];
 
-export const providerLabel = (provider = '') => PROVIDER_LABELS[String(provider).toLowerCase()] || String(provider)
-  .replace(/[_-]+/g, ' ')
-  .replace(/\b\w/g, (letter) => letter.toUpperCase());
+export const providerLabel = (provider = '') =>
+  PROVIDER_LABELS[String(provider).toLowerCase()] ||
+  String(provider)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 export const modelsFor = (stage, provider) => MODEL_OPTIONS[stage]?.[provider] || [];
 export const defaultModelFor = (stage, provider) => modelsFor(stage, provider)[0]?.id || '';
 // The model the studio picks when someone chooses this provider (the first in its list): marked "Recommended" wherever the models are listed.
@@ -140,10 +203,10 @@ export const isRecommendedModel = (stage, provider, id) => !!id && id === defaul
 export const modelLabel = (stage, provider, id) => modelsFor(stage, provider).find((model) => model.id === id)?.label || id || '';
 
 // The providers of one stage out of a server list (or the fallback): the ones the runtime has a use for at that stage.
-export const providersForStage = (providers, stage) => (providers || FALLBACK_PROVIDERS)
-  .filter((provider) => (provider.stages || []).includes(stage))
-  .sort((a, b) => Number(b.installed !== false) - Number(a.installed !== false) || providerLabel(a.name).localeCompare(providerLabel(b.name)));
-
+export const providersForStage = (providers, stage) =>
+  (providers || FALLBACK_PROVIDERS)
+    .filter((provider) => (provider.stages || []).includes(stage))
+    .sort((a, b) => Number(b.installed !== false) - Number(a.installed !== false) || providerLabel(a.name).localeCompare(providerLabel(b.name)));
 
 // ---- what each provider can do, by stage (the runtime's own list is GET /providers; this is the catalogue's copy, used to check the table
 // and to say sensible things when the server can't be asked)
@@ -164,7 +227,8 @@ export const FREE_TEXT_PROVIDERS = {
   openai_compatible: 'This is any service that speaks the OpenAI API (Mistral, Azure, a local model server…). Type the model id it serves.',
 };
 
-export const catalogueSize = () => Object.values(MODEL_OPTIONS).reduce((sum, byProvider) => sum + Object.values(byProvider).reduce((n, models) => n + models.length, 0), 0);
+export const catalogueSize = () =>
+  Object.values(MODEL_OPTIONS).reduce((sum, byProvider) => sum + Object.values(byProvider).reduce((n, models) => n + models.length, 0), 0);
 
 // What the catalogue knows about a model: { state: 'listed' | 'custom' | 'free' | 'empty', entry?, text }.
 //   listed  it is in the table;  custom  typed by someone, not in the table (saved as typed);
@@ -174,8 +238,12 @@ export function modelStatus(stage, provider, model) {
   const entry = modelsFor(stage, provider).find((item) => item.id === id);
   if (!id) return { state: 'empty', text: 'No model chosen yet. The server needs one.' };
   if (entry) return { state: 'listed', entry, text: `${entry.label}: ${entry.note}.` };
-  if (FREE_TEXT_PROVIDERS[provider] || modelsFor(stage, provider).length === 0) return { state: 'free', text: `${providerLabel(provider)} has no ready-made list here, so “${id}” is saved as typed. The server doesn’t check model ids.` };
-  return { state: 'custom', text: `“${id}” isn’t in the catalogue (reviewed ${CATALOGUE_REVIEWED}), so it is saved as typed. The server doesn’t check model ids: make sure ${providerLabel(provider)} offers it.` };
+  if (FREE_TEXT_PROVIDERS[provider] || modelsFor(stage, provider).length === 0)
+    return { state: 'free', text: `${providerLabel(provider)} has no ready-made list here, so “${id}” is saved as typed. The server doesn’t check model ids.` };
+  return {
+    state: 'custom',
+    text: `“${id}” isn’t in the catalogue (reviewed ${CATALOGUE_REVIEWED}), so it is saved as typed. The server doesn’t check model ids: make sure ${providerLabel(provider)} offers it.`,
+  };
 }
 
 // Mistakes in the table itself, as readable strings: [] when it is consistent. Run by the tests.
@@ -196,12 +264,18 @@ export function catalogueProblems() {
   });
   Object.entries(PROVIDER_STAGES).forEach(([provider, stages]) => {
     stages.forEach((stage) => {
-      if (!(provider in (MODEL_OPTIONS[stage] || {}))) problems.push(`${provider} can do ${stage} but has no entry in the table (an empty list is fine for free-text providers)`);
+      if (!(provider in (MODEL_OPTIONS[stage] || {})))
+        problems.push(`${provider} can do ${stage} but has no entry in the table (an empty list is fine for free-text providers)`);
     });
     if (!(provider in PROVIDER_LABELS)) problems.push(`${provider} has no display name`);
   });
-  FALLBACK_PROVIDERS.forEach((provider) => (provider.stages || []).filter((stage) => ['stt', 'llm', 'tts'].includes(stage)).forEach((stage) => {
-    if (!(PROVIDER_STAGES[provider.name] || []).includes(stage)) problems.push(`the fallback list offers ${provider.name} for ${stage}, but the catalogue doesn’t know it does that`);
-  }));
+  FALLBACK_PROVIDERS.forEach((provider) =>
+    (provider.stages || [])
+      .filter((stage) => ['stt', 'llm', 'tts'].includes(stage))
+      .forEach((stage) => {
+        if (!(PROVIDER_STAGES[provider.name] || []).includes(stage))
+          problems.push(`the fallback list offers ${provider.name} for ${stage}, but the catalogue doesn’t know it does that`);
+      }),
+  );
   return problems;
 }

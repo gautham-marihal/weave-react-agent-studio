@@ -6,7 +6,17 @@ import '../smartSelect.css';
 // of options, aria-activedescendant for the highlighted one), with the same keys: arrows to move, Enter to pick, Escape to close.
 //
 //   options: { value, label?, description? }[]. The list shows everything until something is typed, then narrows to what matches.
-export default function SuggestInput({ value, onChange, options, placeholder, ariaLabel, id, disabled = false, invalid = false, footer = 'Or type any other value.' }) {
+export default function SuggestInput({
+  value,
+  onChange,
+  options,
+  placeholder,
+  ariaLabel,
+  id,
+  disabled = false,
+  invalid = false,
+  footer = 'Or type any other value.',
+}) {
   const listId = useId();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState(false);
@@ -19,39 +29,124 @@ export default function SuggestInput({ value, onChange, options, placeholder, ar
   }, [options, text, typed]);
   const wrapRef = useRef(null);
 
-  const close = () => { setOpen(false); setTyped(false); setActive(-1); };
-  const choose = (option) => { if (!option) return; onChange(option.value); close(); };
+  const close = () => {
+    setOpen(false);
+    setTyped(false);
+    setActive(-1);
+  };
+  const choose = (option) => {
+    if (!option) return;
+    onChange(option.value);
+    close();
+  };
   const move = (delta) => {
-    if (!open) { setOpen(true); return; }
+    if (!open) {
+      setOpen(true);
+      return;
+    }
     if (!shown.length) return;
     setActive((at) => (at + delta + shown.length) % shown.length);
   };
   const onKeyDown = (event) => {
-    if (event.key === 'ArrowDown') { event.preventDefault(); move(1); } else if (event.key === 'ArrowUp') { event.preventDefault(); move(-1); }
-    else if (event.key === 'Enter') { if (open && active >= 0 && shown[active]) { event.preventDefault(); choose(shown[active]); } }
-    else if (event.key === 'Escape') { if (open) { event.preventDefault(); close(); } }
-    else if (event.key === 'Tab') close();
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      move(1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      move(-1);
+    } else if (event.key === 'Enter') {
+      if (open && active >= 0 && shown[active]) {
+        event.preventDefault();
+        choose(shown[active]);
+      }
+    } else if (event.key === 'Escape') {
+      if (open) {
+        event.preventDefault();
+        close();
+      }
+    } else if (event.key === 'Tab') close();
   };
 
   return (
-    <div ref={wrapRef} className={`stCombo ${disabled ? 'disabled' : ''}`} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) close(); }}>
-      <input id={id} className="stFInput stComboInput" type="text" role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-haspopup="listbox"
-        aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined} aria-label={ariaLabel} aria-invalid={invalid || undefined} autoComplete="off" spellCheck={false}
-        disabled={disabled} value={text} placeholder={placeholder}
-        onFocus={() => setOpen(true)} onClick={() => setOpen(true)} onKeyDown={onKeyDown}
-        onChange={(event) => { onChange(event.target.value); setTyped(true); setOpen(true); setActive(-1); }} />
-      <button type="button" className="stComboChevron" tabIndex={-1} disabled={disabled} aria-label="Show the choices" onMouseDown={(event) => { event.preventDefault(); setTyped(false); setOpen((was) => !was); }}>▾</button>
+    <div
+      ref={wrapRef}
+      className={`stCombo ${disabled ? 'disabled' : ''}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) close();
+      }}
+    >
+      <input
+        id={id}
+        className="stFInput stComboInput"
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-haspopup="listbox"
+        aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
+        aria-label={ariaLabel}
+        aria-invalid={invalid || undefined}
+        autoComplete="off"
+        spellCheck={false}
+        disabled={disabled}
+        value={text}
+        placeholder={placeholder}
+        onFocus={() => setOpen(true)}
+        onClick={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setTyped(true);
+          setOpen(true);
+          setActive(-1);
+        }}
+      />
+      <button
+        type="button"
+        className="stComboChevron"
+        tabIndex={-1}
+        disabled={disabled}
+        aria-label="Show the choices"
+        onMouseDown={(event) => {
+          event.preventDefault();
+          setTyped(false);
+          setOpen((was) => !was);
+        }}
+      >
+        ▾
+      </button>
       {open && (
         <ul id={listId} role="listbox" aria-label={ariaLabel} className="stComboList">
           {shown.map((option, index) => (
-            <li key={option.value} id={`${listId}-${index}`} role="option" aria-selected={option.value === text} data-active={index === active} data-value={option.value}
-              className={`stComboOption ${index === active ? 'active' : ''}`} onMouseDown={(event) => { event.preventDefault(); choose(option); }} onMouseMove={() => setActive(index)}>
+            <li
+              key={option.value}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={option.value === text}
+              data-active={index === active}
+              data-value={option.value}
+              className={`stComboOption ${index === active ? 'active' : ''}`}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                choose(option);
+              }}
+              onMouseMove={() => setActive(index)}
+            >
               <span>{option.label || option.value}</span>
               {option.description && <small>{option.description}</small>}
             </li>
           ))}
-          {shown.length === 0 && <li role="status" className="stComboEmpty">Nothing in the list matches “{text}”. It is saved as typed.</li>}
-          {footer && shown.length > 0 && <li role="presentation" className="stComboEmpty">{footer}</li>}
+          {shown.length === 0 && (
+            <li role="status" className="stComboEmpty">
+              Nothing in the list matches “{text}”. It is saved as typed.
+            </li>
+          )}
+          {footer && shown.length > 0 && (
+            <li role="presentation" className="stComboEmpty">
+              {footer}
+            </li>
+          )}
         </ul>
       )}
     </div>

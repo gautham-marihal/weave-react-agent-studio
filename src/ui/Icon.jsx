@@ -10,9 +10,26 @@ export { ICON_NAMES } from './iconPaths.js';
 export default function Icon({ name, size = 18, label, className = '' }) {
   const parts = PATHS[name] || PATHS.info;
   return (
-    <svg className={`wIcon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : 'true'} focusable="false">
+    <svg
+      className={`wIcon ${className}`}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role={label ? 'img' : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : 'true'}
+      focusable="false"
+    >
       {parts.map((part) => {
-        if (part.startsWith('circle:')) { const [cx, cy, r] = part.slice(7).split(' '); return <circle key={part} cx={cx} cy={cy} r={r} />; }
+        if (part.startsWith('circle:')) {
+          const [cx, cy, r] = part.slice(7).split(' ');
+          return <circle key={part} cx={cx} cy={cy} r={r} />;
+        }
         return <path key={part} d={part} />;
       })}
     </svg>

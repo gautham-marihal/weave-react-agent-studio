@@ -19,8 +19,15 @@ import { TechKey } from './TechName.jsx';
 const HANDLED = ['id', 'name', 'description', 'parameters', 'connection', 'request', 'result', 'reply', 'effects', 'on_error', 'timeout_s', 'retries'];
 
 const sortByOrder = (obj, order) => {
-  const rank = (key) => { const i = order.indexOf(key); return i === -1 ? order.length : i; };
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined).sort(([a], [b]) => rank(a) - rank(b)));
+  const rank = (key) => {
+    const i = order.indexOf(key);
+    return i === -1 ? order.length : i;
+  };
+  return Object.fromEntries(
+    Object.entries(obj)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => rank(a) - rank(b)),
+  );
 };
 
 export default function ToolBody({ shape, value, path, onChange, disabled }) {
@@ -64,13 +71,37 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           <div className="stFRow wide">
             {showName ? (
               <>
-                <div className="stFLabel"><label htmlFor={`${path.join('-')}-name`}>Name the model sees</label><TechKey name="name" path={[...path, 'name']} />
-                  <button type="button" className="stFDel small" disabled={disabled} onClick={() => set({ name: undefined }, { deleted: 'the model-facing name' })}>Delete</button></div>
-                <TextInput id={`${path.join('-')}-name`} value={obj.name} onChange={(v) => set({ name: v })} disabled={disabled} mono placeholder="snake_case" />
+                <div className="stFLabel">
+                  <label htmlFor={`${path.join('-')}-name`}>Name the model sees</label>
+                  <TechKey name="name" path={[...path, 'name']} />
+                  <button
+                    type="button"
+                    className="stFDel small"
+                    disabled={disabled}
+                    onClick={() => set({ name: undefined }, { deleted: 'the model-facing name' })}
+                  >
+                    Delete
+                  </button>
+                </div>
+                <TextInput
+                  id={`${path.join('-')}-name`}
+                  value={obj.name}
+                  onChange={(v) => set({ name: v })}
+                  disabled={disabled}
+                  mono
+                  placeholder="snake_case"
+                />
                 <p className="stFHelp">The name the model calls the tool by: lowercase letters, digits and _.</p>
               </>
             ) : (
-              <p className="stFHelp">The model sees this tool as <code>{obj.id || 'its id'}</code>. {!disabled && <button type="button" className="stLink" onClick={() => set({ name: obj.id })}>Use a different name…</button>}</p>
+              <p className="stFHelp">
+                The model sees this tool as <code>{obj.id || 'its id'}</code>.{' '}
+                {!disabled && (
+                  <button type="button" className="stLink" onClick={() => set({ name: obj.id })}>
+                    Use a different name…
+                  </button>
+                )}
+              </p>
             )}
           </div>
         )}
@@ -80,8 +111,24 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
 
       {has('description') && (
         <div className="stFRow wide stDescRow" data-path={`${path.join('.')}.description`}>
-          <div className="stFLabel"><label htmlFor={`${path.join('-')}-desc`}>Description</label>{has('description') && (shape.required || []).includes('description') && <abbr title="Required" className="stFReq">*</abbr>}<TechKey name="description" path={[...path, 'description']} /></div>
-          <TextInput id={`${path.join('-')}-desc`} value={obj.description ?? ''} onChange={(v) => set({ description: v === '' ? undefined : v })} disabled={disabled} multiline placeholder="Use this when the caller asks for their current bill. It needs their account number." invalid={advice?.level === 'warn' && (shape.required || []).includes('description')} />
+          <div className="stFLabel">
+            <label htmlFor={`${path.join('-')}-desc`}>Description</label>
+            {has('description') && (shape.required || []).includes('description') && (
+              <abbr title="Required" className="stFReq">
+                *
+              </abbr>
+            )}
+            <TechKey name="description" path={[...path, 'description']} />
+          </div>
+          <TextInput
+            id={`${path.join('-')}-desc`}
+            value={obj.description ?? ''}
+            onChange={(v) => set({ description: v === '' ? undefined : v })}
+            disabled={disabled}
+            multiline
+            placeholder="Use this when the caller asks for their current bill. It needs their account number."
+            invalid={advice?.level === 'warn' && (shape.required || []).includes('description')}
+          />
           <div className="stDescMeta">
             <span className={`stDescAdvice ${advice?.level}`}>{advice?.text || 'It tells the model when to reach for this tool.'}</span>
             <span className="stMuted">{(obj.description || '').length} characters</span>
@@ -92,29 +139,64 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
       {has('parameters') && (
         <fieldset className="stToolBlock">
           <legend>What the model fills in</legend>
-          <ParamsEditor value={obj.parameters} onChange={(next, meta) => set({ parameters: next }, meta)} toolName={obj.name || obj.id} description={obj.description} disabled={disabled} />
+          <ParamsEditor
+            value={obj.parameters}
+            onChange={(next, meta) => set({ parameters: next }, meta)}
+            toolName={obj.name || obj.id}
+            description={obj.description}
+            disabled={disabled}
+          />
         </fieldset>
       )}
 
       {isHttp && has('request') && (
         <fieldset className="stToolBlock">
           <legend>The request</legend>
-          <RequestEditor request={obj.request} onChange={(next) => set({ request: next })} connection={obj.connection || ''} onConnection={(v) => set({ connection: v })}
-            connectionPath={[...path, 'connection']} scope={scope} paramRows={paramRows} disabled={disabled} />
+          <RequestEditor
+            request={obj.request}
+            onChange={(next) => set({ request: next })}
+            connection={obj.connection || ''}
+            onConnection={(v) => set({ connection: v })}
+            connectionPath={[...path, 'connection']}
+            scope={scope}
+            paramRows={paramRows}
+            disabled={disabled}
+          />
         </fieldset>
       )}
 
       {isHttp && has('result') && (
         <fieldset className="stToolBlock">
           <legend>The response</legend>
-          <ResponsePanel path={path} result={obj.result} onChange={(next) => set({ result: next })} disabled={disabled} toolId={obj.id} parameters={obj.parameters}
-            outOfBand={resultShape?.properties?.out_of_band ? (
-              <FieldRow name="out_of_band" label="Sent straight to the caller" schema={resultShape.properties.out_of_band} value={obj.result?.out_of_band} path={[...path, 'result', 'out_of_band']}
-                missing={!isObj(obj.result) || !('out_of_band' in obj.result)} disabled={disabled}
-                onAdd={() => set({ result: { ...(obj.result || {}), out_of_band: ctx.engine.defaultFor(resultShape.properties.out_of_band) } })}
-                onChange={(v) => set({ result: { ...(obj.result || {}), out_of_band: v } })}
-                onRemove={() => set({ result: Object.fromEntries(Object.entries(obj.result || {}).filter(([k]) => k !== 'out_of_band')) }, { deleted: 'the direct delivery' })} />
-            ) : null} />
+          <ResponsePanel
+            path={path}
+            result={obj.result}
+            onChange={(next) => set({ result: next })}
+            disabled={disabled}
+            toolId={obj.id}
+            parameters={obj.parameters}
+            outOfBand={
+              resultShape?.properties?.out_of_band ? (
+                <FieldRow
+                  name="out_of_band"
+                  label="Sent straight to the caller"
+                  schema={resultShape.properties.out_of_band}
+                  value={obj.result?.out_of_band}
+                  path={[...path, 'result', 'out_of_band']}
+                  missing={!isObj(obj.result) || !('out_of_band' in obj.result)}
+                  disabled={disabled}
+                  onAdd={() => set({ result: { ...(obj.result || {}), out_of_band: ctx.engine.defaultFor(resultShape.properties.out_of_band) } })}
+                  onChange={(v) => set({ result: { ...(obj.result || {}), out_of_band: v } })}
+                  onRemove={() =>
+                    set(
+                      { result: Object.fromEntries(Object.entries(obj.result || {}).filter(([k]) => k !== 'out_of_band')) },
+                      { deleted: 'the direct delivery' },
+                    )
+                  }
+                />
+              ) : null
+            }
+          />
         </fieldset>
       )}
 
@@ -123,14 +205,27 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           <legend>After it succeeds</legend>
           {has('reply') && (
             <div className="stFRow wide" data-path={`${path.join('.')}.reply`}>
-              <div className="stFLabel"><span>Who speaks next</span><TechKey name="reply" path={[...path, 'reply']} /></div>
+              <div className="stFLabel">
+                <span>Who speaks next</span>
+                <TechKey name="reply" path={[...path, 'reply']} />
+              </div>
               <div className="stReply" role="radiogroup" aria-label="Who speaks after the tool runs">
                 {REPLY_CHOICES.map((choice) => {
                   const checked = (obj.reply ?? 'model') === choice.value;
                   return (
                     <label key={choice.value} className={`stReplyChoice ${checked ? 'on' : ''}`}>
-                      <input type="radio" name={`${path.join('-')}-reply`} checked={checked} disabled={disabled} onChange={() => set({ reply: choice.value === 'model' ? undefined : choice.value })} />
-                      <span><strong>{choice.label}</strong><small>{choice.help}</small><em>{choice.example}</em></span>
+                      <input
+                        type="radio"
+                        name={`${path.join('-')}-reply`}
+                        checked={checked}
+                        disabled={disabled}
+                        onChange={() => set({ reply: choice.value === 'model' ? undefined : choice.value })}
+                      />
+                      <span>
+                        <strong>{choice.label}</strong>
+                        <small>{choice.help}</small>
+                        <em>{choice.example}</em>
+                      </span>
                     </label>
                   );
                 })}
@@ -139,11 +234,24 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           )}
           {has('effects') && (
             <div className="stFRow wide" data-path={`${path.join('.')}.effects`}>
-              <div className="stFLabel"><span>Then, in order</span><TechKey name="effects" path={[...path, 'effects']} /></div>
-              <p className="stFHelp">Rules that run after the tool succeeds: each applies always or only when a condition holds, and then does its steps in order (say a line, change state, hand off, end the call…).</p>
-              <EffectsEditor shape={shape.properties.effects} value={obj.effects} path={[...path, 'effects']} disabled={disabled}
+              <div className="stFLabel">
+                <span>Then, in order</span>
+                <TechKey name="effects" path={[...path, 'effects']} />
+              </div>
+              <p className="stFHelp">
+                Rules that run after the tool succeeds: each applies always or only when a condition holds, and then does its steps in order (say a line, change
+                state, hand off, end the call…).
+              </p>
+              <EffectsEditor
+                shape={shape.properties.effects}
+                value={obj.effects}
+                path={[...path, 'effects']}
+                disabled={disabled}
                 emptyText="Nothing happens after this tool succeeds, apart from the model answering. Add a rule to say a line, change state, hand off or end the call."
-                onChange={(next) => set({ effects: next.length ? next : undefined }, next.length < (obj.effects || []).length ? { deleted: 'the rule' } : undefined)} />
+                onChange={(next) =>
+                  set({ effects: next.length ? next : undefined }, next.length < (obj.effects || []).length ? { deleted: 'the rule' } : undefined)
+                }
+              />
             </div>
           )}
         </fieldset>
@@ -154,38 +262,76 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
           <legend>When it goes wrong</legend>
           {has('on_error') && (
             <div className="stFRow wide" data-path={`${path.join('.')}.on_error`}>
-              <div className="stFLabel"><label htmlFor={`${path.join('-')}-err`}>Message for the model</label><TechKey name="on_error.tool_error" path={[...path, 'on_error', 'tool_error']} /></div>
-              <TextInput id={`${path.join('-')}-err`} value={obj.on_error?.tool_error ?? ''} multiline disabled={disabled} placeholder="Tell the caller you could not fetch the bill and offer a callback."
-                onChange={(v) => set({ on_error: v === '' ? undefined : { ...(obj.on_error || {}), tool_error: v } })} />
+              <div className="stFLabel">
+                <label htmlFor={`${path.join('-')}-err`}>Message for the model</label>
+                <TechKey name="on_error.tool_error" path={[...path, 'on_error', 'tool_error']} />
+              </div>
+              <TextInput
+                id={`${path.join('-')}-err`}
+                value={obj.on_error?.tool_error ?? ''}
+                multiline
+                disabled={disabled}
+                placeholder="Tell the caller you could not fetch the bill and offer a callback."
+                onChange={(v) => set({ on_error: v === '' ? undefined : { ...(obj.on_error || {}), tool_error: v } })}
+              />
               <p className="stFHelp">{ON_ERROR_HELP}</p>
             </div>
           )}
           <div className="stFGrid">
             {has('timeout_s') && (
               <div className="stFRow">
-                <div className="stFLabel"><label>Give up after (seconds)</label><TechKey name="timeout_s" path={[...path, 'timeout_s']} /></div>
+                <div className="stFLabel">
+                  <label>Give up after (seconds)</label>
+                  <TechKey name="timeout_s" path={[...path, 'timeout_s']} />
+                </div>
                 <NumberInput value={obj.timeout_s} onChange={(v) => set({ timeout_s: v })} min={0.1} disabled={disabled} />
               </div>
             )}
             {has('retries') && (
               <div className="stFRow">
-                <div className="stFLabel"><label>Retries</label><TechKey name="retries" path={[...path, 'retries']} /></div>
+                <div className="stFLabel">
+                  <label>Retries</label>
+                  <TechKey name="retries" path={[...path, 'retries']} />
+                </div>
                 <NumberInput value={obj.retries} onChange={(v) => set({ retries: v })} min={0} integer disabled={disabled} />
               </div>
             )}
           </div>
-          {timeoutNotes.map((note, index) => <p key={index} className="stFHint">{note}</p>)}
+          {timeoutNotes.map((note, index) => (
+            <p key={index} className="stFHint">
+              {note}
+            </p>
+          ))}
         </fieldset>
       )}
 
-      <ObjectBody shape={restShape} value={rest} path={path} disabled={disabled}
-        onChange={(nextRest) => onChange(sortByOrder({ ...handled, ...nextRest }, order))} />
+      <ObjectBody
+        shape={restShape}
+        value={rest}
+        path={path}
+        disabled={disabled}
+        onChange={(nextRest) => onChange(sortByOrder({ ...handled, ...nextRest }, order))}
+      />
 
       {obj.id && (
         <p className={`stToolUse ${users.length ? '' : 'unused'}`}>
-          {users.length
-            ? <>Offered by {users.map((id, i) => <React.Fragment key={id}>{i ? ', ' : ''}<code>{id}</code></React.Fragment>)}.</>
-            : <>No agent offers this tool yet, so the model can’t use it. Add it to an agent’s tools. (Handing over to another agent isn’t done here but under the agent’s Handoffs.)</>}
+          {users.length ? (
+            <>
+              Offered by{' '}
+              {users.map((id, i) => (
+                <React.Fragment key={id}>
+                  {i ? ', ' : ''}
+                  <code>{id}</code>
+                </React.Fragment>
+              ))}
+              .
+            </>
+          ) : (
+            <>
+              No agent offers this tool yet, so the model can’t use it. Add it to an agent’s tools. (Handing over to another agent isn’t done here but under the
+              agent’s Handoffs.)
+            </>
+          )}
         </p>
       )}
     </div>

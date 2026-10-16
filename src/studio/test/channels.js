@@ -11,7 +11,10 @@ export function testability(config) {
   if (!config) return { state: 'unknown', phone: [] };
   const all = channelsOf(config);
   const web = all.filter((channel) => WEB.includes(channel.type));
-  const phone = all.filter((channel) => channel.type === 'sip_voice').map((channel) => channel.id).filter(Boolean);
+  const phone = all
+    .filter((channel) => channel.type === 'sip_voice')
+    .map((channel) => channel.id)
+    .filter(Boolean);
   if (!web.length) return { state: 'none', phone };
   if (!web.some((channel) => channel.enabled !== false)) return { state: 'off', phone };
   return { state: 'ok', phone };

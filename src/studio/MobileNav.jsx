@@ -13,7 +13,9 @@ export default function MobileNav() {
 
   useEffect(() => {
     if (!open) return undefined;
-    const onKey = (event) => { if (event.key === 'Escape') setOpen(false); };
+    const onKey = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
     // Choosing a page or a workspace closes the drawer; opening the workspace menu, its ⋯ actions and the
     // collapse button keep it open.
     const onClick = (event) => {
@@ -33,7 +35,13 @@ export default function MobileNav() {
 
   return (
     <>
-      <button type="button" className="stNavToggle" aria-label={open ? 'Close the menu' : 'Open the menu'} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+      <button
+        type="button"
+        className="stNavToggle"
+        aria-label={open ? 'Close the menu' : 'Open the menu'}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
         <span aria-hidden="true">{open ? '×' : '☰'}</span>
       </button>
       {open && <div className="stNavScrim" onClick={() => setOpen(false)} aria-hidden="true" />}

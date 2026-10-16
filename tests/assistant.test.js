@@ -13,12 +13,28 @@ const example = () => JSON.parse(readFileSync(new URL('./fixtures/agent-config.e
 
 // ---- the server's /llm route
 function call(handler, method, url, body) {
-  const req = new EventEmitter(); req.method = method; req.url = url; req.destroy = () => {};
-  const res = { headers: {}, statusCode: 0, body: '', setHeader(k, v) { this.headers[k] = v; }, end(text) { this.body = text; this.done(); } };
+  const req = new EventEmitter();
+  req.method = method;
+  req.url = url;
+  req.destroy = () => {};
+  const res = {
+    headers: {},
+    statusCode: 0,
+    body: '',
+    setHeader(k, v) {
+      this.headers[k] = v;
+    },
+    end(text) {
+      this.body = text;
+      this.done();
+    },
+  };
   return new Promise((resolve) => {
     res.done = () => resolve({ status: res.statusCode, body: res.body ? JSON.parse(res.body) : null, headers: res.headers });
     handler(req, res, () => resolve({ status: 'next' }));
-    if (body !== undefined) { req.emit('data', Buffer.from(typeof body === 'string' ? body : JSON.stringify(body))); }
+    if (body !== undefined) {
+      req.emit('data', Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)));
+    }
     req.emit('end');
   });
 }
@@ -34,21 +50,39 @@ test('/llm/status says whether an AI model is set up and which may be chosen, an
 
 test('/llm/v1/messages adds the key itself, limits the model and the size, drops everything else the browser sent, and passes the answer back', async () => {
   const seen = [];
-  const fakeFetch = async (url, init) => { seen.push({ url, init }); return { status: 200, text: async () => JSON.stringify({ content: [], ok: true }) }; };
+  const fakeFetch = async (url, init) => {
+    seen.push({ url, init });
+    return { status: 200, text: async () => JSON.stringify({ content: [], ok: true }) };
+  };
   const handler = llmMiddleware({ ANTHROPIC_API_KEY: 'sk-secret', LLM_BASE_URL: 'https://llm.example/' }, fakeFetch);
-  const out = await call(handler, 'POST', '/v1/messages', { model: 'gpt-evil', max_tokens: 999999, messages: [{ role: 'user', content: 'hi' }], system: 's', stream: true, metadata: { x: 1 }, 'anthropic-beta': 'x' });
+  const out = await call(handler, 'POST', '/v1/messages', {
+    model: 'gpt-evil',
+    max_tokens: 999999,
+    messages: [{ role: 'user', content: 'hi' }],
+    system: 's',
+    stream: true,
+    metadata: { x: 1 },
+    'anthropic-beta': 'x',
+  });
   assert.equal(out.status, 200);
   assert.equal(seen[0].url, 'https://llm.example/v1/messages');
   assert.equal(seen[0].init.headers['x-api-key'], 'sk-secret');
   const sent = JSON.parse(seen[0].init.body);
   assert.equal(sent.model, 'claude-sonnet-5-5', 'a model the server does not allow is replaced');
   assert.equal(sent.max_tokens, 32000, 'and the size of an answer is capped');
-  assert.deepEqual(Object.keys(sent).filter((k) => sent[k] !== undefined).sort(), ['max_tokens', 'messages', 'model', 'system']);
+  assert.deepEqual(
+    Object.keys(sent)
+      .filter((k) => sent[k] !== undefined)
+      .sort(),
+    ['max_tokens', 'messages', 'model', 'system'],
+  );
   assert.ok(!('stream' in sent) && !('metadata' in sent));
 });
 
 test('/llm refuses everything else, an unset key, bad bodies, and says when the service cannot be reached', async () => {
-  const handler = llmMiddleware({ ANTHROPIC_API_KEY: 'k' }, async () => { throw new Error('boom'); });
+  const handler = llmMiddleware({ ANTHROPIC_API_KEY: 'k' }, async () => {
+    throw new Error('boom');
+  });
   assert.equal((await call(handler, 'GET', '/v1/messages')).status, 404);
   assert.equal((await call(handler, 'POST', '/v1/complete', {})).status, 404);
   assert.equal((await call(handler, 'DELETE', '/anything')).status, 404);
@@ -74,13 +108,25 @@ test('the schema sent to the model is shorter than the schema, without the studi
 
 test('the request carries the current draft, the wish, and what was asked earlier; a repair message lists what the validator found', () => {
   const msg = requestMessage({ request: ' add a Spanish greeting ', config: { a: 1 }, earlier: ['one', 'two'] });
-  assert.match(msg, /CURRENT DRAFT/); assert.match(msg, /REQUEST:\nadd a Spanish greeting$/); assert.match(msg, /1\. one/);
-  const fix = repairMessage([{ path: ['agents', 'items', 0, 'tools'], message: 'must be a list' }, { path: [], message: 'bad' }]);
-  assert.match(fix, /agents\.items\.0\.tools: must be a list/); assert.match(fix, /\(whole document\): bad/);
+  assert.match(msg, /CURRENT DRAFT/);
+  assert.match(msg, /REQUEST:\nadd a Spanish greeting$/);
+  assert.match(msg, /1\. one/);
+  const fix = repairMessage([
+    { path: ['agents', 'items', 0, 'tools'], message: 'must be a list' },
+    { path: [], message: 'bad' },
+  ]);
+  assert.match(fix, /agents\.items\.0\.tools: must be a list/);
+  assert.match(fix, /\(whole document\): bad/);
 });
 
 test('the answer is read from the tool call, and every way it can go wrong is a sentence a person can read', () => {
-  const ok = readAnswer({ content: [{ type: 'text', text: 'ok' }, { type: 'tool_use', id: 't1', name: TOOL.name, input: { config: { x: 1 }, summary: ' Built. ', assumptions: ['a', '', 3], questions: 'nope' } }], usage: { input_tokens: 5 } });
+  const ok = readAnswer({
+    content: [
+      { type: 'text', text: 'ok' },
+      { type: 'tool_use', id: 't1', name: TOOL.name, input: { config: { x: 1 }, summary: ' Built. ', assumptions: ['a', '', 3], questions: 'nope' } },
+    ],
+    usage: { input_tokens: 5 },
+  });
   assert.deepEqual([ok.config, ok.summary, ok.assumptions, ok.questions, ok.toolUseId], [{ x: 1 }, 'Built.', ['a'], [], 't1']);
   assert.throws(() => readAnswer(null), /does not understand/);
   assert.throws(() => readAnswer({ content: [], stop_reason: 'max_tokens' }), /cut off/);
@@ -89,17 +135,34 @@ test('the answer is read from the tool call, and every way it can go wrong is a 
 });
 
 // ---- asking, checking, repairing
-const reply = (config, extra = {}) => ({ content: [{ type: 'tool_use', id: `t${Math.random()}`, name: TOOL.name, input: { config, summary: 'Done.', ...extra } }], usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 7 } });
+const reply = (config, extra = {}) => ({
+  content: [{ type: 'tool_use', id: `t${Math.random()}`, name: TOOL.name, input: { config, summary: 'Done.', ...extra } }],
+  usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 7 },
+});
 
 test('a good answer is checked once and returned with what it assumed and what is still open', async () => {
   const base = minimalConfig('x', 'X');
   const next = { ...base, persona: { name: 'X', tone: 'warm' } };
-  const calls = []; const steps = [];
-  const result = await askAssistant({ request: 'be warm', config: base, schema, model: 'm', onStep: (s) => steps.push(s), earlier: [],
-    post: async (body) => { calls.push(body); return reply(next, { assumptions: ['Assumed English.'], questions: ['What is the opening time?'] }); },
-    validate: async () => ({ errors: [], warnings: [{ message: 'w' }] }) });
+  const calls = [];
+  const steps = [];
+  const result = await askAssistant({
+    request: 'be warm',
+    config: base,
+    schema,
+    model: 'm',
+    onStep: (s) => steps.push(s),
+    earlier: [],
+    post: async (body) => {
+      calls.push(body);
+      return reply(next, { assumptions: ['Assumed English.'], questions: ['What is the opening time?'] });
+    },
+    validate: async () => ({ errors: [], warnings: [{ message: 'w' }] }),
+  });
   assert.deepEqual(result.config, next);
-  assert.deepEqual([result.assumptions, result.questions, result.repairs, result.issues.errors.length, result.issues.warnings.length], [['Assumed English.'], ['What is the opening time?'], 0, 0, 1]);
+  assert.deepEqual(
+    [result.assumptions, result.questions, result.repairs, result.issues.errors.length, result.issues.warnings.length],
+    [['Assumed English.'], ['What is the opening time?'], 0, 0, 1],
+  );
   assert.deepEqual(result.usage, { input: 10, output: 5, cached: 7 });
   assert.deepEqual(steps, ['thinking', 'checking']);
   assert.equal(calls.length, 1);
@@ -111,15 +174,29 @@ test('a good answer is checked once and returned with what it assumed and what i
 test('when the validator finds errors they are handed back to the model, up to twice, and the answer that finally validates is kept', async () => {
   const base = minimalConfig('x', 'X');
   const bad = { ...base, agents: { entry: 'nobody', items: base.agents.items } };
-  let round = 0; const seen = [];
-  const result = await askAssistant({ request: 'r', config: base, schema, model: 'm',
-    post: async (body) => { seen.push(JSON.parse(JSON.stringify(body.messages))); round += 1; return reply(round < 3 ? bad : base); },
-    validate: async (c) => ({ errors: c.agents.entry === 'nobody' ? [{ path: ['agents', 'entry'], message: 'unknown agent' }] : [], warnings: [] }) });
+  let round = 0;
+  const seen = [];
+  const result = await askAssistant({
+    request: 'r',
+    config: base,
+    schema,
+    model: 'm',
+    post: async (body) => {
+      seen.push(JSON.parse(JSON.stringify(body.messages)));
+      round += 1;
+      return reply(round < 3 ? bad : base);
+    },
+    validate: async (c) => ({ errors: c.agents.entry === 'nobody' ? [{ path: ['agents', 'entry'], message: 'unknown agent' }] : [], warnings: [] }),
+  });
   assert.equal(round, 3);
   assert.equal(result.repairs, 2);
   assert.equal(result.issues.errors.length, 0);
   const last = seen[2];
-  assert.deepEqual(last.map((m) => m.role), ['user', 'assistant', 'user', 'assistant', 'user'], 'the request, then each answer and what the validator found about it');
+  assert.deepEqual(
+    last.map((m) => m.role),
+    ['user', 'assistant', 'user', 'assistant', 'user'],
+    'the request, then each answer and what the validator found about it',
+  );
   assert.equal(last[4].content[0].type, 'tool_result');
   assert.equal(last[4].content[0].is_error, true);
   assert.match(last[4].content[0].content, /agents\.entry: unknown agent/);
@@ -129,13 +206,26 @@ test('after the last repair the problems that remain are reported, not hidden, a
   const base = { ...minimalConfig('x', 'X'), builder: { ui: { graph_positions: { assistant: { x: 1, y: 2 } } } } };
   const dropped = minimalConfig('x', 'X');
   let n = 0;
-  const result = await askAssistant({ request: 'r', config: base, schema, model: 'm', maxRepairs: 1,
-    post: async () => { n += 1; return reply(dropped); }, validate: async () => ({ errors: [{ path: ['a'], message: 'still wrong' }], warnings: [] }) });
+  const result = await askAssistant({
+    request: 'r',
+    config: base,
+    schema,
+    model: 'm',
+    maxRepairs: 1,
+    post: async () => {
+      n += 1;
+      return reply(dropped);
+    },
+    validate: async () => ({ errors: [{ path: ['a'], message: 'still wrong' }], warnings: [] }),
+  });
   assert.equal(n, 2);
   assert.equal(result.issues.errors.length, 1);
   assert.deepEqual(result.config.builder, base.builder);
   assert.equal(keepStudioNotes(base, { builder: { x: 1 } }).builder.x, 1, 'a builder section the model did write is left alone');
-  await assert.rejects(() => askAssistant({ request: '  ', config: base, schema, model: 'm', post: async () => reply(base), validate: async () => ({}) }), /Say what you need/);
+  await assert.rejects(
+    () => askAssistant({ request: '  ', config: base, schema, model: 'm', post: async () => reply(base), validate: async () => ({}) }),
+    /Say what you need/,
+  );
 });
 
 test('failures of the call are explained, a missing server is told apart, and the status never throws', async () => {
@@ -144,11 +234,25 @@ test('failures of the call are explained, a missing server is told apart, and th
   assert.match(explainFailure(429, null), /busy/);
   assert.match(explainFailure(529, { error: { message: 'overloaded' } }), /overloaded/);
   assert.equal(explainFailure(400, { error: { message: 'bad thing' } }), 'bad thing');
-  await assert.rejects(() => postToModel({}, undefined, async () => { throw new Error('down'); }), /could not reach/);
-  await assert.rejects(() => postToModel({}, undefined, async () => ({ ok: false, status: 503, text: async () => '{"error":"No AI"}' })), /No AI model is set up/);
+  await assert.rejects(
+    () =>
+      postToModel({}, undefined, async () => {
+        throw new Error('down');
+      }),
+    /could not reach/,
+  );
+  await assert.rejects(
+    () => postToModel({}, undefined, async () => ({ ok: false, status: 503, text: async () => '{"error":"No AI"}' })),
+    /No AI model is set up/,
+  );
   await assert.rejects(() => postToModel({}, undefined, async () => ({ ok: true, status: 200, text: async () => 'html' })), /not JSON/);
   assert.deepEqual(await postToModel({}, undefined, async () => ({ ok: true, status: 200, text: async () => '{"a":1}' })), { a: 1 });
-  assert.deepEqual(await loadStatus(async () => { throw new Error('x'); }), { configured: false });
+  assert.deepEqual(
+    await loadStatus(async () => {
+      throw new Error('x');
+    }),
+    { configured: false },
+  );
   assert.deepEqual(await loadStatus(async () => ({ ok: true, json: async () => ({ configured: true, model: 'm' }) })), { configured: true, model: 'm' });
   assert.deepEqual(await loadStatus(async () => ({ ok: true, json: async () => '<html>' })), { configured: false });
 });
@@ -158,7 +262,11 @@ test('the changes a new configuration makes are found by place, matching list it
   const before = example();
   const after = JSON.parse(JSON.stringify(before));
   after.persona.tone = 'calm and clear';
-  after.agents.items = [after.agents.items[2], ...after.agents.items.filter((a) => a.id !== 'safety_watch' && a.id !== 'tech_support'), { id: 'newbie', name: 'Newbie', kind: 'specialist', instructions: { role: 'x' }, tools: [] }];
+  after.agents.items = [
+    after.agents.items[2],
+    ...after.agents.items.filter((a) => a.id !== 'safety_watch' && a.id !== 'tech_support'),
+    { id: 'newbie', name: 'Newbie', kind: 'specialist', instructions: { role: 'x' }, tools: [] },
+  ];
   after.builder.ui.graph_positions.billing.x = 999;
   const changes = diffConfigs(before, after);
   const kinds = changes.map((c) => `${c.kind}:${JSON.stringify(c.path)}`);
@@ -193,14 +301,24 @@ test('each change reads as a sentence for a person, and the counts add up', () =
 
 test('after the AI changes the agents, saved places for blocks that are gone are dropped, so the Workflow is drawn from what the agent is now', () => {
   const before = example();
-  before.builder.ui.graph_positions = { start: { x: 1, y: 1 }, greeter: { x: 2, y: 2 }, safety_watch: { x: 3, y: 3 }, 'greeter::tool::end_call': { x: 4, y: 4 }, 'greeter::tool::gone': { x: 5, y: 5 }, 'greeter::enter::0': { x: 6, y: 6 }, 'billing::enter::0': { x: 7, y: 7 } };
+  before.builder.ui.graph_positions = {
+    start: { x: 1, y: 1 },
+    greeter: { x: 2, y: 2 },
+    safety_watch: { x: 3, y: 3 },
+    'greeter::tool::end_call': { x: 4, y: 4 },
+    'greeter::tool::gone': { x: 5, y: 5 },
+    'greeter::enter::0': { x: 6, y: 6 },
+    'billing::enter::0': { x: 7, y: 7 },
+  };
   const after = JSON.parse(JSON.stringify(before));
   after.agents.items = after.agents.items.filter((a) => a.id !== 'safety_watch');
-  after.agents.items[0].on_enter = undefined; delete after.agents.items[0].on_enter;
+  after.agents.items[0].on_enter = undefined;
+  delete after.agents.items[0].on_enter;
   const kept = keepStudioNotes(before, after);
   assert.deepEqual(Object.keys(kept.builder.ui.graph_positions).sort(), ['greeter', 'greeter::tool::end_call', 'start']);
   assert.ok(before.builder.ui.graph_positions.safety_watch, 'the configuration it was given is left as it was');
-  const only = JSON.parse(JSON.stringify(after)); only.builder = { ui: { graph_positions: { nobody: { x: 1, y: 1 } } } };
+  const only = JSON.parse(JSON.stringify(after));
+  only.builder = { ui: { graph_positions: { nobody: { x: 1, y: 1 } } } };
   assert.equal(pruneStalePlaces(only).builder, undefined, 'and an emptied builder section goes');
   const clean = keepStudioNotes(before, after);
   assert.equal(pruneStalePlaces(clean), clean, 'nothing to drop leaves it as it is');

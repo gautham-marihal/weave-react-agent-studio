@@ -18,6 +18,33 @@ test('every icon is made of well-formed path data or circles', () => {
 });
 
 test('the icons the navigation, the journey and the cards use all exist', () => {
-  ['home', 'agent', 'phone', 'voice', 'plug', 'dial', 'sliders', 'search', 'help', 'build', 'test', 'release', 'monitor', 'check', 'alert', 'info', 'close', 'chevronDown', 'chevronRight', 'arrowRight', 'menu', 'records', 'pencil', 'tools', 'sound', 'globe', 'team']
-    .forEach((name) => assert.ok(ICON_NAMES.includes(name), name));
+  [
+    'home',
+    'agent',
+    'phone',
+    'voice',
+    'plug',
+    'dial',
+    'sliders',
+    'search',
+    'help',
+    'build',
+    'test',
+    'release',
+    'monitor',
+    'check',
+    'alert',
+    'info',
+    'close',
+    'chevronDown',
+    'chevronRight',
+    'arrowRight',
+    'menu',
+    'records',
+    'pencil',
+    'tools',
+    'sound',
+    'globe',
+    'team',
+  ].forEach((name) => assert.ok(ICON_NAMES.includes(name), name));
 });

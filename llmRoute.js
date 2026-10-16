@@ -8,7 +8,11 @@ const MAX_BODY = 4 * 1024 * 1024; // the schema and the draft; nothing else need
 const MAX_TOKENS = 32000;
 
 export function llmSettings(env) {
-  const models = (env.LLM_MODELS ? env.LLM_MODELS.split(',').map((m) => m.trim()).filter(Boolean) : DEFAULT_MODELS);
+  const models = env.LLM_MODELS
+    ? env.LLM_MODELS.split(',')
+        .map((m) => m.trim())
+        .filter(Boolean)
+    : DEFAULT_MODELS;
   const model = models.includes(env.LLM_MODEL) ? env.LLM_MODEL : models[0];
   return { key: env.ANTHROPIC_API_KEY || '', base: (env.LLM_BASE_URL || 'https://api.anthropic.com').replace(/\/+$/, ''), models, model };
 }
@@ -22,8 +26,15 @@ function send(res, status, body) {
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
-    const chunks = []; let size = 0;
-    req.on('data', (chunk) => { size += chunk.length; if (size > MAX_BODY) { reject(Object.assign(new Error('too large'), { status: 413 })); req.destroy(); } else chunks.push(chunk); });
+    const chunks = [];
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY) {
+        reject(Object.assign(new Error('too large'), { status: 413 }));
+        req.destroy();
+      } else chunks.push(chunk);
+    });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
@@ -34,17 +45,29 @@ export function llmMiddleware(env, fetchImpl = fetch) {
   const settings = llmSettings(env);
   return async (req, res, next) => {
     const path = (req.url || '').split('?')[0].replace(/\/+$/, '');
-    if (req.method === 'GET' && path === '/status') return send(res, 200, { configured: !!settings.key, model: settings.model, models: settings.models, provider: 'Anthropic' });
-    if (!(req.method === 'POST' && path === '/v1/messages')) { if (next && path === '') return next(); return send(res, 404, { error: 'not found' }); }
+    if (req.method === 'GET' && path === '/status')
+      return send(res, 200, { configured: !!settings.key, model: settings.model, models: settings.models, provider: 'Anthropic' });
+    if (!(req.method === 'POST' && path === '/v1/messages')) {
+      if (next && path === '') return next();
+      return send(res, 404, { error: 'not found' });
+    }
     if (!settings.key) return send(res, 503, { error: 'No AI model is set up on this server (ANTHROPIC_API_KEY).' });
     let payload;
-    try { payload = JSON.parse(await readBody(req)); } catch (error) { return send(res, error.status || 400, { error: error.status === 413 ? 'The request is too large.' : 'The request is not valid JSON.' }); }
+    try {
+      payload = JSON.parse(await readBody(req));
+    } catch (error) {
+      return send(res, error.status || 400, { error: error.status === 413 ? 'The request is too large.' : 'The request is not valid JSON.' });
+    }
     if (!payload || typeof payload !== 'object' || !Array.isArray(payload.messages)) return send(res, 400, { error: 'Expected a messages request.' });
     // only what the assistant needs, with the model and size held to what this server allows
     const body = {
       model: settings.models.includes(payload.model) ? payload.model : settings.model,
       max_tokens: Math.min(Number(payload.max_tokens) || 16000, MAX_TOKENS),
-      system: payload.system, messages: payload.messages, tools: payload.tools, tool_choice: payload.tool_choice, temperature: payload.temperature,
+      system: payload.system,
+      messages: payload.messages,
+      tools: payload.tools,
+      tool_choice: payload.tool_choice,
+      temperature: payload.temperature,
     };
     try {
       const upstream = await fetchImpl(`${settings.base}/v1/messages`, {
@@ -68,7 +91,11 @@ export function llmPlugin(env) {
   const handler = llmMiddleware(env);
   return {
     name: 'weave-llm-route',
-    configureServer(server) { server.middlewares.use('/llm', handler); },
-    configurePreviewServer(server) { server.middlewares.use('/llm', handler); },
+    configureServer(server) {
+      server.middlewares.use('/llm', handler);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use('/llm', handler);
+    },
   };
 }

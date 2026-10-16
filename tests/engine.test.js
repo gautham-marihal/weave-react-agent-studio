@@ -17,10 +17,16 @@ function walk(sch, value, path, found) {
   if (kind === 'union') {
     const branches = engine.branchesOf(shape);
     const i = engine.pickBranch(branches, value);
-    if (!engine.fits(branches[i], value)) { found.problems.push(`${path}: no branch fits`); return; }
+    if (!engine.fits(branches[i], value)) {
+      found.problems.push(`${path}: no branch fits`);
+      return;
+    }
     walk(branches[i], value, path, found);
   } else if (kind === 'object') {
-    if (!isObj(value)) { found.problems.push(`${path}: expected an object`); return; }
+    if (!isObj(value)) {
+      found.problems.push(`${path}: expected an object`);
+      return;
+    }
     for (const [key, item] of Object.entries(value)) {
       if (!(key in shape.properties)) found.problems.push(`${path}: unknown key "${key}"`);
       else walk(shape.properties[key], item, `${path}.${key}`, found);
@@ -37,7 +43,8 @@ test('every value of the full example config has a home in the form', () => {
   walk(schema, example, '$', found);
   assert.deepEqual(found.problems, []);
   assert.ok(found.nodes > 1000);
-  for (const kind of ['object', 'string', 'enum', 'array', 'number', 'boolean', 'map', 'union', 'ref', 'secret', 'json']) assert.ok(found.kinds[kind] > 0, `no ${kind} nodes seen`);
+  for (const kind of ['object', 'string', 'enum', 'array', 'number', 'boolean', 'map', 'union', 'ref', 'secret', 'json'])
+    assert.ok(found.kinds[kind] > 0, `no ${kind} nodes seen`);
 });
 
 const toolBranches = engine.branchesOf(engine.resolveShape(schema.properties.tools.items, undefined));
@@ -45,7 +52,10 @@ const tool = (id) => example.tools.find((t) => t.id === id);
 const toolKind = (value) => engine.branchLabel(toolBranches[engine.pickBranch(toolBranches, value)]);
 
 test('a tool is recognised by what it is', () => {
-  assert.deepEqual(toolBranches.map((b, i) => engine.branchLabel(b, i)), ['Built-in', 'Task', 'HTTP', 'MCP server', 'Knowledge search', 'Custom code (escape hatch)']);
+  assert.deepEqual(
+    toolBranches.map((b, i) => engine.branchLabel(b, i)),
+    ['Built-in', 'Task', 'HTTP', 'MCP server', 'Knowledge search', 'Custom code (escape hatch)'],
+  );
   assert.equal(toolKind(tool('end_call')), 'Built-in');
   assert.equal(toolKind(tool('verify_caller')), 'Task');
   assert.equal(toolKind(tool('get_bill_summary')), 'HTTP');
@@ -95,7 +105,10 @@ test('controls are chosen by kind', () => {
 test('defaults build for every definition and each union branch is found again from its default', () => {
   for (const name of Object.keys(schema.$defs)) {
     const shape = engine.resolveShape({ $ref: `#/$defs/${name}` }, undefined);
-    if (engine.kindOf(shape) !== 'union') { engine.defaultFor(shape); continue; }
+    if (engine.kindOf(shape) !== 'union') {
+      engine.defaultFor(shape);
+      continue;
+    }
     const branches = engine.branchesOf(shape);
     branches.forEach((branch, i) => {
       const made = engine.defaultFor(branch);

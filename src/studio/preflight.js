@@ -25,7 +25,12 @@ export function secretsStatus(required, providers) {
 
 // The word to type to deploy to production while a security item stands.
 export const PRODUCTION_WORD = 'production';
-export const mayDeploy = ({ environment, security, typed }) => environment !== 'production' || security.length === 0 || String(typed || '').trim().toLowerCase() === PRODUCTION_WORD;
+export const mayDeploy = ({ environment, security, typed }) =>
+  environment !== 'production' ||
+  security.length === 0 ||
+  String(typed || '')
+    .trim()
+    .toLowerCase() === PRODUCTION_WORD;
 
 // The version an environment ran before the current one, for a "Roll back" shortcut. `data` is GET /deployments:
 // { current: { env: { id, version, ... } }, history: [...] }. null when there is nothing earlier to go back to.

@@ -29,26 +29,79 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
           return (
             <li key={j} className="stAction" data-path={`${where}.${j}`}>
               <div className="stActionHead">
-                <span className="stActionNo" aria-hidden="true">{j + 1}</span>
-                <SmartSelect className="stFInput small" value={branch ? type : ''} disabled={disabled} ariaLabel={`Step ${j + 1} of ${label}: what to do`} placeholder={type ? kindLabel(type) : 'Choose…'}
-                  options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))} onChange={(chosen) => { if (chosen && chosen !== type) onChange(actions.map((a, k) => (k === j ? makeAction(chosen) : a))); }} />
+                <span className="stActionNo" aria-hidden="true">
+                  {j + 1}
+                </span>
+                <SmartSelect
+                  className="stFInput small"
+                  value={branch ? type : ''}
+                  disabled={disabled}
+                  ariaLabel={`Step ${j + 1} of ${label}: what to do`}
+                  placeholder={type ? kindLabel(type) : 'Choose…'}
+                  options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))}
+                  onChange={(chosen) => {
+                    if (chosen && chosen !== type) onChange(actions.map((a, k) => (k === j ? makeAction(chosen) : a)));
+                  }}
+                />
                 {!disabled && (
                   <span className="stRuleActions">
-                    <button type="button" className="stIconBtn" aria-label={`Move step ${j + 1} of ${label} up`} disabled={j === 0} onClick={() => onChange(moveItem(actions, j, j - 1))}>↑</button>
-                    <button type="button" className="stIconBtn" aria-label={`Move step ${j + 1} of ${label} down`} disabled={j === actions.length - 1} onClick={() => onChange(moveItem(actions, j, j + 1))}>↓</button>
-                    <button type="button" className="stIconBtn danger" aria-label={`Delete step ${j + 1} of ${label}`} onClick={() => { ctx.markDelete(`step ${j + 1} of ${label}`); onChange(actions.filter((_, k) => k !== j)); }}>×</button>
+                    <button
+                      type="button"
+                      className="stIconBtn"
+                      aria-label={`Move step ${j + 1} of ${label} up`}
+                      disabled={j === 0}
+                      onClick={() => onChange(moveItem(actions, j, j - 1))}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="stIconBtn"
+                      aria-label={`Move step ${j + 1} of ${label} down`}
+                      disabled={j === actions.length - 1}
+                      onClick={() => onChange(moveItem(actions, j, j + 1))}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="stIconBtn danger"
+                      aria-label={`Delete step ${j + 1} of ${label}`}
+                      onClick={() => {
+                        ctx.markDelete(`step ${j + 1} of ${label}`);
+                        onChange(actions.filter((_, k) => k !== j));
+                      }}
+                    >
+                      ×
+                    </button>
                   </span>
                 )}
               </div>
               <p className="stActionSentence">{describeAction(action)}</p>
-              <Node schema={branch || actionSchema} value={action} path={[...path, j]} onChange={(next) => onChange(actions.map((a, k) => (k === j ? next : a)))} disabled={disabled} />
+              <Node
+                schema={branch || actionSchema}
+                value={action}
+                path={[...path, j]}
+                onChange={(next) => onChange(actions.map((a, k) => (k === j ? next : a)))}
+                disabled={disabled}
+              />
             </li>
           );
         })}
       </ol>
-      {actions.length === 0 && (engine.flatten(shape).minItems >= 1 ? <p className="stFWarn">Needs at least one step.</p> : <p className="stFEmpty">No steps yet.</p>)}
+      {actions.length === 0 &&
+        (engine.flatten(shape).minItems >= 1 ? <p className="stFWarn">Needs at least one step.</p> : <p className="stFEmpty">No steps yet.</p>)}
       {!disabled && (
-        <SmartSelect action className="stFInput small" ariaLabel={`Add a step to ${label}`} placeholder="＋ Add a step…" options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))} onChange={(chosen) => { if (chosen) onChange([...actions, makeAction(chosen)]); }} />
+        <SmartSelect
+          action
+          className="stFInput small"
+          ariaLabel={`Add a step to ${label}`}
+          placeholder="＋ Add a step…"
+          options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))}
+          onChange={(chosen) => {
+            if (chosen) onChange([...actions, makeAction(chosen)]);
+          }}
+        />
       )}
     </>
   );
@@ -58,15 +111,28 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
 // (say a line, change state, hand off, end the call…). Each rule is also written out as a sentence. The details of an action are the
 // ordinary form for that kind of action, so nothing the schema allows is out of reach.
 // A list of rules (`when` + `do`): each applies always or when a condition holds, then does its steps in order. Used for a tool's effects.
-export default function EffectsEditor({ shape, value, path, onChange, disabled, emptyText = 'No rules yet. Add one to say a line, change state, hand off or end the call.' }) {
+export default function EffectsEditor({
+  shape,
+  value,
+  path,
+  onChange,
+  disabled,
+  emptyText = 'No rules yet. Add one to say a line, change state, hand off or end the call.',
+}) {
   const ctx = useForm();
   const { engine } = ctx;
   const rules = Array.isArray(value) ? value : [];
   const ruleShape = engine.flatten(shape.items);
   const whenSchema = ruleShape.properties.when;
-  const makeAction = (type) => engine.defaultFor(engine.branchesOf(engine.flatten(ruleShape.properties.do.items)).find((branch) => engine.flatten(branch).properties?.type?.const === type));
+  const makeAction = (type) =>
+    engine.defaultFor(
+      engine.branchesOf(engine.flatten(ruleShape.properties.do.items)).find((branch) => engine.flatten(branch).properties?.type?.const === type),
+    );
   const setRule = (index, rule) => onChange(rules.map((item, i) => (i === index ? rule : item)));
-  const removeRule = (index) => { ctx.markDelete(`rule ${index + 1}`); onChange(rules.filter((_, i) => i !== index)); };
+  const removeRule = (index) => {
+    ctx.markDelete(`rule ${index + 1}`);
+    onChange(rules.filter((_, i) => i !== index));
+  };
   const addRule = () => onChange([...rules, { do: [makeAction('say')] }]);
 
   return (
@@ -83,9 +149,27 @@ export default function EffectsEditor({ shape, value, path, onChange, disabled, 
               <span className="stRuleSentence">{describeRule(rule)}</span>
               {!disabled && (
                 <span className="stRuleActions">
-                  <button type="button" className="stIconBtn" aria-label={`Move rule ${index + 1} up`} disabled={index === 0} onClick={() => onChange(moveItem(rules, index, index - 1))}>↑</button>
-                  <button type="button" className="stIconBtn" aria-label={`Move rule ${index + 1} down`} disabled={index === rules.length - 1} onClick={() => onChange(moveItem(rules, index, index + 1))}>↓</button>
-                  <button type="button" className="stFDel small" aria-label={`Delete rule ${index + 1}`} onClick={() => removeRule(index)}>Delete</button>
+                  <button
+                    type="button"
+                    className="stIconBtn"
+                    aria-label={`Move rule ${index + 1} up`}
+                    disabled={index === 0}
+                    onClick={() => onChange(moveItem(rules, index, index - 1))}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="stIconBtn"
+                    aria-label={`Move rule ${index + 1} down`}
+                    disabled={index === rules.length - 1}
+                    onClick={() => onChange(moveItem(rules, index, index + 1))}
+                  >
+                    ↓
+                  </button>
+                  <button type="button" className="stFDel small" aria-label={`Delete rule ${index + 1}`} onClick={() => removeRule(index)}>
+                    Delete
+                  </button>
                 </span>
               )}
             </header>
@@ -94,20 +178,58 @@ export default function EffectsEditor({ shape, value, path, onChange, disabled, 
               <span className="stRuleLabel">When</span>
               {hasWhen ? (
                 <div className="stRuleCondition">
-                  <Node schema={whenSchema} value={rule.when} path={[...path, index, 'when']} onChange={(next) => setRule(index, { ...rule, when: next })} disabled={disabled} />
-                  {!disabled && <button type="button" className="stLink" onClick={() => { ctx.markDelete('the condition'); const { when: _gone, ...rest } = rule; setRule(index, rest); }}>Remove the condition (always do this)</button>}
+                  <Node
+                    schema={whenSchema}
+                    value={rule.when}
+                    path={[...path, index, 'when']}
+                    onChange={(next) => setRule(index, { ...rule, when: next })}
+                    disabled={disabled}
+                  />
+                  {!disabled && (
+                    <button
+                      type="button"
+                      className="stLink"
+                      onClick={() => {
+                        ctx.markDelete('the condition');
+                        const { when: _gone, ...rest } = rule;
+                        setRule(index, rest);
+                      }}
+                    >
+                      Remove the condition (always do this)
+                    </button>
+                  )}
                 </div>
               ) : (
-                <span>Always{!disabled && <> <button type="button" className="stLink" onClick={() => setRule(index, { when: engine.defaultFor(whenSchema), ...rule })}>Only when…</button></>}</span>
+                <span>
+                  Always
+                  {!disabled && (
+                    <>
+                      {' '}
+                      <button type="button" className="stLink" onClick={() => setRule(index, { when: engine.defaultFor(whenSchema), ...rule })}>
+                        Only when…
+                      </button>
+                    </>
+                  )}
+                </span>
               )}
             </div>
 
-            <ActionSteps shape={ruleShape.properties.do} value={actions} path={[...path, index, 'do']} disabled={disabled} label={`rule ${index + 1}`}
-              onChange={setActions} />
+            <ActionSteps
+              shape={ruleShape.properties.do}
+              value={actions}
+              path={[...path, index, 'do']}
+              disabled={disabled}
+              label={`rule ${index + 1}`}
+              onChange={setActions}
+            />
           </section>
         );
       })}
-      {!disabled && <button type="button" className="stAddBtn" onClick={addRule}>＋ Add a rule</button>}
+      {!disabled && (
+        <button type="button" className="stAddBtn" onClick={addRule}>
+          ＋ Add a rule
+        </button>
+      )}
     </div>
   );
 }

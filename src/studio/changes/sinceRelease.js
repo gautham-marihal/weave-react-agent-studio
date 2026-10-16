@@ -13,11 +13,13 @@ const clone = (value) => (value === undefined ? undefined : JSON.parse(JSON.stri
 export function changesSince(published, draft) {
   if (!published || !draft || typeof published !== 'object' || typeof draft !== 'object') return { total: 0, groups: [] };
   const groups = new Map();
-  diffConfigs(published, draft).filter((change) => !quiet(change)).forEach((change) => {
-    const key = String(change.path[0] ?? '');
-    if (!groups.has(key)) groups.set(key, { key, section: sectionOf(change), items: [] });
-    groups.get(key).items.push(describeChange(change));
-  });
+  diffConfigs(published, draft)
+    .filter((change) => !quiet(change))
+    .forEach((change) => {
+      const key = String(change.path[0] ?? '');
+      if (!groups.has(key)) groups.set(key, { key, section: sectionOf(change), items: [] });
+      groups.get(key).items.push(describeChange(change));
+    });
   const list = [...groups.values()];
   return { total: list.reduce((n, g) => n + g.items.length, 0), groups: list };
 }

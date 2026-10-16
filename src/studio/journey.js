@@ -3,9 +3,36 @@
 // old tab is still a tab, and every old link (#/bots/{id}/deploy) still opens it. Pure: no React, no DOM.
 
 export const STAGES = [
-  { id: 'build', label: 'Build', question: 'What is it, and what can it do?', tabs: [['describe', 'Describe'], ['config', 'Config'], ['workflow', 'Workflow'], ['knowledge', 'Knowledge']] },
-  { id: 'test', label: 'Test', question: 'Does it behave?', tabs: [['test', 'Test'], ['scenarios', 'Scenarios'], ['checks', 'Checks']] },
-  { id: 'release', label: 'Release', question: 'Is it safe to put live, and what is live where?', tabs: [['versions', 'Versions'], ['deploy', 'Deploy']] },
+  {
+    id: 'build',
+    label: 'Build',
+    question: 'What is it, and what can it do?',
+    tabs: [
+      ['describe', 'Describe'],
+      ['config', 'Config'],
+      ['workflow', 'Workflow'],
+      ['knowledge', 'Knowledge'],
+    ],
+  },
+  {
+    id: 'test',
+    label: 'Test',
+    question: 'Does it behave?',
+    tabs: [
+      ['test', 'Test'],
+      ['scenarios', 'Scenarios'],
+      ['checks', 'Checks'],
+    ],
+  },
+  {
+    id: 'release',
+    label: 'Release',
+    question: 'Is it safe to put live, and what is live where?',
+    tabs: [
+      ['versions', 'Versions'],
+      ['deploy', 'Deploy'],
+    ],
+  },
   { id: 'monitor', label: 'Monitor', question: 'How is it doing?', tabs: [['calls', 'Calls']] },
 ];
 
@@ -33,7 +60,10 @@ export const nextStep = (tab) => (Object.prototype.hasOwnProperty.call(NEXT, tab
 export function walk(start = 'config') {
   const seen = [];
   let at = start;
-  while (at && !seen.includes(at)) { seen.push(at); at = NEXT[at]?.tab; }
+  while (at && !seen.includes(at)) {
+    seen.push(at);
+    at = NEXT[at]?.tab;
+  }
   return seen;
 }
 
@@ -60,5 +90,10 @@ export function journeyProgress({ bot, health = null, callCount = null } = {}) {
     release: { tab: published ? 'deploy' : 'versions', label: published ? 'Put it live' : 'Publish a version' },
     monitor: { tab: 'calls', label: stages.monitor === 'done' ? 'See how it is doing' : 'Watch for calls' },
   }[current];
-  return { stages: order.map((id) => ({ id, state: stages[id], current: id === current && !(stages[id] === 'done') })), current, next, allDone: order.every((id) => stages[id] === 'done') };
+  return {
+    stages: order.map((id) => ({ id, state: stages[id], current: id === current && !(stages[id] === 'done') })),
+    current,
+    next,
+    allDone: order.every((id) => stages[id] === 'done'),
+  };
 }

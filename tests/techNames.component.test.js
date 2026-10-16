@@ -12,7 +12,10 @@ const { mountForm, act } = await setupDom();
 // the app is bundled separately from this file, so the preference is changed the way another tab would: storage, then the event
 const TECHNICAL_NAMES_KEY = 'weave_tech_names';
 const setPref = (key, value) => window.localStorage.setItem(key, value);
-const announce = () => act(async () => { window.dispatchEvent(new window.Event('storage')); });
+const announce = () =>
+  act(async () => {
+    window.dispatchEvent(new window.Event('storage'));
+  });
 const a = actions(act);
 after(() => teardownDom());
 
@@ -27,7 +30,9 @@ async function expandAll(app) {
     for (const toggle of closed) await a.click(toggle);
   }
   // the Advanced folds are part of the form: open them too
-  $$(app.container, 'details.stFAdvanced').forEach((d) => { d.open = true; });
+  $$(app.container, 'details.stFAdvanced').forEach((d) => {
+    d.open = true;
+  });
 }
 
 async function walk(app, visit) {
@@ -46,8 +51,20 @@ async function walk(app, visit) {
 
 // the words a setting is labelled with, as drawn: a row's label, and the title of a group that is a setting (not a card made by the author)
 const labelsIn = (root) => [
-  ...$$(root, '.stFRow .stFLabel label').filter((el) => !el.closest('.stFRow')?.querySelector(':scope > .stFLabel .stFTag')?.textContent.match(/custom field|not in the schema/)).map((el) => ({ kind: 'label', text: textOf(el), at: el.closest('[data-path]')?.getAttribute('data-path') })),
-  ...$$(root, '[data-grouprow] > .stFGroup > header .stFGroupToggle strong').map((el) => ({ kind: 'group', text: textOf(el), at: el.closest('[data-path]')?.getAttribute('data-path') })),
+  ...$$(root, '.stFRow .stFLabel label')
+    .filter(
+      (el) =>
+        !el
+          .closest('.stFRow')
+          ?.querySelector(':scope > .stFLabel .stFTag')
+          ?.textContent.match(/custom field|not in the schema/),
+    )
+    .map((el) => ({ kind: 'label', text: textOf(el), at: el.closest('[data-path]')?.getAttribute('data-path') })),
+  ...$$(root, '[data-grouprow] > .stFGroup > header .stFGroupToggle strong').map((el) => ({
+    kind: 'group',
+    text: textOf(el),
+    at: el.closest('[data-path]')?.getAttribute('data-path'),
+  })),
 ];
 const ABBREVIATION = /(^|[\s(])(stt|tts|llm|vad|dnis|uri|sip|dtmf|pii|otel|mime|ivr|jsonpath|s|ms)([\s).,]|$)/i;
 
@@ -81,11 +98,17 @@ test('with technical names on, every setting shows its name with a way to copy i
   const keys = $$(app.container, '.stFTech .stFKey').map(textOf);
   assert.ok(keys.length > 10, `the names are drawn (${keys.length})`);
   assert.ok(keys.includes('turn_handling') || keys.includes('inactivity'), 'the file’s own names appear');
-  assert.ok($$(app.container, '.stFTech button').some((b) => /^Copy path$/.test(textOf(b))), 'there is a way to copy a path');
+  assert.ok(
+    $$(app.container, '.stFTech button').some((b) => /^Copy path$/.test(textOf(b))),
+    'there is a way to copy a path',
+  );
   assert.ok(rows.length > 0);
   // the parents of a setting are shown in front of its own name, so the whole path reads at once, and the title says the same
   const heads = $$(app.container, '.stFTech .stFKeyHead').map(textOf);
-  assert.ok(heads.some((h) => /^defaults\.conversation\./.test(h)), 'a nested setting shows where it sits');
+  assert.ok(
+    heads.some((h) => /^defaults\.conversation\./.test(h)),
+    'a nested setting shows where it sits',
+  );
   $$(app.container, '.stFTech').forEach((tech) => {
     const key = $(tech, '.stFKey');
     const head = $(tech, '.stFKeyHead');
@@ -103,7 +126,12 @@ test('with technical names on, every setting shows its name with a way to copy i
 
 test('the setting’s own explanation leads, the schema’s technical wording is one click away, and an example is shown when there is one', async () => {
   setPref(TECHNICAL_NAMES_KEY, '0');
-  const app = await mountForm({ schema_version: '1.2', meta: { id: 'x', name: 'X', version: '0.1.0', status: 'draft' }, persona: { name: 'X' }, defaults: { models: {}, conversation: { inactivity: { enabled: true, timeout_s: 8 } } } });
+  const app = await mountForm({
+    schema_version: '1.2',
+    meta: { id: 'x', name: 'X', version: '0.1.0', status: 'draft' },
+    persona: { name: 'X' },
+    defaults: { models: {}, conversation: { inactivity: { enabled: true, timeout_s: 8 } } },
+  });
   await a.section(app.container, 'defaults.conversation');
   await expandAll(app);
   const row = $$(app.container, '.stFRow').find((el) => /Wait before nudging/.test(textOf($(el, '.stFLabel'))));

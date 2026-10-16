@@ -4,7 +4,12 @@
 // Pure: no React, no DOM.
 
 export const STATES = {
-  attention: { id: 'attention', label: 'Needs attention', tone: 'bad', hint: 'Something is wrong: the configuration is invalid, tests are failing, or a check found a problem.' },
+  attention: {
+    id: 'attention',
+    label: 'Needs attention',
+    tone: 'bad',
+    hint: 'Something is wrong: the configuration is invalid, tests are failing, or a check found a problem.',
+  },
   production: { id: 'production', label: 'Live in Production', tone: 'live', hint: 'Serving real callers.' },
   staging: { id: 'staging', label: 'Live in Staging', tone: 'review', hint: 'Being checked before it goes live.' },
   development: { id: 'development', label: 'Live in Development', tone: 'dev', hint: 'Running for testing only.' },
@@ -28,7 +33,9 @@ export function agentState({ deployed = {}, tests = 'unknown', problems = 0 } = 
 // until it has been read, and nothing is claimed about it before then).
 export function statusLine({ dirty = false, savedAt = '', scenarioCount = 0, run = null, deployed = {}, callsToday = null } = {}) {
   const parts = [];
-  parts.push(dirty ? { id: 'draft', text: 'Unsaved changes', tone: 'warn' } : { id: 'draft', text: savedAt ? `Draft saved ${savedAt}` : 'Draft saved', tone: 'ok' });
+  parts.push(
+    dirty ? { id: 'draft', text: 'Unsaved changes', tone: 'warn' } : { id: 'draft', text: savedAt ? `Draft saved ${savedAt}` : 'Draft saved', tone: 'ok' },
+  );
   if (scenarioCount === 0) parts.push({ id: 'tests', text: 'No tests written', tone: 'idle' });
   else if (!run) parts.push({ id: 'tests', text: `${scenarioCount} test${scenarioCount === 1 ? '' : 's'}, not run yet`, tone: 'idle' });
   else if (run.status === 'passed') parts.push({ id: 'tests', text: `Tests ${run.passed ?? run.total} of ${run.total} passing`, tone: 'ok' });
@@ -37,7 +44,8 @@ export function statusLine({ dirty = false, savedAt = '', scenarioCount = 0, run
   const where = ['production', 'staging', 'development'].filter((env) => deployed && deployed[env]);
   if (where.length) parts.push({ id: 'live', text: `Live in ${where.map((env) => env[0].toUpperCase() + env.slice(1)).join(' and ')}`, tone: 'ok' });
   else parts.push({ id: 'live', text: 'Not live anywhere yet', tone: 'idle' });
-  if (typeof callsToday === 'number') parts.push({ id: 'calls', text: callsToday === 0 ? 'No calls today' : `${callsToday} call${callsToday === 1 ? '' : 's'} today`, tone: 'idle' });
+  if (typeof callsToday === 'number')
+    parts.push({ id: 'calls', text: callsToday === 0 ? 'No calls today' : `${callsToday} call${callsToday === 1 ? '' : 's'} today`, tone: 'idle' });
   return parts;
 }
 

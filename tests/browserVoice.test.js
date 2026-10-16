@@ -5,7 +5,13 @@ import { VOICE_CATALOG } from '../src/voiceCatalog.js';
 
 const v = (name, lang, localService = true) => ({ name, lang, localService });
 // what a Windows machine with the English packs installed typically offers, the default (David) first
-const WINDOWS = [v('Microsoft David - English (United States)', 'en-US'), v('Microsoft Zira - English (United States)', 'en-US'), v('Microsoft Mark - English (United States)', 'en-US'), v('Microsoft Hazel - English (United Kingdom)', 'en-GB'), v('Microsoft George - English (United Kingdom)', 'en-GB')];
+const WINDOWS = [
+  v('Microsoft David - English (United States)', 'en-US'),
+  v('Microsoft Zira - English (United States)', 'en-US'),
+  v('Microsoft Mark - English (United States)', 'en-US'),
+  v('Microsoft Hazel - English (United Kingdom)', 'en-GB'),
+  v('Microsoft George - English (United Kingdom)', 'en-GB'),
+];
 
 test('a browser voice’s gender is read from its name, and left unknown when the name does not say', () => {
   assert.equal(genderOfBrowserVoice(v('Microsoft Zira - English (United States)')), 'female');

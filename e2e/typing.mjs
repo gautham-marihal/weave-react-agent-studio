@@ -16,40 +16,80 @@ const BUDGET_MS = 40;
 
 function bigConfig(n) {
   const tools = Array.from({ length: n }, (_, i) => ({
-    id: `tool_${i}`, type: 'http', connection: 'api', description: `Looks up record number ${i} for the caller when they ask about it`,
+    id: `tool_${i}`,
+    type: 'http',
+    connection: 'api',
+    description: `Looks up record number ${i} for the caller when they ask about it`,
     request: { method: 'GET', path: `/records/${i}/{{args.record_id}}`, query: { v: '2' } },
     parameters: { type: 'object', required: ['record_id'], properties: { record_id: { type: 'string', description: 'The id of the record' } } },
-    result: { to_llm: ['found', 'summary'] }, timeout_s: 6,
+    result: { to_llm: ['found', 'summary'] },
+    timeout_s: 6,
   }));
   return {
-    schema_version: '1.2', meta: { id: 'big', name: 'Big', version: '0.1.0', status: 'draft' }, runtime: { engine: 'livekit-agents', provider_mode: 'plugins' },
-    defaults: { models: { llm: { provider: 'openai', model: 'gpt-4.1-mini', api_key: { secret: 'OPENAI_API_KEY' } } }, conversation: {} }, persona: { name: 'Big' },
+    schema_version: '1.2',
+    meta: { id: 'big', name: 'Big', version: '0.1.0', status: 'draft' },
+    runtime: { engine: 'livekit-agents', provider_mode: 'plugins' },
+    defaults: { models: { llm: { provider: 'openai', model: 'gpt-4.1-mini', api_key: { secret: 'OPENAI_API_KEY' } } }, conversation: {} },
+    persona: { name: 'Big' },
     connections: { api: { type: 'http', base_url: 'https://api.example.com' } },
-    channels: [{ id: 'web-chat', type: 'web_chat', enabled: true, entry: { widget_id: 'big-widget' }, modalities: { input: ['text'], output: ['text'] }, greeting: { say: 'Hello!' } }],
-    agents: { entry: 'assistant', items: [{ id: 'assistant', name: 'Assistant', kind: 'standalone', instructions: { role: 'You help.' }, tools: tools.slice(0, 20).map((t) => t.id) }] },
+    channels: [
+      {
+        id: 'web-chat',
+        type: 'web_chat',
+        enabled: true,
+        entry: { widget_id: 'big-widget' },
+        modalities: { input: ['text'], output: ['text'] },
+        greeting: { say: 'Hello!' },
+      },
+    ],
+    agents: {
+      entry: 'assistant',
+      items: [{ id: 'assistant', name: 'Assistant', kind: 'standalone', instructions: { role: 'You help.' }, tools: tools.slice(0, 20).map((t) => t.id) }],
+    },
     tools,
   };
 }
 
 async function launch() {
   if (process.env.E2E_BROWSER) return chromium.launch({ executablePath: process.env.E2E_BROWSER, headless: true });
-  for (const channel of ['chrome', 'msedge']) { try { return await chromium.launch({ channel, headless: true }); } catch { /* try the next */ } }
+  for (const channel of ['chrome', 'msedge']) {
+    try {
+      return await chromium.launch({ channel, headless: true });
+    } catch {
+      /* try the next */
+    }
+  }
   throw new Error('No Chrome or Edge found. Set E2E_BROWSER to the path of one.');
 }
 
 async function measure(browser, tools) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1200 } });
-  await context.addInitScript(([cfg]) => {
-    if (sessionStorage.getItem('seeded')) return;
-    sessionStorage.setItem('seeded', '1');
-    localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e@t.dev', workspaceName: 'Test', role: 'dev' }));
-    const now = new Date().toISOString();
-    localStorage.setItem('weave_demo_state', JSON.stringify({ v: 1, bots: { big: { id: 'big', name: 'Big', revision: 1, savedAt: now, savedBy: 'demo', config: cfg, versions: [], deployments: [], deployed: {} } } }));
-  }, [bigConfig(tools)]);
+  await context.addInitScript(
+    ([cfg]) => {
+      if (sessionStorage.getItem('seeded')) return;
+      sessionStorage.setItem('seeded', '1');
+      localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e@t.dev', workspaceName: 'Test', role: 'dev' }));
+      const now = new Date().toISOString();
+      localStorage.setItem(
+        'weave_demo_state',
+        JSON.stringify({
+          v: 1,
+          bots: { big: { id: 'big', name: 'Big', revision: 1, savedAt: now, savedBy: 'demo', config: cfg, versions: [], deployments: [], deployed: {} } },
+        }),
+      );
+    },
+    [bigConfig(tools)],
+  );
   const page = await context.newPage();
-  await page.route((url) => url.pathname.startsWith('/api/'), (route) => route.abort()); // demo mode never calls it; this makes sure
+  await page.route(
+    (url) => url.pathname.startsWith('/api/'),
+    (route) => route.abort(),
+  ); // demo mode never calls it; this makes sure
   await page.goto(BASE);
-  await page.getByRole('button', { name: /sign in|get started|start/i }).first().click();
+  await page
+    .getByRole('button', { name: /sign in|get started|start/i })
+    .first()
+    .click();
   await page.getByPlaceholder('you@company.com').fill('e@t.dev');
   await page.getByPlaceholder('Enter your password').fill('whatever123');
   await page.getByRole('button', { name: /continue to workspace/i }).click();
@@ -61,8 +101,14 @@ async function measure(browser, tools) {
   await page.getByRole('tab', { name: /^What it can do/ }).click(); // "All settings" is grouped by task: the tools are under "What it can do"
   await page.locator('[data-section="tools"]').click();
   await page.waitForSelector('.stFSection');
-  for (let pass = 0; pass < 4; pass += 1) { // expand every card and every fold: the worst case
-    await page.evaluate(() => { document.querySelectorAll('.stForm details:not([open])').forEach((d) => { d.open = true; }); document.querySelectorAll('.stFGroupToggle[aria-expanded=false]').forEach((b) => b.click()); });
+  for (let pass = 0; pass < 4; pass += 1) {
+    // expand every card and every fold: the worst case
+    await page.evaluate(() => {
+      document.querySelectorAll('.stForm details:not([open])').forEach((d) => {
+        d.open = true;
+      });
+      document.querySelectorAll('.stFGroupToggle[aria-expanded=false]').forEach((b) => b.click());
+    });
     await page.waitForTimeout(700);
   }
   const nodes = await page.evaluate(() => document.querySelectorAll('*').length);
@@ -91,10 +137,15 @@ async function measure(browser, tools) {
 
 const browser = await launch();
 const rows = [];
-for (const size of SIZES) { rows.push(await measure(browser, size)); console.log(JSON.stringify(rows[rows.length - 1])); }
+for (const size of SIZES) {
+  rows.push(await measure(browser, size));
+  console.log(JSON.stringify(rows[rows.length - 1]));
+}
 await browser.close();
 const floor = rows[0].median;
 const worst = rows[rows.length - 1];
 const ok = worst.median <= floor + BUDGET_MS;
-console.log(`${ok ? 'PASS' : 'FAIL'}  ${worst.tools} tools expanded: median ${worst.median} ms, budget ${floor + BUDGET_MS} ms (the ${rows[0].tools}-tool floor ${floor} ms + ${BUDGET_MS})`);
+console.log(
+  `${ok ? 'PASS' : 'FAIL'}  ${worst.tools} tools expanded: median ${worst.median} ms, budget ${floor + BUDGET_MS} ms (the ${rows[0].tools}-tool floor ${floor} ms + ${BUDGET_MS})`,
+);
 process.exit(ok ? 0 : 1);

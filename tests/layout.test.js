@@ -14,9 +14,24 @@ const groups = layoutFor(sectionKeys, subkeys);
 const views = groups.flatMap((g) => g.views);
 
 test('the groups are the customer’s tasks, in the order of the work, with the engine’s settings last and marked advanced', () => {
-  assert.deepEqual(groups.map((g) => g.label), ['About this agent', 'How it talks', 'What it can do', 'How it behaves', 'Where it is available', 'After the call', 'Quality and records', 'Engine and operator settings']);
+  assert.deepEqual(
+    groups.map((g) => g.label),
+    [
+      'About this agent',
+      'How it talks',
+      'What it can do',
+      'How it behaves',
+      'Where it is available',
+      'After the call',
+      'Quality and records',
+      'Engine and operator settings',
+    ],
+  );
   assert.equal(groups.at(-1).advanced, true);
-  assert.equal(groups.slice(0, -1).some((g) => g.advanced), false);
+  assert.equal(
+    groups.slice(0, -1).some((g) => g.advanced),
+    false,
+  );
   assert.equal(groups[0].views[0].key, 'meta', 'the first screen is the agent’s name and details, not a server-owned field');
 });
 
@@ -24,10 +39,15 @@ test('every property of every section is on a screen: nothing is lost by regroup
   const lost = [];
   sectionKeys.forEach((key) => {
     const mine = views.filter((v) => v.key === key);
-    if (!mine.length) { lost.push(`${key} (the whole section)`); return; }
+    if (!mine.length) {
+      lost.push(`${key} (the whole section)`);
+      return;
+    }
     if (mine.some((v) => !v.only)) return; // a whole-section screen shows every property
     const shown = new Set(mine.flatMap((v) => v.only));
-    subkeys(key).filter((name) => !shown.has(name)).forEach((name) => lost.push(`${key}.${name}`));
+    subkeys(key)
+      .filter((name) => !shown.has(name))
+      .forEach((name) => lost.push(`${key}.${name}`));
   });
   assert.deepEqual(lost, []);
 });
@@ -36,7 +56,11 @@ test('a property is on one screen only (so a setting has one home, and the three
   const owner = new Map();
   views.forEach((v) => {
     const names = v.only || subkeys(v.key);
-    names.forEach((name) => { const id = `${v.key}.${name}`; assert.ok(!owner.has(id), `${id} is on both ${owner.get(id)} and ${v.id}`); owner.set(id, v.id); });
+    names.forEach((name) => {
+      const id = `${v.key}.${name}`;
+      assert.ok(!owner.has(id), `${id} is on both ${owner.get(id)} and ${v.id}`);
+      owner.set(id, v.id);
+    });
   });
 });
 
@@ -49,10 +73,19 @@ test('screen ids are unique, and each has a plain label', () => {
 test('what the schema adds later is shown, not hidden: a new part of a split section and a new top-level section land in the engine group', () => {
   const grown = layoutFor([...sectionKeys, 'fancy_new_section'], (key) => (key === 'defaults' ? [...subkeys('defaults'), 'brand_new_part'] : subkeys(key)));
   const engineViews = grown.find((g) => g.id === 'engine').views;
-  assert.ok(engineViews.some((v) => v.key === 'defaults' && v.only?.includes('brand_new_part')), 'the unclaimed part of defaults has a screen');
-  assert.ok(engineViews.some((v) => v.key === 'fancy_new_section' && v.label === 'Fancy new section'), 'the unknown section has a screen with a readable name');
+  assert.ok(
+    engineViews.some((v) => v.key === 'defaults' && v.only?.includes('brand_new_part')),
+    'the unclaimed part of defaults has a screen',
+  );
+  assert.ok(
+    engineViews.some((v) => v.key === 'fancy_new_section' && v.label === 'Fancy new section'),
+    'the unknown section has a screen with a readable name',
+  );
   // and a schema that lacks a section just has no screen for it
-  const smaller = layoutFor(sectionKeys.filter((k) => k !== 'builder'), subkeys);
+  const smaller = layoutFor(
+    sectionKeys.filter((k) => k !== 'builder'),
+    subkeys,
+  );
   assert.ok(!smaller.flatMap((g) => g.views).some((v) => v.key === 'builder'));
 });
 

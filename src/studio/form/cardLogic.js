@@ -14,9 +14,16 @@ export function summarize(item, index) {
   const alt = ALT_KEYS.map((k) => text(item[k])).find(Boolean);
   title = title || alt || `Item ${index + 1}`;
   let hint = '';
-  if (alt && alt !== title) hint = (item.type === 'builtin' && item.builtin) ? plainToolKind(item) : plainKind(alt);
+  if (alt && alt !== title) hint = item.type === 'builtin' && item.builtin ? plainToolKind(item) : plainKind(alt);
   else {
-    const note = text(item.description) || text(item.text) || text(item.text?.message) || text(item.ask) || text(item.instructions) || text(item.instructions?.role) || text(item.to);
+    const note =
+      text(item.description) ||
+      text(item.text) ||
+      text(item.text?.message) ||
+      text(item.ask) ||
+      text(item.instructions) ||
+      text(item.instructions?.role) ||
+      text(item.to);
     if (note) hint = note.length > 70 ? `${note.slice(0, 70)}…` : note;
   }
   return { title, hint };
@@ -67,8 +74,12 @@ export function carryOver(engine, previous, branch, fresh) {
     merged[key] = value;
   });
   const ordered = {};
-  Object.keys(properties).forEach((key) => { if (key in merged) ordered[key] = merged[key]; });
-  Object.keys(merged).forEach((key) => { if (!(key in ordered)) ordered[key] = merged[key]; });
+  Object.keys(properties).forEach((key) => {
+    if (key in merged) ordered[key] = merged[key];
+  });
+  Object.keys(merged).forEach((key) => {
+    if (!(key in ordered)) ordered[key] = merged[key];
+  });
   return ordered;
 }
 

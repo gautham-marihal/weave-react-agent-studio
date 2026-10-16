@@ -1,9 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { baseOf, hasLanguage, languageHint, languageProblem, languageStatus, primaryOf, toLanguages, toPlain, wantedLanguages } from '../src/studio/form/messages.js';
+import {
+  baseOf,
+  hasLanguage,
+  languageHint,
+  languageProblem,
+  languageStatus,
+  primaryOf,
+  toLanguages,
+  toPlain,
+  wantedLanguages,
+} from '../src/studio/form/messages.js';
 import { isPromptPath, isTemplateString, scopeAt, wordCount } from '../src/studio/form/templates.js';
 
-const config = { defaults: { language: { primary: 'en-US', speaks: ['en', 'es', 'fr'] } }, tools: [{ id: 'lookup', parameters: { type: 'object', properties: { account_id: { type: 'string' } } } }] };
+const config = {
+  defaults: { language: { primary: 'en-US', speaks: ['en', 'es', 'fr'] } },
+  tools: [{ id: 'lookup', parameters: { type: 'object', properties: { account_id: { type: 'string' } } } }],
+};
 
 test('the languages a message should cover: primary first, a base language counted once', () => {
   assert.deepEqual(wantedLanguages(config), ['en-US', 'es', 'fr']);

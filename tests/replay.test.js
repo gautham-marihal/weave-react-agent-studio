@@ -9,24 +9,40 @@ import { addScenario, buildScenario, hasPersonalData, redact, suggestChecks, sug
 const config = {
   meta: { id: 'shop', name: 'Shop', version: '0.1.0' },
   channels: [{ id: 'web-chat', type: 'web_chat', greeting: { say: 'Hello, welcome to the shop.' } }],
-  agents: { entry: 'assistant', items: [
-    { id: 'assistant', name: 'Assistant', instructions: { role: 'You help customers.' }, tools: ['lookup_order', 'end'], handoffs: [{ tool: 'to_billing', to: 'billing', description: 'billing and invoices questions' }] },
-    { id: 'billing', name: 'Billing', instructions: { role: 'You handle billing.' }, tools: [] },
-  ] },
-  tools: [{ id: 'lookup_order', name: 'lookup_order', description: 'Look up an order by its number' }, { id: 'end', builtin: 'end_call' }],
+  agents: {
+    entry: 'assistant',
+    items: [
+      {
+        id: 'assistant',
+        name: 'Assistant',
+        instructions: { role: 'You help customers.' },
+        tools: ['lookup_order', 'end'],
+        handoffs: [{ tool: 'to_billing', to: 'billing', description: 'billing and invoices questions' }],
+      },
+      { id: 'billing', name: 'Billing', instructions: { role: 'You handle billing.' }, tools: [] },
+    ],
+  },
+  tools: [
+    { id: 'lookup_order', name: 'lookup_order', description: 'Look up an order by its number' },
+    { id: 'end', builtin: 'end_call' },
+  ],
   state: { variables: { order_status: { type: 'string', default: null } } },
 };
 
-const call = (messages, extra = {}) => buildEvents({ botId: 'shop', room: 'r1', channel: { id: 'web-chat', type: 'web_chat' }, startedAt: '2026-10-10T10:00:00.000Z', messages, ...extra }).events;
+const call = (messages, extra = {}) =>
+  buildEvents({ botId: 'shop', room: 'r1', channel: { id: 'web-chat', type: 'web_chat' }, startedAt: '2026-10-10T10:00:00.000Z', messages, ...extra }).events;
 
 test('a call is read as an opening, turns, tools, hand-overs and an end', () => {
-  const events = call([
-    { role: 'assistant', text: 'Hello, welcome to the shop.' },
-    { role: 'user', text: 'Where is my order' },
-    { role: 'assistant', text: 'Let me look.', tools: [{ tool: 'lookup_order', args: { n: '1' }, output: { status: 'shipped' } }] },
-    { role: 'user', text: 'I have a billing question' },
-    { role: 'assistant', text: 'Passing you to billing.', tools: [{ tool: 'to_billing', handoff: 'billing' }] },
-  ], { state: { order_status: 'shipped' } });
+  const events = call(
+    [
+      { role: 'assistant', text: 'Hello, welcome to the shop.' },
+      { role: 'user', text: 'Where is my order' },
+      { role: 'assistant', text: 'Let me look.', tools: [{ tool: 'lookup_order', args: { n: '1' }, output: { status: 'shipped' } }] },
+      { role: 'user', text: 'I have a billing question' },
+      { role: 'assistant', text: 'Passing you to billing.', tools: [{ tool: 'to_billing', handoff: 'billing' }] },
+    ],
+    { state: { order_status: 'shipped' } },
+  );
   const f = readCall(events);
   assert.deepEqual(f.opening, ['Hello, welcome to the shop.']);
   assert.equal(f.turns.length, 2);
@@ -42,17 +58,40 @@ test('a call is read as an opening, turns, tools, hand-overs and an end', () => 
 });
 
 test('a failing tool is noted as a problem of the call', () => {
-  const f = readCall(call([{ role: 'user', text: 'order 5' }, { role: 'assistant', text: 'Sorry.', tools: [{ tool: 'lookup_order', error: 'HTTP 500' }] }]));
-  assert.equal(f.errors.length, 1); assert.match(f.errors[0], /lookup_order/);
+  const f = readCall(
+    call([
+      { role: 'user', text: 'order 5' },
+      { role: 'assistant', text: 'Sorry.', tools: [{ tool: 'lookup_order', error: 'HTTP 500' }] },
+    ]),
+  );
+  assert.equal(f.errors.length, 1);
+  assert.match(f.errors[0], /lookup_order/);
 });
 
 test('a transcript with no raw records reads to the same kind of facts', () => {
-  const f = readTranscript({ transcript: [{ role: 'assistant', text: 'Hi' }, { role: 'user', text: 'hello' }, { role: 'assistant', text: 'How can I help?' }], tools: [{ tool: 'lookup_order' }], finalAgent: 'assistant' });
-  assert.deepEqual(f.opening, ['Hi']); assert.equal(f.turns[0].said[0], 'How can I help?'); assert.equal(f.turns[0].tools[0].tool, 'lookup_order');
+  const f = readTranscript({
+    transcript: [
+      { role: 'assistant', text: 'Hi' },
+      { role: 'user', text: 'hello' },
+      { role: 'assistant', text: 'How can I help?' },
+    ],
+    tools: [{ tool: 'lookup_order' }],
+    finalAgent: 'assistant',
+  });
+  assert.deepEqual(f.opening, ['Hi']);
+  assert.equal(f.turns[0].said[0], 'How can I help?');
+  assert.equal(f.turns[0].tools[0].tool, 'lookup_order');
 });
 
 test('the simulated replay answers the same turns, with the tools and hand-overs the configuration has', () => {
-  const original = readCall(call([{ role: 'user', text: 'Where is my order' }, { role: 'assistant', text: 'x' }, { role: 'user', text: 'a billing question' }, { role: 'assistant', text: 'y' }]));
+  const original = readCall(
+    call([
+      { role: 'user', text: 'Where is my order' },
+      { role: 'assistant', text: 'x' },
+      { role: 'user', text: 'a billing question' },
+      { role: 'assistant', text: 'y' },
+    ]),
+  );
   const replay = playSimulated(config, original);
   assert.equal(replay.turns.length, 2);
   assert.equal(replay.turns[0].tools[0].tool, 'lookup_order');
@@ -62,9 +101,18 @@ test('the simulated replay answers the same turns, with the tools and hand-overs
 });
 
 test('turns after the agent hangs up are not reached', () => {
-  const original = readCall(call([{ role: 'user', text: 'bye' }, { role: 'assistant', text: 'x' }, { role: 'user', text: 'one more thing' }, { role: 'assistant', text: 'y' }]));
+  const original = readCall(
+    call([
+      { role: 'user', text: 'bye' },
+      { role: 'assistant', text: 'x' },
+      { role: 'user', text: 'one more thing' },
+      { role: 'assistant', text: 'y' },
+    ]),
+  );
   const replay = playSimulated(config, original);
-  assert.equal(replay.turns.length, 1); assert.equal(replay.notReached, 1); assert.equal(replay.ended, true);
+  assert.equal(replay.turns.length, 1);
+  assert.equal(replay.notReached, 1);
+  assert.equal(replay.ended, true);
   const cmp = compareReplay(original, replay);
   assert.ok(cmp.lines.some((l) => /not reached/.test(l)));
 });
@@ -78,18 +126,38 @@ test('similarity: the same words are 1, nothing in common is 0, partial is betwe
 });
 
 test('an unchanged agent compares as the same', () => {
-  const original = readCall(call([{ role: 'assistant', text: 'Hello, welcome to the shop.' }, { role: 'user', text: 'Where is my order' }, { role: 'assistant', text: 'ok', tools: [{ tool: 'lookup_order' }] }]));
+  const original = readCall(
+    call([
+      { role: 'assistant', text: 'Hello, welcome to the shop.' },
+      { role: 'user', text: 'Where is my order' },
+      { role: 'assistant', text: 'ok', tools: [{ tool: 'lookup_order' }] },
+    ]),
+  );
   const copy = JSON.parse(JSON.stringify(original));
   const cmp = compareReplay(original, copy);
-  assert.equal(cmp.verdict, 'same'); assert.deepEqual(cmp.lines, []); assert.equal(cmp.changed, 0);
+  assert.equal(cmp.verdict, 'same');
+  assert.deepEqual(cmp.lines, []);
+  assert.equal(cmp.changed, 0);
 });
 
 test('a dropped tool, a changed hand-over and a changed end are each said in words', () => {
-  const original = readCall(call([{ role: 'user', text: 'Where is my order' }, { role: 'assistant', text: 'Looking.', tools: [{ tool: 'lookup_order' }] }, { role: 'user', text: 'billing' }, { role: 'assistant', text: 'To billing.', tools: [{ tool: 'to_billing', handoff: 'billing' }] }], { state: { order_status: 'shipped' } }));
+  const original = readCall(
+    call(
+      [
+        { role: 'user', text: 'Where is my order' },
+        { role: 'assistant', text: 'Looking.', tools: [{ tool: 'lookup_order' }] },
+        { role: 'user', text: 'billing' },
+        { role: 'assistant', text: 'To billing.', tools: [{ tool: 'to_billing', handoff: 'billing' }] },
+      ],
+      { state: { order_status: 'shipped' } },
+    ),
+  );
   const replay = JSON.parse(JSON.stringify(original));
   replay.turns[0].tools = [];
   replay.turns[1].tools = [];
-  replay.finalAgent = 'assistant'; replay.finalState = {}; replay.ended = false;
+  replay.finalAgent = 'assistant';
+  replay.finalState = {};
+  replay.ended = false;
   const cmp = compareReplay(original, replay);
   assert.equal(cmp.verdict, 'different');
   const text = cmp.lines.join(' ');
@@ -101,20 +169,39 @@ test('a dropped tool, a changed hand-over and a changed end are each said in wor
 });
 
 test('a replay scenario is for the runner and never clashes with a saved test', () => {
-  const original = readCall(call([{ role: 'user', text: 'hello' }, { role: 'assistant', text: 'hi' }]));
+  const original = readCall(
+    call([
+      { role: 'user', text: 'hello' },
+      { role: 'assistant', text: 'hi' },
+    ]),
+  );
   const withTests = { ...config, tests: [{ id: 'replay', channel: 'web-chat', turns: [{ say: 'x' }], expect: [{ said_matches: '.' }] }] };
   const s = scenarioForReplay(withTests, original);
-  assert.notEqual(s.id, 'replay'); assert.equal(s.channel, 'web-chat'); assert.deepEqual(s.turns, [{ say: 'hello' }]);
+  assert.notEqual(s.id, 'replay');
+  assert.equal(s.channel, 'web-chat');
+  assert.deepEqual(s.turns, [{ say: 'hello' }]);
   assert.equal(configWithScenario(withTests, s).tests.length, 2);
   assert.equal(withTests.tests.length, 1, 'the draft is not changed');
 });
 
 test('a runner result is read into facts, from its records when it has them', () => {
-  const events = call([{ role: 'assistant', text: 'Hi' }, { role: 'user', text: 'hello' }, { role: 'assistant', text: 'Hey', tools: [{ tool: 'lookup_order' }] }]);
+  const events = call([
+    { role: 'assistant', text: 'Hi' },
+    { role: 'user', text: 'hello' },
+    { role: 'assistant', text: 'Hey', tools: [{ tool: 'lookup_order' }] },
+  ]);
   const f = factsFromResult({ events, final_agent: 'assistant', final_state: {}, transcript: [] });
-  assert.equal(f.source, 'runner'); assert.equal(f.turns[0].tools[0].tool, 'lookup_order');
-  const g = factsFromResult({ transcript: [{ role: 'user', text: 'hello' }, { role: 'assistant', text: 'Hey' }], final_agent: 'billing' });
-  assert.equal(g.finalAgent, 'billing'); assert.equal(g.turns[0].said[0], 'Hey');
+  assert.equal(f.source, 'runner');
+  assert.equal(f.turns[0].tools[0].tool, 'lookup_order');
+  const g = factsFromResult({
+    transcript: [
+      { role: 'user', text: 'hello' },
+      { role: 'assistant', text: 'Hey' },
+    ],
+    final_agent: 'billing',
+  });
+  assert.equal(g.finalAgent, 'billing');
+  assert.equal(g.turns[0].said[0], 'Hey');
   assert.equal(factsFromResult(null), null);
 });
 
@@ -126,13 +213,19 @@ test('redaction hides numbers and addresses and leaves other words alone', () =>
   assert.equal(hasPersonalData('hello'), false);
 });
 
-const facts = () => readCall(call([
-  { role: 'assistant', text: 'Hello, welcome to the shop.' },
-  { role: 'user', text: 'Where is order 77?' },
-  { role: 'assistant', text: 'Your order has shipped and is on its way.', tools: [{ tool: 'lookup_order', args: { n: '77' }, output: {} }] },
-  { role: 'user', text: 'I need billing help, call +65 9123 4567' },
-  { role: 'assistant', text: 'Passing you to billing now.', tools: [{ tool: 'to_billing', handoff: 'billing' }] },
-], { state: { order_status: 'shipped' } }));
+const facts = () =>
+  readCall(
+    call(
+      [
+        { role: 'assistant', text: 'Hello, welcome to the shop.' },
+        { role: 'user', text: 'Where is order 77?' },
+        { role: 'assistant', text: 'Your order has shipped and is on its way.', tools: [{ tool: 'lookup_order', args: { n: '77' }, output: {} }] },
+        { role: 'user', text: 'I need billing help, call +65 9123 4567' },
+        { role: 'assistant', text: 'Passing you to billing now.', tools: [{ tool: 'to_billing', handoff: 'billing' }] },
+      ],
+      { state: { order_status: 'shipped' } },
+    ),
+  );
 
 test('a test is suggested from what the agent did, with the plain facts ticked', () => {
   const s = suggestTest(facts(), config, { callId: 'r1_2026', startedAt: '2026-10-10T10:00:00.000Z' });
@@ -142,27 +235,40 @@ test('a test is suggested from what the agent did, with the plain facts ticked',
   assert.match(s.turns[1], /\[number\]/, 'a phone number is hidden');
   assert.ok(s.warnings.some((w) => /number or an address/.test(w)));
   const ids = s.checks.map((c) => c.id);
-  assert.ok(ids.includes('tool:lookup_order')); assert.ok(ids.includes('agent')); assert.ok(ids.includes('state:order_status'));
+  assert.ok(ids.includes('tool:lookup_order'));
+  assert.ok(ids.includes('agent'));
+  assert.ok(ids.includes('state:order_status'));
   assert.equal(s.checks.find((c) => c.id === 'tool:lookup_order').checked, true);
   assert.equal(s.checks.find((c) => c.id === 'said').checked, false, 'wording is offered but not ticked');
 });
 
 test('a tool that failed is offered unticked, with why', () => {
-  const f = readCall(call([{ role: 'user', text: 'order 5' }, { role: 'assistant', text: 'Sorry.', tools: [{ tool: 'lookup_order', error: 'HTTP 500' }] }]));
+  const f = readCall(
+    call([
+      { role: 'user', text: 'order 5' },
+      { role: 'assistant', text: 'Sorry.', tools: [{ tool: 'lookup_order', error: 'HTTP 500' }] },
+    ]),
+  );
   const c = suggestChecks(f, config).find((x) => x.id === 'failed:lookup_order');
-  assert.ok(c); assert.equal(c.checked, false); assert.match(c.why, /HTTP 500/);
+  assert.ok(c);
+  assert.equal(c.checked, false);
+  assert.match(c.why, /HTTP 500/);
 });
 
 test('a channel the draft no longer has is replaced, and said', () => {
   const f = { ...facts(), channelId: 'old-channel' };
   const s = suggestTest(f, config, {});
-  assert.equal(s.channel, 'web-chat'); assert.ok(s.warnings.some((w) => /old-channel/.test(w)));
+  assert.equal(s.channel, 'web-chat');
+  assert.ok(s.warnings.some((w) => /old-channel/.test(w)));
 });
 
 test('a test is built from the ticked checks, what should have happened, and tools that must not run', () => {
   const s = suggestTest(facts(), config, {});
   const built = buildScenario({ ...s, expectedText: 'The agent offers a refund', toolsNeverCalled: ['end'] });
-  assert.deepEqual(built.turns.map((t) => Object.keys(t)), [['say'], ['say']]);
+  assert.deepEqual(
+    built.turns.map((t) => Object.keys(t)),
+    [['say'], ['say']],
+  );
   assert.ok(built.expect.some((e) => e.tool_called === 'lookup_order'));
   assert.ok(built.expect.some((e) => e.judge === 'The agent offers a refund'));
   assert.ok(built.expect.some((e) => e.tool_not_called === 'end'));
@@ -182,7 +288,9 @@ test('what is wrong with a test is said, and a good one has no problems', () => 
 test('adding a test leaves the rest of the draft as it was', () => {
   const s = suggestTest(facts(), config, {});
   const next = addScenario(config, buildScenario(s));
-  assert.equal(next.tests.length, 1); assert.equal(next.meta.name, 'Shop'); assert.equal(config.tests, undefined);
+  assert.equal(next.tests.length, 1);
+  assert.equal(next.meta.name, 'Shop');
+  assert.equal(config.tests, undefined);
 });
 
 test('a call with no caller words warns and cannot be kept', () => {

@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { $, $$, actions, setupDom, teardownDom, textOf } from './component/dom.js';
+import { $$, actions, setupDom, teardownDom, textOf } from './component/dom.js';
 import { createEngine } from '../src/studio/form/engine.js';
 import { corpus } from './corpus/corpus.js';
 
@@ -51,16 +51,22 @@ for (const entry of entries) {
   test(`${entry.name}: every section draws, nothing changes, nothing logs an error${entry.valid ? ', and not one red mark is drawn' : ''}`, async () => {
     const errors = [];
     const original = console.error;
-    console.error = (...args) => { errors.push(args.map(String).join(' ').slice(0, 300)); };
+    console.error = (...args) => {
+      errors.push(args.map(String).join(' ').slice(0, 300));
+    };
     try {
       const app = await mountForm(entry.config);
       const marks = [];
-      const seen = await walk(app, (name) => { if (entry.valid) $$(app.container, RED).forEach((el) => marks.push(`${name} › ${describeMark(el)}`)); });
+      const seen = await walk(app, (name) => {
+        if (entry.valid) $$(app.container, RED).forEach((el) => marks.push(`${name} › ${describeMark(el)}`));
+      });
       assert.ok(seen.length >= 20, `the sections were walked (${seen.length})`);
       assert.deepEqual(marks, [], `a red mark on a config the server calls valid is a false alarm:\n  ${marks.slice(0, 8).join('\n  ')}`);
       assert.deepEqual(app.config, entry.config, 'looking at everything changed nothing');
       await app.unmount();
-    } finally { console.error = original; }
+    } finally {
+      console.error = original;
+    }
     assert.deepEqual(errors, [], 'nothing was logged as an error (a React warning is one)');
   });
 }

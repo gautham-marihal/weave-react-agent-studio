@@ -15,7 +15,8 @@ const str = (value) => (typeof value === 'string' ? value : '');
 export const SECRET_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 export const VOICE_GENDERS = ['Female', 'Male'];
 // A provider's voices, optionally only the Female or only the Male ones.
-export const voicesFor = (provider, gender) => VOICE_CATALOG.filter((voice) => voice.provider.toLowerCase() === String(provider).toLowerCase() && (!gender || voice.gender === gender));
+export const voicesFor = (provider, gender) =>
+  VOICE_CATALOG.filter((voice) => voice.provider.toLowerCase() === String(provider).toLowerCase() && (!gender || voice.gender === gender));
 // The voice a provider starts with: a female one, unless it has none.
 export const defaultVoiceFor = (provider) => voicesFor(provider, 'Female')[0] || voicesFor(provider)[0];
 // Which list to show for the voice in use: its own gender, else Female.
@@ -68,14 +69,17 @@ export function setProvider(config, stage, provider, providers) {
   return edit(config, stage, (slot) => {
     slot.provider = provider;
     const model = defaultModelFor(stage, provider);
-    if (model) slot.model = model; else delete slot.model;
+    if (model) slot.model = model;
+    else delete slot.model;
     const secret = secretFor(provider, providers);
-    if (secret) slot.api_key = { secret }; else delete slot.api_key;
+    if (secret) slot.api_key = { secret };
+    else delete slot.api_key;
     delete slot.base_url; // an endpoint and options belong to the provider that was chosen before
     delete slot.options;
     if (stage === 'tts') {
       const voice = defaultVoiceFor(provider);
-      if (voice) slot.voice_id = voice.voiceId; else delete slot.voice_id;
+      if (voice) slot.voice_id = voice.voiceId;
+      else delete slot.voice_id;
     }
   });
 }
@@ -83,19 +87,28 @@ export function setProvider(config, stage, provider, providers) {
 export function setModel(config, stage, model) {
   const value = String(model || '').trim();
   if (readModels(config)[stage].model === value) return config;
-  return edit(config, stage, (slot) => { if (value) slot.model = value; else delete slot.model; });
+  return edit(config, stage, (slot) => {
+    if (value) slot.model = value;
+    else delete slot.model;
+  });
 }
 
 export function setSecret(config, stage, secret) {
   const value = String(secret || '').trim();
   if (readModels(config)[stage].secret === value) return config;
-  return edit(config, stage, (slot) => { if (value) slot.api_key = { secret: value }; else delete slot.api_key; });
+  return edit(config, stage, (slot) => {
+    if (value) slot.api_key = { secret: value };
+    else delete slot.api_key;
+  });
 }
 
 export function setBaseUrl(config, stage, baseUrl) {
   const value = String(baseUrl || '').trim();
   if (readModels(config)[stage].baseUrl === value) return config;
-  return edit(config, stage, (slot) => { if (value) slot.base_url = value; else delete slot.base_url; });
+  return edit(config, stage, (slot) => {
+    if (value) slot.base_url = value;
+    else delete slot.base_url;
+  });
 }
 
 // For a provider the runtime doesn't know under that name: the same thing under the name it does know.
@@ -122,7 +135,10 @@ export function applyVoice(config, voice, providers) {
 export function setVoiceId(config, voiceId) {
   const value = String(voiceId || '').trim();
   if (readModels(config).tts.voiceId === value) return config;
-  return edit(config, 'tts', (slot) => { if (value) slot.voice_id = value; else delete slot.voice_id; });
+  return edit(config, 'tts', (slot) => {
+    if (value) slot.voice_id = value;
+    else delete slot.voice_id;
+  });
 }
 
 // ---- default speech models --------------------------------------------------------------------------------------------------------------
@@ -139,11 +155,15 @@ export function bestProviderFor(stage, providers) {
 export function addDefaultSpeechModels(config, providers) {
   const models = isObject(config?.defaults?.models) ? config.defaults.models : {};
   let next = config;
-  const added = []; const skipped = [];
+  const added = [];
+  const skipped = [];
   ['stt', 'tts'].forEach((stage) => {
     if (models[stage]?.provider) return;
     const provider = bestProviderFor(stage, providers);
-    if (!provider) { skipped.push(stage); return; }
+    if (!provider) {
+      skipped.push(stage);
+      return;
+    }
     next = setProvider(next, stage, provider.name, providers);
     added.push({ stage, provider: provider.name, keySet: provider.key_available === true });
   });

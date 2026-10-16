@@ -44,12 +44,18 @@ export function renderTemplate(source, config) {
     if (root === 'state' && name in variables) {
       const variable = variables[name];
       value = variable?.sensitive === true ? undefined : variable?.default;
-      if (variable?.sensitive === true) { unresolved.push(head); return '‹sensitive: not shown›'; }
+      if (variable?.sensitive === true) {
+        unresolved.push(head);
+        return '‹sensitive: not shown›';
+      }
     } else if (root === 'const' && name in constants) value = constants[name];
     const empty = value === undefined || value === null || value === '';
     const fallback = filters.map((f) => /^default\((.*)\)$/.exec(f)).find(Boolean);
     if (empty && fallback) return String(fallback[1]).replace(/^['"]|['"]$/g, '');
-    if (empty) { unresolved.push(head); return `‹${head}›`; }
+    if (empty) {
+      unresolved.push(head);
+      return `‹${head}›`;
+    }
     return typeof value === 'object' ? JSON.stringify(value) : String(value);
   });
   return { text: out, unresolved };
@@ -85,7 +91,13 @@ export function assemblePrompt(config, agentId, { channelId } = {}) {
   const rules = list(instructions.rules).map(text).filter(Boolean);
   add('rules', 'Its rules', 'instructions.rules', rules.map((rule) => `- ${rule}`).join('\n'));
   list(instructions.conditional).forEach((block, index) => {
-    add(`conditional-${index}`, `Only while ${describeCondition(block?.when)}`, 'instructions.conditional, added only while its condition holds', block?.append, { conditional: true });
+    add(
+      `conditional-${index}`,
+      `Only while ${describeCondition(block?.when)}`,
+      'instructions.conditional, added only while its condition holds',
+      block?.append,
+      { conditional: true },
+    );
   });
 
   const channel = list(config.channels).find((item) => item?.id === channelId);
@@ -96,7 +108,10 @@ export function assemblePrompt(config, agentId, { channelId } = {}) {
   const lines = [];
   list(agent.tools).forEach((id) => {
     const tool = tools.find((item) => item?.id === id);
-    if (!tool) { lines.push(`- ${id} (not defined)`); return; }
+    if (!tool) {
+      lines.push(`- ${id} (not defined)`);
+      return;
+    }
     const args = Object.keys(isObj(tool.parameters?.properties) ? tool.parameters.properties : {});
     lines.push(`- ${tool.name || tool.id}(${args.join(', ')})${text(tool.description) ? `: ${text(tool.description)}` : ''}`);
   });

@@ -16,8 +16,12 @@ export function findDuplicateKeys(text) {
   let i = 0;
 
   class Stop extends Error {}
-  const fail = () => { throw new Stop(); };
-  const skipWs = () => { while (i < n && ' \t\r\n'.includes(text[i])) i += 1; };
+  const fail = () => {
+    throw new Stop();
+  };
+  const skipWs = () => {
+    while (i < n && ' \t\r\n'.includes(text[i])) i += 1;
+  };
 
   const readString = () => {
     if (text[i] !== '"') fail();
@@ -26,8 +30,17 @@ export function findDuplicateKeys(text) {
     while (i < n && text[i] !== '"') {
       if (text[i] === '\\') {
         const next = text[i + 1];
-        if (next === 'u') { out += String.fromCharCode(Number.parseInt(text.slice(i + 2, i + 6), 16) || 0); i += 6; } else { out += ESCAPES[next] ?? next ?? ''; i += 2; }
-      } else { out += text[i]; i += 1; }
+        if (next === 'u') {
+          out += String.fromCharCode(Number.parseInt(text.slice(i + 2, i + 6), 16) || 0);
+          i += 6;
+        } else {
+          out += ESCAPES[next] ?? next ?? '';
+          i += 2;
+        }
+      } else {
+        out += text[i];
+        i += 1;
+      }
     }
     if (i >= n) fail();
     i += 1;
@@ -41,7 +54,10 @@ export function findDuplicateKeys(text) {
       i += 1;
       const seen = new Map();
       skipWs();
-      if (text[i] === '}') { i += 1; return; }
+      if (text[i] === '}') {
+        i += 1;
+        return;
+      }
       for (;;) {
         skipWs();
         const keyStart = i;
@@ -53,19 +69,34 @@ export function findDuplicateKeys(text) {
         else seen.set(key, keyStart);
         readValue([...path, key]);
         skipWs();
-        if (text[i] === ',') { i += 1; continue; }
-        if (text[i] === '}') { i += 1; return; }
+        if (text[i] === ',') {
+          i += 1;
+          continue;
+        }
+        if (text[i] === '}') {
+          i += 1;
+          return;
+        }
         fail();
       }
     } else if (c === '[') {
       i += 1;
       skipWs();
-      if (text[i] === ']') { i += 1; return; }
+      if (text[i] === ']') {
+        i += 1;
+        return;
+      }
       for (let index = 0; ; index += 1) {
         readValue([...path, index]);
         skipWs();
-        if (text[i] === ',') { i += 1; continue; }
-        if (text[i] === ']') { i += 1; return; }
+        if (text[i] === ',') {
+          i += 1;
+          continue;
+        }
+        if (text[i] === ']') {
+          i += 1;
+          return;
+        }
         fail();
       }
     } else if (c === '"') {
@@ -77,14 +108,20 @@ export function findDuplicateKeys(text) {
     }
   };
 
-  try { readValue([]); } catch (error) { if (!(error instanceof Stop)) throw error; }
+  try {
+    readValue([]);
+  } catch (error) {
+    if (!(error instanceof Stop)) throw error;
+  }
   return found;
 }
 
 // A sentence for the person: which key, where, and why it matters.
 export function describeDuplicates(duplicates, lineOf) {
   const first = duplicates[0];
-  const where = first.path.length ? first.path.map((part, index) => (typeof part === 'number' ? `[${part}]` : `${index ? '.' : ''}${part}`)).join('') : 'the top level';
+  const where = first.path.length
+    ? first.path.map((part, index) => (typeof part === 'number' ? `[${part}]` : `${index ? '.' : ''}${part}`)).join('')
+    : 'the top level';
   const more = duplicates.length > 1 ? ` (and ${duplicates.length - 1} more)` : '';
   return `The key “${first.key}” appears twice in ${where}, on lines ${lineOf(first.firstOffset)} and ${lineOf(first.offset)}${more}. JSON keeps only the last one, so a setting would be lost without warning. Remove one; nothing is saved, validated or published until then.`;
 }

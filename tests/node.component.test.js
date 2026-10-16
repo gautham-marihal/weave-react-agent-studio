@@ -16,7 +16,15 @@ const base = (extra = {}) => ({
   persona: { name: 'X' },
   ...extra,
 });
-const complete = (extra = {}) => ({ id: 't1', type: 'http', connection: 'c', description: 'Gets the bill when asked', request: { method: 'GET', path: '/x' }, parameters: { type: 'object', properties: {} }, ...extra });
+const complete = (extra = {}) => ({
+  id: 't1',
+  type: 'http',
+  connection: 'c',
+  description: 'Gets the bill when asked',
+  request: { method: 'GET', path: '/x' },
+  parameters: { type: 'object', properties: {} },
+  ...extra,
+});
 const connections = { c: { type: 'http', base_url: 'https://api.example.com' } };
 
 // Opens the form on a screen, named by its id (layout.js): 'tools', 'persona', 'defaults.models'…
@@ -70,11 +78,19 @@ test('an optional part that isn’t set (the direct delivery of a response) is n
   // and when something really is required and absent, it still says so
   const app2 = await open(base({ agents: { items: [{ id: 'a', name: 'A', kind: 'standalone', instructions: { role: 'Help.' } }] } }), 'agents');
   assert.match(textOf(app2.container), /required, not set/);
-  await app.unmount(); await app2.unmount();
+  await app.unmount();
+  await app2.unmount();
 });
 
 test('a voice channel on an agent with no speech models offers “Add default speech models”, once, and one click sets both', async () => {
-  const phone = { id: 'phone', type: 'sip_voice', enabled: true, entry: { dnis: '+6561234567' }, modalities: { input: ['audio'], output: ['audio'] }, greeting: { say: 'Hi' } };
+  const phone = {
+    id: 'phone',
+    type: 'sip_voice',
+    enabled: true,
+    entry: { dnis: '+6561234567' },
+    modalities: { input: ['audio'], output: ['audio'] },
+    greeting: { say: 'Hi' },
+  };
   const app = await open(base({ channels: [phone] }), 'channels');
   const notes = $(app.container, '.stChannelNotes');
   assert.ok(notes);
@@ -86,15 +102,30 @@ test('a voice channel on an agent with no speech models offers “Add default sp
   const models = app.config.defaults.models;
   assert.ok(models.stt.provider && models.stt.model, 'listening is set');
   assert.ok(models.tts.provider && models.tts.model, 'speaking is set');
-  assert.equal($(app.container, '.stChannelNotes') && /needs a speech-to-text/.test(textOf($(app.container, '.stChannelNotes'))), false, 'the warnings are gone');
+  assert.equal(
+    $(app.container, '.stChannelNotes') && /needs a speech-to-text/.test(textOf($(app.container, '.stChannelNotes'))),
+    false,
+    'the warnings are gone',
+  );
   assert.match(textOf($(app.container, '.stFToast')), /Added default speech models/);
   await app.unmount();
 });
 
 test('a long list of tools can be searched, filtered by kind and narrowed to the unused, and each card says who uses it', async () => {
-  const tools = Array.from({ length: 12 }, (_, i) => ({ id: `lookup_${i}`, type: 'http', connection: 'c', description: `Gets record ${i} for the caller`, request: { method: 'GET', path: `/r/${i}` }, parameters: { type: 'object', properties: {} } }));
+  const tools = Array.from({ length: 12 }, (_, i) => ({
+    id: `lookup_${i}`,
+    type: 'http',
+    connection: 'c',
+    description: `Gets record ${i} for the caller`,
+    request: { method: 'GET', path: `/r/${i}` },
+    parameters: { type: 'object', properties: {} },
+  }));
   tools.push({ id: 'end_call', type: 'builtin', builtin: 'end_call', description: 'Ends it', params: { say: 'Bye' } });
-  const config = base({ tools, connections, agents: { entry: 'a', items: [{ id: 'a', name: 'A', instructions: { role: 'Help.' }, tools: ['lookup_0', 'lookup_1', 'end_call'] }] } });
+  const config = base({
+    tools,
+    connections,
+    agents: { entry: 'a', items: [{ id: 'a', name: 'A', instructions: { role: 'Help.' }, tools: ['lookup_0', 'lookup_1', 'end_call'] }] },
+  });
   const app = await open(config, 'tools');
   const titles = () => $$(app.container, '.stFCards > .stFGroup .stFGroupToggle strong').map(textOf);
   assert.equal(titles().length, 13);
@@ -151,27 +182,47 @@ test('a list of texts: edit one, add one, delete one, and Undo puts the list bac
 });
 
 test('a list of cards: reorder with the arrows, delete one, and the others keep their values', async () => {
-  const messages = [{ id: 'm1', text: 'One' }, { id: 'm2', text: 'Two' }, { id: 'm3', text: 'Three' }];
+  const messages = [
+    { id: 'm1', text: 'One' },
+    { id: 'm2', text: 'Two' },
+    { id: 'm3', text: 'Three' },
+  ];
   const app = await open(base({ messages }), 'messages');
   await a.click(byLabel(app.container, 'Move m1 down'));
-  assert.deepEqual(app.config.messages.map((m) => m.id), ['m2', 'm1', 'm3']);
+  assert.deepEqual(
+    app.config.messages.map((m) => m.id),
+    ['m2', 'm1', 'm3'],
+  );
   await a.click(byLabel(app.container, 'Move m3 up'));
-  assert.deepEqual(app.config.messages.map((m) => m.id), ['m2', 'm3', 'm1']);
+  assert.deepEqual(
+    app.config.messages.map((m) => m.id),
+    ['m2', 'm3', 'm1'],
+  );
   assert.equal(byLabel(app.container, 'Move m2 up').disabled, true, 'the first can’t move up');
   assert.equal(byLabel(app.container, 'Move m1 down').disabled, true, 'the last can’t move down');
   await a.click(byLabel(app.container, 'Delete m3'));
-  assert.deepEqual(app.config.messages, [{ id: 'm2', text: 'Two' }, { id: 'm1', text: 'One' }]);
+  assert.deepEqual(app.config.messages, [
+    { id: 'm2', text: 'Two' },
+    { id: 'm1', text: 'One' },
+  ]);
   await app.unmount();
 });
 
 test('a list of ids picked from another list: add and remove, never a duplicate', async () => {
   const config = base({
-    tools: [{ id: 't1', type: 'builtin', builtin: 'end_call' }, { id: 't2', type: 'builtin', builtin: 'noop' }],
+    tools: [
+      { id: 't1', type: 'builtin', builtin: 'end_call' },
+      { id: 't2', type: 'builtin', builtin: 'noop' },
+    ],
     agents: { entry: 'a', items: [{ id: 'a', name: 'A', instructions: { role: 'Help' }, tools: ['t1'] }] },
   });
   const app = await open(config, 'agents');
   const add = $$(app.container, 'select').find((el) => el.getAttribute('aria-label') === 'Add' && [...el.options].some((o) => o.text === 't2'));
-  assert.deepEqual([...add.options].map((o) => o.text), ['＋ Add…', 't2'], 'what is already chosen is not offered again');
+  assert.deepEqual(
+    [...add.options].map((o) => o.text),
+    ['＋ Add…', 't2'],
+    'what is already chosen is not offered again',
+  );
   await a.choose(add, 't2');
   assert.deepEqual(app.config.agents.items[0].tools, ['t1', 't2']);
   await a.click(byLabel(app.container, 'Delete t1'));
@@ -195,12 +246,18 @@ test('editing one field keeps the others, fields the schema doesn’t know, and 
 
 test('what was typed is still there after visiting other sections and coming back', async () => {
   const app = await open(base({ messages: [{ id: 'm1', text: 'Hello' }] }), 'persona');
-  await a.type($$(app.container, '.stFSection input').find((el) => el.value === 'X'), 'Sam');
+  await a.type(
+    $$(app.container, '.stFSection input').find((el) => el.value === 'X'),
+    'Sam',
+  );
   await a.section(app.container, 'defaults.language');
   await a.section(app.container, 'messages');
   assert.equal(app.config.messages[0].text, 'Hello');
   await a.section(app.container, 'persona');
-  assert.ok($$(app.container, '.stFSection input').some((el) => el.value === 'Sam'), 'the edit is shown again');
+  assert.ok(
+    $$(app.container, '.stFSection input').some((el) => el.value === 'Sam'),
+    'the edit is shown again',
+  );
   assert.equal(app.config.persona.name, 'Sam');
   await app.unmount();
 });
@@ -220,9 +277,15 @@ test('effects: add a rule, change its step, add a condition and a second step, r
   assert.match(textOf($(app.container, '.stRuleSentence')), /Always: end the call\./);
 
   await a.choose(byLabel(app.container, 'Add a step to rule 1'), 'set_state');
-  assert.deepEqual(app.config.tools[0].effects[0].do.map((s) => s.type), ['end_call', 'set_state']);
+  assert.deepEqual(
+    app.config.tools[0].effects[0].do.map((s) => s.type),
+    ['end_call', 'set_state'],
+  );
   await a.click(byLabel(app.container, 'Move step 2 of rule 1 up'));
-  assert.deepEqual(app.config.tools[0].effects[0].do.map((s) => s.type), ['set_state', 'end_call']);
+  assert.deepEqual(
+    app.config.tools[0].effects[0].do.map((s) => s.type),
+    ['set_state', 'end_call'],
+  );
 
   await a.click(byText(app.container, '.stRuleWhen button', 'Only when…'));
   assert.ok('when' in app.config.tools[0].effects[0], 'a condition was added');
@@ -232,7 +295,10 @@ test('effects: add a rule, change its step, add a condition and a second step, r
   assert.ok(!('when' in app.config.tools[0].effects[0]));
 
   await a.click(byLabel(app.container, 'Delete step 1 of rule 1'));
-  assert.deepEqual(app.config.tools[0].effects[0].do.map((s) => s.type), ['end_call']);
+  assert.deepEqual(
+    app.config.tools[0].effects[0].do.map((s) => s.type),
+    ['end_call'],
+  );
   await a.click(byLabel(app.container, 'Delete rule 1'));
   assert.ok(!('effects' in app.config.tools[0]), 'with no rules left the key is gone');
   await a.click(byText($(app.container, '.stFToast'), 'button', 'Undo'));
@@ -242,17 +308,27 @@ test('effects: add a rule, change its step, add a condition and a second step, r
 
 // ---------------------------------------------------------------- the prompt preview
 
-const promptConfig = () => base({
-  persona: { name: 'Sam', tone: 'warm' },
-  state: { variables: { plan: { type: 'string', default: 'basic' }, verified: { type: 'boolean', default: false } } },
-  channels: [{ id: 'web-chat', type: 'web_chat', enabled: true }, { id: 'phone', type: 'sip_voice', enabled: true }],
-  agents: { entry: 'a', items: [{ id: 'a', name: 'A', instructions: { role: 'Help with bills on the {{state.plan}} plan.', rules: ['Be brief.'] }, tools: [] }] },
-});
+const promptConfig = () =>
+  base({
+    persona: { name: 'Sam', tone: 'warm' },
+    state: { variables: { plan: { type: 'string', default: 'basic' }, verified: { type: 'boolean', default: false } } },
+    channels: [
+      { id: 'web-chat', type: 'web_chat', enabled: true },
+      { id: 'phone', type: 'sip_voice', enabled: true },
+    ],
+    agents: {
+      entry: 'a',
+      items: [{ id: 'a', name: 'A', instructions: { role: 'Help with bills on the {{state.plan}} plan.', rules: ['Be brief.'] }, tools: [] }],
+    },
+  });
 const openPrompt = async (app) => {
   const details = $(app.container, '.stPromptPreview');
   assert.ok(details);
   assert.equal($(details, '.stPromptBody'), null, 'closed until asked for');
-  await act(async () => { details.open = true; details.dispatchEvent(new window.Event('toggle')); });
+  await act(async () => {
+    details.open = true;
+    details.dispatchEvent(new window.Event('toggle'));
+  });
   return details;
 };
 
@@ -262,12 +338,24 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
   globalThis.fetch = async (url, init) => {
     if (String(url).endsWith('/preview/prompt')) {
       asked.push(JSON.parse(init.body));
-      return new Response(JSON.stringify({
-        instructions: 'You are Sam.\n\nHelp with bills on the basic plan.', opening: 'Say hi once.', greeting: 'Hello from Sam',
-        sections: [{ kind: 'persona', label: 'Who the agent is', text: 'You are Sam.', active: true }, { kind: 'role', label: 'Its role', text: 'Help with bills on the basic plan.', active: true }, { kind: 'conditional', label: 'After hours', text: 'It is closed.', active: false, when: 'the office is closed' }],
-        tools: [{ name: 'lookup', description: 'Looks things up', offered: true }, { name: 'run_code', description: 'Runs code', offered: false, reason: 'custom code tools can’t run yet' }],
-        stats: { words: 2100, approx_tokens: 2800, tools_offered: 18 },
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Response(
+        JSON.stringify({
+          instructions: 'You are Sam.\n\nHelp with bills on the basic plan.',
+          opening: 'Say hi once.',
+          greeting: 'Hello from Sam',
+          sections: [
+            { kind: 'persona', label: 'Who the agent is', text: 'You are Sam.', active: true },
+            { kind: 'role', label: 'Its role', text: 'Help with bills on the basic plan.', active: true },
+            { kind: 'conditional', label: 'After hours', text: 'It is closed.', active: false, when: 'the office is closed' },
+          ],
+          tools: [
+            { name: 'lookup', description: 'Looks things up', offered: true },
+            { name: 'run_code', description: 'Runs code', offered: false, reason: 'custom code tools can’t run yet' },
+          ],
+          stats: { words: 2100, approx_tokens: 2800, tools_offered: 18 },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
     }
     return real(url, init);
   };
@@ -276,12 +364,20 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
     const details = await openPrompt(app);
     await app.wait(700);
     assert.match(textOf($(details, 'summary')), /exact/);
-    assert.deepEqual($$(details, '.stPromptSection[data-section]').map((el) => el.getAttribute('data-section')).slice(0, 3), ['persona', 'role', 'conditional']);
+    assert.deepEqual(
+      $$(details, '.stPromptSection[data-section]')
+        .map((el) => el.getAttribute('data-section'))
+        .slice(0, 3),
+      ['persona', 'role', 'conditional'],
+    );
     assert.match(textOf($(details, '[data-section="role"] pre')), /Help with bills on the basic plan\./);
     assert.match(textOf($(details, '[data-section="conditional"] header')), /not in right now · only the office is closed/);
     assert.match(textOf($(details, '[data-section="role"] header')), /in the prompt/);
     assert.match(textOf($(details, '.stPromptTotal')), /2,100 words · about 2,800 tokens · 18 tools offered/);
-    assert.ok($(details, '[data-advice="long"]') && $(details, '[data-advice="tools"]') && $(details, '[data-advice="dropped"]'), 'too long, too many tools, a tool dropped');
+    assert.ok(
+      $(details, '[data-advice="long"]') && $(details, '[data-advice="tools"]') && $(details, '[data-advice="dropped"]'),
+      'too long, too many tools, a tool dropped',
+    );
     assert.match(textOf($(details, '[data-advice="dropped"]')), /run_code \(custom code tools can’t run yet\)/);
     assert.match(textOf(details), /Greeting: Hello from Sam/);
     assert.equal($(details, '.stPromptExact pre').textContent, 'You are Sam.\n\nHelp with bills on the basic plan.');
@@ -303,7 +399,9 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
     await app.wait(700);
     assert.ok(!('state' in asked[asked.length - 1]));
     await app.unmount();
-  } finally { globalThis.fetch = real; }
+  } finally {
+    globalThis.fetch = real;
+  }
 });
 
 test('when the server can’t be asked, the prompt preview is built here, labelled approximate, and still follows the fields', async () => {
@@ -338,9 +436,15 @@ test('an agent’s on-enter actions are numbered steps with a plain-language men
   assert.deepEqual((await a.options(step)).slice(0, 3), ['Say a line', 'Say something the model writes', 'Change state']);
   assert.match(textOf($(app.container, '.stActionSentence')), /^Say “Welcome”$/);
   await a.choose(byLabel(app.container, 'Add a step to the list'), 'end_call');
-  assert.deepEqual(app.config.agents.items[0].on_enter.map((s) => s.type), ['say', 'end_call']);
+  assert.deepEqual(
+    app.config.agents.items[0].on_enter.map((s) => s.type),
+    ['say', 'end_call'],
+  );
   await a.click(byLabel(app.container, 'Move step 2 of the list up'));
-  assert.deepEqual(app.config.agents.items[0].on_enter.map((s) => s.type), ['end_call', 'say']);
+  assert.deepEqual(
+    app.config.agents.items[0].on_enter.map((s) => s.type),
+    ['end_call', 'say'],
+  );
   await a.choose(byLabel(app.container, 'Step 1 of the list: what to do'), 'handoff');
   assert.equal(app.config.agents.items[0].on_enter[0].type, 'handoff');
   assert.equal(app.config.agents.items[0].on_enter[1].text, 'Welcome', 'the other step is untouched');
@@ -384,7 +488,24 @@ test('every section of a full configuration draws without breaking, and the sect
       if (name === 'telephony') assert.match(notes, /not connected from the studio yet/);
     }
   }
-  ['meta', 'persona', 'defaults.language', 'defaults.models', 'defaults.conversation', 'channels', 'agents', 'tasks', 'tools', 'messages', 'state', 'connections', 'telephony', 'guardrails', 'events', 'tests'].forEach((name) => assert.ok(seen.includes(name), `${name} was visited`));
+  [
+    'meta',
+    'persona',
+    'defaults.language',
+    'defaults.models',
+    'defaults.conversation',
+    'channels',
+    'agents',
+    'tasks',
+    'tools',
+    'messages',
+    'state',
+    'connections',
+    'telephony',
+    'guardrails',
+    'events',
+    'tests',
+  ].forEach((name) => assert.ok(seen.includes(name), `${name} was visited`));
   assert.deepEqual(app.config, config, 'looking at everything changed nothing');
   await app.unmount();
 });
@@ -400,14 +521,20 @@ test('adding a tool is a choice of jobs: search, pick, and the tool is in the dr
   assert.match(textOf(panel), /Hand over to a person/);
   assert.match(textOf(byText(panel, '.stPickCard', /^Run your own code/)), /Not available in the runtime yet/);
   await a.type($(panel, 'input[type=search]'), 'hand over');
-  assert.deepEqual($$(app.container, '.stPickCard').map((c) => c.getAttribute('data-option')), ['hand_over']);
+  assert.deepEqual(
+    $$(app.container, '.stPickCard').map((c) => c.getAttribute('data-option')),
+    ['hand_over'],
+  );
   await a.type($(panel, 'input[type=search]'), 'zzz');
   assert.match(textOf($(app.container, '.stPickPanel')), /Nothing matches “zzz”/);
   await a.type($(app.container, '.stPickPanel input[type=search]'), '');
   await a.click($(app.container, '.stPickCard[data-option="end_call"]'));
   assert.equal($(app.container, '.stPickPanel'), null, 'the cards close once one is picked');
   assert.equal(app.config.tools.length, 1);
-  assert.deepEqual({ id: app.config.tools[0].id, type: app.config.tools[0].type, builtin: app.config.tools[0].builtin }, { id: 'end_call', type: 'builtin', builtin: 'end_call' });
+  assert.deepEqual(
+    { id: app.config.tools[0].id, type: app.config.tools[0].type, builtin: app.config.tools[0].builtin },
+    { id: 'end_call', type: 'builtin', builtin: 'end_call' },
+  );
   await app.unmount();
 });
 
@@ -453,10 +580,14 @@ test('the picker closes on Escape and the arrow keys move between the cards', as
   await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a tool/));
   const first = $(app.container, '.stPickCard');
   first.focus();
-  await act(async () => { first.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })); });
+  await act(async () => {
+    first.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+  });
   assert.notEqual(window.document.activeElement, first, 'focus moved to the next card');
   assert.ok(window.document.activeElement.classList.contains('stPickCard'));
-  await act(async () => { window.document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); });
+  await act(async () => {
+    window.document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  });
   assert.equal($(app.container, '.stPickPanel'), null);
   await app.unmount();
 });
@@ -469,15 +600,26 @@ test('the prompt preview also shows what runs on taking over, what is searched, 
   globalThis.fetch = async (url, init) => {
     if (String(url).endsWith('/preview/prompt')) {
       asked.push(JSON.parse(init.body));
-      return new Response(JSON.stringify({
-        instructions: 'You are Sam.', sections: [{ kind: 'persona', label: 'Who the agent is', text: 'You are Sam.', active: true }],
-        on_enter: [{ type: 'say', text: 'Welcome back' }],
-        knowledge: { before_each_reply: [{ base: 'faq', top_k: 3 }], tools: [{ tool: 'search_help', base: 'faq' }] },
-        models: { llm: { provider: 'openai', model: 'gpt-4.1-mini', api_key: { secret: 'OPENAI_API_KEY' } } },
-        state: { verified: false, pin: '•••' },
-        tools: [{ name: 'lookup', description: 'Looks things up', offered: true, parameters: { type: 'object', properties: { order_id: { type: 'string' }, days: { type: 'integer' } }, required: ['order_id'] } }],
-        stats: { words: 3, approx_tokens: 4, tools_offered: 1 },
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Response(
+        JSON.stringify({
+          instructions: 'You are Sam.',
+          sections: [{ kind: 'persona', label: 'Who the agent is', text: 'You are Sam.', active: true }],
+          on_enter: [{ type: 'say', text: 'Welcome back' }],
+          knowledge: { before_each_reply: [{ base: 'faq', top_k: 3 }], tools: [{ tool: 'search_help', base: 'faq' }] },
+          models: { llm: { provider: 'openai', model: 'gpt-4.1-mini', api_key: { secret: 'OPENAI_API_KEY' } } },
+          state: { verified: false, pin: '•••' },
+          tools: [
+            {
+              name: 'lookup',
+              description: 'Looks things up',
+              offered: true,
+              parameters: { type: 'object', properties: { order_id: { type: 'string' }, days: { type: 'integer' } }, required: ['order_id'] },
+            },
+          ],
+          stats: { words: 3, approx_tokens: 4, tools_offered: 1 },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
     }
     return real(url, init);
   };
@@ -504,7 +646,9 @@ test('the prompt preview also shows what runs on taking over, what is searched, 
     await app.wait(700);
     assert.ok(!('caller_phone' in asked[asked.length - 1]), 'Reset clears it');
     await app.unmount();
-  } finally { globalThis.fetch = real; }
+  } finally {
+    globalThis.fetch = real;
+  }
 });
 
 test('a tool’s Try it takes the same what-ifs (channel, time, state), sends them, and shows the request’s headers', async () => {
@@ -513,26 +657,47 @@ test('a tool’s Try it takes the same what-ifs (channel, time, state), sends th
   globalThis.fetch = async (url, init) => {
     if (String(url).endsWith('/preview/result')) {
       asked.push(JSON.parse(init.body));
-      return new Response(JSON.stringify({
-        request: { method: 'GET', url: 'https://api.example.com/x', query: {}, headers: { 'X-Trace': 'abc' }, body: null, auth: { type: 'none', secrets: [] } },
-        preconditions: { holds: true, message: '' }, args_problems: [],
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Response(
+        JSON.stringify({
+          request: {
+            method: 'GET',
+            url: 'https://api.example.com/x',
+            query: {},
+            headers: { 'X-Trace': 'abc' },
+            body: null,
+            auth: { type: 'none', secrets: [] },
+          },
+          preconditions: { holds: true, message: '' },
+          args_problems: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
     }
     return real(url, init);
   };
   try {
     const config = base({
-      connections, tools: [complete()],
+      connections,
+      tools: [complete()],
       state: { variables: { verified: { type: 'boolean', default: false } } },
-      channels: [{ id: 'web-chat', type: 'web_chat', enabled: true }, { id: 'phone', type: 'sip_voice', enabled: true }],
+      channels: [
+        { id: 'web-chat', type: 'web_chat', enabled: true },
+        { id: 'phone', type: 'sip_voice', enabled: true },
+      ],
     });
     const app = await open(config, 'tools');
     const fold = $$(app.container, 'details.stFold.sample')[0];
     assert.ok(fold, 'the sample fold');
-    await act(async () => { fold.open = true; fold.dispatchEvent(new window.Event('toggle')); });
+    await act(async () => {
+      fold.open = true;
+      fold.dispatchEvent(new window.Event('toggle'));
+    });
     await app.wait(700);
     assert.match(textOf($(fold, '[data-block="request"]')), /headers.*X-Trace/, 'the request’s headers are shown');
-    assert.ok(!('state' in asked[asked.length - 1]) && !('channel' in asked[asked.length - 1]) && !('now' in asked[asked.length - 1]), 'nothing chosen, nothing sent');
+    assert.ok(
+      !('state' in asked[asked.length - 1]) && !('channel' in asked[asked.length - 1]) && !('now' in asked[asked.length - 1]),
+      'nothing chosen, nothing sent',
+    );
     await a.choose(byLabel(fold, 'Preview on channel'), 'phone');
     await a.choose(byLabel(fold, 'What if verified were'), 'true');
     await a.type(byLabel(fold, 'Pretend it is this time'), '2026-10-14T03:00');
@@ -543,5 +708,7 @@ test('a tool’s Try it takes the same what-ifs (channel, time, state), sends th
     assert.match(last.now, /^2026-10-14T03:00:00[+-]\d{2}:\d{2}$/);
     assert.equal(byLabel(fold, 'Pretend the caller’s number is'), null, 'a tool has no caller’s number to pretend');
     await app.unmount();
-  } finally { globalThis.fetch = real; }
+  } finally {
+    globalThis.fetch = real;
+  }
 });

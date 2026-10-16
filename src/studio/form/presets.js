@@ -25,7 +25,15 @@ export const ENTRY_LABELS = {
 };
 
 export const CHANNEL_TYPES = ['sip_voice', 'web_voice', 'web_chat', 'whatsapp', 'sms', 'email', 'custom'];
-export const TYPE_LABELS = { sip_voice: 'Phone line', web_voice: 'Web voice', web_chat: 'Web chat', whatsapp: 'WhatsApp', sms: 'SMS', email: 'Email', custom: 'Custom' };
+export const TYPE_LABELS = {
+  sip_voice: 'Phone line',
+  web_voice: 'Web voice',
+  web_chat: 'Web chat',
+  whatsapp: 'WhatsApp',
+  sms: 'SMS',
+  email: 'Email',
+  custom: 'Custom',
+};
 
 const GREETING_VOICE = 'Hello, thanks for calling. How can I help you today?';
 const GREETING_CHAT = 'Hi! How can I help you today?';
@@ -44,12 +52,34 @@ export const CHANNEL_PRESETS = [
 export function defaultsForType(type, botId) {
   const widget = `${botId || 'agent'}-widget`;
   switch (type) {
-    case 'sip_voice': return { entry: {}, modalities: { input: ['audio'], output: ['audio'] }, greeting: { say: GREETING_VOICE }, capabilities: { dtmf: true, human_transfer: true } };
-    case 'web_voice': return { entry: { widget_id: widget }, modalities: { input: ['audio'], output: ['audio'] }, greeting: { say: GREETING_VOICE }, capabilities: { forms: true } };
-    case 'web_chat': return { entry: { widget_id: widget }, modalities: { input: ['text'], output: ['text'] }, greeting: { say: GREETING_CHAT }, capabilities: { forms: true } };
-    case 'whatsapp': return { entry: {}, modalities: { input: ['text'], output: ['text'] }, greeting: { say: GREETING_CHAT }, capabilities: { forms: false } };
-    case 'sms': case 'email': return { modalities: { input: ['text'], output: ['text'] } };
-    default: return { modalities: { input: ['text'], output: ['text'] } };
+    case 'sip_voice':
+      return {
+        entry: {},
+        modalities: { input: ['audio'], output: ['audio'] },
+        greeting: { say: GREETING_VOICE },
+        capabilities: { dtmf: true, human_transfer: true },
+      };
+    case 'web_voice':
+      return {
+        entry: { widget_id: widget },
+        modalities: { input: ['audio'], output: ['audio'] },
+        greeting: { say: GREETING_VOICE },
+        capabilities: { forms: true },
+      };
+    case 'web_chat':
+      return {
+        entry: { widget_id: widget },
+        modalities: { input: ['text'], output: ['text'] },
+        greeting: { say: GREETING_CHAT },
+        capabilities: { forms: true },
+      };
+    case 'whatsapp':
+      return { entry: {}, modalities: { input: ['text'], output: ['text'] }, greeting: { say: GREETING_CHAT }, capabilities: { forms: false } };
+    case 'sms':
+    case 'email':
+      return { modalities: { input: ['text'], output: ['text'] } };
+    default:
+      return { modalities: { input: ['text'], output: ['text'] } };
   }
 }
 
@@ -70,15 +100,28 @@ export function changeChannelType(channel, nextType, botId = '') {
   const keep = ENTRY_FIELDS[nextType];
   const entry = { ...(channel.entry || {}) };
   const cleared = [];
-  if (keep) Object.keys(entry).forEach((key) => { if (!keep.includes(key)) { if (entry[key] !== '' && !(Array.isArray(entry[key]) && !entry[key].length)) cleared.push(`entry.${key}`); delete entry[key]; } });
+  if (keep)
+    Object.keys(entry).forEach((key) => {
+      if (!keep.includes(key)) {
+        if (entry[key] !== '' && !(Array.isArray(entry[key]) && !entry[key].length)) cleared.push(`entry.${key}`);
+        delete entry[key];
+      }
+    });
   if (nextType === 'web_chat' && !entry.widget_id) entry.widget_id = fresh.entry.widget_id;
   const next = { ...channel, type: nextType };
-  if (fresh.entry !== undefined || Object.keys(entry).length) next.entry = entry; else delete next.entry;
+  if (fresh.entry !== undefined || Object.keys(entry).length) next.entry = entry;
+  else delete next.entry;
   if (nextType === 'sip_voice' && !next.entry) next.entry = {};
   if (same(channel.modalities, old.modalities)) next.modalities = fresh.modalities;
   if (channel.greeting && same(channel.greeting, old.greeting) && fresh.greeting) next.greeting = fresh.greeting;
-  if (channel.capabilities && same(channel.capabilities, old.capabilities)) { if (fresh.capabilities) next.capabilities = fresh.capabilities; else delete next.capabilities; }
-  if (channel.match && Object.keys(channel.match).length) { cleared.push('match'); delete next.match; } // how participants are matched follows the type
+  if (channel.capabilities && same(channel.capabilities, old.capabilities)) {
+    if (fresh.capabilities) next.capabilities = fresh.capabilities;
+    else delete next.capabilities;
+  }
+  if (channel.match && Object.keys(channel.match).length) {
+    cleared.push('match');
+    delete next.match;
+  } // how participants are matched follows the type
   return { channel: next, cleared };
 }
 
@@ -89,9 +132,13 @@ export function modalityNotes(channel, config) {
   const input = channel?.modalities?.input || [];
   const output = channel?.modalities?.output || [];
   const notes = [];
-  if (input.includes('audio') && !models.stt?.provider) notes.push({ level: 'warn', text: 'Audio in needs a speech-to-text model. None is set yet.', fix: 'models', stage: 'stt' });
-  if (output.includes('audio') && !models.tts?.provider) notes.push({ level: 'warn', text: 'Audio out needs a text-to-speech model. None is set yet.', fix: 'models', stage: 'tts' });
-  if ((input.includes('image') || input.includes('video')) && models.llm?.vision !== true) notes.push({ level: 'warn', text: 'Images and video are only understood by a language model with vision. Turn on “vision” for the model.', fix: 'models' });
-  if (input.includes('audio') || output.includes('audio')) notes.push({ level: 'info', text: 'Audio channels also use voice detection and the turn-taking settings in Defaults.' });
+  if (input.includes('audio') && !models.stt?.provider)
+    notes.push({ level: 'warn', text: 'Audio in needs a speech-to-text model. None is set yet.', fix: 'models', stage: 'stt' });
+  if (output.includes('audio') && !models.tts?.provider)
+    notes.push({ level: 'warn', text: 'Audio out needs a text-to-speech model. None is set yet.', fix: 'models', stage: 'tts' });
+  if ((input.includes('image') || input.includes('video')) && models.llm?.vision !== true)
+    notes.push({ level: 'warn', text: 'Images and video are only understood by a language model with vision. Turn on “vision” for the model.', fix: 'models' });
+  if (input.includes('audio') || output.includes('audio'))
+    notes.push({ level: 'info', text: 'Audio channels also use voice detection and the turn-taking settings in Defaults.' });
   return notes;
 }

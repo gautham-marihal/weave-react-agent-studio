@@ -20,13 +20,23 @@ export function scaledConfig(tools = 30, agents = 6) {
   const config = applyStarter(minimalConfig('scaled', 'Scaled'), 'support');
   config.connections = { ...(config.connections || {}), api: { type: 'http', base_url: 'https://api.example.com' } };
   const more = Array.from({ length: tools }, (_, i) => ({
-    id: `lookup_${i}`, type: 'http', connection: 'api', description: `Looks up record number ${i} when the caller asks about it`,
+    id: `lookup_${i}`,
+    type: 'http',
+    connection: 'api',
+    description: `Looks up record number ${i} when the caller asks about it`,
     request: { method: 'GET', path: `/records/${i}/{{args.record_id}}`, query: { v: '2' } },
     parameters: { type: 'object', required: ['record_id'], properties: { record_id: { type: 'string', description: 'The id of the record' } } },
-    result: { to_llm: ['found', 'summary'] }, timeout_s: 6,
+    result: { to_llm: ['found', 'summary'] },
+    timeout_s: 6,
   }));
   config.tools = [...(config.tools || []), ...more];
-  const extra = Array.from({ length: agents }, (_, i) => ({ id: `helper_${i}`, name: `Helper ${i}`, kind: 'specialist', instructions: { role: `Help with topic ${i}.` }, tools: more.slice(i * 3, i * 3 + 3).map((t) => t.id) }));
+  const extra = Array.from({ length: agents }, (_, i) => ({
+    id: `helper_${i}`,
+    name: `Helper ${i}`,
+    kind: 'specialist',
+    instructions: { role: `Help with topic ${i}.` },
+    tools: more.slice(i * 3, i * 3 + 3).map((t) => t.id),
+  }));
   config.agents = { ...config.agents, items: [...config.agents.items, ...extra] };
   return config;
 }
@@ -50,13 +60,22 @@ export function corpus(engine) {
   const out = [];
   const example = JSON.parse(readFileSync(new URL('../fixtures/agent-config.example.json', import.meta.url), 'utf8'));
   out.push({ name: 'the API’s example', source: 'example', config: example, valid: true });
-  STARTERS.forEach((starter) => out.push({ name: `starter ${starter.id}`, source: 'starter', config: applyStarter(minimalConfig(`s-${starter.id}`.slice(0, 30), starter.name || starter.id), starter.id), valid: true }));
+  STARTERS.forEach((starter) =>
+    out.push({
+      name: `starter ${starter.id}`,
+      source: 'starter',
+      config: applyStarter(minimalConfig(`s-${starter.id}`.slice(0, 30), starter.name || starter.id), starter.id),
+      valid: true,
+    }),
+  );
   out.push({ name: 'scaled: 30 tools, 6 more agents', source: 'scaled', config: scaledConfig(30, 6), valid: true });
   if (engine) out.push({ name: 'stress: every tool kind and channel', source: 'stress', config: stressConfig(engine), valid: false });
   if (process.env.CONFORMANCE_DIR) {
-    readdirSync(process.env.CONFORMANCE_DIR).filter((f) => f.endsWith('.json')).forEach((file) => {
-      out.push({ name: `dir ${file}`, source: 'dir', config: JSON.parse(readFileSync(join(process.env.CONFORMANCE_DIR, file), 'utf8')), valid: true });
-    });
+    readdirSync(process.env.CONFORMANCE_DIR)
+      .filter((f) => f.endsWith('.json'))
+      .forEach((file) => {
+        out.push({ name: `dir ${file}`, source: 'dir', config: JSON.parse(readFileSync(join(process.env.CONFORMANCE_DIR, file), 'utf8')), valid: true });
+      });
   }
   return out.map((entry) => ({ ...entry, config: clone(entry.config) }));
 }

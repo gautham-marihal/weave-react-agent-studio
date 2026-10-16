@@ -12,16 +12,28 @@ const find = (query, limit = 5) => searchSettings(index, query, limit);
 test('the index has every setting the schema has, each with a plain label and a place', () => {
   assert.ok(index.length > 1500, `a large index (${index.length})`);
   const names = new Set(index.map((e) => e.name));
-  ['timeout_s', 'top_k', 'voice_id', 'recording_notice', 'session_log', 'retention_days', 'http_port', 'dispatch_name'].forEach((name) => assert.ok(names.has(name), name));
+  ['timeout_s', 'top_k', 'voice_id', 'recording_notice', 'session_log', 'retention_days', 'http_port', 'dispatch_name'].forEach((name) =>
+    assert.ok(names.has(name), name),
+  );
   const bad = index.filter((e) => !e.label || /_/.test(e.label) || !e.screen || !e.where);
-  assert.deepEqual(bad.map((e) => e.trail.join('.')), [], 'every entry has a plain label and a screen of its own');
+  assert.deepEqual(
+    bad.map((e) => e.trail.join('.')),
+    [],
+    'every entry has a plain label and a screen of its own',
+  );
 });
 
 test('a setting is found by what a customer would call it', () => {
-  assert.ok(find('silent').some((e) => e.label === 'Nudge a silent caller'), 'among the first few');
+  assert.ok(
+    find('silent').some((e) => e.label === 'Nudge a silent caller'),
+    'among the first few',
+  );
   assert.equal(find('nudge')[0].trail.join('.'), 'defaults.conversation.inactivity.enabled');
   assert.match(find('interrupt')[0].where, /How it talks/);
-  assert.ok(find('recording').some((e) => e.label === 'Recording notice' && /About this agent/.test(e.where)), 'the recording notice and where it is');
+  assert.ok(
+    find('recording').some((e) => e.label === 'Recording notice' && /About this agent/.test(e.where)),
+    'the recording notice and where it is',
+  );
   assert.ok(find('retention').some((e) => /Keep for|Delete/i.test(e.label) || /retention_days/.test(e.name)));
 });
 

@@ -14,6 +14,20 @@ import CallsView from '../../src/studio/calls/CallsView.jsx';
 import MonitoringPage from '../../src/studio/monitoring/MonitoringPage.jsx';
 import TraceView from '../../src/studio/trace/TraceView.jsx';
 import { ValidationPanel } from '../../src/studio/ConfigTab.jsx';
+import AgentPage from '../../src/studio/newlayout/pages/AgentPage.jsx';
+import ListPage from '../../src/studio/newlayout/pages/ListPage.jsx';
+import HomePage from '../../src/studio/newlayout/pages/HomePage.jsx';
+import LanguagePicker from '../../src/studio/newlayout/pickers/LanguagePicker.jsx';
+import VoicePicker from '../../src/studio/newlayout/pickers/VoicePicker.jsx';
+import ModelPicker from '../../src/studio/newlayout/pickers/ModelPicker.jsx';
+import { FALLBACK_PROVIDERS } from '../../src/studio/models/catalog.js';
+import { PAGE_SECTIONS, SETTINGS_ELSEWHERE } from '../../src/studio/newlayout/pages.js';
+import TeamPage from '../../src/studio/team/TeamPage.jsx';
+import ShareAgentDrawer from '../../src/studio/team/ShareAgentDrawer.jsx';
+import FixCallDrawer from '../../src/studio/fixcall/FixCallDrawer.jsx';
+import CallersPanel from '../../src/studio/callers/CallersPanel.jsx';
+import GateStrip from '../../src/studio/release/GateStrip.jsx';
+import AgentNav from '../../src/studio/newlayout/AgentNav.jsx';
 import SmartSelect from '../../src/studio/SmartSelect.jsx';
 import { useSimulatedSession } from '../../src/studio/test/useSimulatedSession.js';
 import JourneyNav, { NextBar } from '../../src/studio/JourneyNav.jsx';
@@ -30,13 +44,77 @@ const SCREENS = {
   simple: (editor) => <SimpleConfig editor={editor} onShowJson={() => {}} onOpenAll={() => {}} />,
   scenarios: (editor, props) => <ScenariosTab botId="x" name="X" editor={editor} pollMs={props.pollMs} />,
   knowledge: (editor, props) => <KnowledgeTab botId="x" name="X" editor={editor} pollMs={props.pollMs} />,
-  calls: (editor, props) => <CallsView bots={props.bots || [{ id: 'x', name: 'X' }]} fixedBotId={props.fixedBotId || ''} editor={props.withEditor ? editor : null} />,
-  monitoring: (editor, props) => <MonitoringPage bots={props.bots || [{ id: 'x', name: 'X' }]} onOpenAgent={props.onOpenAgent || (() => {})} onOpenCall={props.onOpenCall || (() => {})} />,
-  validation: (editor, props) => <ValidationPanel editor={editor} folded={!!props.folded} onFold={() => {}} onJump={props.onJump || (() => {})} onApply={(next) => editor.setValue(next)} onOpenModels={props.onOpenModels || (() => {})} />,
-  smartselect: (editor, props) => <SmartSelect value={editor.parsed.value.picked ?? ''} options={props.options} ariaLabel="Pick one" action={!!props.action} placeholder={props.placeholder} onChange={(picked) => editor.setValue({ picked })} />,
+  calls: (editor, props) => (
+    <CallsView bots={props.bots || [{ id: 'x', name: 'X' }]} fixedBotId={props.fixedBotId || ''} editor={props.withEditor ? editor : null} />
+  ),
+  monitoring: (editor, props) => (
+    <MonitoringPage bots={props.bots || [{ id: 'x', name: 'X' }]} onOpenAgent={props.onOpenAgent || (() => {})} onOpenCall={props.onOpenCall || (() => {})} />
+  ),
+  validation: (editor, props) => (
+    <ValidationPanel
+      editor={editor}
+      folded={!!props.folded}
+      onFold={() => {}}
+      onJump={props.onJump || (() => {})}
+      onApply={(next) => editor.setValue(next)}
+      onOpenModels={props.onOpenModels || (() => {})}
+    />
+  ),
+  smartselect: (editor, props) => (
+    <SmartSelect
+      value={editor.parsed.value.picked ?? ''}
+      options={props.options}
+      ariaLabel="Pick one"
+      action={!!props.action}
+      placeholder={props.placeholder}
+      onChange={(picked) => editor.setValue({ picked })}
+    />
+  ),
   trace: (editor, props) => <TraceView records={props.records || []} live={!!props.live} />,
-  journey: (editor, props) => <><JourneyNav botId="acme" tab={props.tab || 'config'} live={!!props.live} /><NextBar botId="acme" tab={props.tab || 'config'} /><StatePill state={agentState(props.state || {})} /></>,
+  journey: (editor, props) => (
+    <>
+      <JourneyNav botId="acme" tab={props.tab || 'config'} live={!!props.live} />
+      <NextBar botId="acme" tab={props.tab || 'config'} />
+      <StatePill state={agentState(props.state || {})} />
+    </>
+  ),
   workflow: (editor) => <WorkflowTab editor={editor} botId="x" />,
+  agentpage: (editor) => <AgentPage editor={editor} onShowJson={() => {}} onOpenJson={() => {}} />,
+  listpage: (editor, props) => (
+    <ListPage title={props.title || 'Tools'} editor={editor} lists={props.lists} extras={props.extras || []} onShowJson={() => {}} onOpenJson={() => {}} />
+  ),
+  homepage: (editor, props) => (
+    <HomePage
+      botId="x"
+      name="X"
+      summary={props.summary || {}}
+      editor={editor}
+      scenarioCount={props.scenarioCount || 0}
+      onProblems={props.onProblems || (() => {})}
+      onDescribe={() => {}}
+      onTest={() => {}}
+    />
+  ),
+  languagepicker: (editor) => <LanguagePicker config={editor.parsed.value} set={editor.setValue} />,
+  voicepicker: (editor) => <VoicePicker config={editor.parsed.value} set={editor.setValue} />,
+  modelpicker: (editor, props) => <ModelPicker config={editor.parsed.value} set={editor.setValue} providers={props.providers || FALLBACK_PROVIDERS} live />,
+  settingsform: (editor) => <FormEditor editor={editor} only={PAGE_SECTIONS.settings} {...SETTINGS_ELSEWHERE} embedded />,
+  team: (_editor, props) => <TeamPage agents={props.agents || []} workspaceName="Acme" profile={{ fullName: 'Owner', email: 'owner@acme.com' }} />,
+  share: () => <ShareAgentDrawer botId="a" name="Acme Support" onClose={() => {}} onOpenTeam={() => {}} />,
+  fixcall: (editor, props) => (
+    <FixCallDrawer
+      botId="x"
+      facts={props.facts}
+      call={props.call || null}
+      events={props.events || []}
+      editor={editor}
+      onClose={() => {}}
+      onApplied={() => {}}
+    />
+  ),
+  callers: (editor) => <CallersPanel botId="x" name="Acme" editor={editor} />,
+  gatestrip: (editor) => <GateStrip botId="x" editor={editor} />,
+  agentnav: (editor, props) => <AgentNav botId="x" page={props.page || 'home'} counts={props.counts || {}} dots={props.dots || {}} />,
   assistant: (editor) => <AssistantTab editor={editor} botId="x" name="X" />,
   preview: (editor, props) => <PreviewScreen editor={editor} mode={props.mode || 'simulated'} locked={!!props.locked} />,
 };
@@ -51,11 +129,17 @@ function Host({ initial, onConfig, screen, props, report }) {
     report: report || null,
     dirty,
     saving: false,
-    save: async () => { setDirty(false); },
+    save: async () => {
+      setDirty(false);
+    },
     reload: () => {},
     meta: {},
     conflict: false,
-    setValue: (next) => { setConfig(next); setDirty(true); onConfig(next); },
+    setValue: (next) => {
+      setConfig(next);
+      setDirty(true);
+      onConfig(next);
+    },
   };
   return SCREENS[screen](editor, props);
 }
@@ -65,13 +149,37 @@ export async function mountScreen(screen, initial, { props = {}, report = null, 
   document.body.appendChild(container);
   const root = createRoot(container);
   const state = { config: initial };
-  await act(async () => { root.render(<Host initial={initial} onConfig={(next) => { state.config = next; }} screen={screen} props={props} report={report} />); });
-  for (let i = 0; i < 50 && !container.querySelector(ready); i += 1) await act(async () => { await new Promise((r) => setTimeout(r, 10)); });
+  await act(async () => {
+    root.render(
+      <Host
+        initial={initial}
+        onConfig={(next) => {
+          state.config = next;
+        }}
+        screen={screen}
+        props={props}
+        report={report}
+      />,
+    );
+  });
+  for (let i = 0; i < 50 && !container.querySelector(ready); i += 1)
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
   return {
     container,
-    get config() { return state.config; },
-    async wait(ms) { await act(async () => { await new Promise((r) => setTimeout(r, ms)); }); },
-    async unmount() { await act(async () => root.unmount()); container.remove(); },
+    get config() {
+      return state.config;
+    },
+    async wait(ms) {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, ms));
+      });
+    },
+    async unmount() {
+      await act(async () => root.unmount());
+      container.remove();
+    },
   };
 }
 

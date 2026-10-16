@@ -44,7 +44,14 @@ export function healthFrom({ config, report, tests, knowledge } = {}) {
   return { state, parts, checked };
 }
 
-export const healthTitle = (health) => (!health ? 'Not checked yet' : health.state === 'ok' ? `No problems found in: ${health.checked.join(', ')}` : health.state === 'unknown' ? 'Not checked yet' : health.parts.map((p) => p.text).join(', '));
+export const healthTitle = (health) =>
+  !health
+    ? 'Not checked yet'
+    : health.state === 'ok'
+      ? `No problems found in: ${health.checked.join(', ')}`
+      : health.state === 'unknown'
+        ? 'Not checked yet'
+        : health.parts.map((p) => p.text).join(', ');
 export const needsAttention = (health) => !!health && (health.state === 'bad' || health.state === 'warn');
 
 // The key a result is kept under: it changes when the draft is saved, so an edit asks again.

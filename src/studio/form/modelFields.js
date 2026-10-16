@@ -9,4 +9,3 @@ export function modelStageOf(path) {
   for (let i = path.length - 2; i >= 0; i -= 1) if (STAGES.includes(path[i])) return path[i];
   return null;
 }
-

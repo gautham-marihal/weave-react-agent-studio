@@ -97,9 +97,16 @@ const GOODBYE_ID = 'goodbye';
 const INACTIVITY_MESSAGES = [
   { id: 'still_there', text: 'Are you still there?' },
   { id: 'still_there_final', text: 'I’m still here whenever you’re ready. Is there anything else I can help with?' },
-  { id: 'inactivity_goodbye', text: 'I haven’t heard from you, so I’ll end the conversation now. Please get in touch again any time.', allow_interruptions: false },
+  {
+    id: 'inactivity_goodbye',
+    text: 'I haven’t heard from you, so I’ll end the conversation now. Please get in touch again any time.',
+    allow_interruptions: false,
+  },
 ];
-const CALLBACK_MESSAGE = { id: 'callback_line', text: 'I’m sorry, I can’t put you through to a person from here right now. Please get in touch with us again a little later.' };
+const CALLBACK_MESSAGE = {
+  id: 'callback_line',
+  text: 'I’m sorry, I can’t put you through to a person from here right now. Please get in touch with us again a little later.',
+};
 const TRANSFER_ID = 'human_support';
 const ESCALATE_ID = 'escalate_to_human';
 
@@ -108,13 +115,22 @@ export const INACTIVITY = {
   enabled: true,
   timeout_s: 10,
   max_nudges: 2,
-  nudges: [{ type: 'say', text: { message: 'still_there' } }, { type: 'say', text: { message: 'still_there_final' } }],
+  nudges: [
+    { type: 'say', text: { message: 'still_there' } },
+    { type: 'say', text: { message: 'still_there_final' } },
+  ],
   on_exhausted: { do: [{ type: 'end_call', say: { message: 'inactivity_goodbye' } }] },
 };
 
 // Does any channel that is switched on carry voice? (then a recording notice is the usual courtesy)
-export const usesVoice = (config) => (Array.isArray(config?.channels) ? config.channels : []).some((channel) => channel && channel.enabled !== false
-  && (['sip_voice', 'web_voice'].includes(channel.type) || ['input', 'output'].some((side) => Array.isArray(channel.modalities?.[side]) && channel.modalities[side].includes('audio'))));
+export const usesVoice = (config) =>
+  (Array.isArray(config?.channels) ? config.channels : []).some(
+    (channel) =>
+      channel &&
+      channel.enabled !== false &&
+      (['sip_voice', 'web_voice'].includes(channel.type) ||
+        ['input', 'output'].some((side) => Array.isArray(channel.modalities?.[side]) && channel.modalities[side].includes('audio'))),
+  );
 
 const upsertById = (list, entries) => [...(Array.isArray(list) ? list : []).filter((item) => !entries.some((entry) => entry.id === item?.id)), ...entries];
 
@@ -144,7 +160,13 @@ export function applyStarter(config, starterId) {
   // How the agent says goodbye: a message, and the built-in end_call tool that plays it.
   const messages = [{ id: GOODBYE_ID, text: starter.goodbye }];
   const tools = Array.isArray(next.tools) ? next.tools.filter((t) => t?.id !== 'end_call') : [];
-  tools.push({ id: 'end_call', type: 'builtin', builtin: 'end_call', description: 'Ends the conversation. Use it after saying goodbye, when the person has nothing more to ask.', params: { say: { message: GOODBYE_ID } } });
+  tools.push({
+    id: 'end_call',
+    type: 'builtin',
+    builtin: 'end_call',
+    description: 'Ends the conversation. Use it after saying goodbye, when the person has nothing more to ask.',
+    params: { say: { message: GOODBYE_ID } },
+  });
   const offered = ['end_call'];
 
   // A silent caller is nudged, then the call ends. A configuration that already handles it is left alone.
@@ -176,13 +198,29 @@ export function addPersonHandoff(config) {
   const messages = [];
   if (!tools.some((t) => t?.id === ESCALATE_ID)) {
     messages.push(CALLBACK_MESSAGE);
-    tools.push({ id: ESCALATE_ID, type: 'builtin', builtin: 'transfer_or_callback', description: 'Use when the caller asks for a person, or you cannot help them.',
-      params: { transfer: TRANSFER_ID, fallback: [{ type: 'say', text: { message: CALLBACK_MESSAGE.id } }] } });
+    tools.push({
+      id: ESCALATE_ID,
+      type: 'builtin',
+      builtin: 'transfer_or_callback',
+      description: 'Use when the caller asks for a person, or you cannot help them.',
+      params: { transfer: TRANSFER_ID, fallback: [{ type: 'say', text: { message: CALLBACK_MESSAGE.id } }] },
+    });
   }
   next.tools = tools;
   const telephony = next.telephony || {};
   if (!(Array.isArray(telephony.transfers) && telephony.transfers.some((t) => t?.id === TRANSFER_ID))) {
-    next.telephony = { ...telephony, transfers: [...(telephony.transfers || []), { id: TRANSFER_ID, description: 'A person to take over. Add the number to transfer to; until then the callers hear the fallback line.', method: 'sip_refer', target: '' }] };
+    next.telephony = {
+      ...telephony,
+      transfers: [
+        ...(telephony.transfers || []),
+        {
+          id: TRANSFER_ID,
+          description: 'A person to take over. Add the number to transfer to; until then the callers hear the fallback line.',
+          method: 'sip_refer',
+          target: '',
+        },
+      ],
+    };
   }
   if (messages.length) next.messages = upsertById(next.messages, messages);
   const items = next.agents?.items;

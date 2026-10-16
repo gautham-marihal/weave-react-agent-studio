@@ -12,14 +12,27 @@ const speakerOf = (role) => SPEAKER[String(role || '').toLowerCase()] || (role ?
 export default function TranscriptView({ botId, callId, active = true }) {
   const transcript = useAsync((signal) => (active ? api.getTranscript(botId, callId, { signal }) : Promise.resolve(null)), [botId, callId, active]);
   const turns = Array.isArray(transcript.data?.turns) ? transcript.data.turns : [];
-  if (transcript.loading && !transcript.data) return <p className="stMuted" role="status">Loading the conversation…</p>;
-  if (transcript.error) return <Notice kind="error" title="The conversation couldn’t be read">{transcript.error.message || 'Something went wrong.'}</Notice>;
+  if (transcript.loading && !transcript.data)
+    return (
+      <p className="stMuted" role="status">
+        Loading the conversation…
+      </p>
+    );
+  if (transcript.error)
+    return (
+      <Notice kind="error" title="The conversation couldn’t be read">
+        {transcript.error.message || 'Something went wrong.'}
+      </Notice>
+    );
   if (!turns.length) return <p className="stFEmpty">Nobody said anything in this call.</p>;
   return (
     <ol className="clTranscript" aria-label="The conversation">
       {turns.map((turn, index) => (
         <li key={index} className={`clTurn ${String(turn.role || '').toLowerCase() === 'user' || turn.role === 'caller' ? 'caller' : 'agent'}`}>
-          <header><strong>{speakerOf(turn.role)}</strong>{turn.at && <time dateTime={turn.at}>{formatWhen(turn.at)}</time>}</header>
+          <header>
+            <strong>{speakerOf(turn.role)}</strong>
+            {turn.at && <time dateTime={turn.at}>{formatWhen(turn.at)}</time>}
+          </header>
           <p>{typeof turn.text === 'string' ? turn.text : JSON.stringify(turn.text)}</p>
         </li>
       ))}

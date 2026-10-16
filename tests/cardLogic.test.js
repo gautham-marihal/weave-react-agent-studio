@@ -52,7 +52,6 @@ test('a card is titled by what the item calls itself, with a short hint', () => 
   assert.equal(summarize({ text: { message: 'goodbye' }, id: 'm' }, 0).title, 'm');
 });
 
-
 import { carryOver, matchesDiscriminator } from '../src/studio/form/cardLogic.js';
 
 test('a value that carries its kind marker is that kind even when required fields are missing', () => {
@@ -70,7 +69,16 @@ test('a value that carries its kind marker is that kind even when required field
 test('switching kind keeps what the kinds share, in the new kind’s order, and drops what is only the old kind’s', () => {
   const branches = engine.branchesOf(engine.flatten(schema.$defs.tool));
   const builtin = branches.find((b) => engine.branchLabel(b, 0) === 'Built-in');
-  const old = { id: 'lookup', type: 'http', name: 'look_up', description: 'Finds it', connection: 'c', request: { method: 'GET', path: '/' }, parameters: { type: 'object', properties: {} }, channels: ['web'] };
+  const old = {
+    id: 'lookup',
+    type: 'http',
+    name: 'look_up',
+    description: 'Finds it',
+    connection: 'c',
+    request: { method: 'GET', path: '/' },
+    parameters: { type: 'object', properties: {} },
+    channels: ['web'],
+  };
   const next = carryOver(engine, old, builtin, engine.defaultFor(builtin));
   assert.equal(next.id, 'lookup');
   assert.equal(next.description, 'Finds it');

@@ -16,10 +16,16 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
   return (
     <div className="scOutcome">
       <p className="scVerdict">{resultSummary(result)}</p>
-      {(() => { const tokens = tokensOf(result); return tokens ? <p className="stMuted scUsage">The model used {tokenWords(tokens)}.</p> : null; })()}
+      {(() => {
+        const tokens = tokensOf(result);
+        return tokens ? <p className="stMuted scUsage">The model used {tokenWords(tokens)}.</p> : null;
+      })()}
 
       {unmocked.length > 0 && (
-        <Notice kind="warn" title={unmocked.length === 1 ? 'The bot made a request that no mock answered' : `The bot made ${unmocked.length} requests that no mock answered`}>
+        <Notice
+          kind="warn"
+          title={unmocked.length === 1 ? 'The bot made a request that no mock answered' : `The bot made ${unmocked.length} requests that no mock answered`}
+        >
           <p>A scenario never calls a real API. A request no mock matches is answered with a 404, which is the most common reason a scenario fails.</p>
           <ul className="scUnmocked">
             {unmocked.map((request, i) => {
@@ -28,7 +34,11 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
               return (
                 <li key={`${key}-${i}`}>
                   <code>{key.trim()}</code>
-                  {onAddMock && <button type="button" className="quietButton" disabled={added} onClick={() => onAddMock(request)}>{added ? 'Mock added: run it again' : 'Add a mock'}</button>}
+                  {onAddMock && (
+                    <button type="button" className="quietButton" disabled={added} onClick={() => onAddMock(request)}>
+                      {added ? 'Mock added: run it again' : 'Add a mock'}
+                    </button>
+                  )}
                 </li>
               );
             })}
@@ -52,17 +62,41 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
 
       {steps.filter((s) => s.kind !== 'mock').length > 0 && (
         <ul className="scNext" aria-label="What to do next">
-          {steps.filter((s) => s.kind !== 'mock').map((s, i) => <li key={i}>{s.text}</li>)}
-          {onEdit && <li><button type="button" className="stLink" onClick={onEdit}>Edit this scenario</button></li>}
+          {steps
+            .filter((s) => s.kind !== 'mock')
+            .map((s, i) => (
+              <li key={i}>{s.text}</li>
+            ))}
+          {onEdit && (
+            <li>
+              <button type="button" className="stLink" onClick={onEdit}>
+                Edit this scenario
+              </button>
+            </li>
+          )}
         </ul>
       )}
 
-      {result.notes.length > 0 && <ul className="scNotes">{result.notes.map((n) => <li key={n}>{n}</li>)}</ul>}
+      {result.notes.length > 0 && (
+        <ul className="scNotes">
+          {result.notes.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
+      )}
 
       {(result.final_agent || Object.keys(result.final_state).length > 0) && (
         <p className="scFinal">
-          {result.final_agent && <>Ended with <strong>{result.final_agent}</strong> in charge. </>}
-          {Object.keys(result.final_state).length > 0 && <>Final state: <code>{JSON.stringify(result.final_state)}</code></>}
+          {result.final_agent && (
+            <>
+              Ended with <strong>{result.final_agent}</strong> in charge.{' '}
+            </>
+          )}
+          {Object.keys(result.final_state).length > 0 && (
+            <>
+              Final state: <code>{JSON.stringify(result.final_state)}</code>
+            </>
+          )}
         </p>
       )}
 
@@ -70,8 +104,26 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
         <details className="scDetail">
           <summary>API requests ({result.http.length})</summary>
           <table className="scTable">
-            <thead><tr><th>Request</th><th>Status</th><th>Answered by</th></tr></thead>
-            <tbody>{result.http.map((h, i) => <tr key={i} className={h.status >= 400 ? 'bad' : ''}><td><code>{h.method} {h.path}</code></td><td>{h.status}</td><td>{h.mocked ? 'a mock' : 'nothing'}</td></tr>)}</tbody>
+            <thead>
+              <tr>
+                <th>Request</th>
+                <th>Status</th>
+                <th>Answered by</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.http.map((h, i) => (
+                <tr key={i} className={h.status >= 400 ? 'bad' : ''}>
+                  <td>
+                    <code>
+                      {h.method} {h.path}
+                    </code>
+                  </td>
+                  <td>{h.status}</td>
+                  <td>{h.mocked ? 'a mock' : 'nothing'}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </details>
       )}
@@ -79,7 +131,20 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
       {result.tools.length > 0 && (
         <details className="scDetail">
           <summary>Tool calls ({result.tools.length})</summary>
-          <ul className="scTools">{result.tools.map((t, i) => <li key={i}><code>{t.tool}({t.args && Object.keys(t.args).length ? JSON.stringify(t.args) : ''})</code>{t.error ? <span className="scErr"> failed: {String(t.error)}</span> : t.output != null ? <small> → {JSON.stringify(t.output).slice(0, 120)}</small> : null}</li>)}</ul>
+          <ul className="scTools">
+            {result.tools.map((t, i) => (
+              <li key={i}>
+                <code>
+                  {t.tool}({t.args && Object.keys(t.args).length ? JSON.stringify(t.args) : ''})
+                </code>
+                {t.error ? (
+                  <span className="scErr"> failed: {String(t.error)}</span>
+                ) : t.output != null ? (
+                  <small> → {JSON.stringify(t.output).slice(0, 120)}</small>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </details>
       )}
 
@@ -88,11 +153,19 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
           <summary>The trace ({result.events.length} records)</summary>
           <TraceView records={result.events} compact title="What the runner did" />
         </details>
-      ) : result.transcript.length > 0 && (
-        <details className="scDetail">
-          <summary>The conversation ({result.transcript.length} messages)</summary>
-          <ol className="scTranscriptList">{result.transcript.map((m, i) => <li key={i} className={m.role}><b>{m.role === 'user' || m.role === 'caller' ? 'Caller' : 'Agent'}</b> {m.text}</li>)}</ol>
-        </details>
+      ) : (
+        result.transcript.length > 0 && (
+          <details className="scDetail">
+            <summary>The conversation ({result.transcript.length} messages)</summary>
+            <ol className="scTranscriptList">
+              {result.transcript.map((m, i) => (
+                <li key={i} className={m.role}>
+                  <b>{m.role === 'user' || m.role === 'caller' ? 'Caller' : 'Agent'}</b> {m.text}
+                </li>
+              ))}
+            </ol>
+          </details>
+        )
       )}
     </div>
   );

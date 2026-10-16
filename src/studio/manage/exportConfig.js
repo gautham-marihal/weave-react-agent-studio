@@ -35,8 +35,12 @@ export async function copyText(text) {
     area.style.opacity = '0';
     document.body.appendChild(area);
     area.select();
-    let ok = false;
-    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    let ok;
+    try {
+      ok = document.execCommand('copy');
+    } catch {
+      ok = false;
+    }
     area.remove();
     return ok;
   }

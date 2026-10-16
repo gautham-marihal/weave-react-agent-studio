@@ -11,10 +11,50 @@ import { renderTemplate } from '../studio/form/promptPreview.js';
 import { baseOf, primaryOf } from '../studio/form/messages.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-const STOP = new Set(['the', 'and', 'for', 'with', 'from', 'that', 'this', 'when', 'what', 'your', 'their', 'about', 'tool', 'use', 'user', 'caller', 'customer', 'asks', 'ask', 'get', 'gets', 'give', 'into', 'have', 'they', 'them', 'will', 'can', 'are', 'its', 'not', 'only']);
-const words = (text) => String(text || '').toLowerCase().match(/[a-z]{4,}/g)?.filter((w) => !STOP.has(w)) || [];
+const STOP = new Set([
+  'the',
+  'and',
+  'for',
+  'with',
+  'from',
+  'that',
+  'this',
+  'when',
+  'what',
+  'your',
+  'their',
+  'about',
+  'tool',
+  'use',
+  'user',
+  'caller',
+  'customer',
+  'asks',
+  'ask',
+  'get',
+  'gets',
+  'give',
+  'into',
+  'have',
+  'they',
+  'them',
+  'will',
+  'can',
+  'are',
+  'its',
+  'not',
+  'only',
+]);
+const words = (text) =>
+  String(text || '')
+    .toLowerCase()
+    .match(/[a-z]{4,}/g)
+    ?.filter((w) => !STOP.has(w)) || [];
 // Does what the caller said share a word (by its first four letters: bill, bills, billing) with these words?
-const shares = (said, candidates) => { const stems = new Set(words(said).map((w) => w.slice(0, 4))); return candidates.some((w) => stems.has(w.slice(0, 4))); };
+const shares = (said, candidates) => {
+  const stems = new Set(words(said).map((w) => w.slice(0, 4)));
+  return candidates.some((w) => stems.has(w.slice(0, 4)));
+};
 
 // A message's text: a plain string, or the entry for the primary language (else the first one).
 function textOf(message, config) {
@@ -29,11 +69,18 @@ function textOf(message, config) {
 // What a `say` value (a text, or a { message } reference) comes to.
 export function speechText(speech, config) {
   if (typeof speech === 'string') return speech;
-  if (isObj(speech) && speech.message) return textOf(list(config?.messages).find((m) => m?.id === speech.message), config);
+  if (isObj(speech) && speech.message)
+    return textOf(
+      list(config?.messages).find((m) => m?.id === speech.message),
+      config,
+    );
   return '';
 }
 
-const DEFAULT_STATE = (config) => Object.fromEntries(Object.entries(isObj(config?.state?.variables) ? config.state.variables : {}).map(([name, v]) => [name, isObj(v) ? v.default ?? null : null]));
+const DEFAULT_STATE = (config) =>
+  Object.fromEntries(
+    Object.entries(isObj(config?.state?.variables) ? config.state.variables : {}).map(([name, v]) => [name, isObj(v) ? (v.default ?? null) : null]),
+  );
 
 export function createSimulatedAgent(config, { channelId, state: startingState } = {}) {
   const agents = list(config?.agents?.items);
@@ -46,8 +93,15 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
 
   const persona = isObj(config?.persona) ? config.persona : {};
   const name = () => persona.name || current?.name || 'the agent';
-  const fill = (text) => renderTemplate(text, { ...config, state: { variables: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { type: 'string', default: v }])) } }).text.replace(/‹[^›]*›/g, '').replace(/\s{2,}/g, ' ').trim();
-  const offered = () => list(current?.tools).map((id) => list(config?.tools).find((t) => t?.id === id)).filter(Boolean);
+  const fill = (text) =>
+    renderTemplate(text, { ...config, state: { variables: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { type: 'string', default: v }])) } })
+      .text.replace(/‹[^›]*›/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  const offered = () =>
+    list(current?.tools)
+      .map((id) => list(config?.tools).find((t) => t?.id === id))
+      .filter(Boolean);
   const isVoice = () => !!channel && (['sip_voice', 'web_voice'].includes(channel.type) || list(channel.modalities?.output).includes('audio'));
 
   // Runs the `set_state` and `say` steps of a tool's effects whose condition is plainly true (no condition, or a state/arg test we can read).
@@ -62,8 +116,13 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
       list(rule.do).forEach((action) => {
         if (action?.type === 'set_state' && isObj(action.values)) Object.assign(state, action.values);
         else if (action?.type === 'say') said.push(fill(speechText(action.text, config)));
-        else if (action?.type === 'end_call') { ended = true; if (action.say) said.push(fill(speechText(action.say, config))); }
-        else if (action?.type === 'handoff' && action.to) { const next = agents.find((a) => a?.id === action.to); if (next) current = next; }
+        else if (action?.type === 'end_call') {
+          ended = true;
+          if (action.say) said.push(fill(speechText(action.say, config)));
+        } else if (action?.type === 'handoff' && action.to) {
+          const next = agents.find((a) => a?.id === action.to);
+          if (next) current = next;
+        }
       });
     });
     return said.filter(Boolean);
@@ -71,7 +130,8 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
 
   function greeting() {
     const out = [];
-    if (isVoice() && persona.disclosures?.recording_notice) out.push({ role: 'assistant', text: persona.disclosures.recording_notice, simulated: true, kind: 'notice' });
+    if (isVoice() && persona.disclosures?.recording_notice)
+      out.push({ role: 'assistant', text: persona.disclosures.recording_notice, simulated: true, kind: 'notice' });
     const say = channel?.greeting?.say;
     const text = fill(speechText(say, config)) || `Hello, I’m ${name()}.`;
     out.push({ role: 'assistant', text, simulated: true });
@@ -82,9 +142,19 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
     const said = String(userText || '').trim();
     const lower = said.toLowerCase();
     const out = { messages: [], toolCalls: [], handoff: null, ended: false };
-    const speak = (text) => { if (text) out.messages.push({ role: 'assistant', text, simulated: true }); };
-    const call = (tool, args = {}) => { const record = { tool: tool.name || tool.id, id: tool.id, args }; calls.push(record); out.toolCalls.push(record); };
-    if (ended) { speak('The conversation has ended in this simulation.'); out.ended = true; return out; }
+    const speak = (text) => {
+      if (text) out.messages.push({ role: 'assistant', text, simulated: true });
+    };
+    const call = (tool, args = {}) => {
+      const record = { tool: tool.name || tool.id, id: tool.id, args };
+      calls.push(record);
+      out.toolCalls.push(record);
+    };
+    if (ended) {
+      speak('The conversation has ended in this simulation.');
+      out.ended = true;
+      return out;
+    }
     const tools = offered();
 
     // goodbye
@@ -93,7 +163,8 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
       if (end) {
         call(end);
         speak(fill(speechText(end.params?.say, config)) || 'Goodbye.');
-        ended = true; out.ended = true;
+        ended = true;
+        out.ended = true;
         return out;
       }
       speak('Goodbye. (This agent has no end-call tool, so in a real call it could not hang up.)');
@@ -130,14 +201,21 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
     // a tool whose name or description matches what was said
     const tool = tools.find((t) => !t.builtin && shares(lower, words(`${t.id} ${t.name || ''} ${t.description || ''}`)));
     if (tool) {
-      call(tool, Object.fromEntries(Object.keys(isObj(tool.parameters?.properties) ? tool.parameters.properties : {}).map((k) => [k, `‹${k} from the caller›`])));
+      call(
+        tool,
+        Object.fromEntries(Object.keys(isObj(tool.parameters?.properties) ? tool.parameters.properties : {}).map((k) => [k, `‹${k} from the caller›`])),
+      );
       const extra = applyEffects(tool);
-      speak(extra.length ? extra.join(' ') : `I’d look that up with ${tool.name || tool.id}. (No request is made in a simulation, so there is no real answer.)`);
+      speak(
+        extra.length ? extra.join(' ') : `I’d look that up with ${tool.name || tool.id}. (No request is made in a simulation, so there is no real answer.)`,
+      );
       if (ended) out.ended = true;
       return out;
     }
 
-    const role = String(current?.instructions?.role || '').replace(/\s+/g, ' ').trim();
+    const role = String(current?.instructions?.role || '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const snippet = role ? role.split(/\s+/).slice(0, 14).join(' ') + (role.split(/\s+/).length > 14 ? '…' : '') : 'no instructions yet';
     speak(`I’m ${name()}. This is a simulated reply: a real agent would answer using its instructions (“${snippet}”).`);
     return out;
@@ -146,11 +224,23 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
   return {
     greeting,
     reply,
-    get name() { return name(); },
-    get channel() { return channel; },
-    get currentAgent() { return current?.id || null; },
-    get state() { return { ...state }; },
-    get toolCalls() { return [...calls]; },
-    get ended() { return ended; },
+    get name() {
+      return name();
+    },
+    get channel() {
+      return channel;
+    },
+    get currentAgent() {
+      return current?.id || null;
+    },
+    get state() {
+      return { ...state };
+    },
+    get toolCalls() {
+      return [...calls];
+    },
+    get ended() {
+      return ended;
+    },
   };
 }

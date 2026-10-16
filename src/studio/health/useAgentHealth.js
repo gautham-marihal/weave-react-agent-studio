@@ -26,41 +26,75 @@ export function useAgentHealth(visibleBots, { enabled = true } = {}) {
   const queue = useRef([]);
   const running = useRef(0);
   const alive = useRef(true);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   const pump = useCallback(() => {
     while (running.current < AT_A_TIME && queue.current.length) {
       const bot = queue.current.shift();
       const key = healthKey(bot);
       running.current += 1;
-      read(bot).then((answer) => { cache.set(key, answer); lastById.set(bot.id, answer); }, () => { cache.set(key, { tags: [], owner: '', health: { state: 'unknown', parts: [], checked: [] }, failed: true }); })
-        .finally(() => { inflight.delete(key); running.current -= 1; if (alive.current) setTick((n) => n + 1); pump(); });
+      read(bot)
+        .then(
+          (answer) => {
+            cache.set(key, answer);
+            lastById.set(bot.id, answer);
+          },
+          () => {
+            cache.set(key, { tags: [], owner: '', health: { state: 'unknown', parts: [], checked: [] }, failed: true });
+          },
+        )
+        .finally(() => {
+          inflight.delete(key);
+          running.current -= 1;
+          if (alive.current) setTick((n) => n + 1);
+          pump();
+        });
     }
   }, []);
 
-  const request = useCallback((bots) => {
-    bots.forEach((bot) => {
-      const key = healthKey(bot);
-      if (cache.has(key) || inflight.has(key)) return;
-      inflight.add(key);
-      queue.current.push(bot);
-    });
-    pump();
-  }, [pump]);
+  const request = useCallback(
+    (bots) => {
+      bots.forEach((bot) => {
+        const key = healthKey(bot);
+        if (cache.has(key) || inflight.has(key)) return;
+        inflight.add(key);
+        queue.current.push(bot);
+      });
+      pump();
+    },
+    [pump],
+  );
 
   const key = (visibleBots || []).map(healthKey).join('|');
-  useEffect(() => { if (enabled && visibleBots?.length) request(visibleBots); }, [key, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (enabled && visibleBots?.length) request(visibleBots);
+  }, [key, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const meta = {};
-  (visibleBots || []).forEach((bot) => { const answer = cache.get(healthKey(bot)) || lastById.get(bot.id); if (answer) meta[bot.id] = answer; });
+  (visibleBots || []).forEach((bot) => {
+    const answer = cache.get(healthKey(bot)) || lastById.get(bot.id);
+    if (answer) meta[bot.id] = answer;
+  });
   return { meta, request, pending: inflight.size };
 }
 
 // every agent known so far, not only the ones on the page (for the tag and owner filters)
 export function knownMeta(bots) {
   const meta = {};
-  (bots || []).forEach((bot) => { const answer = cache.get(healthKey(bot)) || lastById.get(bot.id); if (answer) meta[bot.id] = answer; });
+  (bots || []).forEach((bot) => {
+    const answer = cache.get(healthKey(bot)) || lastById.get(bot.id);
+    if (answer) meta[bot.id] = answer;
+  });
   return meta;
 }
 
-export function forgetHealth() { cache.clear(); lastById.clear(); inflight.clear(); }
+export function forgetHealth() {
+  cache.clear();
+  lastById.clear();
+  inflight.clear();
+}

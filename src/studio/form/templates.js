@@ -43,7 +43,14 @@ export function findTemplates(text) {
     const expr = match[1];
     const head = expr.split('|')[0].trim();
     const parts = /^([A-Za-z_][A-Za-z0-9_]*)(?:\.([A-Za-z_][A-Za-z0-9_-]*))?/.exec(head);
-    found.push({ start: match.index, end: match.index + match[0].length, expr: expr.trim(), root: parts ? parts[1] : '', name: parts && parts[2] ? parts[2] : '', text: match[0] });
+    found.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      expr: expr.trim(),
+      root: parts ? parts[1] : '',
+      name: parts && parts[2] ? parts[2] : '',
+      text: match[0],
+    });
   }
   return found;
 }
@@ -85,16 +92,27 @@ export const argNamesOf = (tool) => (isObj(tool?.parameters?.properties) ? Objec
 export function templateProblems(text, scope) {
   const problems = [];
   findTemplates(text).forEach((t) => {
-    if (!t.root) { problems.push({ ...t, severity: 'hint', reason: 'Empty or unreadable template.' }); return; }
+    if (!t.root) {
+      problems.push({ ...t, severity: 'hint', reason: 'Empty or unreadable template.' });
+      return;
+    }
     if (!scope.roots.includes(t.root)) {
       if (scope.anyRoot) return;
-      problems.push({ ...t, severity: 'hint', reason: `“${t.root}” isn’t a name this config offers here (${scope.roots.slice(0, 4).join(', ')}…). If the runtime supplies it in this place, ignore this; the server checks it when you save.` });
+      problems.push({
+        ...t,
+        severity: 'hint',
+        reason: `“${t.root}” isn’t a name this config offers here (${scope.roots.slice(0, 4).join(', ')}…). If the runtime supplies it in this place, ignore this; the server checks it when you save.`,
+      });
       return;
     }
     const known = scope.names[t.root];
     if (Array.isArray(known) && t.name && !known.includes(t.name)) {
       const where = t.root === 'state' ? 'a state variable' : t.root === 'const' ? 'a constant' : 'an argument of this tool';
-      problems.push({ ...t, severity: 'hint', reason: `“${t.name}” isn’t ${where}${known.length ? ` (there is ${known.slice(0, 5).join(', ')}${known.length > 5 ? '…' : ''})` : ' (none are defined yet)'}.` });
+      problems.push({
+        ...t,
+        severity: 'hint',
+        reason: `“${t.name}” isn’t ${where}${known.length ? ` (there is ${known.slice(0, 5).join(', ')}${known.length > 5 ? '…' : ''})` : ' (none are defined yet)'}.`,
+      });
     }
   });
   return problems;
@@ -150,7 +168,12 @@ export function isTemplateString(path, shape, value) {
 // The prompt the model is given is made of these: they get a word count.
 export const isPromptPath = (path) => Array.isArray(path) && (path.includes('instructions') || path[path.length - 1] === 'instructions_append');
 
-export const wordCount = (text) => (String(text ?? '').trim().match(/\S+/g) || []).length;
+export const wordCount = (text) =>
+  (
+    String(text ?? '')
+      .trim()
+      .match(/\S+/g) || []
+  ).length;
 
 // Which tool (if any) a field sits inside, so `args` names are known there, and which roots this place adds (PLACE_ROOTS).
 export function scopeAt(config, path) {

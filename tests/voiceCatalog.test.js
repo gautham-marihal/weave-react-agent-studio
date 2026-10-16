@@ -8,8 +8,10 @@ test('every voice has a well-formed id for its provider, a known gender, and no 
   VOICE_CATALOG.forEach((v) => {
     assert.ok(['Female', 'Male'].includes(v.gender), `${v.name}: gender ${v.gender}`);
     if (v.provider === 'ElevenLabs') assert.match(v.voiceId, /^[A-Za-z0-9]{20}$/, `${v.name}: an ElevenLabs id is 20 letters and digits`);
-    if (v.provider === 'Cartesia') assert.match(v.voiceId, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, `${v.name}: a Cartesia id is a UUID`);
-    assert.ok(!seen.has(v.voiceId), `${v.name}: duplicate id`); seen.add(v.voiceId);
+    if (v.provider === 'Cartesia')
+      assert.match(v.voiceId, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, `${v.name}: a Cartesia id is a UUID`);
+    assert.ok(!seen.has(v.voiceId), `${v.name}: duplicate id`);
+    seen.add(v.voiceId);
     assert.ok(!seen.has(v.id) || true);
   });
   assert.equal(new Set(VOICE_CATALOG.map((v) => v.id)).size, VOICE_CATALOG.length, 'catalogue ids are unique');

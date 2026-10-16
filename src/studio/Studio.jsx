@@ -14,7 +14,18 @@ export default function Studio({ profile, onRecordSession, readinessRuns, onReco
   // Saves, publishes and deploys are attributed to this name. Set during render (it is idempotent) so it
   // is in place before any child sends its first request; an effect would run too late.
   setApiUser(profile?.fullName || profile?.email || '');
-  return route.view === 'bot'
-    ? <BotWorkspace key={route.botId} botId={route.botId} tab={route.tab} params={route.params} onRecordSession={onRecordSession} readinessRuns={readinessRuns} onRecordReadiness={onRecordReadiness} />
-    : <BotsPage route={route} />;
+  return route.view === 'bot' ? (
+    <BotWorkspace
+      key={route.botId}
+      botId={route.botId}
+      tab={route.tab}
+      bare={route.bare}
+      params={route.params}
+      onRecordSession={onRecordSession}
+      readinessRuns={readinessRuns}
+      onRecordReadiness={onRecordReadiness}
+    />
+  ) : (
+    <BotsPage route={route} />
+  );
 }

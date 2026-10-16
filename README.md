@@ -36,16 +36,16 @@ The agent's tabs follow the order of the work, in four stages (`src/studio/journ
 Each stage says what question it answers, the line under the agent's name says where it stands (state, tests, where it is live, calls today),
 and every tab ends with a **Next: …** bar, so the whole path can be walked with that button. Every old link (`#/bots/{id}/deploy`) still works.
 
-| Stage | Tab | What you can do |
-|---|---|---|
-| **Build** | **Config** | Edit the draft in **Simple** (six cards in the customer's words), **All settings** (the whole schema, grouped by task, with plain labels) or raw JSON (offered once **Technical names** is on, so a customer's first screen has no jargon), with an optional **preview** beside it. Validation runs as you type (`POST /validate`); every problem names the setting by its label and offers a fix where one is certain. Save uses revision locking and handles a conflict. |
-| | **Knowledge** | Upload the files a knowledge base reads, build its index (a job you can watch), try a search and see each passage's score and what the model would be shown. See "Knowledge" below. |
-| **Test** | **Test** | Start a real conversation (`POST /sessions`, then LiveKit): chat, voice, camera/screen/picture input when the channel has it, and the forms the agent asks for, with a **live trace** of what the agent did beside it. "Save as a scenario" turns a conversation into a test. Only web chat and web voice channels can be tried here; a phone-only agent says so. |
-| | **Scenarios** | Write test conversations, run them on the **server's real runner** and see which fail and why. See "Test scenarios" below. |
-| | **Checks** | The readiness checks: the saved draft or a published version read against everyday situations (a greeting, a way to end the call, reaching a person). No conversation is run. Kept in this browser. |
-| **Release** | **Versions** | List published versions, see whether the tests passed on each **exact** version, compare any two (or the draft) with `GET /diff`, restore one as the draft. |
-| | **Deploy** | See what runs in each environment; the **release checklist** ("is it safe to put this live?") for the version, including where conversations are processed, what is kept about each call and whether callers are told they may be recorded; deploy it (production asks twice), roll back, follow a `pending` deployment, read the history. |
-| **Monitor** | **Calls** | This agent's calls (real callers and test conversations) with filters, and a trace of what happened in each. |
+| Stage       | Tab           | What you can do                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Build**   | **Config**    | Edit the draft in **Simple** (six cards in the customer's words), **All settings** (the whole schema, grouped by task, with plain labels) or raw JSON (offered once **Technical names** is on, so a customer's first screen has no jargon), with an optional **preview** beside it. Validation runs as you type (`POST /validate`); every problem names the setting by its label and offers a fix where one is certain. Save uses revision locking and handles a conflict. |
+|             | **Knowledge** | Upload the files a knowledge base reads, build its index (a job you can watch), try a search and see each passage's score and what the model would be shown. See "Knowledge" below.                                                                                                                                                                                                                                                                                        |
+| **Test**    | **Test**      | Start a real conversation (`POST /sessions`, then LiveKit): chat, voice, camera/screen/picture input when the channel has it, and the forms the agent asks for, with a **live trace** of what the agent did beside it. "Save as a scenario" turns a conversation into a test. Only web chat and web voice channels can be tried here; a phone-only agent says so.                                                                                                          |
+|             | **Scenarios** | Write test conversations, run them on the **server's real runner** and see which fail and why. See "Test scenarios" below.                                                                                                                                                                                                                                                                                                                                                 |
+|             | **Checks**    | The readiness checks: the saved draft or a published version read against everyday situations (a greeting, a way to end the call, reaching a person). No conversation is run. Kept in this browser.                                                                                                                                                                                                                                                                        |
+| **Release** | **Versions**  | List published versions, see whether the tests passed on each **exact** version, compare any two (or the draft) with `GET /diff`, restore one as the draft.                                                                                                                                                                                                                                                                                                                |
+|             | **Deploy**    | See what runs in each environment; the **release checklist** ("is it safe to put this live?") for the version, including where conversations are processed, what is kept about each call and whether callers are told they may be recorded; deploy it (production asks twice), roll back, follow a `pending` deployment, read the history.                                                                                                                                 |
+| **Monitor** | **Calls**     | This agent's calls (real callers and test conversations) with filters, and a trace of what happened in each.                                                                                                                                                                                                                                                                                                                                                               |
 
 The sidebar holds workspace-level things only: **Home** (the next step for the agent you were last working on, what is live, recent activity), **Agents**,
 **Calls** (every agent), the **Library** (Voices, Integrations, Telephony) and **Settings**.
@@ -106,12 +106,20 @@ buttons or Ctrl and the wheel, drag the empty space to move around; tools can be
 
 Open a call from an agent's **Calls** tab (the same call opened from the Calls page offers to open it in the agent, because replays and tests belong to one agent's draft).
 
-- **Replay** plays the caller's words, turn by turn, to the draft (unsaved edits included) or to a published version, and lays the result beside what happened in the call. What the agent *did* (its tools, its hand-overs, how it ended, what it remembered) is compared exactly; what it *said* is compared loosely, because a language model never words things the same twice. Changes are said in plain sentences above the table.
+- **Replay** plays the caller's words, turn by turn, to the draft (unsaved edits included) or to a published version, and lays the result beside what happened in the call. What the agent _did_ (its tools, its hand-overs, how it ended, what it remembered) is compared exactly; what it _said_ is compared loosely, because a language model never words things the same twice. Changes are said in plain sentences above the table.
   - **In the browser** is free and instant, but it is a simulation: simple rules for tools, hand-overs and goodbyes, with no language model. Trust it for what the agent does, not how it says it.
   - **On the real runtime** sends the replay through the scenario runner with the editor's contents (nothing is saved). It uses the live model, so it asks first, and the agent's API calls are never made for real: only mocks answer them. In demo mode this button is an imitation too, and says so.
 - **Keep as a test** turns the call into a scenario of the draft (`tests`): the caller's words (phone numbers and e-mail addresses are hidden, and every turn can be edited, because a test is published with the agent), checks suggested from what the agent did (a tool that worked, a hand-over, a value it remembered) with the plain facts ticked and its exact wording offered unticked, and an optional "what should have happened". It is an ordinary edit of the draft with an **Undo**; nothing is saved until you save.
 
 The logic is in `src/studio/replay/` (`callFacts.js` reads a call, `replayRun.js` plays it, `compareReplay.js` compares, `callToTest.js` makes the test), pure and covered by `tests/replay.test.js`.
+
+### Fix this call, simulated callers, and the test gate
+
+**Fix this call** (a button on a call, when opened from the agent's own Calls) closes the loop from a bad call to a fix. It reads the call's records and lists what went wrong with the evidence: a tool that failed, a call cut off, an agent that said nothing, a long wait (4 s or more), a spoken answer too long to listen to, the agent repeating itself, the caller having to repeat themselves, a hand-over. For each it suggests small changes from a checklist of well-known remedies (a rule under Tone and style, or a faster model), shown as sentences before anything changes. Tick the ones you want, replay the call with them, then put them in the draft; the notice that follows has **Undo**, **Save draft** and **Keep this call as a test** (with what should have happened already written). The suggestions are rules, not an AI, and the panel says so. The browser replay cannot show a change of wording, because the simulated agent does not read instructions; it says that too, and points to the runtime replay and to the test. Logic in `src/studio/fixcall/` (`diagnose.js`, `fixes.js`, pure, `tests/fixcall.test.js`).
+
+**Simulated callers** (Tests, new layout) are scripted callers that phone the draft: straight to the point, rambling, one-word answers, frustrated, asks for a person, off topic, changes their mind, doesn't follow, tries to break the rules, speaks another language. Their words are written from the agent's own tools. Beside them are checks made from what the agent has (it greets, uses each tool when asked, offers a person, ends the call when thanked). They are scenarios in the usual shape, run on the usual runner (the real runtime, or the demo's imitation), played from the editor's contents so nothing is saved by trying; a real run is on the live model and asks for a tick first. A caller whose only real check is a reviewer's judgement says "Basic checks passed" until the reviewer is switched on. The ones that did well can be **kept as tests**. The callers are scripted, not played by a model, and the screen says so. Logic in `src/studio/callers/personas.js` (pure, `tests/callers.test.js`).
+
+**Tests must pass before publishing** is a switch per agent (Tests page, kept in this browser). When it is on, the release flow marks Tested as blocked and the publish panel is held until the newest run passed and nothing was saved or edited after it; "Publish anyway" remains, on purpose. Logic in `src/studio/release/gateCheck.js` (`tests/gate.test.js`).
 
 ### Monitoring
 
@@ -241,14 +249,14 @@ aren't saved yet. The model lists in `src/studio/models/catalog.js` are a **cata
 
 All pages read the same agent list (`src/studio/agents.js`): the API's agents, minus the ones you removed from your list.
 
-| Page | What it does |
-|---|---|
-| **Home**, search, workspace menu | The next step for the agent you last worked on (build, test, release, monitor), the agents, recent activity; counts, rows and results come from the API. |
-| **Calls** | Every conversation your agents have had (`GET /bots/{id}/calls`): who called, when, how long, how it ended, with filters, paging, "All agents" (it asks each agent, a few at a time) and a trace of what happened in each. The records hold what callers said, and the page says so. |
-| **Voices** | "Use in an agent" puts the voice on that agent's draft, unsaved, for you to review. "Used by" is read from the agents' configurations. |
-| **Integrations** | "Add to an agent" adds the saved connection to that agent's draft as an HTTP connection, unsaved. |
-| **Telephony** (phone numbers, dispatch rules, SIP trunks) | **A preview, not connected**: numbers, trunks and dispatch rules are kept in this browser and route nothing. The page, the dialogs and the SIP address say so. |
-| **Settings** | The workspace, and what is running where. A collapsed **For developers** section holds the data source (real API or demo data) and the connection status. |
+| Page                                                      | What it does                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Home**, search, workspace menu                          | The next step for the agent you last worked on (build, test, release, monitor), the agents, recent activity; counts, rows and results come from the API.                                                                                                                             |
+| **Calls**                                                 | Every conversation your agents have had (`GET /bots/{id}/calls`): who called, when, how long, how it ended, with filters, paging, "All agents" (it asks each agent, a few at a time) and a trace of what happened in each. The records hold what callers said, and the page says so. |
+| **Voices**                                                | "Use in an agent" puts the voice on that agent's draft, unsaved, for you to review. "Used by" is read from the agents' configurations.                                                                                                                                               |
+| **Integrations**                                          | "Add to an agent" adds the saved connection to that agent's draft as an HTTP connection, unsaved.                                                                                                                                                                                    |
+| **Telephony** (phone numbers, dispatch rules, SIP trunks) | **A preview, not connected**: numbers, trunks and dispatch rules are kept in this browser and route nothing. The page, the dialogs and the SIP address say so.                                                                                                                       |
+| **Settings**                                              | The workspace, and what is running where. A collapsed **For developers** section holds the data source (real API or demo data) and the connection status.                                                                                                                            |
 
 Phone numbers, readiness-check runs and Integrations details are **kept in this browser only** (the API has no
 endpoints for them), so two people see different lists. Saved templates and the workspaces are in this browser too.
@@ -297,28 +305,36 @@ model sees them, how big it all is (with advice when it is too long), "Preview a
 tool: the request that would go out and what the model would read of a sample answer. If the server can't be asked the prompt preview falls
 back to an approximate copy built in the browser and says so.
 
+### Team and sharing (preview)
+
+**Team** (in the sidebar) is where a workspace decides who can work in it. Each person is given a **role** (Owner, Admin, Editor, Viewer: what they may do) and a **scope**: the **whole workspace** (every agent, including the ones made later) or **only some agents** you tick. The invite panel asks for the addresses, then the role, then which agents, and says in a sentence what that gives before anything is sent. The list can be filtered to "who can open" one agent, and access can be changed or removed afterwards. Rules that protect the team: there is one owner, an admin always has the whole workspace, a role that is limited to some agents needs at least one, and someone has to be able to manage people.
+
+Inside an agent, **Share** (in the top bar) shows who can open that agent and why (the whole workspace, or shared with them), and shares just this one agent with someone by address, or from the people already on the team.
+
+It is a **preview**: the team is kept in this browser, no email is sent, and nothing limits anyone yet because the server does not know who is calling. What the server needs is in `docs/COLLABORATION_API.md`; the rules are in `src/studio/team/teamModel.js` (pure, `tests/team.test.js`), and the screens are tested in `tests/team.component.test.js`.
+
 ## Waiting for the API
 
 These need endpoints that don't exist yet; the UI is honest about it and will use them when they do. (Test runs, call records, knowledge,
 previews and the call stream are all served now and used.)
 
-| Wanted | Today |
-|---|---|
-| `GET /capabilities` (which tool kinds the runtime can run) | The Add-tool menu uses a short list in `toolInfo.js` that can go stale. |
-| `GET /status` (API, LiveKit, which keys are set) | The Home card says only "API reachable". |
-| Cross-agent call list and per-agent statistics | "All agents" asks each agent; the Telephony cards show no numbers. |
-| Tags and owner in `GET /bots` | They are read from each draft, a page at a time, or for all on request. |
-| Real phone numbers (a numbers page over `builder_api/sip.py`) | Telephony is labelled a preview. |
-| An AI assistant that drafts a configuration from a description | "Describe it" uses a rule-based demo assistant and says so. |
-| `GET /templates` (and templates an organisation publishes) | Templates are saved in this browser and shared as files. |
-| `x-ui` for every setting (label, help, example, level) | The studio keeps its own catalogue, `form/plainLanguage.js`; the tests check it covers every setting in the schema. |
-| Validation messages with a `code` and a `fix` | Messages are shown with the field's label and a "show me" jump. |
-| A release policy per environment | The release checklist is advice only, and says so. |
-| Archive/delete a bot | "Remove from my list" hides it locally. |
-| `label` on channels and list items | Cards are titled by id. |
-| A trusted identity header and roles | The proxy sets the identity; see docs/PRODUCTION.md. Nothing in the UI changes by role yet. |
-| The server blocking a production deploy over `severity: "security"` | The UI asks for a typed confirmation. |
-| Worker and `builder` settings marked ignored in the schema | The studio files them under "Engine and operator settings". |
+| Wanted                                                              | Today                                                                                                                                                                                        |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /capabilities` (which tool kinds the runtime can run)          | The Add-tool menu uses a short list in `toolInfo.js` that can go stale.                                                                                                                      |
+| `GET /status` (API, LiveKit, which keys are set)                    | The Home card says only "API reachable".                                                                                                                                                     |
+| Cross-agent call list and per-agent statistics                      | "All agents" asks each agent; the Telephony cards show no numbers.                                                                                                                           |
+| Tags and owner in `GET /bots`                                       | They are read from each draft, a page at a time, or for all on request.                                                                                                                      |
+| Real phone numbers (a numbers page over `builder_api/sip.py`)       | Telephony is labelled a preview.                                                                                                                                                             |
+| An AI assistant that drafts a configuration from a description      | "Describe it" uses a rule-based demo assistant and says so.                                                                                                                                  |
+| `GET /templates` (and templates an organisation publishes)          | Templates are saved in this browser and shared as files.                                                                                                                                     |
+| `x-ui` for every setting (label, help, example, level)              | The studio keeps its own catalogue, `form/plainLanguage.js`; the tests check it covers every setting in the schema.                                                                          |
+| Validation messages with a `code` and a `fix`                       | Messages are shown with the field's label and a "show me" jump.                                                                                                                              |
+| A release policy per environment                                    | The release checklist is advice only, and says so.                                                                                                                                           |
+| Archive/delete a bot                                                | "Remove from my list" hides it locally.                                                                                                                                                      |
+| `label` on channels and list items                                  | Cards are titled by id.                                                                                                                                                                      |
+| A trusted identity header and roles                                 | The proxy sets the identity; see docs/PRODUCTION.md. The Team page and Share panel work on a team kept in this browser (a preview); see docs/COLLABORATION_API.md for what the server needs. |
+| The server blocking a production deploy over `severity: "security"` | The UI asks for a typed confirmation.                                                                                                                                                        |
+| Worker and `builder` settings marked ignored in the schema          | The studio files them under "Engine and operator settings".                                                                                                                                  |
 
 ## Layout
 

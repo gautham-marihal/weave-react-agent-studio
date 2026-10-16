@@ -7,7 +7,12 @@ import { isObj } from './engine.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : JSON.stringify(v));
-const words = (s) => (String(s ?? '').trim().match(/\S+/g) || []).length;
+const words = (s) =>
+  (
+    String(s ?? '')
+      .trim()
+      .match(/\S+/g) || []
+  ).length;
 
 // ---- the prompt ----------------------------------------------------------------------------------------------------------------------
 export function normalizePrompt(raw) {
@@ -21,7 +26,13 @@ export function normalizePrompt(raw) {
     active: s?.active !== false,
     when: text(s?.when),
   }));
-  const tools = list(r.tools).map((t) => ({ name: text(t?.name), description: text(t?.description), parameters: t?.parameters, offered: t?.offered !== false, reason: text(t?.reason) }));
+  const tools = list(r.tools).map((t) => ({
+    name: text(t?.name),
+    description: text(t?.description),
+    parameters: t?.parameters,
+    offered: t?.offered !== false,
+    reason: text(t?.reason),
+  }));
   const stats = isObj(r.stats) ? r.stats : {};
   return {
     instructions,
@@ -35,7 +46,12 @@ export function normalizePrompt(raw) {
     state: isObj(r.state) ? r.state : {},
     stats: {
       words: typeof stats.words === 'number' ? stats.words : words(instructions),
-      tokens: typeof stats.approx_tokens === 'number' ? stats.approx_tokens : typeof stats.tokens === 'number' ? stats.tokens : Math.round(words(instructions) * 1.33),
+      tokens:
+        typeof stats.approx_tokens === 'number'
+          ? stats.approx_tokens
+          : typeof stats.tokens === 'number'
+            ? stats.tokens
+            : Math.round(words(instructions) * 1.33),
       toolsOffered: typeof stats.tools_offered === 'number' ? stats.tools_offered : tools.filter((t) => t.offered).length,
     },
   };
@@ -48,10 +64,22 @@ export const LIMITS = { words: 1500, tools: 15 };
 export function promptAdvice(prompt) {
   const advice = [];
   if (!prompt) return advice;
-  if (prompt.stats.words > LIMITS.words) advice.push({ id: 'long', text: `The instructions are ${prompt.stats.words.toLocaleString()} words (about ${prompt.stats.tokens.toLocaleString()} tokens), and they are sent with every reply. Over ${LIMITS.words.toLocaleString()} words, a model follows them less closely and each turn costs more: move rarely needed detail into a knowledge base or a condition.` });
-  if (prompt.stats.toolsOffered > LIMITS.tools) advice.push({ id: 'tools', text: `This agent is offered ${prompt.stats.toolsOffered} tools. Past about ${LIMITS.tools}, a model picks the wrong one more often: give each agent only the tools it needs, and split the rest across agents.` });
+  if (prompt.stats.words > LIMITS.words)
+    advice.push({
+      id: 'long',
+      text: `The instructions are ${prompt.stats.words.toLocaleString()} words (about ${prompt.stats.tokens.toLocaleString()} tokens), and they are sent with every reply. Over ${LIMITS.words.toLocaleString()} words, a model follows them less closely and each turn costs more: move rarely needed detail into a knowledge base or a condition.`,
+    });
+  if (prompt.stats.toolsOffered > LIMITS.tools)
+    advice.push({
+      id: 'tools',
+      text: `This agent is offered ${prompt.stats.toolsOffered} tools. Past about ${LIMITS.tools}, a model picks the wrong one more often: give each agent only the tools it needs, and split the rest across agents.`,
+    });
   const dropped = prompt.tools.filter((t) => !t.offered);
-  if (dropped.length) advice.push({ id: 'dropped', text: `${dropped.length} tool${dropped.length === 1 ? '' : 's'} will not be offered to the model: ${dropped.map((t) => `${t.name}${t.reason ? ` (${t.reason})` : ''}`).join('; ')}.` });
+  if (dropped.length)
+    advice.push({
+      id: 'dropped',
+      text: `${dropped.length} tool${dropped.length === 1 ? '' : 's'} will not be offered to the model: ${dropped.map((t) => `${t.name}${t.reason ? ` (${t.reason})` : ''}`).join('; ')}.`,
+    });
   return advice;
 }
 
@@ -78,14 +106,24 @@ export function withLocalOffset(local, offsetMinutes = -new Date().getTimezoneOf
 // The state variables worth offering as "what if…": a handful of simple ones (true/false, text, numbers), never the sensitive ones.
 export function whatIfVariables(config, max = 6) {
   const vars = isObj(config?.state?.variables) ? config.state.variables : {};
-  return Object.entries(vars).filter(([, v]) => isObj(v) && v.sensitive !== true).slice(0, max).map(([name, v]) => ({ name, type: v.type || (typeof v.default === 'boolean' ? 'boolean' : typeof v.default === 'number' ? 'number' : 'string'), default: v.default }));
+  return Object.entries(vars)
+    .filter(([, v]) => isObj(v) && v.sensitive !== true)
+    .slice(0, max)
+    .map(([name, v]) => ({
+      name,
+      type: v.type || (typeof v.default === 'boolean' ? 'boolean' : typeof v.default === 'number' ? 'number' : 'string'),
+      default: v.default,
+    }));
 }
 
 // What a person typed for a what-if value, as the value it means.
 export function whatIfValue(type, typed) {
   if (typed === '' || typed === undefined) return undefined;
   if (type === 'boolean') return typed === 'true' ? true : typed === 'false' ? false : undefined;
-  if (type === 'number' || type === 'integer') { const n = Number(typed); return Number.isNaN(n) ? undefined : n; }
+  if (type === 'number' || type === 'integer') {
+    const n = Number(typed);
+    return Number.isNaN(n) ? undefined : n;
+  }
   return typed;
 }
 
@@ -120,24 +158,61 @@ export function normalizeResultPreview(raw) {
 // Starting arguments for the "Try it" panel: a value for each parameter the tool takes, from its schema's example, default or type.
 export function sampleArgs(parameters) {
   const props = isObj(parameters?.properties) ? parameters.properties : {};
-  return Object.fromEntries(Object.entries(props).map(([name, p]) => {
-    const spec = isObj(p) ? p : {};
-    const example = list(spec.examples)[0] ?? spec.example ?? spec.default;
-    if (example !== undefined) return [name, example];
-    if (list(spec.enum).length) return [name, spec.enum[0]];
-    return [name, spec.type === 'integer' || spec.type === 'number' ? 1 : spec.type === 'boolean' ? true : spec.type === 'array' ? [] : spec.type === 'object' ? {} : `a ${name.replace(/_/g, ' ')}`];
-  }));
+  return Object.fromEntries(
+    Object.entries(props).map(([name, p]) => {
+      const spec = isObj(p) ? p : {};
+      const example = list(spec.examples)[0] ?? spec.example ?? spec.default;
+      if (example !== undefined) return [name, example];
+      if (list(spec.enum).length) return [name, spec.enum[0]];
+      return [
+        name,
+        spec.type === 'integer' || spec.type === 'number'
+          ? 1
+          : spec.type === 'boolean'
+            ? true
+            : spec.type === 'array'
+              ? []
+              : spec.type === 'object'
+                ? {}
+                : `a ${name.replace(/_/g, ' ')}`,
+      ];
+    }),
+  );
 }
 
 // The studio's own approximate prompt (promptPreview.js) in the same shape as the server's answer, for when the server can't be asked.
 export function fromApproximate(built, config) {
-  const sections = built.sections.filter((s) => s.id !== 'tools').map((s, i) => ({ id: `${s.id}-${i}`, kind: s.id, label: s.title, text: s.text, active: !s.conditional, when: s.conditional ? s.note : '' }));
-  const instructions = sections.filter((s) => s.active).map((s) => s.text).join('\n\n');
+  const sections = built.sections
+    .filter((s) => s.id !== 'tools')
+    .map((s, i) => ({ id: `${s.id}-${i}`, kind: s.id, label: s.title, text: s.text, active: !s.conditional, when: s.conditional ? s.note : '' }));
+  const instructions = sections
+    .filter((s) => s.active)
+    .map((s) => s.text)
+    .join('\n\n');
   const toolsById = Object.fromEntries(list(config?.tools).map((t) => [t?.id, t]));
   const tools = [
-    ...list(built.agent?.tools).map((id) => ({ name: id, description: toolsById[id]?.description || '', parameters: toolsById[id]?.parameters, offered: !!toolsById[id], reason: toolsById[id] ? '' : 'not defined' })),
-    ...list(built.agent?.handoffs).filter(isObj).map((h) => ({ name: h.tool, description: h.description || '', parameters: undefined, offered: true, reason: '' })),
+    ...list(built.agent?.tools).map((id) => ({
+      name: id,
+      description: toolsById[id]?.description || '',
+      parameters: toolsById[id]?.parameters,
+      offered: !!toolsById[id],
+      reason: toolsById[id] ? '' : 'not defined',
+    })),
+    ...list(built.agent?.handoffs)
+      .filter(isObj)
+      .map((h) => ({ name: h.tool, description: h.description || '', parameters: undefined, offered: true, reason: '' })),
   ];
   const w = words(instructions);
-  return { instructions, sections, opening: text(built.agent?.instructions?.opening), greeting: '', onEnter: [], tools, knowledge: null, models: null, state: {}, stats: { words: w, tokens: Math.round(w * 1.33), toolsOffered: tools.filter((t) => t.offered).length } };
+  return {
+    instructions,
+    sections,
+    opening: text(built.agent?.instructions?.opening),
+    greeting: '',
+    onEnter: [],
+    tools,
+    knowledge: null,
+    models: null,
+    state: {},
+    stats: { words: w, tokens: Math.round(w * 1.33), toolsOffered: tools.filter((t) => t.offered).length },
+  };
 }

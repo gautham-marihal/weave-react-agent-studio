@@ -9,25 +9,41 @@ function read(key, fallback) {
   try {
     const stored = window.localStorage.getItem(key);
     if (stored !== null) return stored;
-  } catch { /* storage unavailable */ }
+  } catch {
+    /* storage unavailable */
+  }
   return memory.has(key) ? memory.get(key) : fallback;
 }
 
+// the value now, for code that is not a component
+export const getPref = (key, fallback) => read(key, fallback);
+
 export function setPref(key, value) {
   memory.set(key, value);
-  try { window.localStorage.setItem(key, value); } catch { /* storage unavailable */ }
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable */
+  }
   listeners.forEach((listener) => listener());
 }
 
 const subscribe = (listener) => {
   listeners.add(listener);
   window.addEventListener('storage', listener);
-  return () => { listeners.delete(listener); window.removeEventListener('storage', listener); };
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener('storage', listener);
+  };
 };
 
 // [value, set] for a string preference.
 export function usePref(key, fallback) {
-  const value = useSyncExternalStore(subscribe, () => read(key, fallback), () => fallback);
+  const value = useSyncExternalStore(
+    subscribe,
+    () => read(key, fallback),
+    () => fallback,
+  );
   const set = useCallback((next) => setPref(key, next), [key]);
   return [value, set];
 }

@@ -63,4 +63,4 @@ on the server side. In production this is one more thing for the proxy to do, an
 - Keep the limits `llmRoute.js` applies: only `POST /v1/messages` and `GET /status`; the model chosen from a short list; the size of an answer capped; nothing the browser sends as
   headers is passed on.
 - Add a per-user rate limit and a spending cap at the provider.
-- Decide what may leave: the request carries the current draft (it holds only secret *names*) and what the person typed. Say so wherever the Studio is used; the screen asks for confirmation on first use.
+- Decide what may leave: the request carries the current draft (it holds only secret _names_) and what the person typed. Say so wherever the Studio is used; the screen asks for confirmation on first use.

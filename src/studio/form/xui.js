@@ -46,7 +46,10 @@ export function groupKeys(keys, hintsOf) {
   keys.forEach((key) => {
     const group = hintsOf(key).group || '';
     let section = sections.find((s) => s.group === group);
-    if (!section) { section = { group, keys: [] }; sections.push(section); }
+    if (!section) {
+      section = { group, keys: [] };
+      sections.push(section);
+    }
     section.keys.push(key);
   });
   return sections;
@@ -59,4 +62,11 @@ export function splitAdvanced(keys, hintsOf) {
 
 // A phone number as people write it: digits, spaces, dashes, brackets, a leading +. At least 5 digits.
 export const looksLikePhone = (text) => /^\+?[0-9 ()\-.]+$/.test(String(text)) && String(text).replace(/\D/g, '').length >= 5;
-export const looksLikeUrl = (text) => { try { const url = new URL(String(text)); return url.protocol === 'http:' || url.protocol === 'https:'; } catch { return false; } };
+export const looksLikeUrl = (text) => {
+  try {
+    const url = new URL(String(text));
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};

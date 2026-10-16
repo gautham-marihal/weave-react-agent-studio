@@ -22,13 +22,19 @@ test('a fully configured agent passes all twelve simulation scenarios, each with
   const results = runScenarioChecks(example);
   assert.equal(results.length, SCENARIOS.length);
   assert.equal(results.length, 12);
-  assert.deepEqual(results.filter((r) => !r.passed).map((r) => r.id), []);
+  assert.deepEqual(
+    results.filter((r) => !r.passed).map((r) => r.id),
+    [],
+  );
   assert.ok(results.every((r) => r.detail.length > 5));
 });
 
 test('the starter agent passes only what it actually has, and says what is missing', () => {
   const results = runScenarioChecks(starter);
-  const passed = results.filter((r) => r.passed).map((r) => r.id).sort();
+  const passed = results
+    .filter((r) => r.passed)
+    .map((r) => r.id)
+    .sort();
   assert.deepEqual(passed, ['chat', 'goal', 'greet']);
   assert.match(results.find((r) => r.id === 'person').detail, /No transfer/);
 });

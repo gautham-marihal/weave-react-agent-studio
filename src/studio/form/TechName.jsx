@@ -12,15 +12,37 @@ export function TechName({ name, path, onOpenJson }) {
   // Where it sits: the parents of the setting (channels[0].modalities.) dimmed in front of its own name, so the full path reads at a glance.
   const head = name && text.endsWith(name) ? text.slice(0, text.length - name.length) : '';
   const copy = async () => {
-    try { await window.navigator.clipboard.writeText(text); setCopied('Copied'); } catch { setCopied(text); }
+    try {
+      await window.navigator.clipboard.writeText(text);
+      setCopied('Copied');
+    } catch {
+      setCopied(text);
+    }
     window.setTimeout(() => setCopied(''), 4000);
   };
   return (
     <span className="stFTech">
-      {head && <span className="stFKeyHead" aria-hidden="true">{head}</span>}<code className="stFKey" title={`Path: ${text}`}>{name}</code>
-      <button type="button" className="stLink" aria-label={`Copy the path of ${name}`} onClick={copy}>Copy path</button>
-      {openInJson && <button type="button" className="stLink" aria-label={`Open ${name} in the JSON`} onClick={() => openInJson(path)}>In JSON</button>}
-      {copied && <span className="stFCopied" role="status">{copied}</span>}
+      {head && (
+        <span className="stFKeyHead" aria-hidden="true">
+          {head}
+        </span>
+      )}
+      <code className="stFKey" title={`Path: ${text}`}>
+        {name}
+      </code>
+      <button type="button" className="stLink" aria-label={`Copy the path of ${name}`} onClick={copy}>
+        Copy path
+      </button>
+      {openInJson && (
+        <button type="button" className="stLink" aria-label={`Open ${name} in the JSON`} onClick={() => openInJson(path)}>
+          In JSON
+        </button>
+      )}
+      {copied && (
+        <span className="stFCopied" role="status">
+          {copied}
+        </span>
+      )}
     </span>
   );
 }

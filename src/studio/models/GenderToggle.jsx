@@ -7,7 +7,9 @@ export function useVoiceGender(provider, voiceId) {
   const [gender, setGender] = useState(() => genderOfVoice(provider, voiceId));
   const known = voicesFor(provider).some((voice) => voice.voiceId === voiceId);
   const own = genderOfVoice(provider, voiceId);
-  useEffect(() => { if (known) setGender(own); }, [known, own]);
+  useEffect(() => {
+    if (known) setGender(own);
+  }, [known, own]);
   return [gender, setGender];
 }
 
@@ -17,7 +19,14 @@ export default function GenderToggle({ provider, value, onChange }) {
       {VOICE_GENDERS.map((gender) => {
         const count = voicesFor(provider, gender).length;
         return (
-          <button type="button" key={gender} className={value === gender ? 'active' : ''} aria-pressed={value === gender} disabled={count === 0} onClick={() => onChange(gender)}>
+          <button
+            type="button"
+            key={gender}
+            className={value === gender ? 'active' : ''}
+            aria-pressed={value === gender}
+            disabled={count === 0}
+            onClick={() => onChange(gender)}
+          >
             {gender} <small>({count})</small>
           </button>
         );

@@ -1,0 +1,676 @@
+/* The new layout of an agent: one menu down the side, one bar across the top, one page at a time. Every page has the same shape (see PageShell). */
+
+/* ---- the menu in the sidebar ---- */
+.nlNav {
+  display: grid;
+  gap: 6px;
+}
+.nlNavGroup {
+  display: grid;
+  gap: 1px;
+}
+.nlNavHead {
+  padding: 4px 10px;
+  color: var(--dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.nlNav button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  text-align: left;
+}
+.nlNav button:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.nlNav button.on {
+  background: var(--surface2);
+  color: var(--textStrong);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.nlNavIcon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+}
+.nlNavLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nlNavCount {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+.nlNavDot {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--good-text);
+}
+/* folded to pictures */
+.sidebarCollapsed .agentSideNav {
+  align-items: center;
+  padding: 4px 8px;
+}
+.sidebarCollapsed .nlNav {
+  gap: 4px;
+}
+.sidebarCollapsed .nlNavHead,
+.sidebarCollapsed .nlNavLabel {
+  display: none;
+}
+.sidebarCollapsed .nlNav button {
+  justify-content: center;
+  width: 44px;
+  height: 32px;
+  padding: 0;
+}
+.sidebarCollapsed .nlNavCount {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  margin: 0;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  font-size: var(--fs-xs);
+}
+.sidebarCollapsed .nlNavDot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  margin: 0;
+}
+.sidebarCollapsed .nlNavGroup + .nlNavGroup {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* ---- the bar across the top ---- */
+.nlWorkspace {
+  gap: 16px;
+}
+.nlBar {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+.nlBarId {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.nlBarId .agentRowAvatar {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+.nlBarId h1 {
+  margin: 0;
+  min-width: 0;
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xl);
+}
+.nlSaveState {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.nlSaveState.warn {
+  color: var(--warn-text);
+}
+.nlBarActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.nlBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.nlBtn.bad {
+  color: var(--danger-text);
+}
+.nlLive {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--good-text);
+  display: inline-block;
+}
+
+/* ---- a page ---- */
+.nlBody {
+  min-width: 0;
+}
+.nlPage {
+  display: grid;
+  gap: 22px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0;
+  padding: 8px 0 48px;
+  align-content: start;
+}
+.nlPage.wide {
+  max-width: none;
+}
+.nlPageHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.nlPageHead h1 {
+  margin: 0;
+  font-size: var(--fs-2xl);
+  letter-spacing: -0.01em;
+}
+.nlPageHead p {
+  margin: 6px 0 0;
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.nlPageActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.nlParts {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  width: max-content;
+  max-width: 100%;
+  border-radius: 10px;
+  background: var(--surface2);
+}
+.nlParts button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+.nlParts button:hover {
+  color: var(--textStrong);
+}
+.nlParts button.on {
+  background: var(--panel);
+  color: var(--textStrong);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.nlParts b {
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: var(--fs-xs);
+}
+
+/* a titled block */
+.nlSection {
+  display: grid;
+  gap: 10px;
+}
+.nlSection > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.nlSection h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.nlSection > header p {
+  margin: 4px 0 0;
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.nlHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+/* a row that opens a panel */
+.nlRows {
+  display: grid;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.nlRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+.nlRow + .nlRow {
+  border-top: 1px solid var(--line);
+}
+.nlRow:hover {
+  background: var(--surface2);
+}
+.nlRowIcon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--muted);
+}
+.nlRowText {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.nlRowText strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.nlRowText small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.nlPill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.nlPill.bad {
+  color: var(--danger-text);
+  border-color: var(--danger);
+}
+
+/* an empty page */
+.nlEmpty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 36px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  text-align: center;
+}
+.nlEmpty > span {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface2);
+  color: var(--muted);
+}
+.nlEmpty strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.nlEmpty p {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+/* the checklist on Home */
+.nlSteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.nlSteps li + li {
+  border-top: 1px solid var(--line);
+}
+.nlSteps li button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+.nlSteps li button:hover {
+  background: var(--surface2);
+}
+.nlStepMark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--line2);
+  border-radius: 50%;
+  color: var(--on-ink, #fff);
+}
+.nlSteps li.done .nlStepMark {
+  border-color: var(--good-text);
+  background: var(--good-text);
+}
+.nlSteps li.blocked .nlStepMark {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+.nlSteps li.next .nlStepMark {
+  border-color: var(--accent);
+}
+.nlSteps li.next {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.nlSteps li.optional .nlStepMark {
+  border-style: dashed;
+}
+.nlStepText {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.nlStepText strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.nlStepText strong em {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 500;
+}
+.nlStepText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.nlSteps li.done .nlStepText strong {
+  color: var(--muted);
+  font-weight: 500;
+}
+.nlQuick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.nlQuick button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--muted);
+  text-align: left;
+}
+.nlQuick button:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.nlQuick strong {
+  display: block;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.nlQuick small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+/* the panel from the right */
+.nlScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 5400;
+  background: rgba(8, 12, 14, 0.42);
+  animation: nlFade 0.15s ease-out;
+}
+.nlDrawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5500;
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100vw);
+  border-left: 1px solid var(--line2);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.35);
+  animation: nlSlide 0.18s ease-out;
+}
+.nlDrawer.wide {
+  width: min(880px, 100vw);
+}
+.nlDrawerHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.nlDrawerHead h2 {
+  margin: 0;
+  flex: 1;
+  font-size: var(--fs-lg);
+}
+.nlDrawerIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+}
+.nlDrawerClose {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+}
+.nlDrawerClose:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.nlDrawerBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
+.nlDrawerFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+}
+.nlDescribe .asLayout {
+  grid-template-columns: minmax(0, 1fr);
+}
+.nlDescribe .asAside {
+  position: static;
+  max-height: none;
+}
+@keyframes nlSlide {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes nlFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nlScrim,
+  .nlDrawer {
+    animation: none;
+  }
+}
+
+/* The pages that hold an older screen (Knowledge, Scenarios, the Workflow canvas, the Settings form) already say what they are in the page's own title and
+   line, and the Save and Reload they used to carry are in the bar across the top: so their own headings and duplicates are not drawn here. */
+.nlWorkspace .kwIntro,
+.nlWorkspace .scHead,
+.nlWorkspace .wfHead {
+  display: none;
+}
+.nlWorkspace .ckIntro > h3,
+.nlWorkspace .ckIntro > p:first-of-type {
+  display: none;
+}
+.nlWorkspace .stForm.embedded .stFSectionHead h2,
+.nlWorkspace .stForm.embedded .stFLead {
+  display: none;
+}
+.nlWorkspace .stForm.embedded .stFNavChips:not(:has(button + button)) {
+  display: none;
+}
+.nlWorkspace .stForm.embedded .stFSectionHead {
+  justify-content: flex-end;
+}
+
+/* the "Add" of a list page: the picker the settings form uses, drawn as the page's one main button */
+.nlPageActions .nlAddPicker,
+.nlSection > header .nlAddPicker {
+  position: relative;
+}
+.nlPageActions .stAddBtn,
+.nlSection > header .stAddBtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent, #041418);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.nlPageActions .stAddBtn:hover,
+.nlSection > header .stAddBtn:hover {
+  filter: brightness(1.08);
+}
+.nlPageActions .stPickPanel,
+.nlSection > header .stPickPanel {
+  right: 0;
+  left: auto;
+  width: min(560px, 90vw);
+}
+.nlDrawerBody .stForm.embedded {
+  padding: 0;
+}
+.stFItemFoot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.nlDrawerBody .stForm.embedded .stFSectionHead h2,
+.nlDrawerBody .stForm.embedded .stFLead {
+  display: none;
+}
+.nlDrawerBody .stForm.embedded .stFSectionHead {
+  justify-content: flex-end;
+}

@@ -16,8 +16,14 @@ const describe = (issue, config = example) => describeIssue(issue, { config, sch
 const fixOf = (d, label) => d.fixes.find((f) => f.label === label || f.id === label);
 
 test('a setting is named by labels, from its screen down, with a list item named by its own id', () => {
-  assert.equal(labelPath(example, schema, ['channels', 0, 'modalities', 'input'], engine).text, `Channels › ${example.channels[0].id} › What it can hear and say › What it accepts`);
-  assert.equal(labelPath(example, schema, ['defaults', 'conversation', 'inactivity', 'timeout_s'], engine).text, 'Conversation flow › When the caller goes quiet › Wait before nudging (seconds)');
+  assert.equal(
+    labelPath(example, schema, ['channels', 0, 'modalities', 'input'], engine).text,
+    `Channels › ${example.channels[0].id} › What it can hear and say › What it accepts`,
+  );
+  assert.equal(
+    labelPath(example, schema, ['defaults', 'conversation', 'inactivity', 'timeout_s'], engine).text,
+    'Conversation flow › When the caller goes quiet › Wait before nudging (seconds)',
+  );
   assert.equal(labelPath(example, schema, ['persona'], engine).text, 'Personality and rules');
   assert.equal(labelPath(example, schema, ['agents', 'entry'], engine).text, 'Agents › Who answers first');
   assert.equal(labelPath(example, schema, ['tools', 5, 'connection'], engine).parts[0], 'Tools');
@@ -28,9 +34,17 @@ test('a setting is named by labels, from its screen down, with a list item named
 test('audio without a model is said as what is missing, with a way to choose one', () => {
   const input = describe(err(['channels', 0, 'modalities', 'input'], "channel 'phone' / agent 'greeter': audio input needs an stt (or realtime) model"));
   assert.match(input.text, /takes audio in.*model to listen with/);
-  assert.deepEqual(input.fixes.map((f) => [f.label, f.open?.stage]), [['Choose a listening model', 'stt']]);
-  const output = describe(err(['channels', 0, 'modalities', 'output'], "channel 'phone' / agent 'greeter': audio output needs a tts (or realtime audio) model"));
-  assert.deepEqual(output.fixes.map((f) => f.open?.stage), ['tts']);
+  assert.deepEqual(
+    input.fixes.map((f) => [f.label, f.open?.stage]),
+    [['Choose a listening model', 'stt']],
+  );
+  const output = describe(
+    err(['channels', 0, 'modalities', 'output'], "channel 'phone' / agent 'greeter': audio output needs a tts (or realtime audio) model"),
+  );
+  assert.deepEqual(
+    output.fixes.map((f) => f.open?.stage),
+    ['tts'],
+  );
   assert.match(input.where.text, /^Channels › /);
 });
 
@@ -38,7 +52,10 @@ test('a name that points at nothing offers the names that exist, nearest first, 
   const issue = err(['agents', 'entry'], "'greter' is not a declared agents id (declared: billing, greeter, safety_watch, tech_support)");
   const d = describe(issue);
   assert.match(d.text, /There is no agent called “greter”\. Choose one that exists\./);
-  assert.deepEqual(d.fixes.map((f) => f.label), ['Use “greeter”', 'Use “billing”', 'Use “safety_watch”']);
+  assert.deepEqual(
+    d.fixes.map((f) => f.label),
+    ['Use “greeter”', 'Use “billing”', 'Use “safety_watch”'],
+  );
   assert.equal(fixOf(d, 'Use “greeter”').apply({ ...example, agents: { ...example.agents, entry: 'greter' } }).agents.entry, 'greeter');
   const conn = describe(err(['tools', 5, 'connection'], "'nope' is not a declared http connections id (declared: billing_api, platform_db, rag_service)"));
   assert.match(conn.text, /There is no connection called “nope”/);
@@ -57,8 +74,15 @@ test('a missing required setting is named, and added with its starting value', (
   assert.match(section.text, /The agent needs the “About this agent” section, and it is missing\./);
   assert.deepEqual(section.fixes, [], 'a whole missing section needs the person’s own id and name, so there is nothing to add in one click');
   assert.deepEqual(persona.fixes[0].jumpTo, ['persona', 'name'], 'after adding it the form goes to it, to be filled in');
-  const entry = describe(err(['channels', 1], "'entry' is a required property"), { ...example, channels: [example.channels[0], { id: 'chat', type: 'web_chat', modalities: { input: ['text'], output: ['text'] } }], meta: { id: 'acme' } });
-  assert.equal(entry.fixes[0].apply({ ...example, channels: [example.channels[0], { id: 'chat', type: 'web_chat' }], meta: { id: 'acme' } }).channels[1].entry.widget_id, 'acme-widget');
+  const entry = describe(err(['channels', 1], "'entry' is a required property"), {
+    ...example,
+    channels: [example.channels[0], { id: 'chat', type: 'web_chat', modalities: { input: ['text'], output: ['text'] } }],
+    meta: { id: 'acme' },
+  });
+  assert.equal(
+    entry.fixes[0].apply({ ...example, channels: [example.channels[0], { id: 'chat', type: 'web_chat' }], meta: { id: 'acme' } }).channels[1].entry.widget_id,
+    'acme-widget',
+  );
 });
 
 test('numbers, types and choices are said plainly, and a short list of choices becomes buttons', () => {
@@ -73,7 +97,11 @@ test('numbers, types and choices are said plainly, and a short list of choices b
 });
 
 test('an id that breaks the rules is renamed everywhere, a secret name is put in capitals', () => {
-  const config = { ...example, tools: example.tools.map((t, i) => (i === 0 ? { ...t, id: 'Bad ID' } : t)), agents: { ...example.agents, items: example.agents.items.map((a, i) => (i === 0 ? { ...a, tools: ['Bad ID', ...a.tools.slice(1)] } : a)) } };
+  const config = {
+    ...example,
+    tools: example.tools.map((t, i) => (i === 0 ? { ...t, id: 'Bad ID' } : t)),
+    agents: { ...example.agents, items: example.agents.items.map((a, i) => (i === 0 ? { ...a, tools: ['Bad ID', ...a.tools.slice(1)] } : a)) },
+  };
   const d = describe(err(['tools', 0, 'id'], "'Bad ID' does not match '^[a-z][a-z0-9_-]{0,63}$'"), config);
   assert.match(d.text, /can’t be used as an id/);
   const renamed = d.fixes[0].apply(config);
@@ -101,11 +129,19 @@ test('an unused tool can be given to an agent or deleted, an unknown remembered 
   const labels = unused.fixes.map((f) => f.label);
   assert.equal(labels[0], `Offer it to “${example.agents.entry}”`, 'the agent that answers first, then another');
   assert.equal(labels.at(-1), 'Delete the tool');
-  const offered = unused.fixes[0].apply({ ...example, agents: { ...example.agents, items: example.agents.items.map((a) => ({ ...a, tools: (a.tools || []).filter((t) => t !== 'lookup_account') })) } });
+  const offered = unused.fixes[0].apply({
+    ...example,
+    agents: { ...example.agents, items: example.agents.items.map((a) => ({ ...a, tools: (a.tools || []).filter((t) => t !== 'lookup_account') })) },
+  });
   assert.ok(offered.agents.items.find((a) => a.id === example.agents.entry).tools.includes('lookup_account'));
   const template = describe(err(['agents', 'items', 0, 'instructions', 'role'], "template 'Hello {{state.nope}}' reads undeclared state variable 'nope'"));
   assert.equal(template.fixes[0].apply({ state: { variables: {} } }).state.variables.nope.type, 'string');
-  const redaction = describe(warn(['post_call'], 'the bot declares sensitive variables and saves transcripts, but post_call.redaction is not set; transcripts will contain what callers say'));
+  const redaction = describe(
+    warn(
+      ['post_call'],
+      'the bot declares sensitive variables and saves transcripts, but post_call.redaction is not set; transcripts will contain what callers say',
+    ),
+  );
   assert.match(redaction.text, /handles sensitive details and saves transcripts/);
   assert.equal(redaction.fixes[0].apply({ schema_version: '1.1' }).post_call.redaction.enabled, true);
 });
@@ -119,12 +155,15 @@ test('what isn’t recognised is shown as the server wrote it, with its place na
 });
 
 test('issues are ordered for reading: what can be fixed in a click, then what needs the person, then what is worth a look', () => {
-  const shown = describeIssues([
-    err(['persona'], "'name' is a required property"),
-    err(['tools', 5, 'timeout_s'], '-1 is less than or equal to the minimum of 0'),
-    warn(['tools', 14], "tool 'x' is not used by any agent, task or guardrail"),
-    warn(['observability'], 'something else'),
-  ], ctx);
+  const shown = describeIssues(
+    [
+      err(['persona'], "'name' is a required property"),
+      err(['tools', 5, 'timeout_s'], '-1 is less than or equal to the minimum of 0'),
+      warn(['tools', 14], "tool 'x' is not used by any agent, task or guardrail"),
+      warn(['observability'], 'something else'),
+    ],
+    ctx,
+  );
   assert.deepEqual([shown.fixNow.length, shown.needsYou.length, shown.worthALook.length, shown.errors, shown.warnings], [1, 1, 2, 2, 2]);
   assert.equal(shown.worthALook[0].fixes.length > 0, true, 'a warning with a fix is listed before one without');
 });
@@ -144,7 +183,10 @@ test('every message the server gave for the broken copies gets a plain sentence 
     ['tests.0.expect.0.tool_called', "'nope' is not a declared tool names id (declared: end_call)"],
   ];
   harvested.forEach(([path, message]) => {
-    const issue = err(path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)), message);
+    const issue = err(
+      path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)),
+      message,
+    );
     const d = describe(issue);
     assert.ok(d.recognised, `${message} is recognised`);
     assert.ok(d.text && d.text !== message, `${message} is rewritten`);

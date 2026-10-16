@@ -27,20 +27,47 @@ test('knowledge: an array, an object of lists, an object of facts and a plain te
 });
 
 test('models: each stage says its provider, model and the NAME of the secret, fallbacks follow, and a list of layers reads too', () => {
-  const lines = modelLines({ llm: { provider: 'openai', model: 'gpt-4.1-mini', api_key: { secret: 'OPENAI_API_KEY' }, temperature: 0.3, fallbacks: [{ provider: 'anthropic', model: 'claude-sonnet-5-5' }] }, stt: { provider: 'deepgram', model: 'nova-3' }, tts: null });
-  assert.deepEqual(lines.map((l) => l.label), ['Thinking', 'Listening']);
+  const lines = modelLines({
+    llm: {
+      provider: 'openai',
+      model: 'gpt-4.1-mini',
+      api_key: { secret: 'OPENAI_API_KEY' },
+      temperature: 0.3,
+      fallbacks: [{ provider: 'anthropic', model: 'claude-sonnet-5-5' }],
+    },
+    stt: { provider: 'deepgram', model: 'nova-3' },
+    tts: null,
+  });
+  assert.deepEqual(
+    lines.map((l) => l.label),
+    ['Thinking', 'Listening'],
+  );
   assert.match(lines[0].text, /openai gpt-4\.1-mini/);
   assert.match(lines[0].text, /temperature 0\.3/);
   assert.match(lines[0].text, /uses the secret OPENAI_API_KEY/);
   assert.match(lines[0].text, /then anthropic claude-sonnet-5-5/);
   assert.equal(modelLines(null).length, 0);
-  const layered = modelLines([{ layer: 'defaults', llm: { provider: 'openai', model: 'a' } }, { layer: 'agent', llm: { provider: 'openai', model: 'b' } }]);
-  assert.deepEqual(layered.map((l) => l.label), ['Defaults', 'Agent']);
+  const layered = modelLines([
+    { layer: 'defaults', llm: { provider: 'openai', model: 'a' } },
+    { layer: 'agent', llm: { provider: 'openai', model: 'b' } },
+  ]);
+  assert.deepEqual(
+    layered.map((l) => l.label),
+    ['Defaults', 'Agent'],
+  );
   assert.match(layered[1].text, /Thinking: openai b/);
 });
 
 test('state: values are listed, sensitive ones stay masked and are marked, unset is said', () => {
   assert.deepEqual(stateLines(null), []);
   const lines = stateLines({ verified: true, pin: '•••', name: null, intent: 'billing' });
-  assert.deepEqual(lines.map((l) => [l.name, l.text, l.masked]), [['verified', 'true', false], ['pin', '•••', true], ['name', 'not set', false], ['intent', 'billing', false]]);
+  assert.deepEqual(
+    lines.map((l) => [l.name, l.text, l.masked]),
+    [
+      ['verified', 'true', false],
+      ['pin', '•••', true],
+      ['name', 'not set', false],
+      ['intent', 'billing', false],
+    ],
+  );
 });

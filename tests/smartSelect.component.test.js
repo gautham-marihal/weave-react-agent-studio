@@ -9,8 +9,16 @@ const { mountScreen, act } = await setupDom();
 const a = actions(act);
 after(() => teardownDom());
 
-const many = Array.from({ length: 30 }, (_, i) => ({ value: `tool_${i}`, label: `Tool ${i}`, description: i % 2 ? 'Looks things up' : 'Changes something', group: i < 10 ? 'Lookups' : 'Actions' }));
-const key = (el, k) => act(async () => { el.dispatchEvent(new window.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true })); });
+const many = Array.from({ length: 30 }, (_, i) => ({
+  value: `tool_${i}`,
+  label: `Tool ${i}`,
+  description: i % 2 ? 'Looks things up' : 'Changes something',
+  group: i < 10 ? 'Lookups' : 'Actions',
+}));
+const key = (el, k) =>
+  act(async () => {
+    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  });
 const mount = (props, picked) => mountScreen('smartselect', { picked }, { ready: '[aria-label="Pick one"]', props });
 const input = (app) => $(app.container, '[aria-label="Pick one"][role=combobox]');
 const optionTexts = () => $$(document, '[role=option]').map((o) => textOf(o).replace(/ ✓$/, ''));
@@ -32,7 +40,10 @@ test('SmartSelect: eight or fewer choices are a plain select, more are a searcha
 test('SmartSelect: opening shows the choices with their descriptions and group headings, typing narrows them, and a choice is picked', async () => {
   const app = await mount({ options: many }, '');
   const box = input(app);
-  await act(async () => { box.focus(); box.click(); });
+  await act(async () => {
+    box.focus();
+    box.click();
+  });
   assert.equal(box.getAttribute('aria-expanded'), 'true');
   assert.equal(box.getAttribute('aria-controls'), $(document, '[role=listbox]').id, 'it names its list');
   assert.equal($(document, '[role=listbox]').getAttribute('aria-label'), 'Pick one');
@@ -41,11 +52,17 @@ test('SmartSelect: opening shows the choices with their descriptions and group h
   assert.match(textOf($(document, '[role=option]')), /Tool 0Changes something/, 'a description under each');
   await a.type(box, 'tool 1 looks');
   const names = optionTexts().map((t) => t.replace(/(Looks things up|Changes something)$/, ''));
-  assert.deepEqual(names, ['Tool 1', 'Tool 11', 'Tool 13', 'Tool 15', 'Tool 17', 'Tool 19', 'Tool 21'], 'every word, anywhere, in any order: the odd ones (“looks things up”) with a 1 in them');
+  assert.deepEqual(
+    names,
+    ['Tool 1', 'Tool 11', 'Tool 13', 'Tool 15', 'Tool 17', 'Tool 19', 'Tool 21'],
+    'every word, anywhere, in any order: the odd ones (“looks things up”) with a 1 in them',
+  );
   await a.type(box, 'zzzz');
   assert.match(textOf($(document, '[role=status]')), /Nothing matches “zzzz”/);
   await a.type(box, 'tool 27');
-  await act(async () => { $(document, '[role=option]').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true })); });
+  await act(async () => {
+    $(document, '[role=option]').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  });
   assert.equal(app.config.picked, 'tool_27');
   assert.equal(box.getAttribute('aria-expanded'), 'false', 'it closes after a choice');
   await app.unmount();
@@ -56,7 +73,10 @@ test('SmartSelect: arrows move through the choices (skipping disabled ones), Ent
   options[1] = { ...options[1], disabled: true };
   const app = await mount({ options }, 'tool_5');
   const box = input(app);
-  await act(async () => { box.focus(); box.click(); });
+  await act(async () => {
+    box.focus();
+    box.click();
+  });
   const active = () => $(document, `#${box.getAttribute('aria-activedescendant')}`);
   assert.match(textOf(active()), /^Tool 0/, 'the first usable choice is highlighted');
   await key(box, 'ArrowDown');
@@ -70,11 +90,15 @@ test('SmartSelect: arrows move through the choices (skipping disabled ones), Ent
   assert.match(textOf(active()), /^Tool 10/);
   await key(box, 'Home');
   assert.match(textOf(active()), /^Tool 0/);
-  await key(box, 'ArrowDown'); await key(box, 'ArrowDown');
+  await key(box, 'ArrowDown');
+  await key(box, 'ArrowDown');
   await key(box, 'Enter');
   assert.equal(app.config.picked, 'tool_3');
   // Escape closes and leaves the choice as it was
-  await act(async () => { box.focus(); box.click(); });
+  await act(async () => {
+    box.focus();
+    box.click();
+  });
   await a.type(box, 'tool 8');
   await key(box, 'Escape');
   assert.equal(box.getAttribute('aria-expanded'), 'false');
@@ -104,7 +128,10 @@ test('SmartSelect: an "add" control goes back to its prompt after each choice, a
 test('SmartSelect: a very long list shows the first 200 and says to keep typing', async () => {
   const huge = Array.from({ length: 500 }, (_, i) => ({ value: `v${i}`, label: `Agent number ${i}` }));
   const app = await mount({ options: huge }, '');
-  await act(async () => { input(app).focus(); input(app).click(); });
+  await act(async () => {
+    input(app).focus();
+    input(app).click();
+  });
   assert.equal($$(document, '[role=option]').length, 200);
   assert.match(textOf($$(document, '[role=status]').pop()), /300 more: keep typing to narrow the list/);
   await a.type(input(app), 'number 49');
@@ -114,8 +141,20 @@ test('SmartSelect: a very long list shows the first 200 and says to keep typing'
 
 test('the matching and the option shapes are plain functions: every word, anywhere, ignoring case', () => {
   const options = normalizeOptions(['a', 7, { value: 'x', label: 'Ex', description: 'the letter', group: 'Letters' }, { value: 'y' }]);
-  assert.deepEqual(options.map((o) => [o.value, o.label]), [['a', 'a'], ['7', '7'], ['x', 'Ex'], ['y', 'y']]);
-  assert.deepEqual(filterOptions(options, 'LETTER ex').map((o) => o.value), ['x'], 'label, description and group are all searched');
+  assert.deepEqual(
+    options.map((o) => [o.value, o.label]),
+    [
+      ['a', 'a'],
+      ['7', '7'],
+      ['x', 'Ex'],
+      ['y', 'y'],
+    ],
+  );
+  assert.deepEqual(
+    filterOptions(options, 'LETTER ex').map((o) => o.value),
+    ['x'],
+    'label, description and group are all searched',
+  );
   assert.equal(filterOptions(options, '').length, 4);
   assert.equal(filterOptions(options, 'nope').length, 0);
   assert.deepEqual(normalizeOptions(undefined), []);

@@ -8,7 +8,9 @@ export function DemoBadge() {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) return undefined;
-    const onKey = (event) => { if (event.key === 'Escape') setOpen(false); };
+    const onKey = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
@@ -25,8 +27,16 @@ export function DemoBadge() {
 
   return (
     <div className="demoBadgeWrap">
-      <button type="button" className="demoBadge" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((value) => !value)} title="This is demo mode">
-        <i aria-hidden="true" />DEMO
+      <button
+        type="button"
+        className="demoBadge"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+        title="This is demo mode"
+      >
+        <i aria-hidden="true" />
+        DEMO
       </button>
       {open && (
         <div className="demoPopover" role="dialog" aria-label="About demo mode">
@@ -38,10 +48,20 @@ export function DemoBadge() {
             <li>“Deployed” only means a record in this demo. No phone, widget or server is involved.</li>
           </ul>
           <div className="demoActions">
-            <button type="button" className="quietButton" onClick={reset} disabled={busy}>Start the demo again</button>
-            {!demoIsForced() && <button type="button" className="primaryCta compactCta" onClick={() => setDemoMode(false)}>Use the real API</button>}
+            <button type="button" className="quietButton" onClick={reset} disabled={busy}>
+              Start the demo again
+            </button>
+            {!demoIsForced() && (
+              <button type="button" className="primaryCta compactCta" onClick={() => setDemoMode(false)}>
+                Use the real API
+              </button>
+            )}
           </div>
-          {demoIsForced() && <small>This is a demo build (<code>npm run dev:demo</code>). Run <code>npm run dev</code> to use the real API.</small>}
+          {demoIsForced() && (
+            <small>
+              This is a demo build (<code>npm run dev:demo</code>). Run <code>npm run dev</code> to use the real API.
+            </small>
+          )}
         </div>
       )}
     </div>

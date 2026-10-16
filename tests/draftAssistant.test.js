@@ -29,7 +29,8 @@ test('it picks the starter whose words the description uses, and says why', () =
 });
 
 test('the description itself goes into the role, so nothing the author wrote is lost', () => {
-  const description = 'A friendly agent for Acme Telecom that helps customers with their bills. Never promise a refund. Always ask for the account number first.';
+  const description =
+    'A friendly agent for Acme Telecom that helps customers with their bills. Never promise a refund. Always ask for the account number first.';
   const out = make(description);
   const role = out.config.agents.items[0].instructions.role;
   assert.ok(role.includes(description));
@@ -82,7 +83,11 @@ test('what it cannot decide is asked, not guessed', () => {
   assert.ok(out.questions.some((q) => /Which system/.test(q)));
   assert.ok(out.questions.some((q) => /sensitive/.test(q)));
   assert.ok(out.questions.at(-1).includes('try the draft'));
-  assert.equal(out.config.tools.some((t) => t.type === 'http'), false, 'it does not invent a connection');
+  assert.equal(
+    out.config.tools.some((t) => t.type === 'http'),
+    false,
+    'it does not invent a connection',
+  );
 });
 
 test('every draft it makes is a valid configuration, and the same description gives the same draft', () => {

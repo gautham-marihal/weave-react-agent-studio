@@ -2,7 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyStarter } from '../src/studio/starters.js';
 import { minimalConfig } from '../src/demo/demoApi.js';
-import { BASE_LANGUAGES, languageName, readConnections, readSimple, readTools, setAgentName, setGreeting, setPrimaryLanguage, setRecordingNotice, setRole, setStyleRules, setTone, toggleSpoken } from '../src/studio/simple/simpleModel.js';
+import {
+  BASE_LANGUAGES,
+  languageName,
+  readConnections,
+  readSimple,
+  readTools,
+  setAgentName,
+  setGreeting,
+  setPrimaryLanguage,
+  setRecordingNotice,
+  setRole,
+  setStyleRules,
+  setTone,
+  toggleSpoken,
+} from '../src/studio/simple/simpleModel.js';
 
 const base = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
 
@@ -12,7 +26,10 @@ test('the everyday settings are read out of the full configuration', () => {
   assert.match(read.role, /customer care agent/);
   assert.match(read.greeting, /How can I help you today/);
   assert.equal(read.agentId, 'assistant');
-  assert.deepEqual(read.channels.map((c) => c.name), ['Web chat']);
+  assert.deepEqual(
+    read.channels.map((c) => c.name),
+    ['Web chat'],
+  );
   assert.equal(read.voiceChannel, false);
   assert.ok(read.styleRules.length >= 1);
 });
@@ -42,12 +59,20 @@ test('renaming the agent renames what it calls itself only while the two were th
 test('the greeting is changed where it is written: on the channel, or in the message it points at', () => {
   const config = base();
   assert.equal(setGreeting(config, 'Hi!').channels[0].greeting.say, 'Hi!');
-  const ref = { ...config, channels: [{ ...config.channels[0], greeting: { say: { message: 'hello' } } }], messages: [...config.messages, { id: 'hello', text: 'Old' }] };
+  const ref = {
+    ...config,
+    channels: [{ ...config.channels[0], greeting: { say: { message: 'hello' } } }],
+    messages: [...config.messages, { id: 'hello', text: 'Old' }],
+  };
   const next = setGreeting(ref, 'New');
   assert.equal(next.messages.find((m) => m.id === 'hello').text, 'New');
   assert.deepEqual(next.channels[0].greeting.say, { message: 'hello' });
   assert.equal(readSimple(ref).greetingIsReference, true);
-  const langs = { ...ref, defaults: { ...ref.defaults, language: { primary: 'en-US', speaks: ['en', 'es'] } }, messages: [{ id: 'hello', text: { en: 'Hello', es: 'Hola' } }] };
+  const langs = {
+    ...ref,
+    defaults: { ...ref.defaults, language: { primary: 'en-US', speaks: ['en', 'es'] } },
+    messages: [{ id: 'hello', text: { en: 'Hello', es: 'Hola' } }],
+  };
   assert.deepEqual(setGreeting(langs, 'Howdy').messages[0].text, { en: 'Howdy', es: 'Hola' }, 'only the primary language’s text');
 });
 
@@ -79,7 +104,17 @@ test('the primary language also makes its base language spoken, first; the prima
 test('connections and tools are summarised for the card', () => {
   const config = base();
   config.connections = { billing_api: { type: 'http', base_url: 'https://api.example.com', auth: { type: 'bearer', token: { secret: 'BILLING_KEY' } } } };
-  config.tools = [...config.tools, { id: 'orphan', type: 'http', connection: 'billing_api', description: 'x', request: { method: 'GET', path: '/' }, parameters: { type: 'object', properties: {} } }];
+  config.tools = [
+    ...config.tools,
+    {
+      id: 'orphan',
+      type: 'http',
+      connection: 'billing_api',
+      description: 'x',
+      request: { method: 'GET', path: '/' },
+      parameters: { type: 'object', properties: {} },
+    },
+  ];
   assert.deepEqual(readConnections(config), [{ id: 'billing_api', type: 'http', detail: 'https://api.example.com', secrets: ['BILLING_KEY'] }]);
   const tools = readTools(config);
   assert.equal(tools.find((t) => t.id === 'end_call').used, true);

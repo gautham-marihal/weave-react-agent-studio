@@ -1,0 +1,434 @@
+/* The Team page, the panel that gives someone access, and an agent's Share panel. */
+.tmPage .tmTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.tmPage .tmTools > input {
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+}
+.tmFilter {
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.tmFilter select {
+  min-width: 180px;
+}
+.tmCount {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.tmDone {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--good-text) 12%, transparent);
+  color: var(--good-text);
+  font-size: var(--fs-sm);
+}
+.tmNone {
+  margin: 0;
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+  font-size: var(--fs-md);
+}
+
+/* the list of people */
+.tmTable {
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.tmHead,
+.tmRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) 100px minmax(180px, 2fr) 100px minmax(210px, auto);
+  gap: 14px;
+  align-items: center;
+  padding: 12px 16px;
+}
+.tmHead {
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tmRow {
+  border-top: 1px solid var(--line);
+}
+.tmPerson {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.tmPerson > span:last-child,
+.tmScope,
+.tmWho > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+.tmPerson strong,
+.tmScope strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tmPerson small,
+.tmScope small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tmAvatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: hsl(var(--hue, 190) 50% 36%);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.tmRole {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--textStrong);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.tmRole.owner,
+.tmRole.admin {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.tmStatus {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.tmStatus.good {
+  color: var(--good-text);
+}
+.tmStatus.wait {
+  color: var(--warn-text);
+}
+.tmActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.tmActions small {
+  color: var(--muted);
+}
+.tmSure {
+  font-size: var(--fs-sm);
+  color: var(--textStrong);
+}
+.tmActions .danger {
+  color: var(--danger-text, var(--danger));
+  border-color: var(--danger);
+}
+
+/* giving access */
+.tmDrawer {
+  display: grid;
+  gap: 22px;
+}
+.tmWho {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.tmWho small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.tmField {
+  display: grid;
+  gap: 6px;
+}
+.tmField > label {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+.tmField small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.tmProblems {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--danger-text, var(--danger));
+  font-size: var(--fs-sm);
+}
+.tmFine {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.tmAccess {
+  display: grid;
+  gap: 18px;
+}
+.tmGroup {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.tmGroup legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+.tmCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+.tmCard {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.tmCard:hover {
+  border-color: var(--accent);
+}
+.tmCard.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.tmCard.off {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.tmCard input {
+  margin-top: 3px;
+}
+.tmCardText {
+  display: grid;
+  gap: 2px;
+}
+.tmCardText strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.tmCardText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.tmAgents {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.tmAgentTools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.tmAgentTools span {
+  margin-left: auto;
+}
+.tmAgentList {
+  display: grid;
+  gap: 4px;
+  max-height: 240px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.tmAgentList label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.tmAgentList label:hover {
+  background: var(--surface2);
+}
+.tmAgentList small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.tmAgentAvatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--textStrong);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.tmGrant {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.tmGrant.bad {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger-text, var(--danger));
+}
+
+/* an agent's Share panel */
+.tmBlock {
+  display: grid;
+  gap: 12px;
+}
+.tmBlock > header h3 {
+  margin: 0 0 2px;
+  font-size: var(--fs-lg);
+  color: var(--textStrong);
+}
+.tmBlock > header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.tmShareList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  overflow: hidden;
+  list-style: none;
+}
+.tmShareList li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto 120px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface);
+}
+.tmShareList li + li {
+  border-top: 1px solid var(--line);
+}
+.tmShareWho {
+  display: grid;
+  min-width: 0;
+}
+.tmShareWho strong {
+  color: var(--textStrong);
+}
+.tmShareWho small,
+.tmVia,
+.tmViaNote {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.tmVia {
+  white-space: nowrap;
+}
+.tmViaNote {
+  text-align: right;
+}
+.tmShareActions {
+  display: flex;
+  justify-content: flex-end;
+}
+.tmExisting select {
+  max-width: 420px;
+}
+.tmEmailRow {
+  display: flex;
+  gap: 8px;
+}
+.tmEmailRow input {
+  flex: 1;
+  min-width: 0;
+}
+.tmEmails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tmEmails li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.tmEmails button {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+}
+.tmEmails button:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.tmProblems {
+  list-style: none;
+  padding-left: 0;
+}

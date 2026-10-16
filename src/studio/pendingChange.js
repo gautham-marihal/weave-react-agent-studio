@@ -7,7 +7,11 @@ import { applyStarter, starterById } from './starters.js';
 const KEY = 'weave_pending_change';
 
 export function queueChange(botId, change) {
-  try { window.sessionStorage.setItem(KEY, JSON.stringify({ botId, ...change })); } catch { /* the change is simply not carried over */ }
+  try {
+    window.sessionStorage.setItem(KEY, JSON.stringify({ botId, ...change }));
+  } catch {
+    /* the change is simply not carried over */
+  }
 }
 
 export function takeChange(botId) {
@@ -24,7 +28,13 @@ export function takeChange(botId) {
 }
 
 const TTS_DEFAULT_MODEL = { elevenlabs: 'eleven_multilingual_v2', cartesia: 'sonic-3', openai: 'gpt-4o-mini-tts' };
-const slug = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^[^a-z]+/, '').replace(/_+$/, '').slice(0, 60) || 'connection';
+const slug = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^[^a-z]+/, '')
+    .replace(/_+$/, '')
+    .slice(0, 60) || 'connection';
 
 // Returns { config, note, where } or null when there is nothing to change.
 export function applyChange(config, change) {
@@ -50,7 +60,7 @@ export function applyChange(config, change) {
     const next = {
       ...tts,
       provider,
-      model: provider === tts.provider && tts.model ? tts.model : (TTS_DEFAULT_MODEL[provider] || tts.model || ''),
+      model: provider === tts.provider && tts.model ? tts.model : TTS_DEFAULT_MODEL[provider] || tts.model || '',
       voice_id: change.voiceId || tts.voice_id || '',
     };
     const models = { ...(config.defaults?.models || {}), tts: next };
@@ -64,7 +74,10 @@ export function applyChange(config, change) {
     const connections = { ...(config.connections || {}) };
     let id = slug(change.name);
     let n = 2;
-    while (id in connections) { id = `${slug(change.name)}_${n}`; n += 1; }
+    while (id in connections) {
+      id = `${slug(change.name)}_${n}`;
+      n += 1;
+    }
     connections[id] = { type: 'http', base_url: change.url, timeout_s: 10 };
     return {
       config: { ...config, connections },
