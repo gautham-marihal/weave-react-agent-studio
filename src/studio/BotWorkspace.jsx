@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.js';
 import ConfigTab from './ConfigTab.jsx';
 import ReleaseChecklist from './release/ReleaseChecklist.jsx';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { VOICE_GENDERS, genderOfVoice, voicesFor } from './config.js';
 
 // Female | Male switch over a provider's voices. It starts on the gender of the voice in use (Female when there is none), and follows

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon from '../ui/Icon.jsx';
 import { STAGES, journeyProgress } from '../studio/journey.js';
@@ -17,7 +17,7 @@ const STATE_TEXT = { done: 'Done', attention: 'Needs attention', todo: 'To do' }
 
 export default function HomeJourney({ bots, onOpenTab, onCreate }) {
   const loaded = Array.isArray(bots);
-  const list = loaded ? bots : [];
+  const list = useMemo(() => (Array.isArray(bots) ? bots : []), [bots]);
   const remembered = lastAgent();
   const [chosen, setChosen] = useState('');
   const bot = useMemo(() => list.find((b) => b.id === chosen) || list.find((b) => b.id === remembered) || [...list].sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0] || null, [list, chosen, remembered]);

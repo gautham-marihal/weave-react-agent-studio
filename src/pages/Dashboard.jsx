@@ -100,8 +100,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   // Agents are the Agent Builder API's. Which workspace an agent is in is kept in this browser (see studio/agents.js),
   // so this is the open workspace's agents. The older pages read them in their own shape.
   const { bots, removed: removedBots, all: allBots, refresh: refreshAgents } = useBots();
-  const botList = bots || [];
-  const agents = useMemo(() => botList.map(toLegacyAgent), [bots]);
+  const botList = useMemo(() => bots || [], [bots]);
+  const agents = useMemo(() => botList.map(toLegacyAgent), [botList]);
   const telephony = normalizeTelephony(currentWorkspace?.telephony);
   const sessions = normalizeList(currentWorkspace?.sessions);
   const readinessRuns = normalizeList(currentWorkspace?.simulations);
@@ -147,6 +147,17 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   useEffect(() => {
     if (currentWorkspaceId) saveWorkspaceState(workspaces, currentWorkspaceId);
   }, [workspaces, currentWorkspaceId]);
+
+  const switchWorkspace = (workspaceId) => {
+    if (workspaceId === currentWorkspaceId) {
+      setWorkspaceOpen(false);
+      return;
+    }
+    // An open agent belongs to the workspace you are leaving: go back to the list first (and honour unsaved edits).
+    if (/^#\/bots\/[^/?]+/.test(window.location.hash) && !studioNavigate('#/bots')) { setWorkspaceOpen(false); return; }
+    setCurrentWorkspaceId(workspaceId);
+    setWorkspaceOpen(false);
+  };
 
   // The agent store needs to know the workspaces to say which agents belong to the open one.
   useLayoutEffect(() => {
@@ -203,7 +214,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   }, []);
 
   // Landing on the Overview or the Agents page asks for a fresh list.
-  useEffect(() => { if (active === 'home' || active === 'agents') refreshAgents(); }, [active]);
+  useEffect(() => { if (active === 'home' || active === 'agents') refreshAgents(); }, [active, refreshAgents]);
   const agentCount = botList.length;
   const configuredCount = botList.filter((bot) => bot.latest_version).length;
   const health = describeHealth(useApiHealth());
@@ -227,7 +238,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     const list = events.slice(0, 6).map((event) => ({ ...event, time: formatRelative(event.at) }));
     list.push({ key: 'workspace', title: 'Workspace created', detail: `${workspaceName} is ready to use.`, time: formatRelative(currentWorkspace?.createdAt), icon: 'home', muted: list.length > 0 });
     return list;
-  }, [bots, workspaceName, currentWorkspace?.createdAt, activityLog]);
+  }, [botList, workspaceName, currentWorkspace?.createdAt, activityLog]);
 
   const openSearch = () => {
     setWorkspaceOpen(false);
@@ -297,7 +308,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     })).filter((group) => group.items.length);
     const settings = agentOpen && settingsIndex ? settingsIndex.search(settingsIndex.entries, searchQuery, 8).map((entry) => ({ type: 'setting', id: entry.trail.join('.'), title: entry.label, description: `${entry.where}${entry.level === 'expert' ? ' · advanced' : ''}`, icon: 'sliders', entry })) : [];
     return settings.length ? [...matching, { group: 'Settings of this agent', items: settings }] : matching;
-  }, [bots, searchQuery, workspaces, currentWorkspace, settingsIndex, agentOpen]);
+  }, [botList, searchQuery, workspaces, currentWorkspace, settingsIndex, agentOpen]);
 
   const selectSearchResult = (result) => {
     setSearchOpen(false);
@@ -371,17 +382,6 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     setWorkspaceOpen(false);
     setWorkspaceNameDraft('');
     setWorkspaceCreateOpen(true);
-  };
-
-  const switchWorkspace = (workspaceId) => {
-    if (workspaceId === currentWorkspaceId) {
-      setWorkspaceOpen(false);
-      return;
-    }
-    // An open agent belongs to the workspace you are leaving: go back to the list first (and honour unsaved edits).
-    if (/^#\/bots\/[^/?]+/.test(window.location.hash) && !studioNavigate('#/bots')) { setWorkspaceOpen(false); return; }
-    setCurrentWorkspaceId(workspaceId);
-    setWorkspaceOpen(false);
   };
 
   const createWorkspace = () => {

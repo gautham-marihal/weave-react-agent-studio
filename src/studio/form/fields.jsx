@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { prettyJson } from '../format.js';
 import { parseJsonStrict } from '../jsonDuplicates.js';

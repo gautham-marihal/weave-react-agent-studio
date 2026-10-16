@@ -1,0 +1,22 @@
+# Build output
+dist/
+dist-ssr/
+
+# Dependencies
+node_modules/
+
+# Test coverage
+coverage/
+
+# Public static assets & copies
+public/
+
+# Test fixtures and schemas
+tests/fixtures/
+
+# Package lockfile
+package-lock.json
+
+# Logs and environment
+*.log
+.env*

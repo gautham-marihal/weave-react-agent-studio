@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Switch } from '../form/fields.jsx';
 import { describeRecords, enableRedaction, setKeepTranscript, setLogDays, setLogEnabled, setRecordAudio, setRecordingDays } from '../records/recordsModel.js';
 import { readSimple, setRecordingNotice } from './simpleModel.js';

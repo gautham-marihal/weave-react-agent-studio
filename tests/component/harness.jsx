@@ -1,7 +1,7 @@
 // Mounts the real FormEditor (and so Node.jsx, the tool and channel editors…) or one of the other screens in a DOM with a config held in
 // state, the way the Config tab does, so a test can click and type and then read the config that came out. It is bundled by
 // tests/component/dom.js (esbuild) because it is JSX; nothing here is part of the app.
-import React, { act, useState } from 'react';
+import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import FormEditor from '../../src/studio/form/FormEditor.jsx';
 import SimpleConfig from '../../src/studio/simple/SimpleConfig.jsx';

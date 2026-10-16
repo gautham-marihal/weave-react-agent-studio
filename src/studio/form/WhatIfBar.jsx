@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { whatIfValue, whatIfVariables } from './serverPreview.js';
 
 // "Preview as…": the what-ifs the server's previews take: which channel the caller is on, what time it is, which number they call from, and what a few state

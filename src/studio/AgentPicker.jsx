@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal } from './ui.jsx';
 import { navigate, routeHref } from './route.js';
 

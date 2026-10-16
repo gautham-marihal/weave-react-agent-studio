@@ -207,8 +207,6 @@ export function removeRule(config, ruleId) {
 }
 
 // ---- taking away
-const targets = (action, id) => isObj(action) && action.to === id && (action.type === 'handoff' || action.action === 'handoff');
-
 // Every step anywhere in the configuration that hands the caller to this agent (an on_enter step, a tool's rules, a transfer's steps, a safety rule), taken out;
 // a rule block left with nothing to do goes, and a list left empty is not kept (the schema wants at least one step in them).
 const GONE = Symbol('gone');

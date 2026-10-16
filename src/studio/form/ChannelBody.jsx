@@ -1,4 +1,3 @@
-import React from 'react';
 import { isObj } from './engine.js';
 import { useConfigSelect, useForm } from './ctx.js';
 import { StringList, Switch, TextInput } from './fields.jsx';

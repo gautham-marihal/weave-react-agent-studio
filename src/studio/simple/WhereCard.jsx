@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import AddPicker from '../form/AddPicker.jsx';
 import { Switch } from '../form/fields.jsx';
 import { pickerFor } from '../form/pickerOptions.js';

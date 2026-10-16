@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import { isObj } from '../form/engine.js';
 import { getAt, setAt } from '../form/inlineCreate.js';
@@ -308,7 +308,7 @@ function StateRows({ values, variables, config, apply, path }) {
 }
 
 // ---- what an agent can do: its tools
-function ToolView({ node, agent, ai, owner, config, set, onSelect, onRemove, onOpenSettings }) {
+function ToolView({ node, agent: _agent, ai: _ai, owner, config, set, onSelect, onRemove, onOpenSettings }) {
   const toolId = parseNodeId(node.id).tool;
   const ti = list(config?.tools).findIndex((t) => t?.id === toolId);
   const tool = list(config?.tools)[ti];

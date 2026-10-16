@@ -18,7 +18,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // state: 'ok' (fine) | 'warn' (look at it) | 'bad' (don't go live like this) | 'info' (nothing to judge)
-export function buildChecklist({ config, report, version, runs = [], knowledge, providers = [], environment = '', target = 'version' } = {}) {
+export function buildChecklist({ config, report, version, runs = [], knowledge, providers = [], environment: _environment = '', target = 'version' } = {}) {
   const items = [];
   const add = (item) => items.push(item);
   const reportKnown = isObj(report);

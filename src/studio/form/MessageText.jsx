@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { isObj } from './engine.js';
 import { useConfigSelect, useForm } from './ctx.js';
 import TemplateField from './TemplateField.jsx';

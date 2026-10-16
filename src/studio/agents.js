@@ -142,12 +142,13 @@ export const visibleCount = (workspaceId = state.current) => (state.bots || []).
 // The agents of the open workspace. `all` is every agent the API has, whichever workspace it is in.
 export function useBots() {
   const s = useSyncExternalStore(subscribe, snapshot, snapshot);
-  useEffect(() => { if (s.bots === null && !s.loading && !s.error) refreshBots(); }, [s.bots, s.loading, s.error]);
-  const mine = useMemo(() => (s.bots ? s.bots.filter((bot) => { const owner = ownerOfIn(s.owners, s.spaces, bot.id); return owner === null || owner === s.current; }) : null), [s.bots, s.owners, s.spaces, s.current]);
-  const visible = useMemo(() => (mine ? mine.filter((bot) => !s.hidden.includes(bot.id)) : null), [mine, s.hidden]);
-  const removed = useMemo(() => (mine ? mine.filter((bot) => s.hidden.includes(bot.id) && !s.dismissed.includes(bot.id)) : []), [mine, s.hidden, s.dismissed]);
-  const dismissedIds = useMemo(() => (mine ? mine.filter((bot) => s.hidden.includes(bot.id) && s.dismissed.includes(bot.id)).map((bot) => bot.id) : []), [mine, s.hidden, s.dismissed]);
-  return { bots: visible, removed, dismissedCount: dismissedIds.length, dismissedIds, all: s.bots, error: s.error, loading: s.loading, refresh: refreshBots };
+  const { bots, owners, spaces, current: currentSpace, hidden, dismissed, loading, error } = s;
+  useEffect(() => { if (bots === null && !loading && !error) refreshBots(); }, [bots, loading, error]);
+  const mine = useMemo(() => (bots ? bots.filter((bot) => { const owner = ownerOfIn(owners, spaces, bot.id); return owner === null || owner === currentSpace; }) : null), [bots, owners, spaces, currentSpace]);
+  const visible = useMemo(() => (mine ? mine.filter((bot) => !hidden.includes(bot.id)) : null), [mine, hidden]);
+  const removed = useMemo(() => (mine ? mine.filter((bot) => hidden.includes(bot.id) && !dismissed.includes(bot.id)) : []), [mine, hidden, dismissed]);
+  const dismissedIds = useMemo(() => (mine ? mine.filter((bot) => hidden.includes(bot.id) && dismissed.includes(bot.id)).map((bot) => bot.id) : []), [mine, hidden, dismissed]);
+  return { bots: visible, removed, dismissedCount: dismissedIds.length, dismissedIds, all: bots, error, loading, refresh: refreshBots };
 }
 
 // The workspaces to choose from when moving an agent, and where an agent is now.

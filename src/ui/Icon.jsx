@@ -1,4 +1,3 @@
-import React from 'react';
 
 // One set of icons for the whole studio, drawn on a 24 by 24 grid with a round 1.75 px stroke in the text colour. Text symbols (⌂ ✦ ◫ ⌘) look different on
 // every machine and mean nothing to a screen reader; these look the same everywhere, take the colour of what they sit in, and are hidden from assistive

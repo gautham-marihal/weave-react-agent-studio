@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, getApiUser } from '../../api/client.js';
 import PlainIssues from '../validation/PlainIssues.jsx';
 import { envLabel, Notice } from '../ui.jsx';
@@ -52,19 +52,19 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const listRef = useRef(null);
   const stickRef = useRef(true);
   const fileRef = useRef(null);
-  const { status, info, messages, events, error, form, media, agentHint } = session;
+  const { status, info, messages, events, error, form, media, agentHint, attachPreview } = session;
   const trace = useTrace({ botId, session });
   const [saved, setSaved] = useState(null); // the id of a scenario just made from this conversation
 
   const running = ['starting', 'connecting', 'waiting', 'live'].includes(status);
   const connected = status === 'waiting' || status === 'live';
-  const deployed = summary?.deployed || {};
   const options = useMemo(() => {
     const list = [{ value: 'draft', label: 'Draft (the saved working copy)' }];
     if (summary?.latest_version) list.push({ value: 'latest', label: `Latest published (v${summary.latest_version})` });
+    const deployed = summary?.deployed || {};
     Object.entries(deployed).forEach(([env, version]) => list.push({ value: env, label: `${envLabel(env)} (v${version})` }));
     return list;
-  }, [summary, deployed]);
+  }, [summary]);
   useEffect(() => { if (!options.some((o) => o.value === ref)) setRef('draft'); }, [options, ref]);
 
   // The saved draft is what a draft test runs; edits that aren't saved yet are not part of it.
@@ -88,7 +88,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const shownModels = running || status === 'ended' ? used : (testConfig ? summarizeModels(testConfig) : null);
   const openModels = () => { try { localStorage.setItem('weave_config_mode', 'models'); } catch { /* storage unavailable */ } navigate(routeHref(botId, 'config'), { guard: false }); };
 
-  useEffect(() => { if (media.camera) session.attachPreview(); }, [media.camera, session.attachPreview]);
+  useEffect(() => { if (media.camera) attachPreview?.(); }, [media.camera, attachPreview]);
 
   // Keep the newest message in view, unless you scrolled up to read.
   // (the list is scrolled itself: scrollIntoView would also scroll the whole page to the end of an empty chat)

@@ -62,7 +62,6 @@ function Combo({ value, options, onChange, placeholder, ariaLabel, id, disabled,
   };
 
   const shownValue = open ? query : (action ? '' : (selected?.label ?? (value ? String(value) : '')));
-  let lastGroup = null;
   return (
     <div className={`stCombo ${disabled ? 'disabled' : ''}`} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) close(); }}>
       <input ref={inputRef} id={id} className={`${className} stComboInput`} type="text" role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-haspopup="listbox"
@@ -73,8 +72,8 @@ function Combo({ value, options, onChange, placeholder, ariaLabel, id, disabled,
       {open && (
         <ul id={listId} ref={listRef} role="listbox" aria-label={ariaLabel} className="stComboList">
           {shown.map((option, index) => {
-            const heading = option.group && option.group !== lastGroup ? option.group : null;
-            if (option.group) lastGroup = option.group;
+            const prev = index > 0 ? shown[index - 1] : null;
+            const heading = option.group && option.group !== prev?.group ? option.group : null;
             return (
               <React.Fragment key={option.value}>
                 {heading && <li role="presentation" className="stComboGroup">{heading}</li>}

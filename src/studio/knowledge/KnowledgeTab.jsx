@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { api } from '../../api/client.js';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
@@ -170,7 +170,6 @@ function FilesCard({ botId, files, bases, editor, onChanged, inputRef }) {
       const bad = fileTypeProblem(file.name);
       if (bad) { found.push(bad); continue; }
       try {
-        // eslint-disable-next-line no-await-in-loop
         await api.uploadKnowledgeFile(botId, file.name, file);
       } catch (e) {
         found.push(e?.status === 413 ? `“${file.name}” is too big for this server (${formatBytes(file.size)}).` : e?.status === 400 ? `“${file.name}”: ${e.message}` : `“${file.name}” didn’t upload: ${e?.message || 'something went wrong'}.`);

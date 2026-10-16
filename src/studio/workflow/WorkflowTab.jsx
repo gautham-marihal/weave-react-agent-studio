@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import { groupIssues } from '../../api/client.js';
 import { isObj } from '../form/engine.js';

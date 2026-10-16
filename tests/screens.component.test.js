@@ -140,7 +140,7 @@ test('Voice and language: a voice is chosen from its engine’s list; the record
   const records = await openCard(app, 'records');
   await a.type(byLabel(records, 'Recording notice'), 'Calls are recorded.');
   assert.equal(app.config.persona.disclosures.recording_notice, 'Calls are recorded.');
-  const voice = await openCard(app, 'voice');
+  await openCard(app, 'voice');
   const select = byLabel(card(app, 'voice'), 'Voice');
   const sarah = [...select.options].find((o) => /^Sarah/.test(o.text));
   assert.ok(sarah, 'ElevenLabs voices are offered');

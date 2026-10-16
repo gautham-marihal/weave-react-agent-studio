@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from '../demo/demoMode.js';
 import { navigate, routeHref } from './route.js';

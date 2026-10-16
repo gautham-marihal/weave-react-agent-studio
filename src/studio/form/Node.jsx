@@ -1,5 +1,5 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
-import { humanize, isObj } from './engine.js';
+import { memo, useEffect, useId, useMemo, useState } from 'react';
+import { isObj } from './engine.js';
 import { OwnerCtx, isUnder, keyOf, omit, orderedSet, singular, uniqueId, useConfigSelect, useForm, useKeyedHandlers, useOwner, useStableCallback } from './ctx.js';
 import SmartSelect from '../SmartSelect.jsx';
 import ModelField from './ModelField.jsx';
@@ -492,7 +492,7 @@ function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
 // shareStructure, and the handlers are stable), so it does not render. It reads the few things it needs from the config itself.
 const sameCard = (a, b) => keyOf(a.basePath) === keyOf(b.basePath) && Object.keys(a).every((k) => k === 'basePath' || a[k] === b[k]);
 
-const CardItem = React.memo(function CardItem({ item, index, count, basePath, itemSchema, disabled, named, collection, fresh, onItemChange, onRemoveItem, onMoveItem }) {
+const CardItem = memo(function CardItem({ item, index, count, basePath, itemSchema, disabled, named, collection, fresh, onItemChange, onRemoveItem, onMoveItem }) {
   const { title, hint: summary } = summarize(item, index);
   const wantsLanguages = collection === 'messages' && isObj(item) && isObj(item.text);
   const languages = useConfigSelect((c) => (wantsLanguages ? languageHint(item, c) : ''));
@@ -500,7 +500,7 @@ const CardItem = React.memo(function CardItem({ item, index, count, basePath, it
   // a tool says which agents offer it (the data is in the config), so a long list can be read at a glance
   const usedBy = useConfigSelect((c) => (collection === 'tools' && isObj(item) && item.id ? agentsUsingTool(c, item.id) : null));
   const hint = usedBy ? [baseHint, usedByText(usedBy)].filter(Boolean).join(' · ') : baseHint;
-  const path = useMemo(() => [...basePath, index], [basePath, index]); // eslint-disable-line react-hooks/exhaustive-deps
+  const path = useMemo(() => [...basePath, index], [basePath, index]);
   return (
     <Group pathKey={keyOf(path)} title={title} hint={hint} defaultOpen={fresh || (basePath.length > 1 ? index === 0 && count <= 3 : count <= 3)}
       onRemove={disabled ? null : () => onRemoveItem(index)}

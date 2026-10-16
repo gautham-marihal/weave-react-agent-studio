@@ -175,7 +175,6 @@ export const SETTINGS = {
   capabilities: E('What this channel can do', 'Switch features on or off for this channel, such as keypad tones and forms.', 'detailed'),
   dtmf: E('Keypad tones', 'Callers can press keys and the agent can send tones. Phone and voice channels only.', 'detailed'),
   human_transfer: E('Hand over to a person', 'Off: a transfer skips the handover and runs its fallback straight away.', 'detailed'),
-  forms: E('Show forms', 'Whether this channel can show a form. Where it cannot, the form’s “otherwise” steps run.', 'detailed'),
   greeting: E('What it says first', 'The first thing the agent says on this channel.', 'guided', 'Hi, I’m Sam. How can I help you today?'),
   instructions_append: E('Extra instructions for this channel', 'Added to every agent’s instructions on this channel, such as “the caller has no camera”.', 'detailed'),
   overrides: E('Exceptions', 'Settings that replace the defaults for this one channel or agent.', 'detailed'),
@@ -564,6 +563,7 @@ export const CONTEXT = {
   'log_file.path': E('File location', 'Where the log is written.', 'expert'),
   'reliability.connection': E('Connection to each service', 'How long to wait, and how often to retry, for listening, thinking and speaking.', 'expert'),
   'forms.fields': E('Fields', 'The details to collect.', 'guided'),
+  'capabilities.forms': E('Show forms', 'Whether this channel can show a form. Where it cannot, the form’s “otherwise” steps run.', 'detailed'),
   'fields.type': E('Kind of answer', 'Text, email, phone number, number, choice or tick box.', 'guided'),
 };
 

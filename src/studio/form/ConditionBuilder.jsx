@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { isObj } from './engine.js';
 import { FreeValue, Select, StringList } from './fields.jsx';
 import InlineCreate from './InlineCreate.jsx';
@@ -27,6 +27,9 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
   const ctx = useForm();
   const [creating, setCreating] = useState(false);
   const [advanced, setAdvanced] = useState(false);
+  const toolIndex = path && path[0] === 'tools' && typeof path[1] === 'number' ? path[1] : null;
+  const argNames = useConfigSelect((c) => (toolIndex !== null ? argNamesOf(c?.tools?.[toolIndex]) : []));
+
   const empty = !isObj(value) || Object.keys(value).length === 0;
   if (advanced || (!empty && !isSimpleCondition(value))) {
     return (
@@ -42,8 +45,6 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
   const operator = OPERATOR_KEYS.find((key) => key in obj) || 'equals';
   const subject = obj[source] ?? '';
   const operand = obj[operator];
-  const toolIndex = path[0] === 'tools' && typeof path[1] === 'number' ? path[1] : null;
-  const argNames = useConfigSelect((c) => (toolIndex !== null ? argNamesOf(c?.tools?.[toolIndex]) : []));
   const stateVars = ctx.refOptions.state_vars || [];
 
   const write = (next) => onChange(next);

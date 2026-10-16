@@ -1,4 +1,3 @@
-import React from 'react';
 import { setApiUser } from '../api/client.js';
 import BotsPage from './BotsPage.jsx';
 import BotWorkspace from './BotWorkspace.jsx';

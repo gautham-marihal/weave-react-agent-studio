@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Notice } from '../ui.jsx';
 import { COLLECTIONS, ID_PATTERN, describeUsage, findUsage } from './references.js';
 

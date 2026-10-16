@@ -105,7 +105,7 @@ test('a week is shown as open windows per day, in words and as bars', () => {
   assert.equal(describeWeek({ weekly: [] }), 'Never open.');
   assert.deepEqual(weekWindows({ weekly: [{ days: ['mon'], start: '09:00', end: '12:00' }, { days: ['mon'], start: '11:00', end: '14:00' }, { days: ['mon'], start: '15:00', end: '16:00' }] }).mon, [[540, 840], [900, 960]], 'overlapping windows are merged');
   assert.equal(minutesOf('24:00'), 1440);
-  assert.equal(minutesOf('25:00'), 1500 > 1440 ? null : 1500);
+  assert.equal(minutesOf('25:00'), null);
   assert.equal(minutesOf('nope'), null);
 });
 

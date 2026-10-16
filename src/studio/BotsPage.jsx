@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.js';
 import { assignBot, dismissBot, refreshBots, restoreBot, undoDismissed, useBots, useWorkspaces } from './agents.js';

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { createEngine } from '../form/engine.js';
 import { useSchema } from '../form/useSchema.js';
 import { formatPath } from '../format.js';

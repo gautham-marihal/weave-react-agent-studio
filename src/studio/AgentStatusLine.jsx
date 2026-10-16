@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { api } from '../api/client.js';
 import { formatRelative } from '../pages/helpers.js';
 import { normalizeHeadline, isFinished } from './scenarios/runResults.js';

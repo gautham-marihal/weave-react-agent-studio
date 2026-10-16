@@ -1,4 +1,3 @@
-import React from 'react';
 
 // Asked when a voice channel is added and callers are not told anything yet. A recording notice is a legal matter in many places, and the
 // agent keeps a record of its calls unless that is turned off, so it is raised at the moment it starts to matter rather than left behind a

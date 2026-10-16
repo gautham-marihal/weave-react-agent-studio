@@ -1,6 +1,6 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { $, $$, actions, byLabel, setupDom, teardownDom, textOf } from './component/dom.js';
+import { $, $$, actions, setupDom, teardownDom, textOf } from './component/dom.js';
 
 // The Provider and Model boxes of the speech, language and voice settings: a list of what the studio knows, and anything else can be typed.
 const { mountForm, act } = await setupDom();

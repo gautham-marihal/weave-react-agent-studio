@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GROUPS, describeRecords, filterRows, groupCounts, traceAsText, traceSummary } from './records.js';
 import './trace.css';
 

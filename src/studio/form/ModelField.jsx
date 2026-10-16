@@ -1,10 +1,9 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { MODEL_OPTIONS, isRecommendedModel, modelsFor, providerLabel, providersForStage } from '../models/catalog.js';
 import { useProviders } from '../models/useProviders.js';
 import { useConfigSelect } from './ctx.js';
 import { TextInput } from './fields.jsx';
 import SuggestInput from './SuggestInput.jsx';
-import { modelStageOf } from './modelFields.js';
 
 // The Provider and Model boxes of the speech, language and voice settings: a list of what the studio knows (the providers the server can run, the models
 // the catalogue lists for the chosen provider), and any other value can be typed. Nothing here limits what is saved: the server does not check model ids.

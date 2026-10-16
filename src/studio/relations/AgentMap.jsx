@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import { useId } from 'react';
 import { useConfigSelect } from '../form/ctx.js';
 import { NODE, buildAgentMap, describeEdges } from './agentMap.js';
 

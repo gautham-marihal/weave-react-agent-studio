@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { $, $$, actions, setupDom, teardownDom, textOf } from './component/dom.js';
+import { $$, actions, setupDom, teardownDom, textOf } from './component/dom.js';
 import { createEngine } from '../src/studio/form/engine.js';
 import { corpus } from './corpus/corpus.js';
 

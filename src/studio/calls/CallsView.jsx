@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { isDemoMode } from '../../demo/demoMode.js';
 import { DemoNote } from '../../demo/DemoBadge.jsx';

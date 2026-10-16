@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ASSISTANT, MIN_DESCRIPTION, generateDraft } from '../demo/draftAssistant.js';
 import { minimalConfig } from '../demo/minimalConfig.js';
 import { entryAgent, readSimple } from './simple/simpleModel.js';

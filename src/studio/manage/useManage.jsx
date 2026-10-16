@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { hideBot } from '../agents.js';
 import { ExportDialog, MoveDialog, RemoveDialog, RenameDialog, SaveTemplateDialog } from './Dialogs.jsx';
 

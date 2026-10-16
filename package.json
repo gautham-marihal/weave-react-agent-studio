@@ -14,7 +14,11 @@
     "types": "node scripts/schemaTypes.mjs",
     "sync-public": "node scripts/schemaCopies.mjs",
     "e2e:typing": "node e2e/typing.mjs",
-    "e2e:firstrun": "node e2e/firstRun.mjs"
+    "e2e:firstrun": "node e2e/firstRun.mjs",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "livekit-client": "^2.22.4",
@@ -22,9 +26,17 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
     "jsdom": "^30.1.2",
     "playwright-core": "^1.64.0",
+    "prettier": "^3.9.10",
     "vite": "^7.1.7"
   },
   "engines": {

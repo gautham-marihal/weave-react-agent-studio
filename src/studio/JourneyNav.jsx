@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '../ui/Icon.jsx';
 import { STAGES, nextStep, stageOf } from './journey.js';

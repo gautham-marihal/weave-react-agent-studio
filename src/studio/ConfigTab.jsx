@@ -1,4 +1,4 @@
-import React, { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { groupIssues } from '../api/client.js';
 import { formatPath, formatWhen, prettyJson } from './format.js';
 import { useTechnicalNames } from './usePref.js';
@@ -203,7 +203,7 @@ export default function ConfigTab({ editor, focusPath, botId, preview }) {
       if (span) lines.add(lineOf(text, span[0]));
     });
     return lines;
-  }, [text, report, parsed.error]);
+  }, [text, report, parsed.error, parsed.duplicates]);
 
   // Ctrl/Cmd+S saves from anywhere on this tab, not just inside the text box.
   const saveRef = useRef(editor.save);

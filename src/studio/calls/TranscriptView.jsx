@@ -1,4 +1,3 @@
-import React from 'react';
 import { api } from '../../api/client.js';
 import { Notice } from '../ui.jsx';
 import { formatWhen } from '../format.js';

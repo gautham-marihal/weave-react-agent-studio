@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { api } from '../../api/client.js';
 import { navigate, routeHref } from '../route.js';
 import { useAsync } from '../useAsync.js';

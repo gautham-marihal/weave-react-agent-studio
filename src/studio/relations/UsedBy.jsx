@@ -1,4 +1,3 @@
-import React from 'react';
 import { useConfigSelect, useForm } from '../form/ctx.js';
 import { usedBy } from './usedBy.js';
 

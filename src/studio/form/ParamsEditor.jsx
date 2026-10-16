@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { JsonInput, StringList } from './fields.jsx';
 import { PARAM_KINDS, modelView, problems as paramProblems, readParams, writeParams } from './paramSchema.js';
 

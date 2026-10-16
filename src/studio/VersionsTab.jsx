@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.js';
 import { formatDiffPath, formatWhen, truncate } from './format.js';
@@ -121,7 +121,7 @@ function RestoreDialog({ botId, version, dirty, onClose, onDone }) {
 
 export default function VersionsTab({ botId, editor, refreshKey }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
-  const list = versions.data || [];
+  const list = useMemo(() => versions.data || [], [versions.data]);
   // test runs say which exact configuration they tested, so a version can show whether IT passed (a read; nothing is run)
   const runs = useAsync((signal) => api.listTestRuns(botId, 50, { signal }), [botId, refreshKey]);
   const headlines = useMemo(() => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline) : []), [runs.data]);

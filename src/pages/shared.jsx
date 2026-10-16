@@ -169,7 +169,7 @@ function placeDropdown(anchorRect, { width = 220, height = 180, avoidRect = null
   return { left, top };
 }
 
-export function ProfileMenu({ profile, initials, compact = false, onAccountOpen, onSignOut }) {
+export function ProfileMenu({ profile, initials, compact = false, onAccountOpen, onSignOut: _onSignOut }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const ref = useRef(null);

@@ -90,7 +90,7 @@ const quoted = (text) => `“${text}”`;
 // Each rule: a pattern for the server's sentence, and a function from the match to { text, fixes }. `ctx` has the config, the engine, the path of the
 // issue, and `label(name, owner)` for a setting's plain name.
 const RULES = [
-  { re: /audio input needs an stt/i, make: (m, ctx) => ({ text: 'This channel takes audio in, so the agent needs a model to listen with (speech-to-text), and none is chosen.', fixes: [{ id: 'models-stt', label: 'Choose a listening model', open: { kind: 'models', stage: 'stt' } }] }) },
+  { re: /audio input needs an stt/i, make: () => ({ text: 'This channel takes audio in, so the agent needs a model to listen with (speech-to-text), and none is chosen.', fixes: [{ id: 'models-stt', label: 'Choose a listening model', open: { kind: 'models', stage: 'stt' } }] }) },
   { re: /audio output needs a tts/i, make: () => ({ text: 'This channel speaks, so the agent needs a model to speak with (text-to-speech), and none is chosen.', fixes: [{ id: 'models-tts', label: 'Choose a speaking model', open: { kind: 'models', stage: 'tts' } }] }) },
   { re: /^'(.+)' is not a declared (.+?) id \(declared: (.*)\)$/, make: (m, ctx) => {
     const [, value, collection, declaredText] = m;
@@ -135,7 +135,7 @@ const RULES = [
     const options = [...m[2].matchAll(/'([^']*)'/g)].map((x) => x[1]);
     return { text: `${quoted(m[1])} isn’t one of the choices.`, fixes: options.length && options.length <= 4 ? options.map((o) => ({ id: `choose-${o}`, label: `Use ${quoted(o)}`, apply: (config) => setAt(config, ctx.path, o) })) : [] };
   } },
-  { re: /^this config uses features that need schema_version ([\d.]+)(?: \((.*)\))?, but says ([\d.]+)$/, make: (m, ctx) => ({
+  { re: /^this config uses features that need schema_version ([\d.]+)(?: \((.*)\))?, but says ([\d.]+)$/, make: (m) => ({
     text: `Something in this agent needs a newer file format (schema version ${m[1]})${m[2] ? `: ${m[2]}` : ''}. The draft says ${m[3]}.`,
     fixes: [{ id: 'raise-version', label: `Use schema version ${m[1]}`, apply: (config) => ({ ...config, schema_version: m[1] }) }],
   }) },

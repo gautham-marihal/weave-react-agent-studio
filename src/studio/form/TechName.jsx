@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from './ctx.js';
 import { formatPath } from '../format.js';
 

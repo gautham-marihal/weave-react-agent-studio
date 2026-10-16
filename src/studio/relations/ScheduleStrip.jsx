@@ -1,4 +1,3 @@
-import React from 'react';
 import { DAYS, DAY_NAMES, describeWeek, exceptions, weekWindows } from './scheduleStrip.js';
 
 // A schedule as a week you can see: a bar for each day, filled where the line is open, with the same thing in words and the days that are different

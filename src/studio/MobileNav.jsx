@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './mobileNav.css';
 
 // On a phone the sidebar is hidden, which left no way to move between pages. This adds a menu button that

@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import { createContext, useContext } from 'react';
 import { TechName } from '../form/TechName.jsx';
 import { useTechnicalNames } from '../usePref.js';
 

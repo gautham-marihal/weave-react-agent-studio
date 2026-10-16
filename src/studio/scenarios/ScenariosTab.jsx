@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { api } from '../../api/client.js';
 import { isDemoMode } from '../../demo/demoMode.js';
 import { DemoNote } from '../../demo/DemoBadge.jsx';

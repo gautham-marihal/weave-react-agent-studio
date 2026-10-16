@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import { isBuiltin } from './workflowOps.js';
 

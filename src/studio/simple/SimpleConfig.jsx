@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy, useMemo, useRef, useState } from 'react';
+import { useEffect, Suspense, lazy, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { groupIssues } from '../../api/client.js';
 import { collectSecretNames } from '../form/engine.js';
@@ -22,7 +22,7 @@ import { describeRecords } from '../records/recordsModel.js';
 import WhereCard from './WhereCard.jsx';
 import SimpleKey, { JsonOpenerCtx } from './SimpleKey.jsx';
 import RecordsCard from './RecordsCard.jsx';
-import { BASE_LANGUAGES, LANGUAGES, entryAgentIndex, greetingChannelIndex, languageName, readConnections, readSimple, readTools, setAgentName, setGreeting, setPrimaryLanguage, setRecordingNotice, setRole, setStyleRules, setTone, toggleSpoken } from './simpleModel.js';
+import { BASE_LANGUAGES, LANGUAGES, entryAgentIndex, greetingChannelIndex, languageName, readConnections, readSimple, readTools, setAgentName, setGreeting, setPrimaryLanguage, setRole, setStyleRules, setTone, toggleSpoken } from './simpleModel.js';
 import './simple.css';
 
 // The Simple view of an agent: a few cards for the everyday decisions, in the customer's words: personality and instructions, voice and

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, apiUrl, followCall } from '../../api/client.js';
 import { Notice } from '../ui.jsx';
 import { formatWhen } from '../format.js';
@@ -31,7 +31,6 @@ export default function CallDetail({ botId, botName, callId, summary, onClose })
       try {
         let after = 0; let all = []; let last = null;
         for (;;) {
-          // eslint-disable-next-line no-await-in-loop
           const page = await api.getCall(botId, callId, { after, limit: PAGE });
           last = page;
           all = all.concat(Array.isArray(page.events) ? page.events : []);

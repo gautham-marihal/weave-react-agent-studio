@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import {
   EXPECT_KINDS, HTTP_METHODS, hasProblems, isUnknownExpectation, kindOfExpectation, newExpectation, parseObject, parseValue, regexProblem, scenarioProblems, showValue, toolIdsOf,

@@ -33,13 +33,13 @@ const subset = (needle, haystack) => isObj(needle) && isObj(haystack) && Object.
 function matchMock(mocks, used, request) {
   for (let i = 0; i < mocks.length; i += 1) {
     const m = mocks[i];
-    if (!isObj(m)) continue; // eslint-disable-line no-continue
-    if (m.connection && m.connection !== request.connection) continue; // eslint-disable-line no-continue
-    if (m.method && m.method !== request.method) continue; // eslint-disable-line no-continue
-    if (!wildcard(m.path).test(request.path)) continue; // eslint-disable-line no-continue
-    if (m.query && !subset(m.query, request.query)) continue; // eslint-disable-line no-continue
-    if (m.body_contains && !subset(m.body_contains, request.body)) continue; // eslint-disable-line no-continue
-    if (m.times && (used[i] || 0) >= m.times) continue; // eslint-disable-line no-continue
+    if (!isObj(m)) continue;
+    if (m.connection && m.connection !== request.connection) continue;
+    if (m.method && m.method !== request.method) continue;
+    if (!wildcard(m.path).test(request.path)) continue;
+    if (m.query && !subset(m.query, request.query)) continue;
+    if (m.body_contains && !subset(m.body_contains, request.body)) continue;
+    if (m.times && (used[i] || 0) >= m.times) continue;
     used[i] = (used[i] || 0) + 1;
     return m;
   }

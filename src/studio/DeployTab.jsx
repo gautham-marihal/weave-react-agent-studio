@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.js';
 import { formatWhen } from './format.js';
@@ -85,7 +85,7 @@ export default function DeployTab({ botId, initialVersion, refreshKey, onDeploye
     return { ...report, __record: record };
   }, [botId, version]);
 
-  const versionList = versions.data || [];
+  const versionList = useMemo(() => versions.data || [], [versions.data]);
   useEffect(() => {
     if (!versionList.length) return;
     setVersion((current) => (versionList.some((item) => item.version === current) ? current : versionList[0].version));

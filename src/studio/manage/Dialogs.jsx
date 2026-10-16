@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { api } from '../../api/client.js';
 import { assignBot, patchBot, refreshBots, switchWorkspace, useWorkspaces } from '../agents.js';
 import { envLabel, Modal, Notice, Spinner } from '../ui.jsx';

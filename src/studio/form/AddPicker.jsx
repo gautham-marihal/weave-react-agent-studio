@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { filterOptions, groupOptions } from './pickerOptions.js';
 
 // "Add…" as a choice of jobs rather than a drop-down of kinds: each choice is a card with a sentence on what it is for, grouped, with a search

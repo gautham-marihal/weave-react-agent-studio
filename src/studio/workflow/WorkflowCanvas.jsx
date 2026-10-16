@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import { routeEdge } from './geometry.js';
 

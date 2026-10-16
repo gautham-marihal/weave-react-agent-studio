@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from './demoMode.js';
 
 // A small DEMO tag that is on every screen while the app runs on the imitation API, so a demo is never mistaken for the real thing.

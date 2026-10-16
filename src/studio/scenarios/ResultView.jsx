@@ -1,4 +1,3 @@
-import React from 'react';
 import { Notice } from '../ui.jsx';
 import TraceView from '../trace/TraceView.jsx';
 import { describeExpectation } from './model.js';

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { isObj } from './engine.js';
 import { JsonInput, Select } from './fields.jsx';
@@ -49,7 +49,7 @@ function joinUrl(base, path, query) {
 }
 
 // ---- the HTTP request: connection, method, path, query, headers, body ----------------------------------------------------------
-export function RequestEditor({ request, onChange, connection, onConnection, connectionShape, connectionPath, scope, paramRows, disabled }) {
+export function RequestEditor({ request, onChange, connection, onConnection, connectionShape: _connectionShape, connectionPath, scope, paramRows, disabled }) {
   const ctx = useForm();
   const req = isObj(request) ? request : { method: 'GET', path: '' };
   const [creating, setCreating] = useState(false);

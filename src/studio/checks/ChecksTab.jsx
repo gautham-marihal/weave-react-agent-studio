@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { api } from '../../api/client.js';
 import { SCENARIOS, runScenarioChecks } from '../scenarios.js';
 import { formatWhen } from '../format.js';

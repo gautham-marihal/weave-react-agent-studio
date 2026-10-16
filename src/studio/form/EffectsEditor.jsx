@@ -1,4 +1,3 @@
-import React from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { isObj } from './engine.js';
 import { useForm } from './ctx.js';

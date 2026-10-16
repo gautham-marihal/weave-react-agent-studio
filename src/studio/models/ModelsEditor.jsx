@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, Field } from '../builderUi.jsx';
 import { Notice } from '../ui.jsx';
 import { CATALOGUE_REVIEWED, FREE_TEXT_PROVIDERS, STAGES, modelStatus, modelsFor, providerLabel, providersForStage } from './catalog.js';

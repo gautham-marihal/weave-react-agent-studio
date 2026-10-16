@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { groupIssues } from '../../api/client.js';
 import { ErrorState, Notice, Spinner } from '../ui.jsx';
 import { FormCtx, OwnerCtx, createConfigStore, isUnder, keyOf, omit, orderedSet, useStableCallback, useStableValue } from './ctx.js';
@@ -319,7 +319,7 @@ export default function FormEditor({ editor, focusRequest, onShowJson, onShowMod
             id={dialog.id}
             takenIds={COLLECTIONS[dialog.collection].kind === 'list' ? (getAtPath(config, COLLECTIONS[dialog.collection].path) || []).map((item) => item?.id).filter((x) => typeof x === 'string' && x !== dialog.id) : Object.keys(getAtPath(config, COLLECTIONS[dialog.collection].path) || {}).filter((x) => x !== dialog.id)}
             onClose={() => setDialog(null)}
-            onApply={(name, count) => renameDirect(dialog.collection, dialog.id, name)}
+            onApply={(name) => renameDirect(dialog.collection, dialog.id, name)}
           />
         )}
         {dialog?.type === 'delete' && (

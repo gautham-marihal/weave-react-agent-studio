@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import { useId, useState } from 'react';
 
 // A form the agent asked for during a conversation. Whether and when it appears is the agent's decision;
 // this only draws it and sends the answers back. The server validates again and may answer with errors.

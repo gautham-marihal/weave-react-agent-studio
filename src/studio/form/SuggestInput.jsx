@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import '../smartSelect.css';
 
 // A text box with a list of suggestions: pick one from the list, or type anything else. The difference from SmartSelect is that the value is never
