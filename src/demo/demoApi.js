@@ -42,7 +42,7 @@ export function browserStorage(key = STORAGE_KEY) {
   };
 }
 
-export function createDemoApi({ storage = memoryStorage(), loadSchema = async () => ({}), now = () => new Date().toISOString(), seed = true, stepMs = STEP_MS } = {}) {
+export function createDemoApi({ storage = memoryStorage(), loadSchema = async () => ({}), now = () => new Date().toISOString(), seed = true, stepMs = STEP_MS, history = true } = {}) {
   let counter = 0;
   const uid = (prefix) => { counter += 1; return `${prefix}${Date.now().toString(36)}${counter}`; };
 
@@ -251,7 +251,7 @@ export function createDemoApi({ storage = memoryStorage(), loadSchema = async ()
       }
       // ---- call records (imitated: see demoCalls.js). Seeded the first time they are asked for, so older demo data gets some too.
       if (/^\/calls(\/|$)/.test(rest)) {
-        if (!bot.calls) { bot.calls = seedCalls(bot.id, bot.config, now()); commit(); }
+        if (!bot.calls) { bot.calls = seedCalls(bot.id, bot.config, now(), { history }); commit(); }
         if (rest === '/calls' && method === 'GET') return ok(listCallsOf(bot.calls, params, Date.parse(now())));
         const callMatch = rest.match(/^\/calls\/([^/]+)(\/transcript)?$/);
         if (callMatch && method === 'GET') {
@@ -311,7 +311,7 @@ export function createDemoApi({ storage = memoryStorage(), loadSchema = async ()
     const state = read();
     const bot = state.bots[botId];
     if (!bot) return null;
-    if (!bot.calls) bot.calls = seedCalls(bot.id, bot.config, now());
+    if (!bot.calls) bot.calls = seedCalls(bot.id, bot.config, now(), { history });
     const call = callFromConversation(botId, { ...conversation, startedAt: conversation.startedAt || now(), version: conversation.version || 'draft' });
     bot.calls.unshift(call);
     bot.calls = bot.calls.slice(0, 60);
@@ -330,5 +330,7 @@ const loadPublicSchema = async () => {
   if (!response.ok) throw new Error('The bundled schema could not be loaded.');
   return response.json();
 };
-export const getDemoApi = () => { instance ||= createDemoApi({ storage: browserStorage(), loadSchema: loadPublicSchema }); return instance; };
+// weave_demo_history = 'off' leaves out the two weeks of earlier made-up calls (a switch for tests, and for a demo with only the newest few calls)
+const historyOn = () => { try { return window.localStorage.getItem('weave_demo_history') !== 'off'; } catch { return true; } };
+export const getDemoApi = () => { instance ||= createDemoApi({ storage: browserStorage(), loadSchema: loadPublicSchema, history: historyOn() }); return instance; };
 export const resetDemoData = () => { getDemoApi().reset(); };

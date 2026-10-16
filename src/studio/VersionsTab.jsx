@@ -5,7 +5,11 @@ import { formatDiffPath, formatWhen, truncate } from './format.js';
 import { navigate, routeHref } from './route.js';
 import { ErrorState, Modal, Notice, Spinner } from './ui.jsx';
 import { useAsync } from './useAsync.js';
-import { normalizeHeadline, testStatusOf } from './scenarios/runResults.js';
+import { isFinished, normalizeHeadline, testStatusOf } from './scenarios/runResults.js';
+import ShipFlow from './release/ShipFlow.jsx';
+import { shipSteps } from './release/shipFlow.js';
+import { useLatestPublished } from './changes/useLatestPublished.js';
+import { changesSince } from './changes/sinceRelease.js';
 
 const OP_LABEL = { add: 'Added', remove: 'Removed', change: 'Changed' };
 const OP_MARK = { add: '+', remove: '−', change: '~' };
@@ -119,7 +123,7 @@ function RestoreDialog({ botId, version, dirty, onClose, onDone }) {
   );
 }
 
-export default function VersionsTab({ botId, editor, refreshKey }) {
+export default function VersionsTab({ botId, editor, refreshKey, summary }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const list = versions.data || [];
   // test runs say which exact configuration they tested, so a version can show whether IT passed (a read; nothing is run)
@@ -135,6 +139,23 @@ export default function VersionsTab({ botId, editor, refreshKey }) {
     setFrom((current) => (current && list.some((item) => item.version === current) ? current : list[0].version));
   }, [list]);
 
+  // where the draft stands on the way to callers: saved, valid, tested, published, deployed
+  const latest = useLatestPublished(botId, refreshKey);
+  const flow = useMemo(() => {
+    const draft = editor.parsed.value;
+    const pub = latest.published;
+    return shipSteps({
+      dirty: editor.dirty,
+      parseError: editor.parsed.error || '',
+      report: editor.report,
+      scenarioCount: Array.isArray(draft?.tests) ? draft.tests.length : 0,
+      latestRun: Array.isArray(runs.data) ? runs.data.find((run) => isFinished(run.status)) || null : null,
+      published: pub?.config ? { version: pub.version, changes: draft ? changesSince(pub.config, draft).total : 0 } : null,
+      deployed: summary?.deployed || {},
+    });
+  }, [editor.dirty, editor.parsed, editor.report, runs.data, latest.published, summary]);
+  const goTo = (action) => navigate(action.publish ? routeHref(botId, 'versions', { publish: '1' }) : routeHref(botId, action.tab), { guard: false });
+
   const canDiff = !!from && !!to && from !== to;
   const diff = useAsync((signal) => (canDiff ? api.diff(botId, from, to, { signal }) : Promise.resolve(null)), [botId, from, to, canDiff, editor.savedTick, refreshKey]);
 
@@ -145,6 +166,7 @@ export default function VersionsTab({ botId, editor, refreshKey }) {
 
   return (
     <div className="stVersions">
+      {!latest.loading && <ShipFlow flow={flow} onAction={goTo} />}
       {list.length === 0 ? (
         <section className="emptyPanel">
           <div className="emptyPanelIcon" aria-hidden="true">◫</div>

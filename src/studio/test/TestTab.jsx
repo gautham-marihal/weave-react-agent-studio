@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, getApiUser } from '../../api/client.js';
+import Icon from '../../ui/Icon.jsx';
+import { pictureProblem } from '../preview/useDictation.js';
 import PlainIssues from '../validation/PlainIssues.jsx';
 import { envLabel, Notice } from '../ui.jsx';
 import { navigate, routeHref } from '../route.js';
@@ -55,6 +57,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const { status, info, messages, events, error, form, media, agentHint } = session;
   const trace = useTrace({ botId, session });
   const [saved, setSaved] = useState(null); // the id of a scenario just made from this conversation
+  const [pictureNote, setPictureNote] = useState(''); // why a picture was not sent, in words, next to where it was chosen
 
   const running = ['starting', 'connecting', 'waiting', 'live'].includes(status);
   const connected = status === 'waiting' || status === 'live';
@@ -86,7 +89,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const noWebChannel = !simulated && reach.state === 'none' && !running;
   const modelsUnsaved = ref === 'draft' && !!config && !!editor.savedConfig && !sameModels(config, editor.savedConfig);
   const shownModels = running || status === 'ended' ? used : (testConfig ? summarizeModels(testConfig) : null);
-  const openModels = () => { try { localStorage.setItem('weave_config_mode', 'models'); } catch { /* storage unavailable */ } navigate(routeHref(botId, 'config'), { guard: false }); };
+  const openModels = () => { try { sessionStorage.setItem('weave_open_models', '1'); } catch { /* storage unavailable */ } navigate(routeHref(botId, 'config'), { guard: false }); };
 
   useEffect(() => { if (media.camera) session.attachPreview(); }, [media.camera, session.attachPreview]);
 
@@ -114,8 +117,9 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !imageCfg) return;
-    if (imageCfg.max_bytes && file.size > imageCfg.max_bytes) { window.alert(`That picture is ${(file.size / 1048576).toFixed(1)} MB; the limit for this channel is ${(imageCfg.max_bytes / 1048576).toFixed(1)} MB.`); return; }
-    if (imageCfg.accepted_mime?.length && !imageCfg.accepted_mime.includes(file.type)) { window.alert(`This channel accepts ${imageCfg.accepted_mime.join(', ')}; that file is ${file.type || 'an unknown type'}.`); return; }
+    const problem = pictureProblem(file, { acceptedMime: imageCfg.accepted_mime || [], maxBytes: imageCfg.max_bytes || 0 });
+    setPictureNote(problem);
+    if (problem) return;
     await session.sendImage(file, imageCfg.topic || 'image-upload');
   };
 
@@ -198,9 +202,18 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
       <div className="stTGrid">
         <section className="stCard stTChat" aria-label="Conversation">
+          {status !== 'idle' && (
+            <div className={`pvHud stTHud ${status === 'live' ? 'live' : status === 'ended' || status === 'error' ? 'ended' : 'reconnecting'}`} aria-hidden="true">
+              <span className="pvMiniOrb" /><span className="pvBars"><i /><i /><i /><i /><i /><i /><i /></span>
+              <small>{status === 'live' ? 'Linked' : status === 'ended' ? 'Signal closed' : status === 'error' ? 'No signal' : 'Linking…'}</small>
+            </div>
+          )}
           <div className="stTMessages" ref={listRef} onScroll={onScroll} role="log" aria-live="polite" aria-label="Messages">
             {messages.length === 0 && (
               <div className="stTEmpty">
+                {['idle', 'ended', 'error'].includes(status) && (
+                  <div className="pvStage stTStage" aria-hidden="true"><i className="pvRing r1" /><i className="pvRing r2" /><i className="pvRing r3" /><i className="pvSat" /><span className="pvOrb" /></div>
+                )}
                 {status === 'idle' && <><strong>No conversation yet</strong><span>Press “Start conversation”. The agent greets you first, then you can reply here{inputs.includes('audio') ? ' or by speaking' : ''}.</span></>}
                 {(status === 'starting' || status === 'connecting') && <><strong>{STATUS_TEXT[status]}</strong><span>Asking the server for a session…</span></>}
                 {status === 'waiting' && <><strong>Waiting for the agent to join…</strong><span>It usually greets you within a few seconds.</span></>}
@@ -225,7 +238,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
               placeholder={connected ? 'Type a message…' : 'Start a conversation to type here'}
               aria-label="Message"
               onChange={(event) => setDraftText(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }}
+              onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent?.isComposing) { event.preventDefault(); send(); } }}
             />
             <div className="stTComposerRow">
               <small>Enter to send · Shift+Enter for a new line</small>
@@ -265,15 +278,16 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
           {(isVoice || inputs.includes('video') || inputs.includes('image')) && (
             <div className="stTMedia">
-              {isVoice && <button type="button" className={`stTMediaBtn ${media.mic ? 'on' : ''}`} onClick={() => session.toggle('mic')} disabled={!connected} aria-pressed={media.mic}>{media.mic ? '🎙 Microphone on' : '🎙 Microphone off'}</button>}
-              {inputs.includes('video') && <button type="button" className={`stTMediaBtn ${media.camera ? 'on' : ''}`} onClick={() => session.toggle('camera')} disabled={!connected} aria-pressed={media.camera}>{media.camera ? '📷 Camera on' : '📷 Camera off'}</button>}
-              {inputs.includes('video') && channelCfg?.inputs?.video?.screen_share !== false && ref === 'draft' && channelCfg?.inputs?.video?.screen_share && <button type="button" className={`stTMediaBtn ${media.screen ? 'on' : ''}`} onClick={() => session.toggle('screen')} disabled={!connected} aria-pressed={media.screen}>{media.screen ? '🖥 Sharing screen' : '🖥 Share screen'}</button>}
+              {isVoice && <button type="button" className={`stTMediaBtn ${media.mic ? 'on' : ''}`} onClick={() => session.toggle('mic')} disabled={!connected} aria-pressed={media.mic}><Icon name="mic" size={16} /> {media.mic ? 'Microphone on' : 'Microphone off'}</button>}
+              {inputs.includes('video') && <button type="button" className={`stTMediaBtn ${media.camera ? 'on' : ''}`} onClick={() => session.toggle('camera')} disabled={!connected} aria-pressed={media.camera}><Icon name="camera" size={16} /> {media.camera ? 'Camera on' : 'Camera off'}</button>}
+              {inputs.includes('video') && channelCfg?.inputs?.video?.screen_share !== false && ref === 'draft' && channelCfg?.inputs?.video?.screen_share && <button type="button" className={`stTMediaBtn ${media.screen ? 'on' : ''}`} onClick={() => session.toggle('screen')} disabled={!connected} aria-pressed={media.screen}><Icon name="monitor" size={16} /> {media.screen ? 'Sharing screen' : 'Share screen'}</button>}
               {inputs.includes('image') && (
                 <>
-                  <button type="button" className="stTMediaBtn" onClick={() => fileRef.current?.click()} disabled={!connected || !imageCfg} title={imageCfg ? 'Send a picture' : 'Pictures can be sent when testing the draft'}>🖼 Send a picture</button>
+                  <button type="button" className="stTMediaBtn" onClick={() => fileRef.current?.click()} disabled={!connected || !imageCfg} title={imageCfg ? 'Send a picture' : 'Pictures can be sent when testing the draft'}><Icon name="paperclip" size={16} /> Send a picture</button>
                   <input ref={fileRef} type="file" accept={(imageCfg?.accepted_mime || ['image/*']).join(',')} hidden onChange={onFile} />
                 </>
               )}
+              {pictureNote && <p className="stTNote" role="alert">{pictureNote}</p>}
               {media.camera && <video ref={session.localVideoRef} className="stTPreview" autoPlay muted playsInline aria-label="Your camera" />}
             </div>
           )}

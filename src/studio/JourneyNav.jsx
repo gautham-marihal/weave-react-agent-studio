@@ -4,8 +4,11 @@ import Icon from '../ui/Icon.jsx';
 import { STAGES, nextStep, stageOf } from './journey.js';
 import { navigate, routeHref } from './route.js';
 import './journey.css';
+import './agentRail.css';
 
 const STAGE_ICONS = { build: 'build', test: 'test', release: 'release', monitor: 'monitor' };
+// the picture beside each tab, shown only when the sidebar is folded to icons
+const TAB_ICONS = { describe: 'sparkle', config: 'sliders', workflow: 'subagent', knowledge: 'records', test: 'test', scenarios: 'flag', checks: 'check', versions: 'copy', deploy: 'release', calls: 'phone' };
 
 // The agent's tabs, grouped into the four stages of its life: build it, test it, release it, watch it. Each stage says what question it answers; the one
 // you are in is marked. Every tab is still one click away and every link to a tab still works; the grouping only shows where each belongs.
@@ -34,8 +37,8 @@ function StageMenu({ botId, tab, live }) {
           <span className="stStageHead"><Icon name={STAGE_ICONS[stage.id]} size={15} /><b>{index + 1}. {stage.label}</b><small>{stage.question}</small></span>
           <div className="stStageTabs">
             {stage.tabs.map(([id, label]) => (
-              <button key={id} type="button" className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => navigate(routeHref(botId, id), { guard: false })}>
-                {label}{id === 'test' && live && <i className="stTLiveDot" title="A test conversation is running" />}
+              <button key={id} type="button" title={label} className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => navigate(routeHref(botId, id), { guard: false })}>
+                <span className="stTabIcon" aria-hidden="true"><Icon name={TAB_ICONS[id] || 'build'} size={18} /></span><span className="stTabLabel">{label}</span>{id === 'test' && live && <i className="stTLiveDot" title="A test conversation is running" />}
               </button>
             ))}
           </div>

@@ -48,6 +48,6 @@ test('every font size in every stylesheet is one of the tokens', () => {
 });
 
 test('density is a token too: compact tightens the spacing the tokens name, and comfortable is the default', () => {
-  assert.match(tokens, /--row-gap:14px/);
-  assert.match(tokens, /html\[data-density="compact"\]\{[^}]*--row-gap:8px/);
+  assert.match(tokens, /--row-gap:\s*14px/);
+  assert.match(tokens, /html\[data-density="compact"\]\s*\{[^}]*--row-gap:\s*8px/);
 });

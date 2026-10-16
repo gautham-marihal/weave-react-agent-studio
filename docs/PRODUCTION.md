@@ -53,3 +53,14 @@ Build with `npm run build`; serve `dist/`. Don't use `vite preview` in productio
 
 `npm run dev` forwards `/api` with the key from `.env.local` and the user from `AGENT_BUILDER_USER`. That is a convenience:
 anyone who can open the dev server can use the key through it. Keep it on your own machine.
+
+## The Describe assistant's route (`/llm`)
+
+"Describe it" talks to an AI model through `/llm/v1/messages` (and asks `/llm/status` whether one is set up). In development `llmRoute.js` serves both and adds `ANTHROPIC_API_KEY`
+on the server side. In production this is one more thing for the proxy to do, and it needs the same care as `/api`:
+
+- Sign-in goes in front of it too: anyone who can reach `/llm` spends your key.
+- Keep the limits `llmRoute.js` applies: only `POST /v1/messages` and `GET /status`; the model chosen from a short list; the size of an answer capped; nothing the browser sends as
+  headers is passed on.
+- Add a per-user rate limit and a spending cap at the provider.
+- Decide what may leave: the request carries the current draft (it holds only secret *names*) and what the person typed. Say so wherever the Studio is used; the screen asks for confirmation on first use.

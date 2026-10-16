@@ -1,0 +1,72 @@
+/* Monitoring: the numbers, a chart, what needs attention, the agents, the versions */
+.mnPage { display: grid; gap: 18px; min-width: 0; }
+.mnControls { display: flex; align-items: center; gap: 10px; }
+.mnEmpty { padding: 28px; border: 1px dashed var(--line2); border-radius: 14px; display: grid; gap: 8px; justify-items: start; }
+.mnEmpty h2 { margin: 0; font-size: var(--fs-lg); color: var(--textStrong); }
+.mnEmpty p { margin: 0; max-width: 64ch; color: var(--muted); font-size: var(--fs-md); line-height: 1.6; }
+
+.mnAlerts { display: grid; gap: 10px; }
+.mnAlert { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 16px; border: 1px solid var(--warn-text); border-left-width: 4px; border-radius: 14px; background: color-mix(in srgb, var(--warn-text) 9%, var(--panel)); }
+.mnAlert h3 { margin: 0 0 4px; font-size: var(--fs-md); color: var(--textStrong); }
+.mnAlert ul { margin: 0 0 6px; padding-left: 18px; font-size: var(--fs-sm); color: var(--text); display: grid; gap: 2px; }
+.mnAlert small { color: var(--muted); font-size: var(--fs-xs); }
+.mnAlertActions { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+
+.mnKpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; }
+.mnKpi { display: grid; gap: 3px; padding: 14px 16px; align-content: start; }
+.mnKpi + .mnKpi { border-left: 1px solid var(--line); }
+.mnKpi span { color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
+.mnKpi strong { color: var(--textStrong); font-size: var(--fs-xl); line-height: 1.2; }
+.mnKpi small { color: var(--muted); font-size: var(--fs-xs); line-height: 1.4; }
+.mnKpi.bad strong { color: var(--danger-text); }
+.mnKpi.warn strong { color: var(--warn-text); }
+.mnBasis { margin: -6px 0 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+
+.mnCard { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); padding: 16px 18px; display: grid; gap: 12px; min-width: 0; }
+.mnCard > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.mnCard h2 { margin: 0; font-size: var(--fs-lg); color: var(--textStrong); }
+.mnCard h3 { margin: 4px 0 6px; font-size: var(--fs-md); color: var(--textStrong); }
+.mnCard small { color: var(--muted); font-size: var(--fs-xs); }
+.mnNone { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.mnLegend { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-xs); }
+.mnLegend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-left: 8px; }
+.mnLegend i.a { background: var(--accent); } .mnLegend i.b { background: var(--danger); }
+
+.mnTwo { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; align-items: start; }
+.mnList, .mnIssues { list-style: none; margin: 0; padding: 0; display: grid; }
+.mnList > li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.mnList > li:first-child, .mnIssues > li:first-child { border-top: 0; padding-top: 0; }
+.mnList > li.s3 { box-shadow: inset 3px 0 0 var(--danger); padding-left: 12px; }
+.mnList > li.s2 { box-shadow: inset 3px 0 0 var(--warn-text); padding-left: 12px; }
+.mnList ul { margin: 4px 0 0; padding-left: 16px; display: grid; gap: 2px; color: var(--text); font-size: var(--fs-sm); line-height: 1.45; }
+.mnWhen { color: var(--muted); font-size: var(--fs-xs); }
+.mnRowActions { display: flex; gap: 6px; align-items: flex-start; flex: none; }
+.mnIssues > li { padding: 10px 0; border-top: 1px solid var(--line); display: grid; gap: 4px; }
+.mnIssueHead { display: flex; justify-content: space-between; gap: 10px; font-size: var(--fs-sm); }
+.mnCount { color: var(--textStrong); font-weight: 600; }
+.mnIssues p { margin: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+
+.mnTable { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.mnTable th { text-align: left; color: var(--muted); font-weight: 600; font-size: var(--fs-xs); padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.mnTable td { padding: 9px 10px; border-bottom: 1px solid var(--line); color: var(--text); }
+.mnTable td.bad { color: var(--danger-text); font-weight: 600; }
+.mnTable tr:last-child td { border-bottom: 0; }
+.mnDelta { color: var(--muted); }
+.mnVersions + .mnVersions { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+
+/* calls per day */
+.mnChart { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; height: 230px; }
+.mnY { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-bottom: 26px; color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.mnPlot { position: relative; min-width: 0; }
+.mnGrid { position: absolute; inset: 0 0 26px 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.mnGrid i { display: block; height: 0; border-top: 1px dashed var(--line); }
+.mnGrid i:last-child { border-top: 1px solid var(--line2); }
+.mnCols { position: absolute; inset: 0; display: grid; gap: 6px; }
+.mnCol { display: flex; flex-direction: column; min-width: 0; }
+.mnStack { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-height: 0; }
+.mnBar { position: relative; width: min(100%, 46px); min-height: 3px; border-radius: 5px 5px 0 0; background: var(--accent); overflow: hidden; transition: filter .12s; display: flex; flex-direction: column; justify-content: flex-end; }
+.mnCol:hover .mnBar { filter: brightness(1.12); }
+.mnBarCut { display: block; width: 100%; background: var(--danger); }
+.mnNum { margin-bottom: 3px; color: var(--textStrong); font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; }
+.mnZero { display: block; width: min(100%, 46px); height: 2px; border-radius: 2px; background: var(--line2); }
+.mnDay { height: 26px; padding-top: 8px; color: var(--muted); font-size: var(--fs-xs); text-align: center; white-space: nowrap; overflow: visible; }

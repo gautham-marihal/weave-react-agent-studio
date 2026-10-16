@@ -79,3 +79,90 @@
 .pvComposer:has(.pvTools) .primaryCta { padding: 0 14px; }
 .pvComposer:has(.pvTools) .quietButton { padding: 0 12px; }
 .pvComposer:has(.pvTools) input { min-width: 90px; padding-left: 4px; }
+
+/* ---- a more futuristic look: a glass panel, a HUD behind the orb, a living orb, a glowing composer. Pure decoration over the same markup. ---- */
+.pvPanel { position: relative; isolation: isolate; overflow: hidden; border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line2)); background:
+  radial-gradient(120% 70% at 50% -10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+  linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--panel)), var(--panel) 45%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent) inset, 0 30px 70px -40px color-mix(in srgb, var(--accent) 55%, transparent); }
+.pvPanel::before { content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px; z-index: 1; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 80%, #fff), transparent); opacity: .8; }
+.pvPanel.simulated { border-style: solid; }
+.pvPanel > header strong { font-size: var(--fs-xs); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+
+/* the segmented control glows where it is on */
+.pvModes { background: color-mix(in srgb, var(--surface2) 80%, transparent); box-shadow: inset 0 0 0 1px var(--line); backdrop-filter: blur(6px); }
+.pvModes button { transition: color .2s, background .2s, box-shadow .2s; }
+.pvModes button.on { background: color-mix(in srgb, var(--accent) 18%, var(--panel)); color: var(--textStrong); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 16px -4px var(--accent); }
+
+/* the state, as a small lit chip */
+.pvStatus { display: inline-flex; align-items: center; gap: 7px; margin-right: auto; padding: 4px 10px; white-space: nowrap; flex: none; border-radius: 999px; border: 1px solid var(--line2); font-size: var(--fs-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: color-mix(in srgb, var(--surface2) 70%, transparent); }
+.pvStatus i { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
+.pvStatus.idle i { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pvBlink 2.4s ease-in-out infinite; }
+.pvStatus.loading, .pvStatus.reconnecting { color: var(--warn-text); border-color: color-mix(in srgb, var(--warn-text) 45%, transparent); }
+.pvStatus.loading i, .pvStatus.reconnecting i { background: var(--warn-text); animation: pvBlink .7s ease-in-out infinite; }
+.pvStatus.live { color: var(--good-text); border-color: color-mix(in srgb, var(--good-text) 50%, transparent); }
+.pvStatus.live i { background: var(--good-text); box-shadow: 0 0 0 0 var(--good-text); animation: pvPing 1.6s ease-out infinite; }
+.pvStatus.error { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+.pvStatus.error i { background: var(--danger); }
+@keyframes pvBlink { 50% { opacity: .35; } }
+@keyframes pvPing { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+.pvBanner { border: 1px solid var(--line); border-left-width: 3px; background: color-mix(in srgb, var(--surface2) 60%, transparent); backdrop-filter: blur(6px); }
+.pvBanner b { letter-spacing: .1em; text-transform: uppercase; font-size: var(--fs-xs); }
+
+/* the stage: a quiet radar behind the orb, with rings that spread out from it and a small satellite that circles it */
+.pvStage { overflow: visible; min-height: 250px; padding: 20px 0 30px; background:
+  repeating-radial-gradient(circle at 50% 46%, transparent 0 34px, color-mix(in srgb, var(--accent) 14%, transparent) 34px 35px),
+  linear-gradient(90deg, transparent calc(50% - .5px), color-mix(in srgb, var(--accent) 12%, transparent) 50%, transparent calc(50% + .5px)),
+  linear-gradient(0deg, transparent calc(46% - .5px), color-mix(in srgb, var(--accent) 12%, transparent) 46%, transparent calc(46% + .5px));
+  -webkit-mask-image: radial-gradient(circle at 50% 46%, #000 30%, transparent 72%); mask-image: radial-gradient(circle at 50% 46%, #000 30%, transparent 72%); }
+.pvStage::after { content: ''; position: absolute; left: 50%; top: 46%; width: 250px; height: 250px; margin: -125px 0 0 -125px; border-radius: 50%; background: conic-gradient(from 0deg, color-mix(in srgb, var(--accent) 32%, transparent), transparent 22%); animation: pvSweep 6s linear infinite; pointer-events: none; -webkit-mask-image: radial-gradient(circle, transparent 38%, #000 62%, transparent 70%); mask-image: radial-gradient(circle, transparent 38%, #000 62%, transparent 70%); opacity: .8; }
+.pvOrb { position: relative; z-index: 2; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 34px 2px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 90px 12px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 -16px 38px rgba(0, 20, 60, .35); animation: pvOrbTurn 24s linear infinite, pvBreathe 5s ease-in-out infinite; }
+.pvOrb:hover { filter: saturate(1.25) brightness(1.08); }
+.pvRing { position: absolute; z-index: 1; left: 50%; top: 46%; width: 168px; height: 168px; margin: -84px 0 0 -84px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); opacity: 0; animation: pvRipple 4.8s ease-out infinite; pointer-events: none; }
+.pvRing.r2 { animation-delay: 1.6s; } .pvRing.r3 { animation-delay: 3.2s; }
+.pvSat { position: absolute; z-index: 3; left: 50%; top: 46%; width: 230px; height: 230px; margin: -115px 0 0 -115px; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent); animation: pvSweep 14s linear infinite; pointer-events: none; }
+.pvSat::before { content: ''; position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px 2px var(--accent); }
+@keyframes pvSweep { to { transform: rotate(360deg); } }
+@keyframes pvRipple { 0% { transform: scale(.95); opacity: .55; } 100% { transform: scale(1.75); opacity: 0; } }
+@keyframes pvBreathe { 50% { filter: brightness(1.12) saturate(1.15); } }
+
+.pvEmpty > strong { letter-spacing: .02em; font-size: var(--fs-lg); }
+.pvEmpty > span { max-width: 30ch; }
+.pvEmpty .primaryCta { position: relative; overflow: hidden; border-radius: 999px; padding: 12px 26px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent), 0 10px 34px -8px var(--accent); }
+.pvEmpty .primaryCta::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .55) 50%, transparent 65%); transform: translateX(-120%); animation: pvShine 3.6s ease-in-out infinite; }
+@keyframes pvShine { 55%, 100% { transform: translateX(120%); } }
+
+/* connecting: the spinner becomes a pair of counter-turning rings */
+.pvLoading .pvSpin { position: relative; width: 74px; height: 74px; border: 2px solid transparent; border-top-color: var(--accent); border-right-color: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 50%; animation: pvSweep 1s linear infinite; box-shadow: 0 0 24px -4px var(--accent); }
+.pvLoading .pvSpin::after { content: ''; position: absolute; inset: 9px; border-radius: 50%; border: 2px solid transparent; border-bottom-color: color-mix(in srgb, var(--accent) 80%, #fff); border-left-color: color-mix(in srgb, var(--accent) 30%, transparent); animation: pvSweep 1.6s linear infinite reverse; }
+
+/* live: a slim HUD above the conversation, a small orb and a signal that moves */
+.pvHud { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+.pvHud small { margin-left: auto; font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.pvMiniOrb { flex: none; width: 30px; height: 30px; border-radius: 50%; background: conic-gradient(from 20deg, #35d3d9, #0a5fd1 18%, #fff 34%, #4cc8e0 52%, #1f6fe0 70%, #35d3d9); box-shadow: 0 0 14px 1px color-mix(in srgb, var(--accent) 60%, transparent); animation: pvOrbTurn 6s linear infinite; }
+.pvBars { display: inline-flex; align-items: center; gap: 3px; height: 22px; }
+.pvBars i { width: 3px; height: 100%; border-radius: 2px; background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 30%, transparent)); transform-origin: center; animation: pvBar 1.1s ease-in-out infinite; }
+.pvBars i:nth-child(2) { animation-delay: .12s; } .pvBars i:nth-child(3) { animation-delay: .24s; } .pvBars i:nth-child(4) { animation-delay: .36s; } .pvBars i:nth-child(5) { animation-delay: .48s; } .pvBars i:nth-child(6) { animation-delay: .6s; } .pvBars i:nth-child(7) { animation-delay: .72s; }
+@keyframes pvBar { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+.pvHud.reconnecting .pvBars i { animation-duration: .5s; background: var(--warn-text); }
+.pvHud.ended { filter: grayscale(1); opacity: .65; }
+.pvHud.ended .pvBars i { animation: none; transform: scaleY(.25); }
+.pvHud.ended .pvMiniOrb { animation: none; }
+
+/* the conversation: bubbles that slide in */
+.pvLog > li { animation: pvIn .28s ease-out both; }
+@keyframes pvIn { from { opacity: 0; transform: translateY(6px); } }
+
+/* the composer lights up its edge while it is being used */
+.pvComposer { position: relative; border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line2)); background: color-mix(in srgb, var(--surface2) 55%, var(--panel)); backdrop-filter: blur(8px); transition: border-color .2s, box-shadow .2s; }
+.pvComposer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 30px -8px var(--accent); }
+.pvSendRound { box-shadow: 0 0 18px -2px var(--accent); transition: transform .15s, box-shadow .2s; }
+.pvSendRound:hover { transform: scale(1.08); box-shadow: 0 0 26px 0 var(--accent); }
+.pvTool:not(:disabled):hover { box-shadow: 0 0 14px -3px var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pvStage::after, .pvSat, .pvRing, .pvOrb, .pvMiniOrb, .pvBars i, .pvLog > li, .pvEmpty .primaryCta::after, .pvStatus i, .pvLoading .pvSpin, .pvLoading .pvSpin::after { animation: none !important; }
+  .pvRing { opacity: .25; transform: scale(1.3); }
+}
+.pvModes button { white-space: nowrap; padding: 5px 11px; }

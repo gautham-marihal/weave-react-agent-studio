@@ -8,7 +8,7 @@ import { TABS, parseRoute, routeHref } from '../src/studio/route.js';
 
 test('the tabs are the four stages in the order of the work, and every tab is in exactly one stage', () => {
   assert.deepEqual(STAGES.map((s) => s.label), ['Build', 'Test', 'Release', 'Monitor']);
-  assert.deepEqual(TAB_IDS, ['config', 'workflow', 'knowledge', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
+  assert.deepEqual(TAB_IDS, ['describe', 'config', 'workflow', 'knowledge', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
   assert.equal(new Set(TAB_IDS).size, TAB_IDS.length);
   STAGES.forEach((s) => assert.ok(s.question.endsWith('?') && s.tabs.length > 0));
   assert.equal(stageOf('deploy').id, 'release');
@@ -28,6 +28,7 @@ test('every tab the route knows is a tab of the journey, so no old screen or lin
 
 test('the whole journey can be walked with the "Next" bar alone, from Build to Monitor, and it ends', () => {
   assert.deepEqual(walk('config'), ['config', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
+  assert.deepEqual(walk('describe'), ['describe', 'config', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
   assert.deepEqual(walk('workflow'), ['workflow', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
   assert.deepEqual(walk('knowledge'), ['knowledge', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
   assert.equal(NEXT.calls, null, 'the last stop has no next');

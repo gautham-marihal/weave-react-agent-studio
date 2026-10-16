@@ -86,7 +86,7 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
     const channel = agent.channel;
     const sessionInfo = {
       room: 'simulated', ref, version: ref === 'draft' ? 'draft' : ref, simulated: true,
-      channel: { id: channel?.id || 'simulated', type: channel?.type === 'sip_voice' || channel?.type === 'web_voice' ? 'web_chat' : channel?.type || 'web_chat', input: ['text'], output: ['text'] },
+      channel: { id: channel?.id || 'simulated', type: channel?.type === 'sip_voice' || channel?.type === 'web_voice' ? 'web_chat' : channel?.type || 'web_chat', input: ['text', ...(Array.isArray(channel?.modalities?.input) && channel.modalities.input.includes('image') ? ['image'] : [])], output: ['text'] },
     };
     infoRef.current = sessionInfo;
     setInfo(sessionInfo);

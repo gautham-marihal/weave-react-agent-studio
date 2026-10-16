@@ -14,7 +14,8 @@ const demoStore = { load: () => JSON.parse(window.localStorage.getItem('weave_de
 async function seedDemo(config) {
   window.localStorage.clear();
   window.localStorage.setItem('weave_demo', '1');
-  const api = createDemoApi({ seed: false, storage: demoStore });
+  window.localStorage.setItem('weave_demo_history', 'off');
+  const api = createDemoApi({ seed: false, storage: demoStore, history: false });
   await api.handle('POST', '/bots', { id: 'x', name: 'X' });
   await api.handle('PUT', '/bots/x/draft', { config: { ...config, meta: { ...config.meta, id: 'x' } } });
   return api;

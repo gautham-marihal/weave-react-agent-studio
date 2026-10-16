@@ -253,7 +253,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen,
             <div className="profilePopoverRule" />
             <button className="profilePopoverItem" type="button" onClick={handleAccount}>
               <span className="profilePopoverIcon">◉</span>
-              <span><strong>Account</strong></span>
+              <span><strong>ACCOUNT</strong></span>
               <b>›</b>
             </button>
           </div>,
@@ -271,7 +271,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen,
             <button className="profilePopoverItem" type="button" onClick={handleAccount}>
               <span className="profilePopoverIcon">◉</span>
               <span>
-                <strong>Account</strong>
+                <strong>ACCOUNT</strong>
                 <small>Profile and workspace details</small>
               </span>
               <b>›</b>

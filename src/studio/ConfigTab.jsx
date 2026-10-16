@@ -12,6 +12,9 @@ import SimpleConfig from './simple/SimpleConfig.jsx';
 import ChatPreview from './preview/ChatPreview.jsx';
 import { splitUnsupported } from './preflight.js';
 import { ErrorState, Notice, Spinner } from './ui.jsx';
+import ChangesPanel from './changes/ChangesPanel.jsx';
+import { useLatestPublished } from './changes/useLatestPublished.js';
+import { changesSince, revertSection } from './changes/sinceRelease.js';
 
 const LINE_HEIGHT = 20;
 
@@ -165,12 +168,23 @@ export default function ConfigTab({ editor, focusPath, botId, preview }) {
   // Simple (cards for the everyday settings), All settings (the form built from the schema) or raw JSON. All of them edit the same
   // draft; the choice is remembered. An older models choice opens the Simple view on its AI model card.
   const [mode, setModeState] = useState(() => { try { const saved = localStorage.getItem('weave_config_mode'); return saved === 'json' ? 'json' : saved === 'form' ? 'form' : 'simple'; } catch { return 'simple'; } });
-  const [openCard, setOpenCard] = useState(() => { try { return localStorage.getItem('weave_config_mode') === 'models' ? 'model' : null; } catch { return null; } });
+  // The AI model panel opens only when something just asked for it (the Test tab's "Change"), once: it is not remembered, so opening an agent never lands in it.
+  const [openCard, setOpenCard] = useState(() => { try { return sessionStorage.getItem('weave_open_models') === '1' ? 'model' : null; } catch { return null; } });
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem('weave_open_models');
+      if (localStorage.getItem('weave_config_mode') === 'models') localStorage.setItem('weave_config_mode', 'simple'); // an older version left this behind
+    } catch { /* storage unavailable */ }
+  }, []);
   const setMode = (next) => { setModeState(next); try { localStorage.setItem('weave_config_mode', next); } catch { /* storage unavailable */ } };
   const showModels = () => { setOpenCard('model'); setMode('simple'); };
   const [technical, setTechnical] = useTechnicalNames();
   // A fix from the checks is an ordinary edit of the draft, with a way back.
   const [lastFix, setLastFix] = useState(null); // { label, previous }
+  // what the draft changes compared with the newest published version, and a way to put any part back
+  const { published } = useLatestPublished(botId);
+  const [changesOpen, setChangesOpen] = useState(false);
+  const changes = useMemo(() => (published?.config && parsed.value ? changesSince(published.config, parsed.value) : { total: 0, groups: [] }), [published, parsed.value]);
   const openInJson = (path) => { setMode('json'); window.setTimeout(() => editorRef.current?.jumpTo(path), 80); };
   const [focusReq, setFocusReq] = useState(null);
   const applyFix = (next, label, jumpTo) => {
@@ -284,9 +298,19 @@ export default function ConfigTab({ editor, focusPath, botId, preview }) {
           {preview && <button type="button" className="quietButton" aria-pressed={previewOpen} onClick={() => setPreviewOpen(!previewOpen)} title="Talk to the agent while you edit it">{previewOpen ? 'Hide preview' : 'Preview'}</button>}
           {mode === 'json' && <button type="button" className="quietButton" onClick={format} disabled={!!parsed.error || !editor.isObject}>Format</button>}
           <button type="button" className="quietButton" onClick={discard}>{dirty ? 'Discard changes' : 'Reload'}</button>
+          {published?.config && <button type="button" className="quietButton" onClick={() => setChangesOpen(true)} title={`What this draft changes compared with v${published.version}`}>Changes{changes.total ? ` (${changes.total})` : ''}</button>}
           <button type="button" className="primaryCta compactCta" onClick={() => editor.save()} disabled={!canSave}>{saving ? 'Saving…' : 'Save draft'}</button>
         </div>
       </div>
+
+      {changesOpen && published?.config && (
+        <ChangesPanel
+          changes={changes}
+          version={published.version}
+          onClose={() => setChangesOpen(false)}
+          onRevert={(key, section) => { applyFix(revertSection(parsed.value, published.config, key), `${section} put back as published in v${published.version}`); setChangesOpen(false); }}
+        />
+      )}
 
       <div className="stConfigGrid">
         {mode === 'simple' && <SimpleConfig key={openCard || 'simple'} editor={editor} initialOpen={openCard} onShowJson={() => setMode('json')} onOpenJson={openInJson} onOpenAll={(path) => { setMode('form'); setFocusReq({ path, nonce: Date.now() }); }} />}

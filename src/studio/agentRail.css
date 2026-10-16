@@ -1,0 +1,17 @@
+/* The agent's own menu when the sidebar is folded to icons: a column of pictures, the name on hover. Nothing here applies while the sidebar is open. */
+.stTabIcon { display: none; }
+.sidebarCollapsed .stTabLabel { display: none; }
+
+.sidebarCollapsed .agentSideNav { align-items: center; gap: 2px; padding: 4px 8px; overflow: hidden; }
+.sidebarCollapsed .agentBack { width: 44px; height: 32px; padding: 0; margin: 0; text-align: center; }
+.sidebarCollapsed .agentBackText { display: none; }
+.sidebarCollapsed .agentBack span { font-size: var(--fs-lg); }
+.sidebarCollapsed .agentSideName { justify-content: center; width: 44px; padding: 5px; margin-bottom: 6px; overflow: hidden; }
+.sidebarCollapsed .agentSideName strong { display: none; }
+.sidebarCollapsed .stTabs.stJourney { align-items: center; gap: 8px; }
+.sidebarCollapsed .stStage { align-items: center; padding-top: 8px; border-top: 1px solid var(--line); }
+.sidebarCollapsed .stStageHead { display: none; }
+.sidebarCollapsed .stJourney .stStageTabs button { position: relative; justify-content: center; width: 44px; height: 36px; padding: 0; gap: 0; }
+.sidebarCollapsed .stTabIcon { display: inline-grid; place-items: center; font-size: var(--fs-md); }
+.sidebarCollapsed .stJourney .stStageTabs button .stTLiveDot { position: absolute; top: 6px; right: 6px; }
+.sidebarCollapsed .sideNavWorkspace { display: none; }

@@ -28,6 +28,7 @@ const VersionsTab = lazy(() => import('./VersionsTab.jsx'));
 const TestTab = lazy(() => import('./test/TestTab.jsx'));
 const ScenariosTab = lazy(() => import('./scenarios/ScenariosTab.jsx'));
 const WorkflowTab = lazy(() => import('./workflow/WorkflowTab.jsx'));
+const AssistantTab = lazy(() => import('./assistant/AssistantTab.jsx'));
 const KnowledgeTab = lazy(() => import('./knowledge/KnowledgeTab.jsx'));
 const ChecksTab = lazy(() => import('./checks/ChecksTab.jsx'));
 const PlainIssues = lazy(() => import('./validation/PlainIssues.jsx')); // problems named by their labels, not their paths
@@ -320,16 +321,17 @@ export default function BotWorkspace({ botId, tab, params, onRecordSession, read
         )}
         {tab === 'config' && <ConfigTab editor={editor} focusPath={applied?.where} botId={botId} preview={{ session, mode: sessionMode, locked: modeLocked, onMode: setSessionMode }} />}
         <Suspense fallback={<Spinner label="Loading" />}>
+        {tab === 'describe' && <AssistantTab editor={editor} botId={botId} name={name} />}
         {tab === 'workflow' && <WorkflowTab editor={editor} botId={botId} />}
         {tab === 'versions' && publishOpen && (
           <PublishDialog inline botId={botId} editor={editor} latestVersion={summary?.latest_version || null} onClose={closePublish} onPublished={() => { bump(); editor.reload(); }} />
         )}
-        {tab === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} />}
+        {tab === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} summary={summary} />}
         {tab === 'deploy' && <DeployTab botId={botId} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
         {tab === 'scenarios' && <ScenariosTab botId={botId} name={name} editor={editor} />}
         {tab === 'knowledge' && <KnowledgeTab botId={botId} name={name} editor={editor} />}
         {tab === 'checks' && <ChecksTab botId={botId} name={name} runs={readinessRuns} onRun={onRecordReadiness} />}
-        {tab === 'calls' && <CallsView bots={[{ id: botId, name }]} fixedBotId={botId} onOpenAgent={() => navigate(routeHref(botId, 'test'), { guard: false })} />}
+        {tab === 'calls' && <CallsView bots={[{ id: botId, name }]} fixedBotId={botId} editor={editor} initialCall={params?.call ? { botId, id: params.call, raw: null, view: params.view } : null} onOpenAgent={() => navigate(routeHref(botId, 'test'), { guard: false })} />}
         {tab === 'test' && <TestTab botId={botId} name={name} summary={summary} editor={editor} session={session} mode={sessionMode} modeLocked={modeLocked} onMode={setSessionMode} />}
         </Suspense>
         <NextBar botId={botId} tab={tab} />

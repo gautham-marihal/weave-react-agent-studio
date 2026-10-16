@@ -1,0 +1,109 @@
+/* Describe it: a conversation with the assistant, ending in a box to write in. */
+.asTab { display: grid; gap: 14px; min-width: 0; }
+.asHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.asHead h2 { margin: 0; font-size: var(--fs-xl); letter-spacing: -.3px; color: var(--textStrong); }
+.asHead p { margin: 4px 0 0; color: var(--muted); font-size: var(--fs-md); max-width: 70ch; line-height: 1.55; }
+.asBadge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line2); background: var(--panel); font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
+.asBadge.ai { color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.asBadge select { border: 0; background: none; color: inherit; font: inherit; font-weight: 600; padding: 0 2px; cursor: pointer; }
+.asBadge.off { border-style: dashed; }
+
+.asThread { display: grid; gap: 14px; align-content: start; min-height: 240px; padding: 4px 2px 8px; }
+.asEmpty { display: grid; gap: 8px; padding: 18px; border: 1px dashed var(--line2); border-radius: 16px; }
+.asEmpty h3 { margin: 0; color: var(--textStrong); }
+.asEmpty p { margin: 0; color: var(--muted); font-size: var(--fs-md); }
+.asExamples { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.asExamples button { width: 100%; height: 100%; text-align: left; display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); cursor: pointer; }
+.asExamples button:hover, .asExamples button:focus-visible { border-color: var(--accent); background: var(--surface2); outline: 0; }
+.asExamples strong { color: var(--textStrong); font-size: var(--fs-md); }
+.asExamples span { color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+.asWho { display: block; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+.asMe { justify-self: end; max-width: min(720px, 90%); padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+.asMe p { margin: 0; white-space: pre-wrap; color: var(--textStrong); font-size: var(--fs-md); line-height: 1.55; }
+.asBot { justify-self: start; width: min(860px, 100%); padding: 14px 16px; border-radius: 4px 16px 16px 16px; border: 1px solid var(--line); background: var(--panel); display: grid; gap: 10px; min-width: 0; }
+.asBot.error { border-color: color-mix(in srgb, var(--danger) 50%, transparent); background: color-mix(in srgb, var(--danger) 7%, var(--panel)); }
+.asBot.error p { color: var(--danger-text); }
+.asBot.discarded { opacity: .6; }
+.asBot p { margin: 0; }
+.asSummary { color: var(--textStrong); font-size: var(--fs-md); line-height: 1.6; }
+.asMuted { color: var(--muted); font-size: var(--fs-sm); }
+.asWarn { color: var(--warn-text); font-size: var(--fs-sm); }
+.asBlock { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 6px; }
+.asBlock h4 { margin: 0; display: inline; font-size: var(--fs-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.asBlock summary { cursor: pointer; list-style: revert; }
+.asBlock ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--text); line-height: 1.5; }
+.asBlock.ask { border: 1px solid color-mix(in srgb, #e0a83b 55%, transparent); border-radius: 12px; padding: 10px 12px; background: color-mix(in srgb, #e0a83b 9%, var(--panel)); }
+.asBlock.ask small { color: var(--muted); font-size: var(--fs-xs); }
+.asGroup { display: grid; gap: 4px; margin-top: 6px; }
+.asGroup > strong { font-size: var(--fs-sm); color: var(--textStrong); }
+.asVerb { font-size: var(--fs-xs); font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--surface2); }
+.asVerb.added { color: var(--good-text); } .asVerb.removed { color: var(--danger-text); } .asVerb.changed { color: var(--warn-text); }
+.asDetail { color: var(--muted); overflow-wrap: anywhere; }
+.asCheck { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: var(--fs-sm); }
+.asCheck small { color: var(--dim); font-size: var(--fs-xs); }
+.asOk { display: inline-flex; align-items: center; gap: 6px; color: var(--good-text); font-weight: 600; }
+.asBad { display: inline-flex; align-items: center; gap: 6px; color: var(--danger-text); font-weight: 600; }
+.asErrors { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: var(--fs-xs); color: var(--text); }
+.asErrors code, .asHead code, .asTab .notice code { font-family: var(--mono, ui-monospace, Menlo, Consolas, monospace); font-size: var(--fs-xs); color: var(--accent-text); }
+.asActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.asActions .asWarn { flex-basis: 100%; }
+.asActions small { color: var(--muted); font-size: var(--fs-xs); }
+.asActions.applied { padding-top: 4px; }
+
+.asDots { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; border-radius: 50%; border: 2px solid var(--line2); border-top-color: var(--accent); animation: asSpin .8s linear infinite; }
+@keyframes asSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .asDots { animation: none; border-top-color: var(--accent); } }
+
+.asComposer { position: sticky; bottom: 12px; display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line2); border-radius: 18px; background: var(--panel); box-shadow: 0 10px 30px -18px rgba(8, 20, 24, .45); }
+.asComposer:focus-within { border-color: var(--accent); }
+.asComposer textarea { resize: vertical; min-height: 84px; border: 0; background: none; outline: 0; font-size: var(--fs-md); line-height: 1.55; padding: 4px 6px; }
+.asComposerRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.asComposerRow small { color: var(--muted); font-size: var(--fs-xs); }
+@media (max-width: 900px) { .asExamples { grid-template-columns: minmax(0, 1fr); } }
+
+/* conversation on the left, the agent and what changed on the right */
+.asLayout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start; }
+.asMain { display: grid; gap: 12px; min-width: 0; }
+.asAside { display: grid; gap: 14px; position: sticky; top: calc(var(--ds-topbar-h, 72px) + 16px); max-height: calc(100vh - 110px); overflow: auto; padding-bottom: 4px; }
+.asCard { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); padding: 14px 16px; display: grid; gap: 8px; }
+.asCard h3 { margin: 0; font-size: var(--fs-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.asNowName { margin: 0; font-size: var(--fs-lg); font-weight: 650; color: var(--textStrong); }
+.asNowRole { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
+.asFacts { margin: 0; display: grid; gap: 6px; }
+.asFacts div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; font-size: var(--fs-sm); }
+.asFacts dt { color: var(--dim); } .asFacts dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.asTotals { margin: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.asTotals .asVerb { padding: 2px 8px; }
+.asLedger { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.asLedger details { border: 1px solid var(--line); border-radius: 10px; }
+.asLedger summary { cursor: pointer; padding: 8px 10px; display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-sm); color: var(--text); }
+.asLedger summary small { color: var(--muted); flex: none; }
+.asLedger details[open] summary { border-bottom: 1px solid var(--line); }
+.asLedger .asGroup { padding: 6px 10px; }
+.asLedger .asGroup ul { margin: 0; padding-left: 16px; display: grid; gap: 3px; font-size: var(--fs-xs); color: var(--text); line-height: 1.45; }
+.asSave { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; font-size: var(--fs-sm); }
+.asWarnText { color: var(--warn-text); font-weight: 600; font-size: var(--fs-sm); }
+
+/* an answer that has been applied turns into the summary of what changed */
+.asBot.applied { border-color: color-mix(in srgb, var(--good-text) 45%, var(--line)); }
+.asDone { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--good-text) 10%, var(--panel)); color: var(--good-text); font-weight: 600; font-size: var(--fs-sm); }
+.asBlock.changes { gap: 8px; }
+.asChanges { list-style: none; padding-left: 0 !important; }
+.asChanges li { display: flex; gap: 8px; align-items: baseline; }
+.asDot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transform: translateY(-1px); }
+.asDot.added { background: var(--good-text); } .asDot.removed { background: var(--danger-text); } .asDot.changed { background: var(--warn-text); }
+.asPhases { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.asPhases li { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line2); font-size: var(--fs-xs); color: var(--dim); }
+.asPhases li.on { color: var(--accent-text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); font-weight: 600; }
+.asFollow { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.asFollow button { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line2); background: none; color: var(--text); font-size: var(--fs-xs); cursor: pointer; }
+.asFollow button:hover, .asFollow button:focus-visible { border-color: var(--accent); color: var(--textStrong); outline: 0; }
+@media (max-width: 1180px) { .asLayout { grid-template-columns: minmax(0, 1fr); } .asAside { position: static; max-height: none; } }
+
+.asWhere { list-style: none; margin: 0; padding: 0 !important; display: grid; gap: 8px; }
+.asWhere li { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: var(--fs-sm); }
+.asWhere b { color: var(--textStrong); }
+.asWhere span:nth-child(2) { color: var(--text); overflow-wrap: anywhere; }
+.asRow { display: flex; gap: 6px; flex-wrap: wrap; }
+.asBlock.where small { color: var(--muted); font-size: var(--fs-xs); line-height: 1.45; }

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { llmPlugin } from './llmRoute.js';
 
 // The browser only ever talks to /api. The dev/preview server forwards it to the Agent Builder
 // API and adds the bearer key itself, so the key never reaches the browser bundle (and CORS is moot).
@@ -28,5 +29,6 @@ export default defineConfig(({ mode }) => {
       },
     },
   };
-  return { plugins: [react()], server: { proxy }, preview: { proxy } };
+  // /llm: the Describe assistant's way to an AI model, with the key added here (see llmRoute.js)
+  return { plugins: [react(), llmPlugin(env)], server: { proxy }, preview: { proxy } };
 });

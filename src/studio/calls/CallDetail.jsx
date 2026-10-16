@@ -5,18 +5,24 @@ import { formatWhen } from '../format.js';
 import TraceView from '../trace/TraceView.jsx';
 import TranscriptView from './TranscriptView.jsx';
 import { channelLabel, countsLine, formatSeconds, ndjson, statusOf } from './callModel.js';
+import { navigate, routeHref } from '../route.js';
+import ReplayView from '../replay/ReplayView.jsx';
+import MakeTestDialog from '../replay/MakeTestDialog.jsx';
+import { readCall } from '../replay/callFacts.js';
 
 // One call: who and when, how it went, and the trace of everything that happened in it (the same component a Test conversation and a
 // failed scenario use). A call still in progress is followed live. The records hold what the caller said, so the screen says so.
 const PAGE = 500;
 const MAX_EVENTS = 5000;
 
-export default function CallDetail({ botId, botName, callId, summary, onClose }) {
+export default function CallDetail({ botId, botName, callId, summary, onClose, editor = null, initialView = '' }) {
   const [call, setCall] = useState(summary || null);
   const [events, setEvents] = useState([]);
   const [meta, setMeta] = useState({ counts: {}, finalState: null, usage: [] });
   const [state, setState] = useState({ loading: true, error: null, truncated: false });
-  const [view, setView] = useState('trace'); // 'trace' (everything that happened) | 'conversation' (only what was said)
+  const [view, setView] = useState(initialView === 'replay' ? 'replay' : 'trace'); // 'trace' (everything that happened) | 'conversation' (only what was said) | 'replay' (played again)
+  const [makingTest, setMakingTest] = useState(false);
+  const [added, setAdded] = useState(null); // { id, previous }: a test made from this call, added to the draft
   const lastSeq = useRef(0);
   const summaryRef = useRef(summary);
   summaryRef.current = summary; // the row the list showed, until the call itself is read (a refreshed list must not make this reload)
@@ -67,6 +73,8 @@ export default function CallDetail({ botId, botName, callId, summary, onClose })
     link.href = url; link.download = `${callId}.ndjson`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  const facts = useMemo(() => readCall(events), [events]);
+  const canWork = !live && !state.loading && !state.error && events.length > 0;
   const tokens = meta.usage.reduce((sum, u) => ({ input: sum.input + (u.input_tokens || 0), output: sum.output + (u.output_tokens || 0) }), { input: 0, output: 0 });
 
   return (
@@ -77,6 +85,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose })
           <p className="stMuted"><code>{callId}</code></p>
         </div>
         <div className="clDetailActions">
+          {editor && canWork && <button type="button" className="primaryCta compactCta" onClick={() => setMakingTest(true)} disabled={!editor.parsed?.value} title={editor.parsed?.value ? undefined : 'The draft can’t be read right now: fix the JSON on the Config tab first'}>Keep as a test</button>}
           {href ? <a className="quietButton" href={href} download>Download the log</a> : <button type="button" className="quietButton" onClick={downloadDemo} disabled={!events.length}>Download the log</button>}
           <button type="button" className="quietButton" onClick={onClose}>Close</button>
         </div>
@@ -99,6 +108,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose })
       <div className="clViews" role="group" aria-label="How to read this call">
         <button type="button" className={view === 'trace' ? 'on' : ''} aria-pressed={view === 'trace'} onClick={() => setView('trace')}>What happened</button>
         <button type="button" className={view === 'conversation' ? 'on' : ''} aria-pressed={view === 'conversation'} onClick={() => setView('conversation')}>Conversation only</button>
+        {!live && <button type="button" className={view === 'replay' ? 'on' : ''} aria-pressed={view === 'replay'} onClick={() => setView('replay')}>Replay</button>}
       </div>
 
       {state.loading && <p className="stMuted" role="status">Loading the call…</p>}
@@ -106,6 +116,20 @@ export default function CallDetail({ botId, botName, callId, summary, onClose })
       {state.truncated && <Notice kind="warn" title="Only the first records are shown">This call has more than {MAX_EVENTS.toLocaleString()} records. Download the log to read all of it.</Notice>}
       {!state.loading && !state.error && view === 'trace' && <TraceView records={events} live={live} title="What happened" emptyText="No records were written for this call." />}
       {!state.loading && !state.error && view === 'conversation' && <TranscriptView botId={botId} callId={callId} />}
+      {canWork && view === 'replay' && (editor
+        ? <ReplayView botId={botId} events={events} editor={editor} onMakeTest={() => setMakingTest(true)} />
+        : <Notice kind="info" title="Replay and tests belong to one agent’s draft" actions={<button type="button" className="primaryCta compactCta" onClick={() => navigate(routeHref(botId, 'calls', { call: callId }), { guard: true })}>Open it in {botName || botId}</button>}>Open this call from the agent’s own Calls tab to play it again against the draft, or to keep it as a test.</Notice>)}
+      {added && (
+        <Notice kind="info" title={`Added the test “${added.id}” to the draft, not saved yet`} actions={<>
+          <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'scenarios'), { guard: false })}>Open Scenarios</button>
+          <button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving || !editor.dirty}>{editor.saving ? 'Saving…' : 'Save draft'}</button>
+          <button type="button" className="quietButton" onClick={() => { editor.setValue(added.previous); setAdded(null); }}>Undo</button>
+        </>}>From now on every run of the scenarios checks that this conversation still goes the same way.</Notice>
+      )}
+      {makingTest && editor?.parsed?.value && (
+        <MakeTestDialog facts={facts} config={editor.parsed.value} call={call} onClose={() => setMakingTest(false)}
+          onAdd={(next, id) => { setAdded({ id, previous: editor.parsed.value }); editor.setValue(next); setMakingTest(false); }} />
+      )}
     </section>
   );
 }

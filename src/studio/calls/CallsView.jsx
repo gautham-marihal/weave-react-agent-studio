@@ -12,7 +12,7 @@ import './calls.css';
 // The calls an agent (or every agent) has had: who called, when, for how long, how it went. Selecting one opens the trace of what
 // happened in it. The API serves these per agent, so "All agents" asks each agent and merges the answers. These records hold what
 // callers said, and the API cannot yet limit who reads them, so the screen says so.
-export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, initialCall = null }) {
+export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, initialCall = null, editor = null }) {
   const [botId, setBotId] = useState(fixedBotId);
   const [range, setRange] = useState('7d');
   const [caller, setCaller] = useState('');
@@ -70,7 +70,7 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
       {skipped > 0 && <Notice kind="info" title={`Showing the first ${ALL_AGENTS_LIMIT} agents`}>The API lists calls one agent at a time, so “All agents” asks each one. Choose an agent to see the others.</Notice>}
       {errors.map((e) => <Notice key={e.botId} kind="error" title={`The calls of ${names[e.botId] || e.botId} couldn’t be read`}>{e.message}</Notice>)}
 
-      {openCall && <CallDetail botId={openCall.botId} botName={names[openCall.botId]} callId={openCall.id} summary={openCall.raw} onClose={() => setOpenCall(null)} />}
+      {openCall && <CallDetail key={`${openCall.botId}/${openCall.id}`} botId={openCall.botId} botName={names[openCall.botId]} callId={openCall.id} summary={openCall.raw} editor={editor && openCall.botId === fixedBotId ? editor : null} initialView={openCall.view || ''} onClose={() => setOpenCall(null)} />}
 
       <div className="clTableWrap">
         <table className="clTable">

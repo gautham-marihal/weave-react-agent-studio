@@ -81,3 +81,65 @@
 }
 
 .stTLiveDot { display: inline-block; width: 8px; height: 8px; margin-left: 8px; border-radius: 50%; background: #22b07d; box-shadow: 0 0 0 3px color-mix(in srgb, #22b07d 25%, transparent); vertical-align: 1px; }
+
+/* ---- the Test tab in the same look as the preview: glass cards, a lit status, a living orb, glowing composer ---- */
+.stTest .stCard { position: relative; border-color: color-mix(in srgb, var(--accent) 20%, var(--line)); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, var(--panel)), var(--panel) 55%); box-shadow: 0 24px 60px -44px color-mix(in srgb, var(--accent) 60%, transparent); }
+.stTest .stCard::before { content: ''; position: absolute; left: 10%; right: 10%; top: 0; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, #fff), transparent); opacity: .7; pointer-events: none; }
+.stTHead { background: radial-gradient(90% 140% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%), linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, var(--panel)), var(--panel)); }
+.stTIntro h3 { letter-spacing: .02em; }
+
+/* the controls */
+.stTControls select { transition: border-color .2s, box-shadow .2s; }
+.stTControls select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+.stTControls .primaryCta { position: relative; overflow: hidden; border-radius: 999px; padding-inline: 22px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent), 0 10px 30px -10px var(--accent); }
+.stTControls .primaryCta:not(:disabled)::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .5) 50%, transparent 65%); transform: translateX(-120%); animation: pvShine 4s ease-in-out infinite; }
+.stTControls .dangerButton { border-radius: 999px; }
+
+/* the state, as a lit chip */
+.stTStatus { padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); min-height: 36px; font-size: var(--fs-xs); letter-spacing: .08em; text-transform: uppercase; background: color-mix(in srgb, var(--surface2) 70%, transparent); }
+.stTStatus.live { color: var(--good-text); border-color: color-mix(in srgb, var(--good-text) 50%, transparent); }
+.stTStatus.live i { background: var(--good-text); animation: pvPing 1.6s ease-out infinite; }
+.stTStatus.starting, .stTStatus.connecting, .stTStatus.waiting { color: var(--warn-text); border-color: color-mix(in srgb, var(--warn-text) 45%, transparent); }
+.stTStatus.starting i, .stTStatus.connecting i, .stTStatus.waiting i { background: var(--warn-text); animation: pvBlink .7s ease-in-out infinite; }
+.stTStatus.error { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+
+/* the conversation */
+.stTChat { overflow: hidden; }
+.stTHud { margin: 12px 14px 0; }
+.stTMessages { background:
+  radial-gradient(60% 40% at 50% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%),
+  repeating-linear-gradient(0deg, transparent 0 27px, color-mix(in srgb, var(--accent) 5%, transparent) 27px 28px); }
+.stTEmpty { position: relative; }
+.stTStage { width: 100%; min-height: 230px; padding-block: 14px 24px; }
+.stTStage .pvOrb { display: block; width: 128px; height: 128px; cursor: default; }
+.stTStage .pvRing { width: 128px; height: 128px; margin: -64px 0 0 -64px; }
+.stTStage .pvSat { width: 176px; height: 176px; margin: -88px 0 0 -88px; }
+.stTStage::after { width: 200px; height: 200px; margin: -100px 0 0 -100px; }
+.stTMsg { animation: pvIn .28s ease-out both; }
+.stTMsg.bot .stTBubble p { background: color-mix(in srgb, var(--accent) 6%, var(--surface2)); border-color: color-mix(in srgb, var(--accent) 24%, var(--line)); border-left: 3px solid var(--accent); border-radius: 6px 16px 16px 16px; }
+.stTMsg.me .stTBubble p { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--panel)), color-mix(in srgb, var(--accent) 12%, var(--panel))); border-color: color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 16px 6px 16px 16px; box-shadow: 0 8px 22px -14px var(--accent); }
+.stTAvatar { box-shadow: 0 0 14px -2px var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); }
+.stTCaret { box-shadow: 0 0 10px var(--accent); }
+
+.stTComposer { background: color-mix(in srgb, var(--accent) 3%, var(--surface)); }
+.stTComposer textarea { transition: border-color .2s, box-shadow .2s; }
+.stTComposer textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 30px -8px var(--accent); }
+.stTComposerRow .primaryCta { border-radius: 999px; padding-inline: 20px; box-shadow: 0 0 18px -4px var(--accent); }
+
+/* the side: models as readouts, with the id in a quiet mono line */
+.stTModels ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.stTModels li { position: relative; display: grid; gap: 2px; padding: 9px 12px 9px 16px; border-radius: 12px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface2) 55%, var(--panel)); overflow: hidden; }
+.stTModels li::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 20%, transparent)); }
+.stTModels li.unset::before { background: var(--line2); }
+.stTModels li > span { font-size: var(--fs-xs); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.stTModels li > strong { color: var(--textStrong); font-size: var(--fs-md); }
+.stTModels li > code { font-size: var(--fs-xs); color: var(--accent-text); }
+.stTMediaBtn { display: inline-flex; align-items: center; gap: 8px; justify-content: center; transition: border-color .2s, box-shadow .2s, background .2s; }
+.stTMediaBtn:not(:disabled):hover { border-color: var(--accent); box-shadow: 0 0 14px -4px var(--accent); }
+.stTMediaBtn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); box-shadow: 0 0 16px -4px var(--accent); }
+.stTNote { margin: 0; padding: 6px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--warn-text) 45%, transparent); color: var(--warn-text); font-size: var(--fs-xs); }
+.stTLog ol { padding-left: 10px; border-left: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .stTControls .primaryCta::after, .stTMsg, .stTStatus i { animation: none !important; }
+}

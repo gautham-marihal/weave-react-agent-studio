@@ -64,6 +64,24 @@ line; an open one shows the everyday settings; **Detailed settings** reveals eve
 fixed values, the engine, studio notes) put every other section one click away. It edits the same draft as **All settings** and the JSON, so the three
 always agree (`src/studio/simple/`). A test walks the schema and fails if a section is on no card, under More or under Advanced.
 
+### Describe it (build and change an agent in plain English)
+
+**Build → Describe** is a conversation: write what the agent should be and do (who it talks to, what it helps with, how it should sound, what it must never do), and later
+ask for changes ("add a Spanish greeting", "let it transfer to a person"). The answer is a **proposal**, never a surprise: a plain summary, what it **assumed**, what it
+still **needs from you** (answer in the same box), **what changes** compared with the draft (grouped by part of the agent), **how a call would move**, and whether the checker
+found problems. It goes into the draft only when you press **Apply**, and **Undo** puts the draft back exactly; it is the same draft as Config, Workflow and the JSON.
+
+How it works: the request goes to the server's `/llm/v1/messages` route (`llmRoute.js`, also on `vite preview`) with the settings schema and the current draft; the model answers
+through one tool, `submit_config`, with the whole configuration; that is run through the same `POST /validate` as a hand-made draft, and what the validator finds is handed back to
+the model to fix (up to twice) before anything is shown. The studio's own notes (`builder`, where blocks are drawn) are never lost.
+
+To turn it on, set `ANTHROPIC_API_KEY` in `.env.local` (see `.env.example`; `LLM_MODELS` and `LLM_BASE_URL` are optional) and restart. The key stays on the server like the Agent
+Builder key: the browser can only ask for `/llm/status` and post a messages request, the model is limited to the listed ones, and the size of an answer is capped. **What you write and
+the current draft are sent to the provider**, and the first use asks you to confirm that (secrets are never in a draft, only their names). With no key, and always in demo mode (which keeps
+everything in the browser), only the simple built-in rules are offered, labelled "not AI": they look for keywords and make a first draft that replaces what is there. Tests:
+`tests/assistant.test.js` (route, prompt, check-and-repair loop, diff) and `tests/assistant.component.test.js` (the screen). Like the other proxy routes it is a development convenience:
+anyone who can open the app can use the key through it, so production puts real sign-in in front (docs/PRODUCTION.md).
+
 ### The Workflow
 
 **Build → Workflow** draws how a call moves through the agent as a canvas you can edit: a **Start** block, an agent block (a "Subagent") for each agent, and what goes
@@ -78,6 +96,31 @@ forgets the saved places; **Undo/Redo** step through everything done here (kept 
 buttons or Ctrl and the wheel, drag the empty space to move around; tools can be hidden when there are many. "As a list" says the same in sentences. The model is in
 `src/studio/workflow/workflowModel.js` and the edits in `workflowOps.js` (both pure, tested in `tests/workflow.test.js`); the screen is covered by
 `tests/workflow.component.test.js`.
+
+### Changes since published, and the way to live
+
+- **Changes**, in the Config toolbar once a version is published, lists what the draft changes compared with the newest published version, by part of the agent and in plain words. Server bookkeeping and Workflow block positions are left out. Each part has **Put back as published**; it is an ordinary edit of the draft with an **Undo** beside it, and nothing is saved until you save.
+- At the top of **Versions**, five steps show where the draft stands on the way to callers: saved, valid, tested, published, deployed. Each is done, to do, blocked or (for tests, when no scenarios are written) optional, and the button is the one thing to do next. It informs; it never stops a publish or a deploy. The logic is `src/studio/release/shipFlow.js`, the comparison `src/studio/changes/sinceRelease.js`; both are pure and have unit tests.
+
+### Replay a call, and keep it as a test
+
+Open a call from an agent's **Calls** tab (the same call opened from the Calls page offers to open it in the agent, because replays and tests belong to one agent's draft).
+
+- **Replay** plays the caller's words, turn by turn, to the draft (unsaved edits included) or to a published version, and lays the result beside what happened in the call. What the agent *did* (its tools, its hand-overs, how it ended, what it remembered) is compared exactly; what it *said* is compared loosely, because a language model never words things the same twice. Changes are said in plain sentences above the table.
+  - **In the browser** is free and instant, but it is a simulation: simple rules for tools, hand-overs and goodbyes, with no language model. Trust it for what the agent does, not how it says it.
+  - **On the real runtime** sends the replay through the scenario runner with the editor's contents (nothing is saved). It uses the live model, so it asks first, and the agent's API calls are never made for real: only mocks answer them. In demo mode this button is an imitation too, and says so.
+- **Keep as a test** turns the call into a scenario of the draft (`tests`): the caller's words (phone numbers and e-mail addresses are hidden, and every turn can be edited, because a test is published with the agent), checks suggested from what the agent did (a tool that worked, a hand-over, a value it remembered) with the plain facts ticked and its exact wording offered unticked, and an optional "what should have happened". It is an ordinary edit of the draft with an **Undo**; nothing is saved until you save.
+
+The logic is in `src/studio/replay/` (`callFacts.js` reads a call, `replayRun.js` plays it, `compareReplay.js` compares, `callToTest.js` makes the test), pure and covered by `tests/replay.test.js`.
+
+### Monitoring
+
+**Monitoring** (in the sidebar) reads the calls of every agent for the last 7, 14 or 30 days (and the same length before, to compare) and shows: calls per day, how often calls were handed over or cut off, the time to answer, the share of tool calls that failed, the calls that need attention (cut off, a tool failed, an error, a caller who had to repeat themselves, a slow answer) each with **Open** and **Replay**, what goes wrong most, each agent's numbers, and each agent's versions side by side.
+
+- A version that does clearly worse than the one before it (more calls cut off, handed over or failed tool calls, by a margin, on at least 5 calls of each) raises an alert with **Roll back to vX…**, which opens Deploy with that version ready. It is a pattern in the numbers, not a verdict, and the alert says how many calls it rests on.
+- Times and tool failures come from the records of the newest 15 calls of each agent; the other numbers from every call listed. The page says how many calls that is. It only reads: nothing is written. In demo mode the calls are generated (two weeks of them, with one agent whose newest version is rough, so there is something to find); `weave_demo_history = off` in local storage leaves the earlier ones out.
+
+The logic is in `src/studio/monitoring/monitorModel.js` (pure, `tests/monitor.test.js`).
 
 ### The preview beside the editor
 
@@ -296,6 +339,7 @@ src/studio/records/         what is kept about each call, where it is processed,
 src/studio/checks/          the Checks tab (readiness checks of one agent)
 src/studio/preview/         the preview beside the editor
 src/studio/workflow/        the Workflow canvas: the model, the edits, the canvas, the panel
+src/studio/assistant/       Describe it: the prompt, the check-and-repair loop, the diff, the screen (and llmRoute.js: the server's /llm route)
 src/studio/scenarios/       test scenarios: editing, the run hook, results (runs are the server's)
 src/studio/knowledge/       the Knowledge tab: files, index builds, test searches
 src/studio/calls/           the call list and one call's detail

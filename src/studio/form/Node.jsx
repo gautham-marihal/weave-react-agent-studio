@@ -345,7 +345,7 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
       {(addable.length > 0 || extra || openExtra) && (
         <div className="stFAddRow">
           {addable.length > 0 && (
-            <SmartSelect action className="stFInput small" disabled={disabled} ariaLabel="Add a setting" placeholder="＋ Add a setting" options={addable.map((k) => ({ value: k, label: wordsOf(k).label }))} onChange={(k) => { if (k) setProp(k, engine.defaultFor(shape.properties[k])); }} />
+            <SmartSelect action className="stFInput small" disabled={disabled} ariaLabel="Add a setting" placeholder="More settings…" options={addable.map((k) => ({ value: k, label: wordsOf(k).label }))} onChange={(k) => { if (k) setProp(k, engine.defaultFor(shape.properties[k])); }} />
           )}
           {(extra || openExtra) && <AddKey existing={Object.keys(obj)} disabled={disabled} label="custom field" onAdd={(k) => setProp(k, extra ? engine.defaultFor(extra) : '')} />}
         </div>

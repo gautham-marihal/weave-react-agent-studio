@@ -21,6 +21,7 @@ export function previewState(session) {
   return 'loading';
 }
 
+const STATUS_WORDS = { idle: 'Ready', loading: 'Connecting', live: 'Live', reconnecting: 'Reconnecting', ended: 'Ended', error: 'Problem' };
 const LOADING_TEXT = { starting: 'Asking for a conversation…', connecting: 'Connecting…', waiting: 'Waiting for the agent to join…' };
 
 function Line({ message }) {
@@ -98,6 +99,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
     <section className={`pvPanel ${simulated ? 'simulated' : 'real'}`} aria-label="Preview" data-state={state} data-mode={mode}>
       <header className="pvHead">
         <strong>Preview</strong>
+        <span className={`pvStatus ${state}`}><i aria-hidden="true" />{STATUS_WORDS[state] || 'Ready'}</span>
         <div className="pvModes" role="group" aria-label="What to talk to">
           <button type="button" className={!simulated ? 'on' : ''} aria-pressed={!simulated} disabled={modeLocked || running} onClick={() => onMode('real')}
             title={modeLocked ? 'Demo mode has no real agent to talk to' : 'A real conversation with the saved draft'}>Real agent</button>
@@ -119,6 +121,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
       {state === 'idle' && (
         <div className="pvEmpty">
           <div className="pvStage">
+            <i className="pvRing r1" aria-hidden="true" /><i className="pvRing r2" aria-hidden="true" /><i className="pvRing r3" aria-hidden="true" /><i className="pvSat" aria-hidden="true" />
             <button type="button" className="pvOrb" onClick={start} tabIndex={-1} aria-hidden="true"><span className="pvOrbCall"><Icon name="phone" size={22} /></span></button>
           </div>
           <strong>No conversation yet</strong>
@@ -157,6 +160,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
       {(state === 'live' || state === 'reconnecting' || state === 'ended') && (
         <>
           {state === 'reconnecting' && <p className="pvBanner warn" role="status"><b>Connection lost.</b> Trying to reconnect…</p>}
+          <div className={`pvHud ${state}`} aria-hidden="true"><span className="pvMiniOrb" /><span className="pvBars"><i /><i /><i /><i /><i /><i /><i /></span><small>{state === 'ended' ? 'Signal closed' : state === 'reconnecting' ? 'Re-linking…' : 'Linked'}</small></div>
           <ul className="pvLog" aria-label="Conversation" aria-live="polite">
             {session.messages.map((message) => <Line key={message.id} message={message} />)}
             <li ref={endRef} aria-hidden="true" />
@@ -169,7 +173,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
             <div className="pvComposer">
               {tools}
               <input type="text" value={draft} placeholder="Type a message…" aria-label="Message to the agent" disabled={state !== 'live'} onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); send(); } }} />
+                onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent?.isComposing) { event.preventDefault(); send(); } }} />
               <button type="button" className="primaryCta compactCta" onClick={send} disabled={state !== 'live' || !draft.trim()}>Send</button>
               <button type="button" className="quietButton" onClick={session.stop}>End</button>
             </div>

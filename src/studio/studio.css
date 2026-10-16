@@ -503,3 +503,8 @@ button.stEnvSlot:focus-visible { outline: 2px solid var(--accent); outline-offse
 @media (max-width: 1250px) { .demoBadgeWrap { right: auto; left: 300px; top: 78px; } }
 .dashboard .stToolbarActions .quietButton { border-color: transparent; background: none; color: var(--muted); }
 .dashboard .stToolbarActions .quietButton:hover:not(:disabled) { background: var(--surface2); color: var(--textStrong); }
+
+/* the state pills in the light theme: darker words, so each is read at 4.5:1 or better on white */
+html[data-theme="light"] .stPill.dev { color: #1d5f9b; }
+html[data-theme="light"] .stPill.review { color: #6b3fb0; }
+html[data-theme="light"] .stPill.live { color: #0f7048; }

@@ -1,0 +1,61 @@
+/* Replaying a call, and keeping a call as a test */
+.rpView { display: grid; gap: 14px; min-width: 0; }
+.rpIntro h4 { margin: 0 0 4px; font-size: var(--fs-lg); color: var(--textStrong); }
+.rpIntro p, .rpNote { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.55; max-width: 80ch; }
+.rpControls { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.rpControls label { display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--muted); }
+.rpControls select { min-width: 240px; }
+.rpPaid { display: flex; gap: 8px; align-items: flex-start; font-size: var(--fs-sm); color: var(--warn-text); line-height: 1.5; }
+.rpPaid input { margin-top: 3px; }
+.rpAfter { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.rpAfter small { color: var(--muted); font-size: var(--fs-sm); }
+
+.rpVerdict { padding: 12px 14px; border: 1px solid var(--line2); border-left-width: 3px; border-radius: 10px; display: grid; gap: 6px; }
+.rpVerdict.same { border-left-color: var(--good-text); }
+.rpVerdict.different { border-left-color: var(--warn-text); }
+.rpVerdict h4 { margin: 0; font-size: var(--fs-md); color: var(--textStrong); }
+.rpVerdict ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: var(--fs-sm); color: var(--text); line-height: 1.5; }
+.rpVerdict small { color: var(--muted); font-size: var(--fs-xs); }
+
+.rpGrid { display: grid; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
+.rpHead, .rpTurn, .rpEnd { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.rpHead { background: var(--surface2); color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
+.rpHead span { padding: 8px 14px; }
+.rpHead span + span, .rpTurn .rpSide + .rpSide, .rpEnd p + p { border-left: 1px solid var(--line); }
+.rpTurn { border-top: 1px solid var(--line); }
+.rpTurn.changed { background: color-mix(in srgb, var(--warn-text) 6%, var(--panel)); }
+.rpTurn.unreached { opacity: .75; }
+.rpCaller { grid-column: 1 / -1; margin: 0; padding: 10px 14px 4px; font-size: var(--fs-sm); color: var(--text); }
+.rpCaller b { color: var(--textStrong); margin-right: 6px; }
+.rpCaller em { font-style: normal; color: var(--muted); }
+.rpBadge { margin-left: 8px; padding: 1px 8px; border: 1px solid var(--warn-text); border-radius: 999px; color: var(--warn-text); font-size: var(--fs-xs); font-weight: 600; }
+.rpSide { padding: 4px 14px 12px; min-width: 0; }
+.rpSaid { margin: 0 0 4px; font-size: var(--fs-md); line-height: 1.5; color: var(--text); overflow-wrap: anywhere; }
+.rpNone { color: var(--muted); font-style: italic; }
+.rpTools { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 3px; font-size: var(--fs-xs); color: var(--muted); }
+.rpTools li.new { color: var(--warn-text); font-weight: 600; }
+.rpTools li.bad { color: var(--danger-text); }
+.rpEnd { border-top: 1px solid var(--line); background: var(--surface2); }
+.rpEnd p { margin: 0; padding: 9px 14px; font-size: var(--fs-sm); color: var(--text); }
+.rpEnd p:first-child { grid-column: 1 / -1; padding-bottom: 0; color: var(--muted); }
+.rpEnd .rpDiff { color: var(--warn-text); font-weight: 600; }
+
+.rpDialog { display: grid; gap: 14px; max-height: min(560px, 62vh); overflow: auto; padding: 2px 4px 4px 2px; }
+.rpFields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rpDialog label { display: grid; gap: 4px; font-size: var(--fs-sm); }
+.rpDialog label > span { font-weight: 600; color: var(--textStrong); }
+.rpDialog label em { font-weight: 400; font-style: normal; color: var(--muted); }
+.rpSet { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 12px; display: grid; gap: 8px; margin: 0; min-width: 0; }
+.rpSet legend { padding: 0 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--textStrong); }
+.rpTurnEdit { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.rpTurnEdit > span { color: var(--muted); font-size: var(--fs-xs); text-align: right; }
+.rpCheck { display: flex !important; gap: 10px; align-items: flex-start; }
+.rpCheck input { margin-top: 3px; }
+.rpCheck > span { display: grid; gap: 2px; font-weight: 400 !important; }
+.rpCheck b { font-weight: 600; color: var(--textStrong); }
+.rpCheck small { color: var(--muted); font-size: var(--fs-xs); line-height: 1.45; }
+.rpChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rpChips label { display: inline-flex !important; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line2); border-radius: 999px; cursor: pointer; }
+.rpChips label.on { border-color: var(--accent); background: var(--accent-soft); }
+.rpWarn { margin: 0; padding: 8px 12px; border: 1px solid var(--warn-text); border-left-width: 3px; border-radius: 10px; background: color-mix(in srgb, var(--warn-text) 12%, var(--panel)); color: var(--text); font-size: var(--fs-sm); line-height: 1.5; }
+.rpProblems { margin: 0; padding: 10px 14px 10px 28px; border: 1px solid var(--danger); border-radius: 10px; color: var(--danger-text); font-size: var(--fs-sm); display: grid; gap: 3px; }

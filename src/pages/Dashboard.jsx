@@ -10,6 +10,7 @@ import Studio from '../studio/Studio.jsx';
 import SettingsPage from '../studio/SettingsPage.jsx';
 import { BotRow } from '../studio/BotsPage.jsx';
 import { describeHealth, useApiHealth } from '../studio/useApiHealth.js';
+import MonitoringPage from '../studio/monitoring/MonitoringPage.jsx';
 import { LIBRARY_NAV, NAV, SETTINGS_NAV, TELEPHONY_SECTIONS, formatDuration, formatRelative, getInitials, makeRecordId, normalizeTelephony, sessionStats, sessionsInRange } from './helpers.js';
 import { Activity, Logo, Metric, NavItem, ProfileMenu, QuickAction, SHORTCUT_LABEL, SearchOverlay, ThemeToggle, WorkspaceCreateModal, WorkspaceRenameModal, openHelpDialog } from './shared.jsx';
 import { CallsPage } from './Sessions.jsx';
@@ -91,7 +92,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const [workspaceRenameId, setWorkspaceRenameId] = useState(null);
   const [workspaceRenameDraft, setWorkspaceRenameDraft] = useState('');
   const [range, setRange] = useState('Past 7 days');
-  const [telephonySection, setTelephonySection] = useState('numbers');
+  const [telephonySection, setTelephonySection] = useState('calls');
   const [workspaces, setWorkspaces] = useState(() => loadWorkspaces(profile));
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(null);
 
@@ -254,6 +255,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       { type: 'page', id: 'home', title: 'Home', description: 'What needs attention, and the next step', icon: 'home' },
       { type: 'page', id: 'agents', title: 'Agents', description: `${botList.length} agent${botList.length === 1 ? '' : 's'}`, icon: 'agent' },
       { type: 'page', id: 'sessions', title: 'Calls', description: 'Every conversation your agents have had', icon: 'phone' },
+      { type: 'page', id: 'monitoring', title: 'Monitoring', description: 'How your agents are doing, and what needs attention', icon: 'monitor' },
       { type: 'page', id: 'voices', title: 'Voices', description: 'Hear and choose a voice', icon: 'voice' },
       { type: 'page', id: 'integrations', title: 'Integrations', description: 'Connect your stack', icon: 'plug' },
       { type: 'page', id: 'telephony', title: 'Telephony', description: 'Phone numbers, dispatch rules and SIP trunks', icon: 'dial' },
@@ -318,8 +320,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       return;
     }
     if (result.type === 'telephony') {
-      setTelephonySection(result.section);
-      activate('telephony');
+      activate('telephony', { section: result.section });
       return;
     }
     if (result.type === 'session') {
@@ -343,7 +344,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     return () => document.removeEventListener('keydown', handleShortcut);
   }, []);
 
-  const activate = (id) => {
+  const activate = (id, { section } = {}) => {
     if (!confirmLeave()) return; // unsaved edits in an open agent
     // Leaving the Agents area drops its address, so a refresh reopens this page rather than an old agent.
     if (id !== 'agents' && /^#\/bots/.test(window.location.hash)) {
@@ -356,7 +357,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       return;
     }
     if (id === 'telephony') {
-      setTelephonySection((value) => TELEPHONY_SECTIONS.some((item) => item.id === value) ? value : 'numbers');
+      // Telephony always opens on Simulated calls, unless a search result named another part (a number, a dispatch rule)
+      setTelephonySection(TELEPHONY_SECTIONS.some((item) => item.id === section) ? section : 'calls');
     }
   };
 
@@ -545,7 +547,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
         {inAgentView && (
           <nav className="sideNav agentSideNav" aria-label="This agent">
-            <button type="button" className="agentBack" onClick={() => studioNavigate('#/bots')}><span aria-hidden="true">‹</span> Back to workspace</button>
+            <button type="button" className="agentBack" title="Back to workspace" onClick={() => studioNavigate('#/bots')}><span aria-hidden="true">‹</span><span className="agentBackText"> Back to workspace</span></button>
             <div className="agentSideName"><span className="agentRowAvatar" aria-hidden="true">{String((allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId).slice(0, 1).toUpperCase()}</span><strong>{(allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId}</strong></div>
             <div id="agentNavSlot" />
           </nav>
@@ -609,6 +611,12 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
               if (!/^https?:\/\//i.test(connection.first || '')) { window.alert('This connection needs a web address (https://…) before it can be added to an agent. Use Edit to add one.'); return; }
               setPicker({ title: `Add ${connection.name} to an agent`, subtitle: 'It is added to the agent’s draft as a connection. You review it and save.', onPick: (botId) => { queueChange(botId, { kind: 'connection', name: connection.name, url: connection.first }); goToAgent(botId); } });
             }} />
+          ) : active === 'monitoring' ? (
+            <MonitoringPage
+              bots={botList}
+              onOpenAgent={(botId, tab, params) => { if (!confirmLeave()) return; setActive('agents'); studioNavigate(routeHref(botId, tab, params)); }}
+              onOpenCall={(botId, callId, view) => { if (!confirmLeave()) return; setActive('agents'); studioNavigate(routeHref(botId, 'calls', { call: callId, ...(view && view !== 'trace' ? { view } : {}) })); }}
+            />
           ) : active === 'sessions' ? (
             <CallsPage bots={botList} onOpenAgent={(id) => { setActive('agents'); studioNavigate(routeHref(id, 'test')); }} />
           ) : active === 'agents' ? (

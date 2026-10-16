@@ -160,7 +160,7 @@ test('calls of several agents are merged newest first, the same call never twice
 
 // ---------------------------------------------------------------- the demo API's calls
 test('GET /calls lists calls newest first with filters and paging; one call has its records, counts and transcript', async () => {
-  const api = createDemoApi({ storage: memoryStorage() });
+  const api = createDemoApi({ storage: memoryStorage(), history: false });
   const all = (await api.handle('GET', '/bots/acme-support/calls')).body;
   assert.equal(all.calls.length, 3);
   assert.equal(all.next, null);
@@ -197,7 +197,7 @@ test('GET /calls lists calls newest first with filters and paging; one call has 
 });
 
 test('a conversation had in the simulated preview is kept as a call, newest first, with its tools', async () => {
-  const api = createDemoApi({ storage: memoryStorage() });
+  const api = createDemoApi({ storage: memoryStorage(), history: false });
   const id = api.recordConversation('acme-support', {
     startedAt: new Date().toISOString(), channel: { id: 'web-chat', type: 'web_chat' }, state: { verified: true }, tools: [{ tool: 'end_call', args: {} }],
     messages: [{ role: 'assistant', text: 'Hello' }, { role: 'user', text: 'bye' }, { role: 'assistant', text: 'Goodbye' }],

@@ -37,18 +37,21 @@ export function buildEvents({ botId, ref = 'draft', version = 'draft', room, cha
 }
 
 // A stored call: the summary the list shows, plus its events.
-export function makeCall({ botId, ref = 'draft', version = 'draft', channel = { id: 'web-chat', type: 'web_chat' }, caller = null, startedAt, messages, state = {}, agent, status = 'ended', idSuffix = '' }) {
+export function makeCall({ botId, ref = 'draft', version = 'draft', channel = { id: 'web-chat', type: 'web_chat' }, caller = null, startedAt, messages, state = {}, agent, status = 'ended', idSuffix = '', stepSeconds }) {
   const room = `session-${botId}-${idSuffix || Math.abs(Date.parse(startedAt)).toString(16).slice(-8)}`;
-  const built = buildEvents({ botId, ref, version, room, channel, caller, messages, agent, startedAt, state });
+  const built = buildEvents({ botId, ref, version, room, channel, caller, messages, agent, startedAt, state, ...(stepSeconds ? { stepSeconds } : {}) });
   const id = `${room}_${stamp(startedAt)}`;
-  const events = status === 'in_progress' ? built.events.slice(0, Math.max(3, Math.floor(built.events.length / 2))) : built.events;
+  // a call that was cut off has its records but no ending (no session_closed, no call_ended)
+  const events = status === 'in_progress' ? built.events.slice(0, Math.max(3, Math.floor(built.events.length / 2))) : status === 'unfinished' ? built.events.slice(0, -2) : built.events;
   const last = events[events.length - 1];
   const summary = { id, room, bot: botId, ref, version, channel, caller, dialled: null, started_at: startedAt, status, last_event_at: last.t, size: JSON.stringify(events).length, duration_s: status === 'ended' ? built.durationS : Math.round(last.elapsed_s), caller_turns: events.filter((e) => e.event === 'user_said').length, agent_turns: events.filter((e) => e.event === 'agent_said').length, handoffs: built.handoffs };
   return { summary, events, final_state: status === 'ended' ? state : undefined, usage: status === 'ended' ? [{ type: 'llm_usage', provider: 'demo', model: 'demo-model', input_tokens: 120 * summary.caller_turns, output_tokens: 40 * summary.agent_turns }] : undefined };
 }
 
+const SEED_VERSION = '0.1.1'; // the version the made-up calls say they ran (the agent's draft has moved on)
+
 // A few believable calls for an agent, newest first, spread over the last days. Made from the agent's own greeting and a couple of lines.
-export function seedCalls(botId, config, nowIso) {
+export function seedCalls(botId, config, nowIso, { history = true } = {}) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
   const phone = channels.find((c) => c?.type === 'sip_voice' || c?.type === 'web_voice');
@@ -58,12 +61,44 @@ export function seedCalls(botId, config, nowIso) {
   const chan = (c) => ({ id: c?.id || 'web-chat', type: c?.type || 'web_chat' });
   const talk = (...pairs) => pairs.flatMap(([user, agent, extra]) => [{ role: 'user', text: user }, { role: 'assistant', text: agent, ...(extra || {}) }]);
   const calls = [
-    makeCall({ botId, ref: 'production', version: config?.meta?.version || '0.1.0', channel: chan(web), caller: null, startedAt: ago(2), agent: entry, idSuffix: 'a1d2', messages: [{ role: 'assistant', text: greeting }, ...talk(['What can you help me with?', 'I can answer questions about your account and orders, and pass you to a person if you would like.'], ['Thanks, that is all', 'Goodbye, and thank you for getting in touch.', { tools: [{ tool: 'end_call', args: {}, output: { ended: true } }] }])] }),
-    makeCall({ botId, ref: 'development', version: config?.meta?.version || '0.1.0', channel: chan(web), caller: null, startedAt: ago(7), agent: entry, idSuffix: 'b7e4', messages: [{ role: 'assistant', text: greeting }, ...talk(['Where is my order?', 'I can’t reach the order system right now.', { tools: [{ tool: 'find_order', args: { order_id: 'NB-1003' }, error: 'HTTP 503' }] }])] }),
+    makeCall({ botId, ref: 'production', version: SEED_VERSION, channel: chan(web), caller: null, startedAt: ago(2), agent: entry, idSuffix: 'a1d2', messages: [{ role: 'assistant', text: greeting }, ...talk(['What can you help me with?', 'I can answer questions about your account and orders, and pass you to a person if you would like.'], ['Thanks, that is all', 'Goodbye, and thank you for getting in touch.', { tools: [{ tool: 'end_call', args: {}, output: { ended: true } }] }])] }),
+    makeCall({ botId, ref: 'development', version: SEED_VERSION, channel: chan(web), caller: null, startedAt: ago(7), agent: entry, idSuffix: 'b7e4', messages: [{ role: 'assistant', text: greeting }, ...talk(['Where is my order?', 'I can’t reach the order system right now.', { tools: [{ tool: 'find_order', args: { order_id: 'NB-1003' }, error: 'HTTP 503' }] }])] }),
     makeCall({ botId, ref: 'draft', version: 'draft', channel: chan(web), caller: null, startedAt: ago(26), agent: entry, idSuffix: 'c9f1', messages: [{ role: 'assistant', text: greeting }, ...talk(['hello', 'Hi again. What do you need?'])], status: 'ended' }),
   ];
-  if (phone) calls.push(makeCall({ botId, ref: 'production', version: config?.meta?.version || '0.1.0', channel: chan(phone), caller: '+6591234567', startedAt: ago(30), agent: entry, idSuffix: 'd3a8', messages: [{ role: 'assistant', text: greeting }, ...talk(['I need to speak to a person', 'I’ll put you through now.', { tools: [{ tool: 'transfer_or_callback', args: { reason: 'asked for a person' }, output: { transferred: true } }] }])] }));
-  return calls.sort((x, y) => Date.parse(y.summary.started_at) - Date.parse(x.summary.started_at));
+  if (phone) calls.push(makeCall({ botId, ref: 'production', version: SEED_VERSION, channel: chan(phone), caller: '+6591234567', startedAt: ago(30), agent: entry, idSuffix: 'd3a8', messages: [{ role: 'assistant', text: greeting }, ...talk(['I need to speak to a person', 'I’ll put you through now.', { tools: [{ tool: 'transfer_or_callback', args: { reason: 'asked for a person' }, output: { transferred: true } }] }])] }));
+  return [...calls, ...(history ? seedHistory(botId, config, nowIso) : [])].sort((x, y) => Date.parse(y.summary.started_at) - Date.parse(x.summary.started_at));
+}
+
+// Two weeks of earlier calls, so Monitoring has something to show: version 0.1.0 early on and doing well, version 0.1.1 since. Agents whose id says
+// "support" have a rough 0.1.1 (calls cut off, a tool failing, people handed over), so the comparison between versions has something to find; the others
+// have a few ordinary hiccups. Deterministic: the same agent always gets the same history.
+export function seedHistory(botId, config, nowIso) {
+  const channels = list(config?.channels);
+  const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
+  const greeting = typeof web?.greeting?.say === 'string' ? web.greeting.say : 'Hello! How can I help you today?';
+  const agents = list(config?.agents?.items).map((a) => a?.id).filter(Boolean);
+  const entry = config?.agents?.entry || agents[0] || 'assistant';
+  const other = agents.find((id) => id !== entry) || 'specialist';
+  const tool = list(config?.tools).find((t) => t && t.id && !t.builtin)?.id || 'lookup_order';
+  const chan = { id: web?.id || 'web-chat', type: web?.type || 'web_chat' };
+  const ago = (hours) => new Date(Date.parse(nowIso) - hours * 3600 * 1000).toISOString();
+  const asks = ['Where is my order?', 'I need to change my booking', 'What are your opening hours?', 'Can I get a refund?', 'How do I reset my password?', 'Is my payment received?'];
+  const rough = /support/.test(botId);
+  const out = [];
+  const add = (n, hours, version, ref, ask, { status = 'ended', fail = false, handoff = false, repeat = false, slow = false } = {}) => {
+    const agentSays = fail ? 'I can’t reach the system right now.' : handoff ? 'I’ll pass you to a specialist.' : 'I can help with that. One moment.';
+    const tools = fail ? [{ tool, args: {}, error: 'HTTP 500' }] : handoff ? [{ tool: 'to_specialist', args: {}, handoff: other }] : [{ tool, args: {}, output: { ok: true } }];
+    const talk = [{ role: 'user', text: ask }, { role: 'assistant', text: agentSays, tools }];
+    if (repeat) talk.push({ role: 'user', text: ask }, { role: 'assistant', text: 'Sorry, let me try that again.' });
+    out.push(makeCall({ botId, ref, version, channel: chan, startedAt: ago(hours), agent: entry, idSuffix: `h${n}`, status, stepSeconds: slow ? 12 : undefined, messages: [{ role: 'assistant', text: greeting }, ...talk] }));
+  };
+  for (let i = 0; i < 8; i += 1) add(i, 24 * 8 + i * 14 + (i % 3) * 3, '0.1.0', 'production', asks[i % asks.length], { handoff: i === 3 });
+  for (let i = 0; i < 8; i += 1) {
+    const hours = 6 + i * 19 + (i % 2) * 4;
+    if (rough) add(20 + i, hours, '0.1.1', 'production', asks[(i + 2) % asks.length], { status: i % 3 === 0 ? 'unfinished' : 'ended', fail: i % 2 === 1, handoff: i === 4 || i === 6 });
+    else add(20 + i, hours, '0.1.1', 'production', asks[(i + 2) % asks.length], { repeat: i === 2, slow: i === 5, status: i === 7 ? 'unfinished' : 'ended' });
+  }
+  return out;
 }
 
 // A conversation had in the simulated preview, kept as a call so Sessions and the trace have something real-looking to show.
