@@ -5,7 +5,7 @@
 // `judge` (a reviewer, which needs the live model); the rest are plain and free to check.
 // Pure: no network, no DOM.
 
-import { describeExpectation, freshScenarioId } from '../scenarios/model.js';
+import { describeExpectation, freshScenarioId, modelNameOf } from '../scenarios/model.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -44,7 +44,8 @@ export function contextOf(config) {
   const channels = list(config?.channels).filter((c) => isObj(c) && c.id);
   const channel = channels.find((c) => c.enabled !== false) || channels[0] || null;
   const tools = list(config?.tools).filter((t) => isObj(t) && t.id);
-  const own = tools.filter((t) => !t.builtin);
+  // one entry per name the model sees: a voice and a chat variant of a tool share a name, and a check is about the name
+  const own = tools.filter((t, i) => !t.builtin && tools.findIndex((u) => !u.builtin && modelNameOf(u) === modelNameOf(t)) === i);
   const transfer = tools.find((t) => t.builtin === 'transfer_or_callback') || null;
   const endCall = tools.find((t) => t.builtin === 'end_call') || null;
   const speaks = list(config?.defaults?.language?.speaks).filter((c) => typeof c === 'string');
@@ -54,8 +55,8 @@ export function contextOf(config) {
     name: config?.persona?.name || config?.meta?.name || 'the agent',
     main: own[0] || null,
     own,
-    transfer: transfer?.id || '',
-    endCall: endCall?.id || '',
+    transfer: modelNameOf(transfer),
+    endCall: modelNameOf(endCall),
     others: speaks.filter((c) => c !== primary),
     greeting: String(list(config?.channels).find((c) => isObj(c) && typeof c.greeting?.say === 'string')?.greeting?.say || ''),
   };
@@ -83,7 +84,7 @@ export const CALLERS = [
     name: 'Straight to the point',
     blurb: 'Says what they want in one go, then thanks you.',
     turns: (c) => [c.main ? requestFor(topicOf(c.main)) : 'Hi, I need some help.', 'Yes, that is right.', 'Thanks, that is all.'],
-    expect: (c) => [ANY, ...(c.main ? [{ tool_called: c.main.id }] : [])],
+    expect: (c) => [ANY, ...(c.main ? [{ tool_called: modelNameOf(c.main) }] : [])],
     judge: 'the agent deals with the request clearly and ends the conversation politely',
   },
   {
@@ -179,10 +180,10 @@ export function autoChecks(config) {
     const topic = topicOf(tool);
     out.push({
       key: `check:tool:${tool.id}`,
-      name: `It uses “${tool.id}” when asked`,
+      name: `It uses “${modelNameOf(tool)}” when asked`,
       blurb: tool.description ? String(tool.description).slice(0, 110) : 'A caller asks for what this tool does.',
       turns: [requestFor(topic), 'Yes, please go ahead.'],
-      expect: [ANY, { tool_called: tool.id }],
+      expect: [ANY, { tool_called: modelNameOf(tool) }],
     });
   });
   if (c.transfer)

@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
+import { cardsThatMayOpen } from './cardSize.js';
 import { isObj } from './engine.js';
 import {
   OwnerCtx,
@@ -33,6 +34,7 @@ import { setRecordingNotice } from '../simple/simpleModel.js';
 import RecordingNoticeOffer from '../records/RecordingNoticeOffer.jsx';
 import ScheduleStrip from '../relations/ScheduleStrip.jsx';
 import TaskSteps from '../relations/TaskSteps.jsx';
+import { TryGuardrails, TryRedaction, TrySpeech, TryTask } from './TryPanels.jsx';
 import UsedBy from '../relations/UsedBy.jsx';
 import { CREATABLE } from './inlineCreate.js';
 import { UNSUPPORTED_BUILTINS, UNSUPPORTED_KINDS, agentsUsingTool, toolKindCounts, toolMatches, unusedTools, usedByText } from './toolInfo.js';
@@ -59,6 +61,7 @@ const REF_TARGET = {
   notifications: ['notifications', 'Notifications'],
   channels: ['channels', 'Channels'],
   transfers: ['telephony', 'Telephony'],
+  input_guardrails: ['guardrails', 'Safety rules'],
   schedules: ['schedules', 'Schedules'],
   state_vars: ['state', 'State'],
   http_connections: ['connections', 'Connections'],
@@ -77,6 +80,7 @@ const REF_WORD = {
   notifications: 'notifications',
   channels: 'channels',
   transfers: 'transfers',
+  input_guardrails: 'safety rules',
   schedules: 'schedules',
   state_vars: 'state variables',
   http_connections: 'HTTP connections',
@@ -322,6 +326,29 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
           <>
             <TaskSteps value={value} />
             <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />
+            {isObj(value) && typeof value.id === 'string' && value.id && <TryTask taskId={value.id} />}
+          </>
+        );
+      // "Try a line" under the settings it answers for: how a line is said, what redaction hides, what the safety rules do
+      if (path[path.length - 1] === 'speech' && shape.properties?.pronunciation)
+        return (
+          <>
+            <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />
+            <TrySpeech path={path} />
+          </>
+        );
+      if (path.length === 2 && path[0] === 'post_call' && path[1] === 'redaction')
+        return (
+          <>
+            <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />
+            <TryRedaction />
+          </>
+        );
+      if (path.length === 1 && path[0] === 'guardrails')
+        return (
+          <>
+            <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />
+            <TryGuardrails />
           </>
         );
       return <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />;
@@ -855,6 +882,7 @@ const CardItem = React.memo(function CardItem({
   named,
   collection,
   fresh,
+  roomy = true,
   onItemChange,
   onRemoveItem,
   onMoveItem,
@@ -872,7 +900,7 @@ const CardItem = React.memo(function CardItem({
       pathKey={keyOf(path)}
       title={title}
       hint={hint}
-      defaultOpen={fresh || (basePath.length > 1 ? index === 0 && count <= 3 : count <= 3)}
+      defaultOpen={fresh || (roomy && (basePath.length > 1 ? index === 0 && count <= 3 : count <= 3))}
       onRemove={disabled ? null : () => onRemoveItem(index)}
       actions={
         !disabled && count > 1 ? (
@@ -943,7 +971,9 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
         ? 'channels'
         : path.length === 2 && path[0] === 'guardrails' && ['input', 'output'].includes(path[1])
           ? path.join('.')
-          : null;
+          : lastKey === 'pronunciation'
+            ? 'pronunciation'
+            : null;
   const picker = pickerKey ? pickerFor(pickerKey, { engine, branches, takenIds, botId: ctx.store.get()?.meta?.id || '' }) : null;
 
   const make = (branch) => {
@@ -981,6 +1011,7 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
   const filtering = searchable && (!!find.query.trim() || !!find.kind || find.unusedOnly);
   const kinds = useMemo(() => (searchable ? toolKindCounts(list) : []), [searchable, list]);
   const shown = list.map((item, index) => index).filter((index) => !filtering || toolMatches(list[index], find, unused));
+  const roomyCards = useMemo(() => cardsThatMayOpen(list), [list]);
 
   return (
     <div className="stFCards">
@@ -1038,6 +1069,7 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
           named={named}
           collection={collection}
           fresh={index === fresh}
+          roomy={roomyCards[index]}
           onItemChange={itemChange(index)}
           onRemoveItem={removeItem}
           onMoveItem={moveItem}

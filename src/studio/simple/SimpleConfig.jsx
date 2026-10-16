@@ -597,7 +597,7 @@ function ConnectionsCard({ config, set, secrets, providers }) {
               <li key={t.id} className={t.used ? '' : 'off'} title={t.description || undefined}>
                 {t.id}
                 <small>
-                  {plainToolKind({ type: t.kind, builtin: t.builtin })}
+                  {plainToolKind({ type: t.kind, builtin: t.builtin, request: { method: t.method } })}
                   {t.used ? '' : ' · not offered to an agent'}
                 </small>
               </li>
@@ -747,7 +747,7 @@ export default function SimpleConfig({ editor, onOpenAll, onShowJson, onOpenJson
             {card.id === 'model' && <ModelCard config={config} set={set} providers={providers} live={live} />}
             {card.id === 'connections' && <ConnectionsCard config={config} set={set} secrets={secrets} providers={providers} />}
             {card.id === 'where' && <WhereCard config={config} set={set} />}
-            {card.id === 'records' && <RecordsCard config={config} set={set} />}
+            {card.id === 'records' && <RecordsCard config={config} set={set} unsupported={editor.report?.unsupported} />}
             {detail.has(card.id) && (
               <div className="smDetail" data-detail={card.id}>
                 {detailBody(card)}

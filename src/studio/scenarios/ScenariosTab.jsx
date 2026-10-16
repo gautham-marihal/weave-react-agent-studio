@@ -5,7 +5,7 @@ import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { Modal, Notice } from '../ui.jsx';
 import { formatWhen } from '../format.js';
 import { useAsync } from '../useAsync.js';
-import { addMockTo, newScenario, parseImport } from './model.js';
+import { addMockTo, describeTurn, newScenario, parseImport } from './model.js';
 import { isFinished, normalizeHeadline, normalizeScenarioList, resultSummary, runTokens, testStatusOf, tokenWords } from './runResults.js';
 import { useTestRun } from './useTestRun.js';
 import ResultView from './ResultView.jsx';
@@ -147,10 +147,14 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
         <p className={`scVersionLine ${newestStatus.state}`} role="status">
           <b>Version {newest.version}</b>:{' '}
           {newestStatus.state === 'passed'
-            ? 'these scenarios passed on this exact version.'
-            : newestStatus.state === 'failed'
-              ? `the latest run on this exact version ${newestStatus.text === 'Broke' ? 'broke' : 'failed'}.`
-              : 'no run has tested this exact version yet.'}
+            ? newestStatus.run?.skipped > 0
+              ? `the scenarios that ran passed on this exact version (${newestStatus.run.skipped} not run).`
+              : 'these scenarios passed on this exact version.'
+            : newestStatus.state === 'partial'
+              ? `the latest run covered only some of the scenarios on this exact version (${newestStatus.text}).`
+              : newestStatus.state === 'failed'
+                ? `the latest run on this exact version ${newestStatus.text === 'Broke' ? 'broke' : 'failed'}.`
+                : 'no run has tested this exact version yet.'}
         </p>
       )}
 
@@ -456,7 +460,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                     </span>
                   </header>
                   {scenario.description && <p className="scDesc">{scenario.description}</p>}
-                  <p className="scSaid">{(scenario.turns || []).map((t) => `“${t.say}”`).join(' → ')}</p>
+                  <p className="scSaid">{(scenario.turns || []).map(describeTurn).join(' → ')}</p>
                   {result && (
                     <details className={`scLast ${result.status}`} open={open || undefined}>
                       <summary>

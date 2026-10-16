@@ -11,7 +11,8 @@ export const DEMO_VALIDATOR_NOTE =
   'Demo mode: checked by a few simple rules in your browser, not by the real validator. A real check happens when you use the real API.';
 export const KNOWN_PROVIDERS = ['anthropic', 'assemblyai', 'cartesia', 'deepgram', 'elevenlabs', 'google', 'groq', 'openai', 'openai_compatible', 'silero'];
 const REQUIRED_SECTIONS = ['schema_version', 'meta', 'runtime', 'defaults', 'persona', 'channels', 'agents'];
-const UNSUPPORTED_TOOL_KINDS = { task: 'Task tools', mcp: 'MCP server tools', knowledge: 'Knowledge search tools', code: 'Custom code tools' };
+// what the real validator reports today (2026-10-16): task, keypad and knowledge tools run
+const UNSUPPORTED_TOOL_KINDS = { mcp: 'MCP server tools', code: 'Custom code tools' };
 
 // Every {"secret": "NAME"} in the config.
 export function secretsIn(value, out = new Set()) {
@@ -105,15 +106,8 @@ export function validateDemo(config, botId) {
     const kind = isObj(tool) ? tool.type : undefined;
     if (UNSUPPORTED_TOOL_KINDS[kind]) unsupported.push({ feature: UNSUPPORTED_TOOL_KINDS[kind], where: `tools[${index}]` });
   });
-  sensitive.forEach(([name]) =>
-    unsupported.push({
-      feature: 'sensitive state variable: declared, but NOT yet enforced (the model, transcripts and logs can still see its value)',
-      where: `state.variables.${name}`,
-      severity: 'security',
-    }),
-  );
-  if (isObj(config.post_call) && isObj(config.post_call.redaction))
-    unsupported.push({ feature: 'post_call.redaction: declared, but NOT yet enforced', where: 'post_call.redaction', severity: 'security' });
+  // Since 2026-10-16 the server enforces sensitive variables and redaction, so neither is reported any more. A protection that is declared but not enforced
+  // would come back as an item with `severity: "security"`, which the studio still shows in red (the tests send one).
 
   const valid = errors.length === 0;
   return { valid, errors, warnings, unsupported: valid ? unsupported : [], secrets_required: [...secretsIn(config)].sort() };

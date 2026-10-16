@@ -133,6 +133,16 @@ export type PronunciationRule = ({
   replacement: string;
   ignore_case?: boolean;
 } | {
+  type: "dictionary";
+  id?: Id;
+  /** Written form -> the form to speak: {"身分証明書": "みぶんしょうめいしょ"}. The longest key wins where keys overlap. For words a voice reads wrongly. Schema 1.2. */
+  entries: {
+    [key: string]: string;
+  };
+  ignore_case?: boolean;
+  /** Only match whole words (for languages written with spaces; leave off for Japanese or Chinese). */
+  whole_word?: boolean;
+} | {
   type: "spell";
   id?: Id;
   /** Matches are read character by character (e.g. TK100901 -> T K 1 0 0 9 0 1). */
@@ -223,9 +233,12 @@ export type Conversation = {
     };
   };
   speech?: {
+    /** Rewrite written text into how it should be said, in order. An agent or channel that lists its own rules replaces this list; an empty list switches pronunciation rules off there. */
     pronunciation?: PronunciationRule[];
+    /** Which speech goes through the rules. `model` (the default): only what the language model writes. `all` also includes the fixed lines you write yourself (greetings, catalogue messages, nudges). Fixed lines are normally wr… */
+    apply_to?: "model" | "all";
     buffer?: {
-      /** Longest text held while waiting for a clause boundary. */
+      /** The most text ever held back waiting to see whether it becomes a match. A held piece is also released when the reply ends. Only text that could still become a match is held at all. */
       max_hold_chars?: number;
     };
   };
@@ -257,7 +270,7 @@ export type StateVariable = {
   type: "string" | "integer" | "number" | "boolean" | "enum" | "object" | "array";
   values?: string[];
   nullable?: boolean;
-  /** A PIN, one-time code, card number or similar. The value is never shown to the model, never put in a prompt, spoken line or log message, and is masked out of saved transcripts, metrics and traces. It can be used only insi… */
+  /** A PIN, one-time code, card number or similar. The runtime reads it as *** in every prompt, spoken line, log message and catalogue message, hides it from the model's conversation and from tool results as soon as it is sto… */
   sensitive?: boolean;
   default?: unknown;
   description?: string;
@@ -650,8 +663,14 @@ export type Task = {
   use_prior_context?: boolean;
   /** The stages of the task, in order. A step is offered only when its `requires` holds, and later steps cannot be reached before earlier ones have passed: the runtime enforces this, not the model. */
   steps: TaskStep[];
-  /** Failed answers allowed per step before it gives up, unless the step sets its own. */
+  /** Failed answers allowed per step before it gives up, unless the step sets its own (or, with attempts_scope task, in total). */
   max_attempts?: number;
+  /** step = max_attempts is allowed on each step. task = it is the total of failed answers across every step, one lockout for the whole task (a verification that allows three wrong answers in all). Schema 1.2. */
+  attempts_scope?: "step" | "task";
+  /** The task is already satisfied when this holds (the caller is already verified): it ends at once as a success, asks nothing, and is not offered to the model again. Schema 1.2. */
+  skip_if?: Condition;
+  /** What the calling agent remembers of the task's own conversation. result_only = only its result (what was collected is in state), which keeps spoken answers such as a date of birth out of the caller agent's history and ke… */
+  return_history?: "result_only" | "full";
   /** Override the session inactivity policy while this task runs (e.g. longer while a caller looks for an account number). */
   inactivity?: ({
     enabled?: boolean;
@@ -680,11 +699,20 @@ export type TaskStep = {
   ask?: string;
   /** collect: how the caller answers. dtmf = keypad tones taken straight into `store_in`, never seen by the model or written to the transcript: use it for a PIN, OTP or card number. Needs a phone channel. Schema 1.2. */
   input?: "speech" | "dtmf";
+  /** collect with input dtmf: how the keys are taken. The entry ends when `num_digits` have been entered or the caller presses `terminator` (# unless you say otherwise). A silence of `timeout_s` with too few keys counts as a … */
+  dtmf?: {
+    /** Stop as soon as this many digits are in. */
+    num_digits?: number;
+    /** Give up after this long with no key pressed, counted from the end of the question (default 10). */
+    timeout_s?: number;
+    /** A key that ends the entry (default #). It ends the entry even when `num_digits` is set (too few digits then counts as a missed attempt), and a terminator pressed before any digit is ignored, because people press # out of… */
+    terminator?: string;
+  };
   /** collect: the state variable that receives the answer once it has passed `validate`. Mark it `sensitive` for a PIN, OTP or card number. Schema 1.2. */
   store_in?: string;
   /** call and say: the actions to run, for example an http action that stores its answer with to_state. Schema 1.2. */
   do?: Action[];
-  /** call: the step has passed when this holds after its actions ran (for example the API answered ok). Omit it and the step passes unless an action failed. Schema 1.2. */
+  /** call: the step has passed when this holds after its actions ran (for example the API answered ok). Omit it and the step passes unless an action failed. collect with a validating tool: the answer is accepted when this hol… */
   pass_when?: Condition;
   /** The step is available only once this holds. Put what must already have succeeded here (identity_verified): it is checked in code. Schema 1.2. */
   requires?: Condition;
@@ -715,6 +743,8 @@ export type TaskOutcome = {
   resume?: "caller" | "entry";
   /** True = the task says nothing on completion and the caller agent carries on. */
   silent?: boolean;
+  /** What the calling agent's model is told when the task ends this way (it reads this as the task tool's result, and may use templates such as {{state.customer.first_name}}). Write it as an instruction: 'The caller is verifi… */
+  tell_model?: string;
   /** Start this task next instead of returning to the caller: a chain such as verify, then OTP, then set the PIN. Schema 1.2. */
   next?: string;
   /** Actions run when the task ends this way (a transfer after a failure, a notification after success). Schema 1.2. */
@@ -755,6 +785,8 @@ export type Tool = ((ToolCommon) & {
 } | (ToolCommon) & {
   type?: "task";
   task: string;
+  /** Checked before the task starts; if one fails the model is told why and the task does not run (for example 'the caller must have said which account first'). */
+  preconditions?: Precondition[];
 } | (ToolCommon) & {
   type?: "http";
   connection: string;
@@ -799,6 +831,8 @@ export type Tool = ((ToolCommon) & {
   server: string;
   /** Explicit allow-list of the server's tools; nothing else is exposed. */
   allow: string[];
+  /** Checked before ANY of the server's tools runs, for example that the caller is verified. If one fails the model is told why and nothing is called. */
+  preconditions?: Precondition[];
 } | (ToolCommon) & {
   type?: "knowledge";
   source: string;
@@ -967,11 +1001,16 @@ export type Guardrails = {
   };
   escalation?: EscalationRule[];
   limits?: {
+    /** The call ends this many seconds after the session starts. */
     max_call_duration_s?: number;
-    /** Hard ceiling on total silence regardless of inactivity nudges. */
+    /** Hard ceiling on total silence regardless of inactivity nudges: seconds since the caller last spoke, typed or pressed a key. The bot's own speech counts as silence; the clock stands still while the caller speaks, a keypad… */
     max_silence_s?: number;
+    /** How many times the model may call any tool in one call. The call ends at the next one. */
     max_tool_calls_per_call?: number;
+    /** How many times the call may move to another agent. The call ends instead of making the next move. */
     max_handoffs_per_call?: number;
+    /** What is said, in full, before the call ends when any limit is reached. Default: an English goodbye; write your own (or a catalogue message) for other languages. Schema 1.2. */
+    say?: Speech;
   };
 };
 
@@ -1180,8 +1219,8 @@ export interface AgentConfig {
   wrapups?: Wrapup[];
   guardrails?: Guardrails;
   events?: ({
-    /** state_changed runs once for each state variable whose value changed; use `when` with {"event": "variable", "equals": "intent"} plus state conditions to pick the case. Hooks that themselves change state can trigger furthe… */
-    on: "call_started" | "call_ended" | "handoff" | "tool_error" | "session_error" | "escalation" | "inactivity" | "transfer_succeeded" | "transfer_failed" | "state_changed";
+    /** guardrail_triggered (schema 1.2) runs when an input guardrail matches what the caller said; it sees {{rule}}, {{type}}, {{action}} and {{kinds}} (never the words), so a hook can notify or set state, but it cannot hand of… */
+    on: "call_started" | "call_ended" | "handoff" | "tool_error" | "session_error" | "escalation" | "inactivity" | "transfer_succeeded" | "transfer_failed" | "state_changed" | "guardrail_triggered" | "limit_reached";
     when?: Condition;
     do: Action[];
   })[];
@@ -1202,7 +1241,7 @@ export interface AgentConfig {
       transcript?: boolean;
       retention_days?: number;
     };
-    /** Sensitive text is replaced before a transcript or metrics file is written, before `call.transcript` is used in an API call or an email attachment, and in logs and traces. It does not change what the model hears during th… */
+    /** Sensitive text is replaced before a transcript or metrics file is written, before `call.transcript` is used in an API call or an email attachment, and in the per-call log and the worker's `log` lines. Entities and patter… */
     redaction?: {
       enabled?: boolean;
       /** Kinds of value to find and replace. */
@@ -1298,9 +1337,12 @@ export interface AgentConfig {
       phone?: string;
       persona?: string;
     };
-    turns: {
+    turns: (({
       say: string;
-    }[];
+    } | {
+      /** The caller presses these keys on the phone keypad (a phone channel only), for example 4821#. The digits are never written to the result. */
+      keys: string;
+    }))[];
     expect: (({
       tool_called: string;
     } | {
@@ -1341,6 +1383,26 @@ export interface AgentConfig {
         /** Exactly, or with * as a wildcard. */
         path: string;
       };
+    } | {
+      /** A task ran and ended this way. Every task of a chain counts, and a task skipped because it was already satisfied counts as `verified`. */
+      task_outcome: {
+        task: string;
+        /** The outcome name: the `outcome` of the task's on_success / on_failure / on_decline block, or verified / failed / declined when it names none. Omit for any outcome. */
+        outcome?: string;
+      };
+    } | {
+      /** An input guardrail matched what the caller said (schema 1.2). The way to prove an injection attempt is refused, or that a card number is caught. */
+      guardrail_triggered: {
+        rule: string;
+        /** Also require that the rule acted this way. Omit for any. */
+        action?: "deflect" | "redact_in_logs" | "rewrite" | "block" | "end_call";
+      };
+    } | {
+      /** This call limit ended the call (schema 1.2). A scenario is far shorter than the duration and silence limits, so those two can only be proved in a unit test. */
+      limit_reached: "max_call_duration_s" | "max_silence_s" | "max_tool_calls_per_call" | "max_handoffs_per_call";
+    } | {
+      /** This input rule did not match anything: the way to prove an ordinary request is not refused. Schema 1.2. */
+      guardrail_not_triggered: string;
     }))[];
   })[];
   builder?: {

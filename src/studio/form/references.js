@@ -39,6 +39,7 @@ export const COLLECTIONS = {
   messages: { kind: 'list', path: ['messages'], word: 'message' },
   notifications: { kind: 'list', path: ['notifications'], word: 'notification' },
   transfers: { kind: 'list', path: ['telephony', 'transfers'], word: 'transfer' },
+  input_guardrails: { kind: 'list', path: ['guardrails', 'input'], word: 'safety rule' },
   schedules: { kind: 'map', path: ['schedules'], word: 'schedule' },
   state_vars: { kind: 'map', path: ['state', 'variables'], word: 'state variable', pattern: '^[a-z][a-z0-9_]{0,63}$' },
   connections: { kind: 'map', path: ['connections'], word: 'connection' },

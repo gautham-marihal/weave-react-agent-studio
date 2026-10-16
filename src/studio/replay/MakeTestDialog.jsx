@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Modal } from '../ui.jsx';
+import { toolNamesOf } from '../scenarios/model.js';
 import { addScenario, buildScenario, hasPersonalData, suggestTest, testProblems } from './callToTest.js';
 import './replay.css';
 
@@ -16,7 +17,7 @@ export default function MakeTestDialog({ facts, config, call, onAdd, onClose, ex
   const [never, setNever] = useState([]);
 
   const channels = (Array.isArray(config?.channels) ? config.channels : []).filter((c) => c && c.id);
-  const toolIds = (Array.isArray(config?.tools) ? config.tools : []).map((t) => t?.id).filter(Boolean);
+  const toolIds = toolNamesOf(config);
   const draft = { id, description, channel, turns, checks, expectedText, toolsNeverCalled: never };
   const problems = testProblems(draft, config);
   const personal = turns.some(hasPersonalData);

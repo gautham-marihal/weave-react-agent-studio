@@ -47,3 +47,23 @@ test('a card’s grey hint is the kind in words', () => {
   assert.deepEqual(summarize({ id: 'x', kind: 'specialist' }, 0), { title: 'x', hint: 'Does one job' });
   assert.deepEqual(summarize({ type: 'say', text: 'Hello' }, 1), { title: 'say', hint: 'Hello' }, 'a step titled by its type keeps its text as the hint');
 });
+
+// ---- UI review 2.8: a web-request tool is described by what it does to your systems, from its method -----------------------------------------------
+test('a web-request tool that reads is “Looks something up”, and one that changes something is “Sends something to your systems”', () => {
+  const http = (method) => ({ id: 't', type: 'http', request: { method, path: '/x' } });
+  ['GET', 'get', 'HEAD'].forEach((m) => assert.equal(plainToolKind(http(m)), 'Looks something up', m));
+  ['POST', 'PUT', 'PATCH', 'DELETE', 'post'].forEach((m) => assert.equal(plainToolKind(http(m)), 'Sends something to your systems', m));
+  assert.equal(plainToolKind({ id: 't', type: 'http' }), 'Looks something up', 'no method: the reading kind, as before');
+});
+
+test('the grey hint under a card says the same, for the tools of a bot that report, book and start things', () => {
+  ['report_hazard', 'create_callback', 'book_service_visit', 'start_return'].forEach((id) => {
+    assert.deepEqual(summarize({ id, type: 'http', request: { method: 'POST', path: '/x' } }, 0).hint, 'Sends something to your systems', id);
+  });
+  assert.equal(summarize({ id: 'find_order', type: 'http', request: { method: 'GET', path: '/orders' } }, 0).hint, 'Looks something up');
+  assert.equal(
+    summarize({ id: 'conn', type: 'http', base_url: 'https://x.test' }, 0).hint,
+    'Looks something up',
+    'a connection of that type is not a tool with a method',
+  );
+});

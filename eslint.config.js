@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 // ESLint reads this file (the "flat config"). The studio is plain JavaScript with JSX (React 19, Vite); its tests and scripts run in Node, and the component tests
 // bring a browser-like page (jsdom), so they get both sets of globals.
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'public/**', 'tests/fixtures/**', 'tests/component/.build/**'] },
+  { ignores: ['dist/**', 'node_modules/**', '.vite/**', 'public/**', 'tests/fixtures/**', 'tests/component/.build/**'] },
   js.configs.recommended,
   {
     files: ['**/*.{js,jsx,mjs}'],

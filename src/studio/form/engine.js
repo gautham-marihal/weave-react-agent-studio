@@ -338,6 +338,7 @@ export function collectRefOptions(config) {
     notifications: ids(c.notifications),
     channels: ids(c.channels),
     transfers: ids(c.telephony?.transfers),
+    input_guardrails: ids(c.guardrails?.input),
     schedules: keys(c.schedules),
     state_vars: keys(c.state?.variables),
     http_connections: connectionsOfType('http'),

@@ -14,7 +14,8 @@ export function summarize(item, index) {
   const alt = ALT_KEYS.map((k) => text(item[k])).find(Boolean);
   title = title || alt || `Item ${index + 1}`;
   let hint = '';
-  if (alt && alt !== title) hint = item.type === 'builtin' && item.builtin ? plainToolKind(item) : plainKind(alt);
+  if (alt && alt !== title)
+    hint = (item.type === 'builtin' && item.builtin) || (item.type === 'http' && isObj(item.request)) ? plainToolKind(item) : plainKind(alt);
   else {
     const note =
       text(item.description) ||

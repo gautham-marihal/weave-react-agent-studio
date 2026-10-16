@@ -69,6 +69,8 @@ export const GROUPS = [
   { id: 'api', label: 'API requests', kinds: ['http_request'] },
   { id: 'knowledge', label: 'Knowledge', kinds: ['knowledge_search'] },
   { id: 'state', label: 'State', kinds: ['state_changed'] },
+  { id: 'tasks', label: 'Tasks', kinds: ['task_started', 'task_step', 'task_finished', 'task_skipped'] },
+  { id: 'safety', label: 'Safety rules and limits', kinds: ['guardrail_triggered', 'limit_reached'] },
   { id: 'model', label: 'Model', kinds: ['model_request'] },
   { id: 'lifecycle', label: 'Call', kinds: ['call_started', 'agent_entered', 'session_closed', 'call_ended'] },
   { id: 'errors', label: 'Errors', kinds: ['error'] },
@@ -179,6 +181,52 @@ export function describeRecord(record, index = 0) {
         label: 'State',
         text: `${first(r.name, r.variable, r.key, 'a value')} → ${short(first(r.value, r.new, r.to), 80)}`,
         facts: first(r.old, r.before, r.from) !== undefined ? [['was', short(first(r.old, r.before, r.from), 80)]] : [],
+      };
+    // a multi-step task (FRONTEND_GUIDE 10.3): started, one row per step, finished (with how), or skipped because the caller was already verified
+    case 'task_started':
+      return { ...base, label: 'Task', text: `Started “${first(r.task, r.id, 'a task')}”` };
+    case 'task_step': {
+      const problem = r.passed === false || !!r.error;
+      return {
+        ...base,
+        label: 'Task step',
+        tone: problem ? 'bad' : 'plain',
+        problem: !!r.error,
+        text: `${first(r.task, '')}${first(r.task, '') ? ' · ' : ''}${first(r.step, r.step_id, r.id, 'a step')}`,
+        facts: [
+          ...(r.passed !== undefined ? [['answer', r.passed ? 'accepted' : 'not accepted']] : []),
+          ...(r.attempt !== undefined ? [['attempt', String(r.attempt)]] : []),
+          ...(r.error ? [['failed', short(r.error)]] : []),
+        ],
+      };
+    }
+    case 'task_finished': {
+      const how = String(first(r.outcome, r.result, '') || '');
+      return {
+        ...base,
+        label: 'Task',
+        tone: how === 'verified' ? 'good' : how === 'failed' ? 'bad' : 'plain',
+        text: `Finished “${first(r.task, r.id, 'a task')}”${how ? ` as ${how}` : ''}`,
+      };
+    }
+    case 'task_skipped':
+      return { ...base, tone: 'muted', label: 'Task', text: `Skipped “${first(r.task, r.id, 'a task')}”: already satisfied` };
+    // a safety rule caught what the caller said, and a call limit ended the call
+    case 'guardrail_triggered':
+      return {
+        ...base,
+        label: 'Safety rule',
+        text: `“${first(r.rule, r.id, 'a rule')}” caught what the caller said`,
+        facts: [...(r.action ? [['it', String(r.action).replace(/_/g, ' ')]] : []), ...(list(r.kinds).length ? [['found', list(r.kinds).join(', ')]] : [])],
+      };
+    case 'limit_reached':
+      return {
+        ...base,
+        tone: 'bad',
+        problem: true,
+        label: 'Limit',
+        text: `A call limit ended the call: ${String(first(r.limit, r.name, 'a limit')).replace(/_/g, ' ')}`,
+        facts: r.value !== undefined ? [['limit', String(r.value)]] : [],
       };
     case 'model_request':
       return {

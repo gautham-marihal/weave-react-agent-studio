@@ -1,30 +1,43 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import {
   EXPECT_KINDS,
+  GUARDRAIL_ACTION_CHOICES,
   HTTP_METHODS,
+  LIMIT_CHOICES,
+  channelTypeOf,
   hasProblems,
+  inputRuleIdsOf,
+  isKeysTurn,
   isUnknownExpectation,
   kindOfExpectation,
   newExpectation,
+  outcomeNamesOf,
   parseObject,
   parseValue,
   regexProblem,
   scenarioProblems,
   showValue,
-  toolIdsOf,
+  taskIdsOf,
+  toolChoices,
 } from './model.js';
 
-// The editor for one scenario. It covers every part the schema has (the caller's turns, nine kinds of expectation, a description, a pretend
+// The editor for one scenario. It covers every part the schema has (the caller's turns, thirteen kinds of expectation, a description, a pretend
 // clock, starting state, answers for the bot's API calls, a model script) and "Edit as JSON" for anything else. It never blocks Save for a
 // part it does not know: that part is kept exactly as it is. Only what is positively wrong (a missing id, a channel that isn't there, an
 // invalid pattern) is a problem, and it is said where it is.
 
 // A box for a JSON object or value: keeps what is typed, only passes up what parses, says what is wrong when it doesn't.
-function JsonBox({ value, onChange, label, rows = 3, placeholder, objectOnly = true, className = '' }) {
+function JsonBox({ value, onChange, label, rows = 3, placeholder, objectOnly = true, className = '', onValid = null }) {
   const [text, setText] = useState(() => (value === undefined ? '' : JSON.stringify(value, null, 2)));
   const [error, setError] = useState('');
+  const boxId = useId();
   const mine = useRef(JSON.stringify(value));
+  // tell the form whether this box holds something that does not parse, so Save can say so instead of silently keeping the old value
+  useEffect(() => {
+    onValid?.(boxId, !error);
+    return () => onValid?.(boxId, true);
+  }, [error, boxId, onValid]);
   useEffect(() => {
     // the value changed from somewhere else (another mock, a reset): show it, unless it is what was just typed
     if (JSON.stringify(value) !== mine.current) {
@@ -78,9 +91,9 @@ function JsonBox({ value, onChange, label, rows = 3, placeholder, objectOnly = t
   );
 }
 
-function ExpectRow({ value, onChange, onRemove, index, config }) {
+function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
   const kind = kindOfExpectation(value);
-  const tools = toolIdsOf(config);
+  const tools = toolChoices(config);
   const states = Object.keys(config?.state?.variables || {});
   const agents = (Array.isArray(config?.agents?.items) ? config.agents.items : []).map((a) => a?.id).filter(Boolean);
   const label = (what) => `Expectation ${index + 1}: ${what}`;
@@ -142,6 +155,7 @@ function ExpectRow({ value, onChange, onRemove, index, config }) {
         <>
           {pickTool('tool_called_with', value.tool_called_with?.tool)}
           <JsonBox
+            onValid={reportBox}
             value={value.tool_called_with?.args ?? {}}
             label={label('arguments it must include')}
             rows={2}
@@ -236,6 +250,97 @@ function ExpectRow({ value, onChange, onRemove, index, config }) {
         </>
       )}
 
+      {kind === 'task_outcome' && (
+        <>
+          <SmartSelect
+            className="stFInput small"
+            value={value.task_outcome?.task || ''}
+            placeholder="Choose a task…"
+            ariaLabel={label('task')}
+            options={taskIdsOf(config)}
+            onChange={(chosen) => onChange({ task_outcome: { ...value.task_outcome, task: chosen } })}
+          />
+          <select
+            className="stFInput small"
+            value={value.task_outcome?.outcome || ''}
+            onChange={(event) => {
+              const next = { ...value.task_outcome };
+              if (event.target.value) next.outcome = event.target.value;
+              else delete next.outcome;
+              onChange({ task_outcome: next });
+            }}
+            aria-label={label('how it ended')}
+          >
+            <option value="">Any way it ends</option>
+            {[...new Set([...outcomeNamesOf(config, value.task_outcome?.task), ...(value.task_outcome?.outcome ? [value.task_outcome.outcome] : [])])].map(
+              (name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ),
+            )}
+          </select>
+        </>
+      )}
+
+      {kind === 'guardrail_triggered' && (
+        <>
+          <SmartSelect
+            className="stFInput small"
+            value={value.guardrail_triggered?.rule || ''}
+            placeholder="Choose a safety rule…"
+            ariaLabel={label('safety rule')}
+            options={inputRuleIdsOf(config)}
+            onChange={(chosen) => onChange({ guardrail_triggered: { ...value.guardrail_triggered, rule: chosen } })}
+          />
+          <select
+            className="stFInput small"
+            value={value.guardrail_triggered?.action || ''}
+            onChange={(event) => {
+              const next = { ...value.guardrail_triggered };
+              if (event.target.value) next.action = event.target.value;
+              else delete next.action;
+              onChange({ guardrail_triggered: next });
+            }}
+            aria-label={label('what the rule did')}
+          >
+            <option value="">Whatever it did</option>
+            {GUARDRAIL_ACTION_CHOICES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+
+      {kind === 'guardrail_not_triggered' && (
+        <SmartSelect
+          className="stFInput small"
+          value={value.guardrail_not_triggered || ''}
+          placeholder="Choose a safety rule…"
+          ariaLabel={label('safety rule')}
+          options={inputRuleIdsOf(config)}
+          onChange={(chosen) => onChange({ guardrail_not_triggered: chosen })}
+        />
+      )}
+
+      {kind === 'limit_reached' && (
+        <select
+          className="stFInput small"
+          value={value.limit_reached || ''}
+          onChange={(event) => onChange({ limit_reached: event.target.value })}
+          aria-label={label('which limit')}
+        >
+          {!LIMIT_CHOICES.some((c) => c.value === value.limit_reached) && <option value="">Choose a limit…</option>}
+          {LIMIT_CHOICES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      )}
+
       {kind === 'judge' && (
         <textarea
           className="stFInput small"
@@ -254,7 +359,7 @@ function ExpectRow({ value, onChange, onRemove, index, config }) {
 }
 
 // The answers for the bot's API calls.
-function MocksEditor({ mocks, onChange, connections }) {
+function MocksEditor({ mocks, onChange, connections, reportBox }) {
   const list = Array.isArray(mocks) ? mocks : [];
   const set = (i, patch) => onChange(list.map((m, k) => (k === i ? cleaned({ ...m, ...patch }) : m)));
   const cleaned = (m) => {
@@ -348,6 +453,7 @@ function MocksEditor({ mocks, onChange, connections }) {
             <label className="wide">
               <span>The JSON it answers with</span>
               <JsonBox
+                onValid={reportBox}
                 value={mock.json}
                 objectOnly={false}
                 rows={3}
@@ -373,6 +479,7 @@ function MocksEditor({ mocks, onChange, connections }) {
               <label>
                 <span>The request must have these query values</span>
                 <JsonBox
+                  onValid={reportBox}
                   value={mock.query}
                   rows={2}
                   label={`Mock ${i + 1}: query`}
@@ -383,6 +490,7 @@ function MocksEditor({ mocks, onChange, connections }) {
               <label>
                 <span>The JSON body must contain</span>
                 <JsonBox
+                  onValid={reportBox}
                   value={mock.body_contains}
                   rows={2}
                   label={`Mock ${i + 1}: body contains`}
@@ -405,7 +513,7 @@ function MocksEditor({ mocks, onChange, connections }) {
 }
 
 // The model's replies, one per item: what it says, or the tool it calls.
-function ScriptEditor({ script, onChange, tools }) {
+function ScriptEditor({ script, onChange, tools, reportBox }) {
   const list = Array.isArray(script) ? script : [];
   const set = (i, item) => onChange(list.map((x, k) => (k === i ? item : x)));
   return (
@@ -424,7 +532,7 @@ function ScriptEditor({ script, onChange, tools }) {
                 className="stFInput small"
                 value={calls ? 'tool' : 'say'}
                 aria-label={`Model reply ${i + 1}: what it does`}
-                onChange={(event) => set(i, event.target.value === 'tool' ? { tool: tools[0] || '' } : '')}
+                onChange={(event) => set(i, event.target.value === 'tool' ? { tool: tools[0]?.value || '' } : '')}
               >
                 <option value="say">Says</option>
                 <option value="tool">Calls a tool</option>
@@ -440,6 +548,7 @@ function ScriptEditor({ script, onChange, tools }) {
                     onChange={(chosen) => set(i, { ...item, tool: chosen })}
                   />
                   <JsonBox
+                    onValid={reportBox}
                     value={item.args}
                     rows={1}
                     label={`Model reply ${i + 1}: arguments`}
@@ -494,12 +603,17 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
   const [jsonMode, setJsonMode] = useState(false);
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState('');
+  const [badBoxes, setBadBoxes] = useState([]); // the JSON boxes that hold something that does not parse
+  const reportBox = useCallback(
+    (name, ok) => setBadBoxes((old) => (ok ? (old.includes(name) ? old.filter((n) => n !== name) : old) : old.includes(name) ? old : [...old, name])),
+    [],
+  );
   const problems = useMemo(() => scenarioProblems(scenario, config, others), [scenario, config, others]);
   const channels = (Array.isArray(config?.channels) ? config.channels : []).map((c) => c?.id).filter(Boolean);
   const connections = Object.entries(config?.connections || {})
     .filter(([, c]) => c?.type === 'http')
     .map(([id]) => id);
-  const tools = toolIdsOf(config);
+  const tools = toolChoices(config);
   const set = (patch) =>
     setScenario((old) => {
       const next = { ...old, ...patch };
@@ -508,7 +622,10 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
       });
       return next;
     });
-  const setTurn = (i, say) => set({ turns: scenario.turns.map((t, k) => (k === i ? { ...t, say } : t)) });
+  const setTurn = (i, text) => set({ turns: (scenario.turns || []).map((t, k) => (k !== i ? t : isKeysTurn(t) ? { keys: text } : { say: text })) });
+  const setTurnKind = (i, keys) =>
+    set({ turns: (scenario.turns || []).map((t, k) => (k !== i || isKeysTurn(t) === keys ? t : keys ? { keys: '' } : { say: '' })) });
+  const phoneLine = channelTypeOf(config, scenario.channel) === 'sip_voice';
   const setCaller = (patch) => {
     const caller = { ...(scenario.caller || {}), ...patch };
     Object.keys(caller).forEach((k) => {
@@ -549,6 +666,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
     const found = scenarioProblems(value, config, others);
     setTried(true);
     if (jsonMode) setScenario(value);
+    if (!jsonMode && badBoxes.length) return; // the boxes say what is wrong; nothing is saved behind the author's back
     if (!hasProblems(found)) onSave(value);
   };
 
@@ -644,21 +762,32 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
           <fieldset className="scBlock">
             <legend>What the caller says, in order</legend>
             <ol className="scTurns">
-              {scenario.turns.map((turn, i) => (
+              {(scenario.turns || []).map((turn, i) => (
                 <li key={i}>
+                  {(phoneLine || isKeysTurn(turn)) && (
+                    <select
+                      className="stFInput small"
+                      value={isKeysTurn(turn) ? 'keys' : 'say'}
+                      onChange={(event) => setTurnKind(i, event.target.value === 'keys')}
+                      aria-label={`Turn ${i + 1}: kind`}
+                    >
+                      <option value="say">Says</option>
+                      <option value="keys">Presses keys</option>
+                    </select>
+                  )}
                   <input
-                    className="stFInput small"
+                    className={`stFInput small${isKeysTurn(turn) ? ' mono' : ''}`}
                     type="text"
-                    value={turn.say}
-                    placeholder="What they say"
-                    aria-label={`Turn ${i + 1}: what the caller says`}
+                    value={(isKeysTurn(turn) ? turn.keys : turn.say) ?? ''}
+                    placeholder={isKeysTurn(turn) ? 'Keys, e.g. 4821#' : 'What they say'}
+                    aria-label={isKeysTurn(turn) ? `Turn ${i + 1}: the keys the caller presses` : `Turn ${i + 1}: what the caller says`}
                     onChange={(event) => setTurn(i, event.target.value)}
                   />
                   <button
                     type="button"
                     className="stIconBtn danger"
                     aria-label={`Delete turn ${i + 1}`}
-                    onClick={() => set({ turns: scenario.turns.filter((_, k) => k !== i) })}
+                    onClick={() => set({ turns: (scenario.turns || []).filter((_, k) => k !== i) })}
                   >
                     ×
                   </button>
@@ -666,7 +795,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
               ))}
             </ol>
             {show('turns') && <small className="stFErr">{problems.turns}</small>}
-            <button type="button" className="stAddBtn" onClick={() => set({ turns: [...scenario.turns, { say: '' }] })}>
+            <button type="button" className="stAddBtn" onClick={() => set({ turns: [...(scenario.turns || []), { say: '' }] })}>
               ＋ Add a turn
             </button>
           </fieldset>
@@ -674,14 +803,15 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
           <fieldset className="scBlock">
             <legend>What must be true afterwards</legend>
             <ul className="scExpects">
-              {scenario.expect.map((value, i) => (
+              {(scenario.expect || []).map((value, i) => (
                 <ExpectRow
+                  reportBox={reportBox}
                   key={i}
                   index={i}
                   value={value}
                   config={config}
-                  onChange={(next) => set({ expect: scenario.expect.map((e, k) => (k === i ? next : e)) })}
-                  onRemove={() => set({ expect: scenario.expect.filter((_, k) => k !== i) })}
+                  onChange={(next) => set({ expect: (scenario.expect || []).map((e, k) => (k === i ? next : e)) })}
+                  onRemove={() => set({ expect: (scenario.expect || []).filter((_, k) => k !== i) })}
                 />
               ))}
             </ul>
@@ -694,7 +824,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
                 ))}
               </ul>
             )}
-            <button type="button" className="stAddBtn" onClick={() => set({ expect: [...scenario.expect, newExpectation('said_matches', config)] })}>
+            <button type="button" className="stAddBtn" onClick={() => set({ expect: [...(scenario.expect || []), newExpectation('said_matches', config)] })}>
               ＋ Add an expectation
             </button>
           </fieldset>
@@ -705,7 +835,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
               <legend>
                 The model’s replies <em>(a script makes the scenario free and repeatable)</em>
               </legend>
-              <ScriptEditor script={scenario.model_script} tools={tools} onChange={(model_script) => set({ model_script })} />
+              <ScriptEditor reportBox={reportBox} script={scenario.model_script} tools={tools} onChange={(model_script) => set({ model_script })} />
               {show('script') && (
                 <ul className="scProblems">
                   {problems.script.map((text) => (
@@ -718,7 +848,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
             </fieldset>
             <fieldset className="scBlock">
               <legend>Answers for the bot’s API calls</legend>
-              <MocksEditor mocks={scenario.http_mocks} connections={connections} onChange={(http_mocks) => set({ http_mocks })} />
+              <MocksEditor reportBox={reportBox} mocks={scenario.http_mocks} connections={connections} onChange={(http_mocks) => set({ http_mocks })} />
               {show('mocks') && (
                 <ul className="scProblems">
                   {problems.mocks.map((text) => (
@@ -755,7 +885,14 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
                 <span>
                   Starting state <em>(values set before the conversation starts)</em>
                 </span>
-                <JsonBox value={scenario.state} rows={2} label="Starting state" placeholder='{ "verified": true }' onChange={(state) => set({ state })} />
+                <JsonBox
+                  onValid={reportBox}
+                  value={scenario.state}
+                  rows={2}
+                  label="Starting state"
+                  placeholder='{ "verified": true }'
+                  onChange={(state) => set({ state })}
+                />
               </label>
             </div>
           </details>

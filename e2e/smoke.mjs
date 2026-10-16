@@ -5,13 +5,14 @@
 //   E2E_MODE=live  talks to the real API through the dev server's /api proxy. It WRITES: it creates an agent named e2e-<time>.
 //                  Use a local API (uv run uvicorn builder_api.app:create_app --factory --port 8100), never a shared one.
 //
-// The conversation is always mocked (livekit-client is replaced by e2e/fakeLivekit.js): a real one needs a LiveKit server and an agent.
+// The conversation is always mocked (livekit-client is replaced by e2e/fakeLivekit.js, and in live mode the API's answer to "start a session" is made up
+// too): a real one needs a LiveKit server and an agent, and the API would answer 503 without LiveKit credentials. Every other call goes to the real API.
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge; else the installed Chrome or Edge is used),
 // E2E_HEADED=1 to watch.
 import fs from 'node:fs';
 import { chromium } from 'playwright-core';
-import { createMockApi } from './mockApi.mjs';
+import { createMockApi, fakeSession } from './mockApi.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const MODE = process.env.E2E_MODE === 'live' ? 'live' : 'mock';
@@ -42,6 +43,7 @@ await context.addInitScript(() => {
   if (sessionStorage.getItem('e2e-seeded')) return;
   sessionStorage.setItem('e2e-seeded', '1');
   localStorage.setItem('weave_tech_names', '1'); // the raw JSON view is offered with technical names
+  localStorage.setItem('weave_layout', 'classic'); // this script walks the classic layout (the stages and tabs); the new one is the default
   localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E Tester', email: 'e2e@example.com', workspaceName: 'E2E', role: 'dev' }));
 });
 const page = await context.newPage();
@@ -57,6 +59,16 @@ if (mock)
   await page.route(
     (url) => url.pathname.startsWith('/api/'),
     (route) => mock.handle(route),
+  );
+// live mode: the API needs LiveKit credentials to start a session, and the client here is a fake anyway, so only that one answer is made up
+if (MODE === 'live')
+  await page.route(
+    (url) => /^\/api\/bots\/[^/]+\/sessions$/.test(url.pathname),
+    (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      const botId = /\/bots\/([^/]+)\/sessions/.exec(new URL(route.request().url()).pathname)[1];
+      return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(fakeSession(botId, route.request().postDataJSON()?.ref)) });
+    },
   );
 await page.route('**/livekit-client.js*', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: FAKE_LIVEKIT }));
 

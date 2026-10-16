@@ -676,3 +676,30 @@ test('below the cards, every other part of the agent is one click away: the ever
   assert.deepEqual(missing, [], 'every section of the schema is reachable from the Simple view');
   await app.unmount();
 });
+
+test('Call records says redaction is not applied when the server says so, and says it is applied when the server lists nothing (UI review 2.1)', async () => {
+  window.localStorage.clear();
+  const config = agent();
+  config.schema_version = '1.2';
+  config.post_call = { redaction: { enabled: true, entities: ['email'] } };
+  const notApplied = {
+    valid: true,
+    errors: [],
+    warnings: [],
+    secrets_required: [],
+    unsupported: [{ feature: 'post_call.redaction: declared, but NOT yet enforced', where: 'post_call.redaction', severity: 'security' }],
+  };
+  const unaware = await simple(config, { report: notApplied });
+  const records = await openCard(unaware, 'records');
+  const facts = textOf($(records, '[aria-label="What is kept"]'));
+  assert.match(facts, /Redaction is set up, but the runtime does not apply it yet/);
+  assert.doesNotMatch(facts, /replaced/, 'no sentence on the card claims text is replaced');
+  assert.match(textOf($(records, '[aria-label="Things to look at"]')), /Redaction is declared but the runtime does not apply it/);
+  await unaware.unmount();
+
+  const enforced = await simple(config, { report: { ...notApplied, unsupported: [] } });
+  const again = await openCard(enforced, 'records');
+  assert.match(textOf($(again, '[aria-label="What is kept"]')), /Sensitive text is replaced in saved transcripts and metrics/);
+  assert.equal($(again, '[aria-label="Things to look at"]'), null);
+  await enforced.unmount();
+});

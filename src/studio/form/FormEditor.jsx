@@ -22,9 +22,9 @@ export const SECTION_NOTES = {
   tests:
     'Scenarios are conversations with what must be true afterwards. The Scenarios tab writes and runs them, so use that for everyday work; this is the same list in its raw fields.',
   tasks:
-    'The runtime does not run tasks (multi-stage flows) yet, so they are saved and checked but have no effect on a call. This is the ordinary form for them; a visual stage editor can follow when the runtime runs them.',
+    'A task asks the caller a series of questions, checks each answer, and ends as verified, failed or declined. Open a task and use “Try this task” to see it step by step. A step that takes keypad digits works on a phone call only.',
   telephony:
-    'Transfers defined here are used by tools. Phone numbers are not connected from the studio yet: they are set up with the platform’s SIP tool, and the channel’s entry fields are documentation only.',
+    'Transfers defined here are used by tools. Phone numbers are set up under Telephony in the side menu, where the platform checks that a number is free.',
 };
 const getAtPath = (root, path) => path.reduce((node, part) => (node == null ? node : node[part]), root);
 // The server owns these: the id is permanent and the rest are set when a version is published.

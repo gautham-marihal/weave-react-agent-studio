@@ -167,3 +167,31 @@ test('the release page says where conversations are processed and what is kept, 
   });
   assert.equal(by(chat, 'notice'), undefined, 'chat is not a recorded call');
 });
+
+test('on the release page, no sentence claims text is replaced while the report says redaction is not applied (UI review 2.1)', () => {
+  const config = { post_call: { redaction: { enabled: true, entities: ['email'] }, recording: { transcript: true } } };
+  const unapplied = {
+    ...ok,
+    unsupported: [{ feature: 'post_call.redaction: declared, but NOT yet enforced', where: 'post_call.redaction', severity: 'security' }],
+  };
+  const everything = (items) => items.flatMap((i) => [i.text, ...(i.detail || [])]).join(' | ');
+  const asked = everything(buildChecklist({ config, report: unapplied, version: { version: '0.1.0', checksum: 'a' }, runs: [] }));
+  assert.doesNotMatch(asked, /is replaced|are replaced/, 'nothing says the text is replaced');
+  assert.match(asked, /does not apply it/, 'it says redaction is not applied');
+  const applied = everything(buildChecklist({ config, report: ok, version: { version: '0.1.0', checksum: 'a' }, runs: [] }));
+  assert.match(applied, /Sensitive text is replaced/, 'and says it is replaced when the server applies it');
+});
+
+test('on the release page, a run that covered only some scenarios is not called a pass on this exact version (UI review 2.4)', () => {
+  const config = { tests: Array.from({ length: 4 }, (_, i) => ({ id: `s${i}`, channel: 'web-chat', turns: [{ say: 'x' }], expect: [{ said_matches: '.' }] })) };
+  const version = { version: '0.1.0', checksum: 'bbb' };
+  const run = (extra) => ({ id: 'r', status: 'passed', checksum: 'bbb', passed: 4, failed: 0, errors: 0, skipped: 0, total: 4, ...extra });
+  const tests = (r) => by(buildChecklist({ config, report: ok, version, runs: [r] }), 'tests');
+  assert.equal(tests(run()).state, 'ok');
+  const partial = tests(run({ passed: 1, total: 1 }));
+  assert.equal(partial.state, 'warn');
+  assert.match(partial.text, /Only part of the tests ran on this exact version \(1 of 4 ran\)/);
+  const live = tests(run({ passed: 4, skipped: 3, total: 7 }));
+  assert.equal(live.state, 'ok');
+  assert.match(live.text, /4 of 7 scenarios; 3 not run/);
+});

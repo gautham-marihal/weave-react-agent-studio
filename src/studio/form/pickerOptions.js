@@ -212,6 +212,67 @@ const GUARDRAILS = {
   ],
 };
 
+// ---- pronunciation rules: how written text is said aloud, by what the rule does (not by its kind in the file)
+const PRONUNCIATION = [
+  {
+    id: 'say_words',
+    group: 'Words',
+    label: 'Say certain words a certain way',
+    help: 'A list of words a voice reads wrongly (a brand, a name, a place) and how to say each one. It can run to hundreds.',
+    kind: 'dictionary',
+    base: 'word_list',
+  },
+  {
+    id: 'find_replace',
+    group: 'Words',
+    label: 'Replace some text with other text',
+    help: 'Wherever a pattern is found, say something else instead.',
+    kind: 'replace',
+    base: 'replace',
+  },
+  {
+    id: 'spell_out',
+    group: 'Words',
+    label: 'Spell something out letter by letter',
+    help: 'For codes and reference numbers: “AB12” is said “A B 1 2”.',
+    kind: 'spell',
+    base: 'spell_out',
+  },
+  {
+    id: 'say_digits',
+    group: 'Numbers',
+    label: 'Read long numbers in groups',
+    help: 'A phone number or an account number is read a few digits at a time, so a caller can follow it.',
+    kind: 'digits',
+    base: 'digits',
+  },
+  {
+    id: 'say_money',
+    group: 'Numbers',
+    label: 'Say amounts of money in words',
+    help: '“$12.50” is said “12 dollars and 50 cents”. Say which currency words to use.',
+    kind: 'currency',
+    base: 'money',
+    seed: { major_unit: 'dollars', minor_unit: 'cents', symbols: ['$'] },
+  },
+  {
+    id: 'say_times',
+    group: 'Dates and times',
+    label: 'Say times of day aloud',
+    help: '“4:30 PM” is said as it is spoken, not read as a string of symbols.',
+    kind: 'time',
+    base: 'times',
+  },
+  {
+    id: 'say_dates',
+    group: 'Dates and times',
+    label: 'Say dates aloud',
+    help: '“27-Feb-2026” is said “27th February 2026”.',
+    kind: 'date',
+    base: 'dates',
+  },
+];
+
 const CHANNEL_GROUPS = { sip_voice: 'Voice', web_voice: 'Voice', web_chat: 'Text', whatsapp: 'Text', sms: 'Text', email: 'Text' };
 const CHANNEL_HELP = {
   phone: 'Callers dial a number and talk to the agent.',
@@ -233,6 +294,7 @@ export const WHAT = {
   channels: 'a channel',
   'guardrails.input': 'a check on what the caller says',
   'guardrails.output': 'a check on what the agent says',
+  pronunciation: 'a pronunciation rule',
 };
 
 // Options for a list, or null when the list should use the plain add control. `collection` is 'tools', 'channels', 'guardrails.input'…
@@ -248,7 +310,7 @@ export function pickerFor(collection, { engine, branches, takenIds = [], botId =
       make: () => buildChannel(preset.id, { taken: takenIds, botId }),
     }));
   }
-  const table = collection === 'tools' ? TOOLS : GUARDRAILS[collection.replace('guardrails.', '')];
+  const table = collection === 'tools' ? TOOLS : collection === 'pronunciation' ? PRONUNCIATION : GUARDRAILS[collection.replace('guardrails.', '')];
   if (!table || !branches) return null;
   const listed = [];
   const covered = new Set();

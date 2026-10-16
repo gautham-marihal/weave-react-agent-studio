@@ -5,7 +5,7 @@ test sessions live on the **Agent Builder API**, which this app calls.
 
 ## Run locally
 
-Needs **Node 22.14 or newer** (`engines` in `package.json`: the component tests use `jsdom@30`, which won't load on 22.13).
+Needs **Node 22.15 or newer** (`engines` in `package.json`: the component tests use `jsdom@30`, whose dependency `undici` needs the zstd support that arrived in Node 22.15; on 22.14 those ten test suites fail to load).
 
 ```bash
 npm install
@@ -195,7 +195,7 @@ their time in have purpose-built editors:
   (paste a sample response, click a field to show it to the model or keep it in a state variable, paths checked against the
   runtime's small grammar, a warning when nothing is chosen because the model then sees the whole response); `reply` explained
   with examples; effects as readable rules and preconditions through a condition builder; advice on descriptions, `on_error` (it is read by the
-  model, not the caller) and timeouts. Kinds the runtime can't run yet (task, MCP, knowledge, code) are marked in the **Add tool** menu.
+  model, not the caller) and timeouts. Kinds the runtime can't run yet (MCP, code; task and keypad tools run now) are marked in the **Add tool** menu.
 - **Steps everywhere.** Wherever the schema asks for actions (a tool's effects, an agent's on-enter steps, an event's `do`, a transfer's
   before/closed/success/failure, what to do when a caller goes quiet, a form's submit, a task step, a notification failure, a wrap-up)
   they are numbered steps: pick what each does from a plain-language menu (say a line, have the model say something, change state, hand
@@ -203,7 +203,7 @@ their time in have purpose-built editors:
   effects are rules: each applies always or only when a condition holds. The details of a step are the ordinary form for that kind of
   action (`form/EffectsEditor.jsx`, `form/effects.js`).
 - **Templates and prompts.** Text the runtime reads as a template (`{{state.x}}`, `{{args.x}}`, `{{const.x}}`, filters) is highlighted,
-  has an **Insert a value** helper, and flags a name that points at nothing. Prompts show a word count, and each agent has a **Preview the prompt** panel that puts the persona, role, opening, rules, conditional blocks, channel addition and tools together in order. It is **approximate** (built in the browser from the fields as they are now; the runtime's own wording and ordering decide what the model really receives) and says so.
+  has an **Insert a value** helper, and flags a name that points at nothing. Prompts show a word count, and each agent has a **Preview the prompt** panel that puts the persona, role, opening, rules, conditional blocks, channel addition and tools together in order. It asks the server, so it is **exact** (see “What the model will be told” below); only when the server can't be asked does it fall back to an approximate copy built in the browser, and it says so.
 - **Messages** can be one text or one per language; every language the agent speaks gets a row, a missing one is badged and one click adds it.
 - **State variables.** `sensitive` shows a shield and what it means, and offers to raise `schema_version` to 1.2 (which it needs).
 - **`x-ui` hints** the schema may carry are honoured: `widget` (`textarea`, `template`, `jsonpath`, `phone`, `url`, `duration`,
@@ -249,29 +249,31 @@ aren't saved yet. The model lists in `src/studio/models/catalog.js` are a **cata
 
 All pages read the same agent list (`src/studio/agents.js`): the API's agents, minus the ones you removed from your list.
 
-| Page                                                      | What it does                                                                                                                                                                                                                                                                         |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Home**, search, workspace menu                          | The next step for the agent you last worked on (build, test, release, monitor), the agents, recent activity; counts, rows and results come from the API.                                                                                                                             |
-| **Calls**                                                 | Every conversation your agents have had (`GET /bots/{id}/calls`): who called, when, how long, how it ended, with filters, paging, "All agents" (it asks each agent, a few at a time) and a trace of what happened in each. The records hold what callers said, and the page says so. |
-| **Voices**                                                | "Use in an agent" puts the voice on that agent's draft, unsaved, for you to review. "Used by" is read from the agents' configurations.                                                                                                                                               |
-| **Integrations**                                          | "Add to an agent" adds the saved connection to that agent's draft as an HTTP connection, unsaved.                                                                                                                                                                                    |
-| **Telephony** (phone numbers, dispatch rules, SIP trunks) | **A preview, not connected**: numbers, trunks and dispatch rules are kept in this browser and route nothing. The page, the dialogs and the SIP address say so.                                                                                                                       |
-| **Settings**                                              | The workspace, and what is running where. A collapsed **For developers** section holds the data source (real API or demo data) and the connection status.                                                                                                                            |
+| Page                                                      | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Home**, search, workspace menu                          | The next step for the agent you last worked on (build, test, release, monitor), the agents, recent activity; counts, rows and results come from the API.                                                                                                                                                                                                                                                                                                                                                              |
+| **Calls**                                                 | Every conversation your agents have had (`GET /bots/{id}/calls`): who called, when, how long, how it ended, with filters, paging, "All agents" (it asks each agent, a few at a time) and a trace of what happened in each. The records hold what callers said, and the page says so.                                                                                                                                                                                                                                  |
+| **Voices**                                                | "Use in an agent" puts the voice on that agent's draft, unsaved, for you to review. "Used by" is read from the agents' configurations.                                                                                                                                                                                                                                                                                                                                                                                |
+| **Integrations**                                          | "Add to an agent" adds the saved connection to that agent's draft as an HTTP connection, unsaved.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Telephony** (phone numbers, dispatch rules, SIP trunks) | **Phone numbers are real** when the server has them (`GET /numbers`): the list (ours, and the ones set up by hand, read-only), a form that checks a number as it is typed (`GET /numbers/check`), and changing or releasing one of ours. Setting up, changing and releasing change the phone system, so each is sent only on a click. **Dispatch rules, SIP trunks and simulated calls are still a preview** kept in this browser, and say so. A server without the numbers feature gets the preview for numbers too. |
+| **Settings**                                              | The workspace, and what is running where. A collapsed **For developers** section holds the data source (real API or demo data) and the connection status.                                                                                                                                                                                                                                                                                                                                                             |
 
-Phone numbers, readiness-check runs and Integrations details are **kept in this browser only** (the API has no
+Readiness-check runs, Integrations details, dispatch rules and SIP trunks are **kept in this browser only** (the API has no
 endpoints for them), so two people see different lists. Saved templates and the workspaces are in this browser too.
 
 On a phone the sidebar opens from a menu button (`src/studio/MobileNav.jsx`).
 
 Sections that wait on something not built yet say so where you work: **Tasks** (the runtime
-doesn't run multi-stage flows yet; the ordinary form edits them and a visual stage editor can follow) and **Telephony** (numbers are
+runs them, keypad steps included; the ordinary form edits them, “Try this task” shows one step by step, and a visual stage editor can follow) and **Telephony** (dispatch rules and trunks are
 not connected from the studio). A new agent's id can't be one the runtime reserves (`transcripts`, `metrics`, `logs`, `sessions`, `tmp`).
 
 ## Test scenarios
 
 The configuration has a `tests` section: conversations to check, each with a channel, the caller's turns, and what must hold afterwards
 (a tool was called, with what, or wasn't; a state variable ended up a certain way; something the agent said matches a pattern; the
-conversation ended with a given agent; an API request was or wasn't made; or a criterion a model would grade). A scenario can also carry
+conversation ended with a given agent; an API request was or wasn't made; a multi-step task ended a certain way; a safety rule did or didn't catch what the
+caller said; a call limit ended the call; or a criterion a model would grade). On a phone line a turn can be **keys pressed on the keypad** (`{"keys": "4821#"}`):
+the digits are never repeated on screen or in a result. A scenario can also carry
 a description, a pretend clock (`now`), starting `state`, answers for the bot's API calls (`http_mocks`) and a `model_script`.
 
 The Scenarios tab writes them (into the draft, so they are saved and versioned with it) and runs them on the **server's real runner**
@@ -305,6 +307,12 @@ model sees them, how big it all is (with advice when it is too long), "Preview a
 tool: the request that would go out and what the model would read of a sample answer. If the server can't be asked the prompt preview falls
 back to an approximate copy built in the browser and says so.
 
+**Try a line** (under the setting it answers for; each asks only when its button is pressed): _how a line is said_ under the pronunciation rules
+(`POST /preview/speech`: what the voice is given, rule by rule, and what is spoken as text streams in), _what redaction hides_ under the redaction
+settings (`POST /preview/redaction`, with `GET /redaction/entities` for how each kind is recognised), _what the safety rules do_ with a line
+(`POST /preview/guardrails`) and _a task step by step_ under each multi-step task (`POST /preview/task`: what each question tells the AI, how an answer is
+checked, what is skipped or held back for a caller, and what each ending does). In demo mode they are answered by a simple imitation and say so.
+
 ### Team and sharing (preview)
 
 **Team** (in the sidebar) is where a workspace decides who can work in it. Each person is given a **role** (Owner, Admin, Editor, Viewer: what they may do) and a **scope**: the **whole workspace** (every agent, including the ones made later) or **only some agents** you tick. The invite panel asks for the addresses, then the role, then which agents, and says in a sentence what that gives before anything is sent. The list can be filtered to "who can open" one agent, and access can be changed or removed afterwards. Rules that protect the team: there is one owner, an admin always has the whole workspace, a role that is limited to some agents needs at least one, and someone has to be able to manage people.
@@ -324,7 +332,7 @@ previews and the call stream are all served now and used.)
 | `GET /status` (API, LiveKit, which keys are set)                    | The Home card says only "API reachable".                                                                                                                                                     |
 | Cross-agent call list and per-agent statistics                      | "All agents" asks each agent; the Telephony cards show no numbers.                                                                                                                           |
 | Tags and owner in `GET /bots`                                       | They are read from each draft, a page at a time, or for all on request.                                                                                                                      |
-| Real phone numbers (a numbers page over `builder_api/sip.py`)       | Telephony is labelled a preview.                                                                                                                                                             |
+| Dispatch rules and SIP trunks as endpoints                          | Those two Telephony sections are labelled a preview. (Phone numbers are real: `GET/POST/PATCH/DELETE /numbers…`.)                                                                            |
 | An AI assistant that drafts a configuration from a description      | "Describe it" uses a rule-based demo assistant and says so.                                                                                                                                  |
 | `GET /templates` (and templates an organisation publishes)          | Templates are saved in this browser and shared as files.                                                                                                                                     |
 | `x-ui` for every setting (label, help, example, level)              | The studio keeps its own catalogue, `form/plainLanguage.js`; the tests check it covers every setting in the schema.                                                                          |
@@ -386,6 +394,9 @@ npm run build
 npm run dev:demo   # the whole app with no backend (demo mode)
 npm run e2e:typing  # typing speed on a 100-tool agent in a real browser (see e2e/typing.mjs: measure a PRODUCTION build)
 npm run e2e:firstrun # clicks and fields from the workspace to the first test conversation, and any technical term on the way (demo build; see e2e/firstRun.mjs)
+npm run e2e:legibility # no text under 12 px or below 4.5:1 contrast, on the main screens, in both themes and both layouts (demo; see e2e/legibility.mjs)
+npm run e2e:tryline  # "Try a line" under pronunciation, redaction, safety rules and a task (demo; see e2e/tryline.mjs)
+npm run e2e:numbers  # phone numbers: list, check as typed, set up, change, release (demo; see e2e/numbers.mjs)
 npm run e2e       # needs the dev server running: signs in, creates an agent from a starter, edits, saves, publishes,
                   # deploys to development and has a (mocked) test conversation. E2E_MODE=live uses a real local API.
 npm run sync-fixtures   # fetch GET /schema and update every copy: the test fixture, public/config (the download) and the generated types

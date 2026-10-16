@@ -484,8 +484,9 @@ test('every section of a full configuration draws without breaking, and the sect
       assert.ok(textOf($(app.container, '.stFSectionHead')).length > 0, `${name}: it has a heading`);
       const notes = $$(app.container, '.stFSectionNote').map(textOf).join(' ');
       if (name === 'tests') assert.match(notes, /Scenarios tab writes and runs them/);
-      if (name === 'tasks') assert.match(notes, /does not run tasks/);
-      if (name === 'telephony') assert.match(notes, /not connected from the studio yet/);
+      if (name === 'tasks') assert.match(notes, /Try this task/);
+      if (name === 'tasks') assert.doesNotMatch(notes, /does not run tasks|no effect on a call/, 'the runtime runs tasks now: no sentence says it does not');
+      if (name === 'telephony') assert.match(notes, /set up under Telephony/);
     }
   }
   [

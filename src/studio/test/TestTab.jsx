@@ -473,7 +473,11 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
               <div>
                 <dt>Channel</dt>
                 <dd>
-                  {info.channel?.id} <span className="stMuted">({info.channel?.type})</span>
+                  {info.channel?.id}{' '}
+                  <span className="stMuted">
+                    ({info.channel?.realType || info.channel?.type}
+                    {info.channel?.realType && info.channel.realType !== info.channel.type ? ', written out as text' : ''})
+                  </span>
                 </dd>
               </div>
               {info.expiresInS && (

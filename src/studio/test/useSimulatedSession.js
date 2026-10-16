@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createSimulatedAgent } from '../../demo/simulatedAgent.js';
+import { chooseSimulatedChannel } from './simulatedChannel.js';
 
 // A SIMULATED conversation with the same shape as useLiveSession, so the Test tab and the preview beside the editor can show either.
 // No server and no LiveKit: replies come from the rules in demo/simulatedAgent.js, marked `simulated` on every message. It runs on
@@ -132,7 +133,8 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
         return;
       }
       if (!aliveRef.current) return;
-      const agent = createSimulatedAgent(config, options);
+      const played = chooseSimulatedChannel(config, options.channelId);
+      const agent = createSimulatedAgent(config, { ...options, channelId: played?.id || options.channelId });
       agentRef.current = agent;
       const channel = agent.channel;
       const sessionInfo = {
@@ -142,7 +144,9 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
         simulated: true,
         channel: {
           id: channel?.id || 'simulated',
+          // what the screen draws (no microphone in a simulation) and what the channel really is, so the two are never confused
           type: channel?.type === 'sip_voice' || channel?.type === 'web_voice' ? 'web_chat' : channel?.type || 'web_chat',
+          realType: channel?.type || 'web_chat',
           input: ['text', ...(Array.isArray(channel?.modalities?.input) && channel.modalities.input.includes('image') ? ['image'] : [])],
           output: ['text'],
         },
@@ -151,6 +155,7 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
       setInfo(sessionInfo);
       setStatus('connecting');
       log('Starting a simulated conversation (no server, no real agent)');
+      if (played?.voice) log(`This agent has no text channel, so it is simulated on its voice channel “${played.id}”, written out as text.`);
       later(() => {
         startedRef.current = Date.now();
         recordedRef.current = false;
@@ -158,7 +163,7 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
           bot: botId,
           ref,
           version: sessionInfo.version,
-          channel: { id: sessionInfo.channel.id, type: sessionInfo.channel.type },
+          channel: { id: sessionInfo.channel.id, type: sessionInfo.channel.realType },
           caller: null,
           simulated: true,
         });

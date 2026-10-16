@@ -283,7 +283,13 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
                       return (
                         <span
                           className={`stTestChip ${t.state}`}
-                          title={t.state === 'none' ? 'No run has tested this exact version' : `The latest run on this exact version ${t.text.toLowerCase()}`}
+                          title={
+                            t.state === 'none'
+                              ? 'No run has tested this exact version'
+                              : t.state === 'partial'
+                                ? 'The latest run on this exact version covered only some of its scenarios'
+                                : `The latest run on this exact version ${t.text.toLowerCase()}`
+                          }
                         >
                           {runs.error ? '—' : t.text}
                         </span>

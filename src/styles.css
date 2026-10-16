@@ -23,6 +23,12 @@ input:focus-visible {
 body {
   overflow-x: hidden;
 }
+
+/* <small> is 83% of the text around it by the browser's own rule, which is under 12 px inside 13 or 14 px text. Nothing a person reads is smaller than the
+   smallest size of the scale; a class that gives its own size still wins. */
+small {
+  font-size: var(--fs-xs);
+}
 .landing,
 .loginScreen,
 .dashboard {
@@ -7541,7 +7547,7 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
 .dangerText {
   border: 0;
   background: transparent;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--fs-xs);
   padding: 6px;
 }
@@ -7614,7 +7620,7 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
 .builderMessageList.error {
   background: color-mix(in srgb, var(--danger) 8%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line2));
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .builderMessageList.warning {
   background: color-mix(in srgb, #d39a56 8%, var(--surface));
@@ -8008,7 +8014,7 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
 .builderDeleteButton {
   border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line2));
   background: color-mix(in srgb, var(--danger) 7%, transparent);
-  color: var(--danger);
+  color: var(--danger-text);
   border-radius: 8px;
   padding: 6px 9px;
   font-size: var(--fs-xs);
@@ -8928,6 +8934,60 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
   font-size: var(--fs-xs);
   margin-top: 3px;
 }
+.voiceIdCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.voiceIdCell code {
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  color: var(--text);
+  user-select: all;
+}
+.voiceIdCell .iconButton {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+.voiceLibraryTable th,
+.voiceLibraryTable td {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+/* the table fits what it can and scrolls sideways for the rest, and the actions stay in view at the right edge */
+.voiceLibraryTable {
+  min-width: 0;
+}
+.voiceLibraryTable td:nth-child(2) {
+  white-space: normal;
+  min-width: 130px;
+  max-width: 170px;
+}
+.voiceLibraryTable th:nth-child(6),
+.voiceLibraryTable td:nth-child(6) {
+  min-width: 110px;
+}
+.voiceNameStack {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.voiceLibraryTable th:last-child,
+.voiceLibraryTable td:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--panel);
+  box-shadow: -10px 0 12px -10px rgba(0, 0, 0, 0.35);
+}
+.voiceLibraryTable th:last-child {
+  background: var(--surface2);
+}
+.voiceLibraryTable tbody tr:hover td:last-child {
+  background: var(--surface-hover);
+}
 .voiceTableName {
   display: flex;
   align-items: center;
@@ -9265,7 +9325,7 @@ html[data-theme="dark"] .loginCard .fieldError {
   padding: 0;
 }
 .builderDataRemove:hover {
-  color: var(--danger);
+  color: var(--danger-text);
   border-color: color-mix(in srgb, var(--danger) 45%, var(--line2));
   background: color-mix(in srgb, var(--danger) 8%, var(--surface));
 }

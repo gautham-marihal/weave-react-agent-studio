@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { visibleCount } from '../studio/agents.js';
 import { getCachedConfig, loadConfigs } from '../studio/configCache.js';
 import { hasHumanHandoff } from '../studio/scenarios.js';
@@ -14,6 +14,8 @@ import {
   makeRecordId,
   normalizeTelephony,
 } from './helpers.js';
+import { TelephonyDialog, DialogField, TelephonyTablePanel } from './telephonyParts.jsx';
+import { LiveNumbersPage, useLiveNumbers } from './LiveNumbers.jsx';
 import { Glyph, HelpTip, Logo, ProfileMenu, SHORTCUT_LABEL, StatusBadge, ThemeToggle, helpText, openHelpDialog } from './shared.jsx';
 
 // The Telephony pages are a local mock: everything here is kept in this browser and nothing is sent to any phone system.
@@ -22,10 +24,11 @@ const TELEPHONY_PREVIEW_COPY = {
   calls:
     'These calls are simulated in your browser to show how your rules would route a call. No real call is placed or received, and the sessions they add are kept in this browser only.',
   dispatch:
-    'Rules here are saved in this browser and route no real call. On the platform a call reaches an agent through a LiveKit SIP trunk and a dispatch rule that names the agent and its environment, which is set up with a command-line tool for now. Business hours, caller-prefix routing, priority, hold limits, hold messages and overflow to another agent are not features of the platform yet.',
+    'Rules here are saved in this browser and route no real call. On the platform a call reaches an agent through a LiveKit SIP trunk and a dispatch rule that names the agent and its environment: when this server supports it, adding a number under Phone numbers makes both for you. Business hours, caller-prefix routing, priority, hold limits, hold messages and overflow to another agent are not features of the platform yet.',
   numbers:
-    'Nothing is bought or connected: “Get a number” only adds a row here. A real phone number is connected on the platform for now. A phone channel’s number field in the agent’s configuration is a description and doesn’t route calls either.',
-  trunks: 'Nothing is created at a carrier: a trunk here is only a row in this browser. The platform’s SIP trunks are set up outside this app for now.',
+    'This server does not set up phone numbers from here, so nothing is bought or connected: “Get a number” only adds a row in this browser. A real phone number is connected on the platform. A phone channel’s number field in the agent’s configuration is a description and doesn’t route calls either.',
+  trunks:
+    'Nothing is created at a carrier: a trunk here is only a row in this browser. The platform’s SIP trunks are made for you when a phone number is set up under Phone numbers (when this server supports it), or outside this app.',
 };
 
 function TelephonyPreviewBanner({ section }) {
@@ -61,6 +64,8 @@ export function TelephonyPage({
   onSectionChange,
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // the real phone numbers, when this server has them; otherwise the numbers page is the local preview
+  const live = useLiveNumbers(section === 'numbers');
   const title = TELEPHONY_SECTIONS.find((item) => item.id === section)?.label || 'Phone numbers';
   return (
     <div className={`dashboard telephonyDashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''}`}>
@@ -182,7 +187,22 @@ export function TelephonyPage({
         </div>
 
         <div className="telephonyContent">
-          <TelephonyPreviewBanner section={section} />
+          {section === 'numbers' && live.mode === 'live' ? (
+            <div className="telephonyPreview connected" role="note">
+              <b>Connected</b>
+              <span>
+                These are the numbers of your phone system. Adding, changing or releasing one here changes the real trunk and dispatch rule. Dispatch rules,
+                trunks and calls in the other sections are still a preview.
+              </span>
+            </div>
+          ) : (
+            <TelephonyPreviewBanner section={section} />
+          )}
+          {section === 'numbers' && live.mode === 'preview' && live.error && (
+            <p className="telephonyNotice bad" role="alert">
+              Your real phone numbers could not be read: {live.error.message} What follows is the local preview.
+            </p>
+          )}
           {section === 'calls' && (
             <TelephonyCallsPage
               telephony={telephony}
@@ -202,7 +222,13 @@ export function TelephonyPage({
               onNavigate={onNavigate}
             />
           )}
-          {section === 'numbers' && (
+          {section === 'numbers' && live.mode === 'live' && <LiveNumbersPage live={live} agents={agents} />}
+          {section === 'numbers' && live.mode === 'loading' && (
+            <p className="telephonyNotice" role="status">
+              Reading your phone numbers…
+            </p>
+          )}
+          {section === 'numbers' && live.mode === 'preview' && (
             <TelephonyNumbersPage telephony={telephony} onChange={onTelephonyChange} agents={agents} onNavigateSection={onSectionChange} />
           )}
           {section === 'trunks' && <TelephonyTrunksPage telephony={telephony} onChange={onTelephonyChange} />}
@@ -1244,276 +1270,6 @@ function TelephonyStat({ label, value, note, accent, mono }) {
       <strong className={`${accent ? 'accentValue' : ''} ${mono ? 'monoValue' : ''}`}>{value}</strong>
       <small>{note}</small>
     </div>
-  );
-}
-
-// Table with working search (⌕), column visibility (⌘), row deletion and an empty state.
-function TelephonyTablePanel({
-  title,
-  columns,
-  rows = [],
-  compact = false,
-  emptyIcon = '◫',
-  emptyTitle = 'Nothing here yet',
-  emptyText = '',
-  emptyAction = null,
-  onDelete,
-  onEdit,
-  onRowClick,
-  itemLabel = 'item',
-  deleteLabel = 'Delete',
-  defaultHidden = [],
-  monoFirst = true,
-}) {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [columnsOpen, setColumnsOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  // Columns listed in defaultHidden start hidden; they stay one click away in the columns menu.
-  const [hidden, setHidden] = useState(() => defaultHidden.map((name) => columns.indexOf(name)).filter((index) => index >= 0));
-  const toolsRef = useRef(null);
-
-  useEffect(() => {
-    if (!columnsOpen) return undefined;
-    const onDown = (event) => {
-      if (!toolsRef.current?.contains(event.target)) setColumnsOpen(false);
-    };
-    const onKey = (event) => {
-      if (event.key === 'Escape') setColumnsOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [columnsOpen]);
-
-  const visibleIndexes = columns.map((_, index) => index).filter((index) => !hidden.includes(index));
-  const needle = query.trim().toLowerCase();
-  const filtered = needle ? rows.filter((row) => (row.searchText ?? row.cells.join(' ')).toLowerCase().includes(needle)) : rows;
-  const hasActions = !!(onDelete || onEdit);
-  const colSpan = visibleIndexes.length + (hasActions ? 1 : 0);
-
-  const toggleColumn = (index) =>
-    setHidden((current) => {
-      if (current.includes(index)) return current.filter((value) => value !== index);
-      if (columns.length - current.length <= 1) return current; // always keep one column visible
-      return [...current, index];
-    });
-
-  return (
-    <section className={`telephonyTablePanel ${compact ? 'compactTablePanel' : ''}`}>
-      <div className="telephonyTableHeader">
-        <div className="telephonyTableTitle">
-          <h2>{title}</h2>
-          <span className="tableCount">{needle ? `${filtered.length} of ${rows.length}` : `${rows.length} ${rows.length === 1 ? 'item' : 'items'}`}</span>
-        </div>
-        <div className="tableTools" ref={toolsRef}>
-          {searchOpen && (
-            <input
-              className="tableSearchInput"
-              autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  setQuery('');
-                  setSearchOpen(false);
-                }
-              }}
-              placeholder={`Search ${title.toLowerCase()}`}
-              aria-label={`Search ${title.toLowerCase()}`}
-            />
-          )}
-          <button
-            type="button"
-            className={`quietButton iconOnly ${searchOpen ? 'isActive' : ''}`}
-            aria-label={searchOpen ? 'Close search' : `Search ${title.toLowerCase()}`}
-            aria-pressed={searchOpen}
-            title="Search"
-            onClick={() => {
-              setSearchOpen((value) => !value);
-              if (searchOpen) setQuery('');
-              setColumnsOpen(false);
-            }}
-          >
-            ⌕
-          </button>
-          <button
-            type="button"
-            className={`quietButton iconOnly ${columnsOpen ? 'isActive' : ''}`}
-            aria-label="Choose columns"
-            aria-expanded={columnsOpen}
-            title="Columns"
-            onClick={() => setColumnsOpen((value) => !value)}
-          >
-            ⌘
-          </button>
-          {columnsOpen && (
-            <div className="tableColumnsMenu" role="dialog" aria-label="Visible columns">
-              <div className="tableColumnsTitle">Visible columns</div>
-              {columns.map((column, index) => (
-                <label key={column}>
-                  <input
-                    type="checkbox"
-                    checked={!hidden.includes(index)}
-                    disabled={!hidden.includes(index) && columns.length - hidden.length <= 1}
-                    onChange={() => toggleColumn(index)}
-                  />
-                  <span>{column.charAt(0) + column.slice(1).toLowerCase()}</span>
-                </label>
-              ))}
-              {hidden.length > 0 && (
-                <button type="button" className="tableColumnsReset" onClick={() => setHidden([])}>
-                  Show all columns
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="telephonyTableWrap">
-        <table className="telephonyTable">
-          <thead>
-            <tr>
-              {visibleIndexes.map((index) => (
-                <th key={columns[index]}>{columns[index]}</th>
-              ))}
-              {hasActions && (
-                <th className="actionsCol">
-                  <span className="srOnly">Actions</span>
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((row) => (
-              <tr
-                key={row.id}
-                className={onRowClick ? 'isClickable' : ''}
-                tabIndex={onRowClick ? 0 : undefined}
-                onClick={onRowClick ? () => onRowClick(row.id) : undefined}
-                onKeyDown={
-                  onRowClick
-                    ? (event) => {
-                        if (event.key === 'Enter') onRowClick(row.id);
-                      }
-                    : undefined
-                }
-              >
-                {visibleIndexes.map((index) => (
-                  <td key={columns[index]} className={index === 0 && monoFirst ? 'monoCell' : index === 0 ? 'primaryCell' : ''}>
-                    {row.cells[index]}
-                  </td>
-                ))}
-                {hasActions && (
-                  <td className="actionsCol" onClick={(event) => event.stopPropagation()}>
-                    {onEdit && (
-                      <button type="button" className="tableRowEdit" onClick={() => onEdit(row.id)}>
-                        Edit
-                      </button>
-                    )}
-                    {onDelete && (
-                      <button
-                        type="button"
-                        className="tableRowDelete"
-                        onClick={() => {
-                          if (window.confirm(`${deleteLabel} this ${itemLabel}? This can’t be undone.`)) onDelete(row.id);
-                        }}
-                      >
-                        {deleteLabel}
-                      </button>
-                    )}
-                  </td>
-                )}
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={colSpan}>
-                  <div className="telephonyNoResults">
-                    <span className="telephonyNoResultsIcon" aria-hidden="true">
-                      {needle ? '⌕' : emptyIcon}
-                    </span>
-                    <strong>{needle ? `No matches for “${query.trim()}”` : emptyTitle}</strong>
-                    {needle ? <span>Try a different search, or clear it to see everything.</span> : emptyText && <span>{emptyText}</span>}
-                    {!needle && emptyAction && (
-                      <button type="button" className="secondaryCta compactSecondary" onClick={emptyAction.onClick}>
-                        {emptyAction.label}
-                      </button>
-                    )}
-                    {needle && (
-                      <button type="button" className="secondaryCta compactSecondary" onClick={() => setQuery('')}>
-                        Clear search
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-// Shared shell for the telephony create dialogs (Escape closes, click outside closes).
-function TelephonyDialog({ eyebrow, title, subtitle, onClose, children, footer, onSubmit }) {
-  useEffect(() => {
-    const onKey = (event) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-  return createPortal(
-    <div
-      className="createOverlay telephonyDialogOverlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="telephony-dialog-title"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <form
-        className="createModal telephonyDialog"
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit();
-        }}
-      >
-        <div className="createModalHeader">
-          <div>
-            <span className="createEyebrow">{eyebrow}</span>
-            <h2 id="telephony-dialog-title">{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
-          </div>
-          <button type="button" className="modalClose" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <p className="telephonyPreview inDialog" role="note">
-          <b>Preview</b>
-          <span>Saved in this browser only. Nothing real is created or routed.</span>
-        </p>
-        <div className="telephonyDialogBody">{children}</div>
-        <div className="createModalFooter">{footer}</div>
-      </form>
-    </div>,
-    document.body,
-  );
-}
-
-function DialogField({ label, hint, error, children }) {
-  return (
-    <label className={`telephonyField ${error ? 'hasError' : ''}`}>
-      <span className="telephonyFieldLabel">{label}</span>
-      {children}
-      {error ? <em className="telephonyFieldError">{error}</em> : hint && <small className="telephonyFieldHint">{hint}</small>}
-    </label>
   );
 }
 

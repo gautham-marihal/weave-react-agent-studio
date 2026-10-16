@@ -140,7 +140,7 @@ test('the demo validator says it is a demo, and catches the cheap mistakes the r
   sensitive.schema_version = '1.2';
   const r2 = validateDemo(sensitive, 'a');
   assert.equal(r2.valid, true);
-  assert.equal(r2.unsupported[0].severity, 'security');
+  assert.deepEqual(r2.unsupported, [], 'the server enforces sensitive variables now, so nothing is reported as declared but not enforced');
   assert.deepEqual(r2.secrets_required, ['OPENAI_API_KEY']);
   assert.equal(validateDemo([], 'a').valid, false);
 });

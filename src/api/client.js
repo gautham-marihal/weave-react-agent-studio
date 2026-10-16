@@ -66,7 +66,22 @@ export function classify(status, body) {
  * @param {{ body?: unknown, signal?: AbortSignal }} [options]
  * @returns {Promise<any>}
  */
-async function request(method, path, { body, signal, raw } = {}) {
+async function request(method, path, options = {}) {
+  try {
+    return await send(method, path, options);
+  } catch (error) {
+    // A read that failed because the connection was dropped on the way (a proxy or the server closing an idle connection) is asked once more: it changes
+    // nothing, and the second try nearly always works. Writes are never repeated, and a person who cancelled is not asked again.
+    if (method !== 'GET' || error?.kind !== 'network' || options.signal?.aborted) throw error;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 250);
+    });
+    if (options.signal?.aborted) throw error;
+    return send(method, path, options);
+  }
+}
+
+async function send(method, path, { body, signal, raw } = {}) {
   if (isDemoMode()) return demoRequest(method, path, raw !== undefined ? { __file: raw } : body, signal);
   const headers = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -218,6 +233,35 @@ export const api = {
   previewPrompt: (body, opts) => request('POST', '/preview/prompt', { ...opts, body }),
   /** @param {{ config?: AgentConfig, bot?: string, ref?: string, tool: string, args?: object, response?: unknown, state?: object, channel?: string, now?: string }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
   previewResult: (body, opts) => request('POST', '/preview/result', { ...opts, body }),
+  // How a line would be said, what the safety rules do with a line, what redaction would hide, and a task step by step. All four read the config in the editor.
+  /** @param {{ config?: AgentConfig, bot?: string, ref?: string, text: string, agent?: string, channel?: string, source?: 'model' | 'fixed', chunks?: string[] }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
+  previewSpeech: (body, opts) => request('POST', '/preview/speech', { ...opts, body }),
+  /** @param {{ config?: AgentConfig, bot?: string, ref?: string, text: string }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
+  previewGuardrails: (body, opts) => request('POST', '/preview/guardrails', { ...opts, body }),
+  /** @param {{ config?: AgentConfig, bot?: string, ref?: string, text: string, state?: object }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
+  previewRedaction: (body, opts) => request('POST', '/preview/redaction', { ...opts, body }),
+  /** @param {{ config?: AgentConfig, bot?: string, ref?: string, task: string, state?: object, channel?: string, caller_phone?: string, now?: string }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
+  previewTask: (body, opts) => request('POST', '/preview/task', { ...opts, body }),
+  // The kinds of value redaction can find and how each is recognised (a read: it needs no config).
+  /** @param {RequestOptions} [opts] @returns {Promise<{ entities: { kind: string, how: string }[] }>} */
+  redactionEntities: (opts) => request('GET', '/redaction/entities', opts),
+
+  // ---- phone numbers: the number is the person's; the API checks it is free and sets up the LiveKit trunk and dispatch rule. Reads are safe; the three writes
+  // (create, change, release) change the phone system, so they are only ever sent on a person's click.
+  /** @param {RequestOptions} [opts] @returns {Promise<any>} */
+  numberSettings: (opts) => request('GET', '/numbers/settings', opts),
+  /** @param {RequestOptions} [opts] @returns {Promise<any[]>} */
+  listNumbers: (opts) => request('GET', '/numbers', opts),
+  /** @param {string} number @param {RequestOptions} [opts] @returns {Promise<{ status: string, owner?: any, warnings?: string[], reason?: string }>} */
+  checkNumber: (number, opts) => request('GET', `/numbers/check?number=${enc(number)}`, opts),
+  /** @param {string} id @param {RequestOptions} [opts] @returns {Promise<any[]>} */
+  listBotNumbers: (id, opts) => request('GET', `/bots/${enc(id)}/numbers`, opts),
+  /** @param {string} id @param {{ number: string, environment: string, record_audio?: boolean, krisp?: boolean, allowed_addresses?: string[], max_call_duration_s?: number }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
+  createNumber: (id, body, opts) => request('POST', `/bots/${enc(id)}/numbers`, { ...opts, body }),
+  /** @param {string} id @param {string} number @param {{ environment?: string, record_audio?: boolean, krisp?: boolean, allowed_addresses?: string[], max_call_duration_s?: number }} body @param {RequestOptions} [opts] @returns {Promise<any>} */
+  changeNumber: (id, number, body, opts) => request('PATCH', `/bots/${enc(id)}/numbers/${enc(number)}`, { ...opts, body }),
+  /** @param {string} id @param {string} number @param {RequestOptions} [opts] @returns {Promise<{ removed: any[] }>} */
+  releaseNumber: (id, number, opts) => request('DELETE', `/bots/${enc(id)}/numbers/${enc(number)}`, opts),
 
   // ---- knowledge: the files a `vector_store` base reads, its index, and a test search
   /** @param {string} id @param {{ ref?: string }} [query] @param {RequestOptions} [opts] @returns {Promise<any>} */

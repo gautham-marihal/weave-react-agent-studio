@@ -99,9 +99,21 @@ export function readRecords(config) {
   };
 }
 
+// What the server says the runtime cannot do yet (`unsupported` in the validator's answer: [{ feature, where, severity? }]), narrowed to one part of the
+// config. What is said about records has to follow it: a setting the runtime does not apply must never be described as done. It is matched by what the
+// item NAMES, never by its severity, because other, unrelated items can be "security" too (guardrails on a speech-to-speech model, say). A server that
+// enforces the part does not list it, and then nothing here changes.
+export const notApplied = (unsupported, pattern) =>
+  list(unsupported).filter((item) => isObj(item) && pattern.test(`${item.where || ''} ${item.feature || ''}`));
+const REDACTION = /post_call\.redaction|redaction/i;
+const RECORDING = /post_call\.recording|call recording/i;
+
 // What is kept, as sentences a customer can read, and what is wrong with it (the problems are things to look at, not errors).
-export function describeRecords(config) {
+// `unsupported`: the validator's list for this config, when there is one.
+export function describeRecords(config, { unsupported = [] } = {}) {
   const r = readRecords(config);
+  const redactionNotApplied = r.redactionOn && notApplied(unsupported, REDACTION).length > 0;
+  const recordingNotApplied = (r.audio || r.transcript) && notApplied(unsupported, RECORDING).length > 0;
   const lines = [];
   const problems = [];
   if (r.logOn) {
@@ -117,25 +129,40 @@ export function describeRecords(config) {
   } else {
     lines.push('No log of each call is kept.');
   }
-  if (r.audio || r.transcript)
+  if (r.audio || r.transcript) {
     lines.push(
-      `${[r.audio ? 'Audio is recorded' : '', r.transcript ? 'Transcripts are kept' : ''].filter(Boolean).join(' and ')}${r.recordingDays ? `, for ${plural(r.recordingDays, 'day')}` : ''}.`,
+      recordingNotApplied
+        ? 'Recording is set up, but the runtime does not apply those settings yet, so nothing is recorded or kept this way.'
+        : `${[r.audio ? 'Audio is recorded' : '', r.transcript ? 'Transcripts are kept' : ''].filter(Boolean).join(' and ')}${r.recordingDays ? `, for ${plural(r.recordingDays, 'day')}` : ''}.`,
     );
+  }
   if (r.modelRequests)
     problems.push('Every request to the AI model is written to the call log. That stores everything the caller said. Keep it off for real callers.');
   if (r.logOn || r.audio || r.transcript) {
     lines.push(
-      r.redactionOn
-        ? 'Sensitive text is replaced in saved transcripts and metrics. It still reaches the AI during the call.'
-        : 'Only values marked sensitive are hidden in the call log. Other things a caller says are not hidden yet.',
+      redactionNotApplied
+        ? 'Redaction is set up, but the runtime does not apply it yet: saved transcripts still contain everything that was said.'
+        : r.redactionOn
+          ? 'Sensitive text is replaced in saved transcripts and metrics. What a caller says still reaches the AI during the call; only the exact value of a sensitive variable is kept from it once stored.'
+          : 'Only values marked sensitive are hidden in the call log. Other things a caller says are not hidden yet.',
     );
   }
+  if (redactionNotApplied)
+    problems.push(
+      'Redaction is declared but the runtime does not apply it, so saved transcripts still hold everything that was said, including sensitive details.',
+    );
   if (r.sensitive.length && !r.redactionOn && (r.logOn || r.audio || r.transcript))
     problems.push(
       `The agent handles sensitive details (${r.sensitive.slice(0, 2).join('; ')}${r.sensitive.length > 2 ? '; …' : ''}) but nothing hides them in saved transcripts.`,
     );
   const kept = r.logOn ? (r.logDays ? `Call log kept ${plural(r.logDays, 'day')}` : 'Call log kept') : 'No call log';
-  return { read: r, lines, problems, headline: `${kept}${r.audio || r.transcript ? ' · recordings on' : ''}` };
+  return {
+    read: r,
+    lines,
+    problems,
+    notApplied: { redaction: redactionNotApplied, recording: recordingNotApplied },
+    headline: `${kept}${(r.audio || r.transcript) && !recordingNotApplied ? ' · recordings on' : ''}`,
+  };
 }
 
 // Voice channels: does the agent tell callers they may be recorded, and does anything record?

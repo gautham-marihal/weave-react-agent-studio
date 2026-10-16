@@ -22,7 +22,17 @@ export const ENUM_LABELS = {
     transfer_succeeded: 'A transfer works',
     transfer_failed: 'A transfer fails',
     state_changed: 'Something it remembers changes',
+    guardrail_triggered: 'A safety rule catches what the caller said',
+    limit_reached: 'A call limit is reached',
   },
+  limit_reached: {
+    max_call_duration_s: 'The call has run too long',
+    max_silence_s: 'Too much silence',
+    max_tool_calls_per_call: 'Too many tool uses in one call',
+    max_handoffs_per_call: 'Too many hand-overs in one call',
+  },
+  attempts_scope: { step: 'On each step', task: 'Across the whole task' },
+  return_history: { result_only: 'Only the result', full: 'Everything said during the task' },
   type: {
     // the type of a variable or a parameter
     boolean: 'Yes or no',

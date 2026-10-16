@@ -80,9 +80,23 @@ export function buildChecklist({ config, report, version, runs = [], knowledge, 
         action: { tab: 'scenarios', label: 'Write scenarios' },
       });
     } else if (target === 'version') {
-      const status = testStatusOf(version, runs);
-      if (status.state === 'passed')
-        add({ id: 'tests', label: 'Tests', state: 'ok', text: `Passed on this exact version (${plural(status.run.total || scenarioCount, 'scenario')})` });
+      const status = testStatusOf(version, runs, { scenarioCount });
+      if (status.state === 'partial')
+        add({
+          id: 'tests',
+          label: 'Tests',
+          state: 'warn',
+          text: `Only part of the tests ran on this exact version (${status.text})`,
+          detail: ['The latest run covered some of the scenarios, so it cannot say that all of them pass.'],
+          action: { tab: 'scenarios', label: 'Run them all' },
+        });
+      else if (status.state === 'passed')
+        add({
+          id: 'tests',
+          label: 'Tests',
+          state: 'ok',
+          text: `Passed on this exact version (${status.run.skipped > 0 ? `${status.run.passed} of ${plural(status.run.total, 'scenario')}; ${status.run.skipped} not run` : plural(status.run.total || scenarioCount, 'scenario')})`,
+        });
       else if (status.state === 'failed')
         add({
           id: 'tests',
@@ -184,7 +198,7 @@ export function buildChecklist({ config, report, version, runs = [], knowledge, 
       detail: flow.chosen && flow.names.length > 1 ? flow.lines : [],
       action: { tab: 'config', label: 'Review the AI model' },
     });
-    const records = describeRecords(config);
+    const records = describeRecords(config, { unsupported: report?.unsupported });
     add({
       id: 'records',
       label: 'Call records',

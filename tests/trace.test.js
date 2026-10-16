@@ -491,3 +491,27 @@ test('following a call replays its records one at a time, then says it ended, an
   while (q3.length) q3.shift()();
   assert.equal(endedEarly, false);
 });
+
+// FRONTEND_GUIDE 2.md: tasks, safety rules and call limits write records of their own. Each gets a row in plain words, its own filter, and a bad one is a problem.
+test('a task, a safety rule and a call limit are told in plain words, and a record this file has not met still gets a row', () => {
+  const task = describeRecord({ event: 'task_started', seq: 1, task: 'verify' });
+  assert.equal(task.text, 'Started “verify”');
+  assert.equal(task.group, 'tasks');
+  const step = describeRecord({ event: 'task_step', seq: 2, task: 'verify', step: 'ask_dob', passed: false, attempt: 2 });
+  assert.equal(step.tone, 'bad');
+  assert.deepEqual(step.facts, [
+    ['answer', 'not accepted'],
+    ['attempt', '2'],
+  ]);
+  assert.equal(describeRecord({ event: 'task_finished', task: 'verify', outcome: 'verified' }).tone, 'good');
+  assert.equal(describeRecord({ event: 'task_finished', task: 'verify', outcome: 'failed' }).text, 'Finished “verify” as failed');
+  assert.match(describeRecord({ event: 'task_skipped', task: 'verify' }).text, /already satisfied/);
+  const rule = describeRecord({ event: 'guardrail_triggered', rule: 'no_injection', action: 'redact_in_logs' });
+  assert.equal(rule.text, '“no_injection” caught what the caller said');
+  assert.equal(rule.group, 'safety');
+  assert.deepEqual(rule.facts, [['it', 'redact in logs']]);
+  const limit = describeRecord({ event: 'limit_reached', limit: 'max_tool_calls_per_call', value: 5 });
+  assert.equal(limit.problem, true);
+  assert.equal(limit.text, 'A call limit ended the call: max tool calls per call');
+  assert.equal(describeRecord({ event: 'something_new', x: 1 }).label, 'Something new', 'an unknown kind is still a row');
+});

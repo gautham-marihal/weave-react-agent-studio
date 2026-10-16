@@ -43,7 +43,7 @@ test('an agent nothing can reach is shown, in a column of its own, and said to b
   assert.equal(map.nodes.find((n) => n.id === 'lonely').reachable, false);
   assert.equal(map.nodes.find((n) => n.id === 'lonely').column, 2);
   assert.equal(map.nodes.find((n) => n.id === 'b').column, 1);
-  assert.deepEqual(describeEdges(map), ['a hands the caller to b (to_b).']);
+  assert.deepEqual(describeEdges(map), ['a hands the caller to b.']);
 });
 
 test('a tool whose rules hand over, and a safety rule that does, are drawn as their own kinds of arrow; a hand-over to nobody is not drawn', () => {
@@ -69,8 +69,8 @@ test('a tool whose rules hand over, and a safety rule that does, are drawn as th
     ],
   );
   assert.deepEqual(describeEdges(map), [
-    'Front desk can pass the caller to billing (escalate).',
-    'Front desk passes the caller, under a safety rule, to safety (abuse).',
+    'Front desk can pass the caller to billing (through Escalate).',
+    'Front desk passes the caller, under a safety rule, to safety.',
   ]);
 });
 
@@ -204,4 +204,35 @@ test('the same configuration is walked once for all the cards, not once per card
   for (let i = 0; i < 200; i += 1) usedBy(engine, config, 'tools', example.tools[i % example.tools.length].id);
   const each = (performance.now() - before) / 200;
   assert.ok(each < 1, `a lookup on an unchanged configuration is quick (${each.toFixed(3)} ms)`);
+});
+
+// ---- UI review 2.9: nothing on the picture of the agents is a raw id --------------------------------------------------------------------------------
+test('the arrows are labelled in plain words: the agent it goes to, the tool, “Safety rule”; the ids stay in the data underneath', () => {
+  const config = {
+    agents: {
+      entry: 'front',
+      items: [
+        {
+          id: 'front',
+          name: 'Front desk',
+          tools: ['escalate_to_human'],
+          handoffs: [{ id: 'to_orders', tool: 'to_orders', to: 'orders', description: 'when the caller asks where an order is' }],
+        },
+        { id: 'orders', name: 'Orders' },
+        { id: 'human', name: 'A person' },
+      ],
+    },
+    tools: [{ id: 'escalate_to_human', type: 'builtin', builtin: 'transfer_or_callback', effects: [{ steps: [{ type: 'handoff', to: 'human' }] }] }],
+    guardrails: { escalation: [{ id: 'abuse', action: 'handoff', to: 'human' }] },
+  };
+  const map = buildAgentMap(config);
+  const edge = (to, kind) => map.edges.find((e) => e.to === to && e.kind === kind);
+  assert.deepEqual(edge('orders', 'handoff').words, ['Orders'], 'a hand-over is labelled with who it goes to, not with to_orders');
+  assert.deepEqual(edge('orders', 'handoff').labels, ['to_orders'], 'the id is still there for anything that needs it');
+  assert.deepEqual(edge('human', 'tool').words, ['Escalate to human']);
+  assert.deepEqual(edge('human', 'rule').words, ['Safety rule']);
+  const sentences = describeEdges(map).join(' | ');
+  assert.match(sentences, /Front desk hands the caller to Orders \(when the caller asks where an order is\)\./);
+  assert.match(sentences, /Front desk can pass the caller to A person \(through Escalate to human\)\./);
+  assert.doesNotMatch(sentences, /to_orders|escalate_to_human|abuse/, 'no id in any sentence');
 });

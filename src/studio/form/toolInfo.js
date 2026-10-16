@@ -5,12 +5,12 @@ import { isObj } from './engine.js';
 
 // The kinds the runtime does NOT run yet (the validator reports them as "unsupported"; this is the same list, so the
 // "Add tool" menu can say so before anyone builds one). Built-ins are named by `builtin`.
+// Checked against the real validator on 2026-10-16: task tools and the two keypad built-ins now run, so only these two remain.
 export const UNSUPPORTED_KINDS = {
-  task: 'Task tools',
   mcp: 'MCP server tools',
   code: 'Custom code tools',
 };
-export const UNSUPPORTED_BUILTINS = { send_dtmf: 'Send keypad tones', collect_dtmf: 'Collect keypad digits' };
+export const UNSUPPORTED_BUILTINS = {};
 
 export function kindOfTool(tool) {
   if (!isObj(tool)) return '';
@@ -32,8 +32,8 @@ export const BUILTIN_HELP = {
   transfer_or_callback:
     'Hands the caller to a person, or runs its fallback (say a callback line, raise a ticket) when no one can take it: no target, closed hours, a failed transfer. Needs a transfer set up under Telephony.',
   return_to_entry: 'A specialist sends the caller back to the agent that answers first, with a note of what is still needed.',
-  send_dtmf: 'Sends keypad tones on the call (not available in the runtime yet).',
-  collect_dtmf: 'Collects digits the caller presses (not available in the runtime yet).',
+  send_dtmf: 'Sends keypad tones on the call (a phone call only).',
+  collect_dtmf: 'Collects digits the caller presses (a phone call only).',
   send_form: 'Shows the caller a form. Needs a form defined under Forms; the channel must be able to show forms.',
   noop: 'Does nothing itself; only its effects run (set state, hand off). Use it for a tool whose whole job is a conditional handoff.',
 };

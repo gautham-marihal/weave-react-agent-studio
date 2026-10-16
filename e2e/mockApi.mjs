@@ -8,6 +8,21 @@ import { createDemoApi, memoryStorage } from '../src/demo/demoApi.js';
 const SCHEMA = JSON.parse(fs.readFileSync(new URL('../tests/fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
 const json = (body, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
+// What POST /bots/{id}/sessions answers, made up: the LiveKit client of these tests is a fake as well, so nothing here is ever connected to.
+export function fakeSession(botId, ref) {
+  return {
+    livekit_url: 'wss://fake.example',
+    token: 'fake-token-for-the-e2e-run',
+    room: `test-${botId}-1`,
+    identity: 'tester',
+    expires_in_s: 900,
+    bot: botId,
+    ref: ref || 'draft',
+    version: 'draft',
+    channel: { id: 'web-chat', type: 'web_chat', input: ['text'], output: ['text'] },
+  };
+}
+
 export function createMockApi() {
   const demo = createDemoApi({ storage: memoryStorage(), loadSchema: async () => SCHEMA });
   const log = []; // every request the app made: "METHOD /path"
@@ -30,22 +45,7 @@ export function createMockApi() {
     if (session && method === 'POST') {
       const exists = await demo.handle('GET', `/bots/${session[1]}`);
       if (exists.status !== 200) return route.fulfill(json(exists.body, exists.status));
-      return route.fulfill(
-        json(
-          {
-            livekit_url: 'wss://fake.example',
-            token: 'fake-token-for-the-e2e-run',
-            room: `test-${session[1]}-1`,
-            identity: 'tester',
-            expires_in_s: 900,
-            bot: session[1],
-            ref: body.ref || 'draft',
-            version: 'draft',
-            channel: { id: 'web-chat', type: 'web_chat', input: ['text'], output: ['text'] },
-          },
-          201,
-        ),
-      );
+      return route.fulfill(json(fakeSession(session[1], body.ref), 201));
     }
     const answer = await demo.handle(method, path, body);
     return route.fulfill(json(answer.body, answer.status));

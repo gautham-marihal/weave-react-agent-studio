@@ -1721,6 +1721,59 @@ select.stFInput {
   padding-left: 18px;
 }
 
+.stTryRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.stTryRow .stTryArgs {
+  flex: 1;
+}
+.stTryOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  font-size: var(--fs-sm);
+}
+.stTryOptions label {
+  display: grid;
+  gap: 4px;
+}
+.stTryMarked {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.stTryMarked mark {
+  background: color-mix(in srgb, var(--warn-text) 28%, transparent);
+  color: inherit;
+  border-radius: 4px;
+  padding: 0 2px;
+}
+.stTrySteps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.stTryStep {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  font-size: var(--fs-sm);
+}
+.stTryStep p {
+  margin: 0;
+}
+.stTryStep.skipped,
+.stTryStep.held {
+  opacity: 0.85;
+  border-style: dashed;
+}
+
 /* ---- finding a tool in a long list */
 .stFFind {
   display: grid;

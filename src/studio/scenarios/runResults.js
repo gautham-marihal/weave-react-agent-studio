@@ -37,9 +37,11 @@ export function normalizeResult(raw, scenario) {
   const r = isObj(raw) ? raw : {};
   const checks = list(r.checks).map(normalizeCheck);
   const status = STATUSES.includes(r.status) ? r.status : checks.some((c) => c.passed === false) ? 'failed' : checks.length ? 'passed' : 'skipped';
-  // scripted when the scenario has a model_script, live otherwise: the API says so on the result when it can
-  const mode =
-    r.mode === 'live' || r.mode === 'scripted' ? r.mode : scenario?.model_script ? 'scripted' : scenario ? 'live' : r.live === true ? 'live' : 'scripted';
+  // Scripted or live. In order: what the result says; what the scenario's row in the server's list says (that row has `mode` but not the script itself);
+  // the script, when the scenario is the one from the draft; else live, which is the cautious reading because it is the one that costs money.
+  const known = (value) => (value === 'live' || value === 'scripted' ? value : '');
+  const scripted = Array.isArray(scenario?.model_script) && scenario.model_script.length > 0;
+  const mode = known(r.mode) || known(scenario?.mode) || (scripted ? 'scripted' : scenario ? 'live' : r.live === true ? 'live' : 'scripted');
   return {
     id: text(r.id ?? scenario?.id),
     status,
@@ -197,15 +199,48 @@ export function nextSteps(result, scenario) {
 // ---- "this exact version passed" ----------------------------------------------------------------------------------------------------
 // A run carries the checksum of the config it tested; a published version carries the checksum of its own config. When they are equal
 // the run tested that exact version.
-export function testStatusOf(version, runs) {
+export function testStatusOf(version, runs, { scenarioCount = 0 } = {}) {
   const checksum = version?.checksum;
   if (!checksum) return { state: 'none', text: 'Not run' };
   const matching = list(runs).filter((r) => r.checksum && r.checksum === checksum && isFinished(r.status));
   if (!matching.length) return { state: 'none', text: 'Not run' };
   const latest = matching[0]; // newest first
-  if (latest.status === 'passed') return { state: 'passed', text: 'Passed', run: latest };
+  if (latest.status === 'passed') {
+    // A run that passed may have covered only some of the scenarios (one was picked, or the live ones were left out). "Passed" says all of them ran, so a
+    // run that left scripted ones out is partial. Live scenarios that were not included are the usual, cost-saving case and are said, not hidden.
+    const ran = latest.passed + latest.failed + latest.errors;
+    if (scenarioCount > 0 && latest.total < scenarioCount) return { state: 'partial', text: `${latest.passed} of ${scenarioCount} ran`, run: latest };
+    if (latest.skipped > 0) return { state: 'passed', text: `Passed, ${latest.skipped} not run`, run: latest, ran };
+    return { state: 'passed', text: 'Passed', run: latest, ran };
+  }
   if (latest.status === 'skipped') return { state: 'none', text: 'Skipped', run: latest };
   return { state: 'failed', text: latest.status === 'error' ? 'Broke' : 'Failed', run: latest };
+}
+
+// How the scenarios stand, from each one's own latest result (the rows of GET /tests), not from the headline of the newest run, which may have covered
+// only some of them. `notRun`: no result yet, or skipped; split into live ones (they cost money, so they are left out unless asked for) and scripted ones.
+export function summariseScenarios(items) {
+  const out = { total: 0, passed: 0, failed: 0, notRun: 0, liveNotRun: 0, scriptedNotRun: 0 };
+  list(items).forEach((item) => {
+    const status = item?.result?.status;
+    out.total += 1;
+    if (status === 'passed') out.passed += 1;
+    else if (status === 'failed' || status === 'error') out.failed += 1;
+    else {
+      out.notRun += 1;
+      const scenario = item?.scenario;
+      const mode =
+        item?.result?.mode ||
+        (scenario?.mode === 'live' || scenario?.mode === 'scripted'
+          ? scenario.mode
+          : Array.isArray(scenario?.model_script) && scenario.model_script.length
+            ? 'scripted'
+            : 'live');
+      if (mode === 'live') out.liveNotRun += 1;
+      else out.scriptedNotRun += 1;
+    }
+  });
+  return out;
 }
 
 // The latest run of a list of headlines (newest first) that has finished.

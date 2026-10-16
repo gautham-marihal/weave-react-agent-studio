@@ -37,7 +37,7 @@ function iconFor(kind, item) {
 // forms, transfers...) is a row too, opening the settings form for just that section.
 //   lists:  [{ id, path, kind, word, title?, lead?, pickerKey, empty }]
 //   extras: [{ key, title, value (a sentence), icon }]
-export default function ListPage({ title, lead, editor, lists, extras = [], onShowJson, onOpenJson, openRequest = null }) {
+export default function ListPage({ title, lead, editor, lists, extras = [], footer = null, onShowJson, onOpenJson, openRequest = null }) {
   const config = editor.parsed.value;
   const { schema } = useSchema();
   const engine = useMemo(() => (schema ? createEngine(schema) : null), [schema]);
@@ -222,6 +222,7 @@ export default function ListPage({ title, lead, editor, lists, extras = [], onSh
           </div>
         </Section>
       )}
+      {footer}
       {renderPanel()}
     </PageShell>
   );

@@ -97,6 +97,14 @@ export const STATE_TEXT = {
   ready: { label: 'Ready', tone: 'good', hint: 'The index is built and current.' },
 };
 
+// The server's `fix` is sometimes a command line for an operator (`python -m …`), which means nothing in a browser (UI review 3a). Such text is not shown;
+// the problem stays, and the screen's own button (Build now, Upload a file) says what to do.
+const COMMAND_LINE = /(^|[\s`'"(])(python3?|pip3?|npm|npx|curl|docker|\.\/\S+)\s+\S|^\s*\$\s|\s-m\s+[\w.]+/i;
+export function readableFix(problem) {
+  const fix = text(problem?.fix).trim();
+  return fix && !COMMAND_LINE.test(fix) ? fix : '';
+}
+
 // What a problem's fix should be, so the screen can offer a button: build (re-)indexes, upload adds a file.
 export function fixActionFor(problem) {
   const p = `${problem.problem} ${problem.fix}`.toLowerCase();

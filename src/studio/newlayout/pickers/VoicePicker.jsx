@@ -1,53 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
 import SimpleKey from '../../simple/SimpleKey.jsx';
-import { pickBrowserVoice } from '../../../pages/browserVoice.js';
+import { useVoicePreview } from '../../../pages/voicePreview.js';
 import { applyVoice, readModels, setVoiceId } from '../../models/config.js';
 import { providerLabel } from '../../models/catalog.js';
 import { useProviders } from '../../models/useProviders.js';
 import { filterVoices, voiceFilters, voiceHue, voiceInUse } from './pickerLogic.js';
 import './pickers.css';
-
-// Plays a short line with the browser's own speech voices (the real voice is the provider's, which the studio can't play without a call): the closest
-// browser voice for the language and gender, and a note when it had to guess.
-function useBrowserPreview() {
-  const [playing, setPlaying] = useState('');
-  const [note, setNote] = useState('');
-  const [browserVoices, setBrowserVoices] = useState([]);
-  const can = typeof window !== 'undefined' && 'speechSynthesis' in window;
-  useEffect(() => {
-    if (!can) return undefined;
-    const load = () => setBrowserVoices(window.speechSynthesis.getVoices());
-    load();
-    window.speechSynthesis.addEventListener?.('voiceschanged', load);
-    return () => {
-      window.speechSynthesis.removeEventListener?.('voiceschanged', load);
-      window.speechSynthesis.cancel();
-    };
-  }, [can]);
-  const play = (voice) => {
-    if (!can) return;
-    window.speechSynthesis.cancel();
-    if (playing === voice.id) {
-      setPlaying('');
-      return;
-    }
-    const utterance = new SpeechSynthesisUtterance(`Hello, I'm ${voice.name}. How can I help you today?`);
-    utterance.lang = voice.locale;
-    utterance.rate = 0.96;
-    const pick = pickBrowserVoice(browserVoices.length ? browserVoices : window.speechSynthesis.getVoices(), voice);
-    if (pick.voice) utterance.voice = pick.voice;
-    utterance.pitch = pick.pitch;
-    setNote(
-      pick.certain ? '' : `Your browser has no ${voice.gender.toLowerCase()} ${voice.language} voice, so this is only an approximation of ${voice.name}.`,
-    );
-    utterance.onend = () => setPlaying('');
-    utterance.onerror = () => setPlaying('');
-    setPlaying(voice.id);
-    window.speechSynthesis.speak(utterance);
-  };
-  return { can, playing, note, play };
-}
 
 // The voice of an agent, chosen from a list: search, filter by engine, gender and language, listen, and pick. Picking a voice also sets the engine it
 // belongs to (and that engine's model), which the line under the list says.
@@ -62,7 +21,7 @@ export default function VoicePicker({ config, set }) {
   const [opened] = useState(() => tts); // the order is worked out from the voice the panel opened with, so the list does not jump when one is picked
   const inUse = voiceInUse(tts);
   const voices = useMemo(() => filterVoices({ query, gender, engine, language, current: opened }), [query, gender, engine, language, opened]);
-  const preview = useBrowserPreview();
+  const preview = useVoicePreview();
   const [justSet, setJustSet] = useState('');
   const custom = !!tts.voiceId && !inUse;
   const offered = (name) => providers.some((p) => p.name === name && (p.stages || []).includes('tts') && p.installed !== false);
@@ -227,7 +186,9 @@ export default function VoicePicker({ config, set }) {
         </p>
       )}
       {preview.note && <p className="pkNote">{preview.note}</p>}
-      {preview.can ? <p className="pkNote">Listening uses your browser’s own voices, so it only gives an idea; the real voice is the engine’s.</p> : null}
+      {preview.can ? (
+        <p className="pkNote">Every voice plays a recording of that voice. Cartesia’s samples come from a public voice directory, not from Cartesia.</p>
+      ) : null}
 
       <details className="pkOwn" open={custom || undefined}>
         <summary>A voice from your own account</summary>

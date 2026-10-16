@@ -31,12 +31,26 @@ export function agentState({ deployed = {}, tests = 'unknown', problems = 0 } = 
 
 // The line under an agent's name: the parts worth saying, each with a tone. A part with nothing to say is left out (the number of calls is unknown
 // until it has been read, and nothing is claimed about it before then).
-export function statusLine({ dirty = false, savedAt = '', scenarioCount = 0, run = null, deployed = {}, callsToday = null } = {}) {
+// What is said about the tests, from how the scenarios stand (see summariseScenarios in scenarios/runResults.js): every scenario counted by its own latest
+// result, so "4 of 7 passing" can never hide that three have not been run.
+export function testsPart(s) {
+  if (!s || !s.total) return { id: 'tests', text: 'No tests written', tone: 'idle' };
+  const said = (n, what) => (n ? `${n} ${what}` : '');
+  const notRun = [said(s.liveNotRun, 'live, not run'), said(s.scriptedNotRun, 'not run')].filter(Boolean).join(' · ');
+  if (s.failed > 0) return { id: 'tests', text: [`${s.failed} failing`, said(s.passed, 'passing'), notRun].filter(Boolean).join(' · '), tone: 'bad' };
+  if (s.passed === 0) return { id: 'tests', text: `${s.total} test${s.total === 1 ? '' : 's'}, not run yet`, tone: 'idle' };
+  if (s.notRun === 0) return { id: 'tests', text: s.total === 1 ? '1 test passing' : `All ${s.total} tests passing`, tone: 'ok' };
+  // everything that runs for free has passed and only live ones are left: fine to say so; a scripted scenario that has not run is only half the story
+  return { id: 'tests', text: [`${s.passed} passed`, notRun].filter(Boolean).join(' · '), tone: s.scriptedNotRun ? 'idle' : 'ok' };
+}
+
+export function statusLine({ dirty = false, savedAt = '', scenarioCount = 0, run = null, scenarios = null, deployed = {}, callsToday = null } = {}) {
   const parts = [];
   parts.push(
     dirty ? { id: 'draft', text: 'Unsaved changes', tone: 'warn' } : { id: 'draft', text: savedAt ? `Draft saved ${savedAt}` : 'Draft saved', tone: 'ok' },
   );
   if (scenarioCount === 0) parts.push({ id: 'tests', text: 'No tests written', tone: 'idle' });
+  else if (scenarios && scenarios.total > 0) parts.push(testsPart(scenarios));
   else if (!run) parts.push({ id: 'tests', text: `${scenarioCount} test${scenarioCount === 1 ? '' : 's'}, not run yet`, tone: 'idle' });
   else if (run.status === 'passed') parts.push({ id: 'tests', text: `Tests ${run.passed ?? run.total} of ${run.total} passing`, tone: 'ok' });
   else if (run.status === 'skipped') parts.push({ id: 'tests', text: 'Tests skipped in the last run', tone: 'warn' });

@@ -15,6 +15,7 @@ import {
   describeScore,
   fileTypeProblem,
   fixActionFor,
+  readableFix,
   formatBytes,
   isBuilding,
   knowledgeSummary,
@@ -249,7 +250,7 @@ function BaseCard({ botId, base, config, build, buildError, onBuild, onUpload, d
             return (
               <li key={i}>
                 <strong>{p.problem}</strong>
-                {p.fix && <span> {p.fix}</span>}
+                {readableFix(p) && <span> {readableFix(p)}</span>}
                 {action === 'build' && base.buildable && !building && (
                   <button type="button" className="quietButton" onClick={() => onBuild(base.id)} disabled={!base.keyAvailable}>
                     Build now

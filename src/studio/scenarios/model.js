@@ -5,7 +5,7 @@
 // checks for writing them. Running them is the server's job (see api.runTests); runResults.js reads what it answers.
 //
 // A rule this file keeps: the form NEVER blocks saving, and never calls a scenario broken, because of something it does not know. The
-// schema grows (nine kinds of expectation today, four more than the first version of the studio knew), so a part this file doesn't
+// schema grows (thirteen kinds of expectation today, eight more than the first version of the studio knew), so a part this file doesn't
 // recognise is kept exactly as it is and shown as "edit in JSON"; only what it positively knows to be wrong is a problem.
 // Pure: no network, no DOM.
 
@@ -47,6 +47,30 @@ export const EXPECT_KINDS = [
     shape: 'http',
   },
   {
+    key: 'task_outcome',
+    label: 'A multi-step task ended a certain way',
+    hint: 'A task ran and ended this way. A task skipped because it was already satisfied counts as verified. Leave the outcome empty for any.',
+    shape: 'task',
+  },
+  {
+    key: 'guardrail_triggered',
+    label: 'A safety rule caught what the caller said',
+    hint: 'One of the checks on the caller’s words matched: the way to prove a trick is refused, or a card number is caught.',
+    shape: 'guardrail',
+  },
+  {
+    key: 'guardrail_not_triggered',
+    label: 'A safety rule did not match',
+    hint: 'This check matched nothing: the way to prove an ordinary request is not refused by mistake.',
+    shape: 'guardrail_rule',
+  },
+  {
+    key: 'limit_reached',
+    label: 'A call limit ended the call',
+    hint: 'A scenario is far shorter than the length and silence limits, so those two are best proved with a unit test.',
+    shape: 'limit',
+  },
+  {
     key: 'judge',
     label: 'A reviewer would agree that…',
     hint: 'A criterion in plain words, graded by a language model. It needs a live model, so it is skipped in a scenario with a model script.',
@@ -57,6 +81,49 @@ export const kindOfExpectation = (expectation) => (isObj(expectation) ? EXPECT_K
 export const kindInfo = (key) => EXPECT_KINDS.find((kind) => kind.key === key) || null;
 // An expectation this file doesn't know: kept as it is, never an error.
 export const isUnknownExpectation = (expectation) => isObj(expectation) && !kindOfExpectation(expectation);
+
+// The call limits a `limit_reached` check can name, and what an input rule may have done (the schema's enums), in words.
+export const LIMIT_CHOICES = [
+  { value: 'max_call_duration_s', label: 'The call ran too long' },
+  { value: 'max_silence_s', label: 'There was too much silence' },
+  { value: 'max_tool_calls_per_call', label: 'Too many tool uses in one call' },
+  { value: 'max_handoffs_per_call', label: 'Too many hand-overs in one call' },
+];
+export const GUARDRAIL_ACTION_CHOICES = [
+  { value: 'deflect', label: 'Declined and answered with a fixed line' },
+  { value: 'redact_in_logs', label: 'Hidden in the saved records' },
+  { value: 'rewrite', label: 'Rewritten before the agent read it' },
+  { value: 'block', label: 'Not passed to the agent at all' },
+  { value: 'end_call', label: 'Ended the call' },
+];
+export const TASK_OUTCOME_CHOICES = [
+  { value: 'verified', label: 'It worked (verified)' },
+  { value: 'failed', label: 'It failed' },
+  { value: 'declined', label: 'The caller declined' },
+];
+const choiceLabel = (choices, value) => String(choices.find((c) => c.value === value)?.label ?? value ?? '');
+
+// The ids of the checks on what the caller says (`guardrails.input`), and of the multi-step tasks, for the pickers.
+export const inputRuleIdsOf = (config) =>
+  list(config?.guardrails?.input)
+    .map((rule) => rule?.id)
+    .filter(Boolean);
+export const taskIdsOf = (config) =>
+  list(config?.tasks)
+    .map((task) => task?.id)
+    .filter(Boolean);
+// The outcome names a task can end with: verified / failed / declined, and the names its own on_success / on_failure / on_decline blocks give.
+export function outcomeNamesOf(config, taskId) {
+  const task = list(config?.tasks).find((t) => t?.id === taskId);
+  const own = ['on_success', 'on_failure', 'on_decline'].map((k) => task?.[k]?.outcome).filter((n) => typeof n === 'string' && n);
+  return [...new Set([...TASK_OUTCOME_CHOICES.map((c) => c.value), ...own])];
+}
+
+// ---- turns: what the caller says, or the keys they press (a phone line only) ---------------------------------------------------------------
+export const KEYS_PATTERN = /^[0-9*#A-Da-d]+$/;
+export const isKeysTurn = (turn) => isObj(turn) && typeof turn.keys === 'string' && turn.say === undefined;
+export const describeTurn = (turn) => (isKeysTurn(turn) ? 'presses keys on the keypad' : `“${isObj(turn) ? (turn.say ?? '') : ''}”`);
+export const channelTypeOf = (config, id) => list(config?.channels).find((c) => c?.id === id)?.type || '';
 
 const shortJson = (value, max = 80) => {
   const text = JSON.stringify(value);
@@ -85,6 +152,18 @@ export function describeExpectation(expectation) {
     }
     case 'http_not_called':
       return `the bot never calls ${httpWords(expectation.http_not_called || {})}`;
+    case 'task_outcome': {
+      const e = expectation.task_outcome || {};
+      return `the task “${e.task || '…'}” ends ${e.outcome ? `as “${e.outcome}”` : 'in any way'}`;
+    }
+    case 'guardrail_triggered': {
+      const e = expectation.guardrail_triggered || {};
+      return `the safety rule “${e.rule || '…'}” catches what the caller says${e.action ? ` (${choiceLabel(GUARDRAIL_ACTION_CHOICES, e.action).toLowerCase()})` : ''}`;
+    }
+    case 'guardrail_not_triggered':
+      return `the safety rule “${expectation.guardrail_not_triggered || '…'}” does not match`;
+    case 'limit_reached':
+      return `the call ends because: ${choiceLabel(LIMIT_CHOICES, expectation.limit_reached).toLowerCase()}`;
     case 'judge':
       return `a reviewer agrees that ${expectation.judge}`;
     default:
@@ -118,7 +197,7 @@ export function newScenario(config, id) {
 
 // A fresh expectation of a kind, filled with something that makes sense in this config.
 export function newExpectation(kind, config) {
-  const tools = toolIdsOf(config);
+  const tools = toolNamesOf(config);
   const states = Object.keys(isObj(config?.state?.variables) ? config.state.variables : {});
   const agents = list(config?.agents?.items)
     .map((a) => a?.id)
@@ -140,6 +219,14 @@ export function newExpectation(kind, config) {
       return { http_called: { method: 'GET', path: '' } };
     case 'http_not_called':
       return { http_not_called: { method: 'POST', path: '' } };
+    case 'task_outcome':
+      return { task_outcome: { task: taskIdsOf(config)[0] || '' } };
+    case 'guardrail_triggered':
+      return { guardrail_triggered: { rule: inputRuleIdsOf(config)[0] || '' } };
+    case 'guardrail_not_triggered':
+      return { guardrail_not_triggered: inputRuleIdsOf(config)[0] || '' };
+    case 'limit_reached':
+      return { limit_reached: 'max_tool_calls_per_call' };
     case 'judge':
       return { judge: '' };
     default:
@@ -147,11 +234,32 @@ export function newExpectation(kind, config) {
   }
 }
 
-// The ids a `tool_called` can name: the tools, and the handoff tools of the agents (the schema's `tool_names`).
-export function toolIdsOf(config) {
-  const tools = list(config?.tools).map((t) => t?.id);
+// What the model calls a tool: its `name`, which defaults to its id. A check says "the tool X is called" by THIS name, because it is what the runner records
+// (a voice variant and a chat variant of one tool may share a name while their ids differ).
+export const modelNameOf = (tool) => (isObj(tool) ? String(tool.name || tool.id || '') : '');
+
+// The names a `tool_called` can use: each tool's model-facing name, and the handoff tools of the agents (the schema's `tool_names`).
+export function toolNamesOf(config) {
+  const tools = list(config?.tools).map(modelNameOf);
   const handoffs = list(config?.agents?.items).flatMap((a) => list(a?.handoffs).map((h) => h?.tool));
   return [...new Set([...tools, ...handoffs].filter(Boolean))];
+}
+
+// The same names for a picker: each once, and, when a name is not simply one tool's id, which tools it stands for.
+export function toolChoices(config) {
+  const byName = new Map();
+  list(config?.tools).forEach((tool) => {
+    const name = modelNameOf(tool);
+    if (!name) return;
+    byName.set(name, [...(byName.get(name) || []), tool.id]);
+  });
+  return toolNamesOf(config).map((name) => {
+    const ids = byName.get(name) || [];
+    const plain = ids.length === 1 && ids[0] === name;
+    return plain || !ids.length
+      ? { value: name, label: name }
+      : { value: name, label: name, description: ids.length === 1 ? `the tool ${ids[0]}` : `the tools ${ids.join(' and ')}` };
+  });
 }
 
 // Valid regular expression? ('' when fine, else why not)
@@ -175,18 +283,18 @@ function expectationProblem(e, index, config) {
   if (!isObj(e)) return `${where}this isn’t an object.`;
   const kind = kindOfExpectation(e);
   if (!kind) return '';
-  const toolIds = toolIdsOf(config);
+  const toolNames = toolNamesOf(config);
   const stateNames = Object.keys(isObj(config?.state?.variables) ? config.state.variables : {});
   const agentIds = list(config?.agents?.items).map((a) => a?.id);
   switch (kind) {
     case 'tool_called':
     case 'tool_not_called':
       if (!e[kind]) return `${where}choose a tool.`;
-      return toolIds.includes(e[kind]) ? '' : `${where}there is no tool “${e[kind]}”.`;
+      return toolNames.includes(e[kind]) ? '' : `${where}there is no tool “${e[kind]}”.`;
     case 'tool_called_with': {
       const v = e.tool_called_with;
       if (!isObj(v) || !v.tool) return `${where}choose a tool.`;
-      if (!toolIds.includes(v.tool)) return `${where}there is no tool “${v.tool}”.`;
+      if (!toolNames.includes(v.tool)) return `${where}there is no tool “${v.tool}”.`;
       return isObj(v.args) ? '' : `${where}the arguments must be an object.`;
     }
     case 'state_equals': {
@@ -211,6 +319,26 @@ function expectationProblem(e, index, config) {
         return `${where}“times” must be a whole number of 1 or more, or empty.`;
       return '';
     }
+    case 'task_outcome': {
+      const v = e.task_outcome;
+      if (!isObj(v) || !v.task) return `${where}choose a task.`;
+      return taskIdsOf(config).includes(v.task) ? '' : `${where}there is no task “${v.task}”.`;
+    }
+    case 'guardrail_triggered': {
+      const v = e.guardrail_triggered;
+      if (!isObj(v) || !v.rule) return `${where}choose a safety rule.`;
+      if (!inputRuleIdsOf(config).includes(v.rule)) return `${where}there is no check on what the caller says called “${v.rule}”.`;
+      return v.action === undefined || GUARDRAIL_ACTION_CHOICES.some((c) => c.value === v.action)
+        ? ''
+        : `${where}“${v.action}” is not something a safety rule does.`;
+    }
+    case 'guardrail_not_triggered':
+      if (!e.guardrail_not_triggered) return `${where}choose a safety rule.`;
+      return inputRuleIdsOf(config).includes(e.guardrail_not_triggered)
+        ? ''
+        : `${where}there is no check on what the caller says called “${e.guardrail_not_triggered}”.`;
+    case 'limit_reached':
+      return LIMIT_CHOICES.some((c) => c.value === e.limit_reached) ? '' : `${where}choose which limit.`;
     case 'judge':
       return String(e.judge || '').trim() ? '' : `${where}write the criterion.`;
     default:
@@ -253,7 +381,10 @@ export function scenarioProblems(scenario, config, others = []) {
   else if (!channelIds.includes(scenario.channel)) out.channel = `There is no channel “${scenario.channel}”.`;
   const turns = list(scenario.turns);
   if (!turns.length) out.turns = 'Add at least one thing the caller says.';
-  else if (turns.some((t) => !isObj(t) || !String(t.say ?? '').trim())) out.turns = 'Every turn needs some words.';
+  else if (turns.some((t) => !isObj(t) || (isKeysTurn(t) ? !KEYS_PATTERN.test(t.keys) : !String(t.say ?? '').trim())))
+    out.turns = 'Every turn needs some words, or keys (digits, * or #, for example 4821#).';
+  else if (turns.some(isKeysTurn) && !out.channel && channelTypeOf(config, scenario.channel) !== 'sip_voice')
+    out.turns = 'Keys can only be pressed on a phone line. Choose a phone channel, or say it in words.';
   const expect = list(scenario.expect);
   const problems = [];
   if (!expect.length) problems.push('Add at least one thing that must be true afterwards.');

@@ -6,8 +6,8 @@ import { readSimple, setRecordingNotice } from './simpleModel.js';
 // What is kept about each call, said plainly and changeable here: the per-call log (on unless turned off), recordings, how long they are
 // kept, the notice callers hear, and whether sensitive details are hidden in what is saved. These are decisions that sit behind defaults, so
 // they are shown, not left to be discovered. The sentences follow the schema's own account of what the runtime does.
-export default function RecordsCard({ config, set }) {
-  const described = describeRecords(config);
+export default function RecordsCard({ config, set, unsupported = [] }) {
+  const described = describeRecords(config, { unsupported });
   const r = described.read;
   const read = readSimple(config);
   const [raised, setRaised] = useState(false);

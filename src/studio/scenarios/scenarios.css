@@ -71,11 +71,11 @@
   border: 1px solid var(--line2, rgba(127, 127, 127, 0.35));
 }
 .scChip.good {
-  color: var(--ok, #34d399);
+  color: var(--good-text);
   border-color: currentColor;
 }
 .scChip.bad {
-  color: var(--danger, #f87171);
+  color: var(--danger-text);
   border-color: currentColor;
 }
 .scChip.idle {
@@ -111,11 +111,11 @@
   color: var(--muted);
 }
 .scResults li.passed b {
-  color: var(--ok, #34d399);
+  color: var(--good-text);
 }
 .scResults li.failed b,
 .scResults li.error b {
-  color: var(--danger, #f87171);
+  color: var(--danger-text);
 }
 .scTranscript {
   margin-top: 6px;
@@ -220,13 +220,13 @@
   font-size: var(--fs-md);
 }
 .scNum.good {
-  color: var(--ok, #34d399);
+  color: var(--good-text);
 }
 .scNum.bad {
-  color: var(--danger, #f87171);
+  color: var(--danger-text);
 }
 .scFailed {
-  color: var(--danger, #f87171);
+  color: var(--danger-text);
 }
 .scHistory {
   list-style: none;
@@ -239,7 +239,7 @@
   border-color: var(--accent, #22d3ee);
 }
 .scOk {
-  color: var(--ok, #34d399);
+  color: var(--good-text);
   margin: 6px 0 0;
   font-size: var(--fs-sm);
 }
@@ -264,7 +264,7 @@
   font-size: var(--fs-md);
 }
 .scVersionLine.passed b {
-  color: var(--ok, #34d399);
+  color: var(--good-text);
 }
 .scVersionLine.failed b {
   color: var(--danger-text, #f87171);

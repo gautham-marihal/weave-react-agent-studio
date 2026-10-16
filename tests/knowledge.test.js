@@ -8,6 +8,7 @@ import {
   fileTypeProblem,
   fixActionFor,
   formatBytes,
+  readableFix,
   knowledgeSummary,
   lastLog,
   normalizeBase,
@@ -308,4 +309,28 @@ test('text is cut into passages with the overlap the base asks for', () => {
   assert.equal(parts[0].length, 200);
   assert.equal(parts.length, 3);
   assert.equal(chunk('short', 1200, 150).length, 1);
+});
+
+test('a fix that is a command line for an operator is not shown, plain advice is (UI review 3a)', () => {
+  assert.equal(readableFix({ problem: 'p', fix: 'Upload it, or remove it from the sources.' }), 'Upload it, or remove it from the sources.');
+  assert.equal(readableFix({ problem: 'p', fix: 'Run `python -m weave.knowledge build faq`.' }), '');
+  assert.equal(readableFix({ problem: 'p', fix: 'python -m weave.knowledge build faq' }), '');
+  assert.equal(readableFix({ problem: 'p', fix: 'Run `python3 -m agent_runtime.knowledge_index build x`' }), '', 'also right after a backtick');
+  assert.equal(
+    readableFix({ problem: 'p', fix: 'Set `retrieval.min_score` lower.' }),
+    'Set `retrieval.min_score` lower.',
+    'advice that mentions a setting is kept',
+  );
+  assert.equal(
+    readableFix({ problem: 'p', fix: 'Check the node that holds the file.' }),
+    'Check the node that holds the file.',
+    'an ordinary word is not a command',
+  );
+  assert.equal(readableFix({ problem: 'p', fix: '' }), '');
+  assert.equal(readableFix({ problem: 'p' }), '');
+  assert.equal(
+    fixActionFor({ problem: 'No index has been built for this base.', fix: 'python -m weave.knowledge build faq' }),
+    'build',
+    'the button still shows',
+  );
 });

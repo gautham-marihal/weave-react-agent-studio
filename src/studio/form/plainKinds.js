@@ -49,9 +49,16 @@ export const BUILTIN_WORDS = {
 
 export const plainKind = (kind) => PLAIN_KIND[kind] || String(kind || '');
 
+// A web-request tool either reads (GET) or changes something in your systems (POST, PUT, PATCH, DELETE: report a hazard, book a visit, start a return).
+// "Looks something up" is wrong for the second kind, so it is read from the request's method. A tool with no method is the reading kind, as before.
+const CHANGES_THINGS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+export const HTTP_WRITES = 'Sends something to your systems';
+export const changesSomething = (tool) => CHANGES_THINGS.has(String(tool?.request?.method || '').toUpperCase());
+
 // What a tool is, in words: a built-in by what it does, any other by its kind.
 export function plainToolKind(tool) {
   if (!tool || typeof tool !== 'object') return '';
   if ((tool.type === 'builtin' || (!tool.type && tool.builtin)) && tool.builtin) return BUILTIN_WORDS[tool.builtin] || PLAIN_KIND.builtin;
+  if (tool.type === 'http' && changesSomething(tool)) return HTTP_WRITES;
   return plainKind(tool.type);
 }

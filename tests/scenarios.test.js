@@ -5,6 +5,7 @@ import { createEngine } from '../src/studio/form/engine.js';
 import { applyStarter } from '../src/studio/starters.js';
 import { createDemoApi, memoryStorage, minimalConfig } from '../src/demo/demoApi.js';
 import { checksumOf, runScenarioDemo } from '../src/demo/demoTests.js';
+import { statusLine, testsPart } from '../src/studio/status.js';
 import {
   EXPECT_KINDS,
   addMockTo,
@@ -32,6 +33,7 @@ import {
   normalizeRun,
   normalizeScenarioList,
   resultSummary,
+  summariseScenarios,
   testStatusOf,
 } from '../src/studio/scenarios/runResults.js';
 
@@ -78,14 +80,14 @@ function nimbus() {
   return config;
 }
 
-test('the kinds of expectation are exactly the ones the schema allows (all nine)', () => {
+test('the kinds of expectation are exactly the ones the schema allows (all thirteen)', () => {
   const engine = createEngine(schema);
   const items = engine.flatten(engine.flatten(engine.flatten(schema.properties.tests).items).properties.expect).items;
   const keys = engine
     .branchesOf(engine.flatten(items))
     .map((b) => Object.keys(engine.flatten(b).properties)[0])
     .sort();
-  assert.equal(keys.length, 9);
+  assert.equal(keys.length, 13);
   assert.deepEqual(EXPECT_KINDS.map((k) => k.key).sort(), keys);
   const props = engine.flatten(engine.flatten(schema.properties.tests).items).properties;
   ['description', 'now', 'state', 'http_mocks', 'model_script'].forEach((key) => assert.ok(key in props, `the schema has ${key}`));
@@ -573,4 +575,101 @@ test('model use is read from a result’s usage or its call_ended record, summed
   );
   assert.equal(runTokens({ scenarios: [{ usage: [] }] }), null);
   assert.equal(tokenWords({ input: 1234, output: 56 }), '1,234 tokens in and 56 out');
+});
+
+// ---- UI review 2.3: the mode of a scenario, from a row of GET /tests as the real API writes it ----------------------------------------------------
+test('a scenario the server lists as scripted is shown as scripted, though its row carries no model_script', () => {
+  const row = (extra) => ({ id: 'one', channel: 'web-chat', turns: [{ say: 'Hi' }], expect: [{ said_matches: '.' }], ...extra });
+  const last = { status: 'passed', checks: [{ kind: 'said_matches', passed: true, detail: 'ok' }] };
+  const { items } = normalizeScenarioList({
+    ref: 'draft',
+    scenarios: [row({ mode: 'scripted', last }), row({ id: 'two', mode: 'live', last }), row({ id: 'three', last })],
+  });
+  assert.deepEqual(
+    items.map((i) => [i.scenario.id, i.result.mode]),
+    [
+      ['one', 'scripted'],
+      ['two', 'live'],
+      ['three', 'live'],
+    ],
+    'no mode anywhere: the cautious reading, live',
+  );
+});
+
+test('the mode in a result wins over the row, and the row wins over a guess from the script', () => {
+  assert.equal(normalizeResult({ id: 'a', status: 'passed', mode: 'live' }, { mode: 'scripted' }).mode, 'live');
+  assert.equal(normalizeResult({ id: 'a', status: 'passed' }, { mode: 'scripted' }).mode, 'scripted');
+  assert.equal(normalizeResult({ id: 'a', status: 'passed' }, { mode: 'live', model_script: ['hi'] }).mode, 'live');
+  assert.equal(normalizeResult({ id: 'a', status: 'passed' }, { model_script: ['hi'] }).mode, 'scripted');
+  assert.equal(normalizeResult({ id: 'a', status: 'passed' }, { model_script: [] }).mode, 'live', 'an empty script is no script');
+  assert.equal(normalizeResult({ id: 'a', status: 'passed' }, { mode: 'something else' }).mode, 'live');
+});
+
+// ---- UI review 2.4: how the tests stand, counted by each scenario's own latest result --------------------------------------------------------------
+const rowOf = (id, mode, status) => ({ scenario: { id, mode }, result: status ? { status, mode } : null });
+const SEVEN = [
+  rowOf('s1', 'scripted', 'passed'),
+  rowOf('s2', 'scripted', 'passed'),
+  rowOf('s3', 'scripted', 'passed'),
+  rowOf('s4', 'scripted', 'passed'),
+  rowOf('l1', 'live', null),
+  rowOf('l2', 'live', null),
+  rowOf('l3', 'live', 'skipped'),
+];
+
+test('seven scenarios, four scripted ones passing and three live ones never run, are not "4 of 7 passing"', () => {
+  const s = summariseScenarios(SEVEN);
+  assert.deepEqual(s, { total: 7, passed: 4, failed: 0, notRun: 3, liveNotRun: 3, scriptedNotRun: 0 });
+  assert.deepEqual(testsPart(s), { id: 'tests', text: '4 passed · 3 live, not run', tone: 'ok' });
+});
+
+test('the tests line says failing first, and says what has not run', () => {
+  assert.deepEqual(testsPart(summariseScenarios([rowOf('a', 'scripted', 'failed'), rowOf('b', 'scripted', 'passed'), rowOf('c', 'scripted', null)])), {
+    id: 'tests',
+    text: '1 failing · 1 passing · 1 not run',
+    tone: 'bad',
+  });
+  assert.equal(testsPart(summariseScenarios([rowOf('a', 'scripted', 'error'), rowOf('b', 'live', null)])).text, '1 failing · 1 live, not run');
+  assert.deepEqual(testsPart(summariseScenarios([rowOf('a', 'scripted', 'passed'), rowOf('b', 'scripted', 'passed')])), {
+    id: 'tests',
+    text: 'All 2 tests passing',
+    tone: 'ok',
+  });
+  assert.equal(testsPart(summariseScenarios([rowOf('a', 'scripted', 'passed')])).text, '1 test passing');
+  assert.equal(testsPart(summariseScenarios([rowOf('a', 'scripted', null), rowOf('b', 'scripted', null)])).text, '2 tests, not run yet');
+  const halfScripted = testsPart(summariseScenarios([rowOf('a', 'scripted', 'passed'), rowOf('b', 'scripted', null)]));
+  assert.deepEqual([halfScripted.text, halfScripted.tone], ['1 passed · 1 not run', 'idle'], 'a scripted scenario that has not run is not a quiet "ok"');
+  assert.equal(testsPart(summariseScenarios([])).text, 'No tests written');
+});
+
+test('after one scenario is run alone, the line still counts all of them', () => {
+  const afterOne = [rowOf('only', 'scripted', 'passed'), ...SEVEN.slice(1).map((r) => ({ ...r, result: null }))];
+  const s = summariseScenarios(afterOne);
+  assert.equal(s.total, 7);
+  assert.match(testsPart(s).text, /^1 passed · /, 'not "1 of 1 passing"');
+});
+
+test('the status line uses the scenarios when it has them, and the newest run only as before when it does not', () => {
+  const withRows = statusLine({ scenarioCount: 7, run: { status: 'passed', passed: 1, total: 1 }, scenarios: summariseScenarios(SEVEN) }).find(
+    (p) => p.id === 'tests',
+  );
+  assert.equal(withRows.text, '4 passed · 3 live, not run');
+  const without = statusLine({ scenarioCount: 7, run: { status: 'passed', passed: 1, total: 1 } }).find((p) => p.id === 'tests');
+  assert.equal(without.text, 'Tests 1 of 1 passing', 'the old reading stays for a screen that has no rows');
+});
+
+test('a version is "Passed" when its run ran every scenario; a run that left scripted ones out is partial; skipped ones are said', () => {
+  const version = { version: '0.1.0', checksum: 'abc' };
+  const run = (extra) => ({ id: 'r', status: 'passed', checksum: 'abc', passed: 4, failed: 0, errors: 0, skipped: 0, total: 4, ...extra });
+  assert.deepEqual(testStatusOf(version, [run()], { scenarioCount: 4 }).state, 'passed');
+  assert.equal(testStatusOf(version, [run()], { scenarioCount: 4 }).text, 'Passed');
+  const one = testStatusOf(version, [run({ passed: 1, total: 1 })], { scenarioCount: 4 });
+  assert.deepEqual([one.state, one.text], ['partial', '1 of 4 ran']);
+  const live = testStatusOf(version, [run({ passed: 4, skipped: 3, total: 7 })], { scenarioCount: 7 });
+  assert.deepEqual([live.state, live.text], ['passed', 'Passed, 3 not run']);
+  assert.equal(
+    testStatusOf(version, [run({ passed: 1, total: 1 })]).state,
+    'passed',
+    'without a count of the version’s scenarios there is nothing to compare with',
+  );
 });

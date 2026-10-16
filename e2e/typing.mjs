@@ -68,6 +68,7 @@ async function measure(browser, tools) {
     ([cfg]) => {
       if (sessionStorage.getItem('seeded')) return;
       sessionStorage.setItem('seeded', '1');
+      localStorage.setItem('weave_layout', 'classic'); // this script types in the classic layout's config form
       localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e@t.dev', workspaceName: 'Test', role: 'dev' }));
       const now = new Date().toISOString();
       localStorage.setItem(

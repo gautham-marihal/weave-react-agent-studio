@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { api } from '../api/client.js';
 import { formatRelative } from '../pages/helpers.js';
-import { normalizeHeadline, isFinished } from './scenarios/runResults.js';
+import { normalizeHeadline, isFinished, normalizeScenarioList, summariseScenarios } from './scenarios/runResults.js';
 import StatePill from './StatePill.jsx';
 import { agentState, statusLine } from './status.js';
 import { useAsync } from './useAsync.js';
@@ -18,12 +18,15 @@ const startOfToday = () => {
 
 export default function AgentStatusLine({ botId, name, description, summary, editor, refreshKey = 0, newerPublished = '' }) {
   const runs = useAsync((signal) => api.listTestRuns(botId, 5, { signal }), [botId, refreshKey]);
+  // each scenario's own latest result (a read), so the line counts every scenario, not only what the newest run happened to cover
+  const listed = useAsync((signal) => api.listTests(botId, { ref: 'draft' }, { signal }), [botId, refreshKey]);
   const calls = useAsync((signal) => api.listCalls(botId, { since: startOfToday(), limit: 50 }, { signal }), [botId, refreshKey]);
   const scenarioCount = Array.isArray(editor.parsed.value?.tests) ? editor.parsed.value.tests.length : 0;
   const latest = useMemo(() => {
     const items = Array.isArray(runs.data) ? runs.data : Array.isArray(runs.data?.runs) ? runs.data.runs : [];
     return items.map(normalizeHeadline).find((run) => isFinished(run.status)) || null;
   }, [runs.data]);
+  const standing = useMemo(() => (listed.data ? summariseScenarios(normalizeScenarioList(listed.data).items) : null), [listed.data]);
   const callsToday = calls.data && Array.isArray(calls.data.calls) ? calls.data.calls.length : null;
   const deployed = summary?.deployed || {};
   const live = Object.values(deployed).some(Boolean);
@@ -32,6 +35,7 @@ export default function AgentStatusLine({ botId, name, description, summary, edi
     savedAt: editor.meta?.savedAt ? formatRelative(editor.meta.savedAt).toLowerCase() : '',
     scenarioCount,
     run: latest,
+    scenarios: standing,
     deployed,
     callsToday,
     // unsaved edits are flagged by the "Unsaved" marker beside Publish, and where it is live is shown beside the name
@@ -44,7 +48,20 @@ export default function AgentStatusLine({ botId, name, description, summary, edi
   const problems = Array.isArray(editor.report?.errors) ? editor.report.errors.length : 0;
   const state = agentState({
     deployed,
-    tests: latest ? (latest.status === 'passed' ? 'passed' : latest.status === 'skipped' ? 'unknown' : 'failed') : 'unknown',
+    tests:
+      standing && standing.total > 0
+        ? standing.failed > 0
+          ? 'failed'
+          : standing.passed > 0 && standing.scriptedNotRun === 0
+            ? 'passed'
+            : 'unknown'
+        : latest
+          ? latest.status === 'passed'
+            ? 'passed'
+            : latest.status === 'skipped'
+              ? 'unknown'
+              : 'failed'
+          : 'unknown',
     problems,
   });
   return (

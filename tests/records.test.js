@@ -145,3 +145,57 @@ test('turning redaction on names what the agent handles and raises the schema ve
   assert.equal(again.raised, false, 'already 1.2');
   assert.equal(readRecords(next).redactionOn, true);
 });
+
+// ---- what is said about records follows what the server says the runtime does (UI review 2.1) -------------------------------------------------
+const LOGGED = { post_call: { redaction: { enabled: true, entities: ['email'] }, recording: { audio: true, transcript: true } } };
+const NOT_REDACTED = { feature: 'post_call.redaction: declared, but NOT yet enforced', where: 'post_call.redaction', severity: 'security' };
+const NOT_RECORDED = { feature: 'call recording settings', where: 'post_call.recording' };
+const OTHER_SECURITY = {
+  feature: 'input guardrails on a realtime (speech-to-speech) model: the rules are not checked there',
+  where: 'agents.items[3].overrides.models.realtime',
+  severity: 'security',
+};
+const said = (config, unsupported) => describeRecords(config, { unsupported }).lines.join(' | ');
+
+test('when the server says redaction is not applied, nothing says text is replaced, and a problem says it is not', () => {
+  const d = describeRecords(LOGGED, { unsupported: [NOT_REDACTED] });
+  assert.equal(d.notApplied.redaction, true);
+  assert.match(d.lines.join(' '), /Redaction is set up, but the runtime does not apply it yet: saved transcripts still contain everything that was said/);
+  assert.doesNotMatch(d.lines.join(' '), /replaced/);
+  assert.match(d.problems.join(' '), /Redaction is declared but the runtime does not apply it/);
+});
+
+test('when the server enforces redaction (it lists nothing), the sentence is the true one: callers’ words reach the AI, a sensitive variable’s exact value does not', () => {
+  const d = describeRecords(LOGGED, { unsupported: [] });
+  assert.equal(d.notApplied.redaction, false);
+  assert.match(
+    d.lines.join(' '),
+    /Sensitive text is replaced in saved transcripts and metrics\. What a caller says still reaches the AI during the call; only the exact value of a sensitive variable is kept from it once stored\./,
+  );
+  assert.deepEqual(
+    d.problems.filter((p) => /Redaction/.test(p)),
+    [],
+  );
+  assert.equal(said(LOGGED), said(LOGGED, []), 'without a list from the server it is the same as an empty one');
+});
+
+test('another security item is not mistaken for the redaction one: it is matched by what it names', () => {
+  const d = describeRecords(LOGGED, { unsupported: [OTHER_SECURITY] });
+  assert.equal(d.notApplied.redaction, false);
+  assert.match(d.lines.join(' '), /Sensitive text is replaced/);
+});
+
+test('redaction that is not switched on is never reported as not applied, whatever the server lists', () => {
+  const d = describeRecords({ observability: { session_log: { enabled: true } } }, { unsupported: [NOT_REDACTED] });
+  assert.equal(d.notApplied.redaction, false);
+  assert.doesNotMatch(d.lines.join(' '), /Redaction is set up/);
+});
+
+test('recording settings the runtime does not apply are not described as done', () => {
+  const d = describeRecords(LOGGED, { unsupported: [NOT_RECORDED] });
+  assert.equal(d.notApplied.recording, true);
+  assert.match(d.lines.join(' '), /Recording is set up, but the runtime does not apply those settings yet/);
+  assert.doesNotMatch(d.lines.join(' '), /Audio is recorded|Transcripts are kept/);
+  assert.doesNotMatch(d.headline, /recordings on/);
+  assert.match(said(LOGGED, []), /Audio is recorded and Transcripts are kept/, 'and when it is applied, it says so as before');
+});

@@ -18,7 +18,11 @@
     "types": "node scripts/schemaTypes.mjs",
     "sync-public": "node scripts/schemaCopies.mjs",
     "e2e:typing": "node e2e/typing.mjs",
-    "e2e:firstrun": "node e2e/firstRun.mjs"
+    "e2e:firstrun": "node e2e/firstRun.mjs",
+    "e2e:legibility": "node e2e/legibility.mjs",
+    "e2e:tryline": "node e2e/tryline.mjs",
+    "e2e:numbers": "node e2e/numbers.mjs",
+    "e2e:voices": "node e2e/voices.mjs"
   },
   "dependencies": {
     "livekit-client": "^2.22.4",
@@ -38,6 +42,6 @@
     "vite": "^7.1.7"
   },
   "engines": {
-    "node": ">=22.14"
+    "node": ">=22.15"
   }
 }

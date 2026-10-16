@@ -15,11 +15,12 @@ import ShareAgentDrawer from '../team/ShareAgentDrawer.jsx';
 import CallersPanel from '../callers/CallersPanel.jsx';
 import GateStrip from '../release/GateStrip.jsx';
 import Drawer from './Drawer.jsx';
-import PageShell from './PageShell.jsx';
+import PageShell, { Section } from './PageShell.jsx';
 import { PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, tabFor } from './pages.js';
 import AgentPage from './pages/AgentPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ListPage from './pages/ListPage.jsx';
+import { TryGuardrailsView } from '../form/TryPanels.jsx';
 import SectionPage from './pages/SectionPage.jsx';
 import './newlayout.css';
 
@@ -274,6 +275,11 @@ export default function NewAgentWorkspace({ ws }) {
         lead={PAGE_LEAD.guardrails}
         editor={editor}
         lists={GUARDRAIL_LISTS}
+        footer={
+          <Section title="Test the checks" lead="See what these checks would do with something a caller might say, before anyone calls.">
+            <TryGuardrailsView config={config} />
+          </Section>
+        }
         openRequest={focusRequest}
         onShowJson={openJson}
         onOpenJson={openJson}

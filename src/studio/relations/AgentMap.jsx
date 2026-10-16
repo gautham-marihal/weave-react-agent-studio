@@ -60,12 +60,12 @@ export default function AgentMap({ onOpenAgent }) {
               return (
                 <g key={i} className={`rlEdge ${edge.kind}`}>
                   <path d={geometry.d} fill="none" strokeWidth="1.6" markerEnd={`url(#${markerId}-a)`} />
-                  {edge.labels.length === 1 && edge.labels[0].length <= 22 && (
+                  {edge.words.length === 1 && edge.words[0].length <= 22 && (
                     <text x={geometry.lx} y={geometry.ly} textAnchor="middle">
-                      {edge.labels[0]}
+                      {edge.words[0]}
                     </text>
                   )}
-                  <title>{`${KIND_WORDS[edge.kind]}: ${edge.from} to ${edge.to}${edge.labels.length ? ` (${edge.labels.join(', ')})` : ''}`}</title>
+                  <title>{`${KIND_WORDS[edge.kind]}: ${from.name} to ${to.name}${edge.words.length ? ` (${edge.words.join(', ')})` : ''}`}</title>
                 </g>
               );
             })}

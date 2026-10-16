@@ -18,6 +18,8 @@ import {
   upload as uploadFile,
 } from './demoKnowledge.js';
 import { previewPromptDemo, previewResultDemo } from './demoPreview.js';
+import { demoEntities, tryPreviewDemo } from './demoTryPreviews.js';
+import { routeNumbers } from './demoNumbers.js';
 import { minimalConfig } from './minimalConfig.js';
 import { callFromConversation, followCallOf, getCallOf, listCallsOf, seedCalls, transcriptOf } from './demoCalls.js';
 import { STEP_MS, checksumOf, createRun, headlineOf, scenarioListOf, viewRun } from './demoTests.js';
@@ -212,7 +214,11 @@ export function createDemoApi({
     }
     if (path === '/validate' && method === 'POST') return ok(validateDemo(body));
     // previews: send `config` (what is in the editor) or name a saved agent (`bot`, `ref`)
-    if ((path === '/preview/prompt' || path === '/preview/result') && method === 'POST') {
+    if (path === '/redaction/entities' && method === 'GET') return ok({ entities: demoEntities() });
+    if (
+      ['/preview/prompt', '/preview/result', '/preview/speech', '/preview/guardrails', '/preview/redaction', '/preview/task'].includes(path) &&
+      method === 'POST'
+    ) {
       const named = body.bot ? state.bots[body.bot] : null;
       if (body.bot && !named) return fail(404, 'No such agent.');
       const ref = body.ref || 'draft';
@@ -224,8 +230,18 @@ export function createDemoApi({
             : (named.versions.find((v) => v.version === ref || v.version === named.deployed[ref]) || named.versions[0])?.config
           : null);
       if (!config) return fail(422, 'Send a config, or name a bot.', { errors: [] });
-      const answer = path === '/preview/prompt' ? previewPromptDemo(config, body) : previewResultDemo(config, body);
+      const answer =
+        path === '/preview/prompt'
+          ? previewPromptDemo(config, body)
+          : path === '/preview/result'
+            ? previewResultDemo(config, body)
+            : tryPreviewDemo(path, config, body);
       return answer.status === 200 ? ok(answer.body) : fail(answer.status, answer.body.detail);
+    }
+
+    if (/^\/numbers(\/|$)/.test(path) || /^\/bots\/[^/]+\/numbers(\/|$)/.test(path)) {
+      const answer = routeNumbers(method, path, body || {}, state, { params, commit, id: uid });
+      if (answer) return answer;
     }
 
     if (path === '/bots' && method === 'GET') return ok(Object.values(state.bots).map(summary));

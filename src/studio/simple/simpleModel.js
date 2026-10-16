@@ -116,6 +116,7 @@ export function readTools(config) {
       id: t.id,
       kind: t.type || (t.builtin ? 'builtin' : 'tool'),
       builtin: t.builtin || '',
+      method: isObj(t.request) && typeof t.request.method === 'string' ? t.request.method : '',
       description: t.description || '',
       used: used.has(t.id),
     }));

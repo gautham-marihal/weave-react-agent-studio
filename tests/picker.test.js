@@ -47,7 +47,7 @@ test('what the runtime can’t run yet says so on its card, and everything else 
     .filter((o) => o.badge)
     .map((o) => o.id)
     .sort();
-  assert.deepEqual(flagged, ['code', 'keypad_collect', 'keypad_send', 'server', 'task']);
+  assert.deepEqual(flagged, ['code', 'server'], 'task and keypad tools run now: only MCP servers and custom code are flagged');
   assert.ok(tools.filter((o) => o.badge).every((o) => /not available/i.test(o.badge)));
 });
 
@@ -128,4 +128,32 @@ test('the cards can be searched and grouped', () => {
   const names = groupOptions(tools).map((g) => g.name);
   assert.equal(names[0], 'Pass the caller on');
   assert.equal(new Set(names).size, names.length);
+});
+
+// FRONTEND_GUIDE 2.md: pronunciation rules are added by what they do, and the schema's newest kind (a word list) is among them.
+const ruleBranches = engine.branchesOf(engine.flatten(schema.$defs.pronunciationRule));
+const rules = pickerFor('pronunciation', { engine, branches: ruleBranches });
+
+test('every kind of pronunciation rule the schema has can be added from the cards, in plain words', () => {
+  assert.equal(rules.length, ruleBranches.length, 'one card for each rule kind and nothing under “More”');
+  assert.ok(rules.every((o) => o.group !== 'More'));
+  const labels = rules.map((o) => o.label);
+  ['Say certain words a certain way', 'Say amounts of money in words', 'Say times of day aloud'].forEach((label) => assert.ok(labels.includes(label), label));
+  rules.forEach((o) => {
+    const made = o.make();
+    const flat = engine.flatten(ruleBranches.find((b) => typeOf(b) === made.type));
+    Object.keys(made).forEach((key) => assert.ok(key in flat.properties, `${o.id}: ${key} is a property of ${made.type}`));
+  });
+  assert.equal(rules.find((o) => o.id === 'say_money').make().major_unit, 'dollars', 'a money rule starts with the words it needs');
+  assert.deepEqual(
+    filterOptions(rules, 'money').map((o) => o.id),
+    ['say_money'],
+  );
+});
+
+test('a pronunciation rule kind the schema adds later is still offered, by the schema’s own name', () => {
+  const extra = { type: 'object', required: ['type'], properties: { type: { const: 'whisper' } } };
+  const more = pickerFor('pronunciation', { engine, branches: [...ruleBranches, extra] });
+  assert.equal(more.length, ruleBranches.length + 1);
+  assert.equal(more[more.length - 1].group, 'More');
 });

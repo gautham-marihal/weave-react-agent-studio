@@ -2,7 +2,7 @@ import { VOICE_CATALOG } from '../voiceCatalog.js';
 import { useEffect, useMemo, useState } from 'react';
 import { loadConfigs } from '../studio/configCache.js';
 import { voiceUsage } from '../studio/voiceUsage.js';
-import { pickBrowserVoice } from './browserVoice.js';
+import { useVoicePreview } from './voicePreview.js';
 
 const VOICE_LIBRARY = VOICE_CATALOG.map((voice) => ({
   ...voice,
@@ -27,17 +27,8 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
   const [provider, setProvider] = useState('All providers');
   const [language, setLanguage] = useState('All languages');
   const [gender, setGender] = useState('All genders');
-  const [playing, setPlaying] = useState(null);
-  const [previewNote, setPreviewNote] = useState('');
-  // the browser's installed voices; they load a moment after the page does
-  const [browserVoices, setBrowserVoices] = useState([]);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return undefined;
-    const load = () => setBrowserVoices(window.speechSynthesis.getVoices());
-    load();
-    window.speechSynthesis.addEventListener?.('voiceschanged', load);
-    return () => window.speechSynthesis.removeEventListener?.('voiceschanged', load);
-  }, []);
+  const sample = useVoicePreview();
+  const [copied, setCopied] = useState('');
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('weave_voice_favorites') || '[]');
@@ -55,36 +46,14 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
     );
   });
   const languages = ['All languages', ...Array.from(new Set(VOICE_LIBRARY.map((voice) => voice.language)))];
-  useEffect(
-    () => () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
-    },
-    [],
-  );
-  const preview = (voice) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    if (playing === voice.id) {
-      setPlaying(null);
-      return;
+  const copyId = async (voice) => {
+    try {
+      await navigator.clipboard.writeText(voice.voiceId);
+      setCopied(voice.id);
+      window.setTimeout(() => setCopied((now) => (now === voice.id ? '' : now)), 1500);
+    } catch {
+      setCopied('');
     }
-    const utterance = new SpeechSynthesisUtterance(`Hello, I'm ${voice.name}. How can I help you today?`);
-    utterance.lang = voice.locale;
-    utterance.rate = 0.96;
-    // a female voice is played with a female browser voice and a male one with a male one; when the browser has none of that gender the
-    // pitch is nudged and the note below the table says so
-    const pick = pickBrowserVoice(browserVoices.length ? browserVoices : window.speechSynthesis.getVoices(), voice);
-    if (pick.voice) utterance.voice = pick.voice;
-    utterance.pitch = pick.pitch;
-    setPreviewNote(
-      pick.certain
-        ? ''
-        : `Your browser has no ${voice.gender.toLowerCase()} ${voice.language} voice installed, so this preview is an approximation of ${voice.name}. The real voice is the provider's.`,
-    );
-    utterance.onend = () => setPlaying(null);
-    utterance.onerror = () => setPlaying(null);
-    setPlaying(voice.id);
-    window.speechSynthesis.speak(utterance);
   };
   const toggleFavorite = (id) =>
     setFavorites((current) => {
@@ -169,11 +138,11 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
               <b>{filtered.length}</b> curated voices · {VOICE_CATALOG.filter((voice) => provider === 'All providers' || voice.provider === provider).length}{' '}
               for selected provider
             </span>
-            <span>Preview uses your browser's speech engine; it is not a provider audio sample.</span>
+            <span>Every voice plays a recording of that voice. Cartesia’s samples come from a public voice directory, not from Cartesia.</span>
           </div>
-          {previewNote && (
+          {sample.note && (
             <p className="voicePreviewNote" role="status">
-              {previewNote}
+              {sample.note}
             </p>
           )}
           <div className="voiceTableWrap">
@@ -195,7 +164,21 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                     <td>
                       <div className="voiceTableName">
                         <span>{voice.name.slice(0, 1)}</span>
-                        <strong>{voice.name}</strong>
+                        <div className="voiceNameStack">
+                          <strong>{voice.name}</strong>
+                          <span className="voiceIdCell">
+                            <code title="The provider's id for this voice: this is what goes in the agent's configuration">{voice.voiceId}</code>
+                            <button
+                              type="button"
+                              className="iconButton"
+                              aria-label={`Copy the voice ID of ${voice.name}`}
+                              title="Copy the voice ID"
+                              onClick={() => copyId(voice)}
+                            >
+                              {copied === voice.id ? '✓' : '⧉'}
+                            </button>
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -225,10 +208,11 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                         <button
                           type="button"
                           className="iconButton"
-                          title={playing === voice.id ? 'Playing preview' : 'Preview voice'}
-                          onClick={() => preview(voice)}
+                          title={sample.playing === voice.id ? 'Stop' : voice.previewUrl ? 'Hear the recorded sample' : 'Hear an approximation'}
+                          aria-label={sample.playing === voice.id ? `Stop ${voice.name}` : `Listen to ${voice.name}`}
+                          onClick={() => sample.play(voice)}
                         >
-                          {playing === voice.id ? 'Ⅱ' : '▶'}
+                          {sample.playing === voice.id ? 'Ⅱ' : '▶'}
                         </button>
                         <button
                           type="button"

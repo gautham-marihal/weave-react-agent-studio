@@ -22,7 +22,23 @@ const visibleControls = (root) =>
     (el) => !el.closest('details:not([open])') && el.type !== 'hidden' && el.type !== 'radio',
   ).length;
 
-for (const entry of entries.filter((e) => ['example', 'scaled', 'stress'].includes(e.source))) {
+// a chain of tasks like a real multi-step flow (the review's card-activation bot has one): 3 tasks of 4 steps each
+const chain = JSON.parse(JSON.stringify(entries.find((e) => e.source === 'example').config));
+chain.tasks = ['verify_card', 'set_pin', 'activate'].map((id) => ({
+  ...JSON.parse(JSON.stringify(chain.tasks[0])),
+  id,
+  steps: ['a', 'b', 'c', 'd'].map((x) => ({
+    id: `${id}_${x}`,
+    ask: `Ask for ${x}.`,
+    skip_if: { state: 'customer', not_equals: null },
+    validate: { type: 'tool', tool: 'lookup_account' },
+    max_attempts: 3,
+  })),
+}));
+const measured = [...entries, { source: 'chain', name: 'a chain of 3 tasks with 4 steps each', config: chain }];
+
+// `dir` entries are real bots a customer brought (CONFORMANCE_DIR): the budget is for them too
+for (const entry of measured.filter((e) => ['example', 'scaled', 'stress', 'dir', 'chain'].includes(e.source))) {
   test(`${entry.name}: no screen of “All settings” opens with more than ${LIMIT} inputs`, async () => {
     const app = await mountForm(entry.config);
     const counts = [];
@@ -86,4 +102,18 @@ test('no native drop-down on any screen has more than 8 choices: a longer list i
     await app.unmount();
   }
   assert.deepEqual(over, [], 'native selects with more than 8 options');
+});
+
+test('a chain of tasks does not open its steps one after another: its screen stays well under the limit', async () => {
+  const chainEntry = measured.find((e) => e.source === 'chain');
+  const app = await mountForm(chainEntry.config);
+  for (const group of $$(app.container, '.stFNavGroups [role=tab]')) {
+    await a.click(group);
+    const chip = $$(app.container, '.stFChipBtn').find((c) => c.getAttribute('data-section') === 'tasks');
+    if (!chip) continue;
+    await a.click(chip);
+    const open = visibleControls(app.container);
+    assert.ok(open <= 20, `the Tasks screen opens with ${open} inputs (3 tasks of 4 steps)`);
+  }
+  await app.unmount();
 });

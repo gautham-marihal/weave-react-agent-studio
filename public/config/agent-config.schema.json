@@ -730,9 +730,11 @@
               "inactivity",
               "transfer_succeeded",
               "transfer_failed",
-              "state_changed"
+              "state_changed",
+              "guardrail_triggered",
+              "limit_reached"
             ],
-            "description": "state_changed runs once for each state variable whose value changed; use `when` with {\"event\": \"variable\", \"equals\": \"intent\"} plus state conditions to pick the case. Hooks that themselves change state can trigger further state_changed hooks, up to a built-in limit."
+            "description": "guardrail_triggered (schema 1.2) runs when an input guardrail matches what the caller said; it sees {{rule}}, {{type}}, {{action}} and {{kinds}} (never the words), so a hook can notify or set state, but it cannot hand off. limit_reached (schema 1.2) runs when a call limit ends the call; it sees {{limit}} and {{max}}, and runs before the goodbye. state_changed runs once for each state variable whose value changed; use `when` with {\"event\": \"variable\", \"equals\": \"intent\"} plus state conditions to pick the case. Hooks that themselves change state can trigger further state_changed hooks, up to a built-in limit."
           },
           "when": {
             "$ref": "#/$defs/condition"
@@ -841,7 +843,7 @@
         },
         "redaction": {
           "title": "Redaction of what is saved or sent",
-          "description": "Sensitive text is replaced before a transcript or metrics file is written, before `call.transcript` is used in an API call or an email attachment, and in logs and traces. It does not change what the model hears during the call: keep PINs and card numbers out of the conversation by taking them as keypad digits. Schema 1.2.",
+          "description": "Sensitive text is replaced before a transcript or metrics file is written, before `call.transcript` is used in an API call or an email attachment, and in the per-call log and the worker's `log` lines. Entities and patterns are a best-effort search of free text (`GET /redaction/entities` says how each kind is recognised; `POST /preview/redaction` tries a setting on a sample). They never change what the model hears during the call: keep PINs and card numbers out of the conversation by taking them as keypad digits. The exact value of a sensitive variable is the exception: it is hidden from the model's conversation too, once stored. Schema 1.2.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -1204,16 +1206,34 @@
             "type": "array",
             "minItems": 1,
             "items": {
-              "type": "object",
-              "required": [
-                "say"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "say": {
-                  "type": "string"
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "say"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "say": {
+                      "type": "string"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "keys"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "keys": {
+                      "type": "string",
+                      "pattern": "^[0-9*#A-Da-d]+$",
+                      "description": "The caller presses these keys on the phone keypad (a phone channel only), for example 4821#. The digits are never written to the result."
+                    }
+                  }
                 }
-              }
+              ]
             }
           },
           "expect": {
@@ -1405,6 +1425,98 @@
                           "description": "Exactly, or with * as a wildcard."
                         }
                       }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "task_outcome"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "task_outcome": {
+                      "type": "object",
+                      "required": [
+                        "task"
+                      ],
+                      "additionalProperties": false,
+                      "description": "A task ran and ended this way. Every task of a chain counts, and a task skipped because it was already satisfied counts as `verified`.",
+                      "properties": {
+                        "task": {
+                          "type": "string",
+                          "x-ref": "tasks"
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "description": "The outcome name: the `outcome` of the task's on_success / on_failure / on_decline block, or verified / failed / declined when it names none. Omit for any outcome."
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "guardrail_triggered"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "guardrail_triggered": {
+                      "type": "object",
+                      "required": [
+                        "rule"
+                      ],
+                      "additionalProperties": false,
+                      "description": "An input guardrail matched what the caller said (schema 1.2). The way to prove an injection attempt is refused, or that a card number is caught.",
+                      "properties": {
+                        "rule": {
+                          "type": "string",
+                          "x-ref": "input_guardrails"
+                        },
+                        "action": {
+                          "enum": [
+                            "deflect",
+                            "redact_in_logs",
+                            "rewrite",
+                            "block",
+                            "end_call"
+                          ],
+                          "description": "Also require that the rule acted this way. Omit for any."
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "limit_reached"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "limit_reached": {
+                      "enum": [
+                        "max_call_duration_s",
+                        "max_silence_s",
+                        "max_tool_calls_per_call",
+                        "max_handoffs_per_call"
+                      ],
+                      "description": "This call limit ended the call (schema 1.2). A scenario is far shorter than the duration and silence limits, so those two can only be proved in a unit test."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "guardrail_not_triggered"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "guardrail_not_triggered": {
+                      "type": "string",
+                      "x-ref": "input_guardrails",
+                      "description": "This input rule did not match anything: the way to prove an ordinary request is not refused. Schema 1.2."
                     }
                   }
                 }
@@ -1947,7 +2059,7 @@
     },
     "pronunciationRule": {
       "title": "Pronunciation rule",
-      "description": "Applied in order to the text sent to TTS (never to the chat transcript). The text is buffered to a clause boundary first, so '4:30' and 'PM' arriving in different chunks are handled together.",
+      "description": "Applied in order to the text sent to the voice (never to the chat transcript, history or logs). Text is spoken as it arrives; only the few characters that could still grow into a match (the '4:30' of '4:30 PM') are held until the next piece shows what they are, so a rule adds no wait to ordinary words. By default only what the model writes goes through the rules (see `speech.apply_to`).",
       "oneOf": [
         {
           "type": "object",
@@ -1973,6 +2085,38 @@
             },
             "ignore_case": {
               "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "entries"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "dictionary"
+            },
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "entries": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Written form -> the form to speak: {\"身分証明書\": \"みぶんしょうめいしょ\"}. The longest key wins where keys overlap. For words a voice reads wrongly. Schema 1.2."
+            },
+            "ignore_case": {
+              "type": "boolean"
+            },
+            "whole_word": {
+              "type": "boolean",
+              "default": false,
+              "description": "Only match whole words (for languages written with spaces; leave off for Japanese or Chinese)."
             }
           }
         },
@@ -2318,7 +2462,16 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/pronunciationRule"
-              }
+              },
+              "description": "Rewrite written text into how it should be said, in order. An agent or channel that lists its own rules replaces this list; an empty list switches pronunciation rules off there."
+            },
+            "apply_to": {
+              "enum": [
+                "model",
+                "all"
+              ],
+              "default": "model",
+              "description": "Which speech goes through the rules. `model` (the default): only what the language model writes. `all` also includes the fixed lines you write yourself (greetings, catalogue messages, nudges). Fixed lines are normally written as natural speech and so do not need rules. Schema 1.2."
             },
             "buffer": {
               "type": "object",
@@ -2327,7 +2480,8 @@
                 "max_hold_chars": {
                   "type": "integer",
                   "minimum": 20,
-                  "description": "Longest text held while waiting for a clause boundary."
+                  "default": 60,
+                  "description": "The most text ever held back waiting to see whether it becomes a match. A held piece is also released when the reply ends. Only text that could still become a match is held at all."
                 }
               }
             }
@@ -2478,7 +2632,7 @@
         "sensitive": {
           "type": "boolean",
           "default": false,
-          "description": "A PIN, one-time code, card number or similar. The value is never shown to the model, never put in a prompt, spoken line or log message, and is masked out of saved transcripts, metrics and traces. It can be used only inside API requests and notifications ({{state.pin}} in an http body). The validator refuses it anywhere else. Schema 1.2."
+          "description": "A PIN, one-time code, card number or similar. The runtime reads it as *** in every prompt, spoken line, log message and catalogue message, hides it from the model's conversation and from tool results as soon as it is stored, and masks it (also spelled with spaces, or spoken digit by digit) out of saved transcripts, metrics, the call log and traces. It can be used only inside API requests, transfers and notifications ({{state.pin}} in an http body). The validator refuses it anywhere else. A value the caller SAYS is still heard by the speech-to-text and the model before it is stored: take it as keypad digits when you can. Schema 1.2."
         },
         "default": {},
         "description": {
@@ -3042,7 +3196,7 @@
     },
     "actionCollectDtmf": {
       "title": "Collect keypad digits",
-      "description": "Ask for digits on the phone keypad and keep them in a state variable. The digits never pass through speech recognition, the model, the transcript or the logs, which is how a PIN, OTP or card number should be taken. Mark `into` as a sensitive variable. Needs a phone channel. Schema 1.2.",
+      "description": "Ask for digits on the phone keypad and keep them in a state variable. The digits never pass through speech recognition (it is switched off while keys are taken), the model, the transcript or the logs, which is how a PIN, OTP or card number should be taken. Mark `into` as a sensitive variable and make it a string. Say how it ends: `num_digits`, a `terminator` key, or both (otherwise only a silence of `timeout_s` ends it). Needs a phone (SIP voice) channel; elsewhere `on_timeout` runs. The question is spoken as a `prompt` and a key press cuts it off. Schema 1.2.",
       "type": "object",
       "required": [
         "type",
@@ -4205,7 +4359,27 @@
         "max_attempts": {
           "type": "integer",
           "minimum": 1,
-          "description": "Failed answers allowed per step before it gives up, unless the step sets its own."
+          "description": "Failed answers allowed per step before it gives up, unless the step sets its own (or, with attempts_scope task, in total)."
+        },
+        "attempts_scope": {
+          "enum": [
+            "step",
+            "task"
+          ],
+          "default": "step",
+          "description": "step = max_attempts is allowed on each step. task = it is the total of failed answers across every step, one lockout for the whole task (a verification that allows three wrong answers in all). Schema 1.2."
+        },
+        "skip_if": {
+          "$ref": "#/$defs/condition",
+          "description": "The task is already satisfied when this holds (the caller is already verified): it ends at once as a success, asks nothing, and is not offered to the model again. Schema 1.2."
+        },
+        "return_history": {
+          "enum": [
+            "result_only",
+            "full"
+          ],
+          "default": "result_only",
+          "description": "What the calling agent remembers of the task's own conversation. result_only = only its result (what was collected is in state), which keeps spoken answers such as a date of birth out of the caller agent's history and keeps its context short. full = every turn of the task is added to the caller's conversation. Schema 1.2."
         },
         "inactivity": {
           "$ref": "#/$defs/conversation/properties/inactivity",
@@ -4255,6 +4429,29 @@
           "default": "speech",
           "description": "collect: how the caller answers. dtmf = keypad tones taken straight into `store_in`, never seen by the model or written to the transcript: use it for a PIN, OTP or card number. Needs a phone channel. Schema 1.2."
         },
+        "dtmf": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "collect with input dtmf: how the keys are taken. The entry ends when `num_digits` have been entered or the caller presses `terminator` (# unless you say otherwise). A silence of `timeout_s` with too few keys counts as a missed attempt, like a wrong answer. Schema 1.2.",
+          "properties": {
+            "num_digits": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Stop as soon as this many digits are in."
+            },
+            "timeout_s": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Give up after this long with no key pressed, counted from the end of the question (default 10)."
+            },
+            "terminator": {
+              "type": "string",
+              "maxLength": 1,
+              "pattern": "^[0-9*#A-D]$",
+              "description": "A key that ends the entry (default #). It ends the entry even when `num_digits` is set (too few digits then counts as a missed attempt), and a terminator pressed before any digit is ignored, because people press # out of habit after the previous entry."
+            }
+          }
+        },
         "store_in": {
           "type": "string",
           "x-ref": "state_vars",
@@ -4270,7 +4467,7 @@
         },
         "pass_when": {
           "$ref": "#/$defs/condition",
-          "description": "call: the step has passed when this holds after its actions ran (for example the API answered ok). Omit it and the step passes unless an action failed. Schema 1.2."
+          "description": "call: the step has passed when this holds after its actions ran (for example the API answered ok). Omit it and the step passes unless an action failed. collect with a validating tool: the answer is accepted when this holds after the tool ran, and it can read the tool's response, for example {\"result\": \"$.match\", \"equals\": true}. Without it a tool-checked answer is accepted whenever the tool answered without an error, so a tool that answers 200 {\"match\": false} would accept a wrong answer: say what means yes. Schema 1.2."
         },
         "requires": {
           "$ref": "#/$defs/condition",
@@ -4412,6 +4609,13 @@
         "silent": {
           "type": "boolean",
           "description": "True = the task says nothing on completion and the caller agent carries on."
+        },
+        "tell_model": {
+          "type": "string",
+          "x-ui": {
+            "widget": "textarea"
+          },
+          "description": "What the calling agent's model is told when the task ends this way (it reads this as the task tool's result, and may use templates such as {{state.customer.first_name}}). Write it as an instruction: 'The caller is verified. Carry on with what they asked and do not mention verification.' Without it a short default is used: silent true says to carry on, silent false says to tell the caller the outcome. Schema 1.2."
         },
         "next": {
           "type": "string",
@@ -4754,6 +4958,13 @@
             "task": {
               "type": "string",
               "x-ref": "tasks"
+            },
+            "preconditions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/precondition"
+              },
+              "description": "Checked before the task starts; if one fails the model is told why and the task does not run (for example 'the caller must have said which account first')."
             }
           },
           "unevaluatedProperties": false
@@ -4935,6 +5146,13 @@
                 "type": "string"
               },
               "description": "Explicit allow-list of the server's tools; nothing else is exposed."
+            },
+            "preconditions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/precondition"
+              },
+              "description": "Checked before ANY of the server's tools runs, for example that the caller is verified. If one fails the model is told why and nothing is called."
             }
           },
           "unevaluatedProperties": false
@@ -5590,20 +5808,27 @@
           "properties": {
             "max_call_duration_s": {
               "type": "integer",
-              "minimum": 30
+              "minimum": 30,
+              "description": "The call ends this many seconds after the session starts."
             },
             "max_silence_s": {
               "type": "integer",
               "minimum": 1,
-              "description": "Hard ceiling on total silence regardless of inactivity nudges."
+              "description": "Hard ceiling on total silence regardless of inactivity nudges: seconds since the caller last spoke, typed or pressed a key. The bot's own speech counts as silence; the clock stands still while the caller speaks, a keypad entry is open or a slow tool runs."
             },
             "max_tool_calls_per_call": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "description": "How many times the model may call any tool in one call. The call ends at the next one."
             },
             "max_handoffs_per_call": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "description": "How many times the call may move to another agent. The call ends instead of making the next move."
+            },
+            "say": {
+              "$ref": "#/$defs/speech",
+              "description": "What is said, in full, before the call ends when any limit is reached. Default: an English goodbye; write your own (or a catalogue message) for other languages. Schema 1.2."
             }
           }
         }

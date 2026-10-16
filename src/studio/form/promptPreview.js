@@ -21,6 +21,9 @@ export function describeCondition(condition) {
   if (subject) {
     const operator = Object.keys(OPERATOR_WORDS).find((key) => key in condition);
     const label = { state: 'the state', arg: 'the argument', result: 'the result', event: 'the event detail' }[subject];
+    // "is not nothing" / "is nothing" read as "is set" / "is not set"
+    if (operator === 'not_equals' && condition[operator] === null) return `${label} ${condition[subject]} is set`;
+    if (operator === 'equals' && condition[operator] === null) return `${label} ${condition[subject]} is not set`;
     return operator ? `${label} ${condition[subject]} ${OPERATOR_WORDS[operator]} ${show(condition[operator])}` : `${label} ${condition[subject]} is set`;
   }
   if ('channel' in condition) return `the channel is ${show(condition.channel)}`;
@@ -29,6 +32,33 @@ export function describeCondition(condition) {
   if (Array.isArray(condition.any)) return condition.any.map(describeCondition).join(' or ');
   if ('not' in condition) return `not (${describeCondition(condition.not)})`;
   return 'a condition holds';
+}
+
+// The `when` of a block in the server's preview, in words. The server sends the condition as written (an object, or its JSON as text); anything that is
+// neither is plain text already and is shown as it is.
+export function describeWhen(when) {
+  if (isObj(when)) return describeCondition(when);
+  if (typeof when === 'string') {
+    const text = when.trim();
+    if (text.startsWith('{')) {
+      // as JSON, or as Python writes the same thing (single quotes, None, True, False)
+      const asJson = text
+        .replace(/'/g, '"')
+        .replace(/\bNone\b/g, 'null')
+        .replace(/\bTrue\b/g, 'true')
+        .replace(/\bFalse\b/g, 'false');
+      for (const candidate of [text, asJson]) {
+        try {
+          const parsed = JSON.parse(candidate);
+          if (isObj(parsed)) return describeCondition(parsed);
+        } catch {
+          /* try the next reading; if none is one, the text is shown as it is */
+        }
+      }
+    }
+    return text;
+  }
+  return '';
 }
 
 // Fills in the template names the configuration knows. A state variable shows its starting value, a constant its value; names

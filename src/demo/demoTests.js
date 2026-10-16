@@ -7,6 +7,7 @@
 import { createSimulatedAgent } from './simulatedAgent.js';
 import { isObj } from '../studio/form/engine.js';
 import { evalPath } from '../studio/form/jsonPaths.js';
+import { modelNameOf } from '../studio/scenarios/model.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const clone = (v) => JSON.parse(JSON.stringify(v));
@@ -165,6 +166,9 @@ function evaluateChecks(scenario, ctx, { judge, scripted }) {
             ? 'Demo mode has no model to grade this.'
             : 'Grading is off for this run: turn on “grade reviewer checks”.',
       );
+    for (const kind of ['task_outcome', 'guardrail_triggered', 'guardrail_not_triggered', 'limit_reached'])
+      if (kind in expect)
+        return check(kind, null, 'The demo runs no tasks, safety rules or call limits, so this cannot be checked here. The real runner checks it.');
     return check('unknown', null, 'The demo runner does not know this kind of check.');
   });
 }
@@ -194,7 +198,13 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
     };
 
   const agents = list(config?.agents?.items);
-  const toolsById = Object.fromEntries(list(config?.tools).map((t) => [t?.id, t]));
+  // a tool is found by the name the model calls it: two tools may share one (a voice and a chat variant), and the one of this scenario's channel answers
+  const toolNamed = (name) => {
+    const same = list(config?.tools).filter((t) => modelNameOf(t) === name);
+    return (
+      same.find((t) => !list(t.channels).length || list(t.channels).includes(scenario?.channel)) || same[0] || list(config?.tools).find((t) => t?.id === name)
+    );
+  };
   const sim = createSimulatedAgent(config, { channelId: scenario?.channel, state: isObj(scenario?.state) ? scenario.state : undefined });
   let agent = agents.find((a) => a?.id === config?.agents?.entry)?.id || agents[0]?.id || '';
   const state = { ...sim.state, ...(isObj(scenario?.state) ? scenario.state : {}) };
@@ -222,7 +232,7 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
 
   const script = [...list(scenario?.model_script)];
   const runTool = (name, args) => {
-    const tool = toolsById[name];
+    const tool = toolNamed(name);
     const handoff = list(agents.find((a) => a?.id === agent)?.handoffs).find((h) => h?.tool === name);
     const record = { tool: name, args: args || {}, output: null, error: null };
     event('tool_called', { tool: name, args: args || {} });
@@ -260,9 +270,14 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
   };
 
   for (const turn of list(scenario?.turns)) {
+    // keys pressed on a phone keypad: never written to the result (the digits may be a PIN), so only that keys were pressed is recorded
+    const pressed = isObj(turn) && typeof turn.keys === 'string' && turn.say === undefined;
     const textIn = String(turn?.say ?? '');
-    transcript.push({ role: 'user', text: textIn });
-    event('user_said', { text: textIn });
+    if (pressed) event('keys_pressed', { count: turn.keys.length });
+    else {
+      transcript.push({ role: 'user', text: textIn });
+      event('user_said', { text: textIn });
+    }
     if (scripted) {
       // the model's replies, one item at a time, until it says something (that ends its turn)
       while (script.length) {
@@ -275,7 +290,7 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
         }
         if (isObj(item) && item.tool) runTool(item.tool, item.args);
       }
-    } else {
+    } else if (!pressed) {
       const out = sim.reply(textIn);
       out.toolCalls.forEach((c) => runTool(c.id || c.tool, c.args));
       out.messages.forEach((m) => {
@@ -394,6 +409,8 @@ export function scenarioListOf(config, runs, nowMs) {
           break;
         }
       }
-      return last ? { ...scenario, last } : { ...scenario };
+      // like the real API's row: the scenario, whether it is scripted or live (the row says so, whatever it carries), and its last result
+      const mode = list(scenario.model_script).length > 0 ? 'scripted' : 'live';
+      return last ? { ...scenario, mode, last } : { ...scenario, mode };
     });
 }

@@ -253,10 +253,11 @@ test('"what the model sees" for the parameters, and a body built from them', () 
 // ---- tool facts ---------------------------------------------------------------------------------------------------------------------
 test('which kinds the runtime can’t run yet', () => {
   assert.equal(notAvailable({ type: 'mcp' }), 'MCP server tools');
-  assert.equal(notAvailable({ type: 'task' }), 'Task tools');
+  assert.equal(notAvailable({ type: 'task' }), null, 'task tools run now');
   assert.equal(notAvailable({ type: 'knowledge' }), null, 'knowledge search runs now');
   assert.equal(notAvailable({ type: 'code' }), 'Custom code tools');
-  assert.equal(notAvailable({ type: 'builtin', builtin: 'send_dtmf' }), 'Send keypad tones');
+  assert.equal(notAvailable({ type: 'builtin', builtin: 'send_dtmf' }), null, 'keypad tools run now');
+  assert.equal(notAvailable({ type: 'builtin', builtin: 'collect_dtmf' }), null);
   assert.equal(notAvailable({ type: 'builtin', builtin: 'end_call' }), null);
   assert.equal(notAvailable({ type: 'http' }), null);
   assert.equal(kindOfTool({ builtin: 'end_call' }), 'builtin');

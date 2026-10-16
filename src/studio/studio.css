@@ -1687,6 +1687,86 @@ button.stEnvSlot:focus-visible {
   padding: 8px 12px;
   font-size: var(--fs-xs);
 }
+.telephonyPreview.connected {
+  border-color: color-mix(in srgb, var(--good-text, #2f9e7a) 55%, var(--line2));
+  background: color-mix(in srgb, var(--good-text, #2f9e7a) 10%, var(--panel));
+}
+.telephonyPreview.connected b {
+  color: var(--good-text, #2f9e7a);
+}
+.telephonyNotice {
+  margin: 0 0 14px;
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--line2);
+  font-size: var(--fs-sm);
+}
+.telephonyNotice.good {
+  border-color: color-mix(in srgb, var(--good-text, #2f9e7a) 55%, var(--line2));
+}
+.telephonyNotice.bad {
+  border-color: color-mix(in srgb, #d6455d 55%, var(--line2));
+}
+.telephonyPill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.telephonyPill.good {
+  color: var(--good-text, #2f9e7a);
+  border-color: currentColor;
+}
+.telephonyPill.wait {
+  color: var(--warn-text);
+  border-color: currentColor;
+}
+.telephonyPill.bad {
+  color: var(--danger-text, #d6455d);
+  border-color: currentColor;
+}
+.telephonyCellNote {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.telephonyCellNote.warn {
+  color: var(--warn-text);
+}
+.telephonyReadOnly {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.telephonyCheck {
+  margin: -4px 0 10px;
+  font-size: var(--fs-sm);
+}
+.telephonyCheck.good {
+  color: var(--good-text, #2f9e7a);
+}
+.telephonyCheck.bad {
+  color: var(--danger-text, #d6455d);
+}
+.telephonyAdvanced {
+  display: grid;
+  gap: 10px;
+  margin: 6px 0 10px;
+}
+.telephonyAdvanced summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.telephonyCheckbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .telephonyPreviewTag {
   margin-left: 8px;
   padding: 2px 7px;
@@ -1819,6 +1899,10 @@ button.stEnvSlot:focus-visible {
 }
 .stTestChip.passed {
   color: var(--good-text, #2f9e7a);
+  border-color: currentColor;
+}
+.stTestChip.partial {
+  color: var(--warn-text);
   border-color: currentColor;
 }
 .stTestChip.failed {

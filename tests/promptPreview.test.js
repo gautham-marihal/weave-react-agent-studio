@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assemblePrompt, describeCondition, renderTemplate } from '../src/studio/form/promptPreview.js';
+import { assemblePrompt, describeCondition, describeWhen, renderTemplate } from '../src/studio/form/promptPreview.js';
 
 const config = {
   persona: { name: 'Sam', company: 'Acme', tone: 'warm', style_rules: ['One question at a time.'], shared_rules: ['Never guess.'] },
@@ -92,4 +92,17 @@ test('conditions in words', () => {
     'the state a is “x” and not (the state b is one of “y”, “z”)',
   );
   assert.equal(describeCondition({ schedule: 'hours', open: false }), 'hours is closed');
+});
+
+// ---- UI review 2.9: a conditional block says when in words, never as the server's raw text -------------------------------------------------------------
+test('the `when` of a block is put in words, whether the server sends an object, its JSON, or Python’s way of writing it', () => {
+  const words = 'the state pending_request is set';
+  assert.equal(describeWhen({ state: 'pending_request', not_equals: null }), words);
+  assert.equal(describeWhen('{"state":"pending_request","not_equals":null}'), words);
+  assert.equal(describeWhen("{'state': 'pending_request', 'not_equals': None}"), words);
+  assert.equal(describeWhen({ state: 'verified', equals: true }), 'the state verified is true');
+  assert.equal(describeWhen({ state: 'plan', equals: null }), 'the state plan is not set');
+  assert.equal(describeWhen('only on weekdays'), 'only on weekdays', 'plain text is left as it is');
+  assert.equal(describeWhen('{not json'), '{not json');
+  assert.equal(describeWhen(undefined), '');
 });

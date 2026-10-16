@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useConfigSelect } from './ctx.js';
 import { usePromptPreview } from './usePreview.js';
 import { promptAdvice } from './serverPreview.js';
+import { describeWhen } from './promptPreview.js';
 import PromptExtras from './PromptExtras.jsx';
 import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
 
@@ -108,9 +109,9 @@ export default function PromptPreview({ agentId, config }) {
                     <small>
                       {section.active
                         ? section.when
-                          ? `in now · ${section.when}`
+                          ? `in now · ${describeWhen(section.when)}`
                           : 'in the prompt'
-                        : `not in right now${section.when ? ` · only ${section.when}` : ''}`}
+                        : `not in right now${section.when ? ` · only ${describeWhen(section.when)}` : ''}`}
                     </small>
                   </header>
                   <pre>

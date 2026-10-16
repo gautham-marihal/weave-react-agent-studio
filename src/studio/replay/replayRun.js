@@ -39,7 +39,7 @@ export function playSimulated(config, original) {
       at: undefined,
       waitMs: null,
       said: out.messages.map((m) => m.text),
-      tools: out.toolCalls.map((c) => ({ tool: c.id || c.tool, args: c.args || {}, result: undefined, error: '', handoff: c.handoff || '' })),
+      tools: out.toolCalls.map((c) => ({ tool: c.tool || c.id, args: c.args || {}, result: undefined, error: '', handoff: c.handoff || '' })),
     });
     if (out.ended || agent.ended) finished = true;
   });

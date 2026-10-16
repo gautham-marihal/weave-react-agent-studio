@@ -108,9 +108,17 @@ await page.getByPlaceholder('e.g. Acme Support').waitFor();
 await scan();
 await page.getByPlaceholder('e.g. Acme Support').fill('Harbour Plumbing');
 await page.getByRole('button', { name: 'Create agent', exact: true }).click();
-await page.waitForSelector('.stHeader h1');
+// the agent opens in whichever layout is the default: the classic one has its Test tab to open, the new one a Test button in its top bar
+await page.waitForSelector('.stHeader h1, .nlBar h1');
 await scan();
-await page.getByRole('button', { name: /Start a simulated chat/ }).click();
+if (await page.locator('.nlBar').count()) {
+  await page.locator('.nlBar').getByRole('button', { name: /^Test/ }).click();
+  await page.locator('.nlDrawer').waitFor();
+}
+await page
+  .getByRole('button', { name: /Start a simulated chat/ })
+  .first()
+  .click();
 await page
   .locator('.pvLive, .stTMessages, [data-status=live], .pvMessages')
   .first()
