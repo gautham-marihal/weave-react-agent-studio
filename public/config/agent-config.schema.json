@@ -3881,7 +3881,7 @@
         "match": {
           "type": "object",
           "additionalProperties": false,
-          "description": "How the runtime decides a connecting participant belongs to this channel. Defaults follow the type (sip_voice = SIP participants).",
+          "description": "How the runtime decides a connecting participant belongs to this channel. Defaults follow the type (sip_voice = SIP participants; web_chat and web_voice = browser visitors). When a bot offers several browser channels, the visitor's token names the one they chose (the builder API sets it from the `channel` it was asked for) and they get that one; with no choice they get the first enabled.",
           "properties": {
             "participant_kind": {
               "type": "array",
@@ -3940,6 +3940,7 @@
             "output"
           ],
           "additionalProperties": false,
+          "description": "What this channel carries. The kind of channel limits it, and /validate refuses the impossible: a phone line is audio in and audio out only; WhatsApp, SMS and email have no audio; images and video need a browser. GET /channel-types lists what each kind may have.",
           "properties": {
             "input": {
               "type": "array",
@@ -4021,7 +4022,8 @@
           },
           "properties": {
             "dtmf": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Only a phone line has a keypad. true on any other kind of channel is refused by /validate; false turns the keypad off on a phone line."
             },
             "human_transfer": {
               "type": "boolean",
@@ -4029,7 +4031,7 @@
             },
             "forms": {
               "type": "boolean",
-              "description": "Can this channel show a form? Default: true for web_chat and web_voice, false for the rest. Where it is false, a form runs its `otherwise` actions instead."
+              "description": "Can this channel show a form? Default: true for web_chat and web_voice, false for the rest. Only a web channel has a screen: true on a phone line or a messaging channel is refused by /validate; false switches forms off on a web channel. Where there is no screen, a form runs its `otherwise` actions instead."
             }
           }
         },

@@ -40,7 +40,7 @@
 /** @typedef {{ providers: Provider[], stages: Record<string, string>, turn_detectors: string[], note?: string }} ProvidersAnswer */
 
 /** What a browser needs to join a test conversation (POST /bots/{id}/sessions).
- * @typedef {{ livekit_url: string, token: string, room: string, identity: string, expires_in_s: number, bot: string, ref: string, version: string, channel: { id: string, type: string, input: string[], output: string[] } }} Session */
+ * @typedef {{ livekit_url: string, token: string, room: string, identity: string, expires_in_s: number, bot: string, ref: string, version: string, channel: { id: string, type: string, input: string[], output: string[] }, channels?: { id: string, type: string, input: string[], output: string[] }[] }} Session */
 
 /** @typedef {{ signal?: AbortSignal }} RequestOptions */
 

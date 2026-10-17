@@ -546,7 +546,7 @@ export type Channel = {
   id: Id;
   type: "sip_voice" | "web_voice" | "web_chat" | "whatsapp" | "sms" | "email" | "custom";
   enabled: boolean;
-  /** How the runtime decides a connecting participant belongs to this channel. Defaults follow the type (sip_voice = SIP participants). */
+  /** How the runtime decides a connecting participant belongs to this channel. Defaults follow the type (sip_voice = SIP participants; web_chat and web_voice = browser visitors). When a bot offers several browser channels, th… */
   match?: {
     participant_kind?: ("standard" | "sip" | "ingress" | "egress" | "agent" | "connector")[];
     attributes?: {
@@ -563,6 +563,7 @@ export type Channel = {
     phone_number_id?: string;
     [key: string]: unknown;
   };
+  /** What this channel carries. The kind of channel limits it, and /validate refuses the impossible: a phone line is audio in and audio out only; WhatsApp, SMS and email have no audio; images and video need a browser. GET /ch… */
   modalities: {
     input: ("audio" | "text" | "image" | "video")[];
     output: ("audio" | "text")[];
@@ -583,10 +584,11 @@ export type Channel = {
     };
   };
   capabilities?: {
+    /** Only a phone line has a keypad. true on any other kind of channel is refused by /validate; false turns the keypad off on a phone line. */
     dtmf?: boolean;
     /** False = a transfer_or_callback tool skips the transfer on this channel and runs its fallback straight away. */
     human_transfer?: boolean;
-    /** Can this channel show a form? Default: true for web_chat and web_voice, false for the rest. Where it is false, a form runs its `otherwise` actions instead. */
+    /** Can this channel show a form? Default: true for web_chat and web_voice, false for the rest. Only a web channel has a screen: true on a phone line or a messaging channel is refused by /validate; false switches forms off o… */
     forms?: boolean;
     [key: string]: unknown;
   };

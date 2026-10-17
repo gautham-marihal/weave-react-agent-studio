@@ -8,12 +8,13 @@ import { navigate, routeHref } from '../route.js';
 import { useAsync } from '../useAsync.js';
 import { sameModels, summarizeModels } from '../models/config.js';
 import FormPrompt from './FormPrompt.jsx';
-import { testability } from './channels.js';
+import { drawsVoice, testability } from './channels.js';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import TraceView from '../trace/TraceView.jsx';
 import { useTrace } from '../trace/useTrace.js';
 import { finalStateOf, toolsUsedIn } from '../trace/records.js';
 import { scenarioFromConversation } from '../scenarios/model.js';
+import { browserChannels } from '../form/channelTypes.js';
 import './test.css';
 import '../preview/preview.css';
 import '../models/models.css';
@@ -76,6 +77,7 @@ function Bubble({ message, botName }) {
 
 export default function TestTab({ botId, name, summary, editor, session, mode = 'real', modeLocked = false, onMode }) {
   const [ref, setRef] = useState('draft');
+  const [channelPick, setChannelPick] = useState(''); // which web channel to try, when the agent offers chat and voice side by side
   const [draftText, setDraftText] = useState('');
   const [logOpen, setLogOpen] = useState(false);
   const [used, setUsed] = useState(null); // the models this conversation started with
@@ -106,7 +108,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const botName = config?.persona?.name || name;
   const channelCfg = useMemo(() => (Array.isArray(config?.channels) ? config.channels.find((c) => c.id === info?.channel?.id) : null), [config, info]);
   const inputs = info?.channel?.input || [];
-  const isVoice = info?.channel?.type === 'web_voice';
+  const isVoice = drawsVoice(info?.channel);
   const imageCfg = ref === 'draft' ? channelCfg?.inputs?.image : null;
   const unsupported = editor.report?.unsupported || [];
 
@@ -116,6 +118,9 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const versionLoad = useAsync((signal) => (version ? api.getVersion(botId, version, { signal }) : Promise.resolve(null)), [botId, version]);
   const testConfig = ref === 'draft' ? editor.savedConfig || config : versionLoad.data?.config;
   const reach = testability(testConfig);
+  // every enabled web channel of what is being tried: a button for each (the server's own list comes back with the session)
+  const webChannels = useMemo(() => browserChannels(testConfig), [testConfig]);
+  const channelId = webChannels.some((c) => c.id === channelPick) ? channelPick : webChannels[0]?.id || '';
   const simulated = mode === 'simulated';
   const noWebChannel = !simulated && reach.state === 'none' && !running;
   const modelsUnsaved = ref === 'draft' && !!config && !!editor.savedConfig && !sameModels(config, editor.savedConfig);
@@ -148,7 +153,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const start = () => {
     stickRef.current = true;
     setUsed(testConfig ? summarizeModels(testConfig) : null);
-    session.startFor(botId, { ref, identity: makeIdentity() });
+    // `channel` is what the server is asked for, `channelId` what the simulated conversation plays
+    session.startFor(botId, { ref, identity: makeIdentity(), ...(channelId ? { channel: channelId, channelId } : {}) });
   };
   const send = async () => {
     const text = draftText;
@@ -214,6 +220,24 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
           )}
         </div>
         <div className="stTControls">
+          {webChannels.length > 1 && (
+            <div className="stTChannels" role="group" aria-label="Try it as">
+              <span>Try it as</span>
+              {webChannels.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={c.id === channelId ? 'on' : ''}
+                  aria-pressed={c.id === channelId}
+                  disabled={running}
+                  onClick={() => setChannelPick(c.id)}
+                >
+                  {drawsVoice(c) ? 'Web voice' : 'Web chat'}
+                  {webChannels.filter((o) => o.type === c.type).length > 1 ? ` (${c.id})` : ''}
+                </button>
+              ))}
+            </div>
+          )}
           <label>
             <span>Version to try</span>
             <select value={ref} onChange={(event) => setRef(event.target.value)} disabled={running}>

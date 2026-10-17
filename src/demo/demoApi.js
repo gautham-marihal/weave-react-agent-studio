@@ -20,6 +20,7 @@ import {
 import { previewPromptDemo, previewResultDemo } from './demoPreview.js';
 import { demoEntities, tryPreviewDemo } from './demoTryPreviews.js';
 import { routeNumbers } from './demoNumbers.js';
+import { FALLBACK_TYPES } from '../studio/form/channelTypes.js';
 import { minimalConfig } from './minimalConfig.js';
 import { callFromConversation, followCallOf, getCallOf, listCallsOf, seedCalls, transcriptOf } from './demoCalls.js';
 import { STEP_MS, checksumOf, createRun, headlineOf, scenarioListOf, viewRun } from './demoTests.js';
@@ -214,6 +215,7 @@ export function createDemoApi({
     }
     if (path === '/validate' && method === 'POST') return ok(validateDemo(body));
     // previews: send `config` (what is in the editor) or name a saved agent (`bot`, `ref`)
+    if (path === '/channel-types' && method === 'GET') return ok({ types: FALLBACK_TYPES, note: 'Demo mode: a copy of what a server answers.' });
     if (path === '/redaction/entities' && method === 'GET') return ok({ entities: demoEntities() });
     if (
       ['/preview/prompt', '/preview/result', '/preview/speech', '/preview/guardrails', '/preview/redaction', '/preview/task'].includes(path) &&

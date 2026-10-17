@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
 import SimpleKey from '../../simple/SimpleKey.jsx';
 import { useVoicePreview } from '../../../pages/voicePreview.js';
 import { applyVoice, readModels, setVoiceId } from '../../models/config.js';
+import { withArticle } from '../../form/channelTypes.js';
 import { providerLabel } from '../../models/catalog.js';
 import { useProviders } from '../../models/useProviders.js';
 import { filterVoices, voiceFilters, voiceHue, voiceInUse } from './pickerLogic.js';
@@ -22,6 +23,11 @@ export default function VoicePicker({ config, set }) {
   const inUse = voiceInUse(tts);
   const voices = useMemo(() => filterVoices({ query, gender, engine, language, current: opened }), [query, gender, engine, language, opened]);
   const preview = useVoicePreview();
+  // a voice that a search or filter hides, and that is not the agent's own, must not go on talking with no button to stop it
+  const { playing: playingId, stop: stopSample } = preview;
+  useEffect(() => {
+    if (playingId && playingId !== inUse?.id && !voices.some((v) => v.id === playingId)) stopSample();
+  }, [playingId, inUse, voices, stopSample]);
   const [justSet, setJustSet] = useState('');
   const custom = !!tts.voiceId && !inUse;
   const offered = (name) => providers.some((p) => p.name === name && (p.stages || []).includes('tts') && p.installed !== false);
@@ -29,7 +35,7 @@ export default function VoicePicker({ config, set }) {
   const choose = (voice) => {
     const switching = voice.engine !== String(tts.provider).toLowerCase();
     set(applyVoice(config, { provider: voice.engine, voiceId: voice.voiceId }, providers));
-    setJustSet(switching ? `${voice.name} is an ${voice.engineName} voice, so the voice engine is now ${voice.engineName}.` : '');
+    setJustSet(switching ? `${voice.name} is ${withArticle(voice.engineName)} voice, so the voice engine is now ${voice.engineName}.` : '');
   };
   const clear = () => {
     setQuery('');
@@ -187,7 +193,7 @@ export default function VoicePicker({ config, set }) {
       )}
       {preview.note && <p className="pkNote">{preview.note}</p>}
       {preview.can ? (
-        <p className="pkNote">Every voice plays a recording of that voice. Cartesia’s samples come from a public voice directory, not from Cartesia.</p>
+        <p className="pkNote">Library voices play a recording of that voice. Cartesia’s recordings come from a public voice directory, not from Cartesia.</p>
       ) : null}
 
       <details className="pkOwn" open={custom || undefined}>

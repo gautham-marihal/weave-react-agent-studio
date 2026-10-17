@@ -3,6 +3,9 @@
 // Pure data and helpers: no network, no DOM.
 
 import { freshId } from './references.js';
+import { FALLBACK, infoOf, isVoiceChannel, stripVoiceOnly } from './channelTypes.js';
+
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 // Which `entry` fields mean something for each channel type. The runtime reads none of them (they describe the route);
 // they exist so people reading the config know how a channel is reached.
@@ -93,7 +96,7 @@ export function buildChannel(presetId, { taken = [], botId = '' } = {}) {
 // Changing a channel's type: the type itself, the `entry` fields that don't belong to the new type (dropped), the
 // fields the new type needs (added), and modalities / greeting / capabilities only where they were still the old type's
 // untouched defaults. `cleared` lists what was dropped so the person can be asked first.
-export function changeChannelType(channel, nextType, botId = '') {
+export function changeChannelType(channel, nextType, botId = '', types = FALLBACK) {
   const old = defaultsForType(channel.type, botId);
   const fresh = defaultsForType(nextType, botId);
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -122,7 +125,52 @@ export function changeChannelType(channel, nextType, botId = '') {
     cleared.push('match');
     delete next.match;
   } // how participants are matched follows the type
-  return { channel: next, cleared };
+  // what the new kind cannot carry or offer goes too, so the channel is valid as it lands (the server's table: GET /channel-types)
+  const kind = infoOf(types, nextType);
+  if (kind && isObj(next.modalities)) {
+    const fit = (list, allowed, fallback) => {
+      const given = Array.isArray(list) ? list : [];
+      if (!allowed) return { values: given, lost: false }; // the server did not say what this kind may carry
+      const kept = given.filter((v) => allowed.includes(v));
+      return { values: kept.length ? kept : fallback.length ? fallback : given, lost: kept.length !== given.length };
+    };
+    const input = fit(next.modalities.input, kind.input, kind.defaultModalities.input);
+    const output = fit(next.modalities.output, kind.output, kind.defaultModalities.output);
+    if (input.lost || output.lost) cleared.push('modalities');
+    next.modalities = { input: input.values, output: output.values };
+  }
+  if (kind && isObj(next.capabilities)) {
+    const caps = { ...next.capabilities };
+    if (!kind.canKeypad && caps.dtmf === true) {
+      delete caps.dtmf;
+      cleared.push('capabilities.dtmf');
+    }
+    if (!kind.canForms && caps.forms === true) {
+      delete caps.forms;
+      cleared.push('capabilities.forms');
+    }
+    if (Object.keys(caps).length) next.capabilities = caps;
+    else delete next.capabilities;
+  }
+  // a kind with no voice does not keep the settings only a voice channel has, and one that takes no pictures or video does not keep their settings
+  if (kind && isObj(next.overrides) && !isVoiceChannel(next, types)) {
+    const { overrides, removed } = stripVoiceOnly(next.overrides);
+    cleared.push(...removed);
+    if (overrides) next.overrides = overrides;
+    else delete next.overrides;
+  }
+  if (kind && isObj(next.inputs)) {
+    const inputs = { ...next.inputs };
+    ['image', 'video'].forEach((key) => {
+      if (key in inputs && kind.input && !kind.input.includes(key)) {
+        delete inputs[key];
+        cleared.push(`inputs.${key}`);
+      }
+    });
+    if (Object.keys(inputs).length) next.inputs = inputs;
+    else delete next.inputs;
+  }
+  return { channel: next, cleared: [...new Set(cleared)] };
 }
 
 // What a channel's modalities need from the rest of the config, as plain sentences. (The validator says the same, but

@@ -41,3 +41,15 @@ test('a server that can’t start sessions says what to do, and keeps its techni
   assert.match(out.body, /simulated preview/);
   assert.match(out.details, /LIVEKIT_URL/, 'the detail is kept, one click away');
 });
+
+test('a channel the agent does not offer to browsers shows the server’s list of the ones it does, not “no web channel”', async () => {
+  const { describeStartError } = await import('../src/studio/test/useLiveSession.js');
+  const out = describeStartError(
+    { kind: 'invalid', errors: [], message: "channel 'phone' is not offered to browsers (offered: web-chat, web-voice)" },
+    'draft',
+  );
+  assert.equal(out.title, 'That channel can’t be tried in a browser');
+  assert.match(out.body, /offered: web-chat, web-voice/);
+  const none = describeStartError({ kind: 'invalid', errors: [], message: 'this agent has no web channel' }, 'draft');
+  assert.equal(none.title, 'This agent can’t be tried in a browser', 'the old message still stands for an agent with none');
+});

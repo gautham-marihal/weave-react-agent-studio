@@ -7,6 +7,7 @@ import { isObj } from './engine.js';
 import { CHANNEL_PRESETS, buildChannel } from './presets.js';
 import { UNSUPPORTED_BUILTINS, UNSUPPORTED_KINDS } from './toolInfo.js';
 import { uniqueId } from './ctx.js';
+import { NOT_RUNNING, notRunningYet } from './channelTypes.js';
 
 const NOT_YET = 'Not available in the runtime yet';
 // the plain name when it is free (end_call), else numbered (end_call_2)
@@ -299,7 +300,7 @@ export const WHAT = {
 
 // Options for a list, or null when the list should use the plain add control. `collection` is 'tools', 'channels', 'guardrails.input'…
 // `ctx` has what building an item needs: the engine, the ids already taken, the agent's id.
-export function pickerFor(collection, { engine, branches, takenIds = [], botId = '' }) {
+export function pickerFor(collection, { engine, branches, takenIds = [], botId = '', channelTypes = null }) {
   if (collection === 'channels') {
     return CHANNEL_PRESETS.map((preset) => ({
       id: preset.id,
@@ -307,6 +308,8 @@ export function pickerFor(collection, { engine, branches, takenIds = [], botId =
       label: preset.label,
       help: CHANNEL_HELP[preset.id] || preset.note,
       type: preset.type,
+      // a kind nothing connects to the runtime yet says so on its card (the server's list, `runs_today`)
+      ...(notRunningYet(channelTypes, preset.type) ? { badge: NOT_RUNNING, unavailable: NOT_RUNNING } : {}),
       make: () => buildChannel(preset.id, { taken: takenIds, botId }),
     }));
   }

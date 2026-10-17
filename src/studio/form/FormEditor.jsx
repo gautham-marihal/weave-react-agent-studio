@@ -15,6 +15,7 @@ import AgentMap from '../relations/AgentMap.jsx';
 import ToolGrid from '../relations/ToolGrid.jsx';
 import '../relations/relations.css';
 import { useSchema } from './useSchema.js';
+import { useChannelTypes } from './useChannelTypes.js';
 import './form.css';
 
 // Sections whose content depends on something that isn't built yet, said where the author is working (see the API's "what is not there yet").
@@ -146,6 +147,7 @@ export default function FormEditor({
 
   // Rebuilt on every change, but only a different list of ids is a different value, so they keep one identity while typing.
   const refOptions = useStableValue(useMemo(() => collectRefOptions(config), [config]));
+  const { types: channelTypes } = useChannelTypes();
   const secretNames = useStableValue(
     useMemo(() => [...new Set([...collectSecretNames(config), ...(editor.report?.secrets_required || [])])].sort(), [config, editor.report]),
   );
@@ -294,6 +296,7 @@ export default function FormEditor({
   const ctx = useMemo(
     () => ({
       hidden,
+      channelTypes,
       engine,
       store,
       refOptions,
@@ -320,6 +323,7 @@ export default function FormEditor({
     }),
     [
       hidden,
+      channelTypes,
       reveal,
       describe,
       applyFix,

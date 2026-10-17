@@ -155,7 +155,12 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
       setInfo(sessionInfo);
       setStatus('connecting');
       log('Starting a simulated conversation (no server, no real agent)');
-      if (played?.voice) log(`This agent has no text channel, so it is simulated on its voice channel “${played.id}”, written out as text.`);
+      if (played?.voice)
+        log(
+          options.channelId === played.id
+            ? `Simulated as the voice channel “${played.id}”, written out as text: a simulation has no microphone.`
+            : `This agent has no text channel, so it is simulated on its voice channel “${played.id}”, written out as text.`,
+        );
       later(() => {
         startedRef.current = Date.now();
         recordedRef.current = false;

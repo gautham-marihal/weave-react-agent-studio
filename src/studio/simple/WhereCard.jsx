@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AddPicker from '../form/AddPicker.jsx';
 import { Switch } from '../form/fields.jsx';
 import { pickerFor } from '../form/pickerOptions.js';
+import { useChannelTypes } from '../form/useChannelTypes.js';
 import RecordingNoticeOffer from '../records/RecordingNoticeOffer.jsx';
 import { addChannel, channelName, readSimple, setChannelEnabled, setRecordingNotice } from './simpleModel.js';
 
@@ -22,7 +23,8 @@ export default function WhereCard({ config, set }) {
   const channels = list(config?.channels).filter((c) => c && typeof c === 'object');
   const [offer, setOffer] = useState(false);
   const transfers = list(config?.telephony?.transfers).length;
-  const options = pickerFor('channels', { takenIds: channels.map((c) => c.id), botId: config?.meta?.id || '' });
+  const { types: channelTypes } = useChannelTypes();
+  const options = pickerFor('channels', { takenIds: channels.map((c) => c.id), botId: config?.meta?.id || '', channelTypes });
   return (
     <div className="smFields">
       <div className="smField">

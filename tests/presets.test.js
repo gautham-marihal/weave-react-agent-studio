@@ -61,7 +61,9 @@ test('changing the type keeps what the person set, and does not ask about empty 
   assert.deepEqual(cleared, []); // the empty allowed_origins list is not "something lost"
   const toPhone = changeChannelType(custom, 'sip_voice', 'acme');
   assert.deepEqual(toPhone.channel.entry, {});
-  assert.deepEqual(toPhone.cleared, ['entry.widget_id']);
+  // a phone line carries audio only, so a chat's text and image cannot come along: they are cleared (and named), and the kind's own default is used
+  assert.deepEqual(toPhone.cleared.sort(), ['entry.widget_id', 'modalities']);
+  assert.deepEqual(toPhone.channel.modalities, { input: ['audio'], output: ['audio'] });
   assert.ok(engine.fits(channelSchema, toPhone.channel));
 });
 
@@ -88,4 +90,59 @@ test('modalities say what they need from the rest of the config', () => {
     [],
   );
   assert.deepEqual(modalityNotes({ modalities: { input: ['text'], output: ['text'] } }, {}), []);
+});
+
+test('changing the kind also drops a keypad or a form the new kind cannot have, and keeps what it can', () => {
+  const phone = { ...buildChannel('phone', { botId: 'acme' }), capabilities: { dtmf: true, human_transfer: false } };
+  const chat = changeChannelType(phone, 'web_chat', 'acme');
+  assert.equal(chat.channel.capabilities.dtmf, undefined, 'a web chat has no keypad');
+  assert.equal(chat.channel.capabilities.human_transfer, false, 'what it can keep is kept');
+  assert.ok(chat.cleared.includes('capabilities.dtmf'));
+  const web = { ...buildChannel('web_chat', { botId: 'acme' }), capabilities: { forms: true } };
+  const sms = changeChannelType(web, 'sms', 'acme');
+  assert.equal(sms.channel.capabilities, undefined, 'sms has no screen for a form');
+  const custom = changeChannelType(phone, 'custom', 'acme');
+  assert.equal(custom.channel.capabilities.dtmf, true, 'a custom channel is not restricted');
+});
+
+test('changing the kind to one with no voice drops the voice-only settings, and to one with no pictures drops their settings', () => {
+  const voice = {
+    ...buildChannel('web_voice', { botId: 'acme' }),
+    overrides: { conversation: { sounds: { ambient: {} }, inactivity: { timeout_s: 8 } }, models: { stt: { provider: 'deepgram' }, llm: { model: 'x' } } },
+    inputs: { image: { max_bytes: 1000 }, video: { screen_share: true } },
+  };
+  const sms = changeChannelType(voice, 'sms', 'acme');
+  assert.deepEqual(
+    sms.channel.overrides,
+    { conversation: { inactivity: { timeout_s: 8 } }, models: { llm: { model: 'x' } } },
+    'what a text channel can use is kept',
+  );
+  assert.equal(sms.channel.inputs, undefined, 'an sms takes no pictures or video');
+  ['conversation.sounds', 'models.stt', 'inputs.image', 'inputs.video'].forEach((n) => assert.ok(sms.cleared.includes(n), n));
+  const chat = changeChannelType(voice, 'web_chat', 'acme');
+  assert.ok(chat.channel.overrides.conversation.sounds, 'a web chat can carry audio, so its sounds stay (the guide: a kind with a voice)');
+  assert.deepEqual(chat.channel.inputs, voice.inputs, 'a web chat can take pictures and video');
+  const phone = changeChannelType({ ...voice, inputs: undefined }, 'sip_voice', 'acme');
+  assert.ok(phone.channel.overrides.conversation.sounds, 'a phone line has a voice: its sounds stay');
+});
+
+test('a kind the server did not give limits for is not narrowed when the channel changes kind', () => {
+  const rows = [
+    {
+      type: 'web_chat',
+      label: 'Web chat',
+      runsToday: true,
+      input: null,
+      output: null,
+      voice: true,
+      canKeypad: false,
+      canForms: true,
+      entryFields: [],
+      defaultModalities: { input: [], output: [] },
+    },
+  ];
+  const phone = { ...buildChannel('phone', { botId: 'acme' }), modalities: { input: ['audio', 'text'], output: ['audio'] } };
+  const out = changeChannelType(phone, 'web_chat', 'acme', rows);
+  assert.deepEqual(out.channel.modalities.input, ['audio', 'text'], 'nothing is dropped when nothing was restricted');
+  assert.ok(out.channel.modalities.output.length >= 1, 'never an empty list (the schema needs one)');
 });

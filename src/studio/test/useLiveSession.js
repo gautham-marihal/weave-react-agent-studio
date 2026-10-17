@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client.js';
+import { drawsVoice } from './channels.js';
 
 // One conversation with an agent over LiveKit: ask the API for a join token (POST /sessions), connect, and
 // turn what arrives into messages. The bot's text replies come as text streams on `lk.transcription`, the
@@ -30,6 +31,9 @@ export function describeStartError(error, ref) {
         ? { title: 'This agent has no draft to test', body: error.message }
         : { title: `Nothing is deployed to “${ref}” yet`, body: 'Deploy a version there first, or test the draft instead.' };
     case 'invalid': {
+      // a channel the bot does not offer to browsers: the server's message lists the ones it does offer, so it is shown as it is
+      if (/offer/i.test(error.message) && /channel/i.test(error.message) && !error.errors?.length)
+        return { title: 'That channel can’t be tried in a browser', body: error.message };
       const noChannel = /web|channel/i.test(error.message) && !error.errors?.length;
       return noChannel
         ? {
@@ -215,7 +219,7 @@ export function useLiveSession({ onFinished } = {}) {
       setStatus('starting');
       let session;
       try {
-        session = await api.startSession(botId, { ref: options.ref || 'draft', identity: options.identity });
+        session = await api.startSession(botId, { ref: options.ref || 'draft', identity: options.identity, channel: options.channel });
       } catch (err) {
         if (!aliveRef.current) return;
         setError(describeStartError(err, options.ref || 'draft'));
@@ -229,7 +233,14 @@ export function useLiveSession({ onFinished } = {}) {
   );
 
   async function connect(session, ref) {
-    const sessionInfo = { room: session.room, ref: session.ref || ref, version: session.version, channel: session.channel, expiresInS: session.expires_in_s };
+    const sessionInfo = {
+      room: session.room,
+      ref: session.ref || ref,
+      version: session.version,
+      channel: session.channel,
+      channels: Array.isArray(session.channels) ? session.channels : [],
+      expiresInS: session.expires_in_s,
+    };
     infoRef.current = sessionInfo;
     setInfo(sessionInfo);
     setStatus('connecting');
@@ -323,7 +334,7 @@ export function useLiveSession({ onFinished } = {}) {
       hintTimerRef.current = window.setTimeout(() => setAgentHint(true), AGENT_JOIN_HINT_MS);
       await room.startAudio().catch(() => {});
 
-      if (session.channel?.type === 'web_voice') {
+      if (drawsVoice(session.channel)) {
         try {
           await room.localParticipant.setMicrophoneEnabled(true);
           setMedia((m) => ({ ...m, mic: true }));

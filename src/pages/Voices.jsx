@@ -47,14 +47,33 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
   });
   const languages = ['All languages', ...Array.from(new Set(VOICE_LIBRARY.map((voice) => voice.language)))];
   const copyId = async (voice) => {
+    let done;
     try {
       await navigator.clipboard.writeText(voice.voiceId);
-      setCopied(voice.id);
-      window.setTimeout(() => setCopied((now) => (now === voice.id ? '' : now)), 1500);
+      done = true;
     } catch {
-      setCopied('');
+      // no clipboard API (a page on plain http) or it was refused: the old way, through a hidden box
+      const box = document.createElement('textarea');
+      box.value = voice.voiceId;
+      box.style.position = 'fixed';
+      box.style.opacity = '0';
+      document.body.appendChild(box);
+      box.select();
+      try {
+        done = document.execCommand('copy');
+      } catch {
+        done = false;
+      }
+      box.remove();
     }
+    setCopied(done ? voice.id : `failed:${voice.id}`);
+    window.setTimeout(() => setCopied((now) => (now.endsWith(voice.id) ? '' : now)), done ? 1500 : 4000);
   };
+  // a voice that is filtered away (or a tab that is left) must not go on talking with no button to stop it
+  const { playing: nowPlaying, stop: stopSample } = sample;
+  useEffect(() => {
+    if (nowPlaying && (mode !== 'default' || !filtered.some((v) => v.id === nowPlaying))) stopSample();
+  }, [nowPlaying, mode, filtered, stopSample]);
   const toggleFavorite = (id) =>
     setFavorites((current) => {
       const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
@@ -138,7 +157,7 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
               <b>{filtered.length}</b> curated voices · {VOICE_CATALOG.filter((voice) => provider === 'All providers' || voice.provider === provider).length}{' '}
               for selected provider
             </span>
-            <span>Every voice plays a recording of that voice. Cartesia’s samples come from a public voice directory, not from Cartesia.</span>
+            <span>The library’s voices play a recording of that voice. Cartesia’s recordings come from a public voice directory, not from Cartesia.</span>
           </div>
           {sample.note && (
             <p className="voicePreviewNote" role="status">
@@ -172,10 +191,10 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                               type="button"
                               className="iconButton"
                               aria-label={`Copy the voice ID of ${voice.name}`}
-                              title="Copy the voice ID"
+                              title={copied === `failed:${voice.id}` ? 'Could not copy: select the ID and copy it' : 'Copy the voice ID'}
                               onClick={() => copyId(voice)}
                             >
-                              {copied === voice.id ? '✓' : '⧉'}
+                              {copied === voice.id ? '✓' : copied === `failed:${voice.id}` ? '!' : '⧉'}
                             </button>
                           </span>
                         </div>

@@ -701,3 +701,31 @@
     animation: none !important;
   }
 }
+
+.stTChannels {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+.stTChannels > span {
+  color: var(--muted);
+}
+.stTChannels button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.stTChannels button.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  font-weight: 700;
+}
+.stTChannels button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

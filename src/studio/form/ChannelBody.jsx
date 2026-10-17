@@ -9,6 +9,7 @@ import { providerLabel } from '../models/catalog.js';
 import { ObjectBody } from './Node.jsx';
 import { CHANNEL_TYPES, ENTRY_FIELDS, ENTRY_LABELS, TYPE_LABELS, changeChannelType, modalityNotes } from './presets.js';
 import { TechKey } from './TechName.jsx';
+import { canForms, canKeypad, entryFieldsFor, findVoiceOnly, infoOf, isVoiceChannel, mislabelledChat, plainSetting, stripVoiceOnly } from './channelTypes.js';
 
 // One channel, drawn for what it is: the type decides which fields are shown, so a phone line never offers a widget id
 // and a web chat never offers a phone number. The id is a permanent key (Rename… rewrites everything that points at it).
@@ -23,7 +24,7 @@ const CAPABILITIES = [
   {
     key: 'dtmf',
     label: 'Keypad tones (DTMF)',
-    help: 'Callers can press keys and the agent can send tones. Phone and voice channels only.',
+    help: 'Callers can press keys and the agent can send tones. Only a phone line has a keypad.',
     fallback: () => false,
   },
   {
@@ -50,8 +51,10 @@ const sortByOrder = (obj, order) => {
 
 export default function ChannelBody({ shape, value, path, onChange, disabled }) {
   const ctx = useForm();
+  const types = ctx.channelTypes;
   const obj = isObj(value) ? value : {};
   const type = obj.type;
+  const kind = infoOf(types, type); // what this kind of channel may carry and offer (GET /channel-types)
   const botId = useConfigSelect((c) => c?.meta?.id || '');
   const notes = useConfigSelect((c) => modalityNotes(obj, c));
   const { providers } = useProviders();
@@ -66,6 +69,9 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
     );
   };
   const order = Object.keys(shape.properties);
+  const mislabelled = mislabelledChat(obj);
+  // settings only a voice channel has, found on a channel that has no voice
+  const voiceOnlySet = kind && !isVoiceChannel(obj, types) ? findVoiceOnly(obj.overrides) : [];
 
   const handled = Object.fromEntries(Object.entries(obj).filter(([key]) => HANDLED.includes(key)));
   const rest = Object.fromEntries(Object.entries(obj).filter(([key]) => !HANDLED.includes(key)));
@@ -76,16 +82,27 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   };
   const set = (patch) => onChange(sortByOrder({ ...obj, ...patch }, order));
 
+  // the settings only a voice channel has, on a channel that has no voice: removed on request (never behind the author's back), and the Undo bar takes it back
+  const removeVoiceOnly = () => {
+    const { overrides, removed } = stripVoiceOnly(obj.overrides);
+    if (!removed.length) return;
+    ctx.markDelete(`the voice-only settings (${removed.map(plainSetting).join(', ')})`);
+    const { overrides: _old, ...without } = obj;
+    onChange(sortByOrder(overrides ? { ...without, overrides } : without, order));
+  };
+
   const changeType = (next) => {
     if (next === type) return;
-    const { channel, cleared } = changeChannelType(obj, next, botId);
-    if (cleared.length && !window.confirm(`Changing this channel to ${TYPE_LABELS[next] || next} clears: ${cleared.join(', ')}. Continue?`)) return;
+    const { channel, cleared } = changeChannelType(obj, next, botId, types);
+    if (cleared.length && !window.confirm(`Changing this channel to ${TYPE_LABELS[next] || next} clears: ${cleared.map(plainSetting).join(', ')}. Continue?`))
+      return;
     onChange(sortByOrder(channel, order));
   };
 
   // ---- entry: only the fields that apply to this type
   const entry = isObj(obj.entry) ? obj.entry : {};
-  const applicable = ENTRY_FIELDS[type];
+  // the kind's own entry fields; a custom channel may have any, so all the known ones are offered
+  const applicable = kind ? (kind.entryFields === null ? Object.keys(ENTRY_LABELS) : entryFieldsFor(types, type)) : ENTRY_FIELDS[type];
   const setEntry = (key, v) => {
     const next = { ...entry };
     if (v === '' || (Array.isArray(v) && v.length === 0)) delete next[key];
@@ -125,6 +142,8 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   };
 
   const caps = isObj(obj.capabilities) ? obj.capabilities : {};
+  // a switch is offered only for what the kind of channel can have (the keypad needs a phone line, a form needs a screen)
+  const unavailable = (cap) => !!kind && ((cap.key === 'dtmf' && !canKeypad(types, type)) || (cap.key === 'forms' && !canForms(types, type)));
   const setCap = (key, on) => set({ capabilities: { ...caps, [key]: on } });
 
   return (
@@ -161,10 +180,21 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
             {CHANNEL_TYPES.map((item) => (
               <option key={item} value={item}>
                 {TYPE_LABELS[item]}
+                {infoOf(types, item)?.runsToday === false ? ' (not available yet)' : ''}
               </option>
             ))}
           </select>
           <p className="stFHelp">Changing it clears the fields that only belong to the old kind (you are asked first).</p>
+          {kind?.note && (
+            <p className="stFHelp" data-note="kind">
+              {kind.note}
+            </p>
+          )}
+          {kind && !kind.runsToday && (
+            <p className="stFWarn" role="note" data-note="not-running">
+              Nothing connects {kind.label} to the runtime yet, so this channel is saved but nobody can reach the agent through it.
+            </p>
+          )}
         </div>
         <div className="stFRow">
           <div className="stFLabel">
@@ -218,10 +248,11 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
       <fieldset className="stChannelBlock">
         <legend>What it can do</legend>
         <div className="stCaps">
-          {CAPABILITIES.map((cap) => {
+          {CAPABILITIES.filter((cap) => !unavailable(cap) || caps[cap.key] === true).map((cap) => {
             const explicit = cap.key in caps;
+            const refused = unavailable(cap); // set on, on a kind that cannot have it: shown so it can be turned off
             return (
-              <div className="stCap" key={cap.key}>
+              <div className="stCap" key={cap.key} data-capability={cap.key}>
                 <strong className="stCapName" aria-hidden="true">
                   {cap.label}
                 </strong>
@@ -230,6 +261,12 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
                   {cap.help}
                   {explicit ? '' : ' (using the default for this kind)'}
                 </p>
+                {refused && (
+                  <p className="stFWarn" role="note">
+                    {kind.label} has {cap.key === 'dtmf' ? 'no keypad' : 'no screen to show a form on'}, so this setting is refused when the agent is checked.
+                    Turn it off.
+                  </p>
+                )}
               </div>
             );
           })}
@@ -244,6 +281,33 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
         collapsedKeys={COLLAPSED}
         onChange={(nextRest) => onChange(sortByOrder({ ...handled, ...nextRest }, order))}
       />
+
+      {(mislabelled || voiceOnlySet.length > 0) && (
+        <ul className="stChannelNotes" aria-label="What does not fit this channel">
+          {mislabelled && (
+            <li className="warn" data-note="mislabelled">
+              <span>This web chat carries audio, so it is really a web voice channel. Draw it as one, or take the audio out.</span>
+              {!disabled && (
+                <button type="button" className="stAddBtn" onClick={() => changeType('web_voice')}>
+                  Make it a web voice channel
+                </button>
+              )}
+            </li>
+          )}
+          {voiceOnlySet.length > 0 && (
+            <li className="warn" data-note="voice-only">
+              <span>
+                {kind?.label || 'This kind of channel'} has no voice, so these settings do nothing here: {voiceOnlySet.map(plainSetting).join(', ')}.
+              </span>
+              {!disabled && (
+                <button type="button" className="stAddBtn" onClick={removeVoiceOnly}>
+                  Remove them
+                </button>
+              )}
+            </li>
+          )}
+        </ul>
+      )}
 
       {notes.length > 0 && (
         <ul className="stChannelNotes" aria-label="What this channel needs">

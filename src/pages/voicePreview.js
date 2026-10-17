@@ -9,10 +9,12 @@ export function useVoicePreview() {
   const [note, setNote] = useState('');
   const [browserVoices, setBrowserVoices] = useState([]);
   const audio = useRef(null);
+  const turn = useRef(0); // which start is current: events of an older one are ignored
   const speech = typeof window !== 'undefined' && 'speechSynthesis' in window;
   const canPlay = speech || typeof Audio !== 'undefined';
 
   const silence = useCallback(() => {
+    turn.current += 1;
     if (audio.current) {
       audio.current.pause();
       audio.current.onended = null;
@@ -50,8 +52,12 @@ export function useVoicePreview() {
         ? `${why} It only gives an idea: the real voice is ${voice.provider}’s.`
         : `${why} Your browser has no ${String(voice.gender).toLowerCase()} ${voice.language} voice either, so this is only an approximation of ${voice.name}.`,
     );
-    utterance.onend = () => setPlaying('');
-    utterance.onerror = () => setPlaying('');
+    const mine = turn.current;
+    const done = () => {
+      if (turn.current === mine) setPlaying('');
+    };
+    utterance.onend = done;
+    utterance.onerror = done;
     setPlaying(voice.id);
     window.speechSynthesis.speak(utterance);
   };
@@ -66,18 +72,32 @@ export function useVoicePreview() {
     if (voice.previewUrl && typeof Audio !== 'undefined') {
       const sample = new Audio(voice.previewUrl);
       audio.current = sample;
-      sample.onended = () => setPlaying('');
-      sample.onerror = () => {
-        audio.current = null;
-        readAloud(voice, `${voice.provider}’s recorded sample could not be loaded (are you offline?), so this is your browser’s voice reading it.`);
+      const mine = turn.current;
+      let failed = false;
+      sample.onended = () => {
+        if (turn.current === mine) setPlaying('');
       };
+      // a sample that cannot be loaded raises the error event and also rejects play(): the fallback runs once, and only if this is still the voice being played
+      const failure = () => {
+        if (failed || turn.current !== mine) return;
+        failed = true;
+        audio.current = null;
+        readAloud(voice, `${voice.provider}’s recording of this voice could not be loaded, so this is your browser’s voice reading it.`);
+      };
+      sample.onerror = failure;
       setNote('');
       setPlaying(voice.id);
-      sample.play().catch(() => sample.onerror?.());
+      sample.play().catch(failure);
       return;
     }
     readAloud(voice);
   };
 
-  return { can: canPlay, playing, note, play };
+  // stop whatever is playing (a voice that is no longer on screen must not go on talking)
+  const stop = useCallback(() => {
+    silence();
+    setPlaying('');
+  }, [silence]);
+
+  return { can: canPlay, playing, note, play, stop };
 }

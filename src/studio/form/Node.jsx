@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { cardsThatMayOpen } from './cardSize.js';
 import { isObj } from './engine.js';
+import { keysNotOffered, modalityChoices } from './channelTypes.js';
 import {
   OwnerCtx,
   isUnder,
@@ -530,7 +531,7 @@ function SecretInput({ value, onChange, disabled, id }) {
 // `onlyKeys` shows just those properties (a screen that is part of a section, see layout.js), and `showUnknown: false` leaves the keys the schema
 // doesn't know to another part of the same section.
 export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKeys, onlyKeys, showUnknown = true }) {
-  const { engine, markDelete, issuesUnder, expertHome, hidden } = useForm();
+  const { engine, markDelete, issuesUnder, expertHome, hidden, store, channelTypes } = useForm();
   const owner = useOwner();
   const obj = isObj(value) ? value : {};
   const order = Object.keys(shape.properties);
@@ -550,7 +551,9 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
   );
   const { main, advanced } = splitAdvanced(rows, hintsOf);
   const sections = groupKeys(main, hintsOf);
-  const addable = visible.filter((k) => !(k in obj) && !required.includes(k) && !flatOf(k).deprecated);
+  // a channel with no voice is not offered the settings only a voice channel has (what is already set stays, and the channel says so)
+  const notOffered = channelTypes ? keysNotOffered(store.get(), channelTypes, path) : [];
+  const addable = visible.filter((k) => !(k in obj) && !required.includes(k) && !flatOf(k).deprecated && !notOffered.includes(k));
   const unknown = showUnknown ? Object.keys(obj).filter((k) => !(k in shape.properties)) : [];
   const extra = isObj(shape.additionalProperties) ? shape.additionalProperties : null;
   const openExtra = shape.additionalProperties === undefined && shape.unevaluatedProperties === undefined;
@@ -819,7 +822,7 @@ function UnionBody({ shape, value, path, onChange, disabled }) {
 // ---- arrays ----------------------------------------------------------------------------------
 
 function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
-  const { engine, refOptions, goTo, markDelete, technical } = useForm();
+  const { engine, refOptions, goTo, markDelete, technical, store, channelTypes } = useForm();
   // StringList and MultiPick say what was deleted so the Undo bar can name it.
   const onChange = (next, meta) => {
     if (meta?.deleted) markDelete(meta.deleted);
@@ -836,16 +839,14 @@ function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
     return (
       <StringList values={list} onChange={onChange} disabled={disabled} placeholder={Array.isArray(items.examples) ? String(items.examples[0]) : undefined} />
     );
-  if (style === 'checks')
-    return (
-      <CheckGroup
-        options={items.enum.map(String)}
-        values={list}
-        onChange={onChange}
-        disabled={disabled}
-        labels={enumLabels(String(path[path.length - 1]), items.enum.map(String), { technical })}
-      />
-    );
+  if (style === 'checks') {
+    // what a channel carries is limited by its kind: only what the kind can carry is offered, and a ticked value it cannot carry stays, marked, so it can be removed
+    const limit = channelTypes ? modalityChoices(store.get(), channelTypes, path, list) : null;
+    const options = items.enum.map(String).filter((o) => !limit || limit.allowed.includes(o) || limit.extra.includes(o));
+    const labels = enumLabels(String(path[path.length - 1]), items.enum.map(String), { technical });
+    const marked = limit ? Object.fromEntries(limit.extra.map((o) => [o, `${labels[o] || o} (this kind of channel can't carry it)`])) : {};
+    return <CheckGroup options={options} values={list} onChange={onChange} disabled={disabled} labels={{ ...labels, ...marked }} />;
+  }
   if (style === 'pick') {
     const name = items['x-ref'];
     const options = refOptions[name] || [];
@@ -974,7 +975,9 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
           : lastKey === 'pronunciation'
             ? 'pronunciation'
             : null;
-  const picker = pickerKey ? pickerFor(pickerKey, { engine, branches, takenIds, botId: ctx.store.get()?.meta?.id || '' }) : null;
+  const picker = pickerKey
+    ? pickerFor(pickerKey, { engine, branches, takenIds, botId: ctx.store.get()?.meta?.id || '', channelTypes: ctx.channelTypes })
+    : null;
 
   const make = (branch) => {
     const made = engine.defaultFor(branch || shape.items);

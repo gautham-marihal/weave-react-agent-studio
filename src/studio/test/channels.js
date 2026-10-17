@@ -19,3 +19,7 @@ export function testability(config) {
   if (!web.some((channel) => channel.enabled !== false)) return { state: 'off', phone };
   return { state: 'ok', phone };
 }
+
+// Draw the widget by what the channel carries, not only by its kind (FRONTEND_GUIDE 5): a web chat that carries audio is, to the server, a web voice channel, so the
+// microphone is drawn for it too. `channel` is what a session answers: { type, input, output }.
+export const drawsVoice = (channel) => !!channel && (channel.type === 'web_voice' || (Array.isArray(channel.input) && channel.input.includes('audio')));

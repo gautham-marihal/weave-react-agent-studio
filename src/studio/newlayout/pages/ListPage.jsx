@@ -8,6 +8,7 @@ import { pickerFor, WHAT } from '../../form/pickerOptions.js';
 import { plainToolKind } from '../../form/plainKinds.js';
 import { uniqueId } from '../../form/ctx.js';
 import { useSchema } from '../../form/useSchema.js';
+import { useChannelTypes } from '../../form/useChannelTypes.js';
 import { groupIssues } from '../../../api/client.js';
 import PageShell, { EmptyState, Section, SettingRow } from '../PageShell.jsx';
 import { StagedDrawer } from '../Drawer.jsx';
@@ -40,6 +41,7 @@ function iconFor(kind, item) {
 export default function ListPage({ title, lead, editor, lists, extras = [], footer = null, onShowJson, onOpenJson, openRequest = null }) {
   const config = editor.parsed.value;
   const { schema } = useSchema();
+  const { types: channelTypes } = useChannelTypes();
   const engine = useMemo(() => (schema ? createEngine(schema) : null), [schema]);
   const [panel, setPanel] = useState(null); // { list, index, made?, extra? }
   const issues = useMemo(() => groupIssues(editor.report).filter((i) => i.severity === 'error' && i.path), [editor.report]);
@@ -72,7 +74,7 @@ export default function ListPage({ title, lead, editor, lists, extras = [], foot
       .map((x) => x.id)
       .filter((id) => typeof id === 'string');
     return (
-      pickerFor(l.pickerKey, { engine, branches: isUnion ? engine.branchesOf(items) : null, takenIds, botId: config?.meta?.id || '' }) ||
+      pickerFor(l.pickerKey, { engine, branches: isUnion ? engine.branchesOf(items) : null, takenIds, botId: config?.meta?.id || '', channelTypes }) ||
       (rawItems
         ? [
             {

@@ -200,11 +200,12 @@ export const api = {
   getDeployment: (id, deploymentId, opts) => request('GET', `/bots/${enc(id)}/deployments/${enc(deploymentId)}`, opts),
 
   // ref: "draft" (default), "latest", a version, or an environment name.
-  /** @param {string} id @param {{ ref?: string, identity?: string }} [session] @param {RequestOptions} [opts] @returns {Promise<import('./types').Session>} */
-  startSession: (id, { ref, identity } = {}, opts) =>
+  /** @param {string} id @param {{ ref?: string, identity?: string, channel?: string }} [session] @param {RequestOptions} [opts] @returns {Promise<import('./types').Session>} */
+  startSession: (id, { ref, identity, channel } = {}, opts) =>
     request('POST', `/bots/${enc(id)}/sessions`, {
       ...opts,
-      body: { ...(ref ? { ref } : {}), ...(identity ? { identity } : {}) },
+      // `channel` is the id of the web channel the visitor chose, when the bot offers more than one (chat and voice side by side)
+      body: { ...(ref ? { ref } : {}), ...(identity ? { identity } : {}), ...(channel ? { channel } : {}) },
     }),
 
   // ---- test scenarios (the real runner): scripted scenarios replace the model with a script, live ones use a real model and cost money
@@ -245,6 +246,10 @@ export const api = {
   // The kinds of value redaction can find and how each is recognised (a read: it needs no config).
   /** @param {RequestOptions} [opts] @returns {Promise<{ entities: { kind: string, how: string }[] }>} */
   redactionEntities: (opts) => request('GET', '/redaction/entities', opts),
+
+  // What each kind of channel may carry and offer: the source for which options a screen shows. A read.
+  /** @param {RequestOptions} [opts] @returns {Promise<{ types: any[], note?: string }>} */
+  channelTypes: (opts) => request('GET', '/channel-types', opts),
 
   // ---- phone numbers: the number is the person's; the API checks it is free and sets up the LiveKit trunk and dispatch rule. Reads are safe; the three writes
   // (create, change, release) change the phone system, so they are only ever sent on a person's click.
