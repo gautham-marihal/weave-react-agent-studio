@@ -24,6 +24,7 @@ import CallsView from './calls/CallsView.jsx';
 import NewAgentWorkspace from './newlayout/NewAgentWorkspace.jsx';
 import { useLayout } from './newlayout/layoutPref.js';
 import { classicTab } from './newlayout/pages.js';
+import Icon from '../ui/Icon.jsx';
 
 // The tabs other than Config are loaded when first opened, so the first screen doesn't carry the code of the test runner, the trace viewer
 // and the knowledge screen (the live-conversation library is loaded separately, only when a real conversation starts).
@@ -424,7 +425,8 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
     return (
       <div className="stWorkspace">
         <button type="button" className="agentBackLink stBack" onClick={() => navigate(routeHref())}>
-          <span className="buttonBackArrow">←</span>Agents
+          <Icon name="arrowLeft" size={15} />
+          Agents
         </button>
         <ErrorState error={bot.error} onRetry={bot.reload} what="this agent" />
       </div>
@@ -532,7 +534,8 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
   return (
     <div className="stWorkspace">
       <button type="button" className="agentBackLink stBack" onClick={leave}>
-        <span className="buttonBackArrow">←</span>Agents
+        <Icon name="arrowLeft" size={15} />
+        Agents
       </button>
       <header className="stHeader">
         <span className="agentRowAvatar" aria-hidden="true">

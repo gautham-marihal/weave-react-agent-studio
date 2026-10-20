@@ -1,27 +1,29 @@
 import React, { useMemo, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { isDemoMode } from '../../demo/demoMode.js';
-import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { Notice } from '../ui.jsx';
+import { SkeletonRows } from '../../ui/Skeleton.jsx';
 import { formatWhen } from '../format.js';
 import CallDetail from './CallDetail.jsx';
-import { ALL_AGENTS_LIMIT, CALL_STATUS, RANGES, channelsIn, rowOf } from './callModel.js';
+import { ALL_AGENTS_LIMIT, OUTCOMES, RANGES, channelsIn, rowOf } from './callModel.js';
+import { usePref } from '../usePref.js';
 import { useCalls } from './useCalls.js';
 import './calls.css';
 
-// The calls an agent (or every agent) has had: who called, when, for how long, how it went. Selecting one opens the trace of what
-// happened in it. The API serves these per agent, so "All agents" asks each agent and merges the answers. These records hold what
-// callers said, and the API cannot yet limit who reads them, so the screen says so.
+// The calls an agent (or every agent) has had: who called, when, for how long, how it went (handled, passed to a person, cut off). Selecting one opens the
+// trace of what happened in it. The API serves these per agent, so "All agents" asks each agent and merges the answers. These records hold what callers
+// said, and the API cannot yet limit who reads them, so the screen says so, once, until "Got it".
 export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, initialCall = null, editor = null }) {
   const [botId, setBotId] = useState(fixedBotId);
   const [range, setRange] = useState('7d');
   const [caller, setCaller] = useState('');
   const [channel, setChannel] = useState('');
-  const [status, setStatus] = useState('');
+  const [outcome, setOutcome] = useState('');
   const [auto, setAuto] = useState(false);
   const [openCall, setOpenCall] = useState(initialCall); // { botId, id, raw }
   const effectiveBot = fixedBotId || botId;
-  const filters = useMemo(() => ({ range, caller, channel, status }), [range, caller, channel, status]);
+  const filters = useMemo(() => ({ range, caller, channel, status: OUTCOMES[outcome]?.status || '' }), [range, caller, channel, outcome]);
+  const [noticeSeen, setNoticeSeen] = usePref('weave_calls_notice_seen', '');
   const { calls, loading, loadingMore, errors, hasMore, loadMore, reload, skipped } = useCalls({
     bots,
     botId: effectiveBot,
@@ -29,17 +31,25 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
     refreshMs: auto ? 10000 : 0,
   });
   const names = useMemo(() => Object.fromEntries(bots.map((b) => [b.id, b.name])), [bots]);
-  const rows = useMemo(() => calls.map((c) => rowOf(c, names[c.bot])), [calls, names]);
+  // handled and passed to a person are both "ended" to the API: the list tells them apart
+  const rows = useMemo(() => calls.map((c) => rowOf(c, names[c.bot])).filter((row) => !outcome || row.outcome === outcome), [calls, names, outcome]);
   const channels = useMemo(() => channelsIn(calls), [calls]);
   const showAgent = !effectiveBot;
 
   return (
     <div className="clView">
-      <p className="clPrivacy" role="note">
-        <b>These records contain what callers said.</b> The studio can’t limit who reads them yet: anyone who can open it can read every call
-        {isDemoMode() ? '' : ' of every agent'}.
-      </p>
-      <DemoNote kind="calls">These calls are made-up examples, plus the simulated conversations you had in the preview. No real caller is involved.</DemoNote>
+      {noticeSeen !== '1' && (
+        <p className="clPrivacy" role="note">
+          <span>
+            <b>These records contain what callers said.</b> The studio can’t limit who reads them yet: anyone who can open it can read every call
+            {isDemoMode() ? '' : ' of every agent'}.
+            {isDemoMode() && ' In this demo they are made-up examples, plus the conversations you had in the preview; no real caller is involved.'}
+          </span>
+          <button type="button" className="quietButton" onClick={() => setNoticeSeen('1')}>
+            Got it
+          </button>
+        </p>
+      )}
 
       <div className="clFilters" role="group" aria-label="Filter the calls">
         {!fixedBotId && (
@@ -72,12 +82,12 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
           </select>
         </label>
         <label>
-          <span>Status</span>
-          <select className="stFInput small" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <span>Outcome</span>
+          <select className="stFInput small" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
             <option value="">Any</option>
-            {Object.entries(CALL_STATUS).map(([id, s]) => (
+            {Object.entries(OUTCOMES).map(([id, o]) => (
               <option key={id} value={id}>
-                {s.label}
+                {o.label}
               </option>
             ))}
           </select>
@@ -142,8 +152,7 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
               <th>Channel</th>
               <th>Duration</th>
               <th title="from the caller / from the agent">Turns</th>
-              <th>Handoffs</th>
-              <th>Status</th>
+              <th>Outcome</th>
               <th>Version</th>
             </tr>
           </thead>
@@ -165,10 +174,9 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
                 <td>{row.channel}</td>
                 <td>{row.duration}</td>
                 <td>{row.turns}</td>
-                <td>{row.handoffs}</td>
                 <td>
-                  <span className={`clStatus ${row.tone}`} title={row.hint}>
-                    {row.statusLabel}
+                  <span className={`clStatus ${row.outcomeTone}`} title={row.outcomeHint}>
+                    {row.outcomeLabel}
                   </span>
                 </td>
                 <td>
@@ -179,16 +187,12 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
             ))}
           </tbody>
         </table>
-        {loading && rows.length === 0 && (
-          <p className="clEmpty" role="status">
-            Loading calls…
-          </p>
-        )}
+        {loading && rows.length === 0 && <SkeletonRows rows={4} label="Loading calls" square={false} />}
         {!loading && rows.length === 0 && errors.length === 0 && (
           <div className="clEmpty">
             <strong>No calls found</strong>
             <p>
-              {status || channel || caller || range !== 'all'
+              {outcome || channel || caller || range !== 'all'
                 ? 'Nothing matches these filters. Try a longer time range or clear a filter.'
                 : 'Nothing has called yet.'}{' '}
               A conversation from an agent’s Test tab is a call too.

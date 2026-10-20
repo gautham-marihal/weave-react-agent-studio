@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { sentenceCase } from '../ui/text.js';
+import { Glyph } from './shared.jsx';
+import Icon from '../ui/Icon.jsx';
 
 // The parts the Telephony pages share: a table with search, column choice and row actions, and the dialog frame with its labelled fields.
 
-// Table with working search (⌕), column visibility (⌘), row deletion and an empty state.
+// Table with working search, a choice of visible columns, row deletion and an empty state.
 export function TelephonyTablePanel({
   title,
   columns,
   rows = [],
   compact = false,
-  emptyIcon = '◫',
+  emptyIcon = 'records',
   emptyTitle = 'Nothing here yet',
   emptyText = '',
   emptyAction = null,
@@ -95,7 +97,7 @@ export function TelephonyTablePanel({
               setColumnsOpen(false);
             }}
           >
-            ⌕
+            <Icon name="search" size={15} />
           </button>
           <button
             type="button"
@@ -105,7 +107,7 @@ export function TelephonyTablePanel({
             title="Columns"
             onClick={() => setColumnsOpen((value) => !value)}
           >
-            ⌘
+            <Icon name="sliders" size={15} />
           </button>
           {columnsOpen && (
             <div className="tableColumnsMenu" role="dialog" aria-label="Visible columns">
@@ -192,7 +194,7 @@ export function TelephonyTablePanel({
                 <td colSpan={colSpan}>
                   <div className="telephonyNoResults">
                     <span className="telephonyNoResultsIcon" aria-hidden="true">
-                      {needle ? '⌕' : emptyIcon}
+                      <Glyph icon={needle ? 'search' : emptyIcon} size={20} />
                     </span>
                     <strong>{needle ? `No matches for “${query.trim()}”` : emptyTitle}</strong>
                     {needle ? <span>Try a different search, or clear it to see everything.</span> : emptyText && <span>{emptyText}</span>}
@@ -251,7 +253,7 @@ export function TelephonyDialog({ eyebrow, title, subtitle, onClose, children, f
             {subtitle && <p>{subtitle}</p>}
           </div>
           <button type="button" className="modalClose" aria-label="Close" onClick={onClose}>
-            ×
+            <Icon name="close" size={14} />
           </button>
         </div>
         {!live && (

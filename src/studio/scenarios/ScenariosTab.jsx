@@ -11,6 +11,7 @@ import { useTestRun } from './useTestRun.js';
 import ResultView from './ResultView.jsx';
 import ScenarioForm from './ScenarioForm.jsx';
 import './scenarios.css';
+import Icon from '../../ui/Icon.jsx';
 
 // Test scenarios: conversations written down with what must be true afterwards, kept in the agent's draft (`tests`) and run by the
 // server's runner. A scenario with a `model_script` runs the real runtime with a scripted model (free, the same every time); one without
@@ -165,7 +166,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
           {network ? ' · real requests' : ''}
         </button>
         <button type="button" className="quietButton" disabled={!!editing} onClick={() => setEditing({ index: -1, scenario: newScenario(config) })}>
-          ＋ New scenario
+          <Icon name="plus" size={14} /> New scenario
         </button>
         <button type="button" className="quietButton" aria-expanded={importOpen} onClick={() => setImportOpen((v) => !v)}>
           Paste scenarios…

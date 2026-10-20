@@ -1319,8 +1319,13 @@ em.stTag {
 .dashTopbar .topbarActions {
   flex: none;
 }
-/* On a phone the workspace and "Agents" steps of the path give way, so the agent's name and the page stay readable. */
-@media (max-width: 720px) {
+/* The page you are on is never shortened: the steps before it give way first. */
+.dashTopbar .topbarCrumb > strong:last-child {
+  flex-shrink: 0;
+}
+/* On a narrower window (and a phone) the workspace and "Agents" steps of the path go, so the agent's name and the page stay readable; the sidebar shows
+   the workspace, and "All agents" is at the top of an agent's menu. */
+@media (max-width: 1300px) {
   .dashTopbar .topbarCrumb > span:first-child,
   .dashTopbar .topbarCrumb > span:first-child + b {
     display: none;
@@ -2373,20 +2378,22 @@ button.stEnvSlot:focus-visible {
     padding-right: 2px;
   }
 }
-/* the demo marker sits in the top bar, not over the account menu */
-.demoBadgeWrap {
-  left: auto;
-  bottom: auto;
-  top: 20px;
-  right: 430px;
-  z-index: 40;
+/* in a top bar the demo marker is the first of its buttons (DemoSlot), and what it says opens below it; without a top bar it keeps its corner */
+.demoSlot {
+  display: contents;
 }
-@media (max-width: 1250px) {
-  .demoBadgeWrap {
-    right: auto;
-    left: 300px;
-    top: 78px;
-  }
+html[data-theme] body .demoBadgeWrap.inBar {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  display: inline-flex;
+  align-items: center;
+}
+.demoBadgeWrap.inBar .demoPopover {
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: 0;
+  z-index: 70;
 }
 .dashboard .stToolbarActions .quietButton {
   border-color: transparent;
@@ -2499,4 +2506,231 @@ html[data-theme="light"] .stPill.live {
   gap: 10px;
   align-items: center;
   justify-content: space-between;
+}
+
+/* Telephony is a page of the workspace: one title, its four parts as tabs, then the open part with its own heading */
+.telephonyWorkspace .telephonyTabs {
+  margin: 4px 0 22px;
+}
+/* the page around it already has the workspace's margins */
+.dashboard .telephonyWorkspace .telephonyContent.telephonyContent {
+  max-width: none;
+  padding: 0;
+}
+.telephonyWorkspace .telephonyTabs svg {
+  flex: none;
+}
+.telephonyWorkspace .welcomeBlock h1 .telephonyPreviewTag {
+  position: relative;
+  top: -0.35em;
+  margin-left: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+html[data-theme] body .telephonyWorkspace .telephonyPageHeader {
+  align-items: flex-end;
+  margin: 22px 0 20px;
+}
+html[data-theme] body .telephonyWorkspace .telephonyPageHeader h2 {
+  margin: 0 0 6px;
+  color: var(--textStrong);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+html[data-theme] body .telephonyWorkspace .telephonyPageHeader p {
+  max-width: 720px;
+  min-height: 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+
+/* ---- the agents as one table (the Agents page, and Home's "Your agents"): a header, then a row per agent that opens it, its menu at the end ---------- */
+html[data-theme] body .agentRowList.agentTable {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--ds-radius-card, 12px);
+  background: var(--card-fill, var(--panel));
+  container-type: inline-size;
+}
+html[data-theme] body .agentTable :is(.stAgentHead, .agentRowMain) {
+  display: grid;
+  grid-template-columns: 36px minmax(160px, 1.3fr) minmax(260px, 1.5fr) minmax(120px, 0.7fr) minmax(110px, 0.7fr) 16px;
+  align-items: center;
+  gap: 14px;
+}
+/* each part in its own column (an older rule for narrow lists moved them under the name) */
+html[data-theme] body .agentTable .agentRowMain > :is(.stEnvSlots, .stRowCalls, .stRowFacts) {
+  grid-column: auto;
+}
+/* the environments wrap inside their column (an agent in all three can need two lines); nothing spills into the next column */
+html[data-theme] body .agentTable .stEnvSlots {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  min-width: 0;
+}
+html[data-theme] body .agentTable .agentRowMain > * {
+  min-width: 0;
+}
+html[data-theme] body .agentTable .stAgentHead {
+  padding: 9px 8px 9px 16px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface2) 55%, transparent);
+}
+html[data-theme] body .agentTable:has(.agentRowMenu) .stAgentHead {
+  padding-right: 58px;
+}
+html[data-theme] body .agentTable .stAgentHead > span:first-child {
+  grid-column: 1 / span 2;
+}
+html[data-theme] body .agentTable .agentRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 0 8px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+html[data-theme] body .agentTable .stAgentHead + .agentRow {
+  border-top: 0;
+}
+html[data-theme] body .agentTable .agentRow:hover,
+html[data-theme] body .agentTable .agentRow:focus-within {
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+  box-shadow: none;
+  transform: none;
+}
+html[data-theme] body .agentTable .agentRowMain {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 8px 12px 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+html[data-theme] body .agentTable .agentRowMain:hover {
+  background: none;
+}
+html[data-theme] body .agentTable .agentRowMain:focus-visible {
+  outline: 2px solid var(--focus, var(--accent));
+  outline-offset: -2px;
+}
+html[data-theme] body .agentTable .agentRowAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+html[data-theme] body .agentTable .agentRowMain > svg {
+  color: var(--dim);
+}
+html[data-theme] body .agentTable .agentRowMenu {
+  flex: none;
+}
+/* calls in the last days, as a number and small bars; an alert that holds for the agent beside them */
+.stRowCalls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+.stRowCalls strong {
+  min-width: 2ch;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.stRowSpark {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 56px;
+  height: 20px;
+}
+.stRowSpark i {
+  flex: 1;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--accent) 35%, var(--surface2));
+}
+.stRowSpark i.today {
+  background: color-mix(in srgb, var(--accent) 75%, var(--surface2));
+}
+.stRowAlert {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warn, #d6a53a) 14%, transparent);
+  color: var(--warn-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.stRowAlert.critical {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger-text);
+}
+/* a narrower place (Home's column): the version goes, then the columns stack */
+@container (max-width: 860px) {
+  html[data-theme] body .agentTable :is(.stAgentHead, .agentRowMain) {
+    grid-template-columns: 36px minmax(140px, 1.3fr) minmax(240px, 1.1fr) minmax(110px, 0.6fr) 16px;
+  }
+  html[data-theme] body .agentTable .stRowFacts,
+  html[data-theme] body .agentTable .stAgentHead > span:nth-child(4) {
+    display: none;
+  }
+}
+@container (max-width: 640px) {
+  html[data-theme] body .agentTable .stAgentHead {
+    display: none;
+  }
+  html[data-theme] body .agentTable .agentRowMain {
+    grid-template-columns: 36px minmax(0, 1fr) 16px;
+    row-gap: 8px;
+  }
+  html[data-theme] body .agentTable .agentRowMain > :is(.stEnvSlots, .stRowCalls) {
+    grid-column: 2;
+  }
+  html[data-theme] body .agentTable .stEnvSlots {
+    flex-wrap: wrap;
+  }
+  html[data-theme] body .agentTable .agentRowMain > svg {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
+/* Releases: where each version runs, beside its number; one button and a menu per version */
+.stVersionCell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.stEnvTag {
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--good-text) 45%, transparent);
+  border-radius: 999px;
+  color: var(--good-text);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 600;
+}
+html[data-theme] body .stTable .stRow:not(.hist) {
+  grid-template-columns: minmax(170px, 1.4fr) 1fr 0.8fr 1fr 0.8fr auto;
+}
+html[data-theme] body .stTable .stRowActions {
+  flex-wrap: nowrap;
+  align-items: center;
 }

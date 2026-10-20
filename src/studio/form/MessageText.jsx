@@ -4,6 +4,7 @@ import { useConfigSelect, useForm } from './ctx.js';
 import TemplateField from './TemplateField.jsx';
 import { scopeAt } from './templates.js';
 import { LANGUAGE_PATTERN, hasLanguage, languageProblem, languageStatus, primaryOf, toLanguages, toPlain, wantedLanguages } from './messages.js';
+import Icon from '../../ui/Icon.jsx';
 
 // The text of a message: one line for everyone, or the same line per language. In per-language mode every language the agent speaks
 // has a row, so a missing one is plain to see (and one click adds it), and the primary language can't be left out by accident.
@@ -101,7 +102,7 @@ export default function MessageText({ value, onChange, path, disabled }) {
           {!disabled &&
             status.missing.map((code) => (
               <button type="button" key={code} className="stLink" onClick={() => add(code)}>
-                ＋ Add {code}
+                <Icon name="plus" size={14} /> Add {code}
               </button>
             ))}
         </div>
@@ -129,7 +130,7 @@ export default function MessageText({ value, onChange, path, disabled }) {
             pattern={LANGUAGE_PATTERN.source}
           />
           <button type="button" className="stAddBtn" disabled={!adding.trim()} onClick={submit}>
-            ＋ Add language
+            <Icon name="plus" size={14} /> Add language
           </button>
           {problem && <small className="stFErr">{problem}</small>}
         </div>

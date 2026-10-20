@@ -599,6 +599,65 @@ html[data-theme] body .sideLink {
 html[data-theme] body .sideLink i {
   color: var(--muted);
 }
+/* the whole menu fits a laptop screen (900 px high): rows of 38 px, short section labels, and at the bottom one row with the account, then Search (also
+   in the top bar) and Help as two small buttons */
+html[data-theme] body .sideNav .sideLink {
+  height: auto;
+  min-height: 38px;
+}
+html[data-theme] body .sideNav .navLabel {
+  padding: 10px 12px 4px;
+  line-height: 16px;
+}
+html[data-theme] body .sideNav .sideDivider {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+html[data-theme] body .dashboard .sideBrand {
+  height: 60px;
+  min-height: 60px;
+}
+html[data-theme] body .dashboard .sideBottom {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 8px 10px;
+}
+html[data-theme] body .dashboard .sideBottom .sideUtility {
+  flex: none;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+html[data-theme] body .dashboard .sideBottom .sideUtility > :not(:first-child) {
+  display: none;
+}
+html[data-theme] body .dashboard .sideBottom .userMenu {
+  flex: 1;
+  order: -1;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 6px;
+  border: 0;
+}
+html[data-theme] body .dashboard .sideBottom .userMenu .userInfo small {
+  display: none;
+}
+html[data-theme] body .dashboard .sideBottom > :last-child {
+  flex: 1;
+  order: -1;
+  min-width: 0;
+}
+/* folded to pictures: the account above the two buttons */
+html[data-theme] body .dashboard.sidebarCollapsed .sideBottom {
+  flex-direction: column;
+  padding: 8px 6px;
+}
+html[data-theme] body .dashboard.sidebarCollapsed .sideBottom > :last-child {
+  flex: none;
+}
 html[data-theme] body .sideLink:hover {
   background: var(--surface2);
   color: var(--textStrong);
@@ -694,7 +753,7 @@ html[data-theme] body .linkButton {
 html[data-theme] body .linkButton:hover {
   text-decoration-color: currentColor;
 }
-html[data-theme] body :is(.quickIcon, .activityIcon, .hjIcon) {
+html[data-theme] body :is(.quickIcon, .activityIcon) {
   border-color: var(--line);
   background: var(--surface2);
   color: var(--textStrong);
@@ -840,4 +899,54 @@ html[data-theme] body .topStart {
 html[data-theme] body .topStart:hover {
   opacity: 0.88;
   filter: none;
+}
+
+/* ---- while something is read: shapes where it will be (src/ui/Skeleton.jsx) ---------------------------------------------------------------------- */
+.skeleton {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--surface2) 0%, color-mix(in srgb, var(--surface2) 45%, var(--panel)) 50%, var(--surface2) 100%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+.skeleton.round {
+  border-radius: 999px;
+}
+.skeletonRows {
+  display: grid;
+  gap: 2px;
+}
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.skeletonRow > span {
+  display: grid;
+  flex: 1;
+  gap: 7px;
+}
+@keyframes skeletonShimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+.pageLoading {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+}
+.pageLoading .skeletonRows {
+  margin-top: 24px;
 }

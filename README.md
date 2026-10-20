@@ -47,8 +47,22 @@ and every tab ends with a **Next: …** bar, so the whole path can be walked wit
 |             | **Deploy**    | See what runs in each environment; the **release checklist** ("is it safe to put this live?") for the version, including where conversations are processed, what is kept about each call and whether callers are told they may be recorded; deploy it (production asks twice), roll back, follow a `pending` deployment, read the history.                                                                                                                                                                                  |
 | **Monitor** | **Calls**     | This agent's calls (real callers and test conversations) with filters, and a trace of what happened in each.                                                                                                                                                                                                                                                                                                                                                                                                                |
 
-The sidebar holds workspace-level things only: **Home** (the next step for the agent you were last working on, what is live, recent activity), **Agents**,
-**Calls** (every agent), the **Library** (Voices, Integrations, Telephony) and **Settings**.
+The sidebar holds workspace-level things only: **Home**, **Agents**, **Calls**, **Live**, **Monitoring**, **Cost and speed**, **Alerts**, the **Library**
+(Voices, Integrations, Telephony), **Team** and **Settings**. The whole menu fits on a 900 px high screen; Search and Help sit beside the account at the
+bottom.
+
+**Every page has an address**, so a refresh, a bookmark and Back keep you on it: `#/home`, `#/calls`, `#/live`, `#/monitoring`, `#/cost`, `#/alerts`,
+`#/voices`, `#/integrations`, `#/telephony/<part>` (`calls`, `dispatch`, `numbers`, `trunks`), `#/team`, `#/settings`, and an agent's `#/bots/...`
+(`src/pages/helpers.js`, `workspaceHref` and `parseWorkspaceHash`, tested in `tests/workspaceRoutes.test.js`). Every page has the same title, with a line
+under it and its main action on the right; each page's code arrives when it is first opened, so the first screen loads about half as much.
+
+- **Home**: four numbers for the workspace (calls today with the week by day, calls going on now, the alerts that hold, an estimate of the week's cost),
+  each opening its page; your agents as a table; the next step for the agent you last worked on (the same steps as its menu, below); recent activity.
+- **Agents**: one table, a row per agent that opens it: where it runs, its calls in the last 7 days with a small chart, an alert flag when one holds,
+  its latest version, and a menu (rename, export, save as template, move, remove).
+- **Calls**: what each call came to in a word (**Handled**, **Passed to a person**, **Cut off**, **In progress**), with a filter on it; who can read the
+  calls is said once, until "Got it".
+- **Telephony** is a page like the others: its four parts (simulated calls, dispatch rules, phone numbers, SIP trunks) are tabs under its title.
 
 **Publish** (header) freezes the saved draft as a version. The dialog lists the validator's warnings first.
 
@@ -62,8 +76,10 @@ The table above is the classic layout. The default layout (`src/studio/newlayout
   keeps the page you are on, so going from one agent's Tools to the next one's is one click; unsaved edits are asked about first), **All agents** and
   **Create an agent**.
 - While the agent is not ready, a **Getting it ready** card under the name shows how many of the steps are done (what it should do, what it says
-  first, its language and voice, its model, tools or knowledge, the checks, tests, a published version, live) and opens the next one. A ring beside a page says a step is still to do there; a number says the
-  checks found problems there.
+  first, its language and voice, its model, tools or knowledge, the checks, its tests and their latest run, a published version, live) and opens the next
+  one. A ring beside a page says a step is still to do there; a number says the checks found problems there. These steps are the one answer to "is it
+  ready?" (`src/studio/newlayout/readiness.js`): the menu, the Overview, Home and Releases all read them, so they always agree. Releases keeps its five
+  steps of shipping the draft, and calls the agent ready only when nothing else is left.
 - **The bar across the top** of every page: the name, where it stands, whether the draft is saved, and how many changes are not published yet (a click
   shows them). On the right only what is reached for from any page: what the checks found (when they found something), **Describe**, **Test**, **Save**
   (only when there is something to save), **Publish**, and **More** (run the checks, what changed, share, publish, deploy, roll back, all versions,
@@ -72,7 +88,12 @@ The table above is the classic layout. The default layout (`src/studio/newlayout
   a setting and try it straight away; on a narrower screen it opens as a panel over the page.
 - **Overview** is the agent's dashboard: calls in the last 7 days (with a small chart and the change on the week before), the share handled without a
   person, the typical answer time and the share cut off, each opening the page that explains it; the steps to get ready (folded away once it is ready);
-  where it runs; and its latest calls. It lays itself out by its own width, so it reads well beside the test panel too.
+  where it runs; and its latest calls. Pointing at a bar of the chart says its day and its count. It lays itself out by its own width, so it reads well
+  beside the test panel too. While something is read, shapes stand where it will be, so nothing jumps when it arrives.
+- **Settings**: the sections are its tabs; **Edit as JSON** (top right) shows the whole configuration as JSON, and **Back to the settings** returns.
+- **Releases**: each published version says where it runs (Dev, Staging, Production); **Deploy…** is its button, and its menu compares it with the draft
+  or restores it as the draft.
+- **Keyboard**: Ctrl+S (⌘S) saves the draft from any page of the agent; **?** anywhere (but in a text box) lists the shortcuts and where things are.
 - Pages with settings beyond their main job list them under a heading that says what they are ("Connections, forms, messages and tasks" under Tools,
   "Hand-overs, hours and callers" under Channels).
 
@@ -314,7 +335,7 @@ All pages read the same agent list (`src/studio/agents.js`): the API's agents, m
 
 | Page                                                      | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Home**, search, workspace menu                          | The next step for the agent you last worked on (build, test, release, monitor), the agents, recent activity; counts, rows and results come from the API.                                                                                                                                                                                                                                                                                                                                                              |
+| **Home**, search, workspace menu                          | The workspace's numbers (calls today, live now, alerts, the week's cost), the agents, the next step for the agent you last worked on, recent activity; counts, rows and results come from the API.                                                                                                                                                                                                                                                                                                                    |
 | **Calls**                                                 | Every conversation your agents have had (`GET /bots/{id}/calls`): who called, when, how long, how it ended, with filters, paging, "All agents" (it asks each agent, a few at a time) and a trace of what happened in each. The records hold what callers said, and the page says so.                                                                                                                                                                                                                                  |
 | **Voices**                                                | "Use in an agent" puts the voice on that agent's draft, unsaved, for you to review. "Used by" is read from the agents' configurations.                                                                                                                                                                                                                                                                                                                                                                                |
 | **Integrations**                                          | "Add to an agent" adds the saved connection to that agent's draft as an HTTP connection, unsaved.                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -422,10 +443,13 @@ previews and the call stream are all served now and used.)
 
 Two choices, both kept in this browser and applied to every page (the landing and sign-in pages too):
 
-- **Light or dark**: the button at the top of every page.
+- **Light or dark**: in the **Theme** panel at the top of every page (one button for how the studio looks).
 - **Design style**: pick it from **Theme** at the top of every page, or in **Settings › How it looks and reads**. Each style is a whole look, in light
   and in dark, not just a colour:
-  - **Simple** (the default): black and white, quiet, nothing in the way.
+  - **Simple** (the default): a calm, professional product look. Inter type (self-hosted, `@fontsource-variable/inter`) in a measured scale with
+    weights of 600 at most, neutral greys with one solid main action, 8 px corners on controls and 12 px on cards with a hairline and the faintest
+    lift, a real search field in the top bar, quiet icon buttons, sentence-case labels, and every state as a soft badge with a dot in the colour of
+    its meaning (green live, blue running elsewhere, grey draft, red needs attention).
   - **Professional**: enterprise and trustworthy. A navy top bar with a blue line, a clean white sidebar with a blue edge on the open page, crisp
     sans type with semibold titles, small capital labels, tabular figures, neat 6 px corners, flat surfaces, a blue line along the top of number
     cards, solid blue buttons, underlined tabs, tables with a grey head.
@@ -465,14 +489,17 @@ option to 4.5:1, including text on the surfaces an option tints.
 src/main.jsx, src/App.jsx   entry, sign-in state, error boundary
 src/tokens.css              the design tokens: both themes' colours, the type scale, spacing and density (loaded before styles.css)
 src/appLook.css             the look of the whole app (the Simple style): palette, buttons, sidebar, pages, panels (loaded after styles.css)
+src/saas.css                the product finish over it: type, the top bar's search field, controls, cards, state badges, tables (before themes.css)
 src/themes.css              the other design styles (Premium, Futuristic, Vibrant, Professional, Calm), each for light and dark, and the style picker
 src/accents.css             the colour options of each style (generated)
-src/ui/                     the icon set (Icon.jsx, iconPaths.js)
+src/ui/                     the icon set (Icon.jsx, iconPaths.js), the style picker, and the loading shapes (Skeleton.jsx)
 src/pages/                  one file per page: Landing, Login, Dashboard (the one shell, and Home), Calls (Sessions.jsx), Telephony, Voices,
-                            Integrations; HomeJourney.jsx; shared.jsx (sidebar pieces, dialogs), helpers.js (the navigation)
+                            Integrations; HomeJourney.jsx (the next step), WorkspacePulse.jsx (Home's numbers); shared.jsx (sidebar pieces, dialogs),
+                            helpers.js (the navigation and every page's address)
 src/api/client.js           one function per API endpoint, error classification (JSDoc-typed)
 src/api/types.js            JSDoc types of the API's answers; agentConfig.d.ts is generated from the schema
-src/studio/                 the Agents area (list, workspace, Config, Versions, Deploy, Test); journey.js (the four stages and "Next"), status.js (one name for each state)
+src/studio/                 the Agents area (list, workspace, Config, Versions, Deploy, Test); AgentTable.jsx (the agents as a table); journey.js (the
+                            classic layout's stages and "Next"), status.js (one name for each state)
 src/studio/newlayout/       an agent in the default layout: its menu (AgentNav), the agent switcher, the top bar, the pages and the steps to get ready (readiness.js)
 src/studio/form/            schema engine, the form, layout.js (the groups), plainLanguage.js (the labels), the pickers, and the tool / channel / message / template editors
 src/studio/simple/          the Simple view (six cards) and the helpers that read and write it

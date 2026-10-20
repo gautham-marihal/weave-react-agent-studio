@@ -16,8 +16,9 @@ async function inChunks(items, size, work) {
   return out;
 }
 
-// configs: { botId: config } when they are known (an agent's own page passes its draft, unsaved edits included); otherwise each draft is read
-export function useCostData(bots, { days = 14, configs = null } = {}) {
+// configs: { botId: config } when they are known (an agent's own page passes its draft, unsaved edits included); otherwise each draft is read.
+// perAgent: how many of each agent's newest calls are read for their model use (fewer for the estimate on Home).
+export function useCostData(bots, { days = 14, configs = null, perAgent = PER_AGENT } = {}) {
   const [state, setState] = useState({ loading: true, errors: [], samples: [], totals: {}, modelsByBot: {}, failed: 0, at: null });
   const [nonce, setNonce] = useState(0);
   const refresh = useCallback(() => setNonce((n) => n + 1), []);
@@ -42,7 +43,7 @@ export function useCostData(bots, { days = 14, configs = null } = {}) {
       finished.forEach((c) => {
         totals[c.bot] = (totals[c.bot] || 0) + 1;
       });
-      const wanted = ids.flatMap((id) => finished.filter((c) => c.bot === id).slice(0, PER_AGENT));
+      const wanted = ids.flatMap((id) => finished.filter((c) => c.bot === id).slice(0, perAgent));
       let failed = 0;
       const samples = (
         await inChunks(wanted, 4, async (c) => {
@@ -74,7 +75,7 @@ export function useCostData(bots, { days = 14, configs = null } = {}) {
       if (!signal.aborted) setState((s) => ({ ...s, loading: false, errors: [{ botId: '', message: e?.message || 'The calls could not be read.' }] }));
     });
     return () => controller.abort();
-  }, [key, days, nonce, configKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, days, nonce, configKey, perAgent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { ...state, refresh };
 }

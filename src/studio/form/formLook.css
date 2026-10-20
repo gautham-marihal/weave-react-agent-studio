@@ -1055,3 +1055,16 @@ body .stTpl > .stTplInsert > summary {
   content-visibility: auto;
   contain-intrinsic-size: auto 64px;
 }
+
+/* a value the server sets: shown, not editable, and it looks it */
+html[data-theme] body .stFRow.ro .stFRowCtl :is(input, textarea, select):disabled {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+  color: var(--text);
+  box-shadow: none;
+  cursor: default;
+  opacity: 1;
+}
+.stFTail {
+  white-space: nowrap;
+}

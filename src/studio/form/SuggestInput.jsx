@@ -1,5 +1,6 @@
 import React, { useId, useMemo, useRef, useState } from 'react';
 import '../smartSelect.css';
+import Icon from '../../ui/Icon.jsx';
 
 // A text box with a list of suggestions: pick one from the list, or type anything else. The difference from SmartSelect is that the value is never
 // limited to the list: what is typed is what is saved. Built to the WAI-ARIA combobox pattern like SmartSelect (role=combobox on the input, a listbox
@@ -114,7 +115,7 @@ export default function SuggestInput({
           setOpen((was) => !was);
         }}
       >
-        ▾
+        <Icon name="chevronDown" size={15} />
       </button>
       {open && (
         <ul id={listId} role="listbox" aria-label={ariaLabel} className="stComboList">

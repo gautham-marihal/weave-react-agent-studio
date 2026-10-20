@@ -1,0 +1,699 @@
+/* The finish of a professional product, over the default look (appLook.css) and under the other styles (themes.css), which keep their own identity
+   and override what they need. One radius for controls (8 px) and one for cards (12 px), quiet weights (600 at most), sentence-case labels, a real search
+   field in the top bar, icons that are icons, and one way to say a state: a soft badge with a dot, in the colour of what it means. */
+
+html[data-theme] body {
+  --r-control: 8px;
+  --r-card: 12px;
+  --shadow-xs: 0 1px 2px rgba(16, 16, 20, 0.05);
+  --info-text: #1d4ed8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11";
+  text-rendering: optimizeLegibility;
+}
+html[data-theme="dark"] body {
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --info-text: #93c5fd;
+}
+/* the default look: a slightly cooler grey for lines, a crisper strong text */
+html[data-style="simple"][data-theme="light"] body,
+html:not([data-style])[data-theme="light"] body {
+  --line: #ebebee;
+  --line2: #e2e2e6;
+  --textStrong: #09090b;
+  --text: #3f3f46;
+  --sidebar: #fafafa;
+}
+
+/* ---- type ---------------------------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body :is(h1, h2, h3) {
+  letter-spacing: -0.015em;
+}
+html[data-theme] body .dashboard .dashContent :is(.welcomeBlock, .pageHeaderBlock) h1 {
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+html[data-theme] body .dashboard .dashContent :is(.welcomeBlock, .pageHeaderBlock) p {
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+html[data-theme] body .welcomeBlock h1 > span {
+  color: inherit;
+}
+html[data-theme] body .sectionHeader h2 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+html[data-theme] body :is(.ovStat, .metricCard, .telephonyStatCard) strong {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the mark ------------------------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body .logoWord {
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+html[data-theme] body .logoMark {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--ink);
+  box-shadow: none;
+}
+html[data-theme] body .logoMark::before,
+html[data-theme] body .logoMark::after,
+html[data-theme] body .logoMark span {
+  height: 3px;
+  background: var(--on-ink);
+}
+html[data-theme] body .logoMark span {
+  width: 3px;
+  height: 12px;
+}
+html[data-theme] body .logoMark::before,
+html[data-theme] body .logoMark::after {
+  width: 13px;
+}
+
+/* ---- the bar across the top: where you are, a search field, and quiet icon buttons ------------------------------------------------------------------ */
+html[data-theme] body .dashboard .dashTopbar.dashTopbar {
+  background: color-mix(in srgb, var(--page) 94%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+}
+html[data-theme] body .topbarCrumb {
+  font-size: var(--fs-md);
+}
+html[data-theme] body .topbarCrumb > b {
+  color: var(--dim);
+  font-weight: 400;
+}
+html[data-theme] body .topbarActions {
+  gap: 6px;
+}
+html[data-theme] body .topSearch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  height: 34px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  color: var(--dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: text;
+  box-shadow: var(--shadow-xs);
+}
+html[data-theme] body .topSearch > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-theme] body .topSearch:hover {
+  border-color: color-mix(in srgb, var(--textStrong) 22%, var(--line2));
+  color: var(--muted);
+}
+html[data-theme] body .topSearch kbd,
+html[data-theme] body .sideUtility kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--line2);
+  border-radius: 5px;
+  background: var(--surface2);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  line-height: 18px;
+}
+@media (max-width: 1180px) {
+  html[data-theme] body .topSearch {
+    width: 200px;
+  }
+}
+/* the bell, the theme and the account: icon-sized, no frame until pointed at */
+html[data-theme] body .dashTopbar :is(.inBell, .styleMenu > .quietButton) {
+  min-height: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+}
+html[data-theme] body .dashTopbar :is(.inBell, .styleMenu > .quietButton):hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body .dashTopbar .styleMenu > .quietButton {
+  padding: 0 10px;
+  font-weight: 500;
+}
+html[data-theme] body .dashTopbar .profileDot,
+html[data-theme] body .dashTopbar .profileMenuRoot.compact > button {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+/* the demo marker: a small, quiet tag */
+html[data-theme] body .demoBadge {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ---- the sidebar ---------------------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body .workspaceSwitch {
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  box-shadow: none;
+}
+html[data-theme] body .workspaceSwitch:hover,
+html[data-theme] body .workspaceSwitch[aria-expanded="true"] {
+  border-color: var(--line);
+  background: var(--panel);
+}
+html[data-theme] body .workspaceAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+html[data-theme] body .workspaceCopy strong {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+html[data-theme] body .buttonChevron {
+  display: inline-grid;
+  place-items: center;
+  color: var(--dim);
+}
+html[data-theme] body .sideNav .sideLink,
+html[data-theme] body .nlNav .nlNavGroup button {
+  font-size: var(--fs-md);
+  font-weight: 450;
+}
+html[data-theme] body .sideLink.selected,
+html[data-theme] body .nlNav button.on {
+  font-weight: 550;
+}
+html[data-theme] body .sideLink i .wIcon,
+html[data-theme] body .nlNavIcon .wIcon {
+  width: 16px;
+  height: 16px;
+}
+html[data-theme] body .agentBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-sm);
+}
+html[data-theme] body .sidebar .collapse {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: none;
+  color: var(--dim);
+}
+html[data-theme] body .sidebar .collapse:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+
+/* ---- buttons: one shape; the main one solid, the others white with a hairline -------------------------------------------------------------------- */
+html[data-theme] body :is(.primaryCta, .modalCreate, .topStart, .createButton) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--r-control);
+  font-weight: 550;
+  box-shadow: 0 1px 2px rgba(16, 16, 20, 0.12);
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal) :is(.primaryCta, .modalCreate, .createButton) {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: var(--fs-md);
+}
+html[data-theme] body :is(.quietButton, .secondaryCta, .modalCancel) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--r-control);
+  box-shadow: var(--shadow-xs);
+  font-weight: 500;
+}
+html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal) :is(.quietButton, .secondaryCta) {
+  min-height: 34px;
+  padding: 0 12px;
+}
+html[data-theme] body .nlBarActions .quietButton.nlBtn,
+html[data-theme] body .nlBarActions .stMenuBtn {
+  border-radius: var(--r-control);
+}
+html[data-theme] body .stMenuBtn {
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+}
+html[data-theme] body .modalClose {
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--r-control);
+  color: var(--muted);
+}
+html[data-theme] body .modalClose:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body .stAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--r-control);
+}
+html[data-theme] body .nlPageActions .stAddBtn,
+html[data-theme] body .nlSection > header .stAddBtn {
+  border-radius: var(--r-control);
+  font-weight: 550;
+  box-shadow: 0 1px 2px rgba(16, 16, 20, 0.12);
+}
+html[data-theme] body .linkButton {
+  font-weight: 500;
+  text-decoration-thickness: 1px;
+}
+
+/* ---- fields ----------------------------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body :is(.stFInput, .workspaceField input, .loginCard input:not([type="checkbox"]), .profileCard input, .profileCard select) {
+  border-radius: var(--r-control);
+}
+html[data-theme] body :is(.stFInput, .workspaceField input):focus {
+  border-color: color-mix(in srgb, var(--textStrong) 40%, var(--line2));
+  box-shadow: 0 0 0 3px var(--ring);
+  outline: 0;
+}
+html[data-theme] body .stTpl,
+html[data-theme] body .stPromptPreview {
+  border-radius: var(--r-card);
+}
+
+/* ---- cards: one radius, a hairline and the faintest lift ---------------------------------------------------------------------------------------- */
+html[data-theme]
+  body
+  :is(
+    .stCard,
+    .ovStat,
+    .agentTable,
+    .nlRows,
+    .quickCard,
+    .activityCard,
+    .metricCard,
+    .telephonyStatCard,
+    .sessionsTablePanel,
+    .homeJourney,
+    .progressCard,
+    .nlTestDock,
+    .clTableWrap,
+    .shipFlow,
+    .stAgentSummary,
+    .ovCalls,
+    .nlSteps
+  ) {
+  border-radius: var(--r-card);
+}
+html[data-style="simple"][data-theme]
+  body
+  :is(
+    .stCard,
+    .ovStat,
+    .agentTable,
+    .nlRows,
+    .quickCard,
+    .activityCard,
+    .metricCard,
+    .telephonyStatCard,
+    .sessionsTablePanel,
+    .homeJourney,
+    .progressCard,
+    .shipFlow,
+    .stAgentSummary
+  ) {
+  border-color: var(--line);
+  box-shadow: var(--shadow-xs);
+}
+html[data-style="simple"][data-theme] body .ovStat:hover {
+  border-color: var(--line2);
+  box-shadow: 0 2px 8px rgba(16, 16, 20, 0.06);
+}
+/* a table in a card is the card: no second frame inside */
+html[data-theme] body .sessionsTablePanel .clTableWrap {
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ---- states: a soft badge with a dot, coloured by meaning ------------------------------------------------------------------------------------- */
+html[data-theme] body .stPill {
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--pill, var(--muted)) 22%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pill, var(--muted)) 8%, var(--panel));
+  color: var(--pill, var(--muted));
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* the colour of the words follows the meaning (older light-mode rules set it per tone, more specifically) */
+html[data-theme] body .stPill.stPill {
+  color: var(--pill, var(--muted));
+}
+html[data-theme] body .stPill::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+html[data-theme] body .stPill.live {
+  --pill: var(--good-text);
+}
+html[data-theme] body .stPill.review,
+html[data-theme] body .stPill.dev {
+  --pill: var(--info-text);
+}
+html[data-theme] body .stPill.good {
+  --pill: var(--good-text);
+}
+html[data-theme] body .stPill.draft {
+  --pill: var(--muted);
+}
+html[data-theme] body .stPill.bad {
+  --pill: var(--danger-text);
+}
+/* how a call went, the same way */
+html[data-theme] body .clStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--pill, var(--muted)) 22%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pill, var(--muted)) 8%, var(--panel));
+  color: var(--pill, var(--muted));
+  font-weight: 550;
+}
+html[data-theme] body .clStatus::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+html[data-theme] body .clStatus.good {
+  --pill: var(--good-text);
+}
+html[data-theme] body .clStatus.info {
+  --pill: var(--info-text);
+}
+html[data-theme] body .clStatus.warn {
+  --pill: var(--warn-text);
+}
+html[data-theme] body .clStatus.bad {
+  --pill: var(--danger-text);
+}
+
+/* where it runs: a chip per environment, quiet when nothing runs there */
+html[data-theme] body .stEnvSlot {
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  color: var(--dim);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+html[data-theme] body .stEnvSlot b {
+  color: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+html[data-theme] body .stEnvSlot.on {
+  border-color: var(--line2);
+  background: var(--panel);
+  color: var(--textStrong);
+  font-weight: 500;
+}
+html[data-theme] body .stEnvSlot.on b {
+  color: var(--muted);
+}
+html[data-theme] body .stEnvSlot.on::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--good-text);
+}
+html[data-theme] body .stEnvSlot.on.production,
+html[data-theme] body .stEnvSlot.on.staging {
+  border-color: var(--line2);
+  background: var(--panel);
+}
+html[data-theme] body .stEnvSlot.on.production b,
+html[data-theme] body .stEnvSlot.on.staging b {
+  color: var(--muted);
+}
+
+/* ---- tables ----------------------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body :is(.clTable, .voiceLibraryTable, .sessionsTable, .telephonyTable) thead th,
+html[data-theme] body .agentTable .stAgentHead,
+html[data-theme] body .stRow.head {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+html[data-theme] body :is(.clTable, .voiceLibraryTable) tbody tr:hover {
+  background: color-mix(in srgb, var(--surface2) 60%, transparent);
+}
+html[data-theme] body .voiceProviderTag {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+}
+
+/* ---- notices ------------------------------------------------------------------------------------------------------------------------------------ */
+html[data-theme] body .stNotice {
+  border-radius: 10px;
+}
+html[data-theme] body .stNoticeIcon {
+  display: inline-grid;
+  place-items: center;
+}
+
+/* ---- the landing page: flat cards, no tilt ------------------------------------------------------------------------------------------------------- */
+html[data-theme] body :is(.showcaseMain, .showcasePrompt, .showcaseConfig) {
+  transform: none;
+}
+html[data-theme] body .heroVisual .visualGrid {
+  transform: none;
+  opacity: 0.35;
+}
+
+/* the landing page's picture: three cards side by side and layered, none covering another's words */
+html[data-theme] body .heroVisual .showcaseMain {
+  top: 6%;
+  right: 0;
+  width: 64%;
+}
+html[data-theme] body .heroVisual .showcasePrompt {
+  top: 18%;
+  left: 0;
+  width: 34%;
+  min-width: 220px;
+}
+html[data-theme] body .heroVisual .showcaseConfig {
+  bottom: 6%;
+  left: 6%;
+  width: 36%;
+  min-width: 220px;
+}
+html[data-theme] body :is(.miniHeading, .showcaseHeader, .landingBottom) {
+  letter-spacing: 0;
+}
+html[data-theme] body .showcaseCard {
+  border-radius: var(--r-card);
+}
+html[data-theme] body .promptArrow {
+  display: grid;
+  place-items: center;
+}
+html[data-theme] body .landingActions .demoBadgeWrap.inBar,
+html[data-theme] body .loginTopActions .demoBadgeWrap.inBar {
+  margin-right: 4px;
+}
+
+/* ---- sign-in: a calmer card ------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body .loginCard {
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(16, 16, 20, 0.05),
+    0 12px 40px rgba(16, 16, 20, 0.06);
+}
+html[data-theme] body .demoNotice b,
+html[data-theme] body .demoNote b {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ---- small layout repairs ------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body .quickAction > .wIcon:last-child {
+  margin-left: auto;
+  color: var(--dim);
+}
+html[data-theme] body .ovStat:has(.ovSpark) > small {
+  padding-right: 96px;
+}
+html[data-theme] body .clFilters select.stFInput,
+html[data-theme] body .clFilters .stFInput {
+  min-width: 0;
+}
+html[data-theme] body .clFilters > label:first-child :is(select, input, button) {
+  width: 200px;
+}
+html[data-theme] body .clFilters input[type="search"] {
+  width: 170px;
+}
+html[data-theme] body .stEnvNone {
+  color: var(--dim);
+  font-size: var(--fs-sm);
+}
+
+/* the "information" colour of each style (a running, not-yet-live state), in its own family */
+html[data-style="premium"][data-theme="light"] body {
+  --info-text: #2f4f7f;
+}
+html[data-style="premium"][data-theme="dark"] body {
+  --info-text: #a9c1e8;
+}
+html[data-style="calm"][data-theme="light"] body {
+  --info-text: #2c5b74;
+}
+html[data-style="calm"][data-theme="dark"] body {
+  --info-text: #a3c9dc;
+}
+html[data-style="vibrant"][data-theme="light"] body {
+  --info-text: #4c1fd1;
+}
+html[data-style="vibrant"][data-theme="dark"] body {
+  --info-text: #c4b5fd;
+}
+html[data-style="futuristic"][data-theme="light"] body {
+  --info-text: #0e6a86;
+}
+html[data-style="futuristic"][data-theme="dark"] body {
+  --info-text: #67e8f9;
+}
+
+/* labels and states read in sentence case, without wide letter spacing (generated from every rule that set capitals; a style that wants capitals,
+   such as Futuristic, sets them again in themes.css) */
+html[data-theme] body .agentStatus,
+html[data-theme] body .builderSubhead,
+html[data-theme] body .builderAttemptTop span,
+html[data-theme] body .builderRowHeader span,
+html[data-theme] body .integrationCategory,
+html[data-theme] body .voiceLibraryTable th,
+html[data-theme] body .builderChecklistGroup h4,
+html[data-theme] body .infoDialogGroup h3,
+html[data-theme] body .tableColumnsTitle,
+html[data-theme] body .statusConsequences h3,
+html[data-theme] body .sessionTranscript h3,
+html[data-theme] body .readinessRunner label span,
+html[data-theme] body .settingsFacts dt,
+html[data-theme] body .settingsEnvironments h3,
+html[data-theme] body .ruleSection legend,
+html[data-theme] body .callFacts dt,
+html[data-theme] body .builderModelTag,
+html[data-theme] body .demoNote b,
+html[data-theme] body .hjHead,
+html[data-theme] body .stStageHead,
+html[data-theme] body .stNext small,
+html[data-theme] body .stComboGroup,
+html[data-theme] body .stRow.head,
+html[data-theme] body .stChangeBody small,
+html[data-theme] body .stEnvCard small,
+html[data-theme] body .stAgentSummary span,
+html[data-theme] body .stAgentHead,
+html[data-theme] body .telephonyPreview b,
+html[data-theme] body .telephonyPreviewTag,
+html[data-theme] body .demoNotice b,
+html[data-theme] body .asFacts dt,
+html[data-theme] body .stPublishPanel > header small,
+html[data-theme] body .asWho,
+html[data-theme] body .asBlock h4,
+html[data-theme] body .asCard h3,
+html[data-theme] body .stChannelBlock legend,
+html[data-theme] body .stToolBlock legend,
+html[data-theme] body .stModelView strong,
+html[data-theme] body .stUrlPreview span,
+html[data-theme] body .stFSectionLabel,
+html[data-theme] body .stTryBlock > strong,
+html[data-theme] body .stPickGroup h6,
+html[data-theme] body .stTModels li span,
+html[data-theme] body .pvSimTag,
+html[data-theme] body .pvPanel > header strong,
+html[data-theme] body .pvStatus,
+html[data-theme] body .pvBanner b,
+html[data-theme] body .pvHud small,
+html[data-theme] body .smList em,
+html[data-theme] body .tmHead,
+html[data-theme] body .stTDetails dt,
+html[data-theme] body .stTStatus,
+html[data-theme] body .stTModels li > span,
+html[data-theme] body .wfSection h4 {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* paragraphs end on more than one word */
+html[data-theme] body :is(p, .stFHelp, .nlHint, small) {
+  text-wrap: pretty;
+}

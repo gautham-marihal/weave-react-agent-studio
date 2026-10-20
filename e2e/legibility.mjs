@@ -144,7 +144,7 @@ for (const layout of ['classic', 'new']) {
     });
     await page.waitForTimeout(1500);
     await open('#/bots/acme-support/settings', '.nlWorkspace');
-    await page.locator('.nlParts button', { hasText: 'JSON' }).click();
+    await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
     const box = page.locator('.nlPage textarea').first();
     const config = JSON.parse(await box.inputValue());
     const channel = (config.channels.find((c) => c.enabled !== false) || config.channels[0]).id;

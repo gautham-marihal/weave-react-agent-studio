@@ -1,11 +1,38 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from './demoMode.js';
+
+// Where the tag is drawn: first among the buttons of the screen's top bar (each top bar has a DemoSlot), so it never covers one of them; on a screen
+// without a top bar (the landing page, signing in), in its corner.
+const slots = new Set();
+const listeners = new Set();
+const currentSlot = () => [...slots].pop() || null;
+const announce = () => listeners.forEach((listener) => listener());
+
+export function DemoSlot() {
+  const node = useRef(null);
+  const ref = useCallback((el) => {
+    if (node.current) slots.delete(node.current);
+    node.current = el;
+    if (el) slots.add(el);
+    announce();
+  }, []);
+  if (!isDemoMode()) return null;
+  return <span className="demoSlot" ref={ref} />;
+}
 
 // A small DEMO tag that is on every screen while the app runs on the imitation API, so a demo is never mistaken for the real thing.
 // It explains what is simulated, lets you start the demo data again, and (unless this is a demo build) switch back to the real API.
 export function DemoBadge() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [slot, setSlot] = useState(currentSlot);
+  useEffect(() => {
+    const follow = () => setSlot(currentSlot());
+    listeners.add(follow);
+    follow();
+    return () => listeners.delete(follow);
+  }, []);
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (event) => {
@@ -25,8 +52,8 @@ export function DemoBadge() {
     window.location.reload();
   };
 
-  return (
-    <div className="demoBadgeWrap">
+  const tag = (
+    <div className={`demoBadgeWrap ${slot ? 'inBar' : ''}`}>
       <button
         type="button"
         className="demoBadge"
@@ -41,7 +68,8 @@ export function DemoBadge() {
       {open && (
         <div className="demoPopover" role="dialog" aria-label="About demo mode">
           <strong>Demo mode</strong>
-          <p>{DEMO_NOTE}</p>
+          {/* the heading already says "Demo mode" */}
+          <p>{DEMO_NOTE.replace(/^Demo mode:\s*/, '').replace(/^./, (c) => c.toUpperCase())}</p>
           <ul>
             <li>Agents, drafts, versions and deployments are kept in this browser (localStorage).</li>
             <li>The checks are a few simple rules, not the real validator.</li>
@@ -66,6 +94,7 @@ export function DemoBadge() {
       )}
     </div>
   );
+  return slot ? createPortal(tag, slot) : tag;
 }
 
 // The same words, in place, on a screen where a demo could mislead (publish, deploy, a test conversation).

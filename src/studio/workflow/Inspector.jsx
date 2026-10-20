@@ -302,7 +302,7 @@ function Shell({ icon, title, kicker, children, onClose }) {
           <strong>{title}</strong>
         </span>
         <button type="button" className="smClose" aria-label="Close this panel" onClick={onClose}>
-          ×
+          <Icon name="close" size={14} />
         </button>
       </header>
       <div className="wfInspectorBody">
@@ -615,7 +615,7 @@ function StateRows({ values, variables, config, apply, path }) {
             if (name) write({ ...values, [name]: blankValue(variables[name]) });
           }}
         >
-          <option value="">＋ Set a variable…</option>
+          <option value="">Set a variable…</option>
           {free.map((n) => (
             <option key={n} value={n}>
               {n}
@@ -657,7 +657,7 @@ function StateRows({ values, variables, config, apply, path }) {
         </form>
       ) : (
         <button type="button" className="stAddBtn" onClick={() => setAdding(true)}>
-          ＋ New variable
+          <Icon name="plus" size={14} /> New variable
         </button>
       )}
     </section>

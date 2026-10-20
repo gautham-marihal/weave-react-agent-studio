@@ -240,3 +240,22 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+.clStatus.info {
+  color: var(--accent-text);
+  border-color: currentColor;
+}
+/* who can read the calls, said once until "Got it" */
+html[data-theme] body .clPrivacy {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+html[data-theme] body .clPrivacy > span {
+  flex: 1;
+  min-width: 0;
+}
+html[data-theme] body .clPrivacy > .quietButton {
+  flex: none;
+  min-height: 30px;
+  padding: 0 12px;
+}

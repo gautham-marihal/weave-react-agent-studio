@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.js';
 import { DialogField, TelephonyDialog, TelephonyTablePanel } from './telephonyParts.jsx';
+import Icon from '../ui/Icon.jsx';
 import {
   answeredBy,
   checkWords,
@@ -107,7 +108,7 @@ export function LiveNumbersPage({ live, agents }) {
     <>
       <section className="telephonyPageHeader">
         <div>
-          <h1>Phone numbers</h1>
+          <h2>Phone numbers</h2>
           <p>
             The numbers callers dial to reach your agents. A number belongs to an agent and an environment, so a call is answered by whatever version is
             deployed there.
@@ -120,7 +121,7 @@ export function LiveNumbersPage({ live, agents }) {
           disabled={!agents.length}
           title={agents.length ? undefined : 'Create an agent first'}
         >
-          ＋ Add a number
+          <Icon name="plus" size={14} /> Add a number
         </button>
       </section>
       {live.settings && !live.settings.livekitConfigured && (
@@ -150,7 +151,7 @@ export function LiveNumbersPage({ live, agents }) {
         monoFirst
         emptyTitle="No phone numbers yet"
         emptyText="Add the number your callers will dial. The server checks it is free and sets it up."
-        emptyAction={agents.length ? { label: '＋ Add a number', onClick: () => setDialog({ kind: 'add' }) } : null}
+        emptyAction={agents.length ? { label: 'Add a number', onClick: () => setDialog({ kind: 'add' }) } : null}
         onEdit={(number) => setDialog({ kind: 'edit', row: live.rows.find((r) => r.number === number) })}
         onDelete={release}
         confirmDelete={(row) =>

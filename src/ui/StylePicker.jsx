@@ -14,6 +14,7 @@ export function StyleCards({ onPicked }) {
           className="styleCard"
           data-style-preview={option.id}
           aria-pressed={style === option.id}
+          title={option.description}
           onClick={() => {
             setStyle(option.id);
             onPicked?.(option.id);
@@ -79,7 +80,7 @@ function ColourOptions({ style }) {
   );
 }
 
-// The "Theme" button of the top bar: light or dark, and the design style, in one small panel.
+// The "Theme" button of the top bar, the one place for how the studio looks: light or dark, the design style and its colour, in one small panel.
 export function StyleMenu({ theme, onToggleTheme }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Icon from '../ui/Icon.jsx';
 import './mobileNav.css';
 
 // On a phone the sidebar is hidden, which left no way to move between pages. This adds a menu button that
@@ -42,7 +43,7 @@ export default function MobileNav() {
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span aria-hidden="true">{open ? '×' : '☰'}</span>
+        <Icon name={open ? 'close' : 'menu'} size={20} />
       </button>
       {open && <div className="stNavScrim" onClick={() => setOpen(false)} aria-hidden="true" />}
     </>

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { EXTRA_PAGE_IDS, PAGES, PAGE_GROUPS, PAGE_IDS, PAGE_SECTIONS, classicTab, resolvePage, sectionsCovered } from '../src/studio/newlayout/pages.js';
 import { TAB_IDS } from '../src/studio/journey.js';
 import { SKIPPED_SECTIONS } from '../src/studio/form/layout.js';
-import { readinessSteps } from '../src/studio/newlayout/readiness.js';
+import { readinessSteps, stepRoute } from '../src/studio/newlayout/readiness.js';
 import { parseRoute, routeHref } from '../src/studio/route.js';
 import { PATHS } from '../src/ui/iconPaths.js';
 
@@ -49,7 +49,7 @@ test('an old address lands on the page that holds that tab, with the right part 
 
 test('the classic layout shows the nearest tab for a new page', () => {
   assert.equal(classicTab('tools'), 'config');
-  assert.equal(classicTab('tests'), 'scenarios');
+  assert.equal(classicTab('tests'), 'test');
   assert.equal(classicTab('releases'), 'versions');
   assert.equal(classicTab('deploy'), 'deploy');
   assert.equal(classicTab('monitoring'), 'calls');
@@ -88,7 +88,16 @@ test('a new agent has steps to do, the next one first', () => {
   assert.equal(by(r, 'prompt').state, 'todo');
   assert.equal(by(r, 'model').state, 'todo');
   assert.equal(by(r, 'publish').state, 'todo');
-  assert.equal(by(r, 'deploy').state, 'optional', 'deploying waits for a published version');
+  assert.equal(by(r, 'deploy').state, 'todo', 'putting it live is to do, after publishing');
+  assert.match(by(r, 'deploy').text, /Publish first/);
+});
+
+test('the number of steps stays the same when a version is published', () => {
+  const before = readinessSteps({ config: config(), summary: {}, report: { errors: [] } });
+  const after = readinessSteps({ config: config(), summary: { latest_version: '0.1.0', deployed: {} }, report: { errors: [] } });
+  assert.equal(before.total, after.total);
+  assert.equal(after.done, before.done + 1);
+  assert.equal(after.next.id, 'deploy');
 });
 
 test('a filled-in agent has the building steps done and publishing to do', () => {
@@ -97,6 +106,32 @@ test('a filled-in agent has the building steps done and publishing to do', () =>
   assert.equal(by(r, 'abilities').state, 'optional');
   assert.equal(by(r, 'tests').state, 'optional');
   assert.equal(r.next.id, 'publish');
+});
+
+test('the tests step follows their latest run, as Releases does', () => {
+  const base = { config: config({ tests: [{ id: 't1' }, { id: 't2' }] }), summary: {}, report: { errors: [] }, scenarioCount: 2 };
+  assert.equal(by(readinessSteps(base), 'tests').state, 'done', 'a run that is not known: written tests count');
+  const never = readinessSteps({ ...base, latestRun: null });
+  assert.deepEqual([by(never, 'tests').state, by(never, 'tests').label], ['todo', 'Run the tests']);
+  const passed = readinessSteps({ ...base, latestRun: { status: 'passed', passed: 2, total: 2 } });
+  assert.equal(by(passed, 'tests').state, 'done');
+  assert.match(by(passed, 'tests').text, /2 of 2/);
+  const failed = readinessSteps({ ...base, latestRun: { status: 'failed', passed: 1, total: 2 } });
+  assert.deepEqual([by(failed, 'tests').state, by(failed, 'tests').label], ['blocked', 'Fix the failing tests']);
+  assert.equal(failed.next.id, 'tests', 'a failing run comes before publishing');
+  const gated = readinessSteps({ ...base, latestRun: null, gate: { enabled: true, savedAt: '2026-10-20T10:00:00Z', dirty: false } });
+  assert.deepEqual([by(gated, 'tests').state, by(gated, 'tests').label], ['blocked', 'Pass the tests']);
+});
+
+test('a step opens where it is done: the page, its part, and the panel on the Agent page', () => {
+  const r = readinessSteps({ config: { meta: { name: 'A' } }, summary: {}, report: { errors: [{}] } });
+  assert.deepEqual(stepRoute(by(r, 'voice')), { tab: 'agent', params: { open: 'language' } });
+  assert.deepEqual(stepRoute(by(r, 'prompt')), { tab: 'agent', params: { focus: 'role' } });
+  assert.deepEqual(stepRoute(by(r, 'checks')), { tab: 'agent', params: { show: 'problems' } });
+  assert.deepEqual(stepRoute(by(r, 'publish')), { tab: 'versions', params: undefined });
+  assert.deepEqual(stepRoute(by(r, 'deploy')), { tab: 'deploy', params: undefined });
+  assert.deepEqual(stepRoute(by(r, 'abilities')), { tab: 'tools', params: undefined });
+  assert.deepEqual(stepRoute({ id: 'tests', page: 'tests', part: 'callers' }), { tab: 'callers', params: undefined });
 });
 
 test('problems block, and come before everything else to do', () => {

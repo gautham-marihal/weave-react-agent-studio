@@ -104,7 +104,7 @@ test('Say, Update state (with a new variable), a phone number (checked first), a
 
   await open();
   await a.click(menuItem(app, 'Update state'));
-  await a.click(byText(app.container, 'button', '＋ New variable'));
+  await a.click(byText(app.container, 'button', 'New variable'));
   await a.type(byLabel(app.container, 'Variable name'), 'caller_intent');
   await a.click(byText(app.container, 'button', 'Add it'));
   await a.type(byLabel(app.container, 'Value of caller_intent'), 'billing');

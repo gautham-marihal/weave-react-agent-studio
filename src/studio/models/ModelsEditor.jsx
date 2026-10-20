@@ -1,4 +1,5 @@
 import React from 'react';
+import Icon from '../../ui/Icon.jsx';
 import { Card, Field } from '../builderUi.jsx';
 import { Notice } from '../ui.jsx';
 import { CATALOGUE_REVIEWED, FREE_TEXT_PROVIDERS, STAGES, modelStatus, modelsFor, providerLabel, providersForStage } from './catalog.js';
@@ -48,7 +49,7 @@ function ModelCards({ stage, provider, value, onChange }) {
             aria-pressed={value === model.id}
           >
             <span className="builderModelRadio" aria-hidden="true">
-              {value === model.id ? '✓' : ''}
+              {value === model.id ? <Icon name="check" size={14} /> : null}
             </span>
             <span className="builderModelCopy">
               <strong>{model.label}</strong>
@@ -67,7 +68,7 @@ function ModelCards({ stage, provider, value, onChange }) {
         {value && !known && (
           <button type="button" className="builderModelCard selected" aria-pressed="true">
             <span className="builderModelRadio" aria-hidden="true">
-              ✓
+              <Icon name="check" size={14} />
             </span>
             <span className="builderModelCopy">
               <strong>Current model</strong>
@@ -105,12 +106,14 @@ function ProviderCard({ provider, selected, onPick }) {
       aria-pressed={selected}
       title={missing ? 'Its plugin isn’t installed on the server.' : noKey ? `${provider.default_secret} isn’t set on the server.` : undefined}
     >
-      <span className="builderProviderIcon">{provider.name === 'openai' ? '✦' : provider.name === 'elevenlabs' ? '◉' : '○'}</span>
+      <span className="builderProviderIcon" aria-hidden="true">
+        {providerLabel(provider.name).slice(0, 1)}
+      </span>
       <span>
         <strong>{providerLabel(provider.name)}</strong>
         <small>{selected ? 'Selected' : missing ? 'Not installed on this server' : noKey ? 'Key not set on the server' : 'Available'}</small>
       </span>
-      <i>{selected ? '✓' : ''}</i>
+      <i>{selected ? <Icon name="check" size={14} /> : null}</i>
     </button>
   );
 }

@@ -101,51 +101,6 @@ test('the line under an agent’s name says what is saved, how the tests stand, 
   assert.equal(statusLine({ deployed: { production: '1', development: '1' } }).find((p) => p.id === 'live').text, 'Live in Production and Development');
 });
 
-test('on Home, an agent’s progress shows each stage and the one thing to do next, and never claims what it does not know', async () => {
-  const { journeyProgress } = await import('../src/studio/journey.js');
-  const fresh = journeyProgress({ bot: {}, health: null, callCount: null });
-  assert.deepEqual(
-    fresh.stages.map((s) => [s.id, s.state]),
-    [
-      ['build', 'todo'],
-      ['test', 'todo'],
-      ['release', 'todo'],
-      ['monitor', 'todo'],
-    ],
-  );
-  assert.deepEqual(fresh.next, { tab: 'config', label: 'Finish building it' });
-  const valid = journeyProgress({ bot: {}, health: { state: 'ok', parts: [], checked: ['validity'] } });
-  assert.equal(valid.stages[0].state, 'done');
-  assert.deepEqual(valid.next, { tab: 'test', label: 'Test it' });
-  const invalid = journeyProgress({ bot: {}, health: { state: 'bad', parts: [{ id: 'invalid' }], checked: ['validity'] } });
-  assert.deepEqual([invalid.stages[0].state, invalid.next.label], ['attention', 'Fix what the checks found']);
-  const failing = journeyProgress({ bot: {}, health: { state: 'bad', parts: [{ id: 'tests_failing' }], checked: ['validity', 'tests'] } });
-  assert.deepEqual([failing.stages[1].state, failing.next], ['attention', { tab: 'scenarios', label: 'See the tests that fail' }]);
-  const tested = journeyProgress({ bot: { latest_version: '0.1.0' }, health: { state: 'ok', parts: [], checked: ['validity', 'tests'] } });
-  assert.deepEqual(
-    tested.stages.map((s) => s.state),
-    ['done', 'done', 'todo', 'todo'],
-  );
-  assert.deepEqual(tested.next, { tab: 'deploy', label: 'Put it live' }, 'published but not live: the next step is to deploy it');
-  assert.equal(tested.stages[2].current, true);
-  const live = journeyProgress({
-    bot: { latest_version: '0.1.0', deployed: { development: '0.1.0' } },
-    health: { state: 'ok', parts: [], checked: ['validity', 'tests'] },
-    callCount: 0,
-  });
-  assert.deepEqual(live.next, { tab: 'calls', label: 'Watch for calls' });
-  const all = journeyProgress({
-    bot: { latest_version: '0.1.0', deployed: { development: '0.1.0' } },
-    health: { state: 'ok', parts: [], checked: ['validity', 'tests'] },
-    callCount: 3,
-  });
-  assert.equal(all.allDone, true);
-  assert.equal(
-    all.stages.some((s) => s.current),
-    false,
-  );
-});
-
 test('in the Agents list an agent’s state comes from where it is deployed and what its health says', async () => {
   const { stateFromHealth } = await import('../src/studio/status.js');
   assert.equal(stateFromHealth({}, null).label, 'Draft');

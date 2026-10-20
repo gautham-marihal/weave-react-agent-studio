@@ -75,6 +75,38 @@ export const TELEPHONY_SECTIONS = [
   { id: 'trunks', label: 'SIP trunks', icon: 'plug' },
 ];
 
+// The address of each workspace page, so a refresh, a bookmark and Back keep you on it: #/home, #/calls, #/live, #/telephony/numbers... (an agent has its
+// own, #/bots/...). `id` is the page's id in NAV / LIBRARY_NAV / SETTINGS_NAV; Calls is `sessions` inside, "calls" in the address.
+const PAGE_SLUGS = {
+  home: 'home',
+  sessions: 'calls',
+  live: 'live',
+  monitoring: 'monitoring',
+  cost: 'cost',
+  alerts: 'alerts',
+  voices: 'voices',
+  integrations: 'integrations',
+  telephony: 'telephony',
+  team: 'team',
+  settings: 'settings',
+};
+export function workspaceHref(id, section) {
+  const slug = PAGE_SLUGS[id] || 'home';
+  return id === 'telephony' && TELEPHONY_SECTIONS.some((item) => item.id === section) ? `#/${slug}/${section}` : `#/${slug}`;
+}
+// { id, section? } for a workspace page's address, else null (an agent's address, or none)
+export function parseWorkspaceHash(hash) {
+  const parts = String(hash || '')
+    .replace(/^#\/?/, '')
+    .split('?')[0]
+    .split('/')
+    .filter(Boolean);
+  const id = Object.keys(PAGE_SLUGS).find((key) => PAGE_SLUGS[key] === parts[0]);
+  if (!id) return null;
+  if (id !== 'telephony') return { id };
+  return { id, section: TELEPHONY_SECTIONS.some((item) => item.id === parts[1]) ? parts[1] : 'calls' };
+}
+
 export function compactDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';

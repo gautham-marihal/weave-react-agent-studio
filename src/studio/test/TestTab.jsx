@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, getApiUser } from '../../api/client.js';
 import Icon from '../../ui/Icon.jsx';
 import { pictureProblem } from '../preview/useDictation.js';
+import AiOrb, { orbState } from '../preview/AiOrb.jsx';
 import PlainIssues from '../validation/PlainIssues.jsx';
 import { envLabel, Notice } from '../ui.jsx';
 import { navigate, routeHref } from '../route.js';
@@ -352,12 +353,13 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
       <div className="stTGrid">
         <section className="stCard stTChat" aria-label="Conversation">
-          {status !== 'idle' && (
+          {/* above the conversation once it has lines; before that, the orb in the middle says the same */}
+          {status !== 'idle' && messages.length > 0 && (
             <div
               className={`pvHud stTHud ${status === 'live' ? 'live' : status === 'ended' || status === 'error' ? 'ended' : 'reconnecting'}`}
               aria-hidden="true"
             >
-              <span className="pvMiniOrb" />
+              <AiOrb size={26} state={orbState(status)} />
               <span className="pvBars">
                 <i />
                 <i />
@@ -367,21 +369,15 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                 <i />
                 <i />
               </span>
-              <small>{status === 'live' ? 'Linked' : status === 'ended' ? 'Signal closed' : status === 'error' ? 'No signal' : 'Linking…'}</small>
+              <small>{status === 'live' ? 'Connected' : status === 'ended' ? 'Ended' : status === 'error' ? 'Didn’t connect' : 'Connecting…'}</small>
             </div>
           )}
           <div className="stTMessages" ref={listRef} onScroll={onScroll} role="log" aria-live="polite" aria-label="Messages">
             {messages.length === 0 && (
               <div className="stTEmpty">
-                {['idle', 'ended', 'error'].includes(status) && (
-                  <div className="pvStage stTStage" aria-hidden="true">
-                    <i className="pvRing r1" />
-                    <i className="pvRing r2" />
-                    <i className="pvRing r3" />
-                    <i className="pvSat" />
-                    <span className="pvOrb" />
-                  </div>
-                )}
+                <div className="pvStage stTStage" aria-hidden="true">
+                  <AiOrb size={116} state={orbState(status)} />
+                </div>
                 {status === 'idle' && (
                   <>
                     <strong>No conversation yet</strong>

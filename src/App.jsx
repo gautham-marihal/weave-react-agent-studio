@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard.jsx';
 import { AccountDialog, InfoDialogHost } from './pages/shared.jsx';
 import { DemoBadge } from './demo/DemoBadge.jsx';
 import { useAccent, useDensity, useStyle } from './studio/usePref.js';
+import Icon from './ui/Icon.jsx';
 
 export class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -39,7 +40,7 @@ export class AppErrorBoundary extends React.Component {
           <h1 style={{ margin: '10px 0 8px', color: 'var(--textStrong)' }}>We hit a display error.</h1>
           <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.6 }}>Refresh the page to continue. Your saved workspace data is kept locally.</p>
           <button className="primaryCta" type="button" style={{ marginTop: 20 }} onClick={() => window.location.reload()}>
-            Reload Weave <span className="buttonArrow">→</span>
+            Reload Weave <Icon name="arrowRight" size={15} />
           </button>
         </div>
       </div>

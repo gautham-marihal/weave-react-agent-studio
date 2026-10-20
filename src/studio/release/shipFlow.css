@@ -81,3 +81,9 @@
   font-size: var(--fs-xs);
   line-height: 1.45;
 }
+/* the steps of building it that are still to do, named under the heading */
+.shipLeft {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}

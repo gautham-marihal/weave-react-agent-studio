@@ -1,5 +1,5 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
-import { groupIssues } from '../../api/client.js';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { api, groupIssues } from '../../api/client.js';
 import CallsView from '../calls/CallsView.jsx';
 import ChangesPanel from '../changes/ChangesPanel.jsx';
 import { changesSince, revertSection } from '../changes/sinceRelease.js';
@@ -9,6 +9,9 @@ import MonitoringPage from '../monitoring/MonitoringPage.jsx';
 import AgentAlerts from '../insights/AgentAlerts.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
 import { navigate, routeHref } from '../route.js';
+import { useGate } from '../release/gate.js';
+import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
+import { useAsync } from '../useAsync.js';
 import Icon from '../../ui/Icon.jsx';
 import { Notice, Spinner } from '../ui.jsx';
 import AgentNav from './AgentNav.jsx';
@@ -214,6 +217,17 @@ export default function NewAgentWorkspace({ ws }) {
     setOpenRequest(null);
     setFocusRequest(null);
   }, [page]);
+  // a link to a step from elsewhere (Home, Releases): ?open=<panel> or ?focus=<field> on the Agent page, ?show=problems for what the checks found
+  const askOpen = page === 'agent' ? params?.open || '' : '';
+  const askFocus = page === 'agent' ? params?.focus || '' : '';
+  const askShow = params?.show || '';
+  useEffect(() => {
+    if (askOpen) setOpenRequest({ open: askOpen, nonce: Date.now() });
+    else if (askFocus) setOpenRequest({ focus: askFocus, nonce: Date.now() });
+  }, [askOpen, askFocus]);
+  useEffect(() => {
+    if (askShow === 'problems') setDrawer('problems');
+  }, [askShow]);
   // a link to one tool (an alert's "Open the tool"): its panel opens on the Tools page, once per visit; one the draft no longer has is said so
   const toolsList = config?.tools;
   const toolIndex =
@@ -224,8 +238,35 @@ export default function NewAgentWorkspace({ ws }) {
   }, [toolIndex, params?.tool]);
 
   const go = useCallback((target, query) => navigate(routeHref(botId, target, query), { guard: false }), [botId]);
+  // Ctrl/Cmd+S saves the draft from any page of the agent (the Workflow page has its own, which does the same), and only when there is something to save
+  const saveKey = useRef(null);
+  saveKey.current = { save: editor.save, can: editor.dirty && !editor.saving && !editor.parsed.error && editor.isObject, page };
+  useEffect(() => {
+    const onKey = (event) => {
+      if (!((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's')) return;
+      if (saveKey.current.page === 'workflow') return;
+      event.preventDefault();
+      if (saveKey.current.can) saveKey.current.save();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   // the steps between this draft and an agent that is live (the Overview's checklist, and the progress card in the menu), and opening one
-  const plan = useMemo(() => readinessSteps({ config, summary, report: editor.report, scenarioCount }), [config, summary, editor.report, scenarioCount]);
+  // the tests' latest run (read again on leaving the Tests page, where they are run), and whether they must pass before publishing
+  const runs = useAsync((signal) => api.listTestRuns(botId, 20, { signal }), [botId, page === 'tests']);
+  const latestRun = useMemo(
+    () => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : undefined),
+    [runs.data],
+  );
+  const [gateOn] = useGate(botId);
+  const gate = useMemo(
+    () => (gateOn ? { enabled: true, savedAt: editor.meta?.savedAt || '', dirty: editor.dirty } : null),
+    [gateOn, editor.meta?.savedAt, editor.dirty],
+  );
+  const plan = useMemo(
+    () => readinessSteps({ config, summary, report: editor.report, scenarioCount, latestRun, gate }),
+    [config, summary, editor.report, scenarioCount, latestRun, gate],
+  );
   const openStep = useCallback(
     (step) => {
       if (!step) return;
@@ -404,26 +445,21 @@ export default function NewAgentWorkspace({ ws }) {
         />
       );
   } else if (page === 'settings') {
+    // the sections of the settings are its tabs; the whole configuration as JSON is one button away, for the people who want it
     const p = part('settings', 'settings');
-    const parts = [
-      { id: 'settings', label: 'Settings' },
-      { id: 'json', label: 'JSON' },
-    ];
+    const toggle = (
+      <button type="button" className="quietButton nlBtn" onClick={() => setPart('settings')(p === 'json' ? 'settings' : 'json')}>
+        <Icon name={p === 'json' ? 'sliders' : 'code'} size={15} />
+        {p === 'json' ? 'Back to the settings' : 'Edit as JSON'}
+      </button>
+    );
     body =
       p === 'json' ? (
-        <PageShell title="Settings" lead={PAGE_LEAD.settings} parts={parts} part={p} onPart={setPart('settings')}>
+        <PageShell title="Settings" lead="The whole configuration as JSON. Edits here are the same draft as every page: save as usual." actions={toggle}>
           <JsonEditor text={editor.text} onChange={editor.setText} errorLines={new Set()} />
         </PageShell>
       ) : (
-        <SectionPage
-          title="Settings"
-          lead={PAGE_LEAD.settings}
-          parts={parts}
-          part={p}
-          onPart={setPart('settings')}
-          {...form('settings')}
-          {...SETTINGS_ELSEWHERE}
-        />
+        <SectionPage title="Settings" lead={PAGE_LEAD.settings} actions={toggle} {...form('settings')} {...SETTINGS_ELSEWHERE} />
       );
   } else if (page === 'calls') {
     body = (
@@ -462,7 +498,8 @@ export default function NewAgentWorkspace({ ws }) {
       </PageShell>
     );
   } else if (page === 'tests') {
-    const p = part('tests', 'scenarios');
+    // the page opens on trying the agent; a link to one part (Scenarios from the checklist, Readiness checks) still opens that part
+    const p = part('tests', 'try');
     body = (
       <PageShell title="Tests" lead={PAGE_LEAD.tests} wide parts={TEST_PARTS} part={p} onPart={setPart('tests')}>
         <GateStrip botId={botId} editor={editor} />

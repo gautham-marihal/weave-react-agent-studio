@@ -1824,7 +1824,7 @@ small {
     height: 58px;
     padding: 0 14px;
   }
-  .topbarActions .quietButton:first-child {
+  .topbarActions .quietButton:first-of-type {
     display: none;
   }
   .dashContent {
@@ -4635,7 +4635,7 @@ html[data-theme="dark"] .themeIcon {
     height: 66px;
     padding: 0 18px;
   }
-  .topbarActions .quietButton:first-child {
+  .topbarActions .quietButton:first-of-type {
     display: none;
   }
   .dashContent {
@@ -8265,6 +8265,11 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
 .featureHero p {
   max-width: 760px;
 }
+/* the page's main button keeps its words on one line when the window narrows (the text beside it wraps instead) */
+.featureHero .createButton {
+  flex: none;
+  white-space: nowrap;
+}
 .featureHealth {
   min-width: 190px;
   display: flex;
@@ -8600,13 +8605,14 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
   .integrationGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* the search takes its own line and the filters sit side by side under it (not one per line) */
   .featureToolbar {
-    align-items: flex-start;
-    flex-direction: column;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
   .featureSearch {
     max-width: none;
-    width: 100%;
+    flex-basis: 100%;
   }
   .filterPills {
     justify-content: flex-start;
@@ -8885,6 +8891,13 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
 .voiceWorkspaceTabs button.active {
   border-color: var(--accent-border);
   background: var(--accent-soft);
+}
+/* the search on the left, the three filters together on the right (not spread across the bar) */
+.voiceLibraryToolbar {
+  gap: 10px;
+}
+.voiceLibraryToolbar .featureSearch {
+  margin-right: auto;
 }
 .voiceLibraryToolbar select {
   height: 40px;

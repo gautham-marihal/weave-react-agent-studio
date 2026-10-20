@@ -79,7 +79,7 @@ const CLASSIC_TAB = {
   guardrails: 'config',
   aftercall: 'config',
   settings: 'config',
-  tests: 'scenarios',
+  tests: 'test',
   callers: 'scenarios',
   releases: 'versions',
   monitoring: 'calls',

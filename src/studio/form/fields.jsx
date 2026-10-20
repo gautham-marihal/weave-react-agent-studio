@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { prettyJson } from '../format.js';
 import { parseJsonStrict } from '../jsonDuplicates.js';
+import Icon from '../../ui/Icon.jsx';
 
 export function TextInput({ value, onChange, placeholder, disabled, multiline, invalid, id, mono }) {
   const common = {
@@ -162,12 +163,12 @@ export function StringList({ values, onChange, placeholder, disabled, addLabel =
               )
             }
           >
-            ×
+            <Icon name="close" size={14} />
           </button>
         </div>
       ))}
       <button type="button" className="stAddBtn" disabled={disabled} onClick={() => onChange([...list, ''])}>
-        ＋ {addLabel}
+        <Icon name="plus" size={14} /> {addLabel}
       </button>
     </div>
   );
@@ -197,7 +198,7 @@ export function MultiPick({ options, values, onChange, disabled, emptyText, labe
                 )
               }
             >
-              ×
+              <Icon name="close" size={14} />
             </button>
           </span>
         ))}
@@ -207,7 +208,7 @@ export function MultiPick({ options, values, onChange, disabled, emptyText, labe
           action
           className="stFInput small"
           ariaLabel="Add"
-          placeholder="＋ Add…"
+          placeholder="Add…"
           disabled={disabled}
           options={left.map((option) => ({ value: option, label: labels?.[option] || option }))}
           onChange={(chosen) => {

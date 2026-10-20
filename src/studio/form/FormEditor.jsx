@@ -16,8 +16,10 @@ import ToolGrid from '../relations/ToolGrid.jsx';
 import '../relations/relations.css';
 import { useSchema } from './useSchema.js';
 import { useChannelTypes } from './useChannelTypes.js';
+import { DEMO_VALIDATOR_NOTE } from '../../demo/demoValidate.js';
 import './form.css';
 import './formLook.css';
+import Icon from '../../ui/Icon.jsx';
 
 // Sections whose content depends on something that isn't built yet, said where the author is working (see the API's "what is not there yet").
 export const SECTION_NOTES = {
@@ -154,7 +156,8 @@ export default function FormEditor({
     useMemo(() => [...new Set([...collectSecretNames(config), ...(editor.report?.secrets_required || [])])].sort(), [config, editor.report]),
   );
   const issues = useMemo(() => groupIssues(editor.report), [editor.report]);
-  const general = useMemo(() => issues.filter((issue) => !issue.path), [issues]);
+  // problems about the whole configuration; on an agent's page the demo's "these are simple checks" line is left to the problems panel and the DEMO tag
+  const general = useMemo(() => issues.filter((issue) => !issue.path && !(embedded && issue.message === DEMO_VALIDATOR_NOTE)), [issues, embedded]);
 
   const exact = useMemo(() => {
     const map = new Map();
@@ -577,7 +580,7 @@ export default function FormEditor({
                   {sectionKind === 'object' ? 'Reset to defaults' : 'Remove all'}
                 </button>
               )}
-              {present && required && !part && (
+              {present && required && !part && !embedded && (
                 <span className="stFTag" title="The agent needs this section, so it can’t be deleted">
                   needed
                 </span>
@@ -614,7 +617,7 @@ export default function FormEditor({
               <div className="stFNotSet">
                 <p>This isn’t part of the agent yet.</p>
                 <button type="button" className="primaryCta compactCta" onClick={() => commit(section, engine.defaultFor(sectionSchema))}>
-                  ＋ Add {(part ? humanize(section) : view?.label || humanize(section)).toLowerCase()}
+                  <Icon name="plus" size={14} /> Add {(part ? humanize(section) : view?.label || humanize(section)).toLowerCase()}
                 </button>
               </div>
             )}
@@ -665,7 +668,7 @@ export default function FormEditor({
               Undo
             </button>
             <button type="button" className="close" aria-label="Dismiss" onClick={() => setToast(null)}>
-              ×
+              <Icon name="close" size={14} />
             </button>
           </div>
         )}

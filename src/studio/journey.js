@@ -77,34 +77,3 @@ export function walk(start = 'config') {
   }
   return seen;
 }
-
-// Where an agent stands on the path, for the Home page: each stage done, needing attention, or still to do, and the one thing to do next. Built from what the
-// agent list and its health already say; a stage nothing is known about stays "to do", never "done".
-//   bot: { latest_version, deployed }   health: { state, parts: [{ id }] } or null   callCount: a number, or null when not read
-export function journeyProgress({ bot, health = null, callCount = null } = {}) {
-  const parts = Array.isArray(health?.parts) ? health.parts : [];
-  const has = (id) => parts.some((p) => p.id === id);
-  const published = !!bot?.latest_version;
-  const live = !!(bot?.deployed && Object.values(bot.deployed).some(Boolean));
-  const scenarios = health?.checked?.includes('tests');
-  const stages = {
-    build: has('invalid') ? 'attention' : health && health.state !== 'unknown' ? 'done' : 'todo',
-    test: has('tests_failing') ? 'attention' : scenarios && !has('tests_not_run') ? 'done' : 'todo',
-    release: published && live ? 'done' : 'todo',
-    monitor: typeof callCount === 'number' && callCount > 0 ? 'done' : 'todo',
-  };
-  const order = ['build', 'test', 'release', 'monitor'];
-  const current = order.find((id) => stages[id] !== 'done') || 'monitor';
-  const next = {
-    build: { tab: 'config', label: has('invalid') ? 'Fix what the checks found' : 'Finish building it' },
-    test: { tab: has('tests_failing') ? 'scenarios' : 'test', label: has('tests_failing') ? 'See the tests that fail' : 'Test it' },
-    release: { tab: published ? 'deploy' : 'versions', label: published ? 'Put it live' : 'Publish a version' },
-    monitor: { tab: 'calls', label: stages.monitor === 'done' ? 'See how it is doing' : 'Watch for calls' },
-  }[current];
-  return {
-    stages: order.map((id) => ({ id, state: stages[id], current: id === current && !(stages[id] === 'done') })),
-    current,
-    next,
-    allDone: order.every((id) => stages[id] === 'done'),
-  };
-}

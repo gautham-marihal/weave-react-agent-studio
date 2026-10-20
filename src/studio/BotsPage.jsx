@@ -12,18 +12,18 @@ import { applyStarter, STARTERS } from './starters.js';
 import { botIdProblem, formatWhen, slugify } from './format.js';
 import { applyTemplate, deleteTemplate, loadTemplates, parseTemplateFile, saveTemplate } from './savedTemplates.js';
 import { PAGE_SIZE, SORTS, collectFacets, filterBots, paginate, sortBots } from './agentList.js';
-import { healthTitle } from './health/health.js';
 import { knownMeta, useAgentHealth } from './health/useAgentHealth.js';
-import Menu from './manage/Menu.jsx';
+import { useAgentActivity } from './health/useAgentActivity.js';
+import { useAlertsByAgent } from './insights/AlertBell.jsx';
+import { BotRow } from './AgentTable.jsx';
 import { useManage } from './manage/useManage.jsx';
 import { navigate, routeHref } from './route.js';
-import { EnvSlots, ErrorState, Modal, Notice, Spinner } from './ui.jsx';
+import { ErrorState, Modal, Notice } from './ui.jsx';
 import Icon from '../ui/Icon.jsx';
+import { SkeletonRows } from '../ui/Skeleton.jsx';
 
 // a picture for each starting point in the create dialog
 const STARTER_ICONS = { support: 'agent', receptionist: 'home', knowledge: 'records', lead: 'team', appointment: 'flag', feedback: 'quote', blank: 'plus' };
-import StatePill from './StatePill.jsx';
-import { stateFromHealth } from './status.js';
 
 function CreateBotDialog({ existingIds, onClose }) {
   const [name, setName] = useState('');
@@ -287,61 +287,6 @@ function CreateBotDialog({ existingIds, onClose }) {
   );
 }
 
-// One agent in a list: name and id, where it runs (one slot per environment), its latest published version and when
-// the draft was last saved. `menuItems` adds the "⋯" menu (Rename, Export, Remove). Also used on the Overview.
-export function BotRow({ bot, menuItems, onOpen, health, tags }) {
-  const state = stateFromHealth(bot, health);
-  // Another page (the Overview) passes onOpen so it can switch to the Agents area too; a hash change alone wouldn't.
-  const open = () => (onOpen ? onOpen(bot) : navigate(routeHref(bot.id), { guard: false }));
-  const name = bot.name || bot.id;
-  return (
-    <div className={`agentRow stAgentRow ${menuItems ? 'withMenu' : ''}`}>
-      <button type="button" className="agentRowMain" onClick={open} aria-label={`Open ${name}`}>
-        <span className="agentRowAvatar" aria-hidden="true">
-          {name.slice(0, 1).toUpperCase()}
-        </span>
-        <span className="agentRowCopy">
-          <span className="stRowTitle">
-            <strong>{name}</strong>
-            <StatePill state={state} />
-          </span>
-          <small>
-            <code>{bot.id}</code>
-            {tags?.length > 0 &&
-              tags.slice(0, 3).map((tag) => (
-                <span key={tag} className="stAgentTag">
-                  {tag}
-                </span>
-              ))}
-          </small>
-          {health && health.state !== 'unknown' && (
-            <span className={`stHealth ${health.state}`} title={healthTitle(health)} data-health={health.state}>
-              {health.parts.length === 0 ? (
-                <span className="stHealthOk">✓ no problems found</span>
-              ) : (
-                health.parts.slice(0, 3).map((part) => (
-                  <span key={part.id} className={`stHealthPart ${part.tone}`}>
-                    {part.text}
-                  </span>
-                ))
-              )}
-            </span>
-          )}
-        </span>
-        <EnvSlots deployed={bot.deployed} compact />
-        <span className="stRowFacts">
-          <span className={bot.latest_version ? 'stRowVersion' : 'stRowVersion none'}>{bot.latest_version ? `v${bot.latest_version}` : 'Not published'}</span>
-          <small title={bot.draft_saved_at ? new Date(bot.draft_saved_at).toLocaleString() : ''}>Draft saved {formatWhen(bot.draft_saved_at) || 'never'}</small>
-        </span>
-      </button>
-      <button type="button" className="quietButton agentRowAction" onClick={open}>
-        Open
-      </button>
-      {menuItems && <Menu label={`Actions for ${name}`} items={menuItems(bot)} className="agentRowMenu" />}
-    </div>
-  );
-}
-
 // One agent in “Removed from your list”: bring it back, or delete it from the list for good. The API cannot delete an agent, so this only forgets it here
 // (it stays on the server), and says so before it does; “Bring them back” undoes it.
 function RemovedRow({ bot }) {
@@ -407,6 +352,8 @@ export default function BotsPage({ route }) {
   const paged = paginate(sorted, page, PAGE_SIZE);
   const visible = paged.rows;
   const health = useAgentHealth(everything || wantAll ? list : visible);
+  const activity = useAgentActivity(visible);
+  const alertsByAgent = useAlertsByAgent();
   const facets = collectFacets(list, known);
   const unread = list.filter((bot) => !known[bot.id]).length;
   // a new search, filter or sort starts again from the first page
@@ -437,18 +384,22 @@ export default function BotsPage({ route }) {
         </div>
         <div className="pageHeaderActions">
           <button className="primaryCta createButton" type="button" onClick={() => setCreating(true)}>
-            ＋ Create agent
+            <Icon name="plus" size={14} /> Create agent
           </button>
         </div>
       </section>
 
-      {bots === null && loading && <Spinner label="Loading agents" />}
+      {bots === null && loading && (
+        <div className="agentRowList agentTable">
+          <SkeletonRows rows={3} label="Loading agents" />
+        </div>
+      )}
       {error && <ErrorState error={error} onRetry={refresh} what="the agents" />}
 
       {bots && list.length === 0 && (
         <section className="emptyPanel">
           <div className="emptyPanelIcon" aria-hidden="true">
-            ✦
+            <Icon name="sparkle" size={24} />
           </div>
           <h2>{removed.length ? 'No agents in your list' : 'No agents yet'}</h2>
           <p>
@@ -485,7 +436,7 @@ export default function BotsPage({ route }) {
           {list.length > 1 && (
             <div className="stListTools">
               <label className="inlineSearch">
-                <span aria-hidden="true">⌕</span>
+                <Icon name="search" size={15} />
                 <input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search by name or id" aria-label="Search agents" />
               </label>
               <label className="stSort">
@@ -549,15 +500,23 @@ export default function BotsPage({ route }) {
               {health.pending > 0 && <>Checking… {health.pending} left.</>}
             </p>
           )}
-          <div className="stAgentHead" aria-hidden="true">
-            <span>Agent</span>
-            <span>Deployed to</span>
-            <span>Latest version</span>
-            <span />
-          </div>
-          <div className="agentRowList">
+          <div className="agentRowList agentTable">
+            <div className="stAgentHead" aria-hidden="true">
+              <span>Agent</span>
+              <span>Where it runs</span>
+              <span>Calls · 7 days</span>
+              <span>Latest version</span>
+            </div>
             {visible.map((bot) => (
-              <BotRow key={bot.id} bot={bot} menuItems={manage.menuItems} health={known[bot.id]?.health} tags={known[bot.id]?.tags} />
+              <BotRow
+                key={bot.id}
+                bot={bot}
+                menuItems={manage.menuItems}
+                health={known[bot.id]?.health}
+                tags={known[bot.id]?.tags}
+                activity={activity.byBot[bot.id]}
+                alerts={alertsByAgent[bot.id]}
+              />
             ))}
             {visible.length === 0 && (
               <div className="agentRowEmpty">{filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.'}</div>

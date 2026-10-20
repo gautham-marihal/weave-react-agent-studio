@@ -8,6 +8,14 @@ import { sentenceCase } from '../ui/text.js';
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
 export const SHORTCUT_LABEL = IS_MAC ? '⌘ K' : 'Ctrl K';
+const MOD = IS_MAC ? '⌘' : 'Ctrl';
+export const SAVE_LABEL = `${MOD} S`;
+
+// "?" opens the list of shortcuts, unless the keyboard is busy typing somewhere
+export function isTyping(target) {
+  const el = target instanceof Element ? target : null;
+  return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+}
 
 const HELP_COPY = {
   SESSIONS: 'Total number of conversation sessions recorded for the current workspace and time range.',
@@ -89,7 +97,7 @@ export function InfoDialogHost() {
             {!isHelp && info.body && <p>{info.body}</p>}
           </div>
           <button type="button" className="modalClose" aria-label="Close" onClick={close}>
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
         {isHelp ? (
@@ -101,13 +109,19 @@ export function InfoDialogHost() {
                   <dt>
                     <kbd>{SHORTCUT_LABEL}</kbd>
                   </dt>
-                  <dd>Search agents, workspaces and pages</dd>
+                  <dd>Search agents, pages and settings</dd>
+                </div>
+                <div>
+                  <dt>
+                    <kbd>{SAVE_LABEL}</kbd>
+                  </dt>
+                  <dd>Save the agent’s draft, from any of its pages</dd>
                 </div>
                 <div>
                   <dt>
                     <kbd>Esc</kbd>
                   </dt>
-                  <dd>Close a dialog, menu or search</dd>
+                  <dd>Close a panel, a dialog, a menu or the search</dd>
                 </div>
                 <div>
                   <dt>
@@ -121,7 +135,20 @@ export function InfoDialogHost() {
                   <dt>
                     <kbd>Enter</kbd>
                   </dt>
-                  <dd>Send a message in an agent’s Test tab</dd>
+                  <dd>Send a message in the Test panel (Shift Enter for a new line)</dd>
+                </div>
+                <div>
+                  <dt>
+                    <kbd>{MOD} Z</kbd>
+                    <kbd>{MOD} Y</kbd>
+                  </dt>
+                  <dd>Undo and redo on the Workflow canvas</dd>
+                </div>
+                <div>
+                  <dt>
+                    <kbd>?</kbd>
+                  </dt>
+                  <dd>This list, from anywhere</dd>
                 </div>
               </dl>
             </div>
@@ -129,21 +156,24 @@ export function InfoDialogHost() {
               <h3>Where things live</h3>
               <ul className="infoGuide">
                 <li>
-                  <strong>Config</strong>
-                  <span>Edit an agent as a form or as JSON. Errors are flagged as you type. Save keeps your draft.</span>
-                </li>
-                <li>
-                  <strong>Versions and Deploy</strong>
-                  <span>Publish freezes the draft as a version. Deploy puts a version in Development, Staging or Production.</span>
+                  <strong>An agent’s menu</strong>
+                  <span>
+                    Overview, then Build (what it says and does), Test and launch, Monitor, and Settings. The card at the top says how far it is from ready and
+                    opens the next step.
+                  </span>
                 </li>
                 <li>
                   <strong>Test</strong>
-                  <span>Talk or type to an agent for real, in your browser.</span>
+                  <span>In the bar at the top of every page of an agent: talk or type to it while you change it.</span>
+                </li>
+                <li>
+                  <strong>Publish and Releases</strong>
+                  <span>Publish freezes the draft as a version. Releases puts a version in Development, Staging or Production, or rolls one back.</span>
                 </li>
                 <li>
                   <strong>Help icons</strong>
                   <span>
-                    Hover, focus or click any <b className="infoHelpDot">?</b> for a short explanation.
+                    Hover, focus or click any <b className="infoHelpDot">?</b> or <b className="infoHelpDot">i</b> for a short explanation.
                   </span>
                 </li>
               </ul>
@@ -169,16 +199,6 @@ export function InfoDialogHost() {
 
 export function helpText(label) {
   return HELP_COPY[label] || `More information about ${label.toLowerCase()}.`;
-}
-
-export function ThemeToggle({ theme, onToggle }) {
-  const isDark = theme === 'dark';
-  return (
-    <button className="themeToggle" onClick={onToggle} type="button" aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}>
-      <span className="themeIcon">{isDark ? '☼' : '☾'}</span>
-      <span>{isDark ? 'Light' : 'Dark'}</span>
-    </button>
-  );
 }
 
 export function Logo({ compact = false }) {
@@ -316,11 +336,13 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
               </div>
               <div className="profilePopoverRule" />
               <button className="profilePopoverItem" type="button" onClick={handleAccount}>
-                <span className="profilePopoverIcon">◉</span>
-                <span>
-                  <strong>ACCOUNT</strong>
+                <span className="profilePopoverIcon" aria-hidden="true">
+                  <Icon name="user" size={15} />
                 </span>
-                <b>›</b>
+                <span>
+                  <strong>Account</strong>
+                </span>
+                <Icon name="chevronRight" size={16} />
               </button>
             </div>,
             document.body,
@@ -336,12 +358,14 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
             </div>
             <div className="profilePopoverRule" />
             <button className="profilePopoverItem" type="button" onClick={handleAccount}>
-              <span className="profilePopoverIcon">◉</span>
+              <span className="profilePopoverIcon" aria-hidden="true">
+                <Icon name="user" size={15} />
+              </span>
               <span>
-                <strong>ACCOUNT</strong>
+                <strong>Account</strong>
                 <small>Profile and workspace details</small>
               </span>
-              <b>›</b>
+              <Icon name="chevronRight" size={16} />
             </button>
           </div>
         ))}
@@ -392,7 +416,7 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
             <p>Profile and workspace details for your Weave account.</p>
           </div>
           <button className="modalClose" type="button" onClick={onClose} aria-label="Close account">
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
 
@@ -429,7 +453,7 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
             <p>Sign out of this Weave workspace.</p>
           </div>
           <button className="accountSignout" type="button" onClick={onSignOut}>
-            Sign out <span className="buttonArrow">→</span>
+            Sign out <Icon name="arrowRight" size={15} />
           </button>
         </div>
       </section>
@@ -486,7 +510,7 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
       <section className="searchPanel" onMouseDown={(event) => event.stopPropagation()}>
         <div className="searchHeader">
           <div className="searchFieldWrap">
-            <span aria-hidden="true">⌕</span>
+            <Icon name="search" size={18} />
             <input
               ref={inputRef}
               value={query}
@@ -508,7 +532,7 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
           {groups.length === 0 ? (
             <div className="searchNoResults">
               <div className="searchNoIcon" aria-hidden="true">
-                ⌕
+                <Icon name="search" size={22} />
               </div>
               <strong>No matches for “{query.trim()}”</strong>
               <p>Search by agent name, workspace name, or a page such as Calls.</p>
@@ -599,7 +623,7 @@ export function WorkspaceCreateModal({ value, onChange, onClose, onCreate }) {
             <p>A workspace groups agents in this browser. It doesn’t control who can see them.</p>
           </div>
           <button className="modalClose" type="button" onClick={onClose} aria-label="Close">
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
 
@@ -658,7 +682,7 @@ export function WorkspaceRenameModal({ value, onChange, onClose, onRename }) {
             <p>Choose a name that your team will recognize.</p>
           </div>
           <button className="modalClose" type="button" onClick={onClose} aria-label="Close">
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
         <label className="workspaceField">
@@ -703,8 +727,11 @@ export function StatusBadge({ agent, status, size = 'md', title }) {
 }
 
 // An icon given by name is drawn from the studio's icon set; any other text (an old saved glyph, an initial) is shown as it is.
+// the text symbols older activity entries were saved with (they stay in the browser's log), drawn as the icon each stood for
+const OLD_SYMBOLS = { '⇢': 'arrowRight', '#': 'dial', '⇄': 'plug', '☎': 'phone' };
 export function Glyph({ icon, size = 18 }) {
-  return ICON_NAMES.includes(icon) ? <Icon name={icon} size={size} /> : <>{icon}</>;
+  const name = OLD_SYMBOLS[icon] || icon;
+  return ICON_NAMES.includes(name) ? <Icon name={name} size={size} /> : <>{icon}</>;
 }
 
 export function NavItem({ item, active, onClick }) {
@@ -744,7 +771,7 @@ export function QuickAction({ icon, title, subtitle, onClick }) {
         <strong>{title}</strong>
         <small>{subtitle}</small>
       </span>
-      <b className="buttonArrow">→</b>
+      <Icon name="arrowRight" size={16} />
     </button>
   );
 }

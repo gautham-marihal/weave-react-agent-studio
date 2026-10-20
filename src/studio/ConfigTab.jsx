@@ -15,6 +15,7 @@ import { ErrorState, Notice, Spinner } from './ui.jsx';
 import ChangesPanel from './changes/ChangesPanel.jsx';
 import { useLatestPublished } from './changes/useLatestPublished.js';
 import { changesSince, revertSection } from './changes/sinceRelease.js';
+import Icon from '../ui/Icon.jsx';
 
 const LINE_HEIGHT = 20;
 
@@ -134,7 +135,7 @@ export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, 
         </div>
         {onFold && (
           <button type="button" className="stFoldBtn" aria-expanded={!folded} aria-label={folded ? 'Show the checks' : 'Hide the checks'} onClick={onFold}>
-            {folded ? '▸' : '▾'}
+            <Icon name={folded ? 'chevronRight' : 'chevronDown'} size={14} />
           </button>
         )}
       </div>

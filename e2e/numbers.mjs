@@ -74,8 +74,10 @@ await page
   .getByRole('button', { name: /^\s*\S?\s*Telephony/ })
   .first()
   .click();
-await page.getByRole('button', { name: 'Phone numbers' }).first().click();
-await page.waitForSelector('.telephonyPageHeader h1');
+// its parts are tabs under the page's title; each has an address (#/telephony/numbers)
+await page.getByRole('tab', { name: /Phone numbers/ }).click();
+await page.waitForSelector('.telephonyPageHeader h2');
+check('the part has its own address', (await page.evaluate(() => location.hash)) === '#/telephony/numbers');
 
 check('the page says it is connected, not a preview', (await page.locator('.telephonyPreview.connected').count()) === 1);
 check(

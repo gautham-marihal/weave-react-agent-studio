@@ -3,11 +3,12 @@ import { Notice } from '../ui.jsx';
 import TraceView from '../trace/TraceView.jsx';
 import { describeExpectation } from './model.js';
 import { nextSteps, resultSummary, tokenWords, tokensOf } from './runResults.js';
+import Icon from '../../ui/Icon.jsx';
 
 // What one scenario did in a run: the verdict in a line, each check with why, what to do about it (an unanswered API request gets an
 // "Add a mock" button), the requests and tool calls, and the trace of what happened. Everything here comes from the server's answer.
 
-const MARK = { true: '✓', false: '✕', null: '–' };
+const MARK = { true: 'check', false: 'close', null: 'minus' };
 const checkClass = (passed) => (passed === true ? 'passed' : passed === false ? 'failed' : 'unchecked');
 
 export default function ResultView({ result, scenario, onAddMock, mockAdded = [], onEdit }) {
@@ -50,7 +51,9 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
         <ul className="scResults" aria-label="Checks">
           {result.checks.map((c, i) => (
             <li key={i} className={checkClass(c.passed)}>
-              <b aria-hidden="true">{MARK[String(c.passed)]}</b>
+              <b aria-hidden="true">
+                <Icon name={MARK[String(c.passed)] || 'minus'} size={14} />
+              </b>
               <span>
                 <strong>{describeExpectation(c.expect)}</strong>
                 <small>{c.passed === null ? `Not checked here. ${c.detail}` : c.detail}</small>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import SmartSelect from './SmartSelect.jsx';
+import Icon from '../ui/Icon.jsx';
 import { api } from '../api/client.js';
 import { formatWhen } from './format.js';
 import { DemoNote } from '../demo/DemoBadge.jsx';
@@ -253,7 +254,7 @@ export default function DeployTab({ botId, initialVersion, refreshKey, onDeploye
       {versionList.length === 0 ? (
         <section className="emptyPanel">
           <div className="emptyPanelIcon" aria-hidden="true">
-            ▲
+            <Icon name="release" size={22} />
           </div>
           <h2>Publish a version first</h2>
           <p>Only published versions can be deployed. Use Publish in the header once the draft is valid.</p>

@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Logo, ThemeToggle } from './shared.jsx';
+import { Logo } from './shared.jsx';
 import { isDemoMode, setDemoMode } from '../demo/demoMode.js';
 import { StyleMenu } from '../ui/StylePicker.jsx';
+import { DemoSlot } from '../demo/DemoBadge.jsx';
+import Icon from '../ui/Icon.jsx';
 
 export function Login({ theme, onToggleTheme, onLogin, onBack }) {
   const [keep, setKeep] = useState(true);
@@ -20,13 +22,13 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
       <div className="loginBackdrop loginBackdropB" />
       <header className="simpleHeader">
         <button className="backButton" onClick={onBack}>
-          ← Back
+          <Icon name="arrowLeft" size={15} /> Back
         </button>
         <Logo />
         <div className="headerTools">
           <div className="headerHint">AI agent workspace</div>
+          <DemoSlot />
           <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
       </header>
       <div className="loginWrap">
@@ -64,7 +66,9 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
         >
           <div className="loginCardTop">
             <span className="cardEyebrow">Demo sign-in</span>
-            <span className="lockMark">⌁</span>
+            <span className="lockMark" aria-hidden="true">
+              <Icon name="shield" size={15} />
+            </span>
           </div>
           <h2>Sign in to Weave</h2>
           <p className="formIntro">Enter any email and password to continue.</p>
@@ -178,13 +182,13 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
       <div className="profileSetupGlow profileGlowB" />
       <header className="simpleHeader profileHeader">
         <button className="backButton" onClick={onBack}>
-          ← Back
+          <Icon name="arrowLeft" size={15} /> Back
         </button>
         <Logo />
         <div className="headerTools">
           <div className="headerHint">First-time setup</div>
+          <DemoSlot />
           <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
       </header>
 
@@ -251,7 +255,7 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
             <b>{email || 'your account'}</b>
           </div>
           <button className="primaryCta full" type="submit" disabled={!canContinue}>
-            Continue to my workspace <span className="buttonArrow">→</span>
+            Continue to my workspace <Icon name="arrowRight" size={16} />
           </button>
           <small className="privacyNote">You can change these details later from workspace settings.</small>
         </form>

@@ -5,6 +5,7 @@ import StatePill from '../StatePill.jsx';
 import { agentState } from '../status.js';
 import { formatWhen } from '../format.js';
 import { navigate, routeHref } from '../route.js';
+import { SAVE_LABEL } from '../../pages/shared.jsx';
 
 // The one bar across the top of an agent. On the left: which agent, where it stands, whether the draft is saved and how far it has moved from what is
 // published. On the right, only what is reached for from any page: what the checks found (when they found something), describing a change in words, trying it,
@@ -84,7 +85,7 @@ export default function AgentTopBar({
           Test{live ? <i className="nlLive" title="A test conversation is running" /> : null}
         </button>
         {canSave || saving ? (
-          <button type="button" className="primaryCta compactCta" onClick={() => editor.save()} disabled={!canSave}>
+          <button type="button" className="primaryCta compactCta" onClick={() => editor.save()} disabled={!canSave} title={`Save the draft (${SAVE_LABEL})`}>
             {saving ? 'Saving…' : 'Save'}
           </button>
         ) : null}

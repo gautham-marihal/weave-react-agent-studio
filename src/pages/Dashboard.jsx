@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { confirmLeave, navigate as studioNavigate, routeHref, useRoute } from '../studio/route.js';
 import { TAB_LABELS } from '../studio/journey.js';
 import { useLayout } from '../studio/newlayout/layoutPref.js';
@@ -8,18 +8,36 @@ import { requestSettingFocus } from '../studio/settingFocus.js';
 import { ownerOf, setWorkspaces as publishWorkspaces, toLegacyAgent, useBots, visibleCount } from '../studio/agents.js';
 import AgentPicker from '../studio/AgentPicker.jsx';
 import { queueChange } from '../studio/pendingChange.js';
-import Studio from '../studio/Studio.jsx';
-import SettingsPage from '../studio/SettingsPage.jsx';
-import TeamPage from '../studio/team/TeamPage.jsx';
+// The look of every page is loaded at once, in the order the pages' own imports gave it before their code was split off below (Home and the menu use
+// these styles before any page is opened; a style loaded later would also come after themes.css and win where the two are as specific).
+import '../studio/smartSelect.css';
+import '../studio/preview/preview.css';
+import '../studio/insights/insights.css';
+import '../studio/models/models.css';
+import '../studio/simple/simple.css';
+import '../studio/changes/changes.css';
+import '../studio/release/release.css';
+import '../studio/journey.css';
+import '../studio/agentRail.css';
+import '../studio/trace/trace.css';
+import '../studio/replay/replay.css';
+import '../studio/fixcall/fixcall.css';
+import '../studio/calls/calls.css';
+import '../studio/monitoring/monitoring.css';
+import '../studio/team/team.css';
+import '../studio/callers/callers.css';
+import '../studio/newlayout/pickers/pickers.css';
+import '../studio/newlayout/newlayout.css';
+import '../studio/studio.css';
+import '../studio/form/form.css';
+import '../studio/form/formLook.css';
+import '../studio/live/live.css';
+import '../studio/cost/cost.css';
 import { openTeam } from '../studio/team/useTeam.js';
 import { isDemoMode } from '../demo/demoMode.js';
-import { BotRow } from '../studio/BotsPage.jsx';
+import { AgentTable } from '../studio/AgentTable.jsx';
 import { describeHealth, useApiHealth } from '../studio/useApiHealth.js';
-import MonitoringPage from '../studio/monitoring/MonitoringPage.jsx';
 import AgentSwitcher from '../studio/newlayout/AgentSwitcher.jsx';
-import AlertsPage from '../studio/insights/AlertsPage.jsx';
-import LiveBoardPage from '../studio/live/LiveBoardPage.jsx';
-import CostPage from '../studio/cost/CostPage.jsx';
 import AlertBell, { useNewAlertCount } from '../studio/insights/AlertBell.jsx';
 import AgentAlerts from '../studio/insights/AgentAlerts.jsx';
 import { useAlertWatcher } from '../studio/insights/useAlertWatcher.js';
@@ -33,8 +51,10 @@ import {
   getInitials,
   makeRecordId,
   normalizeTelephony,
+  parseWorkspaceHash,
   sessionStats,
   sessionsInRange,
+  workspaceHref,
 } from './helpers.js';
 import {
   Activity,
@@ -45,18 +65,43 @@ import {
   QuickAction,
   SHORTCUT_LABEL,
   SearchOverlay,
-  ThemeToggle,
   WorkspaceCreateModal,
   WorkspaceRenameModal,
+  isTyping,
   openHelpDialog,
 } from './shared.jsx';
-import { CallsPage } from './Sessions.jsx';
 import HomeJourney, { rememberAgent } from './HomeJourney.jsx';
+import WorkspacePulse from './WorkspacePulse.jsx';
 import './homeJourney.css';
-import { TelephonyPage } from './Telephony.jsx';
-import { VoicesWorkspace } from './Voices.jsx';
-import { IntegrationsWorkspace } from './Integrations.jsx';
 import { StyleMenu } from '../ui/StylePicker.jsx';
+import Icon from '../ui/Icon.jsx';
+import { DemoSlot } from '../demo/DemoBadge.jsx';
+import { SkeletonRows } from '../ui/Skeleton.jsx';
+
+// Each page's code arrives when the page is first opened, so the first screen loads only what Home needs.
+const named = (load, name) => lazy(() => load().then((m) => ({ default: m[name] })));
+const Studio = lazy(() => import('../studio/Studio.jsx'));
+const SettingsPage = lazy(() => import('../studio/SettingsPage.jsx'));
+const TeamPage = lazy(() => import('../studio/team/TeamPage.jsx'));
+const MonitoringPage = lazy(() => import('../studio/monitoring/MonitoringPage.jsx'));
+const AlertsPage = lazy(() => import('../studio/insights/AlertsPage.jsx'));
+const LiveBoardPage = lazy(() => import('../studio/live/LiveBoardPage.jsx'));
+const CostPage = lazy(() => import('../studio/cost/CostPage.jsx'));
+const CallsPage = named(() => import('./Sessions.jsx'), 'CallsPage');
+const TelephonyWorkspace = named(() => import('./Telephony.jsx'), 'TelephonyWorkspace');
+const VoicesWorkspace = named(() => import('./Voices.jsx'), 'VoicesWorkspace');
+const IntegrationsWorkspace = named(() => import('./Integrations.jsx'), 'IntegrationsWorkspace');
+
+// while a page's code arrives: its title's place, then a few rows
+function PageLoading() {
+  return (
+    <div className="pageLoading" aria-busy="true">
+      <span className="skeleton" style={{ width: 220, height: 34 }} aria-hidden="true" />
+      <span className="skeleton" style={{ width: '42%', height: 12 }} aria-hidden="true" />
+      <SkeletonRows rows={4} label="Loading the page" />
+    </div>
+  );
+}
 
 const WORKSPACE_STORAGE_KEY = 'weave_workspaces';
 
@@ -126,8 +171,9 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const displayName = profile?.fullName || 'there';
   const firstName = displayName.split(' ')[0];
   const initials = getInitials(displayName);
-  // An agent link (#/bots/...) opens the Agents area, so refreshes and shared links land on the agent.
-  const [active, setActive] = useState(() => (/^#\/bots/.test(window.location.hash) ? 'agents' : 'home'));
+  // Every page has an address: an agent's (#/bots/...) opens the Agents area, a workspace page's (#/calls, #/telephony/numbers...) opens that page, so
+  // refreshes, bookmarks and Back land where you were.
+  const [active, setActive] = useState(() => (/^#\/bots/.test(window.location.hash) ? 'agents' : parseWorkspaceHash(window.location.hash)?.id || 'home'));
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [picker, setPicker] = useState(null); // 'which agent?' for voices and integrations
   const goToAgent = (botId) => {
@@ -141,7 +187,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const [workspaceRenameId, setWorkspaceRenameId] = useState(null);
   const [workspaceRenameDraft, setWorkspaceRenameDraft] = useState('');
   const [range, setRange] = useState('Past 7 days');
-  const [telephonySection, setTelephonySection] = useState('calls');
+  const [telephonySection, setTelephonySection] = useState(() => parseWorkspaceHash(window.location.hash)?.section || 'calls');
   const [workspaces, setWorkspaces] = useState(() => loadWorkspaces(profile));
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(null);
 
@@ -248,10 +294,25 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   useEffect(() => {
     if (route.view === 'bot') rememberAgent(route.botId);
   }, [route.view, route.botId]);
-  // An agent link opened while the app is already running (back/forward, pasted link) switches to Agents.
+  // An address opened while the app is already running (back/forward, a pasted link) opens its page: an agent's switches to Agents.
   useEffect(() => {
-    if (/^#\/bots/.test(window.location.hash)) setActive((value) => (value === 'agents' ? value : 'agents'));
+    if (/^#\/bots/.test(window.location.hash)) {
+      setActive((value) => (value === 'agents' ? value : 'agents'));
+      return;
+    }
+    const page = parseWorkspaceHash(window.location.hash);
+    if (!page) return;
+    setActive(page.id);
+    if (page.section) setTelephonySection(page.section);
   }, [route]);
+  // ...and the address follows the page when it changes by other means (switching workspace goes Home): replaced, so Back does not stop on it twice
+  useEffect(() => {
+    if (active === 'agents') return;
+    const want = workspaceHref(active, active === 'telephony' ? telephonySection : undefined);
+    if (window.location.hash === want) return;
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${want}`);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }, [active, telephonySection]);
   useEffect(() => {
     if (route.view !== 'bot' || !currentWorkspace || !allBots) return;
     if (!allBots.some((bot) => bot.id === route.botId)) return;
@@ -398,7 +459,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       id: item.id,
       title: item.number,
       description: item.label ? `Phone number, ${item.label}` : 'Phone number',
-      icon: '#',
+      icon: 'dial',
     }));
     const ruleResults = tel.rules.map((item) => ({
       type: 'telephony',
@@ -406,7 +467,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       id: item.id,
       title: item.name,
       description: `Dispatch rule to ${nameOf(item.agentId)}`,
-      icon: '⇢',
+      icon: 'arrowRight',
     }));
     const sessionResults = normalizeList(currentWorkspace?.sessions)
       .slice(0, 50)
@@ -415,7 +476,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         id: item.id,
         title: `${item.agentName} session`,
         description: `${item.versionLabel}, ${formatRelative(item.startedAt).toLowerCase()}, ${formatDuration(item.durationSec)}`,
-        icon: '◷',
+        icon: 'clock',
       }));
     const groups = [
       { group: 'Navigate', items: pages },
@@ -491,6 +552,11 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         setSearchOpen(true);
       }
       if (event.key === 'Escape') setSearchOpen(false);
+      // "?" shows the shortcuts and where things are, unless you are typing
+      if (event.key === '?' && !event.metaKey && !event.ctrlKey && !event.altKey && !isTyping(event.target)) {
+        event.preventDefault();
+        openHelpDialog();
+      }
     };
     document.addEventListener('keydown', handleShortcut);
     return () => document.removeEventListener('keydown', handleShortcut);
@@ -498,20 +564,24 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
   const activate = (id, { section } = {}) => {
     if (!confirmLeave()) return; // unsaved edits in an open agent
-    // Leaving the Agents area drops its address, so a refresh reopens this page rather than an old agent.
-    if (id !== 'agents' && /^#\/bots/.test(window.location.hash)) {
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
-    }
     setActive(id);
     if (id === 'agents') {
       // Agents live on the Agent Builder API; the sidebar entry always shows the list.
       studioNavigate('#/bots');
       return;
     }
-    if (id === 'telephony') {
-      // Telephony always opens on Simulated calls, unless a search result named another part (a number, a dispatch rule)
-      setTelephonySection(TELEPHONY_SECTIONS.some((item) => item.id === section) ? section : 'calls');
-    }
+    // Telephony opens on Simulated calls, unless a search result named another part (a number, a dispatch rule)
+    const part = id === 'telephony' ? (TELEPHONY_SECTIONS.some((item) => item.id === section) ? section : 'calls') : undefined;
+    if (part) setTelephonySection(part);
+    // the page's own address, as a step in the history (Back returns to the page before)
+    const href = workspaceHref(id, part);
+    if (window.location.hash !== href) window.location.hash = href;
+  };
+  // a part of Telephony is a step in the history too
+  const openTelephonySection = (part) => {
+    setTelephonySection(part);
+    const href = workspaceHref('telephony', part);
+    if (window.location.hash !== href) window.location.hash = href;
   };
 
   // Creating an agent happens in the Studio (POST /bots); this just takes you to its dialog.
@@ -618,41 +688,6 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       )}
     </>
   );
-  const withOverlays = (node) => (
-    <>
-      {node}
-      {sharedOverlays}
-    </>
-  );
-
-  if (active === 'telephony') {
-    return withOverlays(
-      <TelephonyPage
-        profile={profile}
-        theme={theme}
-        onToggleTheme={onToggleTheme}
-        onSignOut={onSignOut}
-        onAccountOpen={() => onAccountOpen?.(workspaceName)}
-        workspaceName={workspaceName}
-        initials={initials}
-        workspaces={workspaces}
-        currentWorkspaceId={currentWorkspaceId}
-        workspaceOpen={workspaceOpen}
-        setWorkspaceOpen={setWorkspaceOpen}
-        onSwitchWorkspace={switchWorkspace}
-        onCreateWorkspace={openCreateWorkspace}
-        onNavigate={activate}
-        onOpenSearch={openSearch}
-        section={telephonySection}
-        onSectionChange={setTelephonySection}
-        telephony={telephony}
-        onTelephonyChange={updateTelephony}
-        onRecordSession={recordSession}
-        agents={agents}
-      />,
-    );
-  }
-
   return (
     <div className={`dashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''} ${inAgentView ? 'inAgent' : ''}`}>
       <aside className="sidebar">
@@ -665,7 +700,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
             aria-expanded={!sidebarCollapsed}
             onClick={() => setSidebarCollapsed((value) => !value)}
           >
-            ◫
+            <Icon name="sidebar" size={18} />
           </button>
         </div>
 
@@ -677,7 +712,9 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
               <small>Workspace</small>
               <strong>{workspaceName}</strong>
             </span>
-            <b className="buttonChevron">{workspaceOpen ? '⌃' : '⌄'}</b>
+            <b className="buttonChevron" aria-hidden="true">
+              <Icon name={workspaceOpen ? 'chevronUp' : 'chevronDown'} size={16} />
+            </b>
           </button>
         )}
         {workspaceOpen && !inAgentView && (
@@ -696,7 +733,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                     <span className="workspaceOptionMeta">
                       {visibleCount(workspace.id)} {visibleCount(workspace.id) === 1 ? 'agent' : 'agents'}
                     </span>
-                    {workspace.id === currentWorkspaceId && <span className="workspaceCheck">✓</span>}
+                    {workspace.id === currentWorkspaceId && <Icon name="check" size={15} className="workspaceCheck" />}
                   </button>
                   <button
                     type="button"
@@ -708,7 +745,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                       setWorkspaceActionOpenId((value) => (value === workspace.id ? null : workspace.id));
                     }}
                   >
-                    ⋯
+                    <Icon name="more" size={16} />
                   </button>
                   {workspaceActionOpenId === workspace.id && (
                     <div className="workspaceRowMenu" role="menu">
@@ -725,7 +762,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
             </div>
             <p className="workspaceMenuNote">Workspaces group agents in this browser. They don’t control who can see an agent.</p>
             <button type="button" className="workspaceMenuAction" onClick={openCreateWorkspace}>
-              <span className="tinyDot" /> Create workspace <b>＋</b>
+              <span className="tinyDot" /> Create workspace <Icon name="plus" size={15} />
             </button>
           </div>
         )}
@@ -733,8 +770,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         {inAgentView && (
           <nav className="sideNav agentSideNav" aria-label="This agent">
             <button type="button" className="agentBack" title="All agents" onClick={() => studioNavigate('#/bots')}>
-              <span aria-hidden="true">‹</span>
-              <span className="agentBackText"> All agents</span>
+              <Icon name="chevronLeft" size={15} />
+              <span className="agentBackText">All agents</span>
             </button>
             {/* the workspace's agents to switch between (all of them, when this agent is listed in another workspace) */}
             <AgentSwitcher botId={route.botId} bots={botList.some((b) => b.id === route.botId) ? botList : allBots || botList} tab={route.tab} />
@@ -759,14 +796,14 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
         <div className="sideBottom">
           <button className="sideUtility" type="button" onClick={openSearch} title={`Search (${SHORTCUT_LABEL})`} aria-label="Search">
-            <span aria-hidden="true">⌕</span>
+            <Icon name="search" size={17} />
             <span>Search</span>
             <kbd>{SHORTCUT_LABEL}</kbd>
           </button>
           <button className="sideUtility" type="button" onClick={openHelpDialog} title="Help and docs" aria-label="Help and docs">
-            <span aria-hidden="true">?</span>
+            <Icon name="help" size={17} />
             <span>Help & docs</span>
-            <b className="buttonArrow">↗</b>
+            <Icon name="external" size={13} />
           </button>
           <ProfileMenu profile={profile} initials={initials} onAccountOpen={() => onAccountOpen?.(workspaceName)} onSignOut={onSignOut} />
         </div>
@@ -790,334 +827,344 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                 <strong>{layout === 'new' ? PAGE_LABELS[resolvePage(route.tab, { bare: route.bare }).page] : TAB_LABELS[route.tab] || 'Config'}</strong>
               </>
             ) : (
-              <strong>{[...NAV, ...LIBRARY_NAV, ...SETTINGS_NAV].find((item) => item.id === active)?.label || 'Home'}</strong>
+              <>
+                <strong>{[...NAV, ...LIBRARY_NAV, ...SETTINGS_NAV].find((item) => item.id === active)?.label || 'Home'}</strong>
+                {active === 'telephony' && (
+                  <>
+                    <b>/</b>
+                    <strong>{TELEPHONY_SECTIONS.find((item) => item.id === telephonySection)?.label}</strong>
+                  </>
+                )}
+              </>
             )}
           </div>
           <div className="topbarActions">
-            <button className="quietButton" type="button" onClick={openSearch}>
-              ⌕ <span>Search</span>
+            <DemoSlot />
+            {/* a search field, not a button: it says what it finds and how to reach it from the keyboard */}
+            <button className="topSearch" type="button" onClick={openSearch} aria-label={`Search (${SHORTCUT_LABEL})`}>
+              <Icon name="search" size={15} />
+              <span>Search agents, pages, settings…</span>
+              <kbd>{SHORTCUT_LABEL}</kbd>
             </button>
             <AlertBell onOpen={() => activate('alerts')} />
             <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
-            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <ProfileMenu profile={profile} initials={initials} compact onAccountOpen={() => onAccountOpen?.(workspaceName)} onSignOut={onSignOut} />
           </div>
         </div>
 
         <div className="dashContent">
-          {active === 'voices' ? (
-            <VoicesWorkspace
-              agents={agents}
-              onAgents={() => activate('agents')}
-              onUseVoice={(voice) => {
-                if (!voice || typeof voice !== 'object' || !voice.name) {
-                  activate('agents');
-                  return;
-                }
-                setPicker({
-                  title: `Use ${voice.name} in an agent`,
-                  subtitle: 'The voice is set on the agent’s draft. You review it and save.',
-                  onPick: (botId) => {
-                    queueChange(botId, {
-                      kind: 'voice',
-                      provider: String(voice.provider || '').toLowerCase(),
-                      providerLabel: voice.provider,
-                      name: voice.name,
-                      voiceId: voice.voiceId || '',
-                    });
-                    goToAgent(botId);
-                  },
-                });
-              }}
-            />
-          ) : active === 'integrations' ? (
-            <IntegrationsWorkspace
-              onAddToAgent={(connection) => {
-                if (!/^https?:\/\//i.test(connection.first || '')) {
-                  window.alert('This connection needs a web address (https://…) before it can be added to an agent. Use Edit to add one.');
-                  return;
-                }
-                setPicker({
-                  title: `Add ${connection.name} to an agent`,
-                  subtitle: 'It is added to the agent’s draft as a connection. You review it and save.',
-                  onPick: (botId) => {
-                    queueChange(botId, { kind: 'connection', name: connection.name, url: connection.first });
-                    goToAgent(botId);
-                  },
-                });
-              }}
-            />
-          ) : active === 'monitoring' ? (
-            <MonitoringPage
-              bots={botList}
-              top={<AgentAlerts />}
-              onOpenAgent={(botId, tab, params) => {
-                if (!confirmLeave()) return;
-                setActive('agents');
-                studioNavigate(routeHref(botId, tab, params));
-              }}
-              onOpenCall={(botId, callId, view) => {
-                if (!confirmLeave()) return;
-                setActive('agents');
-                studioNavigate(routeHref(botId, 'calls', { call: callId, ...(view && view !== 'trace' ? { view } : {}) }));
-              }}
-            />
-          ) : active === 'live' ? (
-            <LiveBoardPage
-              bots={botList}
-              onOpenCall={(botId, callId) => {
-                if (!confirmLeave()) return;
-                setActive('agents');
-                studioNavigate(routeHref(botId, 'calls', { call: callId }));
-              }}
-            />
-          ) : active === 'cost' ? (
-            <CostPage
-              bots={botList}
-              onOpenAgent={(botId, tab) => {
-                if (!confirmLeave()) return;
-                setActive('agents');
-                studioNavigate(routeHref(botId, tab));
-              }}
-              onOpenCall={(botId, callId) => {
-                if (!confirmLeave()) return;
-                setActive('agents');
-                studioNavigate(routeHref(botId, 'calls', { call: callId }));
-              }}
-            />
-          ) : active === 'alerts' ? (
-            <AlertsPage
-              bots={botList}
-              userName={profile?.fullName || ''}
-              onOpenAgent={(botId, tab, params) => {
-                if (!confirmLeave()) return;
-                setActive('agents');
-                studioNavigate(routeHref(botId, tab, params));
-              }}
-              onOpenCall={(botId, callId) => {
-                if (!confirmLeave()) return;
-                setActive('agents');
-                studioNavigate(routeHref(botId, 'calls', { call: callId }));
-              }}
-            />
-          ) : active === 'sessions' ? (
-            <CallsPage
-              bots={botList}
-              onOpenAgent={(id) => {
-                setActive('agents');
-                studioNavigate(routeHref(id, 'test'));
-              }}
-            />
-          ) : active === 'agents' ? (
-            <Studio profile={profile} onRecordSession={recordSession} readinessRuns={readinessRuns} onRecordReadiness={recordReadinessRun} />
-          ) : active === 'team' ? (
-            <TeamPage
-              agents={botList.map((b) => ({ id: b.id, name: b.name || b.id }))}
-              agentsLoaded={bots !== null}
-              workspaceName={workspaceName}
-              profile={profile}
-            />
-          ) : active === 'settings' ? (
-            <SettingsPage
-              workspace={currentWorkspace}
-              workspaceCount={workspaces.length}
-              bots={botList}
-              removedCount={removedBots.length}
-              sessions={sessions}
-              onRename={(name) => setWorkspaces((items) => items.map((ws) => (ws.id === currentWorkspace.id ? { ...ws, name } : ws)))}
-              onDelete={() => deleteWorkspace(currentWorkspace, true)}
-              onOpenAgents={() => {
-                setActive('agents');
-              }}
-            />
-          ) : (
-            <>
-              <section className="welcomeBlock">
-                <div>
-                  <h1>
-                    {greeting}, {firstName}
-                    <span>.</span>
-                  </h1>
-                  <p>
-                    {agentCount === 0
-                      ? 'Your workspace is ready. Start by creating an agent.'
-                      : `${agentCount} agent${agentCount === 1 ? '' : 's'} in ${workspaceName}.`}
-                  </p>
-                </div>
-                <button className="primaryCta createButton" type="button" onClick={openCreateAssistant}>
-                  ＋ Create agent
-                </button>
-              </section>
-
-              <section className="healthStrip">
-                <div className="healthLead" title={health.note}>
-                  <span className={`healthSignal ${health.tone}`} />
+          <Suspense fallback={<PageLoading />}>
+            {active === 'telephony' ? (
+              <TelephonyWorkspace
+                section={telephonySection}
+                onSectionChange={openTelephonySection}
+                onNavigate={activate}
+                telephony={telephony}
+                onTelephonyChange={updateTelephony}
+                onRecordSession={recordSession}
+                agents={agents}
+              />
+            ) : active === 'voices' ? (
+              <VoicesWorkspace
+                agents={agents}
+                onAgents={() => activate('agents')}
+                onUseVoice={(voice) => {
+                  if (!voice || typeof voice !== 'object' || !voice.name) {
+                    activate('agents');
+                    return;
+                  }
+                  setPicker({
+                    title: `Use ${voice.name} in an agent`,
+                    subtitle: 'The voice is set on the agent’s draft. You review it and save.',
+                    onPick: (botId) => {
+                      queueChange(botId, {
+                        kind: 'voice',
+                        provider: String(voice.provider || '').toLowerCase(),
+                        providerLabel: voice.provider,
+                        name: voice.name,
+                        voiceId: voice.voiceId || '',
+                      });
+                      goToAgent(botId);
+                    },
+                  });
+                }}
+              />
+            ) : active === 'integrations' ? (
+              <IntegrationsWorkspace
+                onAddToAgent={(connection) => {
+                  if (!/^https?:\/\//i.test(connection.first || '')) {
+                    window.alert('This connection needs a web address (https://…) before it can be added to an agent. Use Edit to add one.');
+                    return;
+                  }
+                  setPicker({
+                    title: `Add ${connection.name} to an agent`,
+                    subtitle: 'It is added to the agent’s draft as a connection. You review it and save.',
+                    onPick: (botId) => {
+                      queueChange(botId, { kind: 'connection', name: connection.name, url: connection.first });
+                      goToAgent(botId);
+                    },
+                  });
+                }}
+              />
+            ) : active === 'monitoring' ? (
+              <MonitoringPage
+                bots={botList}
+                top={<AgentAlerts />}
+                onOpenAgent={(botId, tab, params) => {
+                  if (!confirmLeave()) return;
+                  setActive('agents');
+                  studioNavigate(routeHref(botId, tab, params));
+                }}
+                onOpenCall={(botId, callId, view) => {
+                  if (!confirmLeave()) return;
+                  setActive('agents');
+                  studioNavigate(routeHref(botId, 'calls', { call: callId, ...(view && view !== 'trace' ? { view } : {}) }));
+                }}
+              />
+            ) : active === 'live' ? (
+              <LiveBoardPage
+                bots={botList}
+                onOpenCall={(botId, callId) => {
+                  if (!confirmLeave()) return;
+                  setActive('agents');
+                  studioNavigate(routeHref(botId, 'calls', { call: callId }));
+                }}
+              />
+            ) : active === 'cost' ? (
+              <CostPage
+                bots={botList}
+                onOpenAgent={(botId, tab) => {
+                  if (!confirmLeave()) return;
+                  setActive('agents');
+                  studioNavigate(routeHref(botId, tab));
+                }}
+                onOpenCall={(botId, callId) => {
+                  if (!confirmLeave()) return;
+                  setActive('agents');
+                  studioNavigate(routeHref(botId, 'calls', { call: callId }));
+                }}
+              />
+            ) : active === 'alerts' ? (
+              <AlertsPage
+                bots={botList}
+                userName={profile?.fullName || ''}
+                onOpenAgent={(botId, tab, params) => {
+                  if (!confirmLeave()) return;
+                  setActive('agents');
+                  studioNavigate(routeHref(botId, tab, params));
+                }}
+                onOpenCall={(botId, callId) => {
+                  if (!confirmLeave()) return;
+                  setActive('agents');
+                  studioNavigate(routeHref(botId, 'calls', { call: callId }));
+                }}
+              />
+            ) : active === 'sessions' ? (
+              <CallsPage
+                bots={botList}
+                onOpenAgent={(id) => {
+                  setActive('agents');
+                  studioNavigate(routeHref(id, 'test'));
+                }}
+              />
+            ) : active === 'agents' ? (
+              <Studio profile={profile} onRecordSession={recordSession} readinessRuns={readinessRuns} onRecordReadiness={recordReadinessRun} />
+            ) : active === 'team' ? (
+              <TeamPage
+                agents={botList.map((b) => ({ id: b.id, name: b.name || b.id }))}
+                agentsLoaded={bots !== null}
+                workspaceName={workspaceName}
+                profile={profile}
+              />
+            ) : active === 'settings' ? (
+              <SettingsPage
+                workspace={currentWorkspace}
+                workspaceCount={workspaces.length}
+                bots={botList}
+                removedCount={removedBots.length}
+                sessions={sessions}
+                onRename={(name) => setWorkspaces((items) => items.map((ws) => (ws.id === currentWorkspace.id ? { ...ws, name } : ws)))}
+                onDelete={() => deleteWorkspace(currentWorkspace, true)}
+                onOpenAgents={() => {
+                  setActive('agents');
+                }}
+              />
+            ) : (
+              <>
+                <section className="welcomeBlock">
                   <div>
-                    <small>Studio connection</small>
-                    <strong>{health.title}</strong>
-                  </div>
-                </div>
-                <div className="healthStats">
-                  <span>
-                    <b>{agentCount}</b> {agentCount === 1 ? 'agent' : 'agents'}
-                  </span>
-                  <span>
-                    <b>{configuredCount}</b> published
-                  </span>
-                </div>
-              </section>
-
-              <section className="overviewGrid">
-                <div className="mainColumn">
-                  {bots === null ? (
-                    <p className="stMuted" role="status">
-                      Loading agents…
+                    <h1>
+                      {greeting}, {firstName}
+                      <span>.</span>
+                    </h1>
+                    <p>
+                      {agentCount === 0
+                        ? 'Your workspace is ready. Start by creating an agent.'
+                        : `${agentCount} agent${agentCount === 1 ? '' : 's'} in ${workspaceName}, ${configuredCount} published.`}{' '}
+                      {/* where the studio gets its agents from: the API, or the demo */}
+                      <span className="homeConnection" title={health.note}>
+                        <span className={`healthSignal ${health.tone}`} aria-hidden="true" />
+                        {health.title}
+                      </span>
                     </p>
-                  ) : agentCount === 0 ? (
-                    <>
-                      <div className="sectionHeader">
-                        <div>
-                          <h2>Start with your first agent</h2>
-                        </div>
-                      </div>
-                      <div className="starterCard">
-                        <div className="starterVisual" aria-hidden="true">
-                          <div className="starterGlow" />
-                          <div className="starterIcon">✦</div>
-                          <div className="starterOrbit orbitA" />
-                          <div className="starterOrbit orbitB" />
-                        </div>
-                        <div className="starterCopy">
-                          <span className="cardTag">Recommended</span>
-                          <h3>Build an agent from an idea</h3>
-                          <p>Pick a starting point, name your agent, and refine its voice, tools and handoff rules in its config.</p>
-                          <div className="starterActions">
-                            <button className="primaryCta compactCta" type="button" onClick={openCreateAssistant}>
-                              Start building
-                            </button>
+                  </div>
+                  <button className="primaryCta createButton" type="button" onClick={openCreateAssistant}>
+                    <Icon name="plus" size={16} /> Create agent
+                  </button>
+                </section>
+
+                {agentCount > 0 && <WorkspacePulse bots={botList} onOpen={activate} />}
+
+                <section className="overviewGrid">
+                  <div className="mainColumn">
+                    {bots === null ? (
+                      <p className="stMuted" role="status">
+                        Loading agents…
+                      </p>
+                    ) : agentCount === 0 ? (
+                      <>
+                        <div className="sectionHeader">
+                          <div>
+                            <h2>Start with your first agent</h2>
                           </div>
                         </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="sectionHeader">
-                        <div>
-                          <h2>Your agents</h2>
+                        <div className="starterCard">
+                          <div className="starterVisual" aria-hidden="true">
+                            <div className="starterGlow" />
+                            <div className="starterIcon">
+                              <Icon name="sparkle" size={28} />
+                            </div>
+                            <div className="starterOrbit orbitA" />
+                            <div className="starterOrbit orbitB" />
+                          </div>
+                          <div className="starterCopy">
+                            <span className="cardTag">Recommended</span>
+                            <h3>Build an agent from an idea</h3>
+                            <p>Pick a starting point, name your agent, and refine its voice, tools and handoff rules in its config.</p>
+                            <div className="starterActions">
+                              <button className="primaryCta compactCta" type="button" onClick={openCreateAssistant}>
+                                Start building
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <button className="linkButton" type="button" onClick={() => activate('agents')}>
-                          View all
-                        </button>
-                      </div>
-                      <div className="agentRowList">
-                        {botList.slice(0, 4).map((bot) => (
-                          <BotRow key={bot.id} bot={bot} onOpen={() => goToAgent(bot.id)} />
-                        ))}
+                      </>
+                    ) : (
+                      <>
+                        <div className="sectionHeader">
+                          <div>
+                            <h2>Your agents</h2>
+                          </div>
+                          <button className="linkButton" type="button" onClick={() => activate('agents')}>
+                            View all
+                          </button>
+                        </div>
+                        <AgentTable bots={botList.slice(0, 4)} onOpen={(bot) => goToAgent(bot.id)} />
                         {botList.length > 4 && (
                           <button type="button" className="agentRowMore" onClick={() => activate('agents')}>
                             Show all {botList.length} agents
                           </button>
                         )}
+                      </>
+                    )}
+
+                    <div className="sectionHeader activityHeader">
+                      <div>
+                        <h2>Recent activity</h2>
                       </div>
-                    </>
-                  )}
-
-                  <div className="sectionHeader activityHeader">
-                    <div>
-                      <h2>Recent activity</h2>
+                      <button className="linkButton" type="button" onClick={() => activate('sessions')}>
+                        Open calls
+                      </button>
                     </div>
-                    <button className="linkButton" type="button" onClick={() => activate('sessions')}>
-                      Open calls
-                    </button>
+                    <div className="activityCard">
+                      {recentActivity.map((item) => (
+                        <Activity key={item.key} title={item.title} detail={item.detail} time={item.time} icon={item.icon} muted={item.muted} />
+                      ))}
+                    </div>
                   </div>
-                  <div className="activityCard">
-                    {recentActivity.map((item) => (
-                      <Activity key={item.key} title={item.title} detail={item.detail} time={item.time} icon={item.icon} muted={item.muted} />
-                    ))}
-                  </div>
-                </div>
 
-                <div className="sideColumn">
+                  <div className="sideColumn">
+                    <div className="sectionHeader">
+                      <div>
+                        <h2>Next step</h2>
+                      </div>
+                    </div>
+                    <HomeJourney
+                      bots={bots === null ? null : botList}
+                      onCreate={openCreateAssistant}
+                      onOpenTab={(botId, tab, params) => {
+                        if (!confirmLeave()) return;
+                        setActive('agents');
+                        studioNavigate(routeHref(botId, tab, params));
+                      }}
+                    />
+
+                    <div className="sectionHeader quickHeader">
+                      <div>
+                        <h2>Workspace tools</h2>
+                      </div>
+                    </div>
+                    <div className="quickCard">
+                      <QuickAction icon="voice" title="Explore voices" subtitle="Find a voice that fits" onClick={() => activate('voices')} />
+                      <QuickAction icon="dial" title="Telephony" subtitle="Numbers, routing and trunks" onClick={() => activate('telephony')} />
+                      <QuickAction icon="plug" title="View integrations" subtitle="Connect your stack" onClick={() => activate('integrations')} />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="insightsSection">
                   <div className="sectionHeader">
                     <div>
-                      <h2>Next step</h2>
+                      <h2>Performance snapshot</h2>
+                    </div>
+                    <div className="segmented" role="group" aria-label="Time range">
+                      {['Past 7 days', 'Past 30 days'].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          aria-pressed={range === option}
+                          className={range === option ? 'active' : ''}
+                          onClick={() => setRange(option)}
+                        >
+                          {option}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                  <HomeJourney
-                    bots={bots === null ? null : botList}
-                    onCreate={openCreateAssistant}
-                    onOpenTab={(botId, tab) => {
-                      if (!confirmLeave()) return;
-                      setActive('agents');
-                      studioNavigate(routeHref(botId, tab));
-                    }}
-                  />
-
-                  <div className="sectionHeader quickHeader">
-                    <div>
-                      <h2>Workspace tools</h2>
-                    </div>
+                  <div className="insightGrid">
+                    {(() => {
+                      const st = sessionStats(sessionsInRange(sessions, range));
+                      const when = range.toLowerCase();
+                      return (
+                        <>
+                          <Metric
+                            title="SESSIONS"
+                            value={String(st.count)}
+                            note={st.count ? `Test conversations in the ${when.replace('past ', 'past ')}` : 'No sessions yet'}
+                          />
+                          <Metric
+                            title="AVG. SESSION"
+                            value={st.count ? formatDuration(st.avgSec) : '—'}
+                            note={st.count ? 'Average length' : 'Awaiting your first run'}
+                          />
+                          <Metric
+                            title="SESSION MINUTES"
+                            value={st.minutes >= 10 ? String(Math.round(st.minutes)) : st.minutes.toFixed(1).replace(/\.0$/, '')}
+                            note={st.count ? `${st.messages} message${st.messages === 1 ? '' : 's'} sent` : 'No live usage yet'}
+                          />
+                          <Metric
+                            title="PARTICIPANTS"
+                            value={String(st.participants)}
+                            note={st.count ? 'You and the agents you tested' : 'No participants yet'}
+                          />
+                        </>
+                      );
+                    })()}
                   </div>
-                  <div className="quickCard">
-                    <QuickAction icon="voice" title="Explore voices" subtitle="Find a voice that fits" onClick={() => activate('voices')} />
-                    <QuickAction icon="dial" title="Telephony" subtitle="Numbers, routing and trunks" onClick={() => activate('telephony')} />
-                    <QuickAction icon="plug" title="View integrations" subtitle="Connect your stack" onClick={() => activate('integrations')} />
-                  </div>
-                </div>
-              </section>
-
-              <section className="insightsSection">
-                <div className="sectionHeader">
-                  <div>
-                    <h2>Performance snapshot</h2>
-                  </div>
-                  <div className="segmented" role="group" aria-label="Time range">
-                    {['Past 7 days', 'Past 30 days'].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        aria-pressed={range === option}
-                        className={range === option ? 'active' : ''}
-                        onClick={() => setRange(option)}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="insightGrid">
-                  {(() => {
-                    const st = sessionStats(sessionsInRange(sessions, range));
-                    const when = range.toLowerCase();
-                    return (
-                      <>
-                        <Metric
-                          title="SESSIONS"
-                          value={String(st.count)}
-                          note={st.count ? `Test conversations in the ${when.replace('past ', 'past ')}` : 'No sessions yet'}
-                        />
-                        <Metric
-                          title="AVG. SESSION"
-                          value={st.count ? formatDuration(st.avgSec) : '—'}
-                          note={st.count ? 'Average length' : 'Awaiting your first run'}
-                        />
-                        <Metric
-                          title="SESSION MINUTES"
-                          value={st.minutes >= 10 ? String(Math.round(st.minutes)) : st.minutes.toFixed(1).replace(/\.0$/, '')}
-                          note={st.count ? `${st.messages} message${st.messages === 1 ? '' : 's'} sent` : 'No live usage yet'}
-                        />
-                        <Metric
-                          title="PARTICIPANTS"
-                          value={String(st.participants)}
-                          note={st.count ? 'You and the agents you tested' : 'No participants yet'}
-                        />
-                      </>
-                    );
-                  })()}
-                </div>
-              </section>
-            </>
-          )}
+                </section>
+              </>
+            )}
+          </Suspense>
         </div>
       </main>
 

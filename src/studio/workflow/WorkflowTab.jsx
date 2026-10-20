@@ -517,7 +517,7 @@ export default function WorkflowTab({ editor, botId }) {
                   apply(r.config);
                 }}
               >
-                ＋ Add the first agent
+                <Icon name="plus" size={14} /> Add the first agent
               </button>
             </div>
           ) : (

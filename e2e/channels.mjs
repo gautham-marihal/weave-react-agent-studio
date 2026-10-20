@@ -65,7 +65,7 @@ await page.evaluate(() => {
   location.hash = '#/bots/acme-support/settings';
 });
 await page.waitForSelector('.nlWorkspace');
-await page.locator('.nlParts button', { hasText: 'JSON' }).click();
+await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
 const box = page.locator('.nlPage textarea').first();
 await page.waitForFunction(() => (document.querySelector('.nlPage textarea')?.value || '').length > 20);
 const config = JSON.parse(await box.inputValue());

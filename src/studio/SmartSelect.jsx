@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { SEARCH_AFTER, filterOptions, normalizeOptions } from './selectOptions.js';
 import './smartSelect.css';
+import Icon from '../ui/Icon.jsx';
 
 // One selector for every list of choices. A short list (8 or fewer) is the browser's own <select>: nothing to learn and it works everywhere.
 // A longer list (tools, state variables, agents, versions, languages…) is a combobox: type to narrow it, arrows to move, Enter to pick, Escape
@@ -154,7 +155,7 @@ function Combo({ value, options, onChange, placeholder, ariaLabel, id, disabled,
         onKeyDown={onKeyDown}
       />
       <span className="stComboChevron" aria-hidden="true">
-        ▾
+        <Icon name="chevronDown" size={15} />
       </span>
       {open && (
         <ul id={listId} ref={listRef} role="listbox" aria-label={ariaLabel} className="stComboList">

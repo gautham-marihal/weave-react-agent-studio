@@ -1,3 +1,12 @@
+/* the page: its parts one under the other, as on the other pages of the workspace */
+.tmPage {
+  display: grid;
+  gap: 22px;
+  align-content: start;
+}
+.tmPage > .welcomeBlock {
+  margin-bottom: 0;
+}
 /* The Team page, the panel that gives someone access, and an agent's Share panel. */
 .tmPage .tmTools {
   display: flex;

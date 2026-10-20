@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Logo, ThemeToggle, openHelpDialog, openInfoDialog } from './shared.jsx';
+import { Logo, openHelpDialog, openInfoDialog } from './shared.jsx';
 import { StyleMenu } from '../ui/StylePicker.jsx';
+import { DemoSlot } from '../demo/DemoBadge.jsx';
+import Icon from '../ui/Icon.jsx';
 
 const LANDING_MENUS = {
   Product: [
@@ -52,7 +54,7 @@ function LandingNav({ onStart }) {
       {Object.keys(LANDING_MENUS).map((name) => (
         <div className="landingMenuWrap" key={name}>
           <button type="button" aria-expanded={open === name} aria-haspopup="true" onClick={() => setOpen((value) => (value === name ? null : name))}>
-            {name} <span aria-hidden="true">⌄</span>
+            {name} <Icon name="chevronDown" size={14} />
           </button>
           {open === name && (
             <div className="landingMenu" role="menu">
@@ -60,7 +62,7 @@ function LandingNav({ onStart }) {
                 <button key={item.title} type="button" role="menuitem" className="landingMenuItem" onClick={() => choose(item)}>
                   <strong>
                     {item.title}
-                    {item.action === 'link' && <span aria-hidden="true"> ↗</span>}
+                    {item.action === 'link' && <Icon name="external" size={13} />}
                   </strong>
                   <small>{item.text}</small>
                 </button>
@@ -92,20 +94,20 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
     <div className="landing">
       <div className="landingNoise" />
       <div className="announcement">
-        <span className="announcementPulse" /> Weave Agent Studio is now in early access <span>↗</span>
+        <span className="announcementPulse" /> Weave Agent Studio is now in early access <Icon name="arrowRight" size={13} />
       </div>
 
       <header className="landingNav">
         <Logo />
         <LandingNav onStart={onStart} />
         <div className="landingActions">
+          <DemoSlot />
           <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
           <button className="textButton" onClick={onSignIn}>
             Sign in
           </button>
           <button className="topStart" type="button" onClick={onStart}>
-            Create an agent <span className="buttonArrow">→</span>
+            Create an agent <Icon name="arrowRight" size={15} />
           </button>
         </div>
       </header>
@@ -122,7 +124,7 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           </p>
           <div className="heroButtons">
             <button className="primaryCta heroPrimary" type="button" onClick={onStart}>
-              Create your first agent <span className="buttonArrow">→</span>
+              Create your first agent <Icon name="arrowRight" size={16} />
             </button>
             <button className="secondaryCta" onClick={onSignIn}>
               Sign in
@@ -130,13 +132,13 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           </div>
           <div className="heroMeta">
             <span>
-              <i>✓</i> Guided setup
+              <Icon name="check" size={14} /> Guided setup
             </span>
             <span>
-              <i>✓</i> Voice + chat
+              <Icon name="check" size={14} /> Voice and chat
             </span>
             <span>
-              <i>✓</i> Config you can export
+              <Icon name="check" size={14} /> Configuration you can export
             </span>
           </div>
         </section>
@@ -148,12 +150,12 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           <div className="showcaseCard showcaseMain">
             <div className="showcaseHeader">
               <div>
-                <span className="liveDot" /> LIVE PREVIEW
+                <span className="liveDot" /> Live preview
               </div>
-              <span className="statusPill">READY</span>
+              <span className="statusPill">Ready</span>
             </div>
             <div className="assistantFace">
-              <span>✦</span>
+              <Icon name="sparkle" size={22} />
             </div>
             <div className="showcaseTitle">Your agent is ready.</div>
             <div className="showcaseText">Ask questions, take action, and hand off to a person when needed.</div>
@@ -169,16 +171,18 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
               <i />
             </div>
             <div className="previewControls">
-              <span>◁</span>
+              <Icon name="mic" size={15} />
               <div className="previewTime">00:18</div>
-              <button>END SESSION</button>
+              <button>End session</button>
             </div>
           </div>
 
           <div className="showcaseCard showcasePrompt">
-            <div className="miniHeading">PLAIN-LANGUAGE SETUP</div>
+            <div className="miniHeading">Plain-language setup</div>
             <div className="promptBubble">“Help customers check their account and transfer to a person when needed.”</div>
-            <div className="promptArrow">↓</div>
+            <div className="promptArrow">
+              <Icon name="chevronDown" size={16} />
+            </div>
             <div className="mappedRow">
               <span>Intent</span>
               <b>Account support</b>
@@ -201,15 +205,15 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
             </div>
             <div className="configLine">
               <span>tools</span>
-              <b>04 enabled</b>
+              <b>4 enabled</b>
             </div>
           </div>
         </section>
       </main>
 
       <div className="landingBottom">
-        <span>BUILT FOR PRODUCT • OPS • ENGINEERING</span>
-        <span>WEAVE / AI AGENT WORKSPACE</span>
+        <span>Built for product, operations and engineering teams</span>
+        <span>© Weave · AI agent workspace</span>
       </div>
     </div>
   );

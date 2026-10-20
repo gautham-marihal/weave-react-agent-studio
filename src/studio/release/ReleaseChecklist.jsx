@@ -7,11 +7,12 @@ import { normalizeKnowledge } from '../knowledge/model.js';
 import { normalizeHeadline } from '../scenarios/runResults.js';
 import { POLICY_NOTE, buildChecklist, verdict } from './checklist.js';
 import './release.css';
+import Icon from '../../ui/Icon.jsx';
 
 // "Is it safe to put this live?": one list that answers it from what the studio can see (the validator, the test runs on this exact
 // version, the knowledge indexes, the secrets). It appears on the Deploy tab for a published version and in the Publish dialog for the
 // draft. Each line shows only when it applies. It informs; it can't enforce (see checklist.js).
-const MARK = { ok: '✓', warn: '!', bad: '✕', info: 'i' };
+const MARK = { ok: 'check', warn: 'alert', bad: 'close', info: 'info' };
 
 export default function ReleaseChecklist({ botId, config, report, version, environment, target = 'version', refreshKey = 0, compact = false }) {
   const hasKnowledge = Array.isArray(config?.knowledge) && config.knowledge.length > 0;
@@ -52,7 +53,7 @@ export default function ReleaseChecklist({ botId, config, report, version, envir
         {items.map((item) => (
           <li key={item.id} className={`rcItem ${item.state}`} data-check={item.id}>
             <span className="rcMark" aria-hidden="true">
-              {MARK[item.state]}
+              <Icon name={MARK[item.state] || 'info'} size={14} />
             </span>
             <div className="rcBody">
               <p>

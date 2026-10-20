@@ -179,7 +179,7 @@ test('a list of texts: edit one, add one, delete one, and Undo puts the list bac
   const app = await open(base({ persona: { name: 'X', style_rules: ['One', 'Two', 'Three'] } }), 'persona');
   await a.type(byLabel(app.container, 'Item 2'), 'Deux');
   assert.deepEqual(app.config.persona.style_rules, ['One', 'Deux', 'Three']);
-  await a.click(byText(app.container, 'button', '＋ Add'));
+  await a.click(byText(app.container, 'button', 'Add'));
   assert.deepEqual(app.config.persona.style_rules, ['One', 'Deux', 'Three', '']);
   await a.type(byLabel(app.container, 'Item 4'), 'Four');
   await a.click(byLabel(app.container, 'Delete item 1'));
@@ -231,7 +231,7 @@ test('a list of ids picked from another list: add and remove, never a duplicate'
   const add = $$(document.body, 'select').find((el) => el.getAttribute('aria-label') === 'Add' && [...el.options].some((o) => o.text === 't2'));
   assert.deepEqual(
     [...add.options].map((o) => o.text),
-    ['＋ Add…', 't2'],
+    ['Add…', 't2'],
     'what is already chosen is not offered again',
   );
   await a.choose(add, 't2');
@@ -278,7 +278,7 @@ test('what was typed is still there after visiting other sections and coming bac
 test('effects: add a rule, change its step, add a condition and a second step, reorder, delete', async () => {
   const app = await open(base({ tools: [complete()], connections, state: { variables: { done: { type: 'boolean', default: false } } } }), 'tools');
   assert.match(textOf($(app.container, '.stEffects')), /Nothing happens after this tool succeeds/);
-  await a.click(byText(app.container, 'button', '＋ Add a rule'));
+  await a.click(byText(app.container, 'button', 'Add a rule'));
   assert.deepEqual(app.config.tools[0].effects, [{ do: [{ type: 'say', text: '' }] }]);
   assert.match(textOf($(app.container, '.stRule')), /Always: say/);
 
@@ -530,7 +530,7 @@ test('every section of a full configuration draws without breaking, and the sect
 test('adding a tool is a choice of jobs: search, pick, and the tool is in the draft with the right kind', async () => {
   const app = await open(base({ tools: [] }), 'tools');
   assert.equal($(app.container, '.stPickPanel'), null, 'the cards are closed until asked for');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a tool/));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a tool/));
   const panel = $(app.container, '.stPickPanel');
   assert.ok(panel, 'the cards opened in place');
   assert.ok($$(panel, '.stPickCard').length >= 9, 'every kind is a card');
@@ -556,7 +556,7 @@ test('adding a tool is a choice of jobs: search, pick, and the tool is in the dr
 
 test('adding a voice channel asks whether callers should be told they may be recorded, once, and a click writes the notice', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X' } }), 'channels');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a channel/));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
   await a.click($(app.container, '.stPickCard[data-option="phone"]'));
   assert.equal(app.config.channels.length, 1);
   assert.equal(app.config.channels[0].type, 'sip_voice');
@@ -571,10 +571,10 @@ test('adding a voice channel asks whether callers should be told they may be rec
 
 test('a text channel does not ask about recording, and “Not now” leaves the notice unset', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X' } }), 'channels');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a channel/));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
   await a.click($(app.container, '.stPickCard[data-option="web_chat"]'));
   assert.equal($(app.container, '.stFOffer'), null, 'chat is not a recorded call');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a channel/));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
   await a.click($(app.container, '.stPickCard[data-option="web_voice"]'));
   assert.ok($(app.container, '.stFOffer'));
   await a.click(byText($(app.container, '.stFOffer'), 'button', 'Not now'));
@@ -585,7 +585,7 @@ test('a text channel does not ask about recording, and “Not now” leaves the 
 
 test('a voice channel does not ask when callers are already told', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X', disclosures: { recording_notice: 'Calls are recorded.' } } }), 'channels');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a channel/));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
   await a.click($(app.container, '.stPickCard[data-option="phone"]'));
   assert.equal($(app.container, '.stFOffer'), null);
   await app.unmount();
@@ -593,7 +593,7 @@ test('a voice channel does not ask when callers are already told', async () => {
 
 test('the picker closes on Escape and the arrow keys move between the cards', async () => {
   const app = await open(base({ tools: [] }), 'tools');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a tool/));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a tool/));
   const first = $(app.container, '.stPickCard');
   first.focus();
   await act(async () => {

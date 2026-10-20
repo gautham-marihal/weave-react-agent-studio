@@ -3,10 +3,12 @@ import Icon from '../../../ui/Icon.jsx';
 import { EnvSlots } from '../../ui.jsx';
 import { formatWhen } from '../../format.js';
 import { navigate, routeHref } from '../../route.js';
-import { channelLabel, formatSeconds, statusOf } from '../../calls/callModel.js';
+import { OUTCOMES, channelLabel, formatSeconds, outcomeOf, statusOf } from '../../calls/callModel.js';
 import { analyse } from '../../monitoring/monitorModel.js';
 import { useMonitoring } from '../../monitoring/useMonitoring.js';
 import PageShell, { Section } from '../PageShell.jsx';
+import Stat from '../Stat.jsx';
+import { Skeleton, SkeletonRows } from '../../../ui/Skeleton.jsx';
 import { readinessSteps } from '../readiness.js';
 import { tabFor } from '../pages.js';
 
@@ -14,25 +16,6 @@ const MARK = { done: 'check', blocked: 'alert' };
 const DAYS = 7;
 const pct = (v) => (v === null || v === undefined ? '–' : `${Math.round(v * 100)}%`);
 const secs = (ms) => (ms === null || ms === undefined ? '–' : `${(ms / 1000).toFixed(1)} s`);
-
-// One number of the last week, what it means, and how it compares with the week before; it opens the page that explains it.
-function Stat({ label, value, sub, series, onOpen }) {
-  const max = Math.max(1, ...(series || []).map((d) => d.calls));
-  return (
-    <button type="button" className="ovStat" onClick={onOpen}>
-      <span className="ovStatLabel">{label}</span>
-      <strong>{value}</strong>
-      {sub && <small>{sub}</small>}
-      {series && (
-        <span className="ovSpark" aria-hidden="true">
-          {series.map((d) => (
-            <i key={d.day} style={{ height: `${Math.max(6, (d.calls / max) * 100)}%` }} />
-          ))}
-        </span>
-      )}
-    </button>
-  );
-}
 
 // An agent's overview: how it did this week, how far it is from ready (the steps, each opening the page where it is done), where it runs, and its latest calls.
 //   plan: the steps to get ready (readiness.js); when not given they are worked out here. onStep(step): opens a step (else this page goes to its page).
@@ -85,25 +68,29 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
         <div className="ovStats" role="group" aria-label={`The last ${DAYS} days`}>
           <Stat
             label={`Calls · last ${DAYS} days`}
-            value={reading ? '…' : totals.calls}
-            sub={reading ? '' : `${delta > 0 ? '+' : ''}${delta} on the ${DAYS} days before`}
+            loading={reading}
+            value={totals.calls}
+            sub={`${delta > 0 ? '+' : ''}${delta} on the ${DAYS} days before`}
             series={series}
             onOpen={() => go('calls')}
           />
           <Stat
             label="Handled without a person"
+            loading={reading}
             value={totals.calls ? pct(1 - (totals.handoffRate || 0)) : '–'}
             sub={totals.calls ? `${pct(totals.handoffRate)} passed to a person` : 'No calls yet'}
             onOpen={() => go('monitoring')}
           />
           <Stat
             label="Typical answer time"
+            loading={reading}
             value={secs(totals.waitP50)}
             sub={totals.waitP90 !== null && totals.waitP90 !== undefined ? `1 in 10 over ${secs(totals.waitP90)}` : 'No answers timed yet'}
             onOpen={() => go('cost')}
           />
           <Stat
             label="Cut off"
+            loading={reading}
             value={totals.calls ? pct(totals.cutOffRate) : '–'}
             sub={totals.calls ? `${totals.cutOff} call${totals.cutOff === 1 ? '' : 's'} stopped without an ending` : 'No calls yet'}
             onOpen={() => go('monitoring')}
@@ -114,7 +101,7 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
           <div className="ovMain">
             <Section
               title="Getting it ready"
-              lead={plan.total ? `${plan.done} of ${plan.total} steps done${ready ? '. It is ready.' : ''}` : 'Reading the draft…'}
+              lead={plan.total ? `${plan.done} of ${plan.total} steps done${ready ? '. It is ready.' : ''}` : ''}
               action={
                 plan.next ? (
                   <button type="button" className="primaryCta compactCta" onClick={() => open(plan.next)}>
@@ -132,7 +119,8 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
                   <i style={{ width: `${Math.round((plan.done / plan.total) * 100)}%` }} />
                 </span>
               )}
-              {(!ready || showSteps) && (
+              {plan.total === 0 && <SkeletonRows rows={4} label="Reading the draft" />}
+              {plan.total > 0 && (!ready || showSteps) && (
                 <ol className="nlSteps">
                   {plan.steps.map((step) => (
                     <li
@@ -160,7 +148,7 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
               )}
               {ready && !showSteps && (
                 <p className="ovReady">
-                  <Icon name="check" size={16} /> Everything it needs is done: it is saved, checked, published and live.
+                  <Icon name="check" size={16} /> Everything it needs is done: it is built, checked, published and live.
                 </p>
               )}
             </Section>
@@ -175,8 +163,20 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
                 </button>
               }
             >
-              {summary ? <EnvSlots deployed={summary.deployed} onPick={() => go('deploy')} /> : <p className="nlHint">Reading what is deployed…</p>}
-              <p className="nlHint">{summary?.latest_version ? `The newest published version is v${summary.latest_version}.` : 'Nothing is published yet.'}</p>
+              {summary ? (
+                <>
+                  <EnvSlots deployed={summary.deployed} onPick={() => go('deploy')} />
+                  <p className="nlHint">
+                    {summary.latest_version ? `The newest published version is v${summary.latest_version}.` : 'Nothing is published yet.'}
+                  </p>
+                </>
+              ) : (
+                <div className="ovEnvSkeleton" role="status" aria-label="Reading what is deployed">
+                  <Skeleton width={120} height={26} round />
+                  <Skeleton width={110} height={26} round />
+                  <Skeleton width={130} height={26} round />
+                </div>
+              )}
             </Section>
 
             <Section
@@ -187,10 +187,12 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
                 </button>
               }
             >
-              {recent.length ? (
+              {!recent.length && data.loading ? (
+                <SkeletonRows rows={3} label="Reading the calls" square={false} />
+              ) : recent.length ? (
                 <ul className="ovCalls">
                   {recent.map((c) => {
-                    const status = statusOf(c.status);
+                    const status = OUTCOMES[outcomeOf(c)] || statusOf(c.status);
                     return (
                       <li key={c.id}>
                         <button type="button" onClick={() => go('calls', { call: c.id })}>
@@ -209,17 +211,11 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
                 </ul>
               ) : (
                 <p className="nlHint">
-                  {data.loading ? (
-                    'Reading the calls…'
-                  ) : (
-                    <>
-                      No calls in the last {DAYS} days.{' '}
-                      <button type="button" className="linkButton" onClick={onTest}>
-                        Test it
-                      </button>{' '}
-                      and the conversation shows up here.
-                    </>
-                  )}
+                  No calls in the last {DAYS} days.{' '}
+                  <button type="button" className="linkButton" onClick={onTest}>
+                    Test it
+                  </button>{' '}
+                  and the conversation shows up here.
                 </p>
               )}
             </Section>

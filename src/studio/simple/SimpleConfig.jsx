@@ -169,7 +169,7 @@ function Card({ card, summary, errors, open, onToggle, children, detail, onDetai
             </b>
           )}
           <i className="smChevron" aria-hidden="true">
-            {drawer || !open ? '›' : '▾'}
+            <Icon name={drawer || !open ? 'chevronRight' : 'chevronDown'} size={16} />
           </i>
         </button>
       </h3>
@@ -191,7 +191,7 @@ function Card({ card, summary, errors, open, onToggle, children, detail, onDetai
               </span>
               <strong>{card.title}</strong>
               <button type="button" className="smClose" aria-label={`Close ${card.title}`} onClick={onToggle}>
-                ×
+                <Icon name="close" size={14} />
               </button>
             </header>
           )}
@@ -583,7 +583,7 @@ function ConnectionsCard({ config, set, secrets, providers }) {
           </form>
         ) : (
           <button type="button" className="stAddBtn" onClick={() => setAdding(true)}>
-            ＋ Add an HTTP connection
+            <Icon name="plus" size={14} /> Add an HTTP connection
           </button>
         )}
       </div>

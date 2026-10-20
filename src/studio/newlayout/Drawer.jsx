@@ -41,7 +41,9 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
   };
   return createPortal(
     <>
-      <div className="nlScrim" aria-hidden="true" onMouseDown={onClose} />
+      {/* on click, not on press: closing on the press would let the release land on whatever is under the scrim, so one click would both close the
+          panel and open that (a menu item, a button) */}
+      <div className="nlScrim" aria-hidden="true" onClick={onClose} />
       <aside className={`nlDrawer ${width}`} role="dialog" aria-modal="true" aria-label={label || title} ref={ref} onKeyDown={keepFocusInside}>
         <header className="nlDrawerHead">
           {icon && (

@@ -102,7 +102,7 @@ try {
     .click();
   await page.getByPlaceholder('e.g. Acme Support').fill(agentName);
   await page.getByRole('radio', { name: /Customer care/ }).check();
-  await page.getByRole('button', { name: 'Create agent', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Create agent', exact: true }).click();
   await page.waitForSelector('.stHeader h1');
   step('creates an agent from the Customer care starter', (await page.locator('.stHeader h1').innerText()).trim() === agentName);
 

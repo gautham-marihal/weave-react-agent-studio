@@ -5,6 +5,7 @@ import { formatWhen } from '../format.js';
 import { Notice } from '../ui.jsx';
 import { useAsync } from '../useAsync.js';
 import './checks.css';
+import Icon from '../../ui/Icon.jsx';
 
 // "Checks": this agent's configuration read against everyday situations (a greeting, a way to end the call, reaching a person, a caller who goes quiet)
 // before it is made live. They only read what is configured: no conversation is run and no call is placed. (To talk to the agent use Test; to run
@@ -98,7 +99,7 @@ export default function ChecksTab({ botId, name, runs = [], onRun }) {
               <li key={item.id} className={isOpen ? 'open' : ''}>
                 <button type="button" className="ckRunHead" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : item.id)}>
                   <span className={`ckChip ${all ? 'pass' : 'warn'}`}>
-                    {all ? '✓' : '!'} Passed {item.passed} of {item.total}
+                    <Icon name={all ? 'check' : 'alert'} size={13} /> Passed {item.passed} of {item.total}
                   </span>
                   <strong>{item.versionLabel}</strong>
                   <time>{formatWhen(item.ranAt)}</time>
@@ -107,7 +108,9 @@ export default function ChecksTab({ botId, name, runs = [], onRun }) {
                   <ul className="ckResults">
                     {item.results.map((result) => (
                       <li key={result.id} className={result.passed ? 'pass' : 'fail'}>
-                        <b aria-hidden="true">{result.passed ? '✓' : '✕'}</b>
+                        <b aria-hidden="true">
+                          <Icon name={result.passed ? 'check' : 'close'} size={14} />
+                        </b>
                         <span>
                           <strong>{result.name}</strong>
                           <small>{result.detail}</small>

@@ -104,34 +104,79 @@ const ADD_WORDS = {
 
 // What a setting is for, in plain words, with an example when there is one. The schema's own description (the technical wording) is one click
 // away, or open already when technical names are on. When there is no hand-written purpose the lead is the schema's first sentence.
-function Help({ lead, example, full, moreLabel = 'Technical detail', open: startOpen = false }) {
+// the last word of a text and the rest, so the "i" can be kept on the line of the last word
+const lastWord = (text) => {
+  const t = String(text).trimEnd();
+  const i = t.lastIndexOf(' ');
+  return i < 0 ? ['', t] : [t.slice(0, i + 1), t.slice(i + 1)];
+};
+
+// The "i" that shows a setting's technical detail. Drawn with CSS, not an SVG: there is one beside nearly every setting, and hundreds of SVGs slow typing
+// on a long screen.
+function InfoButton({ shown, onToggle, moreLabel = 'Technical detail' }) {
+  return (
+    <button
+      type="button"
+      className={`stFInfo ${shown ? 'on' : ''}`}
+      aria-expanded={shown}
+      aria-label={shown ? `Hide the ${moreLabel.toLowerCase()}` : moreLabel}
+      title={shown ? 'Hide' : moreLabel}
+      onClick={onToggle}
+    >
+      <span className="stFInfoMark" aria-hidden="true">
+        i
+      </span>
+    </button>
+  );
+}
+// the technical description of a setting, when it says more than the plain words
+const moreOf = (words) => (words.full && words.full.trim() && words.full.trim() !== words.lead ? words.full.trim() : '');
+
+//   shown: when given, the row draws the "i" beside the setting's name and says here whether the detail is open; else the "i" ends the help line.
+function Help({ lead, example, full, moreLabel = 'Technical detail', open: startOpen = false, shown: shownFromRow }) {
   const [open, setOpen] = useState(false);
   const more = full && full.trim() && full.trim() !== lead ? full.trim() : '';
-  const shown = open || (startOpen && !!more);
-  if (!lead && !example && !more) return null;
+  const inline = shownFromRow === undefined;
+  const shown = inline ? open || (startOpen && !!more) : shownFromRow;
+  if (!lead && !example && !(more && (inline || shown))) return null;
+  const info = more && inline ? <InfoButton shown={shown} onToggle={() => setOpen((v) => !v)} moreLabel={moreLabel} /> : null;
+  // the "i" goes with the last word, in a piece that does not wrap, so it never sits alone on a line
+  const [leadHead, leadLast] = lead ? lastWord(lead) : ['', ''];
+  const [exHead, exLast] = example ? lastWord(example) : ['', ''];
   return (
     <p className="stFHelp">
-      {lead && <span>{lead} </span>}
+      {lead &&
+        (info && !example ? (
+          <span>
+            {leadHead}
+            <span className="stFTail">
+              {leadLast} {info}
+            </span>
+          </span>
+        ) : (
+          <span>{lead} </span>
+        ))}
       {example && (
         <span className="stFExample">
-          For example: <em>{example}</em>{' '}
+          {info && exHead ? (
+            <>
+              For example: <em>{exHead}</em>
+              <span className="stFTail">
+                <em>{exLast}</em> {info}
+              </span>
+            </>
+          ) : info ? (
+            <span className="stFTail">
+              For example: <em>{exLast}</em> {info}
+            </span>
+          ) : (
+            <>
+              For example: <em>{example}</em>
+            </>
+          )}{' '}
         </span>
       )}
-      {more && (
-        <button
-          type="button"
-          className={`stFInfo ${shown ? 'on' : ''}`}
-          aria-expanded={shown}
-          aria-label={shown ? `Hide the ${moreLabel.toLowerCase()}` : moreLabel}
-          title={shown ? 'Hide' : moreLabel}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {/* drawn with CSS, not an SVG: there is one beside nearly every setting, and hundreds of SVGs slow typing on a long screen */}
-          <span className="stFInfoMark" aria-hidden="true">
-            i
-          </span>
-        </button>
-      )}
+      {!lead && !example && info}
       {more && shown && <span className="stFMore">{more}</span>}
     </p>
   );
@@ -481,7 +526,7 @@ function RefSelect({ shape, value, onChange, disabled, id, invalid, path }) {
   const spec = !disabled ? CREATABLE[name] : null;
   const newButton = spec && (
     <button type="button" className="stLink stNewBtn" onClick={() => setCreating((v) => !v)}>
-      ＋ New {spec.word}
+      <Icon name="plus" size={14} /> New {spec.word}
     </button>
   );
   const form = creating && (
@@ -759,6 +804,7 @@ export function FieldRow({
   const { engine } = ctx;
   const key = keyOf(path);
   const inputId = useId();
+  const [infoToggled, setInfoToggled] = useState(false);
   const declared = engine.resolveShape(schema, given);
   const kindUnset = engine.kindOf(declared);
   const styleUnset = kindUnset === 'array' ? arrayStyle(engine, declared) : null;
@@ -794,7 +840,12 @@ export function FieldRow({
     );
   const { title } = words;
   const technical = ctx.technical;
+  // the technical detail opens from an "i" beside the setting's name (open from the start when technical names are on)
+  const more = moreOf(words);
+  const infoShown = !!more && (technical ? !infoToggled : infoToggled);
+  const infoButton = more ? <InfoButton shown={infoShown} onToggle={() => setInfoToggled((v) => !v)} moreLabel={words.moreLabel} /> : null;
   const helpLine = <Help lead={words.lead} example={words.example} full={words.full} moreLabel={words.moreLabel} open={technical} />;
+  const rowHelp = <Help lead={words.lead} example={words.example} full={words.full} moreLabel={words.moreLabel} shown={infoShown} />;
   const tags = (
     <>
       {required && (
@@ -802,6 +853,7 @@ export function FieldRow({
           *
         </abbr>
       )}
+      {infoButton}
       {shape.deprecated && <span className="stFTag warn">deprecated</span>}
       {readOnly && <span className="stFTag">set by the server</span>}
       {technical && <TechName name={name} path={path} />}
@@ -818,10 +870,10 @@ export function FieldRow({
           {required && <span className="stFTag bad">required, not set</span>}
           {!required && <span className="stFDefault">Not set</span>}
         </div>
-        {helpLine}
+        {rowHelp}
         <div className="stFRowCtl">
           <button type="button" className="stAddBtn" disabled={disabled} onClick={onAdd}>
-            ＋ Set {title.toLowerCase()}
+            <Icon name="plus" size={14} /> Set {title.toLowerCase()}
           </button>
           <Issues pathKey={key} />
         </div>
@@ -871,10 +923,13 @@ export function FieldRow({
     (kind === 'string' && (shape['x-ui']?.widget === 'textarea' || String(value ?? '').length > 60)) ||
     kind === 'secret';
   const deepIssues = kind === 'array' || kind === 'json';
+  // a single control takes the label (clicking the name focuses it); a list, a choice of kinds or a fixed value is a group named by it instead
+  const takesId = !['const', 'null', 'object', 'array', 'map', 'union'].includes(kind) && !(kind === 'string' && readXui(shape).widget === 'jsonpath');
+  const labelId = `${inputId}-name`;
   return (
     <div className={`stFRow ${wide ? 'wide' : ''} ${readOnly ? 'ro' : ''} ${kind === 'boolean' ? 'toggle' : ''} ${missing ? 'missing' : ''}`} data-path={key}>
       <div className="stFLabel">
-        <label htmlFor={inputId} title={words.lead || undefined}>
+        <label htmlFor={takesId ? inputId : undefined} id={labelId} title={words.lead || undefined}>
           {title}
         </label>
         {tags}
@@ -894,8 +949,8 @@ export function FieldRow({
           </button>
         )}
       </div>
-      {helpLine}
-      <div className="stFRowCtl">
+      {rowHelp}
+      <div className="stFRowCtl" role={takesId ? undefined : 'group'} aria-labelledby={takesId ? undefined : labelId}>
         <OwnerCtx.Provider value={name}>
           <Node
             schema={schema}
@@ -1089,7 +1144,7 @@ const CardItem = React.memo(function CardItem({
         !disabled && count > 1 ? (
           <>
             <button type="button" className="stIconBtn" aria-label={`Move ${title} up`} disabled={index === 0} onClick={() => onMoveItem(index, index - 1)}>
-              ↑
+              <Icon name="chevronUp" size={14} />
             </button>
             <button
               type="button"
@@ -1098,7 +1153,7 @@ const CardItem = React.memo(function CardItem({
               disabled={index === count - 1}
               onClick={() => onMoveItem(index, index + 1)}
             >
-              ↓
+              <Icon name="chevronDown" size={14} />
             </button>
           </>
         ) : null
@@ -1286,7 +1341,7 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
           className="stFInput small"
           disabled={disabled}
           ariaLabel={`Add ${word}`}
-          placeholder={`＋ Add ${word}…`}
+          placeholder={`Add ${word}…`}
           options={branches.map((b, i) => {
             const kind = engine.flatten(b).properties?.type?.const;
             const missing = collection === 'tools' && UNSUPPORTED_KINDS[kind];
@@ -1298,7 +1353,7 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
         />
       ) : (
         <button type="button" className="stAddBtn" disabled={disabled} onClick={() => add()}>
-          ＋ Add {word}
+          <Icon name="plus" size={14} /> Add {word}
         </button>
       )}
       {offerNotice && !disabled && <NoticeOffer onDone={() => setOfferNotice(false)} />}
@@ -1335,7 +1390,7 @@ function AddKey({ existing, onAdd, pattern, options, disabled, label = 'entry' }
         className="stFInput small"
         disabled={disabled || left.length === 0}
         ariaLabel={`Add ${label}`}
-        placeholder={left.length ? `＋ Add ${label}…` : `No more ${label}s to add`}
+        placeholder={left.length ? `Add ${label}…` : `No more ${label}s to add`}
         options={left}
         onChange={(o) => {
           if (o) onAdd(o);
@@ -1365,7 +1420,7 @@ function AddKey({ existing, onAdd, pattern, options, disabled, label = 'entry' }
         }}
       />
       <button type="button" className="stAddBtn" disabled={disabled || !text.trim()} onClick={() => commit(text)}>
-        ＋ Add
+        <Icon name="plus" size={14} /> Add
       </button>
       {error && <small className="stFErr">{error}</small>}
     </div>
@@ -1518,7 +1573,7 @@ function MapBody({ shape, value, path, onChange, disabled }) {
               disabled={disabled}
               onClick={() => removeEntry(key)}
             >
-              ×
+              <Icon name="close" size={14} />
             </button>
           </div>
         );
@@ -1527,7 +1582,7 @@ function MapBody({ shape, value, path, onChange, disabled }) {
       {autoKey ? (
         // one click adds one, with a name made up for it that can be changed in place (no name to type before it exists)
         <button type="button" className="stAddBtn" disabled={disabled} onClick={() => add(autoKey)}>
-          ＋ Add {word}
+          <Icon name="plus" size={14} /> Add {word}
         </button>
       ) : (
         <AddKey

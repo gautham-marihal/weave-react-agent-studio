@@ -82,16 +82,24 @@ test('Calls: the calls of an agent, newest first, filters that narrow them, and 
   await seedDemo(agent());
   const app = await mountScreen('calls', {}, { ready: '.clView', props: { fixedBotId: 'x' } });
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 3), true);
+  // who can read the calls, and (in the demo) that they are made up, in one line until "Got it"
   assert.match(textOf($(app.container, '.clPrivacy')), /These records contain what callers said/);
-  assert.match(textOf($(app.container, '.demoNote')), /made-up examples/);
+  assert.match(textOf($(app.container, '.clPrivacy')), /made-up examples/);
   const times = $$(app.container, '.clRow').map((r) => r.querySelector('td').textContent);
   assert.equal(times.length, 3);
-  // a status filter with nothing in it says so
-  await a.choose($$(app.container, '.clFilters select')[1], 'unfinished');
+  // each call says how it went in a word
+  assert.ok(
+    $$(app.container, '.clRow .clStatus').every((el) => ['Handled', 'Passed to a person', 'Cut off', 'In progress'].includes(textOf(el))),
+    'an outcome per call',
+  );
+  // an outcome filter with nothing in it says so
+  await a.choose($$(app.container, '.clFilters select')[1], 'cutoff');
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 0 && !!$(app.container, '.clEmpty strong')), true);
   assert.match(textOf($(app.container, '.clEmpty')), /No calls found/);
-  await a.choose($$(app.container, '.clFilters select')[1], 'ended');
+  await a.choose($$(app.container, '.clFilters select')[1], '');
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 3), true);
+  await a.click(byText(app.container, '.clPrivacy button', 'Got it'));
+  assert.equal($(app.container, '.clPrivacy'), null, 'the notice is gone once it is read');
   // open one
   await a.click($$(app.container, '.clRow')[0]);
   assert.equal(await until(app, () => !!$(app.container, '.clDetail .trView')), true);

@@ -11,6 +11,22 @@ export function useNewAlertCount() {
   return withStatus(alerts, acks, Date.now()).filter((a) => a.status === 'new').length;
 }
 
+// The alerts that hold for each agent (not snoozed): { botId: { count, critical } }, for the lists of agents.
+export function useAlertsByAgent() {
+  const { acks } = useInsights();
+  const { alerts } = useLiveAlerts();
+  const out = {};
+  withStatus(alerts, acks, Date.now())
+    .filter((a) => a.status !== 'snoozed')
+    .forEach((a) => {
+      const row = out[a.bot] || { count: 0, critical: 0 };
+      row.count += 1;
+      if (a.severity === 'critical') row.critical += 1;
+      out[a.bot] = row;
+    });
+  return out;
+}
+
 // Asks the workspace to show its Alerts page (from inside an agent, a notification, the bell).
 export const openAlertsPage = () => window.dispatchEvent(new Event('weave-open-alerts'));
 

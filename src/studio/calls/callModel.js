@@ -13,6 +13,21 @@ export const CALL_STATUS = {
 };
 export const statusOf = (status) => CALL_STATUS[status] || { label: status || 'Unknown', tone: 'idle', hint: '' };
 
+// How a call went, in a word for the lists: still going, cut off, passed to a person, or handled by the agent itself. `status` is what the API filters on
+// (handled and passed to a person are both "ended" to it; the list tells them apart by the hand-overs).
+export const OUTCOMES = {
+  handled: { label: 'Handled', tone: 'good', status: 'ended', hint: 'The agent finished the call itself.' },
+  handoff: { label: 'Passed to a person', tone: 'info', status: 'ended', hint: 'The agent handed the caller over to a person.' },
+  cutoff: { label: 'Cut off', tone: 'bad', status: 'unfinished', hint: CALL_STATUS.unfinished.hint },
+  progress: { label: 'In progress', tone: 'warn', status: 'in_progress', hint: CALL_STATUS.in_progress.hint },
+};
+export function outcomeOf(call) {
+  if (call?.status === 'in_progress') return 'progress';
+  if (call?.status === 'unfinished') return 'cutoff';
+  if (call?.status === 'ended') return (call?.handoffs || 0) > 0 ? 'handoff' : 'handled';
+  return '';
+}
+
 export const RANGES = [
   { id: '24h', label: 'Past 24 hours', hours: 24 },
   { id: '7d', label: 'Past 7 days', hours: 24 * 7 },
@@ -70,6 +85,13 @@ export function rowOf(call, botName) {
     statusLabel: s.label,
     tone: s.tone,
     hint: s.hint,
+    outcome: outcomeOf(call),
+    outcomeLabel: OUTCOMES[outcomeOf(call)]?.label || s.label,
+    outcomeTone: OUTCOMES[outcomeOf(call)]?.tone || s.tone,
+    outcomeHint:
+      outcomeOf(call) === 'handoff' && (call?.handoffs || 0) > 1
+        ? `The agent handed the caller over ${call.handoffs} times.`
+        : OUTCOMES[outcomeOf(call)]?.hint || s.hint,
     version: call?.version || '',
     ref: call?.ref || '',
     raw: call,

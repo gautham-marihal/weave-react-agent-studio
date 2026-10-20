@@ -1,12 +1,15 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { sentenceCase } from '../ui/text.js';
+import Icon from '../ui/Icon.jsx';
+
+const NOTICE_ICON = { error: 'alert', warn: 'alert', good: 'check', info: 'info' };
 
 export function Notice({ kind = 'info', title, children, actions }) {
   return (
     <div className={`stNotice ${kind}`} role={kind === 'error' ? 'alert' : 'status'}>
       <span className="stNoticeIcon" aria-hidden="true">
-        {kind === 'error' ? '!' : kind === 'warn' ? '▲' : kind === 'good' ? '✓' : 'i'}
+        <Icon name={NOTICE_ICON[kind] || 'info'} size={16} />
       </span>
       <div className="stNoticeBody">
         {title && <strong>{title}</strong>}
@@ -48,7 +51,7 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
             {subtitle && <p>{subtitle}</p>}
           </div>
           <button type="button" className="modalClose" aria-label="Close" disabled={busy} onClick={onClose}>
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
         {children}
@@ -99,17 +102,36 @@ export function StageChip({ stage }) {
   );
 }
 
-// What runs where, one slot per environment, so nothing is hidden in a tooltip. `onPick(env)` makes slots clickable.
+const SHORT_ENV = { development: 'Dev', staging: 'Staging', production: 'Prod' };
+
+// What runs where, one slot per environment, so nothing is hidden in a tooltip. `onPick(env)` makes slots clickable. `compact` (a list of agents) shows
+// only the environments something runs in, or "Not deployed" when there are none.
 export function EnvSlots({ deployed = {}, compact = false, onPick }) {
-  const envs = ['development', 'staging', 'production'];
+  const all = ['development', 'staging', 'production'];
+  const running = all.filter((env) => deployed?.[env]);
+  if (compact && !running.length) {
+    const none = <span className="stEnvNone">Not deployed</span>;
+    return (
+      <span className="stEnvSlots compact" aria-label="Deployments">
+        {onPick ? (
+          <button type="button" className="stEnvSlot none" title="Not deployed anywhere. Open Deploy." onClick={() => onPick('development')}>
+            {none}
+          </button>
+        ) : (
+          none
+        )}
+      </span>
+    );
+  }
+  const envs = compact ? running : all;
   return (
     <span className={`stEnvSlots ${compact ? 'compact' : ''}`} role="list" aria-label="Deployments">
       {envs.map((env) => {
         const version = deployed?.[env];
-        const text = version ? `v${version}` : compact ? '—' : 'Not deployed';
+        const text = version ? `v${version}` : 'Not deployed';
         const content = (
           <>
-            <b>{compact ? (env === 'production' ? 'PROD' : env === 'staging' ? 'STG' : 'DEV') : envLabel(env)}</b>
+            <b>{compact ? SHORT_ENV[env] : envLabel(env)}</b>
             <span>{text}</span>
           </>
         );

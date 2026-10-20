@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { filterOptions, groupOptions } from './pickerOptions.js';
+import Icon from '../../ui/Icon.jsx';
 
 // "Add…" as a choice of jobs rather than a drop-down of kinds: each choice is a card with a sentence on what it is for, grouped, with a search
 // box when there are many. It opens in place (no dialog), picks one, and closes. A choice the runtime can't run yet says so on its card.
@@ -62,7 +63,7 @@ export default function AddPicker({ what, options, disabled, onPick, className =
         aria-controls={open ? panelId : undefined}
         onClick={() => (open ? close() : setOpen(true))}
       >
-        ＋ Add {what}
+        <Icon name="plus" size={14} /> Add {what}
       </button>
       {open && (
         <section id={panelId} ref={panelRef} className="stPickPanel" aria-label={`Add ${what}`} onKeyDown={move}>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Icon from '../../ui/Icon.jsx';
 
 // A small "⋯" menu. Rendered in a portal and positioned from the button, so a card with overflow:hidden
 // never clips it. Keyboard: Enter/Space/ArrowDown opens, arrows move, Escape closes and returns focus.
@@ -100,7 +101,7 @@ export default function Menu({ label = 'More actions', items, className = '' }) 
           }
         }}
       >
-        <span aria-hidden="true">⋯</span>
+        <Icon name="more" size={18} />
       </button>
       {open &&
         createPortal(

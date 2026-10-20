@@ -108,7 +108,6 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
     <div className="workspaceFeaturePage">
       <section className="welcomeBlock pageHeaderBlock featureHero">
         <div>
-          <div className="eyebrow cyan">Workspace connections</div>
           <h1>Integrations</h1>
           <p>Connect the systems your agents rely on and keep connection details in one place.</p>
         </div>
@@ -122,7 +121,7 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
       </section>
       <section className="featureToolbar">
         <label className="featureSearch">
-          <span>⌕</span>
+          <Icon name="search" size={15} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search integrations" aria-label="Search integrations" />
         </label>
         <div className="filterPills" role="group" aria-label="Filter integrations">
@@ -197,7 +196,7 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
                 <p>{selected.description}</p>
               </div>
               <button type="button" className="iconButton" aria-label="Close" onClick={() => setSelected(null)}>
-                ×
+                <Icon name="close" size={14} />
               </button>
             </div>
             <label className="modalField">

@@ -129,7 +129,7 @@ test('what is typed in Instructions is written to the real fields, and nothing e
   assert.deepEqual(app.config.tools, config.tools);
   assert.deepEqual(app.config.messages, config.messages);
   assert.match(textOf($(card(app, 'instructions'), '.stTplCount')), /^4 words$/);
-  await a.click(byText(card(app, 'instructions'), 'button', '＋ Add a rule'));
+  await a.click(byText(card(app, 'instructions'), 'button', 'Add a rule'));
   assert.equal(app.config.persona.style_rules.at(-1), '');
   await app.unmount();
 });
@@ -238,7 +238,7 @@ test('Connections: a connection is added from the card, a bad address is refused
   const app = await simple();
   const connections = await openCard(app, 'connections');
   assert.match(textOf(connections), /None yet/);
-  await a.click(byText(connections, 'button', '＋ Add an HTTP connection'));
+  await a.click(byText(connections, 'button', 'Add an HTTP connection'));
   await a.type(byLabel(app.container, 'Connection name'), 'billing_api');
   await a.type(byLabel(app.container, 'Connection base address'), 'nope');
   await a.click(byText($(app.container, '.smAdd'), 'button', 'Add the connection'));
@@ -307,11 +307,11 @@ test('Scenarios: demo mode says runs are an imitation, and starts with an invita
 
 test('Scenarios: write one, it goes into the draft’s tests, run it, results appear, and a failure says what and why', async () => {
   const app = await scenarios();
-  await a.click(byText(app.container, 'button', '＋ New scenario'));
+  await a.click(byText(app.container, 'button', 'New scenario'));
   await a.type(byLabel(app.container, 'Turn 1: what the caller says'), 'Can I speak to a human?');
   await a.choose(byLabel(app.container, 'Expectation 1: what to check'), 'tool_called');
   await a.choose(byLabel(app.container, 'Expectation 1: tool'), 'escalate_to_human');
-  await a.click(byText(app.container, 'button', '＋ Add an expectation'));
+  await a.click(byText(app.container, 'button', 'Add an expectation'));
   await a.choose(byLabel(app.container, 'Expectation 2: what to check'), 'said_matches');
   await a.type(byLabel(app.container, 'Expectation 2: pattern'), 'refund');
   await a.click(byText(app.container, 'button', 'Add the scenario'));
@@ -380,7 +380,7 @@ test('Scenarios: letting a run reach real systems is off by default, asks first,
 test('Scenarios: a scenario with mistakes isn’t added, and says what to fix; editing and deleting work', async () => {
   const config = { ...agent(), tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }] }] };
   const app = await scenarios(config);
-  await a.click(byText(app.container, 'button', '＋ New scenario'));
+  await a.click(byText(app.container, 'button', 'New scenario'));
   await a.type(byLabel(app.container, 'Turn 1: what the caller says'), '');
   await a.type($(app.container, '.scForm input.mono'), 'Bad Id');
   await a.click(byText(app.container, 'button', 'Add the scenario'));
@@ -605,7 +605,7 @@ test('Where it is available: channels are switched on and off, and a voice chann
   assert.equal(app.config.channels[0].enabled, false, 'switched off');
   await a.click($$(card(app, 'where'), '.smChannels [role=switch]')[0]);
   assert.equal('enabled' in app.config.channels[0], false, 'switched on again: the default is not written');
-  await a.click(byText(card(app, 'where'), 'button.stAddBtn', /^＋ Add a channel/));
+  await a.click(byText(card(app, 'where'), 'button.stAddBtn', /^Add a channel/));
   await a.click($(card(app, 'where'), '.stPickCard[data-option="phone"]'));
   assert.equal(app.config.channels.at(-1).type, 'sip_voice');
   const offer = $(card(app, 'where'), '.stFOffer');

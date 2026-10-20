@@ -107,7 +107,7 @@ await page
 await page.getByPlaceholder('e.g. Acme Support').waitFor();
 await scan();
 await page.getByPlaceholder('e.g. Acme Support').fill('Harbour Plumbing');
-await page.getByRole('button', { name: 'Create agent', exact: true }).click();
+await page.getByRole('dialog').getByRole('button', { name: 'Create agent', exact: true }).click();
 // the agent opens in whichever layout is the default: the classic one has its Test tab to open, the new one a Test button in its top bar
 await page.waitForSelector('.stHeader h1, .nlBar h1');
 await scan();

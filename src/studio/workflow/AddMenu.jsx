@@ -104,7 +104,7 @@ export default function AddMenu({ agentId, flow, config, onPick, onClose }) {
         <div className="wfMenuPane">
           <header>
             <button type="button" className="wfBack" onClick={() => setView('menu')} aria-label="Back">
-              ‹
+              <Icon name="chevronLeft" size={15} />
             </button>
             <strong>Pass the caller to…</strong>
           </header>
@@ -127,7 +127,7 @@ export default function AddMenu({ agentId, flow, config, onPick, onClose }) {
         <div className="wfMenuPane">
           <header>
             <button type="button" className="wfBack" onClick={() => setView('menu')} aria-label="Back">
-              ‹
+              <Icon name="chevronLeft" size={15} />
             </button>
             <strong>Let it use…</strong>
           </header>
@@ -150,7 +150,7 @@ export default function AddMenu({ agentId, flow, config, onPick, onClose }) {
         <form className="wfMenuPane" onSubmit={submitPhone} noValidate>
           <header>
             <button type="button" className="wfBack" onClick={() => setView('menu')} aria-label="Back">
-              ‹
+              <Icon name="chevronLeft" size={15} />
             </button>
             <strong>Transfer to a number</strong>
           </header>
