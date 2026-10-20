@@ -23,8 +23,10 @@ const optionsOf = (box) => $$(window.document.getElementById(box.getAttribute('a
 test('the provider and the model of a model setting are boxes with a list, and the list follows the stage and the provider', async () => {
   const app = await mountForm(config);
   await a.section(app.container, 'defaults.models');
-  const providers = $$(app.container, '[role=combobox][aria-label="Provider"]');
-  const models = $$(app.container, '[role=combobox][aria-label="Model"]');
+  // the fallbacks are a list inside the language model's settings: they open in a sheet over the page
+  for (const row of $$(document.body, '.stFGroup.drill > header .stFGroupToggle[aria-expanded=false]')) await a.click(row);
+  const providers = $$(document.body, '[role=combobox][aria-label="Provider"]');
+  const models = $$(document.body, '[role=combobox][aria-label="Model"]');
   assert.ok(providers.length >= 3, `a provider box for stt, llm and the fallback (${providers.length})`);
   assert.equal(providers.length, models.length);
   const llmProvider = providers.find((el) => el.value === 'openai');

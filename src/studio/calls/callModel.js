@@ -61,6 +61,8 @@ export function rowOf(call, botName) {
     botName: botName || call?.bot || '',
     startedAt: call?.started_at,
     caller: call?.caller || '',
+    // who called, when the call has no number: a visitor of a web channel, else a number that was withheld
+    callerHint: call?.caller ? '' : /web|chat|widget/.test(String(call?.channel?.type || call?.channel || '')) ? 'Web visitor' : 'No number',
     channel: channelLabel(call?.channel),
     duration: formatSeconds(call?.duration_s),
     turns: turnsOf(call),

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { sentenceCase } from '../ui/text.js';
 
 export function Notice({ kind = 'info', title, children, actions }) {
   return (
@@ -42,7 +43,7 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
       <section className={`createModal stModal ${wide ? 'wide' : ''}`}>
         <div className="createModalHeader">
           <div>
-            {eyebrow && <span className="createEyebrow">{eyebrow}</span>}
+            {eyebrow && <span className="createEyebrow">{sentenceCase(eyebrow)}</span>}
             <h2>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>

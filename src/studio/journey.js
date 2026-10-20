@@ -33,7 +33,16 @@ export const STAGES = [
       ['deploy', 'Deploy'],
     ],
   },
-  { id: 'monitor', label: 'Monitor', question: 'How is it doing?', tabs: [['calls', 'Calls']] },
+  {
+    id: 'monitor',
+    label: 'Monitor',
+    question: 'How is it doing?',
+    tabs: [
+      ['calls', 'Calls'],
+      ['questions', 'Questions'],
+      ['cost', 'Cost and speed'],
+    ],
+  },
 ];
 
 export const TAB_IDS = STAGES.flatMap((s) => s.tabs.map(([id]) => id));
@@ -53,6 +62,8 @@ export const NEXT = {
   versions: { tab: 'deploy', label: 'Put it live', then: 'Choose where this version runs.' },
   deploy: { tab: 'calls', label: 'Watch how it does', then: 'See every call and what happened in it.' },
   calls: null,
+  cost: { tab: 'scenarios', label: 'Run the scenarios', then: 'After changing the model, check it still behaves.' },
+  questions: { tab: 'scenarios', label: 'Run the scenarios', then: 'Check the answers you added, with the tests made from them.' },
 };
 export const nextStep = (tab) => (Object.prototype.hasOwnProperty.call(NEXT, tab) ? NEXT[tab] : NEXT.config);
 

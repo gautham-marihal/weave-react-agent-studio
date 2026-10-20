@@ -18,6 +18,10 @@ import Menu from './manage/Menu.jsx';
 import { useManage } from './manage/useManage.jsx';
 import { navigate, routeHref } from './route.js';
 import { EnvSlots, ErrorState, Modal, Notice, Spinner } from './ui.jsx';
+import Icon from '../ui/Icon.jsx';
+
+// a picture for each starting point in the create dialog
+const STARTER_ICONS = { support: 'agent', receptionist: 'home', knowledge: 'records', lead: 'team', appointment: 'flag', feedback: 'quote', blank: 'plus' };
 import StatePill from './StatePill.jsx';
 import { stateFromHealth } from './status.js';
 
@@ -92,6 +96,7 @@ function CreateBotDialog({ existingIds, onClose }) {
 
   return (
     <Modal
+      wide
       eyebrow="NEW AGENT"
       title="Create an agent"
       subtitle={
@@ -151,26 +156,44 @@ function CreateBotDialog({ existingIds, onClose }) {
             {idProblem && <small className="stFieldError">{idProblem}</small>}
           </label>
         </details>
-        <div className="pvModes asHow" role="group" aria-label="How to start">
-          <button type="button" className={!described ? 'on' : ''} aria-pressed={!described} onClick={() => setHow('template')} disabled={busy}>
-            Start from a template
-          </button>
-          <button type="button" className={described ? 'on' : ''} aria-pressed={described} onClick={() => setHow('describe')} disabled={busy}>
-            Describe it
-          </button>
-        </div>
+        {/* one choice of how it starts: describe it in words (a draft is made to review), or a template; the name above is all else that is asked */}
+        <fieldset className="stStartGrid" disabled={busy}>
+          <legend>How it starts</legend>
+          <label className={described ? 'on ai' : 'ai'}>
+            <input type="radio" name="start" value="describe" checked={described} onChange={() => setHow('describe')} />
+            <span className="stStartIcon" aria-hidden="true">
+              <Icon name="sparkle" size={18} />
+            </span>
+            <span>
+              <strong>Describe it</strong>
+              <small>Say in your own words what it should do. A draft is made for you to check.</small>
+            </span>
+          </label>
+          {[...STARTERS.filter((item) => item.id !== 'blank'), STARTERS[0]].map((item) => (
+            <label key={item.id} className={!described && starter === item.id ? 'on' : ''}>
+              <input
+                type="radio"
+                name="start"
+                value={item.id}
+                checked={!described && starter === item.id}
+                onChange={() => {
+                  setHow('template');
+                  setStarter(item.id);
+                }}
+              />
+              <span className="stStartIcon" aria-hidden="true">
+                <Icon name={STARTER_ICONS[item.id] || 'agent'} size={18} />
+              </span>
+              <span>
+                <strong>{item.label}</strong>
+                <small>{item.blurb}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
         {!described ? (
-          <fieldset className="stBump stStarters">
-            <legend>Starting point</legend>
-            {[...STARTERS.filter((item) => item.id !== 'blank'), STARTERS[0]].map((item) => (
-              <label key={item.id} className={starter === item.id ? 'on' : ''}>
-                <input type="radio" name="starter" value={item.id} checked={starter === item.id} onChange={() => setStarter(item.id)} disabled={busy} />
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.blurb}</small>
-                </span>
-              </label>
-            ))}
+          <fieldset className="stBump stStarters stYourTemplates">
+            <legend className="srOnly">Your templates</legend>
             <div className="stTemplatesHead">
               <strong>Your templates</strong>
               <label className="quietButton stImport">
@@ -191,6 +214,7 @@ function CreateBotDialog({ existingIds, onClose }) {
                     }
                     const saved = saveTemplate(parsed.template);
                     setTemplates(saved.list);
+                    setHow('template');
                     setStarter(`tpl:${saved.template.id}`);
                     setImportNote(`Imported “${saved.template.name}”.`);
                   }}
@@ -212,7 +236,10 @@ function CreateBotDialog({ existingIds, onClose }) {
                   name="starter"
                   value={`tpl:${item.id}`}
                   checked={starter === `tpl:${item.id}`}
-                  onChange={() => setStarter(`tpl:${item.id}`)}
+                  onChange={() => {
+                    setHow('template');
+                    setStarter(`tpl:${item.id}`);
+                  }}
                   disabled={busy}
                 />
                 <span>

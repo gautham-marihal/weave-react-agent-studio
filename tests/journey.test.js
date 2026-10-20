@@ -22,7 +22,7 @@ test('the tabs are the four stages in the order of the work, and every tab is in
     STAGES.map((s) => s.label),
     ['Build', 'Test', 'Release', 'Monitor'],
   );
-  assert.deepEqual(TAB_IDS, ['describe', 'config', 'workflow', 'knowledge', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
+  assert.deepEqual(TAB_IDS, ['describe', 'config', 'workflow', 'knowledge', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls', 'questions', 'cost']);
   assert.equal(new Set(TAB_IDS).size, TAB_IDS.length);
   STAGES.forEach((s) => assert.ok(s.question.endsWith('?') && s.tabs.length > 0));
   assert.equal(stageOf('deploy').id, 'release');

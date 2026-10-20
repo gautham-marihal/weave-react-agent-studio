@@ -148,6 +148,15 @@ export function setRole(config, text) {
 export function setGreeting(config, text) {
   const value = String(text ?? '');
   return edit(config, (next) => {
+    // no channel has a greeting yet: the first one typed is given to every channel (typing it here is the whole step)
+    const anyGreets = list(next.channels).some((c) => isObj(c) && isObj(c.greeting) && c.greeting.say !== undefined);
+    if (!anyGreets) {
+      if (!value) return;
+      list(next.channels).forEach((channel) => {
+        if (isObj(channel)) channel.greeting = { ...(isObj(channel.greeting) ? channel.greeting : {}), say: value };
+      });
+      return;
+    }
     list(next.channels).forEach((channel) => {
       if (!isObj(channel) || !isObj(channel.greeting) || channel.greeting.say === undefined) return;
       const say = channel.greeting.say;

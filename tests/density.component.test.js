@@ -89,11 +89,11 @@ test('no native drop-down on any screen has more than 8 choices: a longer list i
       for (const chip of $$(app.container, '.stFChipBtn')) {
         await a.click(chip);
         for (let pass = 0; pass < 4; pass += 1) {
-          const closed = $$(app.container, '.stFGroupToggle[aria-expanded=false]');
+          const closed = $$(document.body, '.stFGroupToggle[aria-expanded=false]');
           if (!closed.length) break;
           for (const t of closed) await a.click(t);
         }
-        $$(app.container, 'select').forEach((sel) => {
+        $$(document.body, 'select').forEach((sel) => {
           const choices = [...sel.options].filter((o) => o.value !== '').length;
           if (choices > 8) over.push(`${entry.name} › ${chip.getAttribute('data-section')}: ${sel.getAttribute('aria-label') || sel.className} (${choices})`);
         });

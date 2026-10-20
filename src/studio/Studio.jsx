@@ -7,6 +7,7 @@ import './studio.css';
 // The inputs, buttons and notes drawn by the form are used on every tab (Simple, Deploy, Knowledge, Scenarios, Calls…), so their styles load with the
 // studio and not with the form editor, which is loaded only when All settings is opened.
 import './form/form.css';
+import './form/formLook.css';
 
 // The agents area: the list, and one agent's workspace. Mounted inside the dashboard shell.
 export default function Studio({ profile, onRecordSession, readinessRuns, onRecordReadiness }) {

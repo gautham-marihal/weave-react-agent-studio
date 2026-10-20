@@ -1,0 +1,382 @@
+/* Cost and speed: numbers first, then where the money and the time go. */
+
+.csPage {
+  display: grid;
+  gap: 18px;
+}
+.csControls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.csControls select {
+  width: auto;
+}
+.csBasis {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.csStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.csStat {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.csStat strong {
+  color: var(--textStrong);
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.csStat.warn strong {
+  color: var(--warn-text);
+}
+.csStat > span {
+  color: var(--text);
+}
+.csStat small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.csTarget.stFInput.small {
+  display: inline-block;
+  width: 64px;
+  min-height: 26px;
+  padding: 1px 6px;
+  text-align: right;
+}
+
+.csMissing {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.csSection {
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.csSection h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.csSection h3 {
+  margin: 0 0 8px;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.csSection p {
+  margin: 0;
+}
+
+/* the money, as one bar */
+.csBar {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--surface2);
+}
+.csSeg {
+  display: inline-block;
+  background: var(--textStrong);
+}
+.csSeg.stt {
+  background: color-mix(in srgb, var(--textStrong) 55%, var(--surface2));
+}
+.csSeg.tts {
+  background: color-mix(in srgb, var(--textStrong) 28%, var(--surface2));
+}
+.csLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text);
+}
+.csLegend li {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.csLegend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.csTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.csTable th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+}
+.csTable td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.csTable tr:last-child td {
+  border-bottom: 0;
+}
+.csTable b {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.csTable tr.cheaper td:first-child b {
+  color: var(--good-text);
+}
+.csDelta {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.csDelta.good {
+  background: color-mix(in srgb, var(--good-text) 13%, transparent);
+  color: var(--good-text);
+}
+.csTag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.csTag.warn {
+  background: color-mix(in srgb, var(--warn-text) 14%, transparent);
+  color: var(--warn-text);
+}
+.csWarnText {
+  color: var(--warn-text) !important;
+  font-weight: 600;
+}
+
+/* the time, as bars by how long answers took */
+.csHist {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.csHist li {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+  font-size: var(--fs-sm);
+}
+.csHistLabel {
+  color: var(--muted);
+}
+.csHistBar {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.csHistBar i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--textStrong);
+}
+.csHist li.slow .csHistBar i {
+  background: var(--warn-text);
+}
+.csHistN {
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.csTwo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 22px;
+  margin-top: 6px;
+}
+.csSlow {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.csSlow li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+}
+.csSlow b {
+  color: var(--textStrong);
+  font-variant-numeric: tabular-nums;
+}
+.csSlow span {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.csEmpty {
+  padding: 28px 22px;
+  border: 1px dashed var(--line2);
+  border-radius: 12px;
+  color: var(--muted);
+}
+.csEmpty strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+}
+.csEmpty p {
+  margin: 0;
+}
+
+/* prices */
+.csFold {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  width: max-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--textStrong);
+  font: inherit;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.csFold .stMuted {
+  font-size: var(--fs-sm);
+  font-weight: 400;
+}
+.csFold svg {
+  transition: transform 0.15s ease;
+}
+.csFold[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+.csPrices {
+  display: grid;
+  gap: 12px;
+}
+.csPrices table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.csPrices th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+}
+.csPrices td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  vertical-align: middle;
+}
+.csPrices tr.missing td {
+  background: color-mix(in srgb, var(--warn-text) 6%, transparent);
+}
+.csPriceInputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.csPriceInputs label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.csPriceInputs label > span {
+  color: var(--muted);
+}
+.csPriceInputs input.stFInput.small {
+  width: 92px;
+  min-height: 28px;
+  padding: 2px 8px;
+  text-align: right;
+}
+.csPriceInputs small {
+  color: var(--dim);
+  font-size: var(--fs-xs);
+}
+.csPriceWhere {
+  white-space: nowrap;
+}
+.csPriceWhere .linkButton {
+  margin-left: 8px;
+}
+.csAddPrice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.csAddPrice strong {
+  margin-right: 4px;
+  color: var(--textStrong);
+}
+.csAddPrice .stFInput.small {
+  width: auto;
+  min-height: 32px;
+}
+.csFine {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+html[data-theme] body .csLegend .linkButton {
+  min-height: 0;
+  padding: 0;
+}
+
+@media (max-width: 1100px) {
+  .csStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

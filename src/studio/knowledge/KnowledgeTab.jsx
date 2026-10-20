@@ -4,7 +4,6 @@ import { api } from '../../api/client.js';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { Notice } from '../ui.jsx';
 import { formatWhen, slugify } from '../format.js';
-import { navigate, routeHref } from '../route.js';
 import { useBuilds, useKnowledge } from './useKnowledge.js';
 import {
   ACCEPT_ATTRIBUTE,
@@ -339,6 +338,7 @@ function FilesCard({ botId, files, bases, editor, onChanged, inputRef }) {
     if (!chosen.length) return;
     setBusy(true);
     const found = [];
+    const uploaded = [];
     for (const file of chosen) {
       const bad = fileTypeProblem(file.name);
       if (bad) {
@@ -347,6 +347,7 @@ function FilesCard({ botId, files, bases, editor, onChanged, inputRef }) {
       }
       try {
         await api.uploadKnowledgeFile(botId, file.name, file);
+        uploaded.push(file.name);
       } catch (e) {
         found.push(
           e?.status === 413
@@ -359,7 +360,28 @@ function FilesCard({ botId, files, bases, editor, onChanged, inputRef }) {
     }
     setProblems(found);
     setBusy(false);
+    placeUploaded(uploaded);
     onChanged();
+  };
+  // A file only counts once a base lists it. So a new file goes where it obviously belongs, with no second step: into a new base when the agent has
+  // none, into the base when it has exactly one. With several bases the file waits for "Use in…", since only the author knows which.
+  const placeUploaded = (names) => {
+    const fresh = names.filter((name) => !files.some((f) => f.name === name && f.usedBy.length));
+    if (!fresh.length) return;
+    const config = editor.parsed.value;
+    if (!config || typeof config !== 'object') return;
+    const buildable = bases.filter((b) => b.buildable);
+    const list = Array.isArray(config.knowledge) ? config.knowledge : [];
+    if (list.length === 0) {
+      editor.setValue({
+        ...config,
+        knowledge: [{ id: 'knowledge', type: 'vector_store', mode: 'tool', sources: fresh.map((name) => ({ type: 'file', file_id: name })) }],
+      });
+      setAdded(`Made the knowledge base “knowledge” from ${fresh.join(', ')}. Save the draft, then build its index.`);
+    } else if (buildable.length === 1) {
+      editor.setValue(fresh.reduce((c, name) => addFileSource(c, buildable[0].id, name), config));
+      setAdded(`Added ${fresh.join(', ')} to “${buildable[0].id}”. Save the draft, then rebuild its index.`);
+    }
   };
   const remove = async (name, force = false) => {
     try {
@@ -614,13 +636,7 @@ export default function KnowledgeTab({ botId, name, editor, pollMs }) {
       {data && data.bases.length === 0 && !knowledge.loading && (
         <section className="stCard kwEmpty">
           <strong>This agent has no knowledge bases yet</strong>
-          <p className="stMuted">
-            Upload a file below, then use “Use in… a new base”. Or add one by hand in Config → Knowledge. A base is only read by an agent that has a knowledge
-            tool for it, or lists it under its own knowledge.
-          </p>
-          <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'config'), { guard: false })}>
-            Open Config
-          </button>
+          <p className="stMuted">Upload a file below and it becomes this agent’s knowledge base. Save the draft, then build the index.</p>
         </section>
       )}
 

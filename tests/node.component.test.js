@@ -35,6 +35,16 @@ async function open(config, screen) {
 }
 const optionValue = (select, text) => [...select.options].find((o) => o.text === text)?.value;
 
+// A group inside a group (an agent in the list of agents, the steps of an event) opens in a sheet drawn over the page, outside the form's own box: this
+// opens every one, and what is in them is then looked up in the whole page.
+async function openSheets() {
+  for (let pass = 0; pass < 4; pass += 1) {
+    const rows = $$(document.body, '.stFGroup.drill > header .stFGroupToggle[aria-expanded=false]');
+    if (!rows.length) return;
+    for (const row of rows) await a.click(row);
+  }
+}
+
 // ---------------------------------------------------------------- choices (oneOf)
 
 test('choosing another kind of tool keeps its id and description, and drops what only the old kind has', async () => {
@@ -74,7 +84,7 @@ test('an optional part that isn’t set (the direct delivery of a response) is n
   assert.ok(block, 'the optional direct delivery is offered');
   assert.doesNotMatch(textOf(block), /required, not set/);
   assert.doesNotMatch(block.className, /missing/);
-  assert.match(textOf(block), /Set sent straight to the caller/i);
+  assert.match(textOf(block), /Sent straight to the caller.*Using the defaults/i, 'it is drawn with its defaults, ready to change');
   // and when something really is required and absent, it still says so
   const app2 = await open(base({ agents: { items: [{ id: 'a', name: 'A', kind: 'standalone', instructions: { role: 'Help.' } }] } }), 'agents');
   assert.match(textOf(app2.container), /required, not set/);
@@ -217,7 +227,8 @@ test('a list of ids picked from another list: add and remove, never a duplicate'
     agents: { entry: 'a', items: [{ id: 'a', name: 'A', instructions: { role: 'Help' }, tools: ['t1'] }] },
   });
   const app = await open(config, 'agents');
-  const add = $$(app.container, 'select').find((el) => el.getAttribute('aria-label') === 'Add' && [...el.options].some((o) => o.text === 't2'));
+  await openSheets();
+  const add = $$(document.body, 'select').find((el) => el.getAttribute('aria-label') === 'Add' && [...el.options].some((o) => o.text === 't2'));
   assert.deepEqual(
     [...add.options].map((o) => o.text),
     ['＋ Add…', 't2'],
@@ -225,7 +236,7 @@ test('a list of ids picked from another list: add and remove, never a duplicate'
   );
   await a.choose(add, 't2');
   assert.deepEqual(app.config.agents.items[0].tools, ['t1', 't2']);
-  await a.click(byLabel(app.container, 'Delete t1'));
+  await a.click(byLabel(document.body, 'Delete t1'));
   assert.deepEqual(app.config.agents.items[0].tools, ['t2']);
   await app.unmount();
 });
@@ -321,8 +332,8 @@ const promptConfig = () =>
       items: [{ id: 'a', name: 'A', instructions: { role: 'Help with bills on the {{state.plan}} plan.', rules: ['Be brief.'] }, tools: [] }],
     },
   });
-const openPrompt = async (app) => {
-  const details = $(app.container, '.stPromptPreview');
+const openPrompt = async () => {
+  const details = $(document.body, '.stPromptPreview');
   assert.ok(details);
   assert.equal($(details, '.stPromptBody'), null, 'closed until asked for');
   await act(async () => {
@@ -361,6 +372,7 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
   };
   try {
     const app = await open(promptConfig(), 'agents');
+    await openSheets();
     const details = await openPrompt(app);
     await app.wait(700);
     assert.match(textOf($(details, 'summary')), /exact/);
@@ -406,6 +418,7 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
 
 test('when the server can’t be asked, the prompt preview is built here, labelled approximate, and still follows the fields', async () => {
   const app = await open(promptConfig(), 'agents');
+  await openSheets();
   const details = await openPrompt(app);
   await app.wait(700);
   assert.match(textOf($(details, 'summary')), /approximate/);
@@ -414,10 +427,10 @@ test('when the server can’t be asked, the prompt preview is built here, labell
   assert.deepEqual(sections, ['persona', 'role', 'rules']);
   assert.match(textOf($(details, '[data-section="role"] pre')), /Help with bills on the basic plan\./);
   // editing the role changes the preview
-  const role = $$(app.container, 'textarea').find((el) => /Help with bills/.test(el.value));
+  const role = $$(document.body, 'textarea').find((el) => /Help with bills/.test(el.value));
   await a.type(role, 'Only greet.');
   await app.wait(700);
-  assert.match(textOf($(app.container, '.stPromptPreview [data-section="role"] pre')), /^Only greet\.$/);
+  assert.match(textOf($(document.body, '.stPromptPreview [data-section="role"] pre')), /^Only greet\.$/);
   await app.unmount();
 });
 
@@ -429,23 +442,24 @@ test('an agent’s on-enter actions are numbered steps with a plain-language men
     agents: { entry: 'a', items: [{ id: 'a', name: 'A', instructions: { role: 'Help' }, tools: [], on_enter: [{ type: 'say', text: 'Welcome' }] }] },
   });
   const app = await open(config, 'agents');
-  const step = byLabel(app.container, 'Step 1 of the list: what to do');
+  await openSheets();
+  const step = byLabel(document.body, 'Step 1 of the list: what to do');
   assert.ok(step, 'the step has a kind menu');
   assert.equal(step.getAttribute('role'), 'combobox', 'more than eight kinds of step: a searchable list, not a long dropdown');
   assert.equal(step.value, 'Say a line', 'it shows the kind in words');
   assert.deepEqual((await a.options(step)).slice(0, 3), ['Say a line', 'Say something the model writes', 'Change state']);
-  assert.match(textOf($(app.container, '.stActionSentence')), /^Say “Welcome”$/);
-  await a.choose(byLabel(app.container, 'Add a step to the list'), 'end_call');
+  assert.match(textOf($(document.body, '.stActionSentence')), /^Say “Welcome”$/);
+  await a.choose(byLabel(document.body, 'Add a step to the list'), 'end_call');
   assert.deepEqual(
     app.config.agents.items[0].on_enter.map((s) => s.type),
     ['say', 'end_call'],
   );
-  await a.click(byLabel(app.container, 'Move step 2 of the list up'));
+  await a.click(byLabel(document.body, 'Move step 2 of the list up'));
   assert.deepEqual(
     app.config.agents.items[0].on_enter.map((s) => s.type),
     ['end_call', 'say'],
   );
-  await a.choose(byLabel(app.container, 'Step 1 of the list: what to do'), 'handoff');
+  await a.choose(byLabel(document.body, 'Step 1 of the list: what to do'), 'handoff');
   assert.equal(app.config.agents.items[0].on_enter[0].type, 'handoff');
   assert.equal(app.config.agents.items[0].on_enter[1].text, 'Welcome', 'the other step is untouched');
   await app.unmount();
@@ -453,11 +467,12 @@ test('an agent’s on-enter actions are numbered steps with a plain-language men
 
 test('an event keeps its own fields and gets steps for what it does', async () => {
   const app = await open(base({ events: [{ on: 'call_started', do: [{ type: 'log', message: 'started' }] }] }), 'events');
-  assert.ok(byLabel(app.container, 'Step 1 of the list: what to do'));
+  await openSheets();
+  assert.ok(byLabel(document.body, 'Step 1 of the list: what to do'));
   assert.equal(app.config.events[0].on, 'call_started');
-  await a.click(byLabel(app.container, 'Delete step 1 of the list'));
+  await a.click(byLabel(document.body, 'Delete step 1 of the list'));
   assert.deepEqual(app.config.events[0].do, [], 'the list is empty, and the card says a step is needed');
-  assert.match(textOf(app.container), /Needs at least one step/);
+  assert.match(textOf(document.body), /Needs at least one step/);
   await app.unmount();
 });
 
@@ -626,6 +641,7 @@ test('the prompt preview also shows what runs on taking over, what is searched, 
   };
   try {
     const app = await open(promptConfig(), 'agents');
+    await openSheets();
     const details = await openPrompt(app);
     await app.wait(700);
     assert.match(textOf($(details, '[data-extra="on_enter"]')), /What runs when it takes over \(1\).*Welcome back/);

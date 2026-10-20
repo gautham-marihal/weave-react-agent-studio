@@ -196,7 +196,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
             </p>
           )}
         </div>
-        <div className="stFRow">
+        <div className="stFRow toggle bare">
           <div className="stFLabel">
             <label>Enabled</label>
           </div>

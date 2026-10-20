@@ -7,12 +7,15 @@
 //
 // Measure a PRODUCTION build: the dev server (npm run dev:demo) adds React's development checks and is several times slower.
 // The budget: with 100 tools expanded the median stays within 40 ms of the 3-tool median (which is the browser's two-frame floor, about 33 ms).
-// Environment: E2E_BASE (default http://localhost:4180), E2E_BROWSER (Chrome or Edge), E2E_TOOLS (comma list, default 3,27,100).
+// Environment: E2E_BASE (default http://localhost:4180), E2E_BROWSER (Chrome or Edge), E2E_TOOLS (comma list, default 3,27,100), E2E_STYLE (a design
+// style: simple, premium, futuristic or vibrant; default simple) and E2E_THEME (light or dark), to time the styles that blur and glow too.
 import { chromium } from 'playwright-core';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:4180';
 const SIZES = (process.env.E2E_TOOLS || '3,27,100').split(',').map(Number);
 const BUDGET_MS = 40;
+const STYLE = process.env.E2E_STYLE || 'simple';
+const THEME = process.env.E2E_THEME || 'light';
 
 function bigConfig(n) {
   const tools = Array.from({ length: n }, (_, i) => ({
@@ -65,10 +68,12 @@ async function launch() {
 async function measure(browser, tools) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1200 } });
   await context.addInitScript(
-    ([cfg]) => {
+    ([cfg, style, theme]) => {
       if (sessionStorage.getItem('seeded')) return;
       sessionStorage.setItem('seeded', '1');
       localStorage.setItem('weave_layout', 'classic'); // this script types in the classic layout's config form
+      localStorage.setItem('weave_style', style);
+      localStorage.setItem('weave_theme', theme);
       localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e@t.dev', workspaceName: 'Test', role: 'dev' }));
       const now = new Date().toISOString();
       localStorage.setItem(
@@ -79,7 +84,7 @@ async function measure(browser, tools) {
         }),
       );
     },
-    [bigConfig(tools)],
+    [bigConfig(tools), STYLE, THEME],
   );
   const page = await context.newPage();
   await page.route(
@@ -108,7 +113,8 @@ async function measure(browser, tools) {
       document.querySelectorAll('.stForm details:not([open])').forEach((d) => {
         d.open = true;
       });
-      document.querySelectorAll('.stFGroupToggle[aria-expanded=false]').forEach((b) => b.click());
+      // (a deeper part opens in a panel over the page, one at a time: those stay closed)
+      document.querySelectorAll('.stFGroup:not(.drill) > header .stFGroupToggle[aria-expanded=false]').forEach((b) => b.click());
     });
     await page.waitForTimeout(700);
   }

@@ -2408,3 +2408,95 @@ html[data-theme="light"] .stPill.review {
 html[data-theme="light"] .stPill.live {
   color: #0f7048;
 }
+
+/* Create dialog: how it starts, as cards with a picture (the radio itself is kept for the keyboard and screen readers, out of sight); "Describe it" first */
+.stStartGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.stStartGrid legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.stStartGrid label {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.stStartGrid label:hover {
+  border-color: color-mix(in srgb, var(--textStrong) 30%, var(--line2));
+}
+.stStartGrid label.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+}
+.stStartGrid label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.stStartGrid input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.stStartIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.stStartGrid label.ai .stStartIcon {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface2));
+  color: var(--accent-text);
+}
+.stStartGrid label > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+.stStartGrid strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.stStartGrid small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.stYourTemplates {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 760px) {
+  .stStartGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.stYourTemplates > .stTemplatesHead,
+.stYourTemplates > small {
+  grid-column: 1 / -1;
+}
+.stYourTemplates > .stTemplatesHead {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}

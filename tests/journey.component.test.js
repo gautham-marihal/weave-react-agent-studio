@@ -26,6 +26,8 @@ test('the tabs are in four stages, each naming its question, and every old tab i
     'Versions',
     'Deploy',
     'Calls',
+    'Questions',
+    'Cost and speed',
   ]);
   assert.match(stages[0].getAttribute('aria-label'), /^Build: What is it, and what can it do\?$/);
   assert.equal($$(app.container, '.stStage.current').length, 1);

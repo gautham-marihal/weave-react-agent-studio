@@ -35,6 +35,8 @@ const WorkflowTab = lazy(() => import('./workflow/WorkflowTab.jsx'));
 const AssistantTab = lazy(() => import('./assistant/AssistantTab.jsx'));
 const KnowledgeTab = lazy(() => import('./knowledge/KnowledgeTab.jsx'));
 const ChecksTab = lazy(() => import('./checks/ChecksTab.jsx'));
+const QuestionsPage = lazy(() => import('./insights/QuestionsPage.jsx'));
+const CostPage = lazy(() => import('./cost/CostPage.jsx'));
 const PlainIssues = lazy(() => import('./validation/PlainIssues.jsx')); // problems named by their labels, not their paths
 
 // Publishing is a step of the Release stage, so it is drawn on the Versions page, in place, with the release checklist beside the choice of version.
@@ -655,6 +657,15 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
           {tab === 'scenarios' && <ScenariosTab botId={botId} name={name} editor={editor} />}
           {tab === 'knowledge' && <KnowledgeTab botId={botId} name={name} editor={editor} />}
           {tab === 'checks' && <ChecksTab botId={botId} name={name} runs={readinessRuns} onRun={onRecordReadiness} />}
+          {tab === 'questions' && <QuestionsPage botId={botId} editor={editor} />}
+          {tab === 'cost' && (
+            <CostPage
+              agentOnly
+              bots={[{ id: botId, name }]}
+              editor={editor}
+              onOpenCall={(id, callId) => navigate(routeHref(botId, 'calls', { call: callId }), { guard: false })}
+            />
+          )}
           {tab === 'calls' && (
             <CallsView
               bots={[{ id: botId, name }]}

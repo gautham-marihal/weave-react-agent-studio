@@ -101,7 +101,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: hsl(var(--hue, 190) 50% 36%);
+  background: hsl(var(--hue, 190) 45% 30%); /* dark enough for white initials at every hue (4.5:1) */
   color: #fff;
   font-size: var(--fs-sm);
   font-weight: 700;

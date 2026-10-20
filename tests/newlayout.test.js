@@ -10,10 +10,15 @@ import { PATHS } from '../src/ui/iconPaths.js';
 
 const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
 
-test('the menu is one level of three groups, each page once, each with a picture that exists', () => {
+test('the menu is one level, in the order of the work (overview, build, test and launch, monitor, settings), each page once, with a picture that exists', () => {
   assert.deepEqual(
     PAGE_GROUPS.map((g) => g.label),
-    ['Overview', 'Configure', 'Release'],
+    ['Overview', 'Build', 'Test and launch', 'Monitor', 'Settings'],
+  );
+  assert.deepEqual(
+    PAGE_GROUPS.filter((g) => g.bare).map((g) => g.id),
+    ['overview', 'manage'],
+    'the overview and the settings stand without a heading',
   );
   assert.equal(new Set(PAGE_IDS).size, PAGE_IDS.length);
   PAGES.forEach((p) => assert.ok(PATHS[p.icon], `${p.id} has an icon (${p.icon})`));

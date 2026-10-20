@@ -4,7 +4,10 @@ export const NAV = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'agents', label: 'Agents', icon: 'agent' },
   { id: 'sessions', label: 'Calls', icon: 'phone' },
+  { id: 'live', label: 'Live', icon: 'live' },
   { id: 'monitoring', label: 'Monitoring', icon: 'monitor' },
+  { id: 'cost', label: 'Cost and speed', icon: 'gauge' },
+  { id: 'alerts', label: 'Alerts', icon: 'bell' },
 ];
 export const LIBRARY_NAV = [
   { id: 'voices', label: 'Voices', icon: 'voice' },

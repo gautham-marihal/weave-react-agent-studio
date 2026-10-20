@@ -86,7 +86,7 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
     <div className="workspaceFeaturePage">
       <section className="welcomeBlock pageHeaderBlock featureHero">
         <div>
-          <div className="eyebrow cyan">VOICE LIBRARY</div>
+          <div className="eyebrow cyan">Voice library</div>
           <h1>Voices</h1>
           <p>Explore provider voices, compare language and style, and choose the right voice for your agent.</p>
         </div>
@@ -114,7 +114,7 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
       {mode === 'custom' ? (
         <section className="customVoiceComing">
           <div className="customVoiceOrb">◌</div>
-          <div className="eyebrow cyan">IN DEVELOPMENT</div>
+          <div className="eyebrow cyan">In development</div>
           <h2>Custom voices are on the way</h2>
           <p>
             Voice cloning and workspace-managed custom voice uploads are not available yet. You can already use your provider's own voice ID: set it in an

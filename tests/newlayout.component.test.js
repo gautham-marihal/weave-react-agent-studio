@@ -20,12 +20,28 @@ const TOOL_LISTS = [
   { id: 'tools', path: ['tools'], kind: 'tools', word: 'tool', pickerKey: 'tools', empty: { title: 'No tools yet', text: 'Tools let the agent do things.' } },
 ];
 
-test('the menu is three groups of pages, the current one marked, with a number where something is to fix', async () => {
+test('the menu is in the order of the work, the current page marked, with a number where something is to fix', async () => {
   const app = await mountScreen('agentnav', agent(), { ready: '.nlNav', props: { page: 'tools', counts: { agent: 2 }, dots: { tests: true } } });
-  assert.deepEqual($$(app.container, '.nlNavHead').map(textOf), ['Overview', 'Configure', 'Release']);
+  assert.deepEqual($$(app.container, '.nlNavHead').map(textOf), ['Build', 'Test and launch', 'Monitor']);
   assert.deepEqual(
     $$(app.container, '.nlNav button').map((b) => b.getAttribute('data-page')),
-    ['home', 'calls', 'monitoring', 'agent', 'tools', 'knowledge', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings', 'tests', 'releases'],
+    [
+      'home',
+      'agent',
+      'knowledge',
+      'tools',
+      'workflow',
+      'channels',
+      'guardrails',
+      'aftercall',
+      'tests',
+      'releases',
+      'calls',
+      'monitoring',
+      'questions',
+      'cost',
+      'settings',
+    ],
   );
   assert.equal($$(app.container, '.nlNav button[aria-current="page"]').length, 1);
   assert.equal($(app.container, '.nlNav button[aria-current="page"]').getAttribute('data-page'), 'tools');
@@ -170,5 +186,73 @@ test('the Home checklist names the next step, and a step that is done reads as d
   assert.equal(steps.filter((s) => s.className.includes('next')).length, 1, 'exactly one is the next step');
   assert.ok($(app.container, '.nlSteps li[data-step="prompt"][data-state="done"]'), 'the starter has instructions');
   assert.match(textOf($(app.container, '.nlSection h2')), /Getting it ready/);
+  await app.unmount();
+});
+
+test('while the agent is not ready, the menu says how far along it is and opens the next step; a page with a step to do is marked', async () => {
+  const steps = [
+    { id: 'prompt', label: 'Say what it should do', state: 'done', page: 'agent' },
+    { id: 'voice', label: 'Pick its language', state: 'todo', page: 'agent', target: { open: 'language' } },
+    { id: 'publish', label: 'Publish a version', state: 'todo', page: 'releases' },
+    { id: 'abilities', label: 'Give it tools', state: 'optional', page: 'tools' },
+  ];
+  const opened = [];
+  const plan = { steps, next: steps[1], done: 1, total: 3 };
+  const app = await mountScreen('agentnav', agent(), { ready: '.nlNav', props: { page: 'home', plan, onStep: (step) => opened.push(step.id) } });
+  const card = $(app.container, '.nlSetup');
+  assert.match(textOf(card), /Getting it ready\s*1 of 3/);
+  assert.match(textOf(card), /Next: Pick its language/);
+  assert.equal($(app.container, '.nlSetupBar').getAttribute('aria-valuenow'), '1');
+  await a.click(card);
+  assert.deepEqual(opened, ['voice'], 'the card opens the next step');
+  assert.ok($(app.container, '.nlNav button[data-page="agent"] .nlNavTodo'), 'a step to do on the Agent page');
+  assert.ok($(app.container, '.nlNav button[data-page="releases"] .nlNavTodo'));
+  assert.ok(!$(app.container, '.nlNav button[data-page="tools"] .nlNavTodo'), 'an optional step is not marked');
+  await app.unmount();
+  const ready = await mountScreen('agentnav', agent(), { ready: '.nlNav', props: { page: 'home', plan: { steps: [], next: null, done: 3, total: 3 } } });
+  assert.equal($(ready.container, '.nlSetup'), null, 'a ready agent has no progress card');
+  await ready.unmount();
+});
+
+test('the top bar: Publish is the main action, Save shows only when there is something to save, problems show as a chip, the rest is in More', async () => {
+  const opened = [];
+  const app = await mountScreen('topbar', agent(), { ready: '.nlBar', props: { problems: 0, changes: 3, onChanges: () => opened.push('changes') } });
+  const buttons = () => $$(app.container, '.nlBarActions > button:not(.stMenuBtn)').map(textOf);
+  assert.deepEqual(buttons(), ['Describe', 'Test', 'Publish'], 'saved: no Save button, no chip');
+  assert.ok($(app.container, '.nlBarActions .primaryCta') && textOf($(app.container, '.nlBarActions .primaryCta')) === 'Publish');
+  await a.click(byText(app.container, '.nlChanges', /3 changes not published/));
+  assert.deepEqual(opened, ['changes']);
+  await a.click($(app.container, '.nlBarActions .stMenuBtn'));
+  const more = $$(document.body, '.stMenu [role="menuitem"]').map(textOf);
+  ['Run the checks', 'What changed since publishing (3)', 'Share…', 'Publish a new version…', 'Deploy a version…', 'Roll back…', 'All versions'].forEach(
+    (item) => assert.ok(more.includes(item), `${item} is in More`),
+  );
+  await app.unmount();
+
+  const dirty = await mountScreen('topbar', agent(), { ready: '.nlBar', props: { dirty: true, problems: 2 } });
+  assert.deepEqual($$(dirty.container, '.nlBarActions > button:not(.stMenuBtn)').map(textOf), ['2 problems', 'Describe', 'Test', 'Save', 'Publish']);
+  assert.equal(textOf($(dirty.container, '.nlBarActions .primaryCta')), 'Save', 'with unsaved edits Save is the main action');
+  assert.match(textOf($(dirty.container, '.nlSaveState')), /Unsaved changes/);
+  await dirty.unmount();
+
+  const testing = await mountScreen('topbar', agent(), { ready: '.nlBar', props: { testOpen: true } });
+  assert.equal(byText(testing.container, '.nlBarActions button', 'Test').getAttribute('aria-pressed'), 'true', 'Test shows the panel is open');
+  await testing.unmount();
+});
+
+test('the agent switcher lists the other agents and opens one on the same page; it also leads to all agents and to creating one', async () => {
+  window.location.hash = '#/bots/a/tools';
+  const bots = [
+    { id: 'a', name: 'Acme', deployed: { staging: '0.1.0' } },
+    { id: 'b', name: 'Bookings', deployed: {} },
+  ];
+  const app = await mountScreen('agentswitch', agent(), { ready: '.agentSwitch', props: { bots, tab: 'tools' } });
+  assert.match(textOf($(app.container, '.agentSwitchButton')), /Acme\s*Live in Staging/);
+  await a.click($(app.container, '.agentSwitchButton'));
+  const items = $$(app.container, '.agentSwitchMenu [role="menuitem"]').map(textOf);
+  assert.deepEqual(items, ['BBookingsDraft', 'All agents', 'Create an agent']);
+  await a.click($$(app.container, '.agentSwitchMenu [role="menuitem"]')[0]);
+  assert.equal(window.location.hash, '#/bots/b/tools', 'the same page of the other agent');
+  assert.equal($(app.container, '.agentSwitchMenu'), null, 'and the list closes');
   await app.unmount();
 });

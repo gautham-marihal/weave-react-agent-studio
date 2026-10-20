@@ -16,6 +16,13 @@ import { isDemoMode } from '../demo/demoMode.js';
 import { BotRow } from '../studio/BotsPage.jsx';
 import { describeHealth, useApiHealth } from '../studio/useApiHealth.js';
 import MonitoringPage from '../studio/monitoring/MonitoringPage.jsx';
+import AgentSwitcher from '../studio/newlayout/AgentSwitcher.jsx';
+import AlertsPage from '../studio/insights/AlertsPage.jsx';
+import LiveBoardPage from '../studio/live/LiveBoardPage.jsx';
+import CostPage from '../studio/cost/CostPage.jsx';
+import AlertBell, { useNewAlertCount } from '../studio/insights/AlertBell.jsx';
+import AgentAlerts from '../studio/insights/AgentAlerts.jsx';
+import { useAlertWatcher } from '../studio/insights/useAlertWatcher.js';
 import {
   LIBRARY_NAV,
   NAV,
@@ -49,6 +56,7 @@ import './homeJourney.css';
 import { TelephonyPage } from './Telephony.jsx';
 import { VoicesWorkspace } from './Voices.jsx';
 import { IntegrationsWorkspace } from './Integrations.jsx';
+import { StyleMenu } from '../ui/StylePicker.jsx';
 
 const WORKSPACE_STORAGE_KEY = 'weave_workspaces';
 
@@ -153,6 +161,15 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     window.addEventListener('weave-open-team', open);
     return () => window.removeEventListener('weave-open-team', open);
   });
+  useEffect(() => {
+    const open = () => activate('alerts');
+    window.addEventListener('weave-open-alerts', open);
+    return () => window.removeEventListener('weave-open-alerts', open);
+  });
+  // Alerts: the recent calls of every agent of this workspace are checked while the studio is open (it only reads them)
+  useAlertWatcher({ bots: botList, onOpenAlert: () => window.dispatchEvent(new Event('weave-open-alerts')) });
+  const newAlerts = useNewAlertCount();
+  const workspaceNav = NAV.map((item) => (item.id === 'alerts' && newAlerts ? { ...item, badge: String(newAlerts), badgeTone: 'bad' } : item));
   const agents = useMemo(() => botList.map(toLegacyAgent), [botList]);
   const telephony = normalizeTelephony(currentWorkspace?.telephony);
   const sessions = normalizeList(currentWorkspace?.sessions);
@@ -343,7 +360,16 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       { type: 'page', id: 'home', title: 'Home', description: 'What needs attention, and the next step', icon: 'home' },
       { type: 'page', id: 'agents', title: 'Agents', description: `${botList.length} agent${botList.length === 1 ? '' : 's'}`, icon: 'agent' },
       { type: 'page', id: 'sessions', title: 'Calls', description: 'Every conversation your agents have had', icon: 'phone' },
+      { type: 'page', id: 'live', title: 'Live', description: 'Calls going on right now, as they happen', icon: 'live' },
       { type: 'page', id: 'monitoring', title: 'Monitoring', description: 'How your agents are doing, and what needs attention', icon: 'monitor' },
+      {
+        type: 'page',
+        id: 'cost',
+        title: 'Cost and speed',
+        description: 'What your agents cost per call and per month, and how fast they answer',
+        icon: 'gauge',
+      },
+      { type: 'page', id: 'alerts', title: 'Alerts', description: 'When something breaks: failing tools, cut-off calls, no calls, slow answers', icon: 'bell' },
       { type: 'page', id: 'voices', title: 'Voices', description: 'Hear and choose a voice', icon: 'voice' },
       { type: 'page', id: 'integrations', title: 'Integrations', description: 'Connect your stack', icon: 'plug' },
       { type: 'page', id: 'telephony', title: 'Telephony', description: 'Phone numbers, dispatch rules and SIP trunks', icon: 'dial' },
@@ -628,7 +654,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   }
 
   return (
-    <div className={`dashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''}`}>
+    <div className={`dashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''} ${inAgentView ? 'inAgent' : ''}`}>
       <aside className="sidebar">
         <div className="sideBrand">
           <Logo />
@@ -643,17 +669,20 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           </button>
         </div>
 
-        <button type="button" className="workspaceSwitch" onClick={() => setWorkspaceOpen((value) => !value)} aria-expanded={workspaceOpen}>
-          <span className="workspaceAvatar">{getInitials(workspaceName).slice(0, 1)}</span>
-          <span className="workspaceCopy">
-            <small>WORKSPACE</small>
-            <strong>{workspaceName}</strong>
-          </span>
-          <b className="buttonChevron">{workspaceOpen ? '⌃' : '⌄'}</b>
-        </button>
-        {workspaceOpen && (
+        {/* inside an agent the agent is the context: the workspace switch gives way to the agent's own switcher, below */}
+        {!inAgentView && (
+          <button type="button" className="workspaceSwitch" onClick={() => setWorkspaceOpen((value) => !value)} aria-expanded={workspaceOpen}>
+            <span className="workspaceAvatar">{getInitials(workspaceName).slice(0, 1)}</span>
+            <span className="workspaceCopy">
+              <small>Workspace</small>
+              <strong>{workspaceName}</strong>
+            </span>
+            <b className="buttonChevron">{workspaceOpen ? '⌃' : '⌄'}</b>
+          </button>
+        )}
+        {workspaceOpen && !inAgentView && (
           <div className="workspaceMenu" role="menu">
-            <div className="workspaceMenuLabel">YOUR WORKSPACES</div>
+            <div className="workspaceMenuLabel">Your workspaces</div>
             <div className="workspaceMenuList">
               {workspaces.map((workspace) => (
                 <div key={workspace.id} className="workspaceOptionRow">
@@ -703,28 +732,22 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
         {inAgentView && (
           <nav className="sideNav agentSideNav" aria-label="This agent">
-            <button type="button" className="agentBack" title="Back to workspace" onClick={() => studioNavigate('#/bots')}>
+            <button type="button" className="agentBack" title="All agents" onClick={() => studioNavigate('#/bots')}>
               <span aria-hidden="true">‹</span>
-              <span className="agentBackText"> Back to workspace</span>
+              <span className="agentBackText"> All agents</span>
             </button>
-            <div className="agentSideName">
-              <span className="agentRowAvatar" aria-hidden="true">
-                {String((allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId)
-                  .slice(0, 1)
-                  .toUpperCase()}
-              </span>
-              <strong>{(allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId}</strong>
-            </div>
+            {/* the workspace's agents to switch between (all of them, when this agent is listed in another workspace) */}
+            <AgentSwitcher botId={route.botId} bots={botList.some((b) => b.id === route.botId) ? botList : allBots || botList} tab={route.tab} />
             <div id="agentNavSlot" />
           </nav>
         )}
         <nav className={`sideNav${inAgentView ? ' sideNavWorkspace' : ''}`}>
-          <div className="navLabel">WORKSPACE</div>
-          {NAV.map((item) => (
+          <div className="navLabel">Workspace</div>
+          {workspaceNav.map((item) => (
             <NavItem key={item.id} item={item} active={active === item.id} onClick={() => activate(item.id)} />
           ))}
           <div className="sideDivider" />
-          <div className="navLabel">LIBRARY</div>
+          <div className="navLabel">Library</div>
           {LIBRARY_NAV.map((item) => (
             <NavItem key={item.id} item={item} active={active === item.id} onClick={() => activate(item.id)} />
           ))}
@@ -735,13 +758,13 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         </nav>
 
         <div className="sideBottom">
-          <button className="sideUtility" type="button" onClick={openSearch}>
-            <span>⌕</span>
+          <button className="sideUtility" type="button" onClick={openSearch} title={`Search (${SHORTCUT_LABEL})`} aria-label="Search">
+            <span aria-hidden="true">⌕</span>
             <span>Search</span>
             <kbd>{SHORTCUT_LABEL}</kbd>
           </button>
-          <button className="sideUtility" type="button" onClick={openHelpDialog}>
-            <span>?</span>
+          <button className="sideUtility" type="button" onClick={openHelpDialog} title="Help and docs" aria-label="Help and docs">
+            <span aria-hidden="true">?</span>
             <span>Help & docs</span>
             <b className="buttonArrow">↗</b>
           </button>
@@ -774,6 +797,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
             <button className="quietButton" type="button" onClick={openSearch}>
               ⌕ <span>Search</span>
             </button>
+            <AlertBell onOpen={() => activate('alerts')} />
+            <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <ProfileMenu profile={profile} initials={initials} compact onAccountOpen={() => onAccountOpen?.(workspaceName)} onSignOut={onSignOut} />
           </div>
@@ -825,6 +850,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           ) : active === 'monitoring' ? (
             <MonitoringPage
               bots={botList}
+              top={<AgentAlerts />}
               onOpenAgent={(botId, tab, params) => {
                 if (!confirmLeave()) return;
                 setActive('agents');
@@ -834,6 +860,44 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                 if (!confirmLeave()) return;
                 setActive('agents');
                 studioNavigate(routeHref(botId, 'calls', { call: callId, ...(view && view !== 'trace' ? { view } : {}) }));
+              }}
+            />
+          ) : active === 'live' ? (
+            <LiveBoardPage
+              bots={botList}
+              onOpenCall={(botId, callId) => {
+                if (!confirmLeave()) return;
+                setActive('agents');
+                studioNavigate(routeHref(botId, 'calls', { call: callId }));
+              }}
+            />
+          ) : active === 'cost' ? (
+            <CostPage
+              bots={botList}
+              onOpenAgent={(botId, tab) => {
+                if (!confirmLeave()) return;
+                setActive('agents');
+                studioNavigate(routeHref(botId, tab));
+              }}
+              onOpenCall={(botId, callId) => {
+                if (!confirmLeave()) return;
+                setActive('agents');
+                studioNavigate(routeHref(botId, 'calls', { call: callId }));
+              }}
+            />
+          ) : active === 'alerts' ? (
+            <AlertsPage
+              bots={botList}
+              userName={profile?.fullName || ''}
+              onOpenAgent={(botId, tab, params) => {
+                if (!confirmLeave()) return;
+                setActive('agents');
+                studioNavigate(routeHref(botId, tab, params));
+              }}
+              onOpenCall={(botId, callId) => {
+                if (!confirmLeave()) return;
+                setActive('agents');
+                studioNavigate(routeHref(botId, 'calls', { call: callId }));
               }}
             />
           ) : active === 'sessions' ? (

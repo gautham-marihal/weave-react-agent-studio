@@ -6,6 +6,7 @@ import { envLabel } from './ui.jsx';
 import { useAsync } from './useAsync.js';
 import { DENSITIES, useDensity, useTechnicalNames } from './usePref.js';
 import { useLayout } from './newlayout/layoutPref.js';
+import { StyleCards } from '../ui/StylePicker.jsx';
 
 // Workspace settings. A workspace here is a label kept in this browser, and so is which workspace an agent is in;
 // the agents themselves live on the Agent Builder API. This page says what is on the server and what is only local.
@@ -105,6 +106,11 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
         <section className="settingsCard" aria-labelledby="settings-look">
           <h2 id="settings-look">How it looks and reads</h2>
           <p className="stMuted">These are your own choices, kept in this browser.</p>
+          <fieldset className="settingsChoice">
+            <legend>Theme</legend>
+            <StyleCards />
+            <small className="stMuted">The look of the whole studio, in light and in dark. Light or dark is the button at the top of every page.</small>
+          </fieldset>
           <fieldset className="settingsChoice">
             <legend>Spacing</legend>
             <div className="demoSwitch" role="group" aria-label="Spacing">

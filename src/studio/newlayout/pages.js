@@ -1,39 +1,43 @@
-// The pages of an agent in the new layout, and how they relate to the tabs of the classic one. One level: a menu of what the agent has, in three groups.
-// Every old address still works (#/bots/x/deploy, /scenarios, /versions...): the new layout reads it and shows the page that now holds that tab, and the
-// classic layout reads the new addresses and shows the tab that comes closest. Pure: no React, no DOM.
+// The pages of an agent in the new layout, and how they relate to the tabs of the classic one. One level: a menu of what the agent has, in the order the work
+// is done: an overview, then building it, testing and launching it, watching it, and its settings last. Every old address still works (#/bots/x/deploy,
+// /scenarios, /versions...): the new layout reads it and shows the page that now holds that tab, and the classic layout reads the new addresses and shows the
+// tab that comes closest. Pure: no React, no DOM.
+//   `bare`: a group drawn without a heading (the overview at the top, the settings at the bottom)
 
 export const PAGE_GROUPS = [
+  { id: 'overview', label: 'Overview', bare: true, pages: [{ id: 'home', label: 'Overview', icon: 'home' }] },
   {
-    id: 'overview',
-    label: 'Overview',
-    pages: [
-      { id: 'home', label: 'Home', icon: 'home' },
-      { id: 'calls', label: 'Calls', icon: 'phone' },
-      { id: 'monitoring', label: 'Monitoring', icon: 'monitor' },
-    ],
-  },
-  {
-    id: 'configure',
-    label: 'Configure',
+    id: 'build',
+    label: 'Build',
     pages: [
       { id: 'agent', label: 'Agent', icon: 'agent' },
-      { id: 'tools', label: 'Tools', icon: 'tools' },
       { id: 'knowledge', label: 'Knowledge', icon: 'records' },
+      { id: 'tools', label: 'Tools', icon: 'tools' },
       { id: 'workflow', label: 'Workflow', icon: 'subagent' },
       { id: 'channels', label: 'Channels', icon: 'dial' },
       { id: 'guardrails', label: 'Guardrails', icon: 'shield' },
       { id: 'aftercall', label: 'After the call', icon: 'flag' },
-      { id: 'settings', label: 'Settings', icon: 'sliders' },
     ],
   },
   {
-    id: 'release',
-    label: 'Release',
+    id: 'launch',
+    label: 'Test and launch',
     pages: [
       { id: 'tests', label: 'Tests', icon: 'test' },
       { id: 'releases', label: 'Releases', icon: 'release' },
     ],
   },
+  {
+    id: 'monitor',
+    label: 'Monitor',
+    pages: [
+      { id: 'calls', label: 'Calls', icon: 'phone' },
+      { id: 'monitoring', label: 'Monitoring', icon: 'monitor' },
+      { id: 'questions', label: 'Questions', icon: 'help' },
+      { id: 'cost', label: 'Cost and speed', icon: 'gauge' },
+    ],
+  },
+  { id: 'manage', label: 'Settings', bare: true, pages: [{ id: 'settings', label: 'Settings', icon: 'sliders' }] },
 ];
 
 export const PAGES = PAGE_GROUPS.flatMap((g) => g.pages);
@@ -126,6 +130,8 @@ export const PAGE_LEAD = {
   releases: 'Publish a version, and choose what is live where.',
   calls: 'Every conversation this agent has had.',
   monitoring: 'How this agent is doing, from its calls.',
+  cost: 'What a call costs, where the money and the time go, and what another model would cost.',
+  questions: 'What callers asked that it couldn’t answer, grouped however they put it. Answer one in a sentence and it goes into the draft, with a test.',
 };
 
 // Where a place in the configuration (a path such as ['defaults', 'models', 'tts', 'voice_id']) is edited in the new layout: the page, and the panel of the

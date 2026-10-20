@@ -1,0 +1,843 @@
+/* The look of the whole app: a quiet, neutral page where the words and the controls carry the design. Plain white (or near-black) surfaces, hairline
+   borders, one strong colour for the main action, settings that read top to bottom, choices that open a panel from the right. Loaded after styles.css
+   (see main.jsx) and wins over it; the rules start at body so they also reach the panels that open over the page (they sit on <body>). */
+
+/* ---- palette ------------------------------------------------------------------------------------------------------------------------------------ */
+html[data-theme="light"] body {
+  --page: #ffffff;
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel2: #fafafa;
+  --surface: #ffffff;
+  --surface2: #f4f4f5;
+  --surface-hover: #f4f4f5;
+  --line: #ececee;
+  --line2: #e0e0e4;
+  --text: #3f3f46;
+  --textStrong: #0b0b0d;
+  --muted: #52525b;
+  --dim: #66666f;
+  --field: #ffffff;
+  --ink: #0b0b0d;
+  --on-ink: #ffffff;
+  --sidebar: #fafafa;
+  --ring: rgba(11, 11, 13, 0.1);
+  --raise: 0 1px 2px rgba(16, 16, 20, 0.06), 0 1px 1px rgba(16, 16, 20, 0.04);
+  --panel-shadow: -24px 0 60px rgba(16, 16, 20, 0.12);
+  /* the old accent (cyan) is the ink now: every part that used it follows the one palette */
+  --accent: #0b0b0d;
+  --accent2: #3f3f46;
+  --accent-strong: #0b0b0d;
+  --accent-soft: #f4f4f5;
+  --accent-text: #0b0b0d;
+  --on-accent: #ffffff;
+  --cyan: #0b0b0d;
+  --cyan2: #3f3f46;
+  --focus: rgba(11, 11, 13, 0.14);
+  --text-strong: #0b0b0d;
+  --text-muted: #52525b;
+  --text-dim: #66666f;
+  --text-faint: #66666f;
+  --line-soft: #f0f0f2;
+  --panel-soft: #fafafa;
+  --surface-soft: #f4f4f5;
+  --field-text: #0b0b0d;
+  --shadow-sm: 0 1px 2px rgba(16, 16, 20, 0.06);
+  --shadow-md: 0 12px 32px rgba(16, 16, 20, 0.08);
+  --shadow-lg: 0 24px 60px rgba(16, 16, 20, 0.12);
+}
+html[data-theme="dark"] body {
+  --page: #0b0b0c;
+  --bg: #0b0b0c;
+  --panel: #111113;
+  --panel2: #0e0e10;
+  --surface: #111113;
+  --surface2: #1b1b1e;
+  --surface-hover: #1b1b1e;
+  --line: #222226;
+  --line2: #2e2e33;
+  --text: #d4d4d8;
+  --textStrong: #fafafa;
+  --muted: #a1a1aa;
+  --dim: #8e8e97;
+  --field: #0e0e10;
+  --ink: #fafafa;
+  --on-ink: #0b0b0c;
+  --sidebar: #0e0e10;
+  --ring: rgba(250, 250, 250, 0.12);
+  --raise: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --panel-shadow: -24px 0 60px rgba(0, 0, 0, 0.5);
+  --accent: #fafafa;
+  --accent2: #d4d4d8;
+  --accent-strong: #fafafa;
+  --accent-soft: #1b1b1e;
+  --accent-text: #fafafa;
+  --on-accent: #0b0b0c;
+  --cyan: #fafafa;
+  --cyan2: #d4d4d8;
+  --focus: rgba(250, 250, 250, 0.16);
+  --text-strong: #fafafa;
+  --text-muted: #a1a1aa;
+  --text-dim: #8e8e97;
+  --text-faint: #8e8e97;
+  --line-soft: #1b1b1e;
+  --panel-soft: #141416;
+  --surface-soft: #1b1b1e;
+  --field-text: #fafafa;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+body,
+body #root {
+  background: var(--page);
+}
+
+/* ---- the frame: sidebar and the bar across the top -------------------------------------------------------------------------------------------- */
+html[data-theme] body .dashboard {
+  background: var(--page);
+}
+html[data-theme] body .sidebar {
+  background: var(--sidebar);
+  border-right: 1px solid var(--line);
+}
+html[data-theme] body .dashMain {
+  background: var(--page);
+}
+html[data-theme] body .dashboard .dashTopbar.dashTopbar {
+  height: 56px;
+  min-height: 56px;
+  background: color-mix(in srgb, var(--page) 92%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+body {
+  --ds-topbar-h: 56px;
+}
+html[data-theme] body .topbarCrumb,
+html[data-theme] body .topbarCrumb .crumbLink {
+  color: var(--muted);
+}
+html[data-theme] body .topbarCrumb strong {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+html[data-theme] body .agentBack {
+  color: var(--muted);
+}
+html[data-theme] body .agentSideName {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--raise);
+}
+html[data-theme] body .agentRowAvatar {
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--textStrong);
+  border: 1px solid var(--line);
+}
+html[data-theme] body .nlNavHead {
+  padding: 10px 10px 4px;
+  color: var(--dim);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+html[data-theme] body .nlNav button {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 450;
+}
+html[data-theme] body .nlNav button:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body .nlNav button.on {
+  background: var(--surface2);
+  color: var(--textStrong);
+  font-weight: 600;
+  box-shadow: none;
+}
+html[data-theme] body .nlNavIcon {
+  color: var(--muted);
+}
+html[data-theme] body .nlNav button.on .nlNavIcon {
+  color: var(--textStrong);
+}
+
+/* ---- buttons ------------------------------------------------------------------------------------------------------------------------------------ */
+html[data-theme] body .primaryCta {
+  border: 1px solid var(--ink);
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 600;
+  box-shadow: none;
+  transform: none;
+}
+/* inside the app the main button is a compact one (the landing and sign-in pages keep their bigger ones) */
+html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal) .primaryCta {
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: var(--fs-md);
+}
+html[data-theme] body .primaryCta:hover:not(:disabled) {
+  filter: none;
+  opacity: 0.88;
+  transform: none;
+}
+html[data-theme] body .primaryCta:disabled {
+  opacity: 0.35;
+}
+html[data-theme] body :is(.quietButton, .secondaryCta) {
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--textStrong);
+  font-weight: 500;
+}
+html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal) :is(.quietButton, .secondaryCta) {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: var(--fs-md);
+}
+html[data-theme] body :is(.quietButton, .secondaryCta):hover:not(:disabled) {
+  background: var(--surface2);
+  border-color: var(--line2);
+}
+html[data-theme] body :is(.quietButton, .secondaryCta):disabled {
+  opacity: 0.45;
+}
+html[data-theme] body .dangerButton {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+}
+
+/* ---- the agent's own bar: one quiet row ------------------------------------------------------------------------------------------------------- */
+html[data-theme] body .nlWorkspace {
+  gap: 8px;
+}
+html[data-theme] body .nlBar {
+  flex-wrap: nowrap;
+  gap: 12px;
+  padding: 12px 0;
+  background: var(--page);
+  border-bottom: 1px solid var(--line);
+}
+html[data-theme] body .nlBarId {
+  flex: 1;
+  gap: 10px;
+}
+html[data-theme] body .nlBarId h1 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+html[data-theme] body .nlBarId .agentRowAvatar {
+  width: 28px;
+  height: 28px;
+}
+html[data-theme] body .nlBarActions {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+html[data-theme] body .nlBarActions .quietButton.nlBtn {
+  min-height: 34px;
+  padding: 0 10px;
+  border-color: transparent;
+  background: none;
+  color: var(--text);
+  white-space: nowrap;
+}
+html[data-theme] body .nlBarActions .quietButton.nlBtn:hover:not(:disabled) {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body .nlBarActions .quietButton.nlBtn.bad {
+  color: var(--danger-text);
+}
+html[data-theme] body .nlBarActions .primaryCta {
+  margin-left: 6px;
+  min-height: 34px;
+}
+html[data-theme] body .nlSaveState {
+  color: var(--dim);
+}
+
+/* ---- a page ------------------------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body .nlPage {
+  gap: 32px;
+  max-width: 820px;
+  padding: 28px 0 80px;
+}
+html[data-theme] body .nlPage.wide {
+  max-width: none;
+}
+html[data-theme] body .nlPageHead {
+  align-items: center;
+}
+html[data-theme] body .nlPageHead h1 {
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--textStrong);
+}
+html[data-theme] body .nlPageHead p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+html[data-theme] body .nlParts {
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface2);
+  flex-wrap: wrap;
+}
+html[data-theme] body .nlParts button {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 500;
+}
+html[data-theme] body .nlParts button.on {
+  background: var(--panel);
+  color: var(--textStrong);
+  font-weight: 600;
+  box-shadow: var(--raise);
+}
+html[data-theme] body .nlSection {
+  gap: 12px;
+}
+html[data-theme] body .nlSection h2 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+html[data-theme] body .nlSection > header p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+html[data-theme] body .nlHint {
+  color: var(--muted);
+}
+
+/* rows that open a panel: one box, hairlines between */
+html[data-theme] body .nlRows {
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+}
+html[data-theme] body .nlRow {
+  gap: 14px;
+  min-height: 60px;
+  padding: 10px 16px;
+}
+html[data-theme] body .nlRow:hover {
+  background: var(--surface2);
+}
+html[data-theme] body .nlRow > .wIcon:last-child {
+  color: var(--dim);
+}
+html[data-theme] body .nlRowIcon {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel2);
+  color: var(--text);
+}
+html[data-theme] body .nlRowText strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+html[data-theme] body .nlRowText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+html[data-theme] body .nlPill {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--surface2);
+  color: var(--text);
+  font-weight: 500;
+}
+html[data-theme] body .nlPill.bad {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger-text);
+}
+html[data-theme] body .nlEmpty {
+  padding: 40px 24px;
+  border: 1px dashed var(--line2);
+  background: none;
+}
+html[data-theme] body .nlEmpty > span {
+  border-radius: 12px;
+  background: var(--surface2);
+  border-color: var(--line);
+}
+html[data-theme] body .nlEmpty strong {
+  font-weight: 600;
+}
+
+/* the page's main "Add" */
+html[data-theme] body .nlPageActions .stAddBtn,
+html[data-theme] body .nlSection > header .stAddBtn {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 600;
+  box-shadow: none;
+}
+html[data-theme] body .nlPageActions .stAddBtn:hover,
+html[data-theme] body .nlSection > header .stAddBtn:hover {
+  filter: none;
+  opacity: 0.88;
+}
+
+/* ---- text boxes on the Agent page: the box holds the text and, under it, a quiet strip of what goes with it ------------------------------------- */
+html[data-theme] body .stTpl {
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--field);
+  overflow: hidden;
+}
+html[data-theme] body .stTpl:focus-within {
+  border-color: color-mix(in srgb, var(--textStrong) 45%, var(--line2));
+  box-shadow: 0 0 0 3px var(--ring);
+}
+html[data-theme] body .stTpl > .stFInput {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 16px 18px;
+  font-size: var(--fs-md);
+  line-height: 1.6;
+}
+html[data-theme] body .stTpl > .stFInput:focus {
+  box-shadow: none;
+  outline: 0;
+}
+html[data-theme] body .stTpl > .stTplCount,
+html[data-theme] body .stTpl > .stTplInsert,
+html[data-theme] body .stTpl > .stTplHint,
+html[data-theme] body .stTpl > .stTplPreview {
+  margin: 0;
+  padding: 10px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--panel2);
+}
+html[data-theme] body .stTplInsert > summary {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+html[data-theme] body .stPromptPreview {
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+}
+html[data-theme] body .stPromptPreview > summary {
+  padding: 14px 16px;
+  font-weight: 500;
+  color: var(--textStrong);
+}
+
+/* ---- the panel from the right ------------------------------------------------------------------------------------------------------------------- */
+html[data-theme] body .nlScrim {
+  background: rgba(10, 10, 12, 0.32);
+}
+html[data-theme] body .nlDrawer {
+  width: min(600px, 100vw);
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+}
+html[data-theme] body .nlDrawer.wide {
+  width: min(760px, 100vw);
+}
+html[data-theme] body .nlDrawerHead {
+  gap: 12px;
+  min-height: 68px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+html[data-theme] body .nlDrawerHead h2 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+html[data-theme] body .nlDrawerIcon {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  color: var(--textStrong);
+}
+html[data-theme] body .nlDrawerBody {
+  padding: 24px;
+}
+html[data-theme] body .nlDrawerFoot {
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+/* Labels read in sentence case, without wide letter spacing, everywhere (badges and pills keep their capitals). Generated from the rules that made
+   them shout; keep it in step when a new label style is added. */
+html[data-theme] body .asBlock h4,
+html[data-theme] body .asCard h3,
+html[data-theme] body .asFacts dt,
+html[data-theme] body .asWho,
+html[data-theme] body .builderAttemptTop span,
+html[data-theme] body .builderChecklistGroup h4,
+html[data-theme] body .builderRowHeader span,
+html[data-theme] body .builderSubhead,
+html[data-theme] body .callFacts dt,
+html[data-theme] body .hjHead,
+html[data-theme] body .infoDialogGroup h3,
+html[data-theme] body .integrationCategory,
+html[data-theme] body .pvHud small,
+html[data-theme] body .pvPanel > header strong,
+html[data-theme] body .readinessRunner label span,
+html[data-theme] body .ruleSection legend,
+html[data-theme] body .sessionTranscript h3,
+html[data-theme] body .settingsFacts dt,
+html[data-theme] body .smList em,
+html[data-theme] body .stAgentHead,
+html[data-theme] body .stAgentSummary span,
+html[data-theme] body .stChangeBody small,
+html[data-theme] body .stChannelBlock legend,
+html[data-theme] body .stComboGroup,
+html[data-theme] body .stFSectionLabel,
+html[data-theme] body .stModelView strong,
+html[data-theme] body .stNext small,
+html[data-theme] body .stPickGroup h6,
+html[data-theme] body .stPublishPanel > header small,
+html[data-theme] body .stRow.head,
+html[data-theme] body .stTDetails dt,
+html[data-theme] body .stTModels li > span,
+html[data-theme] body .stTModels li span,
+html[data-theme] body .stToolBlock legend,
+html[data-theme] body .stTryBlock > strong,
+html[data-theme] body .stUrlPreview span,
+html[data-theme] body .tableColumnsTitle,
+html[data-theme] body .telephonyPreview b,
+html[data-theme] body .tmHead,
+html[data-theme] body .voiceLibraryTable th,
+html[data-theme] body .wfSection h4 {
+  text-transform: none;
+  letter-spacing: normal;
+}
+html[data-theme] body .accountDetail small,
+html[data-theme] body .accountFooterLabel,
+html[data-theme] body .cardEyebrow,
+html[data-theme] body .createEyebrow,
+html[data-theme] body .eyebrow,
+html[data-theme] body .headerHint,
+html[data-theme] body .healthLead small,
+html[data-theme] body .landingBottom,
+html[data-theme] body .loginHighlights span,
+html[data-theme] body .metricTop,
+html[data-theme] body .miniHeading,
+html[data-theme] body .miniStep span,
+html[data-theme] body .navLabel,
+html[data-theme] body .profileStep,
+html[data-theme] body .searchGroupLabel,
+html[data-theme] body .sessionSummaryLabel,
+html[data-theme] body .sessionsTable thead th,
+html[data-theme] body .showcaseHeader,
+html[data-theme] body .sideLink em,
+html[data-theme] body .telephonyStatLabel,
+html[data-theme] body .telephonyTable th,
+html[data-theme] body .workspaceCopy small,
+html[data-theme] body .workspaceMenuLabel {
+  letter-spacing: normal;
+}
+
+/* small labels above a title: quiet words, not a coloured shout */
+html[data-theme] body :is(.eyebrow, .createEyebrow, .cardEyebrow, .headerHint) {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+html[data-theme] body :is(.navLabel, .workspaceMenuLabel, .workspaceCopy small) {
+  color: var(--dim);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+html[data-theme] body :is(.metricTop, .telephonyStatLabel) {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+html[data-theme] body :is(.telephonyTable th, .sessionsTable thead th, .voiceLibraryTable th) {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+/* ---- the sidebar, the same everywhere ------------------------------------------------------------------------------------------------------------ */
+html[data-theme] body .sideLink {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+  font-weight: 450;
+}
+html[data-theme] body .sideLink i {
+  color: var(--muted);
+}
+html[data-theme] body .sideLink:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body .sideLink.selected {
+  border: 0;
+  background: var(--surface2);
+  box-shadow: none;
+  color: var(--textStrong);
+  font-weight: 600;
+}
+html[data-theme] body .sideLink.selected i {
+  color: var(--textStrong);
+}
+html[data-theme] body .sideLink em {
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+}
+html[data-theme] body .workspaceSwitch {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--raise);
+}
+html[data-theme] body .workspaceAvatar {
+  border: 0;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--on-ink);
+}
+html[data-theme] body .workspaceCopy strong {
+  color: var(--textStrong);
+}
+html[data-theme] body .workspaceMenu {
+  border-color: var(--line);
+  background: var(--panel);
+}
+html[data-theme] body .sideDivider {
+  background: var(--line);
+}
+html[data-theme] body .profileDot {
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body .dashTopbar :is(.quietButton, .themeToggle) {
+  min-height: 36px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--textStrong);
+}
+html[data-theme] body .dashTopbar :is(.quietButton, .themeToggle):hover {
+  background: var(--surface2);
+}
+
+/* ---- numbers and cards on the workspace pages -------------------------------------------------------------------------------------------------- */
+html[data-theme] body :is(.metricCard, .telephonyStatCard) {
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: none;
+}
+html[data-theme] body :is(.metricCard, .telephonyStatCard) strong,
+html[data-theme] body .telephonyStatCard strong.accentValue {
+  color: var(--textStrong);
+}
+
+/* where the old accent was a fill under dark text, the text follows the ink */
+html[data-theme] body :is(.pvSendRound, .wfPlus, .modalCreate, .builderComposer button) {
+  color: var(--on-ink);
+}
+html[data-theme] body .stSwitch.on i::after {
+  background: var(--on-ink);
+}
+html[data-theme] body .avatar {
+  border-color: var(--line2);
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body .themeIcon {
+  color: var(--textStrong);
+}
+html[data-theme] body .linkButton {
+  color: var(--textStrong);
+  text-decoration: underline;
+  text-decoration-color: var(--line2);
+  text-underline-offset: 3px;
+}
+html[data-theme] body .linkButton:hover {
+  text-decoration-color: currentColor;
+}
+html[data-theme] body :is(.quickIcon, .activityIcon, .hjIcon) {
+  border-color: var(--line);
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body button.active {
+  box-shadow: none;
+}
+
+/* small labels that used to be bold capitals: plain, quiet words */
+html[data-theme]
+  body
+  :is(
+    .settingsFacts dt,
+    .stAgentSummary span,
+    .callFacts dt,
+    .asFacts dt,
+    .stTDetails dt,
+    .integrationCategory,
+    .stRow.head,
+    .tmHead,
+    .stComboGroup,
+    .stNext small,
+    .stEnvCard small,
+    .stChangeBody small,
+    .stPublishPanel > header small,
+    .builderSubhead,
+    .hjHead,
+    .stStageHead,
+    .readinessRunner label span,
+    .tableColumnsTitle,
+    .stPickGroup h6,
+    .stUrlPreview span,
+    .smList em,
+    .wfSection h4
+  ) {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* a choice of two or three (a time range): one grey bar, the chosen one raised */
+html[data-theme] body .segmented {
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface2);
+  box-shadow: none;
+}
+html[data-theme] body .segmented button {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+html[data-theme] body .segmented button.active {
+  background: var(--panel);
+  color: var(--textStrong);
+  font-weight: 600;
+  box-shadow: var(--raise);
+}
+
+/* the agent's menu fits a laptop screen without scrolling */
+html[data-theme] body .nlNav button {
+  min-height: 32px;
+  padding: 5px 10px;
+}
+html[data-theme] body .nlNavHead {
+  padding: 8px 10px 2px;
+}
+html[data-theme] body .telephonyNavItem {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 450;
+}
+html[data-theme] body .telephonyNavItem:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+html[data-theme] body .telephonyNavItem.active {
+  border: 0;
+  background: var(--surface2);
+  box-shadow: none;
+  color: var(--textStrong);
+  font-weight: 600;
+}
+html[data-theme] body .telephonyNavItem.active span {
+  color: var(--textStrong);
+}
+/* the classic layout's stage headings in the sidebar read like the new layout's ("Build", "Test"), not as numbered capitals */
+html[data-theme] body :is(.stStageHead, .stStageHead b, .agentSideNav .stStageHead) {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--dim);
+}
+/* a number card whose "value" is where to look instead */
+html[data-theme] body .telephonyStatLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--textStrong);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--line2);
+  text-underline-offset: 6px;
+  cursor: pointer;
+}
+html[data-theme] body .telephonyStatLink:hover {
+  text-decoration-color: currentColor;
+}
+
+/* focus: one ring everywhere, in the ink colour */
+html[data-theme] body :where(button, select, a, [tabindex], input[type="checkbox"], input[type="radio"]):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--textStrong) 60%, transparent);
+  outline-offset: 2px;
+}
+/* a text box shows focus with its own border (the form's boxes, see formLook.css); a field inside a frame lights the frame */
+html[data-theme] body .searchFieldWrap:focus-within {
+  border-color: color-mix(in srgb, var(--textStrong) 45%, var(--line2));
+  box-shadow: 0 0 0 3px var(--ring);
+}
+html[data-theme] body .searchFieldWrap input:focus-visible {
+  outline: 0;
+}
+html[data-theme] body .searchFieldWrap > span {
+  color: var(--muted);
+}
+html[data-theme] body :is(.loginCard input:not([type="checkbox"]), .profileCard input, .profileCard select):focus {
+  border-color: color-mix(in srgb, var(--textStrong) 45%, var(--line2));
+  box-shadow: 0 0 0 3px var(--ring);
+}
+html[data-theme] body input[type="checkbox"],
+html[data-theme] body input[type="radio"] {
+  accent-color: var(--ink);
+}
+html[data-theme] body .topStart {
+  border: 1px solid var(--ink);
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: none;
+}
+html[data-theme] body .topStart:hover {
+  opacity: 0.88;
+  filter: none;
+}

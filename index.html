@@ -14,8 +14,14 @@
         try {
           var t = localStorage.getItem('weave_theme');
           document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
+          var s = localStorage.getItem('weave_style');
+          s = ['simple', 'professional', 'calm', 'premium', 'futuristic', 'vibrant'].indexOf(s) >= 0 ? s : 'simple';
+          document.documentElement.dataset.style = s;
+          var a = localStorage.getItem('weave_accent_' + s);
+          if (a) document.documentElement.dataset.accent = a;
         } catch (_) {
           document.documentElement.dataset.theme = 'light';
+          document.documentElement.dataset.style = 'simple';
         }
       })();
     </script>

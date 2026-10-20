@@ -113,7 +113,8 @@ await page.waitForSelector('.stHeader h1, .nlBar h1');
 await scan();
 if (await page.locator('.nlBar').count()) {
   await page.locator('.nlBar').getByRole('button', { name: /^Test/ }).click();
-  await page.locator('.nlDrawer').waitFor();
+  // beside the page on a wide screen (this one), over it on a narrower one
+  await page.locator('.nlTestDock, .nlDrawer').first().waitFor();
 }
 await page
   .getByRole('button', { name: /Start a simulated chat/ })

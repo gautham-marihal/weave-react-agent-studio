@@ -311,7 +311,7 @@ export function followCall(id, callId, { onOpen, onRecord, onEnd, onError, after
     let stop = () => {};
     let stopped = false;
     import('../demo/demoApi.js').then(({ getDemoApi }) => {
-      if (!stopped) stop = getDemoApi().follow(id, callId, { onOpen, onRecord, onEnd });
+      if (!stopped) stop = getDemoApi().follow(id, callId, { onOpen, onRecord, onEnd, after });
     });
     return () => {
       stopped = true;

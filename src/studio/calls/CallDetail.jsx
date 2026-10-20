@@ -143,9 +143,11 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
               Download the log
             </button>
           )}
-          <button type="button" className="quietButton" onClick={onClose}>
-            Close
-          </button>
+          {onClose && (
+            <button type="button" className="quietButton" onClick={onClose}>
+              Close
+            </button>
+          )}
         </div>
       </header>
 
@@ -165,7 +167,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
           </div>
           <div>
             <dt>Caller</dt>
-            <dd>{call.caller || 'unknown'}</dd>
+            <dd>{call.caller || (/web|chat|widget/.test(String(call.channel?.type || '')) ? 'Web visitor' : 'No number')}</dd>
           </div>
           <div>
             <dt>Duration</dt>

@@ -220,7 +220,7 @@ test('Knowledge: a search shows scores in words, what min_score would drop, and 
   await app.unmount();
 });
 
-test('Knowledge: a file that is wrong is refused with a reason, and “Use in a new base” makes one', async () => {
+test('Knowledge: a file that is wrong is refused with a reason, and the first file uploaded makes the base by itself', async () => {
   const config = agent();
   const app = await kw(config);
   await until(app, () => !!$(app.container, '.kwFiles'));
@@ -230,13 +230,12 @@ test('Knowledge: a file that is wrong is refused with a reason, and “Use in a 
   assert.match(textOf($(app.container, '.kwProblemsList')), /isn’t a kind of file knowledge can read/);
   await pickFile(app, 'Return policy.md', 'Returns are accepted within thirty days if the item is unused.');
   assert.equal(await until(app, () => !!$(app.container, '.kwTable')), true);
-  // a new base from the file goes into the draft
-  await a.choose(byLabel(app.container, 'Use Return policy.md in a base'), '__new');
+  // with no base yet, the upload itself puts a new base with the file into the draft: there is no second step
   assert.deepEqual(
     app.config.knowledge.map((b) => [b.id, b.type, b.sources]),
-    [['return-policy', 'vector_store', [{ type: 'file', file_id: 'Return policy.md' }]]],
+    [['knowledge', 'vector_store', [{ type: 'file', file_id: 'Return policy.md' }]]],
   );
-  assert.match(textOf($(app.container, '.kwDone')), /Made the base “return-policy”/);
+  assert.match(textOf($(app.container, '.kwDone')), /Made the knowledge base “knowledge”/);
   assert.match(textOf($(app.container, '.stNotice')), /Knowledge works from the saved draft/);
   await app.unmount();
 });

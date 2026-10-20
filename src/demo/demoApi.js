@@ -20,6 +20,7 @@ import {
 import { previewPromptDemo, previewResultDemo } from './demoPreview.js';
 import { demoEntities, tryPreviewDemo } from './demoTryPreviews.js';
 import { routeNumbers } from './demoNumbers.js';
+import { followLive, liveCallOf, liveCallsFor } from './demoLive.js';
 import { FALLBACK_TYPES } from '../studio/form/channelTypes.js';
 import { minimalConfig } from './minimalConfig.js';
 import { callFromConversation, followCallOf, getCallOf, listCallsOf, seedCalls, transcriptOf } from './demoCalls.js';
@@ -112,6 +113,26 @@ export function createDemoApi({
     const support = make('acme-support', 'Acme Support', 'support');
     const front = make('front-desk', 'Front Desk', 'receptionist');
     make('bookings', 'Bookings', 'appointment');
+    // Front Desk also answers the phone, so the screens that are about voice (speech cost, phone callers on the Live board) have something to show
+    front.config.channels = [
+      ...front.config.channels,
+      {
+        id: 'phone',
+        type: 'sip_voice',
+        enabled: true,
+        entry: { dnis: '+6531580100' },
+        modalities: { input: ['audio'], output: ['audio'] },
+        greeting: { say: 'Welcome to the front desk. How can I help you?' },
+      },
+    ];
+    front.config.defaults = {
+      ...front.config.defaults,
+      models: {
+        ...front.config.defaults.models,
+        stt: { provider: 'deepgram', model: 'nova-3', language: 'en', api_key: { secret: 'DEEPGRAM_API_KEY' } },
+        tts: { provider: 'elevenlabs', model: 'eleven_flash_v2_5', voice_id: 'EXAVITQu4vr4xnSDxMaL', api_key: { secret: 'ELEVEN_API_KEY' } },
+      },
+    };
     // a little history, so the Versions and Deploy screens have something to show
     const publish = (bot, version) => {
       {
@@ -426,11 +447,18 @@ export function createDemoApi({
           bot.calls = seedCalls(bot.id, bot.config, now(), { history });
           commit();
         }
-        if (rest === '/calls' && method === 'GET') return ok(listCallsOf(bot.calls, params, Date.parse(now())));
+        if (rest === '/calls' && method === 'GET') {
+          // calls in progress (made up from the clock, see demoLive.js) are listed only when they are asked for: the ones in progress, or the last half hour
+          const nowMs = Date.parse(now());
+          const since = params.get('since') ? Date.parse(params.get('since')) : -Infinity;
+          const wantsLive = params.get('status') === 'in_progress' || nowMs - since <= 30 * 60 * 1000;
+          return ok(listCallsOf(wantsLive ? [...liveCallsFor(bot, nowMs), ...bot.calls] : bot.calls, params, nowMs));
+        }
         const callMatch = rest.match(/^\/calls\/([^/]+)(\/transcript)?$/);
         if (callMatch && method === 'GET') {
           const key = decodeURIComponent(callMatch[1]);
           const found =
+            liveCallOf(bot, key, Date.parse(now())) ||
             bot.calls.find((c) => c.summary.id === key) ||
             bot.calls.filter((c) => c.summary.room === key).sort((x, y) => Date.parse(y.summary.started_at) - Date.parse(x.summary.started_at))[0];
           if (!found) return fail(404, 'No such call.');
@@ -485,6 +513,9 @@ export function createDemoApi({
     const bot = read().bots[botId];
     const call = bot?.calls?.find((c) => c.summary.id === callId || c.summary.room === callId);
     if (!call) {
+      // a call in progress is followed as the clock moves (see demoLive.js)
+      if (bot && liveCallOf(bot, callId, Date.parse(now())))
+        return followLive(bot, callId, handlers, { read: () => Date.parse(now()), after: Number(handlers.after) || 0 });
       return () => {};
     }
     return followCallOf(call, handlers);

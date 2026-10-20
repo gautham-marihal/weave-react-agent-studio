@@ -89,7 +89,7 @@ await box.fill(JSON.stringify(config, null, 2));
 await page.waitForTimeout(600);
 await page
   .locator('.nlBar')
-  .getByRole('button', { name: /^Save draft/ })
+  .getByRole('button', { name: /^Save$/ })
   .click();
 await page.waitForTimeout(900);
 
@@ -105,7 +105,8 @@ await page.locator('.stFNavGroups [role=tab]', { hasText: 'Availability' }).clic
 await page.locator('.stFChipBtn[data-section="channels"]').click();
 await page.waitForTimeout(500);
 // open every channel card (but not the "Add a channel" button, which also folds out)
-const closed = page.locator('.stFSection [aria-expanded="false"]').filter({ hasNotText: /Add a channel/ });
+// (a deeper part of a channel is a row that opens a panel: those are left closed)
+const closed = page.locator('.stFSection .stFGroup:not(.drill) > header [aria-expanded="false"]').filter({ hasNotText: /Add a channel/ });
 for (let n = 0; n < 40 && (await closed.count()) > 0; n++) await closed.first().click();
 const channels = page.locator('.stChannel');
 check('every channel is drawn', (await channels.count()) === 7, String(await channels.count()));
@@ -124,7 +125,13 @@ check(
   JSON.stringify(await caps(1)) === JSON.stringify(['human_transfer', 'forms']),
   JSON.stringify(await caps(1)),
 );
-const checks = async (n, which) => channels.nth(n).locator('.stFChecks').nth(which).locator('label').allInnerTexts();
+// what a channel carries is a part of it that opens in a panel: open it, read the choices, close it
+const checks = async (n, which) => {
+  await channels.nth(n).locator('.stFGroup.drill[data-path$="modalities"] > header .stFGroupToggle').click();
+  const shown = await page.locator('.stFSheet .stFChecks').nth(which).locator('label').allInnerTexts();
+  await page.keyboard.press('Escape');
+  return shown;
+};
 check(
   'a phone line can only carry audio in and out',
   (await checks(0, 0)).length === 1 && (await checks(0, 1)).length === 1,

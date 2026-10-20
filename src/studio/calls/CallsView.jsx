@@ -161,7 +161,7 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
               >
                 <td>{formatWhen(row.startedAt)}</td>
                 {showAgent && <td>{row.botName}</td>}
-                <td>{row.caller || <span className="stMuted">unknown</span>}</td>
+                <td>{row.caller || <span className="stMuted">{row.callerHint}</span>}</td>
                 <td>{row.channel}</td>
                 <td>{row.duration}</td>
                 <td>{row.turns}</td>

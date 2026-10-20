@@ -255,16 +255,19 @@ function InstructionsCard({ config, set, onChangeModel }) {
           className="stFInput"
           type="text"
           value={read.greeting}
-          disabled={read.greetingChannels === 0}
+          disabled={read.channels.length === 0}
+          placeholder={read.greetingChannels === 0 ? 'Hello! How can I help you today?' : undefined}
           onChange={(event) => set(setGreeting(config, event.target.value))}
           aria-label="Greeting"
         />
         <small>
-          {read.greetingChannels === 0
-            ? 'No channel has a greeting yet: add one in the detailed settings.'
-            : read.greetingIsReference
-              ? 'This greeting is one of the agent’s messages; changing it changes that message.'
-              : `Used on ${read.greetingChannels} channel${read.greetingChannels === 1 ? '' : 's'}.`}
+          {read.channels.length === 0
+            ? 'Add a channel first: the greeting is what a channel says when someone arrives.'
+            : read.greetingChannels === 0
+              ? 'Not set yet: type one and every channel will say it.'
+              : read.greetingIsReference
+                ? 'This greeting is one of the agent’s messages; changing it changes that message.'
+                : `Used on ${read.greetingChannels} channel${read.greetingChannels === 1 ? '' : 's'}.`}
         </small>
       </div>
       <div className="smField">

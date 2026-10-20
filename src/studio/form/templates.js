@@ -187,3 +187,17 @@ export function scopeAt(config, path) {
     anyRoot: places.some((place) => place.any),
   });
 }
+
+// What the scope at `path` depends on, as one short string: the state and constant names (worked out once per config, which every template box on the
+// screen shares) and, inside a tool, its argument names. A box re-reads its scope only when this changes, so a keystroke elsewhere costs a string compare.
+const namesOfConfig = new WeakMap();
+export function scopeSignature(config, path) {
+  const c = isObj(config) ? config : {};
+  let names = namesOfConfig.get(c);
+  if (names === undefined) {
+    names = JSON.stringify([Object.keys(isObj(c.state?.variables) ? c.state.variables : {}), Object.keys(isObj(c.constants) ? c.constants : {})]);
+    if (isObj(config)) namesOfConfig.set(c, names);
+  }
+  const index = toolIndexOf(path);
+  return index === null ? names : `${names}|${argNamesOf(c.tools?.[index]).join(',')}`;
+}

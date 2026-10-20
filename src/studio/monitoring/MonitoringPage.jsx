@@ -82,7 +82,7 @@ function DayBars({ series }) {
 }
 
 // `agentOnly`: the page is one agent's own (inside that agent), so it speaks of that agent and does not list agents.
-export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, agentOnly = false }) {
+export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, agentOnly = false, top = null }) {
   const [days, setDays] = useState(14);
   const data = useMonitoring({ bots, days });
   const report = useMemo(
@@ -122,6 +122,7 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
           </button>
         </div>
       </section>
+      {top}
 
       <DemoNote kind="calls">These calls are made-up examples, plus the conversations you had in the preview. No real caller is involved.</DemoNote>
       {data.errors.map((e) => (

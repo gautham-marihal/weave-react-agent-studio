@@ -2019,43 +2019,6 @@ select.stFInput {
   color: var(--muted);
 }
 
-/* ---- Less boxes inside boxes. A group is a card only when it is a thing you can delete (a tool, an agent, an optional part); every other group is a plain
-   headed section, and one inside a card is set off by a thin rule on its left instead of a frame of its own. ---- */
-.stFGroup:not(:has(> header .stFDel)) {
-  border: 0;
-  border-radius: 0;
-  background: none;
-}
-.stFGroup:not(:has(> header .stFDel)) > header {
-  padding: 0;
-  border-bottom: 1px solid var(--line);
-}
-.stFGroup:not(:has(> header .stFDel)) > header .stFGroupToggle {
-  padding-left: 0;
-}
-.stFGroup:not(:has(> header .stFDel)) > header .stFGroupToggle strong {
-  font-size: var(--fs-lg);
-}
-.stFGroup:not(:has(> header .stFDel)) > .stFGroupBody {
-  padding: 14px 0 6px;
-  border-top: 0;
-}
-.stFGroup:has(> header .stFDel) .stFGroup:not(:has(> header .stFDel)) {
-  border-left: 2px solid var(--line);
-  padding-left: 16px;
-}
-.stFGroup:has(> header .stFDel) .stFGroup:not(:has(> header .stFDel)) > header {
-  border-bottom: 0;
-}
-.stFGroup:has(> header .stFDel) .stFGroup:not(:has(> header .stFDel)) > header .stFGroupToggle strong {
-  font-size: var(--fs-md);
-}
-.stFGroup:has(> header .stFDel) .stFGroup:not(:has(> header .stFDel)) > .stFGroupBody {
-  padding-top: 8px;
-}
-.stFGroup.hasErr:not(:has(> header .stFDel)) {
-  border: 0;
-}
 /* a group that is the whole of its screen (the screen's own heading already names it) shows its fields and not a second heading */
 .stFGroup.flat > header {
   display: none;
@@ -2213,26 +2176,6 @@ select.stFInput {
 .stChannelBlock legend + * {
   clear: both;
 }
-/* a card inside a card is a section with a line above it */
-.stFGroup:has(> header .stFDel) .stFGroup:has(> header .stFDel) {
-  border: 0;
-  border-top: 1px solid var(--line);
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-}
-.stFGroup:has(> header .stFDel) .stFGroup:has(> header .stFDel) > header {
-  background: none;
-  border-bottom: 0;
-  padding-left: 0;
-  padding-right: 0;
-}
-.stFGroup:has(> header .stFDel) .stFGroup:has(> header .stFDel) > .stFGroupBody {
-  border-top: 0;
-  padding-left: 0;
-  padding-right: 0;
-}
-
 /* Technical names: the setting's place in the file reads as one path, the parents quiet and its own name clear */
 .stFTech {
   max-width: 100%;

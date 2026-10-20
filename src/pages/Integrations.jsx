@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import Icon from '../ui/Icon.jsx';
 
 const INTEGRATION_LIBRARY = [
   {
     id: 'webhook',
     name: 'Webhooks',
     category: 'Developer tools',
-    icon: '↗',
+    icon: 'swap',
     description: 'Send agent events and receive data from your own services.',
     fields: ['Endpoint URL', 'Secret'],
   },
@@ -13,7 +14,7 @@ const INTEGRATION_LIBRARY = [
     id: 'crm',
     name: 'CRM',
     category: 'Customer systems',
-    icon: '◎',
+    icon: 'team',
     description: 'Connect customer records and account context to your agents.',
     fields: ['Base URL', 'API key'],
   },
@@ -21,7 +22,7 @@ const INTEGRATION_LIBRARY = [
     id: 'ticketing',
     name: 'Ticketing',
     category: 'Customer systems',
-    icon: '▤',
+    icon: 'flag',
     description: 'Let agents create, read and update support tickets.',
     fields: ['Workspace URL', 'API key'],
   },
@@ -29,7 +30,7 @@ const INTEGRATION_LIBRARY = [
     id: 'knowledge',
     name: 'Knowledge source',
     category: 'Knowledge',
-    icon: '◇',
+    icon: 'records',
     description: 'Connect a searchable knowledge endpoint for grounded answers.',
     fields: ['Source URL', 'Access token'],
   },
@@ -37,7 +38,7 @@ const INTEGRATION_LIBRARY = [
     id: 'analytics',
     name: 'Analytics',
     category: 'Operations',
-    icon: '⌁',
+    icon: 'monitor',
     description: 'Send conversation events to your analytics destination.',
     fields: ['Collector URL', 'Write key'],
   },
@@ -45,7 +46,7 @@ const INTEGRATION_LIBRARY = [
     id: 'custom',
     name: 'Custom integration',
     category: 'Developer tools',
-    icon: '+',
+    icon: 'tools',
     description: 'Define a connection for an internal API or service.',
     fields: ['Endpoint URL', 'API key'],
   },
@@ -107,7 +108,7 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
     <div className="workspaceFeaturePage">
       <section className="welcomeBlock pageHeaderBlock featureHero">
         <div>
-          <div className="eyebrow cyan">WORKSPACE CONNECTIONS</div>
+          <div className="eyebrow cyan">Workspace connections</div>
           <h1>Integrations</h1>
           <p>Connect the systems your agents rely on and keep connection details in one place.</p>
         </div>
@@ -144,7 +145,9 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
           return (
             <article className={`integrationCard ${connection ? 'connected' : ''}`} key={item.id}>
               <div className="integrationTop">
-                <div className="integrationIcon">{item.icon}</div>
+                <div className="integrationIcon">
+                  <Icon name={item.icon} size={18} />
+                </div>
                 <span className={`statusPill ${connection ? 'connected' : ''}`}>{connection ? 'Connected' : 'Not connected'}</span>
               </div>
               <div className="integrationCopy">
@@ -189,7 +192,7 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
           <section className="featureModal" role="dialog" aria-modal="true" aria-labelledby="integration-dialog-title">
             <div className="featureModalHeader">
               <div>
-                <div className="eyebrow cyan">CONNECTION SETUP</div>
+                <div className="eyebrow cyan">Connection setup</div>
                 <h2 id="integration-dialog-title">{selected.name}</h2>
                 <p>{selected.description}</p>
               </div>

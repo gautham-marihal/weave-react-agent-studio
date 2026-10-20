@@ -6,10 +6,13 @@ import { changesSince, revertSection } from '../changes/sinceRelease.js';
 import { useLatestPublished } from '../changes/useLatestPublished.js';
 import { JsonEditor, ValidationPanel } from '../ConfigTab.jsx';
 import MonitoringPage from '../monitoring/MonitoringPage.jsx';
+import AgentAlerts from '../insights/AgentAlerts.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
 import { navigate, routeHref } from '../route.js';
+import Icon from '../../ui/Icon.jsx';
 import { Notice, Spinner } from '../ui.jsx';
 import AgentNav from './AgentNav.jsx';
+import { readinessSteps } from './readiness.js';
 import AgentTopBar from './AgentTopBar.jsx';
 import ShareAgentDrawer from '../team/ShareAgentDrawer.jsx';
 import CallersPanel from '../callers/CallersPanel.jsx';
@@ -32,6 +35,8 @@ const ScenariosTab = lazy(() => import('../scenarios/ScenariosTab.jsx'));
 const ChecksTab = lazy(() => import('../checks/ChecksTab.jsx'));
 const KnowledgeTab = lazy(() => import('../knowledge/KnowledgeTab.jsx'));
 const WorkflowTab = lazy(() => import('../workflow/WorkflowTab.jsx'));
+const QuestionsPage = lazy(() => import('../insights/QuestionsPage.jsx'));
+const CostPage = lazy(() => import('../cost/CostPage.jsx'));
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const TOOL_LISTS = [
@@ -134,6 +139,20 @@ const RELEASE_PARTS = [
   { id: 'deploy', label: 'Deploy' },
 ];
 
+// Whether the window is at least this wide (it follows resizing).
+function useWide(query) {
+  const [wide, setWide] = useState(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : true));
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const mq = window.matchMedia(query);
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, [query]);
+  return wide;
+}
+
 // An agent in the new layout: one menu down the side, one bar across the top, one page at a time. Everything the agent's state needs (the draft, the test
 // conversation, the published versions, the dialogs) is held by BotWorkspace and handed in as `ws`, so switching layouts never loses an edit or hangs up a test.
 export default function NewAgentWorkspace({ ws }) {
@@ -172,6 +191,9 @@ export default function NewAgentWorkspace({ ws }) {
   const [focusRequest, setFocusRequest] = useState(null);
   const [openRequest, setOpenRequest] = useState(null);
   const [lastFix, setLastFix] = useState(null); // { label, previous }
+  // on a wide window the test conversation sits beside the page and stays there while you move between pages; on a narrow one it slides over the page
+  const wideEnough = useWide('(min-width: 1280px)');
+  const testDocked = drawer === 'test' && wideEnough;
 
   const config = editor.parsed.value;
   const issues = useMemo(() => groupIssues(editor.report), [editor.report]);
@@ -192,8 +214,34 @@ export default function NewAgentWorkspace({ ws }) {
     setOpenRequest(null);
     setFocusRequest(null);
   }, [page]);
+  // a link to one tool (an alert's "Open the tool"): its panel opens on the Tools page, once per visit; one the draft no longer has is said so
+  const toolsList = config?.tools;
+  const toolIndex =
+    page === 'tools' && params?.tool && Array.isArray(toolsList) ? toolsList.findIndex((t) => t && (t.id === params.tool || t.name === params.tool)) : -1;
+  const missingTool = page === 'tools' && params?.tool && Array.isArray(toolsList) && toolIndex < 0 ? params.tool : '';
+  useEffect(() => {
+    if (toolIndex >= 0) setFocusRequest({ path: ['tools', toolIndex], nonce: Date.now() });
+  }, [toolIndex, params?.tool]);
 
   const go = useCallback((target, query) => navigate(routeHref(botId, target, query), { guard: false }), [botId]);
+  // the steps between this draft and an agent that is live (the Overview's checklist, and the progress card in the menu), and opening one
+  const plan = useMemo(() => readinessSteps({ config, summary, report: editor.report, scenarioCount }), [config, summary, editor.report, scenarioCount]);
+  const openStep = useCallback(
+    (step) => {
+      if (!step) return;
+      if (step.page === 'checks') {
+        setDrawer('problems');
+        return;
+      }
+      if (step.target) {
+        setOpenRequest({ ...step.target, nonce: Date.now() });
+        go('agent');
+        return;
+      }
+      go(tabFor(step.page, step.part));
+    },
+    [go],
+  );
   // Shows a place in the configuration: the page that holds it, and (on the Agent page) the panel, or (on a settings page) the field.
   const showPath = useCallback(
     (path) => {
@@ -233,11 +281,10 @@ export default function NewAgentWorkspace({ ws }) {
         scenarioCount={scenarioCount}
         onProblems={() => setDrawer('problems')}
         onDescribe={() => setDrawer('describe')}
+        plan={plan}
         onTest={() => setDrawer('test')}
-        onStep={(target) => {
-          setOpenRequest({ ...target, nonce: Date.now() });
-          go('agent');
-        }}
+        onStep={openStep}
+        top={<AgentAlerts botId={botId} />}
       />
     );
   } else if (page === 'agent') {
@@ -245,11 +292,19 @@ export default function NewAgentWorkspace({ ws }) {
   } else if (page === 'tools') {
     body = (
       <ListPage
+        notice={
+          missingTool ? (
+            <Notice kind="warn" title={`“${missingTool}” isn’t in the draft`}>
+              The calls used a tool by this name, but the draft has none: it was renamed or removed since. The tools it has now are below.
+            </Notice>
+          ) : null
+        }
         title="Tools"
         lead={PAGE_LEAD.tools}
         editor={editor}
         lists={TOOL_LISTS}
         extras={TOOL_EXTRAS}
+        extrasTitle="Connections, forms, messages and tasks"
         openRequest={focusRequest}
         onShowJson={openJson}
         onOpenJson={openJson}
@@ -263,6 +318,7 @@ export default function NewAgentWorkspace({ ws }) {
         editor={editor}
         lists={CHANNEL_LISTS}
         extras={CHANNEL_EXTRAS}
+        extrasTitle="Hand-overs, hours and callers"
         openRequest={focusRequest}
         onShowJson={openJson}
         onOpenJson={openJson}
@@ -386,11 +442,24 @@ export default function NewAgentWorkspace({ ws }) {
       <div className="nlPage wide">
         <MonitoringPage
           agentOnly
+          top={<AgentAlerts botId={botId} />}
           bots={[{ id: botId, name }]}
           onOpenAgent={(id, target, query) => go(target, query)}
           onOpenCall={(id, callId, view) => go('calls', { call: callId, ...(view && view !== 'trace' ? { view } : {}) })}
         />
       </div>
+    );
+  } else if (page === 'cost') {
+    body = (
+      <div className="nlPage wide">
+        <CostPage agentOnly bots={[{ id: botId, name }]} editor={editor} onOpenCall={(id, callId) => go('calls', { call: callId })} />
+      </div>
+    );
+  } else if (page === 'questions') {
+    body = (
+      <PageShell title="Questions" lead={PAGE_LEAD.questions}>
+        <QuestionsPage botId={botId} editor={editor} onOpenCall={(callId) => go('calls', { call: callId })} />
+      </PageShell>
     );
   } else if (page === 'tests') {
     const p = part('tests', 'scenarios');
@@ -427,7 +496,7 @@ export default function NewAgentWorkspace({ ws }) {
 
   return (
     <div className="stWorkspace nlWorkspace" data-layout="new" data-page={page}>
-      <AgentNav botId={botId} page={page} counts={errorsByPage} dots={{ tests: live }} />
+      <AgentNav botId={botId} page={page} counts={errorsByPage} dots={{ tests: live }} plan={plan} onStep={openStep} />
       <AgentTopBar
         botId={botId}
         name={name}
@@ -452,7 +521,8 @@ export default function NewAgentWorkspace({ ws }) {
         onDescribe={() => setDrawer('describe')}
         onProblems={() => setDrawer('problems')}
         onChanges={() => setChangesOpen(true)}
-        onTest={() => setDrawer('test')}
+        testOpen={drawer === 'test'}
+        onTest={() => setDrawer((d) => (d === 'test' ? null : 'test'))}
         onShare={() => setDrawer('share')}
       />
 
@@ -511,8 +581,26 @@ export default function NewAgentWorkspace({ ws }) {
         />
       )}
 
-      <div className="nlBody">
-        <Suspense fallback={<Spinner label="Loading" />}>{body}</Suspense>
+      <div className={`nlMain ${testDocked ? 'docked' : ''}`}>
+        <div className="nlBody">
+          <Suspense fallback={<Spinner label="Loading" />}>{body}</Suspense>
+        </div>
+        {testDocked && (
+          <aside className="nlTestDock" aria-label="Test your agent">
+            <header>
+              <span className="nlDrawerIcon" aria-hidden="true">
+                <Icon name="test" size={16} />
+              </span>
+              <strong>Test your agent</strong>
+              <button type="button" className="nlDrawerClose" aria-label="Close the test panel" onClick={() => setDrawer(null)}>
+                <Icon name="close" size={16} />
+              </button>
+            </header>
+            <div className="nlTestDockBody">
+              <ChatPreview session={session} mode={sessionMode} modeLocked={modeLocked} onMode={setSessionMode} botId={botId} editor={editor} />
+            </div>
+          </aside>
+        )}
       </div>
 
       {drawer === 'share' && <ShareAgentDrawer botId={botId} name={name} onClose={() => setDrawer(null)} />}
@@ -525,17 +613,9 @@ export default function NewAgentWorkspace({ ws }) {
           </div>
         </Drawer>
       )}
-      {drawer === 'test' && (
-        <Drawer title="Try it" icon="test" onClose={() => setDrawer(null)}>
-          <ChatPreview
-            session={session}
-            mode={sessionMode}
-            modeLocked={modeLocked}
-            onMode={setSessionMode}
-            botId={botId}
-            editor={editor}
-            onClose={() => setDrawer(null)}
-          />
+      {drawer === 'test' && !testDocked && (
+        <Drawer title="Test your agent" icon="test" onClose={() => setDrawer(null)}>
+          <ChatPreview session={session} mode={sessionMode} modeLocked={modeLocked} onMode={setSessionMode} botId={botId} editor={editor} />
         </Drawer>
       )}
       {drawer === 'problems' && (

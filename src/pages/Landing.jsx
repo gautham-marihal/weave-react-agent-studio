@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Logo, ThemeToggle, openHelpDialog, openInfoDialog } from './shared.jsx';
+import { StyleMenu } from '../ui/StylePicker.jsx';
 
 const LANDING_MENUS = {
   Product: [
@@ -98,6 +99,7 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
         <Logo />
         <LandingNav onStart={onStart} />
         <div className="landingActions">
+          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
           <button className="textButton" onClick={onSignIn}>
             Sign in
@@ -110,7 +112,7 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
 
       <main className="hero">
         <section className="heroCopy">
-          <div className="eyebrow cyan">THE AI AGENT WORKSPACE</div>
+          <div className="eyebrow cyan">The AI agent workspace</div>
           <h1>
             Turn an idea into an agent people can <span>actually use.</span>
           </h1>
@@ -188,7 +190,7 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           </div>
 
           <div className="showcaseCard showcaseConfig">
-            <div className="miniHeading">UNDER THE HOOD</div>
+            <div className="miniHeading">Under the hood</div>
             <div className="configLine">
               <span>model</span>
               <b>gpt-5</b>

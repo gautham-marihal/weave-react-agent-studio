@@ -38,7 +38,19 @@ function iconFor(kind, item) {
 // forms, transfers...) is a row too, opening the settings form for just that section.
 //   lists:  [{ id, path, kind, word, title?, lead?, pickerKey, empty }]
 //   extras: [{ key, title, value (a sentence), icon }]
-export default function ListPage({ title, lead, editor, lists, extras = [], footer = null, onShowJson, onOpenJson, openRequest = null }) {
+export default function ListPage({
+  title,
+  lead,
+  editor,
+  lists,
+  extras = [],
+  extrasTitle = 'More settings',
+  footer = null,
+  notice = null,
+  onShowJson,
+  onOpenJson,
+  openRequest = null,
+}) {
   const config = editor.parsed.value;
   const { schema } = useSchema();
   const { types: channelTypes } = useChannelTypes();
@@ -149,6 +161,7 @@ export default function ListPage({ title, lead, editor, lists, extras = [], foot
 
   return (
     <PageShell title={title} lead={lead} actions={addAction}>
+      {notice}
       {lists.map((l) => {
         const items = list(getAtPath(config, l.path));
         const opts = lists.length > 1 ? pickerOf(l) : null;
@@ -205,7 +218,7 @@ export default function ListPage({ title, lead, editor, lists, extras = [], foot
         );
       })}
       {extras.length > 0 && (
-        <Section title="Also here">
+        <Section title={extrasTitle}>
           <div className="nlRows">
             {extras.map((e) => {
               const n = sizeOf(config?.[e.key]);

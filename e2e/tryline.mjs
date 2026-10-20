@@ -121,7 +121,7 @@ await box.fill(JSON.stringify(config, null, 2));
 await page.waitForTimeout(600);
 await page
   .locator('.nlBar')
-  .getByRole('button', { name: /^Save draft/ })
+  .getByRole('button', { name: /^Save$/ })
   .click();
 await page.waitForTimeout(1000);
 

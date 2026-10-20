@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AGENT_LIFECYCLE, agentLifecycle } from './helpers.js';
 import Icon, { ICON_NAMES } from '../ui/Icon.jsx';
+import { sentenceCase } from '../ui/text.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
@@ -83,7 +84,7 @@ export function InfoDialogHost() {
       <section className="createModal infoDialog">
         <div className="createModalHeader">
           <div>
-            <span className="createEyebrow">{isHelp ? 'HELP' : info.eyebrow || 'NOT AVAILABLE YET'}</span>
+            <span className="createEyebrow">{isHelp ? 'Help' : sentenceCase(info.eyebrow || 'Not available yet')}</span>
             <h2 id="info-dialog-title">{isHelp ? 'Help & shortcuts' : info.title}</h2>
             {!isHelp && info.body && <p>{info.body}</p>}
           </div>
@@ -386,7 +387,7 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
       <section className="accountPanel" onMouseDown={(event) => event.stopPropagation()}>
         <div className="accountPanelHeader">
           <div>
-            <span className="eyebrow cyan">ACCOUNT</span>
+            <span className="eyebrow cyan">Account</span>
             <h2 id="accountTitle">Your account</h2>
             <p>Profile and workspace details for your Weave account.</p>
           </div>
@@ -413,7 +414,7 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
             <strong>{profile?.email || '—'}</strong>
           </div>
           <div className="accountDetail">
-            <small>WORKSPACE</small>
+            <small>Workspace</small>
             <strong>{workspace}</strong>
           </div>
           <div className="accountDetail">
@@ -593,7 +594,7 @@ export function WorkspaceCreateModal({ value, onChange, onClose, onCreate }) {
       <section className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="workspaceModalHeader">
           <div>
-            <span className="createEyebrow">NEW WORKSPACE</span>
+            <span className="createEyebrow">New workspace</span>
             <h2 id="workspaceCreateTitle">Create a workspace</h2>
             <p>A workspace groups agents in this browser. It doesn’t control who can see them.</p>
           </div>
@@ -652,7 +653,7 @@ export function WorkspaceRenameModal({ value, onChange, onClose, onRename }) {
       <section className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="workspaceModalHeader">
           <div>
-            <span className="createEyebrow">WORKSPACE</span>
+            <span className="createEyebrow">Workspace</span>
             <h2 id="workspaceRenameTitle">Rename workspace</h2>
             <p>Choose a name that your team will recognize.</p>
           </div>
@@ -713,7 +714,7 @@ export function NavItem({ item, active, onClick }) {
         <Glyph icon={item.icon} />
       </i>
       <span>{item.label}</span>
-      {item.badge && <em>{item.badge}</em>}
+      {item.badge ? <em className={item.badgeTone || undefined}>{item.badge}</em> : null}
     </button>
   );
 }
@@ -752,7 +753,7 @@ export function Metric({ title, value, note }) {
   return (
     <div className="metricCard">
       <div className="metricTop">
-        <span>{title}</span>
+        <span>{sentenceCase(title)}</span>
         <HelpTip className="metricHelp" text={helpText(title)} />
       </div>
       <strong>{value}</strong>

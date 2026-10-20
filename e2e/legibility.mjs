@@ -156,7 +156,7 @@ for (const layout of ['classic', 'new']) {
     await page.waitForTimeout(600);
     await page
       .locator('.nlBar')
-      .getByRole('button', { name: /^Save draft/ })
+      .getByRole('button', { name: /^Save$/ })
       .click();
     await page.waitForTimeout(900);
     await open('#/bots/acme-support/versions?publish=1', '.stPublishPanel .modalCreate');
@@ -181,6 +181,22 @@ for (const layout of ['classic', 'new']) {
     await look('versions');
     await open('#/bots/acme-support/deploy', '.dashMain');
     await look('deploy');
+    await open('#/bots/acme-support/questions', '.inQ');
+    await page.locator('.inQ .inMore').first().click();
+    await look('questions');
+    await page.locator('.inBell').click();
+    await page.waitForSelector('.inAlert', { timeout: 15000 });
+    await look('alerts');
+    await page.locator('.sideLink', { hasText: 'Live' }).click();
+    await page.waitForSelector('.lvCard', { timeout: 20000 });
+    await page.waitForTimeout(800);
+    await look('live');
+    await page.locator('.sideLink', { hasText: 'Cost and speed' }).click();
+    await page.waitForSelector('.csStats', { timeout: 30000 });
+    await page.locator('.csFold').click();
+    await look('cost');
+    await open('#/bots/front-desk/cost', '.csStats');
+    await look('agent cost');
     await context.close();
   }
 }

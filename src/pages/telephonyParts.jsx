@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { sentenceCase } from '../ui/text.js';
 
 // The parts the Telephony pages share: a table with search, column choice and row actions, and the dialog frame with its labelled fields.
 
@@ -134,7 +135,7 @@ export function TelephonyTablePanel({
           <thead>
             <tr>
               {visibleIndexes.map((index) => (
-                <th key={columns[index]}>{columns[index]}</th>
+                <th key={columns[index]}>{sentenceCase(columns[index])}</th>
               ))}
               {hasActions && (
                 <th className="actionsCol">
@@ -245,7 +246,7 @@ export function TelephonyDialog({ eyebrow, title, subtitle, onClose, children, f
       >
         <div className="createModalHeader">
           <div>
-            <span className="createEyebrow">{eyebrow}</span>
+            <span className="createEyebrow">{sentenceCase(eyebrow)}</span>
             <h2 id="telephony-dialog-title">{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>

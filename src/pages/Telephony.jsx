@@ -17,6 +17,8 @@ import {
 import { TelephonyDialog, DialogField, TelephonyTablePanel } from './telephonyParts.jsx';
 import { LiveNumbersPage, useLiveNumbers } from './LiveNumbers.jsx';
 import { Glyph, HelpTip, Logo, ProfileMenu, SHORTCUT_LABEL, StatusBadge, ThemeToggle, helpText, openHelpDialog } from './shared.jsx';
+import { sentenceCase } from '../ui/text.js';
+import { StyleMenu } from '../ui/StylePicker.jsx';
 
 // The Telephony pages are a local mock: everything here is kept in this browser and nothing is sent to any phone system.
 // Said plainly on every section, so nobody believes a number or a trunk exists.
@@ -92,7 +94,7 @@ export function TelephonyPage({
         >
           <span className="workspaceAvatar">{getInitials(workspaceName).slice(0, 1)}</span>
           <span className="workspaceCopy">
-            <small>WORKSPACE</small>
+            <small>Workspace</small>
             <strong>{workspaceName}</strong>
           </span>
           <b className="buttonChevron">{workspaceOpen ? '⌃' : '⌄'}</b>
@@ -181,6 +183,7 @@ export function TelephonyPage({
             <button className="quietButton" type="button" onClick={openHelpDialog}>
               ? <span>Help</span>
             </button>
+            <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <ProfileMenu profile={profile} initials={initials} compact onAccountOpen={onAccountOpen} onSignOut={onSignOut} />
           </div>
@@ -553,7 +556,7 @@ function CallDetailDialog({ call, onClose, onOpenSessions }) {
       <section className="createModal statusDialog callDetailDialog">
         <div className="createModalHeader">
           <div>
-            <span className="createEyebrow">{call.simulated ? 'SIMULATED CALL' : 'CALL'}</span>
+            <span className="createEyebrow">{call.simulated ? 'Simulated call' : 'Call'}</span>
             <h2 id="call-detail-title">Call #{call.id.slice(-6).toUpperCase()}</h2>
             <p>
               {call.from} to {call.to}, {formatShortDate(call.startedAt)}
@@ -867,7 +870,16 @@ function TelephonyCallsPage({ telephony, onNavigateSection, agents = [], onChang
           note={longest ? `Longest ${formatDuration(longest.holdSec)}${overLimit ? `, ${overLimit} over the rule limit` : ''}` : 'Time callers spend waiting'}
           accent
         />
-        <TelephonyStat label="REAL CALLS" value="See Calls" note="This page only knows the calls you simulate" accent />
+        <TelephonyStat
+          label="REAL CALLS"
+          value={
+            <button type="button" className="telephonyStatLink" onClick={() => onOpenSessions?.()}>
+              Open Calls →
+            </button>
+          }
+          note="This page only knows the calls you simulate"
+          accent
+        />
         <TelephonyStat
           label="CALLS WITH ISSUES"
           value={String(withIssues)}
@@ -1264,7 +1276,7 @@ function TelephonyStat({ label, value, note, accent, mono }) {
   return (
     <div className="telephonyStatCard">
       <div className="telephonyStatLabel">
-        {label}
+        {sentenceCase(label)}
         <HelpTip text={helpText(label)} />
       </div>
       <strong className={`${accent ? 'accentValue' : ''} ${mono ? 'monoValue' : ''}`}>{value}</strong>

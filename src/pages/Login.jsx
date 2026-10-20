@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Logo, ThemeToggle } from './shared.jsx';
 import { isDemoMode, setDemoMode } from '../demo/demoMode.js';
+import { StyleMenu } from '../ui/StylePicker.jsx';
 
 export function Login({ theme, onToggleTheme, onLogin, onBack }) {
   const [keep, setKeep] = useState(true);
@@ -23,13 +24,14 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
         </button>
         <Logo />
         <div className="headerTools">
-          <div className="headerHint">AI AGENT WORKSPACE</div>
+          <div className="headerHint">AI agent workspace</div>
+          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
       </header>
       <div className="loginWrap">
         <div className="loginIntro">
-          <div className="eyebrow cyan">WELCOME BACK</div>
+          <div className="eyebrow cyan">Welcome back</div>
           <h1>Pick up where you left off.</h1>
           <p>Your agents, tests, configurations, and workspace settings stay together in one place.</p>
           <div className="loginHighlights">
@@ -61,7 +63,7 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
           }}
         >
           <div className="loginCardTop">
-            <span className="cardEyebrow">DEMO SIGN-IN</span>
+            <span className="cardEyebrow">Demo sign-in</span>
             <span className="lockMark">⌁</span>
           </div>
           <h2>Sign in to Weave</h2>
@@ -180,14 +182,15 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
         </button>
         <Logo />
         <div className="headerTools">
-          <div className="headerHint">FIRST-TIME SETUP</div>
+          <div className="headerHint">First-time setup</div>
+          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
       </header>
 
       <main className="profileSetupWrap">
         <section className="profileSetupIntro">
-          <div className="eyebrow cyan">LET’S SET UP YOUR WORKSPACE</div>
+          <div className="eyebrow cyan">Let’s set up your workspace</div>
           <h1>Before you start building, tell us a little about you.</h1>
           <p>We’ll use these details to personalize your workspace. You only need to do this once.</p>
           <div className="setupStepsMini">
@@ -212,7 +215,7 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
         <form className="profileCard" onSubmit={submit}>
           <div className="profileCardTop">
             <div>
-              <span className="cardEyebrow">YOUR DETAILS</span>
+              <span className="cardEyebrow">Your details</span>
               <h2>Welcome to Weave</h2>
             </div>
             <span className="profileStep">1 / 1</span>

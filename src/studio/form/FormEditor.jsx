@@ -17,6 +17,7 @@ import '../relations/relations.css';
 import { useSchema } from './useSchema.js';
 import { useChannelTypes } from './useChannelTypes.js';
 import './form.css';
+import './formLook.css';
 
 // Sections whose content depends on something that isn't built yet, said where the author is working (see the API's "what is not there yet").
 export const SECTION_NOTES = {
@@ -93,8 +94,9 @@ export default function FormEditor({
       const root = contentRef.current;
       if (!root) return;
       const active = document.activeElement;
-      if (active && active !== document.body && root.contains(active)) return;
-      const nodes = [...root.querySelectorAll('[data-path]')];
+      if (active && active !== document.body && (root.contains(active) || active.closest?.('.stFSheet'))) return;
+      // a sheet open over the screen comes first: what was deleted was in it
+      const nodes = [...document.querySelectorAll('.stFSheet [data-path]'), ...root.querySelectorAll('[data-path]')];
       let key = pathKey || '';
       while (key) {
         const node = nodes.find((item) => item.getAttribute('data-path') === key);
@@ -211,7 +213,8 @@ export default function FormEditor({
       const attempt = (n) => {
         const root = contentRef.current;
         if (root) {
-          const nodes = [...root.querySelectorAll('[data-path]')];
+          // what is inside a sheet (a group deeper in the screen) is found there once the sheet is open
+          const nodes = [...document.querySelectorAll('.stFSheet [data-path]'), ...root.querySelectorAll('[data-path]')];
           for (let i = path.length; i >= 1; i -= 1) {
             const wanted = keyOf(path.slice(0, i));
             const el = nodes.find((node) => node.dataset.path === wanted);
@@ -390,6 +393,11 @@ export default function FormEditor({
   const sectionSchema = schema.properties[section];
   const shape = sectionSchema ? engine.resolveShape(sectionSchema, config[section]) : null;
   const present = section in config;
+  // A section the agent doesn't have yet is drawn like one it has, with its defaults (an empty list, a group's default values): the first change puts it in
+  // the draft. So there is no "Add this section" step before the real "Add". Only a section with no plain shape to draw keeps a button.
+  const sectionKind = sectionSchema ? engine.kindOf(engine.resolveShape(sectionSchema, config[section])) : null;
+  const drawable = present || ['object', 'array', 'map'].includes(sectionKind);
+  const sectionValue = present ? config[section] : drawable && sectionSchema ? engine.defaultFor(sectionSchema) : undefined;
   const required = (schema.required || []).includes(section);
   const part = !!view?.only; // a screen that is only part of a section
   const visibleViews = embedded ? allViews : (groups.find((g) => g.id === activeGroup) || groups[0] || { views: [] }).views;
@@ -441,33 +449,36 @@ export default function FormEditor({
                 })}
               </div>
             )}
-            <div className="stFNavChips">
-              {visibleViews.map((v) => {
-                const c = countUnder(v.key);
-                const isSet = v.key in config;
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    data-section={v.id}
-                    className={`stFChipBtn ${v.id === view?.id ? 'on' : ''} ${isSet ? '' : 'unset'}`}
-                    aria-current={v.id === view?.id ? 'true' : undefined}
-                    onClick={() => setViewId(v.id)}
-                  >
-                    {v.label}
-                    {c.errors > 0 ? (
-                      <b className="stFBadge" title={`${c.errors} error${c.errors === 1 ? '' : 's'}`}>
-                        {c.errors}
-                      </b>
-                    ) : c.warnings > 0 ? (
-                      <b className="stFBadge warn" title={`${c.warnings} warning${c.warnings === 1 ? '' : 's'}`}>
-                        {c.warnings}
-                      </b>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+            {/* a page that holds one screen needs no tab for it */}
+            {!(embedded && visibleViews.length < 2) && (
+              <div className="stFNavChips">
+                {visibleViews.map((v) => {
+                  const c = countUnder(v.key);
+                  const isSet = v.key in config;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      data-section={v.id}
+                      className={`stFChipBtn ${v.id === view?.id ? 'on' : ''} ${isSet ? '' : 'unset'}`}
+                      aria-current={v.id === view?.id ? 'true' : undefined}
+                      onClick={() => setViewId(v.id)}
+                    >
+                      {v.label}
+                      {c.errors > 0 ? (
+                        <b className="stFBadge" title={`${c.errors} error${c.errors === 1 ? '' : 's'}`}>
+                          {c.errors}
+                        </b>
+                      ) : c.warnings > 0 ? (
+                        <b className="stFBadge warn" title={`${c.warnings} warning${c.warnings === 1 ? '' : 's'}`}>
+                          {c.warnings}
+                        </b>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </nav>
         )}
 
@@ -553,15 +564,17 @@ export default function FormEditor({
                 )}
               </div>
               {present && !required && !part && (
+                // taking the section out leaves an empty list, or a group back on its defaults: the button says which
                 <button
                   type="button"
                   className="stFDel"
+                  title={sectionKind === 'object' ? 'Take these settings out: the agent uses the defaults again' : 'Take every item of this list out'}
                   onClick={() => {
                     markDelete(`the ${view.label} section`);
                     commit(section, undefined);
                   }}
                 >
-                  Delete section
+                  {sectionKind === 'object' ? 'Reset to defaults' : 'Remove all'}
                 </button>
               )}
               {present && required && !part && (
@@ -570,7 +583,7 @@ export default function FormEditor({
                 </span>
               )}
             </header>
-            {present ? (
+            {drawable ? (
               <div data-path={section}>
                 <OwnerCtx.Provider value={section}>
                   {section === 'agents' && !part && (
@@ -586,14 +599,14 @@ export default function FormEditor({
                   {part ? (
                     <ObjectBody
                       shape={shape}
-                      value={config[section]}
+                      value={sectionValue}
                       path={[section]}
                       onChange={(v) => commit(section, v)}
                       onlyKeys={view.only}
                       showUnknown={view.id === allViews.filter((x) => x.key === section).slice(-1)[0]?.id}
                     />
                   ) : (
-                    <Node schema={sectionSchema} value={config[section]} path={[section]} onChange={(v) => commit(section, v)} />
+                    <Node schema={sectionSchema} value={sectionValue} path={[section]} onChange={(v) => commit(section, v)} />
                   )}
                 </OwnerCtx.Provider>
               </div>
