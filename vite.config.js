@@ -10,8 +10,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const target = env.AGENT_BUILDER_URL || 'http://localhost:8100';
   const apiKey = env.AGENT_BUILDER_API_KEY;
-  // Who the API records as the user. Set here, on the server side, never taken from the browser. In production the
-  // proxy in front of the app sets it from the verified sign-in (see docs/PRODUCTION.md).
+  // Who the API records as the user. The browser sends the person signed in to the Studio (the API guide asks for it); when
+  // AGENT_BUILDER_USER is set it replaces that, as the proxy in front of the app does in production from the verified sign-in
+  // (see docs/PRODUCTION.md).
   const trustedUser = env.AGENT_BUILDER_USER || '';
   const proxy = {
     '/api': {
@@ -21,9 +22,11 @@ export default defineConfig(({ mode }) => {
       headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
       configure: (proxy) => {
         proxy.on('proxyReq', (proxyReq) => {
-          // Whatever the browser claims about who it is, is dropped; the proxy decides.
-          proxyReq.removeHeader('x-user');
-          if (trustedUser) proxyReq.setHeader('X-User', trustedUser);
+          // A trusted name set on this server wins over whatever the browser claims.
+          if (trustedUser) {
+            proxyReq.removeHeader('x-user');
+            proxyReq.setHeader('X-User', trustedUser);
+          }
           if (!apiKey) proxyReq.removeHeader('authorization');
         });
       },
