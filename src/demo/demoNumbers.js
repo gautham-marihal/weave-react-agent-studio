@@ -1,10 +1,11 @@
 // Phone numbers, IMITATED for demo mode and for the tests (FRONTEND_GUIDE 10.5). The real API creates a LiveKit SIP inbound trunk and dispatch rule for a number
 // and reads the numbers other people set up by hand; here there is no phone system, so the numbers are kept in the demo's own state and nothing is connected.
-// The shapes are the guide's: a check, the settings, a row with a status and a routing note. Pure apart from the state it is given.
+// The shapes are the live server's (read with GET on 2026-10-22): a check, the settings, a row with a status and a routing note; a dispatch rule of ours sends
+// calls to the builder's runtime with the bot and environment as metadata. Pure apart from the state it is given.
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const ENVIRONMENTS = ['development', 'staging', 'production'];
-const PATTERN = '^\\+?[0-9]{3,20}$';
+const PATTERN = '^\\+?[0-9]{3,15}$';
 const ok = (body, status = 200) => ({ status, body });
 const fail = (status, detail) => ({ status, body: { detail } });
 
@@ -36,13 +37,22 @@ const clean = (value) => String(value ?? '').trim();
 export function checkNumber(state, value) {
   const number = clean(value);
   if (!new RegExp(PATTERN).test(number))
-    return { status: 'invalid', reason: 'Use digits only, with an optional + at the start (3 to 20 digits).', warnings: [] };
+    return { number, status: 'invalid', reason: 'Use digits only, with an optional + at the start (3 to 15 digits, no spaces).', owner: null, warnings: [] };
   const ours = list(state.numbers).find((n) => n.number === number);
-  if (ours) return { status: 'taken_by_builder', owner: { bot: ours.bot, environment: ours.environment }, warnings: [] };
+  if (ours)
+    return {
+      number,
+      status: 'taken_by_builder',
+      owner: { trunk: `agent-builder ${ours.bot}`, bot: ours.bot, environment: ours.environment, agents: ruleAgents(ours) },
+      warnings: [],
+    };
   const hand = HAND_MADE.find((n) => n.number === number);
-  if (hand) return { status: 'taken_external', owner: { trunk: hand.trunk.name }, warnings: [] };
+  if (hand) return { number, status: 'taken_external', owner: { trunk: hand.trunk.name, agents: hand.rule.agents }, warnings: [] };
   return { number, status: 'free', owner: null, warnings: number.startsWith('+') ? [] : ['A number without a + may be read as an extension.'] };
 }
+
+// Our dispatch rule sends calls to the builder's runtime, naming the bot and environment in its metadata.
+const ruleAgents = (record) => [['agent-builder-runtime', JSON.stringify({ bot: record.bot, ref: record.environment })]];
 
 // The row for one number: the guide's fields, with the status worked out from what is deployed to its environment.
 export function rowOf(state, record) {
@@ -58,10 +68,10 @@ export function rowOf(state, record) {
   return {
     number: record.number,
     managed: true,
-    trunk: { id: record.trunk_id, name: `builder ${record.number}` },
+    trunk: { id: record.trunk_id, name: `agent-builder ${record.bot}` },
     bot: record.bot,
     environment: record.environment,
-    rule: { id: record.rule_id, name: `builder ${record.bot} ${record.environment}`, agents: [[record.bot, record.environment]] },
+    rule: { id: record.rule_id, name: `agent-builder ${record.bot} (${record.environment})`, agents: ruleAgents(record) },
     options: { ...record.options },
     problems,
     deployment: { deployed: !!version, version },
@@ -70,7 +80,7 @@ export function rowOf(state, record) {
     routing: lastCall ? 'calls_arriving' : 'no_calls_yet',
     routing_note: lastCall
       ? ''
-      : 'Creating a trunk does not make a number ring. Whoever runs the phone system (FreeSWITCH) must also route this number to LiveKit’s SIP service.',
+      : `No call to ${record.number} has been logged yet. If calls are expected, whoever runs the phone system (FreeSWITCH) must route ${record.number} to the LiveKit SIP service.`,
     status: problems.length ? 'problem' : lastCall ? 'ready' : 'waiting_for_calls',
   };
 }

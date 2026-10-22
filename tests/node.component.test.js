@@ -121,6 +121,34 @@ test('a voice channel on an agent with no speech models offers “Add default sp
   await app.unmount();
 });
 
+test('a phone line asks for no number, trunk or routing rule: the platform sets them up; old notes are shown and can be removed (FRONTEND_GUIDE 4)', async () => {
+  const phone = {
+    id: 'phone',
+    type: 'sip_voice',
+    enabled: true,
+    entry: { dnis: '+6561234567', sip_trunk: 'main', dispatch_rule: 'acme-in' },
+    modalities: { input: ['audio'], output: ['audio'] },
+    greeting: { say: 'Hi' },
+  };
+  const app = await open(base({ channels: [phone] }), 'channels');
+  const block = $(app.container, '[data-route="platform"]');
+  assert.ok(block, 'the phone line says how callers reach it');
+  assert.match(textOf(block), /Through a phone number\. Add one for this agent under Releases › Deploy/);
+  assert.equal($$(block, 'input').length, 0, 'nothing to fill in');
+  assert.equal($(app.container, '.stChannelAdvanced'), null, 'no Advanced fold with a trunk and a rule');
+  const notes = $(block, '[data-note="route-notes"]');
+  assert.match(textOf(notes), /only a note: calls are not routed by them/);
+  assert.match(textOf(notes), /\+6561234567/);
+  await a.click($$(notes, 'button').find((b) => /Remove these notes/.test(textOf(b))));
+  assert.deepEqual(app.config.channels[0].entry, {}, 'the notes are gone; the empty entry a phone line needs stays');
+  assert.equal($(app.container, '[data-note="route-notes"]'), null);
+  await app.unmount();
+  // a new phone line has nothing to note
+  const fresh = await open(base({ channels: [{ ...phone, entry: {} }] }), 'channels');
+  assert.equal($(fresh.container, '[data-note="route-notes"]'), null);
+  await fresh.unmount();
+});
+
 test('a long list of tools can be searched, filtered by kind and narrowed to the unused, and each card says who uses it', async () => {
   const tools = Array.from({ length: 12 }, (_, i) => ({
     id: `lookup_${i}`,

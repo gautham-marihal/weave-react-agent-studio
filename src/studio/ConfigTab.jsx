@@ -16,6 +16,7 @@ import ChangesPanel from './changes/ChangesPanel.jsx';
 import { useLatestPublished } from './changes/useLatestPublished.js';
 import { changesSince, revertSection } from './changes/sinceRelease.js';
 import Icon from '../ui/Icon.jsx';
+import { askConfirm } from '../ui/dialogs.js';
 
 const LINE_HEIGHT = 20;
 
@@ -382,8 +383,17 @@ export default function ConfigTab({ editor, focusPath, botId, preview }) {
   const format = () => {
     if (!parsed.error && editor.isObject) editor.setText(prettyJson(parsed.value));
   };
-  const discard = () => {
-    if (dirty && !window.confirm('Discard your unsaved edits and reload the saved draft?')) return;
+  const discard = async () => {
+    if (
+      dirty &&
+      !(await askConfirm({
+        title: 'Discard your unsaved edits?',
+        body: 'The saved draft is loaded again, and what you changed since the last save is lost.',
+        confirmLabel: 'Discard edits',
+        tone: 'danger',
+      }))
+    )
+      return;
     editor.reload();
   };
   const canSave = dirty && !saving && !parsed.error && editor.isObject;

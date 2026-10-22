@@ -160,8 +160,9 @@ export const SETTINGS = {
   dispatch_name: E('Dispatch name', 'Deprecated and ignored.', 'expert'),
 
   // channels
-  entry: E('How callers reach it', 'The details that connect this channel to a number or a website. They depend on the kind of channel.', 'guided'),
-  dnis: E('Phone number it answers', 'The number callers dial to reach this agent.', 'guided', '+6561234567'),
+  entry: E('How callers reach it', 'Notes on how this channel is reached. They depend on the kind of channel; the runtime reads none of them.', 'guided'),
+  // the phone system's own record of the number (telephony.pbx.dnis); a channel's notes of its route are worded in CONTEXT
+  dnis: E('Phone number it answers', 'The number callers dial to reach this agent. It is written in the call records.', 'guided', '+6561234567'),
   sip_trunk: E('Phone line (trunk)', 'The carrier connection the calls arrive on.', 'expert'),
   dispatch_rule: E('Routing rule', 'The rule that sends a call on this number to this agent.', 'expert'),
   widget_id: E('Chat widget id', 'Identifies the chat widget on your website that talks to this agent.', 'guided'),
@@ -390,7 +391,11 @@ export const SETTINGS = {
   size: E('Passage length (characters)', 'Smaller passages match a question more exactly; larger ones carry more context.', 'expert'),
   overlap: E('Overlap (characters)', 'Characters repeated between passages.', 'expert'),
   embedding: E('Search model', 'The model that turns text into something searchable.', 'expert'),
-  refresh: E('Rebuild automatically', 'How often to rebuild the index. Manual means only when you press the button.', 'detailed'),
+  refresh: E(
+    'How often to rebuild',
+    'How often the index should be rebuilt. The server doesn’t rebuild indexes on a timer yet, so press Build after the files change.',
+    'detailed',
+  ),
   retrieval: E('How a search behaves', 'Limits and wording for searches of this knowledge.', 'detailed'),
   min_score: E('How closely a passage must match', 'Passages that match less closely are dropped. Test a search to choose it.', 'detailed', '0.5'),
   max_chars: E('Most text per search', 'The most passage text given to the model for one search.', 'detailed'),
@@ -555,6 +560,10 @@ export const SETTINGS = {
 
 // ---- context overrides: "parent.name" where one name means different things in different places -------------------------------------------
 export const CONTEXT = {
+  // a phone channel's route is set up by the platform when a number is added (Releases › Deploy): these are only old notes, never asked for
+  'entry.dnis': E('Phone number (note)', 'A note of the number callers dial. Numbers are added under Releases › Deploy; this note connects nothing.', 'expert'),
+  'entry.sip_trunk': E('Phone line (note)', 'A note of the carrier connection. The platform sets up the trunk when a number is added.', 'expert'),
+  'entry.dispatch_rule': E('Routing rule (note)', 'A note of the routing rule. The platform sets up the rule when a number is added.', 'expert'),
   'meta.name': E('Name', 'What people see in lists. The agent speaks as this unless the personality sets another name.', 'guided'),
   'persona.name': E('The agent’s name', 'How the agent introduces itself.', 'guided', 'Sam'),
   'identity.caller_id': E('Caller’s number', 'How the caller’s number is worked out.', 'detailed'),

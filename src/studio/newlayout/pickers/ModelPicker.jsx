@@ -72,10 +72,13 @@ function ModelList({ part, config, set, providers }) {
       <ul className="pkModelList" aria-label={`${part.title} models`}>
         {rows.map((row) => (
           <li key={`${row.provider}/${row.id}`} className={row.selected ? 'on' : ''}>
+            {/* a provider whose plugin isn't installed on the server can't run: shown, not chosen (the one in use stays visible) */}
             <button
               type="button"
               aria-pressed={row.selected}
               aria-label={`${row.selected ? 'Using' : 'Use'} ${row.label} from ${row.providerName}`}
+              disabled={!row.installed && !row.selected}
+              title={!row.installed ? `${row.providerName} isn’t installed on this server, so its models can’t run here.` : undefined}
               onClick={() => choose(row)}
             >
               <span className="pkModelText">

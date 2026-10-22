@@ -224,7 +224,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           <div className="pvStage">
             {/* a shortcut for the mouse: the button below is the one for everyone */}
             <button type="button" className="pvOrbButton" onClick={start} tabIndex={-1} aria-hidden="true">
-              <AiOrb size={132} />
+              <AiOrb size="var(--pv-orb, 132px)" />
             </button>
           </div>
           <strong>No conversation yet</strong>
@@ -237,7 +237,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
 
       {state === 'loading' && (
         <div className="pvLoading" role="status" aria-live="polite">
-          <AiOrb size={96} state="thinking" />
+          <AiOrb size="var(--pv-orb-small, 96px)" state="thinking" />
           <strong>{LOADING_TEXT[session.status] || 'Connecting…'}</strong>
           <span>
             {session.agentHint

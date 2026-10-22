@@ -57,7 +57,9 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
   const [category, setCategory] = useState('All');
   const [connections, setConnections] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('weave_integrations') || '{}');
+      // connection details by integration id; anything else saved under this name starts it empty
+      const saved = JSON.parse(localStorage.getItem('weave_integrations') || '{}');
+      return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
     } catch {
       return {};
     }
@@ -112,10 +114,11 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
           <p>Connect the systems your agents rely on and keep connection details in one place.</p>
         </div>
         <div className="featureHealth">
-          <span className="healthSignal" />
+          {/* green only when something is connected; none yet is not a problem, so it is grey, not red */}
+          <span className={`healthSignal ${Object.keys(connections).length ? '' : 'idle'}`} aria-hidden="true" />
           <div>
             <small>Workspace connections</small>
-            <strong>{Object.keys(connections).length} connected</strong>
+            <strong>{Object.keys(connections).length ? `${Object.keys(connections).length} connected` : 'None connected yet'}</strong>
           </div>
         </div>
       </section>

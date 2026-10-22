@@ -120,7 +120,8 @@ export function createDemoApi({
         id: 'phone',
         type: 'sip_voice',
         enabled: true,
-        entry: { dnis: '+6531580100' },
+        // how callers reach it is a phone number the platform sets up (Releases › Deploy), never typed into the channel
+        entry: {},
         modalities: { input: ['audio'], output: ['audio'] },
         greeting: { say: 'Welcome to the front desk. How can I help you?' },
       },
@@ -230,7 +231,7 @@ export function createDemoApi({
           { name: 'silero', stages: ['vad'], installed: true, realtime_runnable: false, default_secret: null, key_available: false },
         ],
         stages: { stt: 'Speech-to-text', llm: 'Language model', tts: 'Text-to-speech', realtime: 'Realtime', vad: 'Voice activity' },
-        turn_detectors: [],
+        turn_detectors: ['livekit-multilingual', 'livekit-english'],
         note: 'Demo mode: this is a made-up list of what a server could offer, not a real server.',
       });
     }

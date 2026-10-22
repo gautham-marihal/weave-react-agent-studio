@@ -15,6 +15,7 @@ import { buildWorkflow, describeWorkflow } from '../workflow/workflowModel.js';
 import { countChanges, diffConfigs, groupChanges } from './diffConfig.js';
 import { askAssistant, loadStatus, postToModel } from './engine.js';
 import './assistant.css';
+import { askConfirm } from '../../ui/dialogs.js';
 
 // "Describe it": a place to say, in plain English, what the agent should be and do, and have the AI make the settings. Nothing is changed behind anyone's back:
 // the answer arrives as a proposal (what it built, what it assumed, what it still needs to know, what would change, how a call would move), is checked by the
@@ -186,12 +187,15 @@ export default function AssistantTab({ editor, botId, name }) {
     editor.setValue(turn.result.config);
     patchTurn(turn.id, { applied: true, undone: false, appliedAt: Date.now() });
   };
-  const undo = (turn) => {
+  const undo = async (turn) => {
     if (
       !sameJson(config, turn.result.config) &&
-      !window.confirm(
-        'The draft has been changed since this was applied. Undoing puts the draft back as it was before, and loses those later changes. Undo anyway?',
-      )
+      !(await askConfirm({
+        title: 'Undo anyway?',
+        body: 'The draft has changed since this was applied. Undoing puts it back as it was before, and loses those later changes.',
+        confirmLabel: 'Undo',
+        tone: 'danger',
+      }))
     )
       return;
     editor.setValue(turn.result.before);
@@ -274,9 +278,15 @@ export default function AssistantTab({ editor, botId, name }) {
             'Demo mode keeps everything in this browser, so nothing can be sent to an AI service. What you write here is read by simple built-in rules instead: they are not an AI model, they only look for keywords, and they make a first draft that replaces what is there.'
           ) : (
             <>
-              Add <code>ANTHROPIC_API_KEY</code> to <code>.env.local</code> and restart the server to let an AI model build and change the agent from what you
-              write. Until then, only the simple built-in rules are available: they are not an AI model, they only look for keywords, and they make a first
-              draft that replaces what is there.
+              Until the person who runs Weave turns it on, what you write here is read by simple built-in rules: they are not an AI model, they only look for
+              keywords, and they make a first draft that replaces what is there.
+              <details className="stErrDetail">
+                <summary>Details for the person who runs the server</summary>
+                <p>
+                  Add <code>ANTHROPIC_API_KEY</code> to the studio’s environment and restart it to let an AI model build and change agents from what people
+                  write.
+                </p>
+              </details>
             </>
           )}
         </Notice>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Logo } from './shared.jsx';
-import { isDemoMode, setDemoMode } from '../demo/demoMode.js';
+import { isDemoMode } from '../demo/demoMode.js';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
@@ -15,6 +15,7 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
   const emailError = submitted && !emailValid ? (email.trim() ? 'Enter a valid email address, like you@company.com.' : 'Enter your work email.') : '';
   const passwordError = submitted && !password.trim() ? 'Enter your password.' : '';
   const canLogin = emailValid && password.trim();
+  const demo = isDemoMode();
 
   return (
     <div className="loginScreen">
@@ -65,31 +66,22 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
           }}
         >
           <div className="loginCardTop">
-            <span className="cardEyebrow">Demo sign-in</span>
+            <span className="cardEyebrow">{demo ? 'Demo sign-in' : 'Sign in'}</span>
             <span className="lockMark" aria-hidden="true">
               <Icon name="shield" size={15} />
             </span>
           </div>
           <h2>Sign in to Weave</h2>
-          <p className="formIntro">Enter any email and password to continue.</p>
+          <p className="formIntro">{demo ? 'Enter any email and password to continue.' : 'Use your work email to open your workspaces.'}</p>
+          {/* sign-in isn't checked by a server yet: said plainly, because it decides who can change the agents */}
           <p className="demoNotice" role="note">
-            <b>Demo sign-in</b>
+            <b>{demo ? 'Demo sign-in' : 'Sign-in isn’t verified yet'}</b>
             <span>
-              Nothing is checked, and what you enter stays in this browser. It is not a security measure: anyone who can open this site can edit, publish and
-              deploy the agents behind it.
+              {demo
+                ? 'Nothing is checked, and what you enter stays in this browser. It is not a security measure: anyone who can open this site can edit, publish and deploy the agents behind it.'
+                : 'This copy of Weave doesn’t check passwords yet, so anyone who can open it can edit, publish and deploy its agents. Keep it where only your team can reach it.'}
             </span>
           </p>
-          {!isDemoMode() && (
-            <p className="demoNotice" role="note">
-              <b>No backend?</b>
-              <span>
-                Browse with demo data: sample agents kept in this browser, with simulated saving, publishing and deploying.{' '}
-                <button type="button" className="textAction" onClick={() => setDemoMode(true)}>
-                  Use demo data
-                </button>
-              </span>
-            </p>
-          )}
           <label className={emailError ? 'hasError' : ''}>
             <span>Work email</span>
             <input
@@ -136,10 +128,7 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
           {resetOpen && (
             <div className="resetPanel" role="region" aria-label="Reset password">
               <strong>Reset your password</strong>
-              <p>
-                In this prototype, sign-in is stored only in this browser, so there’s no password to reset. Continue with your work email and your workspaces on
-                this device will open as before.
-              </p>
+              <p>Sign-in is kept on this device for now, so there’s no password to reset. Continue with your work email and your workspaces open as before.</p>
               <div className="resetActions">
                 <button type="button" className="secondaryCta compactSecondary" disabled={!emailValid} onClick={() => onLogin(email.trim(), keep)}>
                   {emailValid ? `Continue as ${email.trim()}` : 'Enter your work email above'}
@@ -222,18 +211,17 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
               <span className="cardEyebrow">Your details</span>
               <h2>Welcome to Weave</h2>
             </div>
-            <span className="profileStep">1 / 1</span>
           </div>
-          <p className="profileIntro">These details stay with your local prototype for now.</p>
+          <p className="profileIntro">A few details to set up your workspace.</p>
 
           <label>
             <span>What should we call you?</span>
-            <input autoFocus type="text" placeholder="e.g. Gautham Marrihal" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <input autoFocus type="text" placeholder="e.g. Alex Morgan" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </label>
 
           <label>
             <span>What should we call your workspace?</span>
-            <input type="text" placeholder="e.g. Customer Support AI" value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
+            <input type="text" placeholder="e.g. Acme Inc." value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
           </label>
 
           <label>

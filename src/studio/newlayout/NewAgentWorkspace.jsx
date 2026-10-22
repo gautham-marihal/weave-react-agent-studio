@@ -13,7 +13,8 @@ import { useGate } from '../release/gate.js';
 import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
 import { useAsync } from '../useAsync.js';
 import Icon from '../../ui/Icon.jsx';
-import { Notice, Spinner } from '../ui.jsx';
+import { ErrorState, Notice, Spinner } from '../ui.jsx';
+import { SkeletonRows } from '../../ui/Skeleton.jsx';
 import AgentNav from './AgentNav.jsx';
 import { readinessSteps } from './readiness.js';
 import AgentTopBar from './AgentTopBar.jsx';
@@ -22,13 +23,14 @@ import CallersPanel from '../callers/CallersPanel.jsx';
 import GateStrip from '../release/GateStrip.jsx';
 import Drawer from './Drawer.jsx';
 import PageShell, { Section } from './PageShell.jsx';
-import { PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, tabFor } from './pages.js';
+import { PAGE_LABELS, PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, tabFor } from './pages.js';
 import AgentPage from './pages/AgentPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ListPage from './pages/ListPage.jsx';
 import { TryGuardrailsView } from '../form/TryPanels.jsx';
 import SectionPage from './pages/SectionPage.jsx';
 import './newlayout.css';
+import { askConfirm } from '../../ui/dialogs.js';
 
 const AssistantTab = lazy(() => import('../assistant/AssistantTab.jsx'));
 const DeployTab = lazy(() => import('../DeployTab.jsx'));
@@ -101,10 +103,10 @@ const CHANNEL_EXTRAS = [
   {
     key: 'schedules',
     title: 'Business hours',
-    icon: 'flag',
+    icon: 'clock',
     value: (c, n) => (n ? plural(n, 'schedule') : 'None yet. When the agent, or a person it hands over to, is available.'),
   },
-  { key: 'identity', title: 'Caller identity', icon: 'agent', value: () => 'How the agent knows who is calling' },
+  { key: 'identity', title: 'Caller identity', icon: 'user', value: () => 'How the agent knows who is calling' },
 ];
 const GUARDRAIL_LISTS = [
   {
@@ -526,7 +528,25 @@ export default function NewAgentWorkspace({ ws }) {
       <PageShell title="Releases" lead={PAGE_LEAD.releases} wide parts={RELEASE_PARTS} part={p} onPart={setPart('releases')}>
         {p === 'versions' && params?.publish === '1' && publishPanel}
         {p === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} summary={summary} />}
-        {p === 'deploy' && <DeployTab botId={botId} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
+        {p === 'deploy' && <DeployTab botId={botId} name={name} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
+      </PageShell>
+    );
+  }
+
+  // Every page reads the draft: until it has arrived they show its outline (not an empty agent, nor "the JSON needs fixing"), and if it couldn't
+  // be read, why, with a way to try again.
+  if (editor.status === 'loading') {
+    body = (
+      <div className="nlPage" aria-busy="true">
+        <span className="skeleton" style={{ width: 200, height: 30 }} aria-hidden="true" />
+        <span className="skeleton" style={{ width: '46%', height: 12, marginTop: 14 }} aria-hidden="true" />
+        <SkeletonRows rows={5} label="Loading the agent" />
+      </div>
+    );
+  } else if (editor.status === 'error') {
+    body = (
+      <PageShell title={PAGE_LABELS[page] || 'Agent'}>
+        <ErrorState error={editor.loadError} onRetry={editor.reload} what="this agent’s draft" />
       </PageShell>
     );
   }
@@ -545,8 +565,14 @@ export default function NewAgentWorkspace({ ws }) {
             {
               label: 'Discard unsaved edits and reload',
               disabled: !editor.dirty,
-              onClick: () => {
-                if (window.confirm('Discard your unsaved edits and reload the saved draft?')) editor.reload();
+              onClick: async () => {
+                const ok = await askConfirm({
+                  title: 'Discard your unsaved edits?',
+                  body: 'The saved draft is loaded again, and what you changed since the last save is lost.',
+                  confirmLabel: 'Discard edits',
+                  tone: 'danger',
+                });
+                if (ok) editor.reload();
               },
             },
             { divider: true },
@@ -651,7 +677,7 @@ export default function NewAgentWorkspace({ ws }) {
         </Drawer>
       )}
       {drawer === 'test' && !testDocked && (
-        <Drawer title="Test your agent" icon="test" onClose={() => setDrawer(null)}>
+        <Drawer title="Test your agent" icon="test" className="testDrawer" onClose={() => setDrawer(null)}>
           <ChatPreview session={session} mode={sessionMode} modeLocked={modeLocked} onMode={setSessionMode} botId={botId} editor={editor} />
         </Drawer>
       )}

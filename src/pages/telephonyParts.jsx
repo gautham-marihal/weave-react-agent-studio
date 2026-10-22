@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { sentenceCase } from '../ui/text.js';
 import { Glyph } from './shared.jsx';
 import Icon from '../ui/Icon.jsx';
+import { askConfirm } from '../ui/dialogs.js';
 
 // The parts the Telephony pages share: a table with search, column choice and row actions, and the dialog frame with its labelled fields.
 
@@ -178,8 +179,15 @@ export function TelephonyTablePanel({
                       <button
                         type="button"
                         className="tableRowDelete"
-                        onClick={() => {
-                          if (window.confirm(confirmDelete ? confirmDelete(row) : `${deleteLabel} this ${itemLabel}? This can’t be undone.`)) onDelete(row.id);
+                        onClick={async () => {
+                          const words = confirmDelete ? confirmDelete(row) : 'This can’t be undone.';
+                          const ok = await askConfirm({
+                            title: `${deleteLabel} this ${itemLabel}?`,
+                            ...(typeof words === 'string' ? { body: words } : words),
+                            confirmLabel: deleteLabel,
+                            tone: 'danger',
+                          });
+                          if (ok) onDelete(row.id);
                         }}
                       >
                         {deleteLabel}

@@ -2,6 +2,7 @@ import { useMemo, useSyncExternalStore } from 'react';
 import { TAB_IDS } from './journey.js';
 import { EXTRA_PAGE_IDS } from './newlayout/pages.js';
 import { isNewLayout } from './newlayout/layoutPref.js';
+import { askConfirm } from '../ui/dialogs.js';
 
 // Hash routes, so a bot has a link and a refresh keeps you where you were:
 //   #/bots                 the list      (#/bots?new=1 opens the create dialog)
@@ -28,18 +29,39 @@ export function routeHref(botId, tab, params) {
   return `#/bots/${botId}${tab && (tab !== 'config' || isNewLayout()) ? `/${tab}` : ''}${query}`;
 }
 
-// A page with unsaved work registers a guard; in-app navigation asks it before leaving.
+// A page with unsaved work registers a guard: a function saying what leaving would lose ("Your unsaved edits will be lost."), or '' when nothing.
+// In-app navigation asks before leaving.
 let leaveGuard = null;
 export const setLeaveGuard = (guard) => {
   leaveGuard = guard;
 };
-export const confirmLeave = () => (leaveGuard ? leaveGuard() : true);
+let agreed = false;
+// Runs `then` once leaving is fine: at once when nothing would be lost, else after the person agrees in a dialog. Whatever `then` navigates to
+// is already agreed, so it isn't asked twice.
+export function whenLeaveConfirmed(then) {
+  const lost = !agreed && leaveGuard ? leaveGuard() : '';
+  if (!lost) {
+    then();
+    return;
+  }
+  askConfirm({ title: 'Leave this agent?', body: lost, confirmLabel: 'Leave', cancelLabel: 'Stay', tone: 'danger' }).then((ok) => {
+    if (!ok) return;
+    agreed = true;
+    try {
+      then();
+    } finally {
+      agreed = false;
+    }
+  });
+}
 
 // Moves inside one agent (tab to tab) pass { guard: false }: its edits live above the tabs.
 export function navigate(href, { guard = true } = {}) {
-  if (guard && !confirmLeave()) return false;
-  window.location.hash = href;
-  return true;
+  const go = () => {
+    window.location.hash = href;
+  };
+  if (guard) whenLeaveConfirmed(go);
+  else go();
 }
 
 const subscribe = (callback) => {

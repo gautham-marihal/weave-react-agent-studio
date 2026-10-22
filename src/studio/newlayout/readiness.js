@@ -5,6 +5,7 @@
 
 import { readSimple } from '../simple/simpleModel.js';
 import { readModels } from '../models/config.js';
+import { modelLabel, providerLabel } from '../models/catalog.js';
 import { gateCheck } from '../release/gateCheck.js';
 import { tabFor } from './pages.js';
 
@@ -92,7 +93,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
       ? {
           id: 'model',
           label: 'Choose the AI model',
-          text: `${models.llm.provider} · ${models.llm.model}`,
+          text: `${providerLabel(models.llm.provider)} · ${modelLabel('llm', models.llm.provider, models.llm.model)}`, // in words: "OpenAI · GPT-4.1 Mini"
           state: 'done',
           page: 'agent',
           target: { open: 'models' },

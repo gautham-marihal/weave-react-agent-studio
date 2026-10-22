@@ -2717,3 +2717,31 @@ html[data-style="vibrant"][data-theme="dark"] body {
   --orb-base: #2e1758;
   --orb-deep: #0d0620;
 }
+
+/* ---- the chart colour of each style (see saas.css): near its identity, and passing the colour checks against the status red ---------------------- */
+html[data-style="professional"][data-theme] body {
+  --chart-1: #1f5fd6;
+}
+html[data-style="calm"][data-theme] body {
+  --chart-1: #1b8f7a;
+}
+html[data-style="premium"][data-theme] body {
+  --chart-1: #2f6fa8;
+}
+html[data-style="futuristic"][data-theme] body {
+  --chart-1: #0b86b8;
+}
+html[data-style="vibrant"][data-theme] body {
+  --chart-1: #7c3aed;
+}
+html[data-style="calm"][data-theme="dark"] body {
+  --chart-1: #2fa58c;
+}
+html[data-style="vibrant"][data-theme="dark"] body {
+  --chart-1: #8b6cf0;
+}
+html[data-style="professional"][data-theme="dark"] body,
+html[data-style="premium"][data-theme="dark"] body,
+html[data-style="futuristic"][data-theme="dark"] body {
+  --chart-1: #3987e5;
+}

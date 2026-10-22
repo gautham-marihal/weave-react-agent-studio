@@ -91,9 +91,9 @@ await page.getByPlaceholder('you@company.com').fill('asha@harbour.example');
 await page.getByPlaceholder('Enter your password').fill('a-demo-password');
 await page.getByRole('button', { name: /continue to workspace/i }).click();
 // the demo's own profile step (real sign-in brings the person's details with it)
-await page.getByPlaceholder('e.g. Gautham Marrihal').waitFor();
-await page.getByPlaceholder('e.g. Gautham Marrihal').fill('Asha Rao');
-await page.getByPlaceholder('e.g. Customer Support AI').fill('Harbour Plumbing');
+await page.getByPlaceholder('e.g. Alex Morgan').waitFor();
+await page.getByPlaceholder('e.g. Alex Morgan').fill('Asha Rao');
+await page.getByPlaceholder('e.g. Acme Inc.').fill('Harbour Plumbing');
 await page.locator('select').selectOption({ label: 'Customer Support' });
 await page.getByRole('button', { name: /continue to my workspace/i }).click();
 await page.waitForSelector('.dashMain');

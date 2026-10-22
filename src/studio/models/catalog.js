@@ -26,11 +26,21 @@ export const PROVIDER_LABELS = {
   groq: 'Groq',
   assemblyai: 'AssemblyAI',
   silero: 'Silero',
+  // turn detectors
+  'livekit-multilingual': 'LiveKit multilingual',
+  'livekit-english': 'LiveKit English',
 };
 
 // What the server image ships with (plugins installed), by stage. Used only while the real list is unavailable.
 export const FALLBACK_PROVIDERS = [
-  { name: 'openai', stages: ['stt', 'llm', 'tts', 'realtime'], installed: true, default_secret: 'OPENAI_API_KEY', key_available: null },
+  {
+    name: 'openai',
+    stages: ['stt', 'llm', 'tts', 'realtime'],
+    installed: true,
+    realtime_runnable: true,
+    default_secret: 'OPENAI_API_KEY',
+    key_available: null,
+  },
   { name: 'openai_compatible', stages: ['stt', 'llm', 'tts'], installed: true, default_secret: 'OPENAI_API_KEY', key_available: null },
   { name: 'anthropic', stages: ['llm'], installed: true, default_secret: 'ANTHROPIC_API_KEY', key_available: null },
   { name: 'deepgram', stages: ['stt', 'tts'], installed: true, default_secret: 'DEEPGRAM_API_KEY', key_available: null },
@@ -203,6 +213,22 @@ export const isRecommendedModel = (stage, provider, id) => !!id && id === defaul
 export const modelLabel = (stage, provider, id) => modelsFor(stage, provider).find((model) => model.id === id)?.label || id || '';
 
 // The providers of one stage out of a server list (or the fallback): the ones the runtime has a use for at that stage.
+// What to say beside a provider in a list of choices for a stage: its technical name, whether it can run there (GET /providers: `installed`,
+// `realtime_runnable` for a speech-to-speech model) and whether its usual key is set on the server.
+export function providerOptionNote(provider, stage) {
+  return [
+    provider.name !== providerLabel(provider.name) ? provider.name : '',
+    provider.installed === false ? 'not installed on this server' : '',
+    stage === 'realtime' && provider.installed !== false && provider.realtime_runnable === false ? 'the runtime can’t run its realtime model yet' : '',
+    provider.default_secret && provider.key_available === false ? 'no key set on the server' : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+// The turn detectors the runtime can run (GET /providers' `turn_detectors`), while the server can't be asked.
+export const FALLBACK_TURN_DETECTORS = ['livekit-multilingual', 'livekit-english'];
+
 export const providersForStage = (providers, stage) =>
   (providers || FALLBACK_PROVIDERS)
     .filter((provider) => (provider.stages || []).includes(stage))

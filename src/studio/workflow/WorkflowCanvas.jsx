@@ -25,6 +25,8 @@ const nodeWords = (n) => {
   if (n.type === 'agent') return `${n.label}, subagent${n.entry ? ', answers first' : ''}${n.stranded ? ', cannot be reached from Start' : ''}`;
   return `${n.label}${n.sub ? `: ${n.sub}` : ''}`;
 };
+// everything a block says, for its tooltip (each of its lines may end in "…")
+const nodeTip = (n) => (n.type === 'start' ? nodeWords(n) : [n.label, n.sub, n.type === 'agent' ? n.detail : ''].filter(Boolean).join('\n'));
 
 export default function WorkflowCanvas({ flow, selected, onSelect, onMove, zoom, onZoom, badges, overlay, onDeleteKey, viewportRef }) {
   const [live, setLiveState] = useState(null);
@@ -235,6 +237,7 @@ export default function WorkflowCanvas({ flow, selected, onSelect, onMove, zoom,
                 tabIndex={0}
                 aria-pressed={on}
                 aria-label={nodeWords(n)}
+                title={nodeTip(n)}
                 data-node={n.id}
                 data-type={n.type}
                 onPointerDown={(event) => startDrag(event, n)}

@@ -313,7 +313,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
       )}
       {unsupported.length > 0 && ref === 'draft' && !running && (
         <Notice kind="warn" title={`${unsupported.length} part${unsupported.length === 1 ? '' : 's'} of this agent aren’t available in the runtime yet`}>
-          The conversation may behave differently from what the config describes. The Config tab lists them under “Not available yet”.
+          The conversation may behave differently from what the configuration describes:{' '}
+          {[...new Set(unsupported.map((item) => item?.feature).filter(Boolean))].join(', ') || 'see the list of problems'}.
         </Notice>
       )}
       {error && (

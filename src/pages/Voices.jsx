@@ -5,6 +5,11 @@ import { voiceUsage } from '../studio/voiceUsage.js';
 import { useVoicePreview } from './voicePreview.js';
 import Icon from '../ui/Icon.jsx';
 
+// "English (US)" for "English (United States)": the table's language column fits on one line, the whole name is its tooltip
+const SHORT_COUNTRIES = { 'United States': 'US', 'United Kingdom': 'UK', 'United Arab Emirates': 'UAE' };
+const shortLanguage = (name) =>
+  String(name || '').replace(/\(([^)]+)\)$/, (whole, country) => (SHORT_COUNTRIES[country] ? `(${SHORT_COUNTRIES[country]})` : whole));
+
 const VOICE_LIBRARY = VOICE_CATALOG.map((voice) => ({
   ...voice,
   description: `${voice.style} ${voice.gender.toLowerCase()} voice for ${voice.language} conversations.`,
@@ -32,7 +37,9 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
   const [copied, setCopied] = useState('');
   const [favorites, setFavorites] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('weave_voice_favorites') || '[]');
+      // a list of voice ids; anything else saved under this name (an older shape, an edit by hand) starts it empty
+      const saved = JSON.parse(localStorage.getItem('weave_voice_favorites') || '[]');
+      return Array.isArray(saved) ? saved.filter((id) => typeof id === 'string') : [];
     } catch {
       return [];
     }
@@ -206,8 +213,8 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                         </div>
                       </div>
                     </td>
-                    <td>
-                      {voice.language} <small>{voice.locale}</small>
+                    <td title={voice.language}>
+                      {shortLanguage(voice.language)} <small>{voice.locale}</small>
                     </td>
                     <td>{voice.gender}</td>
                     <td>

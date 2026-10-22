@@ -21,6 +21,7 @@ import { navigate, routeHref } from './route.js';
 import { ErrorState, Modal, Notice } from './ui.jsx';
 import Icon from '../ui/Icon.jsx';
 import { SkeletonRows } from '../ui/Skeleton.jsx';
+import { askConfirm } from '../ui/dialogs.js';
 
 // a picture for each starting point in the create dialog
 const STARTER_ICONS = { support: 'agent', receptionist: 'home', knowledge: 'records', lead: 'team', appointment: 'flag', feedback: 'quote', blank: 'plus' };
@@ -251,9 +252,15 @@ function CreateBotDialog({ existingIds, onClose }) {
                   className="stFDel small"
                   aria-label={`Remove the template ${item.name}`}
                   disabled={busy}
-                  onClick={(event) => {
+                  onClick={async (event) => {
                     event.preventDefault();
-                    if (window.confirm(`Remove the template “${item.name}” from this browser? Agents already made from it are not affected.`)) {
+                    const ok = await askConfirm({
+                      title: `Remove the template “${item.name}”?`,
+                      body: 'Agents already made from it are not affected.',
+                      confirmLabel: 'Remove template',
+                      tone: 'danger',
+                    });
+                    if (ok) {
                       setTemplates(deleteTemplate(item.id));
                       if (starter === `tpl:${item.id}`) setStarter('support');
                     }

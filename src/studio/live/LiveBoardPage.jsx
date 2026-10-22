@@ -4,6 +4,7 @@ import { DemoNote } from '../../demo/DemoBadge.jsx';
 import CallDetail from '../calls/CallDetail.jsx';
 import { channelLabel } from '../calls/callModel.js';
 import { formatWhen } from '../format.js';
+import { humanize } from '../form/engine.js';
 import Drawer from '../newlayout/Drawer.jsx';
 import { Notice } from '../ui.jsx';
 import { usePref } from '../usePref.js';
@@ -48,7 +49,7 @@ function LiveCard({ call, name, hideCaller, onWatch, onOpenCall }) {
         {call.agent ? (
           <>
             {' '}
-            · with <b>{call.agent}</b>
+            · with <b>{humanize(call.agent)}</b>
           </>
         ) : null}
       </p>
@@ -67,13 +68,14 @@ function LiveCard({ call, name, hideCaller, onWatch, onOpenCall }) {
         {!call.loading && !lines.length && <li className="lvNote">Just started: nothing said yet.</li>}
         {lines.map((l) => (
           <li key={l.seq} className={`lvLine ${l.who}`}>
-            <span className="lvSpeaker">{l.who === 'caller' ? 'Caller' : l.agent || call.agent || 'Agent'}</span>
+            {/* the agent that said it, by name ("Assistant", "Billing specialist"), as a person reads it, not its id */}
+            <span className="lvSpeaker">{l.who === 'caller' ? 'Caller' : humanize(l.agent || call.agent || 'agent')}</span>
             <span className="lvText">{l.who === 'caller' && hideCaller ? <i>{hiddenWords(l)}</i> : l.text}</span>
           </li>
         ))}
         {call.thinking && (
           <li className="lvLine agent thinking" aria-label="The agent is answering">
-            <span className="lvSpeaker">{call.agent || 'Agent'}</span>
+            <span className="lvSpeaker">{humanize(call.agent || 'agent')}</span>
             <span className="lvDots" aria-hidden="true">
               <i />
               <i />
@@ -133,13 +135,16 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
   }, [board.calls, names]);
 
   const open = watching && board.calls.find((c) => c.bot === watching.bot && c.id === watching.id);
+  // why it isn't watching, when it isn't: paused, no agent yet, or the tab is out of sight (it watches again when it is back)
   const status = paused
     ? 'Paused'
-    : !board.watching
-      ? 'Waiting for the tab to be shown again'
-      : board.checkedAt
-        ? `Watching ${bots.length} agent${bots.length === 1 ? '' : 's'} · checked ${ago(Date.parse(board.checkedAt), board.nowMs)}`
-        : 'Looking for calls…';
+    : !bots.length
+      ? 'No agents to watch yet'
+      : !board.watching
+        ? 'Waiting for the tab to be shown again'
+        : board.checkedAt
+          ? `Watching ${bots.length} agent${bots.length === 1 ? '' : 's'} · checked ${ago(Date.parse(board.checkedAt), board.nowMs)}`
+          : 'Looking for calls…';
 
   return (
     <div className="lvPage">

@@ -1,3 +1,4 @@
+import { formatWhen } from '../studio/format.js';
 // The sidebar holds workspace-level things only: Home, Agents and the Calls of every agent; then the Library (what agents share: voices, integrations,
 // telephony) and Settings. Everything about ONE agent (building, testing, releasing, watching it) is inside that agent.
 export const NAV = [
@@ -36,13 +37,14 @@ export function normalizeTelephony(value) {
   return { numbers: list(value?.numbers), rules: list(value?.rules), trunks: list(value?.trunks), calls: list(value?.calls) };
 }
 
+// How long, the same way on every page: "10 s", "1 min 8 s", "1 h 5 min".
 export function formatDuration(seconds = 0) {
   const total = Math.max(0, Math.round(seconds));
-  if (total < 60) return `${total} sec`;
+  if (total < 60) return `${total} s`;
   const minutes = Math.floor(total / 60);
   const rest = total % 60;
-  if (minutes < 60) return rest ? `${minutes} min ${rest} sec` : `${minutes} min`;
-  return `${Math.floor(minutes / 60)} hr ${minutes % 60} min`;
+  if (minutes < 60) return rest ? `${minutes} min ${rest} s` : `${minutes} min`;
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
 export function sessionsInRange(list = [], range = 'Past 7 days') {
@@ -107,6 +109,10 @@ export function parseWorkspaceHash(hash) {
   return { id, section: TELEPHONY_SECTIONS.some((item) => item.id === parts[1]) ? parts[1] : 'calls' };
 }
 
+// An address that names no page (a mistyped or old link), so the workspace says "Page not found" instead of showing another page. No address
+// at all is Home; an agent's address (#/bots/...) is the Agents area's to judge.
+export const isUnknownAddress = (hash) => !!hash && !['#', '#/'].includes(hash) && !/^#\/bots/.test(hash) && !parseWorkspaceHash(hash);
+
 export function compactDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
@@ -118,19 +124,11 @@ export function agentLifecycle(agent) {
   return AGENT_LIFECYCLE.find((item) => item.status === (agent?.status || 'draft')) || AGENT_LIFECYCLE[0];
 }
 
+// The same words as formatWhen (studio/format.js), at the start of a line: "Just now", "3 hours ago", "4 days ago", then the date after a week.
 export function formatRelative(value) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  const seconds = Math.round((Date.now() - date.getTime()) / 1000);
-  if (seconds < 45) return 'Just now';
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} hr ago`;
-  const days = Math.round(hours / 24);
-  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  if (!value || Number.isNaN(new Date(value).getTime())) return '—';
+  const text = formatWhen(value, { days: 7 });
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export const RANGE_MS = { 'Past 24 hours': 86400000, 'Past 7 days': 7 * 86400000, 'Past 30 days': 30 * 86400000, 'Past 90 days': 90 * 86400000 };

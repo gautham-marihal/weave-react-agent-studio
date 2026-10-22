@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { AGENT_LIFECYCLE, agentLifecycle } from './helpers.js';
 import Icon, { ICON_NAMES } from '../ui/Icon.jsx';
 import { sentenceCase } from '../ui/text.js';
+import { whenLeaveConfirmed } from '../studio/route.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
@@ -18,6 +19,11 @@ export function isTyping(target) {
 }
 
 const HELP_COPY = {
+  // Home's "Your test conversations": the ones had in the studio's test panel, not the agents' calls
+  Conversations: 'Conversations you had with your agents in the studio’s test panel, in the selected time range. Real calls are counted at the top of Home.',
+  'Average length': 'How long a test conversation lasted on average, from start to end.',
+  Minutes: 'The time spent in test conversations, added up.',
+  Messages: 'What you said or typed to your agents in test conversations.',
   SESSIONS: 'Total number of conversation sessions recorded for the current workspace and time range.',
   'UNIQUE PARTICIPANTS': 'Number of distinct participants seen in the selected time range.',
   'TOTAL ROOMS': 'Number of rooms created or used during the selected time range.',
@@ -252,7 +258,7 @@ function placeDropdown(anchorRect, { width = 220, height = 180, avoidRect = null
   return { left, top };
 }
 
-export function ProfileMenu({ profile, initials, compact = false, onAccountOpen }) {
+export function ProfileMenu({ profile, initials, compact = false, onAccountOpen, onSignOut }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const ref = useRef(null);
@@ -273,7 +279,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
     const reposition = () => {
       if (!open || !compact || !triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
-      setPosition(placeDropdown(rect, { width: 232, height: 106 }));
+      setPosition(placeDropdown(rect, { width: 232, height: 152 }));
     };
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleEscape);
@@ -292,6 +298,21 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
     setOpen(false);
     onAccountOpen?.();
   };
+  // signing out leaves an open agent too, so unsaved edits are asked about first
+  const handleSignOut = () => {
+    setOpen(false);
+    whenLeaveConfirmed(() => onSignOut?.());
+  };
+  const signOutItem = onSignOut ? (
+    <button className="profilePopoverItem" type="button" role="menuitem" onClick={handleSignOut}>
+      <span className="profilePopoverIcon" aria-hidden="true">
+        <Icon name="signOut" size={15} />
+      </span>
+      <span>
+        <strong>Sign out</strong>
+      </span>
+    </button>
+  ) : null;
 
   return (
     <div className={`profileMenuRoot ${compact ? 'compact' : ''}`} ref={ref}>
@@ -303,7 +324,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
             const next = !value;
             if (next && compact && triggerRef.current) {
               const rect = triggerRef.current.getBoundingClientRect();
-              setPosition(placeDropdown(rect, { width: 232, height: 106 }));
+              setPosition(placeDropdown(rect, { width: 232, height: 152 }));
             }
             return next;
           });
@@ -335,7 +356,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
                 </div>
               </div>
               <div className="profilePopoverRule" />
-              <button className="profilePopoverItem" type="button" onClick={handleAccount}>
+              <button className="profilePopoverItem" type="button" role="menuitem" onClick={handleAccount}>
                 <span className="profilePopoverIcon" aria-hidden="true">
                   <Icon name="user" size={15} />
                 </span>
@@ -344,6 +365,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
                 </span>
                 <Icon name="chevronRight" size={16} />
               </button>
+              {signOutItem}
             </div>,
             document.body,
           )
@@ -357,7 +379,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
               </div>
             </div>
             <div className="profilePopoverRule" />
-            <button className="profilePopoverItem" type="button" onClick={handleAccount}>
+            <button className="profilePopoverItem" type="button" role="menuitem" onClick={handleAccount}>
               <span className="profilePopoverIcon" aria-hidden="true">
                 <Icon name="user" size={15} />
               </span>
@@ -367,6 +389,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
               </span>
               <Icon name="chevronRight" size={16} />
             </button>
+            {signOutItem}
           </div>
         ))}
     </div>

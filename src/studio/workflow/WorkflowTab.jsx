@@ -27,6 +27,7 @@ import {
   setPositions,
 } from './workflowOps.js';
 import './workflow.css';
+import { askConfirm } from '../../ui/dialogs.js';
 
 // The Workflow of an agent: how a call moves from where it starts, through the agents, to wherever it ends, as a picture that can be edited. Blocks are
 // moved by dragging them and the layout is kept in the draft; agents, lines to say, transfers, tools and the end of the call are added with the ＋ under
@@ -426,8 +427,17 @@ export default function WorkflowTab({ editor, botId }) {
           <button
             type="button"
             className="quietButton"
-            onClick={() => {
-              if (dirty && !window.confirm('Discard your unsaved edits and reload the saved draft?')) return;
+            onClick={async () => {
+              if (
+                dirty &&
+                !(await askConfirm({
+                  title: 'Discard your unsaved edits?',
+                  body: 'The saved draft is loaded again, and what you changed since the last save is lost.',
+                  confirmLabel: 'Discard edits',
+                  tone: 'danger',
+                }))
+              )
+                return;
               editor.reload();
             }}
           >

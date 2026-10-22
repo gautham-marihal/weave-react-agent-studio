@@ -15,32 +15,36 @@ import { EnvSlots } from './ui.jsx';
 // One agent in a list, as a row that opens it: name and id, where it runs (one slot per environment), its calls of the last days (`activity`: { total,
 // series } from useAgentActivity) with the alerts that hold for it (`alerts`: { count, critical }), and its latest published version and when the draft was
 // last saved. `menuItems` adds the "⋯" menu (Rename, Export, Remove). Also used on Home.
-export function BotRow({ bot, menuItems, onOpen, health, tags, activity, alerts }) {
+//   compact: Home's short table, without the technical id and tags under the name
+export function BotRow({ bot, menuItems, onOpen, health, tags, activity, alerts, compact = false }) {
   const state = stateFromHealth(bot, health);
   // Another page (Home) passes onOpen so it can switch to the Agents area too; a hash change alone wouldn't.
   const open = () => (onOpen ? onOpen(bot) : navigate(routeHref(bot.id), { guard: false }));
   const name = bot.name || bot.id;
   const max = Math.max(1, ...(activity?.series || []).map((d) => d.calls));
   return (
-    <div className={`agentRow stAgentRow ${menuItems ? 'withMenu' : ''}`}>
+    <div className={`agentRow stAgentRow ${menuItems ? 'withMenu' : ''} ${compact ? 'compact' : ''}`}>
       <button type="button" className="agentRowMain" onClick={open} aria-label={`Open ${name}`}>
         <span className="agentRowAvatar" aria-hidden="true">
           {name.slice(0, 1).toUpperCase()}
         </span>
         <span className="agentRowCopy">
+          {/* the name and its state on one line: a long name ends in "…" (all of it on hover), the state is never pushed under it */}
           <span className="stRowTitle">
-            <strong>{name}</strong>
+            <strong title={name}>{name}</strong>
             <StatePill state={state} />
           </span>
-          <small>
-            <code>{bot.id}</code>
-            {tags?.length > 0 &&
-              tags.slice(0, 3).map((tag) => (
-                <span key={tag} className="stAgentTag">
-                  {tag}
-                </span>
-              ))}
-          </small>
+          {!compact && (
+            <small>
+              <code>{bot.id}</code>
+              {tags?.length > 0 &&
+                tags.slice(0, 3).map((tag) => (
+                  <span key={tag} className="stAgentTag">
+                    {tag}
+                  </span>
+                ))}
+            </small>
+          )}
           {/* only what needs a look; an agent with nothing wrong says nothing */}
           {health && health.state !== 'unknown' && health.parts.length > 0 && (
             <span className={`stHealth ${health.state}`} title={healthTitle(health)} data-health={health.state}>
@@ -98,7 +102,7 @@ export function AgentTable({ bots, onOpen }) {
         <span>Latest version</span>
       </div>
       {bots.map((bot) => (
-        <BotRow key={bot.id} bot={bot} onOpen={onOpen} activity={activity.byBot[bot.id]} alerts={alertsByAgent[bot.id]} />
+        <BotRow key={bot.id} bot={bot} onOpen={onOpen} activity={activity.byBot[bot.id]} alerts={alertsByAgent[bot.id]} compact />
       ))}
     </div>
   );

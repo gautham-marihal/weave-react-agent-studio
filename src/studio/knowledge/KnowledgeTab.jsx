@@ -20,9 +20,11 @@ import {
   knowledgeSummary,
   lastLog,
   normalizeSearch,
+  refreshNote,
   settingsOf,
 } from './model.js';
 import './knowledge.css';
+import { askConfirm } from '../../ui/dialogs.js';
 
 // Knowledge: the files and web pages an agent answers from. A "vector store" base is searched from an index built BEFORE calls, so this is
 // where someone uploads the files, builds the index, and tries a search to see what the model would be shown and how well each passage
@@ -194,6 +196,11 @@ function BaseCard({ botId, base, config, build, buildError, onBuild, onUpload, d
           <>Used by {[...base.usedBy.agents.map((a) => `agent ${a}`), ...base.usedBy.tools.map((t) => `tool ${t}`)].join(', ')}.</>
         )}
       </p>
+      {base.buildable && refreshNote(settingsOf(config, base.id).refresh) && (
+        <p className="stFWarn" role="note" data-note="refresh">
+          {refreshNote(settingsOf(config, base.id).refresh)}
+        </p>
+      )}
 
       {base.buildable && (
         <>
@@ -390,8 +397,13 @@ function FilesCard({ botId, files, bases, editor, onChanged, inputRef }) {
       onChanged();
     } catch (e) {
       if (e?.status === 409 && !force) {
-        if (window.confirm(`${e.message}\n\nDelete it anyway? The index keeps what it had until it is rebuilt, and the base will say the file is missing.`))
-          remove(name, true);
+        const anyway = await askConfirm({
+          title: `Delete “${name}” anyway?`,
+          body: `${e.message}\n\nThe index keeps what it had until it is rebuilt, and the base will say the file is missing.`,
+          confirmLabel: 'Delete anyway',
+          tone: 'danger',
+        });
+        if (anyway) remove(name, true);
         return;
       }
       setProblems([`“${name}” wasn’t deleted: ${e?.message || 'something went wrong'}.`]);
@@ -546,7 +558,7 @@ export default function KnowledgeTab({ botId, name, editor, pollMs }) {
   if (!ready)
     return (
       <Notice kind="warn" title="The draft can’t be read right now">
-        Fix the JSON on the Config tab first.
+        Fix its JSON in the agent’s settings first.
       </Notice>
     );
 

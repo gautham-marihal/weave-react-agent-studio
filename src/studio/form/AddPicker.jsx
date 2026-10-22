@@ -5,7 +5,8 @@ import Icon from '../../ui/Icon.jsx';
 // "Add…" as a choice of jobs rather than a drop-down of kinds: each choice is a card with a sentence on what it is for, grouped, with a search
 // box when there are many. It opens in place (no dialog), picks one, and closes. A choice the runtime can't run yet says so on its card.
 // Keyboard: Tab or the arrow keys move between cards, Enter picks, Escape closes and puts focus back on the button.
-export default function AddPicker({ what, options, disabled, onPick, className = '' }) {
+//   label: shorter words on the button where the heading beside it already says what is added ("Add a check"); its name stays the whole of it
+export default function AddPicker({ what, label, options, disabled, onPick, className = '' }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const panelId = useId();
@@ -61,9 +62,10 @@ export default function AddPicker({ what, options, disabled, onPick, className =
         disabled={disabled}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
+        aria-label={label ? `Add ${what}` : undefined}
         onClick={() => (open ? close() : setOpen(true))}
       >
-        <Icon name="plus" size={14} /> Add {what}
+        <Icon name="plus" size={14} /> {label || `Add ${what}`}
       </button>
       {open && (
         <section id={panelId} ref={panelRef} className="stPickPanel" aria-label={`Add ${what}`} onKeyDown={move}>

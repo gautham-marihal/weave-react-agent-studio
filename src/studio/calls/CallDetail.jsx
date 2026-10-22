@@ -129,7 +129,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
               className="quietButton"
               onClick={() => setMakingTest(true)}
               disabled={!editor.parsed?.value}
-              title={editor.parsed?.value ? undefined : 'The draft can’t be read right now: fix the JSON on the Config tab first'}
+              title={editor.parsed?.value ? undefined : 'The draft can’t be read right now: fix its JSON in the agent’s settings first'}
             >
               Keep as a test
             </button>
@@ -169,6 +169,12 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
             <dt>Caller</dt>
             <dd>{call.caller || (/web|chat|widget/.test(String(call.channel?.type || '')) ? 'Web visitor' : 'No number')}</dd>
           </div>
+          {call.dialled && (
+            <div>
+              <dt>Number dialled</dt>
+              <dd>{call.dialled}</dd>
+            </div>
+          )}
           <div>
             <dt>Duration</dt>
             <dd>{formatSeconds(call.duration_s) || '—'}</dd>

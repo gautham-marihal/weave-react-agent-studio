@@ -175,8 +175,16 @@ export const settingsOf = (config, baseId) => {
     minScore: typeof base?.retrieval?.min_score === 'number' ? base.retrieval.min_score : undefined,
     topK: typeof base?.top_k === 'number' ? base.top_k : undefined,
     mode: base?.mode || 'tool',
+    refresh: typeof base?.refresh === 'string' ? base.refresh : 'manual',
   };
 };
+
+// A base set to rebuild on a timer: the server doesn't do that yet (FRONTEND_GUIDE 8 and 10.2), so the screen says so. '' when nothing needs saying.
+const EVERY = { hourly: 'every hour', daily: 'every day', weekly: 'every week' };
+export function refreshNote(refresh) {
+  if (!refresh || refresh === 'manual') return '';
+  return `It is set to rebuild ${EVERY[refresh] || `“${refresh}”`}, but the server doesn’t rebuild indexes on a timer yet: press Build after the files or pages change.`;
+}
 
 // Adds an uploaded file to a base's sources (once).
 export function addFileSource(config, baseId, fileId) {

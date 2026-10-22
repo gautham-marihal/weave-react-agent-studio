@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.js';
+import { askConfirm } from '../ui/dialogs.js';
 import { DialogField, TelephonyDialog, TelephonyTablePanel } from './telephonyParts.jsx';
 import Icon from '../ui/Icon.jsx';
 import {
   answeredBy,
+  changeWords,
   checkWords,
   createBody,
+  environmentOption,
   environmentWord,
+  hasPhoneChannel,
+  lastCallWords,
+  noPhoneSystem,
   normalizeCheck,
   normalizeNumberSettings,
   normalizeNumbers,
@@ -16,36 +22,63 @@ import {
   optionWords,
   parseMaxDuration,
   patchBody,
+  setUpWords,
+  setupWarnings,
   statusWords,
+  supportDetails,
 } from './numbersModel.js';
 
-// The real phone numbers of the platform (FRONTEND_GUIDE 10.5): the list (ours, and the ones set up by hand, read-only), a form that checks a number as it is
-// typed, and changing or releasing one of ours. Reading is always safe. Creating, changing and releasing change the phone system, so each is sent only when a
-// person confirms it. If the server has no numbers feature, the page returns to the local preview instead of showing an empty list.
+// The real phone numbers of the platform (FRONTEND_GUIDE 10.5): the list (ours, and the ones set up outside the builder, read-only), a form that checks a number
+// as it is typed, and changing or releasing one of ours. The person gives a number and an environment; the platform makes the trunk and dispatch rule, whose
+// names are shown only in a folded "details for support". Reading is always safe. Creating, changing and releasing change the phone system, so each is sent
+// only after the person confirms it. The same pieces draw the workspace's Telephony page (every number) and an agent's Deploy page (its own numbers).
 
-// Loads the settings and the list once; `mode` is 'loading' | 'live' | 'preview' (this server cannot do numbers, or could not be asked).
-export function useLiveNumbers(enabled) {
+// How often the list is read again while it is on screen, so "Waiting for calls" turns to "Ready" after the first call
+const REFRESH_MS = 30000;
+
+// Loads the settings and the list (every number, or one agent's), and reads them again every half minute and when the window comes back into view.
+// `mode` is 'loading' | 'live' | 'preview' (this server has no numbers feature) | 'unavailable' (it has no phone-system credentials: 503).
+export function useLiveNumbers(enabled, { botId = '' } = {}) {
   const [state, setState] = useState({ mode: 'loading', rows: [], settings: null, error: null, reloadError: null });
   const run = useRef(0);
+  const lastRead = useRef(0);
   const load = useCallback(async () => {
     const mine = (run.current += 1);
+    lastRead.current = Date.now();
     try {
-      const [settings, rows] = await Promise.all([api.numberSettings(), api.listNumbers()]);
+      const [settings, rows] = await Promise.all([api.numberSettings(), botId ? api.listBotNumbers(botId) : api.listNumbers()]);
       if (mine === run.current)
         setState({ mode: 'live', rows: normalizeNumbers(rows), settings: normalizeNumberSettings(settings), error: null, reloadError: null });
     } catch (error) {
       if (mine !== run.current) return;
       setState((old) =>
-        old.mode === 'live' && !notSupported(error)
+        old.mode === 'live' && !notSupported(error) && !noPhoneSystem(error)
           ? { ...old, reloadError: error }
-          : { mode: 'preview', rows: [], settings: null, error: notSupported(error) ? null : error },
+          : {
+              mode: noPhoneSystem(error) ? 'unavailable' : 'preview',
+              rows: [],
+              settings: null,
+              error: notSupported(error) || noPhoneSystem(error) ? null : error,
+              reloadError: null,
+            },
       );
     }
-  }, []);
+  }, [botId]);
   useEffect(() => {
-    if (enabled) load();
+    if (!enabled) return undefined;
+    load();
+    // a window coming back into view says "focus" and "visible" together: read once
+    const fresh = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastRead.current > 2000) load();
+    };
+    const timer = window.setInterval(fresh, REFRESH_MS);
+    window.addEventListener('focus', fresh);
+    document.addEventListener('visibilitychange', fresh);
     return () => {
       run.current += 1;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', fresh);
+      document.removeEventListener('visibilitychange', fresh);
     };
   }, [enabled, load]);
   return { ...state, reload: load };
@@ -55,6 +88,61 @@ const PILL = { good: 'telephonyPill good', wait: 'telephonyPill wait', bad: 'tel
 
 function useBotNames(agents) {
   return useMemo(() => Object.fromEntries(agents.map((a) => [a.id, a.name || a.id])), [agents]);
+}
+
+// What happens to a call to this number, its settings, what still has to be done, its last call, and (folded) the trunk and rule for support.
+function NumberInfo({ row, botName }) {
+  const details = supportDetails(row);
+  const last = lastCallWords(row);
+  return (
+    <span className="numberInfo">
+      {row.managed && row.problems.length > 0 ? 'A call to this number would not be answered yet.' : answeredBy(row, botName)}
+      {optionWords(row) && <small className="telephonyCellNote">{optionWords(row)}</small>}
+      {last && (
+        <small className="telephonyCellNote" data-note="last-call">
+          {last}
+        </small>
+      )}
+      {row.managed && row.routing === 'no_calls_yet' && row.routingNote && (
+        <small className="telephonyCellNote warn" data-note="routing">
+          {row.routingNote}
+        </small>
+      )}
+      {row.managed && row.problems.length > 0 && (
+        <small className="telephonyCellNote warn" data-note="problem">
+          {row.problems.join(' ')}
+        </small>
+      )}
+      {details.length > 0 && (
+        <details className="numberDetails">
+          <summary>Details for support</summary>
+          <dl>
+            {details.map((d) => (
+              <div key={d.label}>
+                <dt>{d.label}</dt>
+                <dd>{d.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
+    </span>
+  );
+}
+
+const ADMIN_NOTE = 'There are no roles on the server yet, so anyone who can open this page can do this: treat it as an administrator’s job.';
+
+// Release one of ours, once the person has said yes. Resolves to the sentence to show, or null when they said no.
+async function releaseNumber(row, botName) {
+  const yes = await askConfirm({
+    title: `Release ${row.number}?`,
+    body: `Calls to it will no longer be answered by ${botName}. This removes the trunk and dispatch rule the builder made for it, and can’t be undone.\n\n${ADMIN_NOTE}`,
+    confirmLabel: 'Release the number',
+    tone: 'danger',
+  });
+  if (!yes) return null;
+  await api.releaseNumber(row.bot, row.number);
+  return `${row.number} was released. Calls to it are no longer sent to ${botName}.`;
 }
 
 export function LiveNumbersPage({ live, agents }) {
@@ -70,25 +158,12 @@ export function LiveNumbersPage({ live, agents }) {
       searchText: `${row.number} ${row.bot} ${names[row.bot] || ''} ${row.environment} ${status.label} ${row.trunk?.name || ''}`,
       cells: [
         row.number,
-        row.managed ? names[row.bot] || row.bot || '—' : row.rule?.agents.join(', ') || row.trunk?.name || 'Set up by hand',
+        row.managed ? names[row.bot] || row.bot || '—' : row.rule?.agents.join(', ') || 'Set up outside the builder',
         row.managed ? environmentWord(row.environment) : '—',
         <span key="s" className={PILL[status.tone]} title={status.words}>
           {status.label}
         </span>,
-        <span key="d">
-          {row.managed && row.problems.length > 0 ? 'A call to this number would not be answered yet.' : answeredBy(row, names[row.bot])}
-          {optionWords(row) && <small className="telephonyCellNote">{optionWords(row)}</small>}
-          {row.managed && row.routing === 'no_calls_yet' && row.routingNote && (
-            <small className="telephonyCellNote warn" data-note="routing">
-              {row.routingNote}
-            </small>
-          )}
-          {row.managed && row.problems.length > 0 && (
-            <small className="telephonyCellNote warn" data-note="problem">
-              {row.problems.join(' ')}
-            </small>
-          )}
-        </span>,
+        <NumberInfo key="d" row={row} botName={names[row.bot]} />,
       ],
     };
   });
@@ -103,6 +178,11 @@ export function LiveNumbersPage({ live, agents }) {
       setNotice({ tone: 'bad', text: numbersProblem(error) });
     }
   };
+  const done = async (text) => {
+    setDialog(null);
+    await live.reload();
+    setNotice({ tone: 'good', text });
+  };
   const mine = live.rows.filter((r) => r.managed).length;
   return (
     <>
@@ -111,7 +191,7 @@ export function LiveNumbersPage({ live, agents }) {
           <h2>Phone numbers</h2>
           <p>
             The numbers callers dial to reach your agents. A number belongs to an agent and an environment, so a call is answered by whatever version is
-            deployed there.
+            deployed there. You give the number; the phone line and the rule that routes it are set up for you.
           </p>
         </div>
         <button
@@ -154,45 +234,155 @@ export function LiveNumbersPage({ live, agents }) {
         emptyAction={agents.length ? { label: 'Add a number', onClick: () => setDialog({ kind: 'add' }) } : null}
         onEdit={(number) => setDialog({ kind: 'edit', row: live.rows.find((r) => r.number === number) })}
         onDelete={release}
-        confirmDelete={(row) =>
-          `Release ${row.id}? Calls to it will no longer be answered by ${names[live.rows.find((r) => r.number === row.id)?.bot] || 'this agent'}. This removes the trunk and dispatch rule this builder made for it, and can’t be undone.`
-        }
+        confirmDelete={(row) => ({
+          title: `Release ${row.id}?`,
+          body: `Calls to it will no longer be answered by ${names[live.rows.find((r) => r.number === row.id)?.bot] || 'this agent'}. This removes the trunk and dispatch rule the builder made for it, and can’t be undone.\n\n${ADMIN_NOTE}`,
+        })}
       />
       <p className="telephonyDialogNote">
-        {mine} of {live.rows.length} {live.rows.length === 1 ? 'number was' : 'numbers were'} set up here. The others were set up on the phone system by hand:
-        they are shown so a number is not used twice, and can’t be changed from this page.
+        {mine} of {live.rows.length} {live.rows.length === 1 ? 'number was' : 'numbers were'} set up here. The others were set up outside the builder: they are
+        shown so a number is not used twice, and can’t be changed or released from this page. {ADMIN_NOTE}
       </p>
-      {dialog?.kind === 'add' && (
-        <NumberDialog
-          agents={agents}
-          settings={live.settings}
-          onClose={() => setDialog(null)}
-          onDone={async (text) => {
-            setDialog(null);
-            await live.reload();
-            setNotice({ tone: 'good', text });
-          }}
-        />
-      )}
+      {dialog?.kind === 'add' && <NumberDialog agents={agents} settings={live.settings} onClose={() => setDialog(null)} onDone={done} />}
       {dialog?.kind === 'edit' && dialog.row && (
-        <NumberDialog
-          existing={dialog.row}
-          agents={agents}
-          settings={live.settings}
-          onClose={() => setDialog(null)}
-          onDone={async (text) => {
-            setDialog(null);
-            await live.reload();
-            setNotice({ tone: 'good', text });
-          }}
-        />
+        <NumberDialog existing={dialog.row} agents={agents} settings={live.settings} onClose={() => setDialog(null)} onDone={done} />
       )}
     </>
   );
 }
 
-// Add a number, or change one of ours. The number is checked as it is typed.
-function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
+// One agent's numbers, on its Deploy page: what callers dial to reach it, which environment each goes to, and "Add a number". Hidden when this server has
+// no numbers feature or no phone-system credentials (rather than an empty list). `live` is useLiveNumbers(…, { botId }), read by the page so its environment
+// cards can name their numbers too; `current` is what is deployed where (GET deployments' `current`).
+export function AgentNumbers({ live, botId, botName, current }) {
+  const [dialog, setDialog] = useState(null);
+  const [notice, setNotice] = useState(null);
+  if (live.mode !== 'live') return null;
+  const agents = [{ id: botId, name: botName }];
+  const done = async (text) => {
+    setDialog(null);
+    await live.reload();
+    setNotice({ tone: 'good', text });
+  };
+  const release = async (row) => {
+    try {
+      const text = await releaseNumber(row, botName);
+      if (!text) return;
+      await live.reload();
+      setNotice({ tone: 'good', text });
+    } catch (error) {
+      setNotice({ tone: 'bad', text: numbersProblem(error) });
+    }
+  };
+  return (
+    <section className="stCard agentNumbers" aria-labelledby="agentNumbersTitle">
+      <header className="agentNumbersHead">
+        <div>
+          <h3 id="agentNumbersTitle">Phone numbers</h3>
+          <p>
+            The numbers callers dial to reach {botName}. A call to a number is answered by the version deployed to its environment. You give the number; the
+            phone line and the rule that routes it are set up for you.
+          </p>
+        </div>
+        <button type="button" className="secondaryCta compactCta" onClick={() => setDialog({ kind: 'add' })}>
+          <Icon name="plus" size={14} /> Add a number
+        </button>
+      </header>
+      {live.settings && !live.settings.livekitConfigured && (
+        <p className="telephonyCallout" role="alert">
+          This server has no phone-system (LiveKit) credentials, so numbers can be seen but not set up from here yet.
+        </p>
+      )}
+      {live.reloadError && (
+        <p className="telephonyNotice bad" role="alert">
+          The numbers could not be refreshed ({numbersProblem(live.reloadError)}), so they may be out of date.{' '}
+          <button type="button" className="stLink" onClick={live.reload}>
+            Try again
+          </button>
+        </p>
+      )}
+      {notice && (
+        <p className={`telephonyNotice ${notice.tone}`} role="status">
+          {notice.text}
+        </p>
+      )}
+      {live.rows.length === 0 ? (
+        <p className="agentNumbersEmpty">
+          No number yet. Callers can reach {botName} by phone once it has a phone line, a version with that line is deployed, and a number is added here for
+          that environment.
+        </p>
+      ) : (
+        <ul className="agentNumbersList">
+          {live.rows.map((row) => {
+            const status = statusWords(row);
+            return (
+              <li key={row.number} data-number={row.number}>
+                <div className="agentNumbersTop">
+                  <code>{row.number}</code>
+                  <span className="agentNumbersEnv">{environmentWord(row.environment)}</span>
+                  <span className={PILL[status.tone]} title={status.words}>
+                    {status.label}
+                  </span>
+                  {row.managed && (
+                    <span className="agentNumbersActions">
+                      <button type="button" className="quietButton small" onClick={() => setDialog({ kind: 'edit', row })}>
+                        Change…
+                      </button>
+                      <button type="button" className="quietButton small dangerText" onClick={() => release(row)}>
+                        Release…
+                      </button>
+                    </span>
+                  )}
+                </div>
+                <NumberInfo row={row} botName={botName} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {dialog?.kind === 'add' && <NumberDialog agents={agents} settings={live.settings} current={current} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog?.kind === 'edit' && (
+        <NumberDialog existing={dialog.row} agents={agents} settings={live.settings} current={current} onClose={() => setDialog(null)} onDone={done} />
+      )}
+    </section>
+  );
+}
+
+// What is deployed where for an agent (GET deployments' `current`), and whether a version has a phone line that is on. `given` is used when the page already
+// has the deployments (the agent's Deploy page); otherwise they are read for the agent chosen in the form.
+function useDeployedPhone(botId, env, given) {
+  const [read, setRead] = useState({ bot: '', current: null });
+  const [phones, setPhones] = useState({}); // "bot@version" -> true | false
+  useEffect(() => {
+    if (given || !botId) return undefined;
+    let gone = false;
+    api
+      .listDeployments(botId)
+      .then((result) => !gone && setRead({ bot: botId, current: result?.current || {} }))
+      .catch(() => !gone && setRead({ bot: botId, current: null }));
+    return () => {
+      gone = true;
+    };
+  }, [botId, given]);
+  const current = given || (read.bot === botId ? read.current : null);
+  const version = current ? current[env]?.version || '' : null;
+  const key = `${botId}@${version}`;
+  useEffect(() => {
+    if (!version || key in phones) return undefined;
+    let gone = false;
+    api
+      .getVersion(botId, version)
+      .then((record) => !gone && setPhones((old) => ({ ...old, [key]: hasPhoneChannel(record?.config) })))
+      .catch(() => !gone && setPhones((old) => ({ ...old, [key]: null })));
+    return () => {
+      gone = true;
+    };
+  }, [botId, version, key, phones]);
+  return { current, deployed: version, phone: version ? (phones[key] ?? null) : null };
+}
+
+// Add a number, or change one of ours. The number is checked as it is typed; before anything is sent the person sees what will happen and confirms it.
+function NumberDialog({ existing = null, agents, settings, current: givenCurrent = null, onClose, onDone }) {
   const defaults = settings?.defaults || { recordAudio: true, krisp: false, allowedAddresses: [] };
   const environments = settings?.environments || ['development', 'staging', 'production'];
   const [form, setForm] = useState(() => ({
@@ -213,6 +403,10 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
   const typed = form.number.trim();
   const shapeProblem = existing ? '' : numberProblem(typed, settings?.pattern);
   const max = parseMaxDuration(form.maxMinutes);
+  const botName = agents.find((a) => a.id === form.bot)?.name || form.bot;
+  const where = useDeployedPhone(form.bot, form.environment, givenCurrent);
+  // warn about the environment chosen for a new number, or the one an existing number is being moved to
+  const warnings = !existing || form.environment !== existing.environment ? setupWarnings({ env: form.environment, ...where, botName }) : [];
 
   // check the number as it is typed, a moment after the last key
   useEffect(() => {
@@ -236,9 +430,9 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
     };
   }, [typed, shapeProblem, existing]);
 
-  const current = !existing && check && check.number === typed ? check : null;
-  const words = current ? (current.status === 'error' ? { tone: 'bad', words: current.reason } : checkWords(current)) : null;
-  const blocked = existing ? false : !typed || !!shapeProblem || (current ? current.status !== 'free' : true);
+  const checked = !existing && check && check.number === typed ? check : null;
+  const words = checked ? (checked.status === 'error' ? { tone: 'bad', words: checked.reason } : checkWords(checked)) : null;
+  const blocked = existing ? false : !typed || !!shapeProblem || (checked ? checked.status !== 'free' : true);
 
   const submit = async () => {
     setSubmitted(true);
@@ -247,7 +441,7 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
       setProblem(
         !typed
           ? 'Type the number first.'
-          : shapeProblem || (!current ? 'One moment: the number is still being checked.' : words?.words || 'This number cannot be used.'),
+          : shapeProblem || (!checked ? 'One moment: the number is still being checked.' : words?.words || 'This number cannot be used.'),
       );
       return;
     }
@@ -256,22 +450,40 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
       return;
     }
     if (!form.bot) return;
-    setSending(true);
-    try {
-      if (existing) {
-        const body = patchBody(existing, form);
-        if (!Object.keys(body).length) {
-          onDone(`${existing.number} is unchanged.`);
-          return;
-        }
+    const answered = where.deployed ? `Calls to it will be answered by version ${where.deployed}, deployed to ${environmentWord(form.environment)} now.` : '';
+    const caution = warnings.length ? `\n\nBefore you go on: ${warnings.join(' ')}` : '';
+    if (existing) {
+      const body = patchBody(existing, form);
+      if (!Object.keys(body).length) {
+        onDone(`${existing.number} is unchanged.`);
+        return;
+      }
+      const yes = await askConfirm({
+        title: `Change ${existing.number}?`,
+        body: `${changeWords(existing, body).join('\n')}${caution}\n\nThis changes the phone system. ${ADMIN_NOTE}`,
+        confirmLabel: 'Save changes',
+      });
+      if (!yes) return;
+      setSending(true);
+      try {
         await api.changeNumber(existing.bot, existing.number, body);
         onDone(`${existing.number} was updated.`);
-      } else {
-        await api.createNumber(form.bot, createBody(form, defaults));
-        onDone(
-          `${typed} was set up for ${agents.find((a) => a.id === form.bot)?.name || form.bot} in ${environmentWord(form.environment)}. The list says whether a call to it would be answered.`,
-        );
+      } catch (error) {
+        setProblem(numbersProblem(error));
+        setSending(false);
       }
+      return;
+    }
+    const yes = await askConfirm({
+      title: `Set up ${typed}?`,
+      body: `For ${botName}, in ${environmentWord(form.environment)}. ${answered} This creates a phone line (trunk) and a dispatch rule on the phone system.${caution}\n\n${ADMIN_NOTE}`,
+      confirmLabel: 'Set up the number',
+    });
+    if (!yes) return;
+    setSending(true);
+    try {
+      const result = await api.createNumber(form.bot, createBody(form, defaults));
+      onDone(`${setUpWords(result, { number: typed, botName, env: form.environment })} The list says whether a call to it would be answered.`);
     } catch (error) {
       setProblem(numbersProblem(error));
       setSending(false);
@@ -283,7 +495,11 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
       live
       eyebrow="PHONE NUMBER"
       title={existing ? `Change ${existing.number}` : 'Add a phone number'}
-      subtitle={existing ? 'Only what you change is sent.' : 'Type the number your callers will dial. The server checks it is free, then sets it up.'}
+      subtitle={
+        existing
+          ? 'Only what you change is sent.'
+          : 'Type the number your callers will dial. The server checks it is free, then sets up the phone line and the rule that routes it.'
+      }
       onClose={sending ? () => {} : onClose}
       onSubmit={submit}
       footer={
@@ -292,7 +508,7 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
             Cancel
           </button>
           <button type="submit" className="modalCreate" disabled={sending}>
-            {sending ? 'Working…' : existing ? 'Save changes' : 'Set up this number'}
+            {sending ? 'Working…' : existing ? 'Save changes…' : 'Set up this number…'}
           </button>
         </>
       }
@@ -310,9 +526,9 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
         </DialogField>
       )}
       {!existing && typed && !shapeProblem && (
-        <p className={`telephonyCheck ${words?.tone || 'muted'}`} role="status" aria-live="polite" data-check={current?.status || (checking ? 'checking' : '')}>
-          {checking && !current ? 'Checking…' : words?.words || ''}
-          {current?.warnings.map((w) => (
+        <p className={`telephonyCheck ${words?.tone || 'muted'}`} role="status" aria-live="polite" data-check={checked?.status || (checking ? 'checking' : '')}>
+          {checking && !checked ? 'Checking…' : words?.words || ''}
+          {checked?.warnings.map((w) => (
             <small key={w} className="telephonyCellNote warn">
               {w}
             </small>
@@ -321,7 +537,7 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
       )}
       <div className="telephonyFieldRow">
         <DialogField label="Agent" hint={existing ? 'A number stays with the agent it was set up for.' : ''}>
-          <select value={form.bot} onChange={(event) => set({ bot: event.target.value })} disabled={!!existing} aria-label="Agent">
+          <select value={form.bot} onChange={(event) => set({ bot: event.target.value })} disabled={!!existing || agents.length < 2} aria-label="Agent">
             {agents.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name || a.id}
@@ -329,16 +545,21 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
             ))}
           </select>
         </DialogField>
-        <DialogField label="Environment" hint="A call is answered by the version deployed to this environment.">
+        <DialogField label="Environment" hint="A call to this number is answered by the version deployed to this environment.">
           <select value={form.environment} onChange={(event) => set({ environment: event.target.value })} aria-label="Environment">
             {environments.map((env) => (
               <option key={env} value={env}>
-                {environmentWord(env)}
+                {environmentOption(env, where.current)}
               </option>
             ))}
           </select>
         </DialogField>
       </div>
+      {warnings.length > 0 && (
+        <p className="telephonyCallout" role="note" data-note="setup-warning">
+          {warnings.join(' ')}
+        </p>
+      )}
       <details className="telephonyAdvanced">
         <summary>Advanced</summary>
         <label className="telephonyCheckbox">
@@ -379,8 +600,8 @@ function NumberDialog({ existing = null, agents, settings, onClose, onDone }) {
         </p>
       )}
       <p className="telephonyDialogNote">
-        Setting up a number creates a trunk and a dispatch rule on the phone system. It does not make the number ring: whoever runs the phone system must also
-        route it to the platform.
+        Setting up a number creates a phone line (trunk) and a dispatch rule on the phone system; you never set those up yourself. It does not make the number
+        ring: whoever runs the phone system must also route it to the platform.
       </p>
     </TelephonyDialog>
   );

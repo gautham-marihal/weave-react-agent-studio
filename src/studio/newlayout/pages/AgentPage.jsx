@@ -11,7 +11,7 @@ import VoicePicker from '../pickers/VoicePicker.jsx';
 import SimpleKey, { JsonOpenerCtx } from '../../simple/SimpleKey.jsx';
 import { languageName, readSimple, setAgentName, setGreeting, setRole, setStyleRules, setTone } from '../../simple/simpleModel.js';
 import { providerLabel } from '../../models/catalog.js';
-import { readModels, voicesFor } from '../../models/config.js';
+import { readModels, summarizeModels, voicesFor } from '../../models/config.js';
 import { useProviders } from '../../models/useProviders.js';
 import { Notice, Spinner } from '../../ui.jsx';
 import PageShell, { Section, SettingRow } from '../PageShell.jsx';
@@ -95,9 +95,11 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, openRequest 
   const voice = voicesFor(models.tts.provider).find((v) => v.voiceId === models.tts.voiceId);
   const voiceValue = models.tts.voiceId ? `${voice?.name || 'Custom voice'}${models.tts.provider ? ` · ${providerLabel(models.tts.provider)}` : ''}` : '';
   const languageValue = read.primaryLanguage ? `${languageName(read.primaryLanguage)}${read.speaks.length ? ` and ${read.speaks.length} more` : ''}` : '';
+  // in words, with the models' own names: "Language model: OpenAI GPT-4.1 Mini · Text-to-speech: ElevenLabs Flash v2.5" (not "LLM openai gpt-4.1-mini")
   const modelsValue = ['llm', 'stt', 'tts']
-    .map((id) => (models[id].provider ? `${id.toUpperCase()} ${providerLabel(models[id].provider)}${models[id].model ? ` ${models[id].model}` : ''}` : ''))
-    .filter(Boolean)
+    .map((id) => summarizeModels(config).find((m) => m.stage === id))
+    .filter((m) => m && m.set)
+    .map((m) => `${m.label}: ${m.providerName}${m.modelName ? ` ${m.modelName}` : ''}`)
     .join(' · ');
   const behaviourValue = [read.tone, read.styleRules.length ? `${read.styleRules.length} style rule${read.styleRules.length === 1 ? '' : 's'}` : '']
     .filter(Boolean)

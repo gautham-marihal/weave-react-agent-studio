@@ -56,10 +56,30 @@ export function stressConfig(engine) {
   return config;
 }
 
+function sharedName(example) {
+  const config = clone(example);
+  const scenario = {
+    id: 'hazard_reaches_safety',
+    channel: 'web-chat',
+    turns: [{ say: 'There is a sparking cable on Main Street.' }],
+    expect: [{ tool_called: 'report_hazard' }, { tool_called_with: { tool: 'report_hazard', args: { location: 'Main Street' } } }],
+  };
+  config.tests = [...(Array.isArray(config.tests) ? config.tests : []), scenario];
+  return config;
+}
+
 export function corpus(engine) {
   const out = [];
   const example = JSON.parse(readFileSync(new URL('../fixtures/agent-config.example.json', import.meta.url), 'utf8'));
   out.push({ name: 'the API’s example', source: 'example', config: example, valid: true });
+  // what found UI_REVIEW round 3's bug 2.2: one tool per channel sharing the name the model calls (report_hazard for the phone, report_hazard_chat named
+  // report_hazard for the chat), and a scenario that checks it by that name, as the runner does. A valid config: no red mark may say the tool is unknown.
+  out.push({
+    name: 'the API’s example, with a scenario that checks a tool by the name the model calls',
+    source: 'example',
+    config: sharedName(example),
+    valid: true,
+  });
   STARTERS.forEach((starter) =>
     out.push({
       name: `starter ${starter.id}`,

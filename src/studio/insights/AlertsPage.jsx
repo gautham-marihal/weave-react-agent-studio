@@ -7,6 +7,7 @@ import { Notice } from '../ui.jsx';
 import { alertAsText, effectiveRules, withStatus } from './alertsModel.js';
 import { acknowledge, clearHistory, reopen, resetRules, setNotify, setRule, snooze, useInsights, useLiveAlerts } from './insightsStore.js';
 import { CHECK_EVERY_MS, checkAlertsNow } from './useAlertWatcher.js';
+import { EmptyState } from '../newlayout/PageShell.jsx';
 import './insights.css';
 
 const ACTION_LABEL = {
@@ -77,46 +78,49 @@ export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '', compa
               {showCalls ? 'Hide the calls' : `The ${alert.callIds.length === 1 ? 'call' : `${alert.callIds.length} calls`}`}
             </button>
           )}
-          {alert.status === 'new' ? (
-            <button type="button" className="quietButton" onClick={() => acknowledge(alert.key, userName)} title="Tell others you are looking into it">
-              I’m on it
-            </button>
-          ) : (
-            <button type="button" className="quietButton" onClick={() => reopen(alert.key)}>
-              Mark as new
-            </button>
-          )}
-          <div className="inSnooze">
-            <button type="button" className="quietButton" aria-expanded={snoozeOpen} onClick={() => setSnoozeOpen((v) => !v)}>
-              Snooze
-            </button>
-            {snoozeOpen && (
-              <div className="inSnoozeMenu" role="menu" aria-label="Snooze until">
-                {[
-                  ['For an hour', () => inHours(1)],
-                  ['For 4 hours', () => inHours(4)],
-                  ['Until tomorrow, 9:00', tomorrowMorning],
-                ].map(([label, until]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      snooze(alert.key, until());
-                      setSnoozeOpen(false);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+          {/* the housekeeping, quieter and to the right: who is on it, snoozing, sharing */}
+          <span className="inMinor">
+            {alert.status === 'new' ? (
+              <button type="button" className="quietButton" onClick={() => acknowledge(alert.key, userName)} title="Tell others you are looking into it">
+                I’m on it
+              </button>
+            ) : (
+              <button type="button" className="quietButton" onClick={() => reopen(alert.key)}>
+                Mark as new
+              </button>
             )}
-          </div>
-          {!compact && (
-            <button type="button" className="quietButton" onClick={copy} title="Copy it to paste into a chat or an email">
-              <Icon name={copied ? 'check' : 'copy'} size={15} /> {copied ? 'Copied' : 'Copy'}
-            </button>
-          )}
+            <div className="inSnooze">
+              <button type="button" className="quietButton" aria-expanded={snoozeOpen} onClick={() => setSnoozeOpen((v) => !v)}>
+                Snooze
+              </button>
+              {snoozeOpen && (
+                <div className="inSnoozeMenu" role="menu" aria-label="Snooze until">
+                  {[
+                    ['For an hour', () => inHours(1)],
+                    ['For 4 hours', () => inHours(4)],
+                    ['Until tomorrow, 9:00', tomorrowMorning],
+                  ].map(([label, until]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        snooze(alert.key, until());
+                        setSnoozeOpen(false);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {!compact && (
+              <button type="button" className="quietButton" onClick={copy} title="Copy it to paste into a chat or an email">
+                <Icon name={copied ? 'check' : 'copy'} size={15} /> {copied ? 'Copied' : 'Copy'}
+              </button>
+            )}
+          </span>
         </div>
         {showCalls && (
           <ul className="inCalls">
@@ -294,6 +298,25 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
 
       {tab === 'now' && (
         <section className="inList" aria-label="Alerts right now">
+          {bots.length === 0 && (
+            <EmptyState
+              icon="bell"
+              title="No agents to watch yet"
+              text="Once you have an agent, Weave reads its calls and tells you here when something breaks: a tool failing, calls cut off, nobody calling, slow answers."
+            />
+          )}
+          {bots.length > 0 && !live.checkedAt && !live.checking && (
+            <EmptyState
+              icon="bell"
+              title="Not checked yet"
+              text="Weave checks your agents’ recent calls every few minutes while the studio is open."
+              action={
+                <button type="button" className="secondaryCta" onClick={() => checkAlertsNow()}>
+                  Check now
+                </button>
+              }
+            />
+          )}
           {!live.checkedAt && live.checking && <p className="stMuted">Reading the recent calls of your agents…</p>}
           {live.checkedAt && alerts.length === 0 && (
             <div className="inAllClear">

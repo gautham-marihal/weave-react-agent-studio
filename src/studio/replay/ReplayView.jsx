@@ -159,7 +159,7 @@ export default function ReplayView({ botId, events, editor, onMakeTest, draftLab
   const configFor = async (value) => {
     if (value === 'draft') {
       const draft = editor?.parsed?.value;
-      if (!draft) throw new Error('The draft can’t be read right now. Fix the JSON on the Config tab first.');
+      if (!draft) throw new Error('The draft can’t be read right now. Fix its JSON in the agent’s settings first.');
       return draft;
     }
     const record = await api.getVersion(botId, value);

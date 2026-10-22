@@ -15,7 +15,7 @@ const TELEPHONY_PREVIEW_COPY = {
   calls:
     'These calls are simulated in your browser to show how your rules would route a call. No real call is placed or received, and the sessions they add are kept in this browser only.',
   dispatch:
-    'Rules here are saved in this browser and route no real call. On the platform a call reaches an agent through a LiveKit SIP trunk and a dispatch rule that names the agent and its environment: when this server supports it, adding a number under Phone numbers makes both for you. Business hours, caller-prefix routing, priority, hold limits, hold messages and overflow to another agent are not features of the platform yet.',
+    'Rules here are saved in this browser and route no real call. On the platform a call reaches an agent through a SIP trunk and a dispatch rule that names the agent and its environment: when this server supports it, adding a number under Phone numbers makes both for you. Business hours, caller-prefix routing, priority, hold limits, hold messages and overflow to another agent are not features of the platform yet.',
   numbers:
     'This server does not set up phone numbers from here, so nothing is bought or connected: “Get a number” only adds a row in this browser. A real phone number is connected on the platform. A phone channel’s number field in the agent’s configuration is a description and doesn’t route calls either.',
   trunks:
@@ -71,7 +71,7 @@ export function TelephonyWorkspace({
       </div>
 
       <div className="telephonyContent">
-        {section === 'numbers' && live.mode === 'live' ? (
+        {section === 'numbers' && live.mode === 'unavailable' ? null : section === 'numbers' && live.mode === 'live' ? (
           <div className="telephonyPreview connected" role="note">
             <b>Connected</b>
             <span>
@@ -84,8 +84,21 @@ export function TelephonyWorkspace({
         )}
         {section === 'numbers' && live.mode === 'preview' && live.error && (
           <p className="telephonyNotice bad" role="alert">
-            Your real phone numbers could not be read: {live.error.message} What follows is the local preview.
+            Your phone numbers couldn’t be read ({live.error.message.replace(/\.$/, '')}). What follows is the local preview.
           </p>
+        )}
+        {/* no phone-system credentials on this server (503): the feature is hidden, not shown as an empty list or a pretend one */}
+        {section === 'numbers' && live.mode === 'unavailable' && (
+          <section className="emptyPanel" data-numbers="unavailable">
+            <div className="emptyPanelIcon" aria-hidden="true">
+              <Icon name="dial" size={22} />
+            </div>
+            <h2>Phone numbers aren’t available on this server</h2>
+            <p>
+              It has no phone-system (LiveKit) credentials, so numbers can’t be listed or set up here. Ask whoever runs the server to add them; then this page
+              lists every number and lets you add one.
+            </p>
+          </section>
         )}
         {section === 'calls' && (
           <TelephonyCallsPage
@@ -460,7 +473,7 @@ function CallDetailDialog({ call, onClose, onOpenSessions }) {
               {formatDuration(call.holdSec)}
               {call.maxHold != null && (
                 <small>
-                  {(call.agentWaitSec || 0) !== call.holdSec ? `${formatDuration(call.agentWaitSec || 0)} for the agent, ` : ''}limit {call.maxHold} sec
+                  {(call.agentWaitSec || 0) !== call.holdSec ? `${formatDuration(call.agentWaitSec || 0)} for the agent, ` : ''}limit {call.maxHold} s
                 </small>
               )}
             </dd>
@@ -613,7 +626,7 @@ function SimulateCallDialog({ telephony, agents, onClose, onSimulate }) {
       </label>
       <p className="telephonyDialogNote">
         {preview.length
-          ? `This call would match “${preview[0].name}” and go to ${agents.find((agent) => agent.id === preview[0].agentId)?.name || 'a deleted agent'} (hold limit ${ruleSettings(preview[0]).maxHold} sec).`
+          ? `This call would match “${preview[0].name}” and go to ${agents.find((agent) => agent.id === preview[0].agentId)?.name || 'a deleted agent'} (hold limit ${ruleSettings(preview[0]).maxHold} s).`
           : 'No dispatch rule matches this number, caller and time, so the call won’t be answered.'}
       </p>
     </TelephonyDialog>
@@ -685,9 +698,7 @@ function TelephonyCallsPage({ telephony, onNavigateSection, agents = [], onChang
       <span
         key="hold"
         className={`holdCell ${call.overLimit ? 'isOver' : ''}`}
-        title={
-          call.maxHold != null ? `Total time on hold. Waited ${formatDuration(call.agentWaitSec || 0)} for the agent; rule limit ${call.maxHold} sec.` : ''
-        }
+        title={call.maxHold != null ? `Total time on hold. Waited ${formatDuration(call.agentWaitSec || 0)} for the agent; rule limit ${call.maxHold} s.` : ''}
       >
         {call.ruleId ? formatDuration(call.holdSec) : '—'}
         {call.overLimit && <small>over limit</small>}
@@ -734,42 +745,49 @@ function TelephonyCallsPage({ telephony, onNavigateSection, agents = [], onChang
           </button>
         </div>
       </section>
-      <section className="telephonyStatsGrid three">
-        <TelephonyStat
-          label="SIMULATED CALLS"
-          value={String(calls.length)}
-          note={calls.length ? `In the ${range.toLowerCase()}` : 'None simulated in this time range'}
-        />
-        <TelephonyStat label="TOTAL CALL DURATION" value={formatDuration(totalConnected)} note="Combined talk time, not counting hold" />
-        <TelephonyStat
-          label="AVERAGE CALL DURATION"
-          value={formatDuration(connected.length ? totalConnected / connected.length : 0)}
-          note="Talk time per connected call"
-        />
-      </section>
-      <section className="telephonyStatsGrid three">
-        <TelephonyStat
-          label="AVERAGE HOLD TIME"
-          value={formatDuration(avgHold)}
-          note={longest ? `Longest ${formatDuration(longest.holdSec)}${overLimit ? `, ${overLimit} over the rule limit` : ''}` : 'Time callers spend waiting'}
-          accent
-        />
-        <TelephonyStat
-          label="ANSWERED BY AN AGENT"
-          value={String(connected.length)}
-          note={calls.length ? `${Math.round((connected.length / calls.length) * 100)}% of the simulated calls` : 'No simulated calls yet'}
-          accent
-        />
-        <TelephonyStat
-          label="CALLS WITH ISSUES"
-          value={String(withIssues)}
-          note={withIssues ? 'Open a call to see what happened' : 'No call issues detected'}
-          accent
-        />
-      </section>
+      {/* the numbers once there is something to count; before the first call, the table below says what to do */}
+      {(telephony.calls || []).length > 0 && (
+        <>
+          <section className="telephonyStatsGrid three">
+            <TelephonyStat
+              label="SIMULATED CALLS"
+              value={String(calls.length)}
+              note={calls.length ? `In the ${range.toLowerCase()}` : 'None simulated in this time range'}
+            />
+            <TelephonyStat label="TOTAL CALL DURATION" value={formatDuration(totalConnected)} note="Combined talk time, not counting hold" />
+            <TelephonyStat
+              label="AVERAGE CALL DURATION"
+              value={formatDuration(connected.length ? totalConnected / connected.length : 0)}
+              note="Talk time per connected call"
+            />
+          </section>
+          <section className="telephonyStatsGrid three">
+            <TelephonyStat
+              label="AVERAGE HOLD TIME"
+              value={formatDuration(avgHold)}
+              note={
+                longest ? `Longest ${formatDuration(longest.holdSec)}${overLimit ? `, ${overLimit} over the rule limit` : ''}` : 'Time callers spend waiting'
+              }
+              accent
+            />
+            <TelephonyStat
+              label="ANSWERED BY AN AGENT"
+              value={String(connected.length)}
+              note={calls.length ? `${Math.round((connected.length / calls.length) * 100)}% of the simulated calls` : 'No simulated calls yet'}
+              accent
+            />
+            <TelephonyStat
+              label="CALLS WITH ISSUES"
+              value={String(withIssues)}
+              note={withIssues ? 'Open a call to see what happened' : 'No call issues detected'}
+              accent
+            />
+          </section>
+        </>
+      )}
       <TelephonyTablePanel
         title="Calls"
-        emptyIcon="☎"
+        emptyIcon="phone"
         emptyTitle="No calls yet"
         emptyText={
           ready
@@ -842,7 +860,7 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
         routingLabel(rule),
         <RuleHoursCell key="hours" rule={rule} />,
         agentCell(rule.agentId),
-        `${r.maxHold} sec`,
+        `${r.maxHold} s`,
         r.overflow === 'agent' ? `Send to ${fallback || 'a deleted agent'}` : OVERFLOW_OPTIONS[r.overflow].short,
         String(r.priority),
         stats.count ? String(stats.count) : '—',
@@ -894,7 +912,7 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
       )}
       <TelephonyTablePanel
         title="Dispatch rules"
-        emptyIcon="⇢"
+        emptyIcon="arrowRight"
         emptyTitle="No dispatch rules yet"
         emptyText="Create a rule to decide which agent answers inbound calls."
         emptyAction={{ label: 'Create dispatch rule', onClick: () => setDialogOpen(true) }}
@@ -930,7 +948,7 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
               kind: 'telephony',
               icon: 'arrowRight',
               title: `Dispatch rule “${rule.name}” updated`,
-              detail: `${describeRuleHours(rule)}, hold limit ${ruleSettings(rule).maxHold} sec.`,
+              detail: `${describeRuleHours(rule)}, hold limit ${ruleSettings(rule).maxHold} s.`,
             });
             setEditing(null);
           }}
@@ -1100,7 +1118,7 @@ function TelephonyTrunksPage({ telephony, onChange }) {
       </div>
       <TelephonyTablePanel
         title="Inbound trunks"
-        emptyIcon="↙"
+        emptyIcon="plug"
         emptyTitle="No inbound trunks"
         emptyText="Inbound trunks bring calls from your carrier into Weave."
         emptyAction={{ label: 'Create inbound trunk', onClick: () => setDialog('inbound') }}
@@ -1502,7 +1520,7 @@ function PhoneNumberDialog({ existing, onClose, onCreate }) {
         <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="e.g. Support hotline" maxLength={40} />
       </DialogField>
       <p className="telephonyDialogNote">
-        This prototype assigns a test number from a range reserved for fictional use. It is saved with this workspace but can’t receive real calls.
+        In this preview, a test number is assigned from a range reserved for fictional use. It is saved with this workspace but can’t receive real calls.
       </p>
     </TelephonyDialog>
   );

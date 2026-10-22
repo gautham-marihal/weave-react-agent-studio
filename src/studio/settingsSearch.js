@@ -6,6 +6,10 @@ import { isObj } from './form/engine.js';
 import { describeSetting } from './form/plainLanguage.js';
 import { SKIPPED_SECTIONS, layoutFor, viewForPath } from './form/layout.js';
 
+// What the platform sets up for you and the studio never asks for: a phone channel's number, trunk and routing rule (they are made when a phone number is
+// added under Releases › Deploy). Offering them as settings would lead to a field that isn't there.
+const PLATFORM_SET = new Set(['channels.[].entry.dnis', 'channels.[].entry.sip_trunk', 'channels.[].entry.dispatch_rule']);
+
 const deref = (schema, node) => {
   let n = node;
   for (let i = 0; i < 24 && isObj(n) && n.$ref; i += 1) {
@@ -66,26 +70,28 @@ export function buildSettingsIndex(schema) {
     found.set(key, { name: key, trail: [key], jump: [key], label: words.label, purpose: words.purpose, level: words.level, example: words.example });
     walk(schema.properties[key], [key], key, []);
   });
-  const entries = [...found.values()].map((entry) => {
-    const view = viewForPath(groups, entry.jump);
-    const group = groups.find((g) => g.id === view?.group);
-    // where it is: the group and screen, then the labels of the containers above it
-    const containers = entry.trail.slice(0, -1).filter((p) => p !== '[]' && p !== '{}');
-    const crumbs = [];
-    let owner = '';
-    containers.forEach((name, i) => {
-      if (i === 0 && view && !view.only) return;
-      if (i === 0 && view?.only) return;
-      crumbs.push(describeSetting(name, { owner }).label);
-      owner = name;
+  const entries = [...found.values()]
+    .filter((entry) => !PLATFORM_SET.has(entry.trail.join('.')))
+    .map((entry) => {
+      const view = viewForPath(groups, entry.jump);
+      const group = groups.find((g) => g.id === view?.group);
+      // where it is: the group and screen, then the labels of the containers above it
+      const containers = entry.trail.slice(0, -1).filter((p) => p !== '[]' && p !== '{}');
+      const crumbs = [];
+      let owner = '';
+      containers.forEach((name, i) => {
+        if (i === 0 && view && !view.only) return;
+        if (i === 0 && view?.only) return;
+        crumbs.push(describeSetting(name, { owner }).label);
+        owner = name;
+      });
+      return {
+        ...entry,
+        screen: view ? { id: view.id, label: view.label } : null,
+        group: group ? { id: group.id, label: group.label, advanced: !!group.advanced } : null,
+        where: [group?.label, view?.label, ...crumbs].filter(Boolean).join(' › '),
+      };
     });
-    return {
-      ...entry,
-      screen: view ? { id: view.id, label: view.label } : null,
-      group: group ? { id: group.id, label: group.label, advanced: !!group.advanced } : null,
-      where: [group?.label, view?.label, ...crumbs].filter(Boolean).join(' › '),
-    };
-  });
   return entries;
 }
 

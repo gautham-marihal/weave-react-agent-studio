@@ -5,7 +5,7 @@ import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { useLiveSession } from './test/useLiveSession.js';
 import { useSimulatedSession } from './test/useSimulatedSession.js';
 import { isDemoMode } from '../demo/demoMode.js';
-import { refreshBots } from './agents.js';
+import { refreshBots, useBots } from './agents.js';
 import { applyChange, takeChange } from './pendingChange.js';
 import { compareVersions, currentStage, nextVersion, publishOptions } from './format.js';
 import Menu from './manage/Menu.jsx';
@@ -16,6 +16,7 @@ import { dismissNotes, peekNotes } from './assistantNotes.js';
 import { navigate, routeHref, setLeaveGuard } from './route.js';
 import { useGateStatus } from './release/gate.js';
 import { EnvSlots, ErrorState, Modal, Notice, Spinner } from './ui.jsx';
+import NotFound from '../ui/NotFound.jsx';
 import { useAsync } from './useAsync.js';
 import { useDraftEditor } from './useDraftEditor.js';
 import JourneyNav, { NextBar } from './JourneyNav.jsx';
@@ -87,7 +88,7 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inl
       const saved = await editor.save();
       if (!saved) {
         setPhase('idle');
-        setError({ message: 'Your edits could not be saved, so nothing was published. See the notice on the Config tab.' });
+        setError({ message: 'Your edits could not be saved, so nothing was published. Save them on their own to see what the server says.' });
         return;
       }
     }
@@ -204,7 +205,7 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inl
               : 'Fix the JSON first.'
             : !editor.report
               ? 'Wait for the check to finish.'
-              : 'Resolve the errors on the Config tab first.'}
+              : 'Fix the problems first: each one says where it is.'}
         </Notice>
       )}
       {!blocked && splitUnsupported(editor.report?.unsupported).security.length > 0 && (
@@ -227,7 +228,7 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inl
           const shown = allWarnings ? warnings : warnings.slice(0, 5);
           return (
             <Notice kind="warn" title={`${warnings.length} warning${warnings.length === 1 ? '' : 's'} before you publish`}>
-              These don’t stop a publish, and they will be in the version. Fix them on the Config tab first if they matter.
+              These don’t stop a publish, and they will be in the version. Fix them first if they matter.
               <Suspense fallback={null}>
                 <PlainIssues issues={shown} config={editor.parsed.value} />
               </Suspense>
@@ -371,10 +372,14 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
       setLeaveGuard(null);
       return undefined;
     }
-    setLeaveGuard(() => {
-      const what = [editor.dirty && 'unsaved edits', live && 'a test conversation that is still running'].filter(Boolean).join(' and ');
-      return window.confirm(`This agent has ${what}. Leave anyway?`);
-    });
+    // what leaving would lose, in a sentence (the router asks in a dialog)
+    setLeaveGuard(() =>
+      editor.dirty && live
+        ? 'Your unsaved edits will be lost, and the test conversation that is still running will end.'
+        : editor.dirty
+          ? 'Your unsaved edits will be lost.'
+          : 'The test conversation that is still running will end.',
+    );
     return () => setLeaveGuard(null);
   }, [editor.dirty, live]);
 
@@ -388,7 +393,9 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
   }, [editor.savedTick]);
   const leave = () => navigate(routeHref());
 
-  const summary = bot.data;
+  // the agent as the list of agents already knows it, until its own details arrive (so the bar doesn't show its id, or "Draft", while they load)
+  const listed = (useBots().all || []).find((b) => b.id === botId) || null;
+  const summary = bot.data || listed;
   const name = editor.savedName || summary?.name || botId;
   nameRef.current = name;
   // A voice or connection another page asked to put on this agent is applied to the draft, unsaved, for review.
@@ -421,6 +428,18 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
   const manageBot = { id: botId, name, latest_version: summary?.latest_version, deployed: summary?.deployed || {} };
   const stage = useMemo(() => currentStage(summary), [summary]);
 
+  if (bot.error && !bot.data && bot.error.kind === 'not_found') {
+    return (
+      <div className="stWorkspace">
+        <NotFound
+          title="This agent doesn’t exist"
+          text={`There is no agent called “${botId}”. It may have been deleted, or the link may be mistyped.`}
+          actionLabel="Go to agents"
+          onAction={() => navigate(routeHref(), { guard: false })}
+        />
+      </div>
+    );
+  }
   if (bot.error && !bot.data) {
     return (
       <div className="stWorkspace">
@@ -656,7 +675,7 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
             />
           )}
           {tab === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} summary={summary} />}
-          {tab === 'deploy' && <DeployTab botId={botId} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
+          {tab === 'deploy' && <DeployTab botId={botId} name={name} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
           {tab === 'scenarios' && <ScenariosTab botId={botId} name={name} editor={editor} />}
           {tab === 'knowledge' && <KnowledgeTab botId={botId} name={name} editor={editor} />}
           {tab === 'checks' && <ChecksTab botId={botId} name={name} runs={readinessRuns} onRun={onRecordReadiness} />}

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LIBRARY_NAV, NAV, SETTINGS_NAV, TELEPHONY_SECTIONS, parseWorkspaceHash, workspaceHref } from '../src/pages/helpers.js';
+import { LIBRARY_NAV, NAV, SETTINGS_NAV, TELEPHONY_SECTIONS, isUnknownAddress, parseWorkspaceHash, workspaceHref } from '../src/pages/helpers.js';
 
 // Every page of the workspace has an address, so a refresh, a bookmark and Back keep you on it; an agent keeps its own (#/bots/...).
 
@@ -34,4 +34,10 @@ test('an agent’s address, an empty one and an unknown one are not workspace pa
   assert.equal(parseWorkspaceHash('#/nowhere'), null);
   assert.equal(parseWorkspaceHash('#/calls?x=1').id, 'sessions', 'a query is ignored');
   assert.equal(workspaceHref('nowhere'), '#/home');
+});
+
+test('an address that names no page is said to be unknown; no address, a page and an agent are not', () => {
+  for (const hash of ['#/nothing-here', '#/old-link?x=1', '#/telephonyx', '#/homex']) assert.equal(isUnknownAddress(hash), true, hash);
+  for (const hash of ['', '#', '#/', '#/home', '#/calls', '#/telephony/numbers', '#/telephony/whatever', '#/bots', '#/bots/no-such-agent/home', '#/bots?new=1'])
+    assert.equal(isUnknownAddress(hash), false, hash);
 });

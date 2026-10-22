@@ -9,6 +9,7 @@ import { envLabel, ErrorState, Notice, Spinner } from './ui.jsx';
 import { useAsync } from './useAsync.js';
 import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { normalizePreflightKnowledge } from './release/checklist.js';
+import { AgentNumbers, useLiveNumbers } from '../pages/LiveNumbers.jsx';
 
 const STATUS_TEXT = { active: 'Active', pending: 'Deploying…', failed: 'Failed' };
 
@@ -92,8 +93,10 @@ function Preflight({ preflight }) {
   );
 }
 
-export default function DeployTab({ botId, initialVersion, refreshKey, onDeployed }) {
+export default function DeployTab({ botId, name = '', initialVersion, refreshKey, onDeployed }) {
   const envs = useAsync((signal) => api.environments({ signal }), []);
+  // the agent's phone numbers (when this server has them): each environment card names its own, and they are listed and added below
+  const numbers = useLiveNumbers(true, { botId });
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const deployments = useAsync((signal) => api.listDeployments(botId, { signal }), [botId, refreshKey]);
 
@@ -214,6 +217,7 @@ export default function DeployTab({ botId, initialVersion, refreshKey, onDeploye
           const item = current[env];
           const back = rollbackTarget(deployments.data, env);
           const missingSecrets = notFound[env] || [];
+          const dialled = numbers.mode === 'live' ? numbers.rows.filter((row) => row.environment === env).map((row) => row.number) : [];
           return (
             <div key={env} className={`stEnvCard ${env} ${item ? 'on' : ''}`}>
               <small>{envLabel(env)}</small>
@@ -245,6 +249,11 @@ export default function DeployTab({ botId, initialVersion, refreshKey, onDeploye
                   <strong className="none">Nothing deployed</strong>
                   <span>Callers routed here get no agent</span>
                 </>
+              )}
+              {dialled.length > 0 && (
+                <span className="stEnvNumbers" data-numbers={env} title="The phone numbers whose calls this environment answers">
+                  <Icon name="phone" size={13} /> {dialled.join(', ')}
+                </span>
               )}
             </div>
           );
@@ -399,6 +408,8 @@ export default function DeployTab({ botId, initialVersion, refreshKey, onDeploye
           <Preflight preflight={last.preflight} />
         </section>
       )}
+
+      <AgentNumbers live={numbers} botId={botId} botName={name || botId} current={known ? current : null} />
 
       <section className="stCard">
         <h3>History</h3>

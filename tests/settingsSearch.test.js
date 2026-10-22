@@ -9,7 +9,7 @@ const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.j
 const index = buildSettingsIndex(schema);
 const find = (query, limit = 5) => searchSettings(index, query, limit);
 
-test('the index has every setting the schema has, each with a plain label and a place', () => {
+test('the index has every setting the schema has (but what the platform sets up), each with a plain label and a place', () => {
   assert.ok(index.length > 1500, `a large index (${index.length})`);
   const names = new Set(index.map((e) => e.name));
   ['timeout_s', 'top_k', 'voice_id', 'recording_notice', 'session_log', 'retention_days', 'http_port', 'dispatch_name'].forEach((name) =>
@@ -40,8 +40,15 @@ test('a setting is found by what a customer would call it', () => {
 test('and by the technical name a developer knows', () => {
   assert.equal(find('timeout_s')[0].name, 'timeout_s');
   assert.ok(find('top_k').some((e) => e.label === 'How many results'));
-  assert.ok(find('dnis').some((e) => e.label === 'Phone number it answers'));
-  assert.ok(find('sip_trunk').some((e) => e.name === 'sip_trunk'));
+  assert.ok(find('dnis').some((e) => e.label === 'Phone number it answers' && e.trail.join('.') === 'telephony.pbx.dnis'));
+});
+
+test('what the platform sets up is not offered as a setting: a phone channel’s number, trunk and routing rule (FRONTEND_GUIDE 4, section 8)', () => {
+  const trails = index.map((e) => e.trail.join('.'));
+  for (const key of ['dnis', 'sip_trunk', 'dispatch_rule']) assert.ok(!trails.includes(`channels.[].entry.${key}`), key);
+  assert.deepEqual(find('sip_trunk'), []);
+  assert.deepEqual(find('dispatch_rule'), []);
+  assert.ok(trails.includes('channels.[].entry.widget_id'), 'a web chat’s widget id is still a setting');
 });
 
 test('every word typed has to match, results say where they are, and an expert setting comes after an everyday one', () => {

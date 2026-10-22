@@ -6,6 +6,8 @@ import { isObj } from '../studio/form/engine.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const stamp = (iso) => iso.replace(/[-:]/g, '').replace(/\.\d+/, '').replace(/Z?$/, 'Z');
+// the number a phone caller rang, as the runtime records it on a call (FRONTEND_GUIDE 10.3: `dialled`); a web visitor rings nothing
+const DEMO_DIALLED = '+6531580100';
 
 // The records of a conversation, like the runtime writes them: call_started, agent_entered, agent_said / user_said, tool_called, state_changed,
 // session_closed, call_ended. `messages` is [{ role: 'user' | 'assistant', text, tools?: [{ tool, args, output, error }] }].
@@ -46,7 +48,7 @@ export function buildEvents({
       room,
       channel,
       caller,
-      dialled: null,
+      dialled: channel?.type === 'sip_voice' ? DEMO_DIALLED : null,
       participant: { identity: caller || 'visitor', kind: 'standard' },
       attributes: {},
       not_supported_yet: [],
@@ -153,7 +155,7 @@ export function makeCall({
     version,
     channel,
     caller,
-    dialled: null,
+    dialled: channel?.type === 'sip_voice' ? DEMO_DIALLED : null,
     started_at: startedAt,
     status,
     last_event_at: last.t,

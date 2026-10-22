@@ -4,7 +4,7 @@ import Icon from '../../ui/Icon.jsx';
 
 // A panel that slides in from the right and keeps the page where it was. The keyboard goes into it (to the close button), Tab stays inside it, Escape
 // closes it (an open list inside it closes first), and closing puts the keyboard back on whatever opened it.
-export default function Drawer({ title, icon, onClose, children, footer = null, width = 'normal', label }) {
+export default function Drawer({ title, icon, onClose, children, footer = null, width = 'normal', label, className = '' }) {
   const ref = useRef(null);
   useEffect(() => {
     const opener = document.activeElement;
@@ -44,7 +44,14 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
       {/* on click, not on press: closing on the press would let the release land on whatever is under the scrim, so one click would both close the
           panel and open that (a menu item, a button) */}
       <div className="nlScrim" aria-hidden="true" onClick={onClose} />
-      <aside className={`nlDrawer ${width}`} role="dialog" aria-modal="true" aria-label={label || title} ref={ref} onKeyDown={keepFocusInside}>
+      <aside
+        className={`nlDrawer ${width} ${className}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label || title}
+        ref={ref}
+        onKeyDown={keepFocusInside}
+      >
         <header className="nlDrawerHead">
           {icon && (
             <span className="nlDrawerIcon" aria-hidden="true">

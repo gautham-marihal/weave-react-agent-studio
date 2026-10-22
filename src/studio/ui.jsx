@@ -166,24 +166,31 @@ export function Spinner({ label = 'Loading' }) {
   );
 }
 
+// Why something couldn't be loaded, in words for the person using the studio; what the person who runs the server needs (the server's own
+// message, the setting to check) is one click further down.
 export function ErrorState({ error, onRetry, what = 'this' }) {
   const kind = error?.kind;
   const title =
     kind === 'network'
-      ? 'Can’t reach the Agent Builder API'
+      ? 'Can’t reach the server'
       : kind === 'auth'
-        ? 'The API rejected the access key'
+        ? 'The server didn’t accept the studio’s access key'
         : kind === 'not_found'
-          ? 'Not found'
+          ? `Couldn’t find ${what}`
           : `Couldn’t load ${what}`;
-  const hint =
+  const lead =
     kind === 'network'
-      ? 'It may be down or restarting. Check that it is running, then try again.'
+      ? 'It may be down or restarting. Try again in a moment.'
       : kind === 'auth'
-        ? 'Check AGENT_BUILDER_API_KEY in .env.local and restart the dev server.'
-        : kind === 'client_bug'
-          ? 'This looks like a bug in the app, not something you did.'
-          : '';
+        ? 'Ask the person who runs Weave to check the studio’s settings.'
+        : kind === 'not_found'
+          ? 'It may have been deleted.'
+          : kind === 'client_bug'
+            ? 'This looks like a problem in the studio, not something you did.'
+            : 'Try again in a moment.';
+  const forOperator = [error?.message, kind === 'auth' ? 'Check AGENT_BUILDER_API_KEY in the studio’s environment, then restart it.' : '']
+    .filter(Boolean)
+    .join(' ');
   return (
     <Notice
       kind="error"
@@ -196,8 +203,13 @@ export function ErrorState({ error, onRetry, what = 'this' }) {
         )
       }
     >
-      {error?.message}
-      {hint ? ` ${hint}` : ''}
+      {lead}
+      {forOperator && (
+        <details className="stErrDetail">
+          <summary>Details for the person who runs the server</summary>
+          <p>{forOperator}</p>
+        </details>
+      )}
     </Notice>
   );
 }

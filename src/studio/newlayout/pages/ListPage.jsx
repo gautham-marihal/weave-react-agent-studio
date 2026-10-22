@@ -172,11 +172,13 @@ export default function ListPage({
             lead={l.lead}
             action={
               opts ? (
+                // one of several lists on the page: a quieter button, its heading says what it adds
                 <AddPicker
                   what={WHAT[l.pickerKey] || `a ${l.word}`}
+                  label={`Add a ${l.word}`}
                   options={opts}
                   onPick={(option, made) => setPanel({ list: l, index: items.length, made })}
-                  className="nlAddPicker"
+                  className="nlAddPicker quiet"
                 />
               ) : null
             }

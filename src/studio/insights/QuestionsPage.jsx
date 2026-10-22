@@ -280,7 +280,7 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
         </div>
         {answering !== group.key && (
           <div className="inActions">
-            <button type="button" className="primaryCta compactCta" disabled={!canEdit} onClick={() => setAnswering(group.key)}>
+            <button type="button" className="secondaryCta compactCta" disabled={!canEdit} onClick={() => setAnswering(group.key)}>
               Answer it
             </button>
             <DismissMenu onPick={(reason) => decideQuestion(botId, { words: group.words, text: group.text, kind: 'dismissed', reason })} />

@@ -12,6 +12,7 @@ import ResultView from './ResultView.jsx';
 import ScenarioForm from './ScenarioForm.jsx';
 import './scenarios.css';
 import Icon from '../../ui/Icon.jsx';
+import { askConfirm } from '../../ui/dialogs.js';
 
 // Test scenarios: conversations written down with what must be true afterwards, kept in the agent's draft (`tests`) and run by the
 // server's runner. A scenario with a `model_script` runs the real runtime with a scripted model (free, the same every time); one without
@@ -64,7 +65,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
   if (!ready)
     return (
       <Notice kind="warn" title="The draft can’t be read right now">
-        Fix the JSON on the Config tab first. Scenarios are part of the draft.
+        Fix its JSON in the agent’s settings first. Scenarios are part of the draft.
       </Notice>
     );
 
@@ -200,17 +201,18 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
           <input
             type="checkbox"
             checked={network}
-            onChange={(event) => {
+            onChange={async (event) => {
               if (!event.target.checked) {
                 setNetwork(false);
                 return;
               }
-              if (
-                window.confirm(
-                  'Let this run send the bot’s requests to the real systems?\n\nA scenario normally never calls a real API: its mocks answer. With this on, a request can change real data. The server refuses it unless an operator has allowed it.',
-                )
-              )
-                setNetwork(true);
+              const ok = await askConfirm({
+                title: 'Let this run send requests to the real systems?',
+                body: 'A scenario normally never calls a real API: its mocks answer. With this on, a request can change real data. The server refuses it unless an operator has allowed it.',
+                confirmLabel: 'Allow real requests',
+                tone: 'danger',
+              });
+              if (ok) setNetwork(true);
             }}
           />
           <span>
@@ -452,8 +454,14 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                         type="button"
                         className="stFDel small"
                         aria-label={`Delete ${scenario.id}`}
-                        onClick={() => {
-                          if (window.confirm(`Delete the scenario “${scenario.id}” from the draft?`)) writeTests(scenarios.filter((_, i) => i !== index));
+                        onClick={async () => {
+                          const ok = await askConfirm({
+                            title: `Delete the scenario “${scenario.id}”?`,
+                            body: 'It is taken out of the draft. Until you save, reloading the draft brings it back.',
+                            confirmLabel: 'Delete scenario',
+                            tone: 'danger',
+                          });
+                          if (ok) writeTests(scenarios.filter((_, i) => i !== index));
                         }}
                       >
                         Delete

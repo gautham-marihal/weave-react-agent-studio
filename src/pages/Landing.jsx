@@ -3,6 +3,7 @@ import { Logo, openHelpDialog, openInfoDialog } from './shared.jsx';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
+import AiOrb from '../studio/preview/AiOrb.jsx';
 
 const LANDING_MENUS = {
   Product: [
@@ -76,10 +77,10 @@ function LandingNav({ onStart }) {
         onClick={() => {
           setOpen(null);
           openInfoDialog({
-            eyebrow: 'PRICING',
+            eyebrow: 'Pricing',
             title: 'Pricing isn’t published yet',
             body: 'Weave Agent Studio is in early access.',
-            detail: 'Pricing for this early-access prototype hasn’t been announced. You can create and test agents in the meantime.',
+            detail: 'Pricing will be announced before general availability. Until then you can create and test agents.',
           });
         }}
       >
@@ -154,8 +155,9 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
               </div>
               <span className="statusPill">Ready</span>
             </div>
-            <div className="assistantFace">
-              <Icon name="sparkle" size={22} />
+            {/* the same orb the studio's test conversation shows, in the style's colours */}
+            <div className="assistantFace orbFace">
+              <AiOrb size={84} state="live" />
             </div>
             <div className="showcaseTitle">Your agent is ready.</div>
             <div className="showcaseText">Ask questions, take action, and hand off to a person when needed.</div>
@@ -196,15 +198,15 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           <div className="showcaseCard showcaseConfig">
             <div className="miniHeading">Under the hood</div>
             <div className="configLine">
-              <span>model</span>
-              <b>gpt-5</b>
+              <span>Model</span>
+              <b>GPT-5</b>
             </div>
             <div className="configLine">
-              <span>voice</span>
-              <b>elevenlabs</b>
+              <span>Voice</span>
+              <b>ElevenLabs</b>
             </div>
             <div className="configLine">
-              <span>tools</span>
+              <span>Tools</span>
               <b>4 enabled</b>
             </div>
           </div>

@@ -859,3 +859,62 @@
   white-space: nowrap;
   padding: 5px 11px;
 }
+
+/* ---- the panel fits whatever height it is given. Its head, its banners and the box to type in keep their size; the middle (the orb before a
+   conversation, the conversation during one) takes what is left, and scrolls inside only as a last resort, so the box to type in is never
+   squeezed or cut off. Where the panel has a fixed height (beside the page, or sliding over it), it measures itself (container "testpanel") and,
+   as it gets shorter, the orb shrinks, then the sentence under it goes, then the orb. ---- */
+.pvPanel > :is(.pvHead, .pvBanner, .pvSave, .pvHud, .pvHint, .pvEnded, .pvComposer) {
+  flex: none;
+}
+.pvPanel > :is(.pvEmpty, .pvLoading, .pvLog, .pvError) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.pvPanel > .pvLog {
+  min-height: 0;
+}
+/* centred while there is room, scrolled from its top (never cut off at the top) when there isn't */
+.pvPanel > :is(.pvEmpty, .pvLoading) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+.pvPanel > :is(.pvEmpty, .pvLoading) > :first-child {
+  margin-top: auto;
+}
+.pvPanel > :is(.pvEmpty, .pvLoading) > :last-child {
+  margin-bottom: auto;
+}
+@container testpanel (max-height: 600px) {
+  .pvPanel {
+    --pv-orb: 96px;
+    --pv-orb-small: 80px;
+  }
+  .pvPanel .pvStage {
+    padding: 16px 0 10px;
+  }
+}
+@container testpanel (max-height: 500px) {
+  .pvPanel {
+    --pv-orb: 72px;
+    --pv-orb-small: 64px;
+  }
+  .pvPanel .pvStage {
+    padding: 10px 0 6px;
+  }
+  .pvPanel > .pvEmpty > span {
+    display: none;
+  }
+}
+@container testpanel (max-height: 400px) {
+  .pvPanel > .pvEmpty > .pvStage {
+    display: none;
+  }
+  .pvPanel .pvLoading .aiOrb {
+    --orb-size: 48px !important;
+    margin-bottom: 8px;
+  }
+}

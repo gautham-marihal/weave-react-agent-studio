@@ -39,6 +39,8 @@ function DayBars({ series }) {
   const every = series.length > 16 ? 5 : series.length > 8 ? 2 : 1;
   const counts = series.length <= 16;
   const total = series.reduce((n, d) => n + d.calls, 0);
+  // numbers on the busiest day and the latest only (the rest are in each column's tooltip and on the y axis)
+  const busiest = series.reduce((best, d, i) => (d.calls > series[best].calls ? i : best), 0);
   return (
     <div className="mnChart" role="img" aria-label={`Calls per day over the past ${series.length} days: ${total} in all`}>
       <div className="mnY" aria-hidden="true">
@@ -63,7 +65,7 @@ function DayBars({ series }) {
                 title={`${dayLabel(d.day)}: ${d.calls} ${d.calls === 1 ? 'call' : 'calls'}${d.cutOff ? `, ${d.cutOff} cut off` : ''}${d.handoffs ? `, ${d.handoffs} handed over` : ''}`}
               >
                 <div className="mnStack">
-                  {d.calls > 0 && counts && <b className="mnNum">{d.calls}</b>}
+                  {d.calls > 0 && counts && (i === busiest || i === series.length - 1) && <b className="mnNum">{d.calls}</b>}
                   {d.calls === 0 && <i className="mnZero" />}
                   {d.calls > 0 && (
                     <div className="mnBar" style={{ height: `${h}%` }}>
@@ -229,7 +231,7 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
             <header>
               <h2>Calls per day</h2>
               <span className="mnLegend">
-                <i className="a" /> ended <i className="b" /> cut off
+                <i className="a" /> Ended <i className="b" /> Cut off
               </span>
             </header>
             <DayBars series={report.series} />

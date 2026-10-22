@@ -589,7 +589,13 @@ html[data-theme] body .quickAction > .wIcon:last-child {
   margin-left: auto;
   color: var(--dim);
 }
-html[data-theme] body .ovStat:has(.ovSpark) > small {
+/* the small bars beside the number, not beside the line under it: that line gets the whole width and stays on one line like the other cards' */
+html[data-theme] body .ovStat > .ovSpark {
+  top: 40px;
+  bottom: auto;
+  height: 30px;
+}
+html[data-theme] body .ovStat:has(.ovSpark) > strong {
   padding-right: 96px;
 }
 html[data-theme] body .clFilters select.stFInput,
@@ -693,7 +699,759 @@ html[data-theme] body .wfSection h4 {
   letter-spacing: normal;
 }
 
-/* paragraphs end on more than one word */
+/* paragraphs end on more than one word. The longhand, not "text-wrap": that shorthand also switches wrapping back on, which undid every one-line
+   text cut with "…" (a block's words spilled out of it). tests/textWrap.test.js keeps the shorthand out. */
 html[data-theme] body :is(p, .stFHelp, .nlHint, small) {
-  text-wrap: pretty;
+  text-wrap-style: pretty;
+}
+
+/* ---- a decision (ui/DialogHost.jsx): the studio's own confirm and notice, small and above every other layer ---------------------------------- */
+html[data-theme] body .decisionOverlay {
+  z-index: 7000;
+}
+html[data-theme] body .decisionDialog {
+  width: min(460px, 100%);
+  padding: 22px 22px 18px;
+  border-radius: var(--r-card);
+}
+html[data-theme] body .decisionHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+html[data-theme] body .decisionIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--muted);
+}
+html[data-theme] body .decisionIcon.danger {
+  background: color-mix(in srgb, var(--danger-text) 12%, var(--panel));
+  color: var(--danger-text);
+}
+html[data-theme] body .decisionHead h2 {
+  margin: 6px 0 0;
+  font-size: var(--fs-lg);
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: var(--textStrong);
+}
+html[data-theme] body .decisionHead p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  white-space: pre-line;
+}
+html[data-theme] body .decisionActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+html[data-theme] body .decisionActions > button {
+  min-height: 38px;
+  padding: 0 16px;
+}
+/* the button for something that can't be undone */
+html[data-theme] body .dangerCta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: var(--danger-text);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 550;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(16, 16, 20, 0.12);
+}
+html[data-theme="dark"] body .dangerCta {
+  color: #1c0a0b;
+}
+html[data-theme] body .dangerCta:hover {
+  filter: brightness(1.08);
+}
+html[data-theme] body .dangerCta:focus-visible,
+html[data-theme] body .decisionActions .quietButton:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--ink));
+  outline-offset: 2px;
+}
+
+/* ---- a page that broke (ui/ErrorBoundary.jsx): what happened, a way on, and the details for support -------------------------------------------- */
+html[data-theme] body .pageCrash {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  max-width: 560px;
+  margin: 72px auto;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--panel);
+  box-shadow: var(--shadow-xs);
+}
+html[data-theme] body .pageCrash.full {
+  margin: 0 auto;
+  position: relative;
+  top: 18vh;
+}
+html[data-theme] body .pageCrashIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--danger-text) 12%, var(--panel));
+  color: var(--danger-text);
+}
+html[data-theme] body .pageCrash h1 {
+  margin: 6px 0 0;
+  font-size: var(--fs-xl);
+  letter-spacing: -0.01em;
+  color: var(--textStrong);
+}
+html[data-theme] body .pageCrash > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+html[data-theme] body .pageCrashActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+html[data-theme] body .pageCrashDetails {
+  width: 100%;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+html[data-theme] body .pageCrashDetails summary {
+  cursor: pointer;
+}
+html[data-theme] body .pageCrashDetails pre {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+html[data-theme] body .pageCrashDetails .quietButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+html[data-theme] body .pageCrashIcon.neutral {
+  background: var(--surface2);
+  color: var(--muted);
+}
+
+/* ---- Settings: two columns that fill on their own -------------------------------------------------------------------------------------------- */
+html[data-theme] body .settingsColumn {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+html[data-theme] body .healthSignal.idle {
+  background: var(--dim);
+  box-shadow: none;
+}
+
+/* the workspace's Alerts page is as wide as its other pages (inside an agent, Questions keeps its reading width) */
+html[data-theme] body .dashContent > .inPage {
+  max-width: none;
+}
+
+/* the landing page's preview shows the studio's own orb, so its old square goes */
+html[data-theme] body .assistantFace.orbFace.orbFace {
+  width: auto;
+  height: auto;
+  margin: 26px auto 18px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* ---- no network: a strip across the top of the workspace (ui/Connectivity.jsx) --------------------------------------------------------------- */
+html[data-theme] body .offlineBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 24px 0;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--warn-text) 35%, var(--line));
+  border-radius: var(--r-control);
+  background: color-mix(in srgb, var(--warn-text) 9%, var(--panel));
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+html[data-theme] body .offlineBanner > svg {
+  flex: none;
+  color: var(--warn-text);
+}
+
+/* ---- for keyboards: "Skip to content", out of sight until it has the focus ------------------------------------------------------------------ */
+html[data-theme] body .skipLink {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 9000;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: var(--ink);
+  color: var(--on-ink);
+  font: inherit;
+  font-weight: 600;
+  transform: translateY(-160%);
+  transition: transform 0.15s ease;
+}
+html[data-theme] body .skipLink:focus-visible {
+  transform: none;
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+html[data-theme] body #pageContent :is(h1, h2)[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Home's "Build an agent from an idea": the orb on a quiet surface (the old teal glow and orbit lines are gone) */
+html[data-theme] body .starterVisual {
+  background: radial-gradient(60% 60% at 50% 50%, color-mix(in srgb, var(--surface2) 60%, var(--panel)), var(--panel) 75%);
+  border-right: 1px solid var(--line);
+}
+html[data-theme] body .starterVisual::before {
+  display: none;
+}
+html[data-theme] body .offlineBanner.serverDown {
+  border-color: color-mix(in srgb, var(--danger-text) 30%, var(--line));
+  background: color-mix(in srgb, var(--danger-text) 7%, var(--panel));
+}
+html[data-theme] body .offlineBanner.serverDown > svg {
+  color: var(--danger-text);
+}
+html[data-theme] body .offlineBanner > .quietButton {
+  margin-left: auto;
+  flex: none;
+}
+
+/* ---- charts: one data colour per style, checked for colour-blind readers and contrast in light and dark (the style's own accent is often too
+   pale, too grey or too close to red for that), and the status red for what went wrong. Columns at most 24 px with a 4 px rounded top, a 2 px
+   gap in the surface colour between stacked parts, solid hairline gridlines. ---- */
+html[data-theme] body {
+  --chart-1: #2a78d6;
+  --chart-crit: #d03b3b;
+}
+html[data-theme="dark"] body {
+  --chart-1: #3987e5;
+}
+html[data-theme] body .mnBar {
+  width: min(100%, 24px);
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-1);
+}
+html[data-theme] body .mnBarCut {
+  background: var(--chart-crit);
+  box-shadow: 0 -2px 0 var(--panel);
+}
+html[data-theme] body .mnZero {
+  width: min(100%, 24px);
+}
+html[data-theme] body .mnLegend i.a {
+  background: var(--chart-1);
+}
+html[data-theme] body .mnLegend i.b {
+  background: var(--chart-crit);
+}
+html[data-theme] body .mnGrid i {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+html[data-theme] body .mnNum {
+  color: var(--muted);
+  font-weight: 500;
+}
+html[data-theme] body .csHistBar i {
+  background: var(--chart-1);
+}
+html[data-theme] body :is(.ovSpark, .stRowSpark) i.today {
+  background: var(--chart-1);
+}
+
+/* an agent's name and state stay on one line in the agent tables (a long name ends in "…", its state is never pushed under it) */
+html[data-theme] body .stRowTitle {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+html[data-theme] body .stRowTitle > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-theme] body .stRowTitle > .stPill {
+  flex: none;
+}
+
+/* Home's recent activity: a quiet list (icon, what happened, when) at a reading density, not tall cards */
+html[data-theme] body .activityRow {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom-color: var(--line);
+}
+html[data-theme] body .activityIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+html[data-theme] body .activityRow strong {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+html[data-theme] body .activityRow p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+html[data-theme] body .activityRow time {
+  align-self: start;
+  padding-top: 2px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+/* an alert's actions: what to do about it on the left (one dark button, one outlined), the housekeeping to the right as quiet text buttons */
+html[data-theme] body .inActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+html[data-theme] body .inMinor {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+html[data-theme] body .inMinor .quietButton {
+  min-height: 32px;
+  padding: 0 10px;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  font-weight: 500;
+}
+html[data-theme] body .inMinor .quietButton:hover,
+html[data-theme] body .inMinor .quietButton[aria-expanded="true"] {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+
+/* Live: the cards of a row are as tall as each other, the transcript takes the room left, and the actions sit along the bottom, the link level
+   with the button beside it (a card has a row of flags only when something needs a look) */
+html[data-theme] body .lvGrid {
+  align-items: stretch;
+}
+html[data-theme] body .lvCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+html[data-theme] body .lvCard > .lvLines {
+  flex: 1 1 auto;
+}
+html[data-theme] body .lvCardFoot {
+  margin-top: auto;
+  align-items: center;
+}
+html[data-theme] body .lvCardFoot > :is(a, .linkButton) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  line-height: 1;
+}
+
+/* Monitoring: "Open", "Replay" and "Calls" on every row are quiet text buttons that light up under the pointer, so a list of fifteen rows isn't
+   thirty boxes */
+html[data-theme] body :is(.mnRowActions, .mnCard td:last-child) .quietButton.small {
+  min-height: 28px;
+  padding: 0 9px;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+  font-weight: 500;
+}
+html[data-theme] body :is(.mnRowActions, .mnCard td:last-child) .quietButton.small:hover {
+  border-color: var(--line2);
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+
+/* Voices: a voice's language on one line, its code under it (it wrapped over three) */
+html[data-theme] body .voiceLibraryTable td:nth-child(2) {
+  max-width: none;
+  white-space: nowrap;
+}
+/* Home's narrower table: the state under the name, the same on every row (beside it there is no room for both) */
+html[data-theme] body .agentRow.compact .stRowTitle {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+html[data-theme] body .agentRow.compact .stRowTitle > strong {
+  max-width: 100%;
+}
+
+/* ---- what opens and closes in place: no browser triangle anywhere, a chevron that turns -------------------------------------------------------- */
+/* "Preview the prompt": a row like the setting rows on the same page */
+html[data-theme] body .stPromptPreview {
+  padding: 0;
+  overflow: hidden;
+}
+html[data-theme] body .stPromptPreview > summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: 10px 16px;
+  list-style: none;
+  color: var(--text);
+  font-weight: inherit;
+  cursor: pointer;
+}
+html[data-theme] body .stPromptPreview > summary::-webkit-details-marker {
+  display: none;
+}
+html[data-theme] body .stPromptPreview > summary:hover {
+  background: var(--surface2);
+}
+html[data-theme] body .stPromptPreview[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+html[data-theme] body .stPromptPreview > summary .nlRowText strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+html[data-theme] body .stPromptPreview .stPromptChev {
+  flex: none;
+  margin-left: auto;
+  color: var(--dim);
+  transition: transform 0.15s ease;
+}
+html[data-theme] body .stPromptPreview[open] .stPromptChev {
+  transform: rotate(180deg);
+}
+html[data-theme] body .stPromptPreview > .stPromptBody {
+  margin: 0;
+  padding: 14px 16px 16px;
+}
+
+/* the smaller ones: the same chevron after the words */
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  cursor: pointer;
+}
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary::-webkit-details-marker {
+  display: none;
+}
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary::after {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin: 0 2px 0 auto;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.7;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList)[open] > summary::after {
+  transform: translateY(1px) rotate(-135deg);
+}
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary:hover {
+  color: var(--textStrong);
+}
+/* the tools offered and the exact text: boxes like the other parts of the preview */
+html[data-theme] body :is(.stPromptTools, .stPromptExact) {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+html[data-theme] body :is(.stPromptTools, .stPromptExact, .stPromptExtra) > summary {
+  padding: 10px 12px;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+html[data-theme] body :is(.stPromptTools, .stPromptExact) > :not(summary) {
+  margin: 0 12px 10px;
+}
+html[data-theme] body .wfAsList > summary {
+  padding: 12px 0;
+}
+
+/* the strip under a long text: one band, the count on the left and "Insert a value" on the right, no seam between them */
+html[data-theme] body .stTpl {
+  gap: 0;
+}
+html[data-theme] body .stTpl > .stTplInsert:not(.stTplCount + .stTplInsert) {
+  grid-column: 1 / -1;
+}
+html[data-theme] body .stTplInsert > summary {
+  justify-content: flex-end;
+}
+html[data-theme] body .stTplInsert > summary::after {
+  margin-left: 0;
+}
+html[data-theme] body .stTplInsert > .stTplChips:first-of-type {
+  margin-top: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] body .stPromptPreview .stPromptChev,
+  html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary::after {
+    transition: none;
+  }
+}
+/* inside the open preview: the greeting lines sit inside their box like the text above them, and the boxes under it are evenly spaced */
+html[data-theme] body .stPromptSection > .stPromptSay {
+  margin: 0;
+  padding: 8px 10px 0;
+}
+html[data-theme] body .stPromptSection > .stPromptSay:last-child {
+  padding-bottom: 10px;
+}
+html[data-theme] body .stPromptBody > .stPromptExtra {
+  margin-top: 0;
+}
+
+/* a list page with several lists (Guardrails): the page's main button stays the one strong button; each list's "Add" is a quiet one */
+html[data-theme] body .nlSection > header .nlAddPicker.quiet .stAddBtn {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line2);
+  background: var(--panel);
+  color: var(--textStrong);
+  box-shadow: none;
+  font-weight: 500;
+  opacity: 1;
+  filter: none;
+}
+html[data-theme] body .nlSection > header .nlAddPicker.quiet .stAddBtn:hover {
+  border-color: color-mix(in srgb, var(--textStrong) 28%, var(--line2));
+  background: var(--surface2);
+}
+/* a folded setting box (After the call, Settings): its name the size of the row names on the other pages */
+html[data-theme] body .stFGrid > .stFRow[data-grouprow] > .stFGroup:not(.drill):not(.flat) > header .stFGroupToggle strong {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+/* Integrations: cards in a row the same height, their buttons on one line at the bottom whatever the length of the description */
+html[data-theme] body .integrationCard {
+  display: flex;
+  flex-direction: column;
+}
+html[data-theme] body .integrationCard > .integrationCopy {
+  margin-bottom: 17px;
+}
+html[data-theme] body .integrationCard > .integrationFooter {
+  margin-top: auto;
+}
+
+/* every other part that opens in place (in panels, dialogs, the classic editor): the browser's own triangle drawn as the app's chevron, pointing
+   right when closed and down when open. Only a summary that would show the triangle has a ::marker, so ones with their own chevron are untouched. */
+html[data-theme] body summary::marker {
+  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='12' viewBox='0 0 36 24'%3E%3Cpath d='M9 6l6 6-6 6' fill='none' stroke='%236b6f76' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+html[data-theme] body details[open] > summary::marker {
+  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='12' viewBox='0 0 36 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%236b6f76' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+html[data-theme="dark"] body summary::marker {
+  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='12' viewBox='0 0 36 24'%3E%3Cpath d='M9 6l6 6-6 6' fill='none' stroke='%23a3a7af' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+html[data-theme="dark"] body details[open] > summary::marker {
+  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='12' viewBox='0 0 36 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23a3a7af' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+/* Cost: the money bar's biggest share in the chart colour, like the other charts (the other shares stay grey) */
+html[data-theme] body .csSeg.llm {
+  background: var(--chart-1);
+}
+
+/* ---- phone numbers (FRONTEND_GUIDE 10.5): an agent's numbers on its Deploy page, and the details support asks for, folded ------------------------ */
+html[data-theme] body .stEnvNumbers {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+html[data-theme] body .stEnvNumbers .wIcon {
+  flex: none;
+  color: var(--muted);
+}
+html[data-theme] body .agentNumbersHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+html[data-theme] body .agentNumbersHead h3 {
+  margin: 0;
+}
+html[data-theme] body .agentNumbersHead p {
+  max-width: 68ch;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+html[data-theme] body .agentNumbersHead > button {
+  flex: none;
+}
+html[data-theme] body .agentNumbersEmpty {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+html[data-theme] body .agentNumbersList {
+  display: grid;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 12px);
+  list-style: none;
+}
+html[data-theme] body .agentNumbersList > li {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+html[data-theme] body .agentNumbersList > li + li {
+  border-top: 1px solid var(--line);
+}
+html[data-theme] body .agentNumbersTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+html[data-theme] body .agentNumbersTop > code {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+html[data-theme] body .agentNumbersEnv {
+  color: var(--muted);
+}
+html[data-theme] body .agentNumbersActions {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+html[data-theme] body .numberInfo {
+  display: block;
+  min-width: 0;
+}
+html[data-theme] body .numberDetails {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+}
+html[data-theme] body .numberDetails > summary {
+  width: max-content;
+  color: var(--muted);
+  cursor: pointer;
+}
+html[data-theme] body .numberDetails > summary:hover {
+  color: var(--textStrong);
+}
+html[data-theme] body .numberDetails dl {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0;
+}
+html[data-theme] body .numberDetails dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+html[data-theme] body .numberDetails dt {
+  min-width: 96px;
+  color: var(--muted);
+}
+html[data-theme] body .numberDetails dd {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+/* a phone line: values an older setup noted about its route (the platform routes calls now), shown read-only with a way to remove them */
+html[data-theme] body .stRouteNotes {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line2);
+  border-radius: var(--r-control, 10px);
+}
+html[data-theme] body .stRouteNotes .stFHelp {
+  margin: 0;
+}
+html[data-theme] body .stRouteNotes dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+html[data-theme] body .stRouteNotes dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  font-size: var(--fs-sm);
+}
+html[data-theme] body .stRouteNotes dt {
+  min-width: 140px;
+  color: var(--muted);
+}
+html[data-theme] body .stRouteNotes dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+html[data-theme] body .stRouteNotes > .stLink {
+  justify-self: start;
+}
+/* a model whose provider isn't installed on the server: listed so it can be found, but it can't be chosen */
+html[data-theme] body .pkModelList li:not(.pkNone) button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+html[data-theme] body .pkModelList li:not(.pkNone) button:disabled:hover {
+  background: none;
 }

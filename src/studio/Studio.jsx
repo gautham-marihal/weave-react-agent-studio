@@ -14,7 +14,7 @@ export default function Studio({ profile, onRecordSession, readinessRuns, onReco
   const route = useRoute();
   // Saves, publishes and deploys are attributed to this name. Set during render (it is idempotent) so it
   // is in place before any child sends its first request; an effect would run too late.
-  setApiUser(profile?.fullName || profile?.email || '');
+  setApiUser(profile?.fullName, profile?.email);
   return route.view === 'bot' ? (
     <BotWorkspace
       key={route.botId}

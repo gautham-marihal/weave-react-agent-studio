@@ -6,6 +6,7 @@ import { Notice } from '../ui.jsx';
 import { useAsync } from '../useAsync.js';
 import './checks.css';
 import Icon from '../../ui/Icon.jsx';
+import { EmptyState } from '../newlayout/PageShell.jsx';
 
 // "Checks": this agent's configuration read against everyday situations (a greeting, a way to end the call, reaching a person, a caller who goes quiet)
 // before it is made live. They only read what is configured: no conversation is run and no call is placed. (To talk to the agent use Test; to run
@@ -89,7 +90,11 @@ export default function ChecksTab({ botId, name, runs = [], onRun }) {
       </section>
 
       {mine.length === 0 ? (
-        <p className="stFEmpty ckEmpty">No checks run yet for this agent.</p>
+        <EmptyState
+          icon="check"
+          title="No checks run yet"
+          text={`Run the ${SCENARIOS.length} checks above to see how ${name || 'this agent'} handles everyday situations. Every run is kept here to compare.`}
+        />
       ) : (
         <ul className="ckRuns" aria-label="Earlier checks">
           {mine.map((item) => {

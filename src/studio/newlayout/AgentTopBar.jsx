@@ -30,13 +30,19 @@ export default function AgentTopBar({
   const canSave = dirty && !saving && !parsed.error && editor.isObject;
   const state = agentState({ deployed: summary?.deployed || {}, tests: 'unknown', problems });
   const go = (tab, params) => navigate(routeHref(botId, tab, params), { guard: false });
-  const saveText = parsed.error
-    ? 'Fix the JSON to save'
-    : dirty
-      ? 'Unsaved changes'
-      : editor.meta?.savedAt
-        ? `Saved ${formatWhen(editor.meta.savedAt)}`
-        : 'Saved';
+  // nothing is said about saving until the draft has arrived (it is not "Saved" while it loads, nor broken if it couldn't be read)
+  const loaded = editor.status === 'ready';
+  const saveText = !loaded
+    ? editor.status === 'error'
+      ? 'Couldn’t load the draft'
+      : 'Loading…'
+    : parsed.error
+      ? 'Fix the JSON to save'
+      : dirty
+        ? 'Unsaved changes'
+        : editor.meta?.savedAt
+          ? `Saved ${formatWhen(editor.meta.savedAt)}`
+          : 'Saved';
   const more = [
     ...(problems ? [] : [{ label: 'Run the checks', onClick: onProblems }]),
     ...(changes !== null ? [{ label: changes ? `What changed since publishing (${changes})` : 'What changed since publishing', onClick: onChanges }] : []),
@@ -53,8 +59,8 @@ export default function AgentTopBar({
       <div className="nlBarId">
         <h1 title={name}>{name}</h1>
         <StatePill state={state} />
-        <span className={`nlSaveState ${dirty || parsed.error ? 'warn' : ''}`} role="status">
-          {!dirty && !parsed.error && <Icon name="check" size={13} />}
+        <span className={`nlSaveState ${dirty || parsed.error || editor.status === 'error' ? 'warn' : ''}`} role="status">
+          {loaded && !dirty && !parsed.error && <Icon name="check" size={13} />}
           {saveText}
         </span>
         {changes > 0 && !dirty && (

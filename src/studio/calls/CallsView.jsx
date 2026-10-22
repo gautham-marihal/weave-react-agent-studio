@@ -190,12 +190,17 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
         {loading && rows.length === 0 && <SkeletonRows rows={4} label="Loading calls" square={false} />}
         {!loading && rows.length === 0 && errors.length === 0 && (
           <div className="clEmpty">
-            <strong>No calls found</strong>
+            {/* what the empty list means: no agent yet, filters that match nothing, or only a time range with nothing in it */}
+            <strong>{bots.length === 0 ? 'No calls yet' : outcome || channel || caller ? 'No calls match these filters' : 'No calls found'}</strong>
             <p>
-              {outcome || channel || caller || range !== 'all'
-                ? 'Nothing matches these filters. Try a longer time range or clear a filter.'
-                : 'Nothing has called yet.'}{' '}
-              A conversation from an agent’s Test tab is a call too.
+              {bots.length === 0
+                ? 'Once you have an agent, every conversation it has is listed here, with what was said and what the agent did.'
+                : outcome || channel || caller
+                  ? 'Clear a filter or try a longer time range.'
+                  : range !== 'all'
+                    ? `Nothing in the ${(RANGES.find((r) => r.id === range)?.label || '').toLowerCase()}. Try a longer time range.`
+                    : 'Nothing has called yet.'}{' '}
+              {bots.length > 0 && 'A conversation from an agent’s Test tab is a call too.'}
             </p>
             {onOpenAgent && effectiveBot && (
               <button type="button" className="secondaryCta" onClick={() => onOpenAgent(effectiveBot)}>

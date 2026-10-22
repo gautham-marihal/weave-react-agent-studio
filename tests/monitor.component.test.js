@@ -95,7 +95,7 @@ test('Calls: the calls of an agent, newest first, filters that narrow them, and 
   // an outcome filter with nothing in it says so
   await a.choose($$(app.container, '.clFilters select')[1], 'cutoff');
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 0 && !!$(app.container, '.clEmpty strong')), true);
-  assert.match(textOf($(app.container, '.clEmpty')), /No calls found/);
+  assert.match(textOf($(app.container, '.clEmpty')), /No calls match these filters/);
   await a.choose($$(app.container, '.clFilters select')[1], '');
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 3), true);
   await a.click(byText(app.container, '.clPrivacy button', 'Got it'));

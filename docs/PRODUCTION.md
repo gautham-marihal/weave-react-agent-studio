@@ -17,7 +17,9 @@ browser says (a browser can send any header). So the proxy, after it has verifie
 - sets `Authorization: Bearer <AGENT_BUILDER_API_KEY>` on every `/api` request,
 - sets `X-User: <the verified user>` (the email or name from the sign-in), replacing anything the browser sent.
 
-The API then records that name as `saved_by`, `published_by` and `deployed_by`. The Studio sends no `X-User` of its own.
+The API then records that name as `saved_by`, `published_by` and `deployed_by`, and writes it to the audit file of phone-number changes. The Studio
+sends the person signed in to it as `X-User` too (the API guide asks for it on every request), but that is only a claim: the proxy must replace it.
+`VITE_SEND_USER_HEADER=false` at build time stops the Studio sending it.
 
 ### Example: nginx with oauth2-proxy
 

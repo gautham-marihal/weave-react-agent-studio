@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { askConfirm } from '../ui/dialogs.js';
 import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from './demoMode.js';
 
 // Where the tag is drawn: first among the buttons of the screen's top bar (each top bar has a DemoSlot), so it never covers one of them; on a screen
@@ -44,7 +45,13 @@ export function DemoBadge() {
   if (!isDemoMode()) return null;
 
   const reset = async () => {
-    if (!window.confirm('Start the demo again? The demo agents you made or changed in this browser are replaced by the sample ones.')) return;
+    const again = await askConfirm({
+      title: 'Start the demo again?',
+      body: 'The demo agents you made or changed are replaced by the sample ones.',
+      confirmLabel: 'Start again',
+      tone: 'danger',
+    });
+    if (!again) return;
     setBusy(true);
     const { resetDemoData } = await import('./demoApi.js');
     resetDemoData();
@@ -85,11 +92,7 @@ export function DemoBadge() {
               </button>
             )}
           </div>
-          {demoIsForced() && (
-            <small>
-              This is a demo build (<code>npm run dev:demo</code>). Run <code>npm run dev</code> to use the real API.
-            </small>
-          )}
+          {demoIsForced() && <small>This copy of Weave is a demo, so it always uses demo data.</small>}
         </div>
       )}
     </div>
