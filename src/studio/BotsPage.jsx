@@ -426,7 +426,8 @@ export default function BotsPage({ route }) {
               ? `${removed.length} removed from your list. You can restore ${removed.length === 1 ? 'it' : 'them'} below, or create a new one.`
               : 'Create one to get a valid starting draft. You can edit everything afterwards.'}
           </p>
-          <button className="primaryCta compactCta" type="button" onClick={() => setCreating(true)}>
+          {/* quiet: the page's "Create agent" above is its one strong button, and does the same */}
+          <button className="quietButton compactCta" type="button" onClick={() => setCreating(true)}>
             Create {removed.length ? 'an' : 'your first'} agent
           </button>
         </section>

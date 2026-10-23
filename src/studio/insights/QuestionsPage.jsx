@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { formatWhen } from '../format.js';
@@ -204,6 +204,17 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
   const [days, setDays] = useState(14);
   const [tab, setTab] = useState('open');
   const [answering, setAnswering] = useState(null); // group key
+  // an answer's form closed without saving: the keyboard goes back to the button that opened it (gone while the form was open, so it is found again)
+  const [refocus, setRefocus] = useState(null);
+  useEffect(() => {
+    if (refocus === null) return;
+    document.querySelector(`[data-answer-for="${CSS.escape(refocus)}"]`)?.focus({ preventScroll: true });
+    setRefocus(null);
+  }, [refocus]);
+  const cancelAnswer = (key) => {
+    setAnswering(null);
+    setRefocus(key);
+  };
   const [showOnce, setShowOnce] = useState(false);
   const [done, setDone] = useState(null); // { text, agentName, testId, decision }
   const { loading, error, groups, read, total, truncated, failed, at, refresh } = useQuestions(botId, { days });
@@ -280,7 +291,7 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
         </div>
         {answering !== group.key && (
           <div className="inActions">
-            <button type="button" className="secondaryCta compactCta" disabled={!canEdit} onClick={() => setAnswering(group.key)}>
+            <button type="button" className="secondaryCta compactCta" disabled={!canEdit} onClick={() => setAnswering(group.key)} data-answer-for={group.key}>
               Answer it
             </button>
             <DismissMenu onPick={(reason) => decideQuestion(botId, { words: group.words, text: group.text, kind: 'dismissed', reason })} />
@@ -289,7 +300,13 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
       </div>
       <Evidence group={group} onOpenCall={openCall} />
       {answering === group.key && (
-        <AnswerForm group={group} agents={agents} defaultAgent={defaultAgentFor(group)} onCancel={() => setAnswering(null)} onSave={(a) => save(group, a)} />
+        <AnswerForm
+          group={group}
+          agents={agents}
+          defaultAgent={defaultAgentFor(group)}
+          onCancel={() => cancelAnswer(group.key)}
+          onSave={(a) => save(group, a)}
+        />
       )}
     </li>
   );
@@ -439,7 +456,7 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
                     {answering !== key && (
                       <div className="inActions">
                         {group && canEdit && (
-                          <button type="button" className="quietButton" onClick={() => setAnswering(key)}>
+                          <button type="button" className="quietButton" onClick={() => setAnswering(key)} data-answer-for={key}>
                             Change the answer
                           </button>
                         )}
@@ -470,7 +487,7 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
                       defaultAgent={decision.agentId || defaultAgentFor(group)}
                       initial={decision.answer}
                       changing
-                      onCancel={() => setAnswering(null)}
+                      onCancel={() => cancelAnswer(key)}
                       onSave={(a) => save(group, a, decision)}
                     />
                   )}

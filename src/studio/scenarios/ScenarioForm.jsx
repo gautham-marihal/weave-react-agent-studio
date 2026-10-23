@@ -600,6 +600,17 @@ function ScriptEditor({ script, onChange, tools, reportBox }) {
 }
 
 export default function ScenarioForm({ initial, config, others, onSave, onCancel, isNew }) {
+  const formRef = useRef(null);
+  // the keyboard goes to the form's first field when it opens, and back to what opened it when it closes (else it is lost with the form)
+  const [opener] = useState(() => (typeof document === 'undefined' ? null : document.activeElement));
+  useEffect(() => {
+    formRef.current?.querySelector('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])')?.focus();
+    return () => {
+      const lost = !document.activeElement || document.activeElement === document.body;
+      if (lost && opener && document.contains(opener)) opener.focus({ preventScroll: true });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the form opens and closes
+  }, []);
   const [scenario, setScenario] = useState(initial);
   const [tried, setTried] = useState(false);
   const [jsonMode, setJsonMode] = useState(false);
@@ -673,7 +684,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
   };
 
   return (
-    <form className="scForm" noValidate aria-label={isNew ? 'New scenario' : `Edit ${initial.id}`} onSubmit={submit}>
+    <form ref={formRef} className="scForm" noValidate aria-label={isNew ? 'New scenario' : `Edit ${initial.id}`} onSubmit={submit}>
       <div className="scFormTop">
         <span
           className={`scChip ${scripted ? 'good' : 'warn'}`}

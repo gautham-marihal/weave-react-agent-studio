@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
+import { FOCUSABLE, useDialogFocus } from './useDialogFocus.js';
 import { ACCENTS, STYLES, useAccent, useStyle } from '../studio/usePref.js';
 
 // The design styles as cards, each with a small picture of how it looks in the mode in use (light or dark). Picking one changes the whole site at once.
@@ -116,24 +117,31 @@ export function StyleMenu({ theme, onToggleTheme }) {
       >
         <Icon name="sparkle" size={15} /> Theme
       </button>
-      {open && (
-        <section className="styleMenuPanel" role="dialog" aria-label="Theme">
-          <header>
-            <strong>Theme</strong>
-            <div className="styleMenuModes" role="group" aria-label="Light or dark">
-              {['light', 'dark'].map((mode) => (
-                <button key={mode} type="button" aria-pressed={theme === mode} onClick={() => mode !== theme && onToggleTheme()}>
-                  {mode === 'light' ? 'Light' : 'Dark'}
-                </button>
-              ))}
-            </div>
-          </header>
-          {/* the light/dark switch stays put; the styles and colours scroll under it when the window is short */}
-          <div className="styleMenuScroll">
-            <StyleCards />
-          </div>
-        </section>
-      )}
+      {open && <StyleMenuPanel theme={theme} onToggleTheme={onToggleTheme} />}
     </div>
+  );
+}
+
+// The panel itself: the keyboard goes into it when it opens (the light/dark switch in use), Tab goes round it, and it gives the focus back when it closes.
+function StyleMenuPanel({ theme, onToggleTheme }) {
+  const box = useRef(null);
+  useDialogFocus(box, () => box.current?.querySelector('[aria-pressed="true"]') || box.current?.querySelector(FOCUSABLE));
+  return (
+    <section className="styleMenuPanel" role="dialog" aria-label="Theme" ref={box}>
+      <header>
+        <strong>Theme</strong>
+        <div className="styleMenuModes" role="group" aria-label="Light or dark">
+          {['light', 'dark'].map((mode) => (
+            <button key={mode} type="button" aria-pressed={theme === mode} onClick={() => mode !== theme && onToggleTheme()}>
+              {mode === 'light' ? 'Light' : 'Dark'}
+            </button>
+          ))}
+        </div>
+      </header>
+      {/* the light/dark switch stays put; the styles and colours scroll under it when the window is short */}
+      <div className="styleMenuScroll">
+        <StyleCards />
+      </div>
+    </section>
   );
 }

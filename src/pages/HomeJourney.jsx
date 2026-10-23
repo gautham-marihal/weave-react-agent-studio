@@ -94,7 +94,8 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
         <p className="hjNote">
           An agent answers calls or chats for you. Pick a starting point, give it a name, and you will be talking to it in a few minutes.
         </p>
-        <button type="button" className="primaryCta compactCta" onClick={onCreate}>
+        {/* quiet: the page's "Create agent" above is its one strong button, and does the same */}
+        <button type="button" className="quietButton compactCta" onClick={onCreate}>
           Create an agent
         </button>
       </section>

@@ -6,6 +6,7 @@ import Icon, { ICON_NAMES } from '../ui/Icon.jsx';
 import FocusBox from '../ui/FocusBox.jsx';
 import { sentenceCase } from '../ui/text.js';
 import { whenLeaveConfirmed } from '../studio/route.js';
+import { menuKeyDown, useMenuFocus } from '../ui/menuKeys.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
@@ -265,6 +266,8 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen,
   const ref = useRef(null);
   const triggerRef = useRef(null);
   const portalRef = useRef(null);
+  const menuRef = useRef(null); // the menu, either way it is drawn: its first item gets the keyboard when it opens
+  useMenuFocus(menuRef, open);
   const displayName = profile?.fullName || 'Workspace user';
   const role = profile?.role || 'Workspace admin';
 
@@ -275,7 +278,9 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen,
       if (!insideTrigger && !insidePortal) setOpen(false);
     };
     const handleEscape = (event) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key !== 'Escape' || !open) return;
+      setOpen(false);
+      triggerRef.current?.focus({ preventScroll: true });
     };
     const reposition = () => {
       if (!open || !compact || !triggerRef.current) return;
@@ -350,7 +355,17 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen,
       {open &&
         (compact ? (
           createPortal(
-            <div ref={portalRef} className="profilePopover compactPopover profilePopoverPortal" role="menu" style={{ left: position.left, top: position.top }}>
+            <div
+              ref={(el) => {
+                portalRef.current = el;
+                menuRef.current = el;
+              }}
+              className="profilePopover compactPopover profilePopoverPortal"
+              role="menu"
+              aria-label={displayName}
+              style={{ left: position.left, top: position.top }}
+              onKeyDown={(event) => menuKeyDown(event, menuRef.current, () => setOpen(false))}
+            >
               <div className="profilePopoverIdentity">
                 <span className="profilePopoverAvatar">{initials}</span>
                 <div>
@@ -373,7 +388,13 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen,
             document.body,
           )
         ) : (
-          <div className="profilePopover" role="menu">
+          <div
+            ref={menuRef}
+            className="profilePopover"
+            role="menu"
+            aria-label={displayName}
+            onKeyDown={(event) => menuKeyDown(event, menuRef.current, () => setOpen(false))}
+          >
             <div className="profilePopoverIdentity">
               <span className="profilePopoverAvatar">{initials}</span>
               <div>

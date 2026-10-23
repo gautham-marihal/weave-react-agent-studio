@@ -126,7 +126,8 @@ export default function Menu({ label = 'More actions', items, className = '' }) 
                   disabled={item.disabled}
                   title={item.disabled ? item.hint : undefined}
                   onClick={() => {
-                    close();
+                    // the keyboard goes back to the menu's button first, so a dialog the item opens gives it back there when it closes
+                    close(true);
                     item.onClick?.();
                   }}
                 >

@@ -349,6 +349,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       if (event.key !== 'Escape') return;
       setWorkspaceOpen(false);
       setWorkspaceActionOpenId(null);
+      // the keyboard goes back to the switch that opened it, rather than being lost with the panel
+      document.querySelector('.workspaceSwitch')?.focus({ preventScroll: true });
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -357,6 +359,13 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [workspaceOpen, workspaceActionOpenId]);
+  // opened, the switcher has the keyboard on the workspace in use; a row's own menu, on its first item
+  useEffect(() => {
+    if (workspaceOpen) document.querySelector('.workspaceMenu .workspaceOption.current, .workspaceMenu .workspaceOption')?.focus({ preventScroll: true });
+  }, [workspaceOpen]);
+  useEffect(() => {
+    if (workspaceActionOpenId) document.querySelector('.workspaceRowMenu [role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true });
+  }, [workspaceActionOpenId]);
 
   useEffect(() => {
     if (!workspaceOpen) setWorkspaceActionOpenId(null);
@@ -760,7 +769,13 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
         {/* inside an agent the agent is the context: the workspace switch gives way to the agent's own switcher, below */}
         {!inAgentView && (
-          <button type="button" className="workspaceSwitch" onClick={() => setWorkspaceOpen((value) => !value)} aria-expanded={workspaceOpen}>
+          <button
+            type="button"
+            className="workspaceSwitch"
+            onClick={() => setWorkspaceOpen((value) => !value)}
+            aria-expanded={workspaceOpen}
+            aria-haspopup="dialog"
+          >
             <span className="workspaceAvatar">{getInitials(workspaceName).slice(0, 1)}</span>
             <span className="workspaceCopy">
               <small>Workspace</small>
@@ -772,7 +787,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           </button>
         )}
         {workspaceOpen && !inAgentView && (
-          <div className="workspaceMenu" role="menu">
+          <div className="workspaceMenu" role="dialog" aria-label="Your workspaces">
             <div className="workspaceMenuLabel">Your workspaces</div>
             <div className="workspaceMenuList">
               {workspaces.map((workspace) => (
@@ -802,11 +817,11 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                     <Icon name="more" size={16} />
                   </button>
                   {workspaceActionOpenId === workspace.id && (
-                    <div className="workspaceRowMenu" role="menu">
-                      <button type="button" onClick={() => openRenameWorkspace(workspace)}>
+                    <div className="workspaceRowMenu" role="menu" aria-label={`Actions for ${workspace.name}`}>
+                      <button type="button" role="menuitem" onClick={() => openRenameWorkspace(workspace)}>
                         Rename workspace
                       </button>
-                      <button type="button" className="danger" disabled={workspaces.length <= 1} onClick={() => deleteWorkspace(workspace)}>
+                      <button type="button" role="menuitem" className="danger" disabled={workspaces.length <= 1} onClick={() => deleteWorkspace(workspace)}>
                         Delete workspace
                       </button>
                     </div>
@@ -1146,7 +1161,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                               <h3>Build an agent from an idea</h3>
                               <p>Pick a starting point, name your agent, and refine its voice, tools and handoff rules in its config.</p>
                               <div className="starterActions">
-                                <button className="primaryCta compactCta" type="button" onClick={openCreateAssistant}>
+                                {/* quiet: "Create agent" above is the page's one strong button, and does the same */}
+                                <button className="quietButton compactCta" type="button" onClick={openCreateAssistant}>
                                   Start building
                                 </button>
                               </div>

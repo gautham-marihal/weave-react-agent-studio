@@ -1539,6 +1539,11 @@ html[data-theme] body {
   --ds-control-h: 40px;
   --ds-control-h-sm: 34px;
   --ds-card-shadow: 0 1px 2px rgba(16, 16, 20, 0.04), 0 8px 24px rgba(16, 16, 20, 0.05);
+  /* three names older rules use that no style ever set (so their borders vanished or turned text-coloured, their muted text inherited): an
+     accent-tinted border for what is chosen or hovered, the plain line, and the muted text */
+  --accent-border: color-mix(in srgb, var(--accent) 45%, var(--line2));
+  --border: var(--line);
+  --muted2: var(--muted);
 }
 html[data-theme="dark"] body {
   --ds-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.22);
