@@ -220,8 +220,9 @@ export function setRecordingDays(config, days) {
   });
 }
 
-// Turns redaction on for what the agent handles. Redaction is a schema 1.2 feature, so the version is raised if it is lower (`raised` says so).
-export function enableRedaction(config) {
+// What the agent already handles that is worth hiding: card numbers, what its Guardrails' personal-details checks look for, and PINs when a value it keeps
+// sensitive is named like one.
+export function sensitiveEntities(config) {
   const entities = new Set(['card_number']);
   ['input', 'output'].forEach((side) =>
     list(config?.guardrails?.[side]).forEach((rule) => {
@@ -231,6 +232,12 @@ export function enableRedaction(config) {
   Object.entries(isObj(config?.state?.variables) ? config.state.variables : {}).forEach(([name, spec]) => {
     if (isObj(spec) && spec.sensitive === true && /pin/i.test(name)) entities.add('pin');
   });
+  return [...entities];
+}
+
+// Turns redaction on for what the agent handles. Redaction is a schema 1.2 feature, so the version is raised if it is lower (`raised` says so).
+export function enableRedaction(config) {
+  const entities = new Set(sensitiveEntities(config));
   const allowed = ['card_number', 'bank_account', 'national_id', 'phone_number', 'email', 'date_of_birth', 'otp', 'pin'];
   const next = clone(config);
   next.post_call = { ...(isObj(next.post_call) ? next.post_call : {}) };

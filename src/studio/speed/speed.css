@@ -1,0 +1,624 @@
+/* Speed: what the calls say first, then the numbers, the days, where the wait goes, what would help, and the detail. Theme variables only, apart from the
+   colours of the parts of a wait: the validated categorical order (blue, orange, aqua, yellow; a grey for the rest), each stepped for dark. */
+
+.csPage {
+  display: grid;
+  gap: 18px;
+  --stage-listen: #2a78d6;
+  --stage-think: #eb6834;
+  --stage-systems: #1baf7a;
+  --stage-reply: #eda100;
+  --stage-other: color-mix(in srgb, var(--muted) 40%, var(--surface2));
+}
+html[data-theme="dark"] .csPage {
+  --stage-listen: #3987e5;
+  --stage-think: #d95926;
+  --stage-systems: #199e70;
+  --stage-reply: #c98500;
+}
+
+/* what to show: one row, above everything it scopes */
+.csControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.csControls label {
+  display: grid;
+  gap: 4px;
+}
+.csControls label > span {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.csControls select {
+  width: auto;
+  min-width: 150px;
+}
+
+/* while the calls are read again, what was shown stays, dimmed */
+.csBody {
+  display: grid;
+  gap: 18px;
+  transition: opacity 0.2s ease;
+}
+.csBody.reading {
+  opacity: 0.55;
+}
+
+/* ---- the verdict ---- */
+.csVerdict {
+  --tone: var(--muted);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(180px, 240px);
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.csVerdict.good {
+  --tone: var(--good-text);
+}
+.csVerdict.ok {
+  --tone: var(--warn-text);
+}
+.csVerdict.slow {
+  --tone: var(--danger-text);
+}
+.csSkelLines {
+  display: grid;
+  gap: 8px;
+}
+.csStat .skeleton + .skeleton {
+  margin-top: 6px;
+}
+.csVerdictIcon {
+  display: grid;
+  place-items: center;
+  align-self: start;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 12%, var(--panel));
+  color: var(--tone);
+}
+.csVerdictText h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+}
+.csVerdictText p {
+  margin: 4px 0 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+.csVerdictText small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.csMeter {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.csMeter strong {
+  color: var(--textStrong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.csMeter small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.csMeterTrack {
+  display: block;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone, var(--muted)) 16%, var(--surface2));
+}
+.csMeterTrack i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tone, var(--textStrong));
+}
+
+/* ---- the numbers ---- */
+.csStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.csStat {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.csStat strong {
+  color: var(--textStrong);
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  line-height: 1.25;
+}
+.csStat.warn strong {
+  color: var(--warn-text);
+}
+.csStat > span {
+  color: var(--text);
+}
+.csStat small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* ---- a section ---- */
+.csSection {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.csSectionHead {
+  display: grid;
+  gap: 2px;
+}
+.csSection h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.csSection p {
+  margin: 0;
+}
+.csSectionHead p {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.csTwo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 18px;
+}
+
+/* ---- day by day ---- */
+.csDayChart {
+  display: grid;
+  gap: 8px;
+}
+/* a link here sits in line with what is beside it (the global one keeps a gap above) */
+.csPage .linkButton {
+  margin-top: 0;
+}
+.csChartBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+.csChartKey {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.csKeyLine {
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--chart-1);
+}
+.csKeyTarget {
+  display: inline-block;
+  width: 16px;
+  margin-left: 10px;
+  border-top: 1px solid var(--muted);
+}
+.csKeyGap {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  margin-left: 10px;
+  background: repeating-linear-gradient(90deg, var(--chart-1) 0 4px, transparent 4px 8px);
+}
+.csPlot {
+  position: relative;
+  border-radius: 8px;
+  outline: none;
+}
+.csPlot:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--textStrong) 40%, transparent);
+}
+.csPlot svg {
+  display: block;
+}
+.csGridLine {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.csAxisText {
+  fill: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+.csArea {
+  fill: color-mix(in srgb, var(--chart-1) 10%, transparent);
+}
+.csLine {
+  fill: none;
+  stroke: var(--chart-1);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.csLineGap {
+  stroke-dasharray: 2 6;
+}
+.csTargetLine {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+.csCross {
+  stroke: var(--line2);
+  stroke-width: 1;
+}
+.csDot {
+  fill: var(--chart-1);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+.csTip {
+  position: absolute;
+  top: 6px;
+  z-index: 2;
+  display: grid;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 190px;
+  padding: 8px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow-md);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  pointer-events: none;
+}
+.csTip b {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.csTipDay,
+.csTipMuted {
+  color: var(--muted);
+}
+.csTipDay {
+  font-size: var(--fs-xs);
+}
+.csTip .csKeyLine {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ---- where the wait goes ---- */
+.csStages {
+  display: grid;
+  gap: 14px;
+}
+.csStageRow {
+  display: grid;
+  gap: 6px;
+}
+.csStageHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
+}
+.csStageHead strong {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.csStageHead span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.csStageBar {
+  display: flex;
+  gap: 2px;
+  height: 20px;
+}
+.csSeg {
+  min-width: 4px;
+  height: 100%;
+  transition: filter 0.12s ease;
+}
+.csSeg:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.csSeg:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.csSeg:only-child {
+  border-radius: 4px;
+}
+.csSeg:hover {
+  filter: brightness(1.1);
+}
+.csSeg-listen {
+  background: var(--stage-listen);
+}
+.csSeg-think {
+  background: var(--stage-think);
+}
+.csSeg-systems {
+  background: var(--stage-systems);
+}
+.csSeg-reply {
+  background: var(--stage-reply);
+}
+.csSeg-other {
+  background: var(--stage-other);
+}
+.csSwatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.csStageName {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.csStageName .csSwatch {
+  margin-top: 4px;
+}
+.csStageName small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* ---- what would help ---- */
+.csAdvice {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.csAdviceItem {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel2, var(--panel));
+}
+.csAdviceMark {
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--stage-other);
+}
+.csAdvice-listen .csAdviceMark {
+  background: var(--stage-listen);
+}
+.csAdvice-think .csAdviceMark {
+  background: var(--stage-think);
+}
+.csAdvice-system .csAdviceMark {
+  background: var(--stage-systems);
+}
+:is(.csAdvice-speak, .csAdvice-write) .csAdviceMark {
+  background: var(--stage-reply);
+}
+.csAdviceItem strong {
+  display: block;
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.csAdviceItem p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.csAdviceItem.several {
+  grid-template-columns: 4px minmax(0, 1fr);
+}
+.csAdviceAgents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+html[data-theme] body .csAdviceAgents .quietButton {
+  height: 34px;
+  min-height: 34px;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+.csAdviceAgents .quietButton small {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.csAgentName {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  vertical-align: 1px;
+}
+.csAllGood {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--good-text);
+}
+
+/* ---- the detail ---- */
+.csTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.csTable th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+}
+.csTable th[scope="row"] {
+  color: var(--textStrong);
+  font-weight: 500;
+}
+/* a row's name is words to read, not a column's heading: plain in every style (some set table headings in small capitals) */
+html[data-theme] body .csPage .csTable th[scope="row"] {
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.csTable td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  vertical-align: top;
+}
+.csTable tr:last-child :is(td, th[scope="row"]) {
+  border-bottom: 0;
+}
+.csTable b {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.csWarnText {
+  color: var(--warn-text) !important;
+  font-weight: 600;
+}
+.csBadText {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+.csKind {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+.csSlow {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.csSlow li {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+.csSlow b {
+  color: var(--textStrong);
+  font-variant-numeric: tabular-nums;
+}
+.csSlow > li > span {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.csSlow small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.csMini {
+  --tone: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.csMini.good {
+  --tone: var(--good-text);
+}
+.csMini.ok {
+  --tone: var(--warn-text);
+}
+.csMini.slow {
+  --tone: var(--danger-text);
+}
+.csMini .csMeterTrack {
+  width: 72px;
+  height: 6px;
+}
+
+.csEmpty {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding: 28px 22px;
+  border: 1px dashed var(--line2);
+  border-radius: 12px;
+  color: var(--muted);
+}
+.csEmpty strong {
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+}
+.csEmpty p {
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .csStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .csVerdict {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .csMeter {
+    grid-column: 2;
+  }
+}

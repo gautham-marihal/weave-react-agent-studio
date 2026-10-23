@@ -26,7 +26,9 @@
     "e2e:channels": "node e2e/channels.mjs",
     "e2e:insights": "node e2e/insights.mjs",
     "e2e:live": "node e2e/live.mjs",
-    "e2e:cost": "node e2e/cost.mjs",
+    "e2e:speed": "node e2e/speed.mjs",
+    "e2e:setup": "node e2e/setup.mjs",
+    "e2e:guardrails": "node e2e/guardrails.mjs",
     "e2e:fit": "node e2e/fit.mjs"
   },
   "dependencies": {

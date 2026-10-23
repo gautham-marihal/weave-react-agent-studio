@@ -4,18 +4,31 @@ import { EnvSlots } from '../../ui.jsx';
 import { formatWhen } from '../../format.js';
 import { navigate, routeHref } from '../../route.js';
 import { OUTCOMES, channelLabel, formatSeconds, outcomeOf, statusOf } from '../../calls/callModel.js';
-import { analyse } from '../../monitoring/monitorModel.js';
+import { analyse, changeWords } from '../../monitoring/monitorModel.js';
 import { useMonitoring } from '../../monitoring/useMonitoring.js';
+import { seconds } from '../../speed/speedModel.js'; // a wait is written as Speed writes it, so the two show the same number
 import PageShell, { Section } from '../PageShell.jsx';
 import Stat from '../Stat.jsx';
 import { Skeleton, SkeletonRows } from '../../../ui/Skeleton.jsx';
 import { readinessSteps } from '../readiness.js';
 import { tabFor } from '../pages.js';
+import { STEPS, stepIndex } from '../../setup/setupModel.js';
+import { inSetup, useSetupProgress } from '../../setup/setupProgress.js';
 
 const MARK = { done: 'check', blocked: 'alert' };
 const DAYS = 7;
 const pct = (v) => (v === null || v === undefined ? '–' : `${Math.round(v * 100)}%`);
-const secs = (ms) => (ms === null || ms === undefined ? '–' : `${(ms / 1000).toFixed(1)} s`);
+const callWord = (n) => `${n} call${n === 1 ? '' : 's'}`;
+
+// The calls of the last days against the days before, in words: "Down from 12 the week before", never a bare "-4".
+const comparedWithBefore = (now, before) => changeWords(now, before, 'the week before') || (now ? 'None the week before' : 'None the week before either');
+
+// How many were passed to a person, as a count: two rounded percentages (88% handled, 13% passed on) would not add up to 100.
+function passedOnText(calls, handoffRate) {
+  const passed = Math.round((handoffRate || 0) * calls);
+  if (!passed) return 'None passed to a person';
+  return `${passed} of ${callWord(calls)} passed to a person`;
+}
 
 // An agent's overview: how it did this week, how far it is from ready (the steps, each opening the page where it is done), where it runs, and its latest calls.
 //   plan: the steps to get ready (readiness.js); when not given they are worked out here. onStep(step): opens a step (else this page goes to its page).
@@ -55,13 +68,33 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
     go(tabFor(step.page, step.part));
   };
   const ready = plan.total > 0 && !plan.next;
+  // the guided setup: offered to an agent that is being set up, or was never published, until it is ready; picked up where it was left
+  const [setup] = useSetupProgress(botId);
+  const offerSetup = !ready && inSetup(setup, summary);
   const description = config?.meta?.description;
   const reading = data.loading && !data.calls.length;
-  const delta = totals.calls - previous.calls;
 
   return (
     <PageShell title="Overview" lead={description || `How ${name} is doing, and what to do next.`} wide>
       {top}
+      {offerSetup && (
+        <section className="suBanner" aria-label="Setting it up">
+          <span className="suChoiceIcon" aria-hidden="true">
+            <Icon name="sparkle" size={18} />
+          </span>
+          <div>
+            <strong>{setup.known ? 'Finish setting it up' : 'Set it up step by step'}</strong>
+            <p>
+              {setup.known && setup.step
+                ? `You stopped at “${STEPS[stepIndex(setup.step)].label}”. Everything so far is saved.`
+                : 'A few short steps, one screen at a time: what it does, where people reach it, how it sounds, what it knows and can do; then try it and put it live.'}
+            </p>
+          </div>
+          <button type="button" className="primaryCta" onClick={() => go('setup', setup.step ? { step: setup.step } : undefined)}>
+            {setup.known ? 'Continue setup' : 'Start the setup'} <Icon name="arrowRight" size={15} />
+          </button>
+        </section>
+      )}
 
       {/* laid out by its own width, so it also reads well beside the docked test panel */}
       <div className="ovBody">
@@ -70,7 +103,7 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
             label={`Calls · last ${DAYS} days`}
             loading={reading}
             value={totals.calls}
-            sub={`${delta > 0 ? '+' : ''}${delta} on the ${DAYS} days before`}
+            sub={comparedWithBefore(totals.calls, previous.calls)}
             series={series}
             onOpen={() => go('calls')}
           />
@@ -78,21 +111,21 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
             label="Handled without a person"
             loading={reading}
             value={totals.calls ? pct(1 - (totals.handoffRate || 0)) : '–'}
-            sub={totals.calls ? `${pct(totals.handoffRate)} passed to a person` : 'No calls yet'}
+            sub={totals.calls ? passedOnText(totals.calls, totals.handoffRate) : 'No calls yet'}
             onOpen={() => go('monitoring')}
           />
           <Stat
             label="Typical answer time"
             loading={reading}
-            value={secs(totals.waitP50)}
-            sub={totals.waitP90 !== null && totals.waitP90 !== undefined ? `1 in 10 over ${secs(totals.waitP90)}` : 'No answers timed yet'}
-            onOpen={() => go('cost')}
+            value={seconds(totals.waitP50)}
+            sub={totals.waitP90 !== null && totals.waitP90 !== undefined ? `1 in 10 over ${seconds(totals.waitP90)}` : 'No answers timed yet'}
+            onOpen={() => go('speed')}
           />
           <Stat
             label="Cut off"
             loading={reading}
             value={totals.calls ? pct(totals.cutOffRate) : '–'}
-            sub={totals.calls ? `${totals.cutOff} call${totals.cutOff === 1 ? '' : 's'} stopped without an ending` : 'No calls yet'}
+            sub={totals.calls ? (totals.cutOff ? `${callWord(totals.cutOff)} stopped without an ending` : 'None stopped without an ending') : 'No calls yet'}
             onOpen={() => go('monitoring')}
           />
         </div>
@@ -104,7 +137,8 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
               lead={plan.total ? `${plan.done} of ${plan.total} steps done${ready ? '. It is ready.' : ''}` : ''}
               action={
                 plan.next ? (
-                  <button type="button" className="primaryCta compactCta" onClick={() => open(plan.next)}>
+                  // quiet: the next step's row is marked below, and the bar above the page has the page's one strong button
+                  <button type="button" className="quietButton compactCta" onClick={() => open(plan.next)}>
                     {plan.next.label}
                   </button>
                 ) : (

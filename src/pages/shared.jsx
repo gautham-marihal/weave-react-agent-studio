@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AGENT_LIFECYCLE, agentLifecycle } from './helpers.js';
 import Icon, { ICON_NAMES } from '../ui/Icon.jsx';
+import FocusBox from '../ui/FocusBox.jsx';
 import { sentenceCase } from '../ui/text.js';
 import { whenLeaveConfirmed } from '../studio/route.js';
 
@@ -95,7 +96,7 @@ export function InfoDialogHost() {
         if (event.target === event.currentTarget) close();
       }}
     >
-      <section className="createModal infoDialog">
+      <FocusBox className="createModal infoDialog">
         <div className="createModalHeader">
           <div>
             <span className="createEyebrow">{isHelp ? 'Help' : sentenceCase(info.eyebrow || 'Not available yet')}</span>
@@ -197,7 +198,7 @@ export function InfoDialogHost() {
             {isHelp ? 'Done' : 'Got it'}
           </button>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -294,8 +295,10 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen,
     };
   }, [compact, open]);
 
+  // the menu item goes with the menu, so the keyboard is put back on the menu's button first: closing the account dialog returns it there
   const handleAccount = () => {
     setOpen(false);
+    triggerRef.current?.focus({ preventScroll: true });
     onAccountOpen?.();
   };
   // signing out leaves an open agent too, so unsaved edits are asked about first
@@ -431,7 +434,7 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
-      <section className="accountPanel" onMouseDown={(event) => event.stopPropagation()}>
+      <FocusBox className="accountPanel" onMouseDown={(event) => event.stopPropagation()}>
         <div className="accountPanelHeader">
           <div>
             <span className="eyebrow cyan">Account</span>
@@ -453,11 +456,11 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
 
         <div className="accountDetails">
           <div className="accountDetail">
-            <small>FULL NAME</small>
+            <small>Full name</small>
             <strong>{fullName}</strong>
           </div>
           <div className="accountDetail">
-            <small>EMAIL</small>
+            <small>Email</small>
             <strong>{profile?.email || '—'}</strong>
           </div>
           <div className="accountDetail">
@@ -465,21 +468,21 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
             <strong>{workspace}</strong>
           </div>
           <div className="accountDetail">
-            <small>ROLE</small>
+            <small>Role</small>
             <strong>{role}</strong>
           </div>
         </div>
 
         <div className="accountPanelFooter accountActionsFooter">
           <div>
-            <span className="accountFooterLabel">ACCOUNT ACTIONS</span>
+            <span className="accountFooterLabel">Account actions</span>
             <p>Sign out of this Weave workspace.</p>
           </div>
           <button className="accountSignout" type="button" onClick={onSignOut}>
             Sign out <Icon name="arrowRight" size={15} />
           </button>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -490,10 +493,6 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
   const listRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const flat = useMemo(() => groups.flatMap((group) => group.items), [groups]);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -530,7 +529,7 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
-      <section className="searchPanel" onMouseDown={(event) => event.stopPropagation()}>
+      <FocusBox className="searchPanel" initial={() => inputRef.current} onMouseDown={(event) => event.stopPropagation()}>
         <div className="searchHeader">
           <div className="searchFieldWrap">
             <Icon name="search" size={18} />
@@ -613,7 +612,7 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
             <kbd>Esc</kbd> Close
           </span>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -638,7 +637,7 @@ export function WorkspaceCreateModal({ value, onChange, onClose, onCreate }) {
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
-      <section className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
+      <FocusBox className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="workspaceModalHeader">
           <div>
             <span className="createEyebrow">New workspace</span>
@@ -672,7 +671,7 @@ export function WorkspaceCreateModal({ value, onChange, onClose, onCreate }) {
             Create workspace
           </button>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -697,7 +696,7 @@ export function WorkspaceRenameModal({ value, onChange, onClose, onRename }) {
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
-      <section className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
+      <FocusBox className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="workspaceModalHeader">
           <div>
             <span className="createEyebrow">Workspace</span>
@@ -729,7 +728,7 @@ export function WorkspaceRenameModal({ value, onChange, onClose, onRename }) {
             Save changes
           </button>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );

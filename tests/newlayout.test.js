@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { EXTRA_PAGE_IDS, PAGES, PAGE_GROUPS, PAGE_IDS, PAGE_SECTIONS, classicTab, resolvePage, sectionsCovered } from '../src/studio/newlayout/pages.js';
+import { EXTRA_PAGE_IDS, PAGES, PAGE_GROUPS, PAGE_IDS, PAGE_SECTIONS, resolvePage, sectionsCovered } from '../src/studio/newlayout/pages.js';
 import { TAB_IDS } from '../src/studio/journey.js';
 import { SKIPPED_SECTIONS } from '../src/studio/form/layout.js';
 import { readinessSteps, stepRoute } from '../src/studio/newlayout/readiness.js';
@@ -30,8 +30,14 @@ test('every page can be reached by address, and every old tab is shown by some p
     const r = resolvePage(tab);
     assert.ok(PAGE_IDS.includes(r.page), `${tab} lands on a page (${r.page})`);
   });
-  // an address only the new layout has is a page, or a part of one (Tests has a part called callers)
-  EXTRA_PAGE_IDS.forEach((id) => assert.ok(PAGE_IDS.includes(id) || PAGE_IDS.includes(resolvePage(id).page), `${id} is a page or a part of one`));
+  // an address only the new layout has is a page, or a part of one (Tests has a part called callers); the guided setup is a screen of its own, with an
+  // address and outside the menu (its steps take the menu's place while it is open)
+  EXTRA_PAGE_IDS.filter((id) => id !== 'setup').forEach((id) =>
+    assert.ok(PAGE_IDS.includes(id) || PAGE_IDS.includes(resolvePage(id).page), `${id} is a page or a part of one`),
+  );
+  assert.ok(!PAGE_IDS.includes('setup'));
+  assert.equal(parseRoute('#/bots/x/setup?step=voice').tab, 'setup');
+  assert.deepEqual(resolvePage('setup'), { page: 'setup' });
 });
 
 test('an old address lands on the page that holds that tab, with the right part open', () => {
@@ -45,14 +51,6 @@ test('an old address lands on the page that holds that tab, with the right part 
   assert.deepEqual(resolvePage('calls'), { page: 'calls' });
   assert.deepEqual(resolvePage('config', { bare: true }), { page: 'home' }, 'an agent opened from a list opens its Home');
   assert.deepEqual(resolvePage('tools'), { page: 'tools' });
-});
-
-test('the classic layout shows the nearest tab for a new page', () => {
-  assert.equal(classicTab('tools'), 'config');
-  assert.equal(classicTab('tests'), 'test');
-  assert.equal(classicTab('releases'), 'versions');
-  assert.equal(classicTab('deploy'), 'deploy');
-  assert.equal(classicTab('monitoring'), 'calls');
 });
 
 test('every top-level section of the configuration is edited somewhere', () => {
@@ -156,10 +154,12 @@ test('a published, deployed agent with a test is all done', () => {
 test('a text agent needs no voice, and no report means no checks step', () => {
   const noVoice = config({ defaults: { language: { primary: 'en-US' }, models: { llm: { provider: 'openai', model: 'm' } } } });
   assert.equal(by(readinessSteps({ config: noVoice, report: null }), 'voice').state, 'done');
+  // the language by name, as the Agent page says it, not its code
+  assert.equal(by(readinessSteps({ config: noVoice, report: null }), 'voice').text, 'English (United States).');
   assert.equal(by(readinessSteps({ config: noVoice, report: null }), 'checks'), undefined);
 });
 
-test('a page and a part make an address, and the address of a part is the classic tab’s', async () => {
+test('a page and a part make an address, and the address of a part is the one it always had', async () => {
   const { tabFor } = await import('../src/studio/newlayout/pages.js');
   assert.equal(tabFor('tests', 'scenarios'), 'scenarios');
   assert.equal(tabFor('tests', 'try'), 'test');
@@ -172,13 +172,14 @@ test('a place in the configuration is found on a page, and a row of the Agent pa
   const { locate } = await import('../src/studio/newlayout/pages.js');
   assert.deepEqual(locate(['defaults', 'models', 'tts', 'voice_id']), { page: 'agent', drawer: 'voice' });
   assert.deepEqual(locate(['defaults', 'models', 'llm']), { page: 'agent', drawer: 'models' });
+  assert.deepEqual(locate(['defaults', 'models']), { page: 'agent', drawer: 'models' }, '"Open Models" opens the AI models panel');
   assert.deepEqual(locate(['defaults', 'language', 'primary']), { page: 'agent', drawer: 'language' });
   assert.deepEqual(locate(['defaults', 'conversation']), { page: 'settings' });
   assert.deepEqual(locate(['defaults', 'models', 'llm', 'model']), { page: 'agent', drawer: 'models' });
   assert.deepEqual(locate(['defaults', 'models', 'llm', 'api_key']), { page: 'settings' }, 'the key of a model is not asked on the Agent page');
-  assert.deepEqual(locate(['defaults', 'language', 'auto_detect']), { page: 'settings' });
+  assert.deepEqual(locate(['defaults', 'language', 'auto_detect']), { page: 'agent', drawer: 'language' }, 'asked in the Language panel');
   assert.deepEqual(locate(['tests', 0]), { page: 'tests', part: 'scenarios' });
-  assert.deepEqual(locate(['persona', 'tone']), { page: 'agent', drawer: 'persona' });
+  assert.deepEqual(locate(['persona', 'tone']), { page: 'agent', drawer: 'behaviour' }, 'its home, Tone and style (hidden in Personality and rules)');
   assert.deepEqual(locate(['meta', 'name']), { page: 'agent' });
   assert.deepEqual(locate(['meta', 'tags']), { page: 'settings' });
   assert.deepEqual(locate(['tools', 0, 'id']), { page: 'tools' });

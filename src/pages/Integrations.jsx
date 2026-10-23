@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Icon from '../ui/Icon.jsx';
+import FocusBox from '../ui/FocusBox.jsx';
 
 const INTEGRATION_LIBRARY = [
   {
@@ -191,7 +192,7 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
             if (event.target === event.currentTarget) setSelected(null);
           }}
         >
-          <section className="featureModal" role="dialog" aria-modal="true" aria-labelledby="integration-dialog-title">
+          <FocusBox className="featureModal" role="dialog" aria-modal="true" aria-labelledby="integration-dialog-title">
             <div className="featureModalHeader">
               <div>
                 <div className="eyebrow cyan">Connection setup</div>
@@ -231,7 +232,7 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
                 Save connection
               </button>
             </div>
-          </section>
+          </FocusBox>
         </div>
       )}
     </div>

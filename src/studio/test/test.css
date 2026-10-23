@@ -431,17 +431,6 @@
   }
 }
 
-.stTLiveDot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-left: 8px;
-  border-radius: 50%;
-  background: #22b07d;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #22b07d 25%, transparent);
-  vertical-align: 1px;
-}
-
 /* ---- the Test tab in the same look as the preview: glass cards, a lit status, a living orb, glowing composer ---- */
 .stTest .stCard {
   position: relative;

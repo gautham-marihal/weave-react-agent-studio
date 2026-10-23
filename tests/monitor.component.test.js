@@ -189,12 +189,16 @@ test('Knowledge: a base that isn’t built says what to do, a file is uploaded, 
   const base = () => $(app.container, '[data-base=faq]');
   assert.match(textOf($(base(), '.kwState')), /Not built/);
   assert.match(textOf($(base(), '.kwProblems')), /The file faq\.md is not uploaded/);
-  assert.match(textOf($(base(), '.kwUsed')), /No agent or tool uses this base/);
+  assert.match(textOf($(base(), '.kwUsed')), /Nothing reads it yet, so no agent answers from it/);
   assert.match(textOf($(app.container, '.demoNote')), /no embedding model/);
+  // the base in words, and one click gives it to the agent that answers (a knowledge tool that searches it)
+  assert.equal(textOf($(base(), 'h3')), 'Faq');
+  await a.click(byText(base(), 'button', 'Let Acme use it'));
+  assert.match(textOf($(base(), '.kwUsed')), /^Looked up with the “Search faq” tool \(Acme\)\.$/);
   assert.equal(byText(base(), 'button', 'Test a search').disabled, true, 'nothing to search until it is built');
   await pickFile(app, 'faq.md', FAQ);
   assert.equal(await until(app, () => !!$(app.container, '.kwTable') && /uploaded/.test(textOf($(base(), '.kwSources')))), true);
-  assert.match(textOf($(app.container, '.kwTable')), /faq\.md.*faq/, 'the file is read by the base');
+  assert.match(textOf($(app.container, '.kwTable')), /faq\.md.*Faq/, 'the file is read by the base');
   await a.click(byText(base(), 'button', 'Build the index'));
   assert.equal(await until(app, () => /Ready/.test(textOf($(base(), '.kwState')))), true);
   assert.match(textOf($(base(), '.kwIndex')), /Index built .*\d+ passages? with demo word-index/);

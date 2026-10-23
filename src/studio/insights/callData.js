@@ -60,4 +60,13 @@ export async function loadFacts(calls, { known = {}, signal } = {}) {
   return { facts, failed };
 }
 
+// The records of a finished call (GET /calls/{id}), read once per page load and shared by the pages that time answers (Speed, Monitoring, Home): a
+// finished call does not change.
+const finished = new Map();
+export async function readFinishedCall(c, { signal } = {}) {
+  const key = `${c.bot}/${c.id}`;
+  if (!finished.has(key)) finished.set(key, await api.getCall(c.bot, c.id, { limit: 500 }, { signal }));
+  return finished.get(key);
+}
+
 export const newestFirst = (calls) => [...calls].sort((a, b) => Date.parse(b.started_at) - Date.parse(a.started_at));

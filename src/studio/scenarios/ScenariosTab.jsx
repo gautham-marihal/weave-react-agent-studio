@@ -12,6 +12,7 @@ import ResultView from './ResultView.jsx';
 import ScenarioForm from './ScenarioForm.jsx';
 import './scenarios.css';
 import Icon from '../../ui/Icon.jsx';
+import { channelLabel } from '../newlayout/rowNames.js';
 import { askConfirm } from '../../ui/dialogs.js';
 
 // Test scenarios: conversations written down with what must be true afterwards, kept in the agent's draft (`tests`) and run by the
@@ -428,7 +429,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                     <strong>{scenario.id}</strong>
                     <ModeChip mode={mode} />
                     <small>
-                      {scenario.channel} · {(scenario.turns || []).length} turn{(scenario.turns || []).length === 1 ? '' : 's'} ·{' '}
+                      {channelLabel(config, scenario.channel)} · {(scenario.turns || []).length} turn{(scenario.turns || []).length === 1 ? '' : 's'} ·{' '}
                       {(scenario.expect || []).length} expectation{(scenario.expect || []).length === 1 ? '' : 's'}
                     </small>
                     {status ? (

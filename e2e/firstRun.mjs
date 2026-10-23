@@ -108,10 +108,16 @@ await page.getByPlaceholder('e.g. Acme Support').waitFor();
 await scan();
 await page.getByPlaceholder('e.g. Acme Support').fill('Harbour Plumbing');
 await page.getByRole('dialog').getByRole('button', { name: 'Create agent', exact: true }).click();
-// the agent opens in whichever layout is the default: the classic one has its Test tab to open, the new one a Test button in its top bar
-await page.waitForSelector('.stHeader h1, .nlBar h1');
+// a new agent opens in its guided setup, where trying it is a step of its own (and an agent opened outside the setup has a Test button in its top bar)
+await page.waitForSelector('.nlBar h1, .suPage');
 await scan();
-if (await page.locator('.nlBar').count()) {
+if (await page.locator('.suPage').count()) {
+  await page
+    .locator('.suSteps')
+    .getByRole('button', { name: /^Try it/ })
+    .click();
+  await page.locator('.suTryPanel').waitFor();
+} else if (await page.locator('.nlBar').count()) {
   await page.locator('.nlBar').getByRole('button', { name: /^Test/ }).click();
   // beside the page on a wide screen (this one), over it on a narrower one
   await page.locator('.nlTestDock, .nlDrawer').first().waitFor();

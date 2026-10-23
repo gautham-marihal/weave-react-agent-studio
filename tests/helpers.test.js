@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { lineOf, locatePath } from '../src/studio/jsonPath.js';
-import { formatDiffPath, formatPath, nextVersion, slugify } from '../src/studio/format.js';
+import { formatDiffPath, formatPath, freeBotId, nextVersion, slugify } from '../src/studio/format.js';
 import { parseRoute, routeHref } from '../src/studio/route.js';
 import { classify, groupIssues } from '../src/api/client.js';
 
@@ -13,16 +13,6 @@ const valueAt = (path) => {
   const span = locatePath(text, path);
   return span && JSON.parse(text.slice(span[0], span[1]));
 };
-
-// the layout an agent opens in is read from the browser's storage; here a stand-in for it
-function withLayout(value, fn) {
-  globalThis.window = { localStorage: { getItem: () => value } };
-  try {
-    fn();
-  } finally {
-    delete globalThis.window;
-  }
-}
 
 test('locatePath finds the value an error path points at', () => {
   const paths = [
@@ -78,8 +68,7 @@ test('hash routes', () => {
   assert.equal(parseRoute('').view, 'list');
   assert.equal(routeHref('acme', 'deploy', { version: '0.1.0' }), '#/bots/acme/deploy?version=0.1.0');
   assert.equal(routeHref(), '#/bots');
-  withLayout('classic', () => assert.equal(routeHref('acme', 'config'), '#/bots/acme'));
-  withLayout('new', () => assert.equal(routeHref('acme', 'config'), '#/bots/acme/config'));
+  assert.equal(routeHref('acme', 'config'), '#/bots/acme/config');
 });
 
 test('API errors are told apart', () => {
@@ -124,4 +113,18 @@ test('an id for a new agent: pattern, the ids the runtime reserves, and ids alre
   for (const id of ['transcripts', 'metrics', 'logs', 'sessions', 'tmp']) assert.match(botIdProblem(id), /reserved/, id);
   assert.equal(botIdProblem('logs-2'), '');
   assert.match(botIdProblem('taken', ['taken']), /already exists/);
+});
+
+test('a new agent’s id is made from its name, and is always free: a person only gives a name', () => {
+  assert.equal(freeBotId('Front Desk', []), 'front-desk');
+  assert.equal(freeBotId('Front Desk', ['front-desk']), 'front-desk-2');
+  assert.equal(freeBotId('Front Desk', ['front-desk', 'front-desk-2']), 'front-desk-3');
+  assert.equal(freeBotId('Logs', []), 'logs-2', 'a reserved id is not given');
+  assert.equal(freeBotId('歯科クリニック', []), 'agent', 'a name in another script still makes an id');
+  assert.equal(freeBotId('歯科クリニック', ['agent']), 'agent-2');
+  const long = 'x'.repeat(80);
+  const id = freeBotId(long, [long.slice(0, 64)]);
+  assert.equal(id.length, 64);
+  assert.ok(id.endsWith('-2'));
+  [freeBotId('Front Desk', ['front-desk']), freeBotId('Logs'), freeBotId('!!!'), id].forEach((made) => assert.equal(botIdProblem(made, ['front-desk']), ''));
 });

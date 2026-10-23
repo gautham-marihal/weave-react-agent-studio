@@ -1,57 +1,44 @@
 import { EXTRA_PAGE_IDS } from '../src/studio/newlayout/pages.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NEXT, STAGES, TAB_IDS, TAB_LABELS, nextStep, stageOf, walk } from '../src/studio/journey.js';
+import { STAGES, TAB_IDS } from '../src/studio/journey.js';
 import { STATES, agentState, statusLine } from '../src/studio/status.js';
 import { TABS, parseRoute, routeHref } from '../src/studio/route.js';
 
-// The journey: four stages, a "Next" from every tab, one name for each state an agent can be in.
-
-// the layout an agent opens in is read from the browser's storage; here a stand-in for it
-function withLayout(value, fn) {
-  globalThis.window = { localStorage: { getItem: () => value } };
-  try {
-    fn();
-  } finally {
-    delete globalThis.window;
-  }
-}
+// The journey: four stages with the addresses of their pages, one name for each state an agent can be in.
 
 test('the tabs are the four stages in the order of the work, and every tab is in exactly one stage', () => {
   assert.deepEqual(
     STAGES.map((s) => s.label),
     ['Build', 'Test', 'Release', 'Monitor'],
   );
-  assert.deepEqual(TAB_IDS, ['describe', 'config', 'workflow', 'knowledge', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls', 'questions', 'cost']);
+  assert.deepEqual(TAB_IDS, [
+    'describe',
+    'config',
+    'workflow',
+    'knowledge',
+    'test',
+    'scenarios',
+    'checks',
+    'versions',
+    'deploy',
+    'calls',
+    'questions',
+    'speed',
+  ]);
   assert.equal(new Set(TAB_IDS).size, TAB_IDS.length);
   STAGES.forEach((s) => assert.ok(s.question.endsWith('?') && s.tabs.length > 0));
-  assert.equal(stageOf('deploy').id, 'release');
-  assert.equal(stageOf('checks').id, 'test');
-  assert.equal(stageOf('nonsense').id, 'build', 'an unknown tab is treated as the first');
-  assert.equal(TAB_LABELS.config, 'Config');
 });
 
 test('every tab the route knows is a tab of the journey, so no old screen or link is lost', () => {
-  // the classic tabs, and the pages only the new layout has (see newlayout/pages.js); every old address still opens
+  // the addresses the stages had, and the agent's own pages (see newlayout/pages.js); every old address still opens
   assert.deepEqual([...TABS].sort(), [...TAB_IDS, ...EXTRA_PAGE_IDS].sort());
   TAB_IDS.forEach((tab) => assert.equal(parseRoute(`#/bots/acme/${tab}`).tab, tab, `${tab} opens`));
   assert.equal(parseRoute('#/bots/acme').tab, 'config');
   assert.equal(parseRoute('#/bots/acme/readiness').tab, 'config', 'an unknown tab falls back to Config');
   assert.equal(routeHref('acme', 'calls'), '#/bots/acme/calls');
-  withLayout('classic', () => assert.equal(routeHref('acme', 'config'), '#/bots/acme'));
-  withLayout('new', () => assert.equal(routeHref('acme', 'config'), '#/bots/acme/config'));
-});
-
-test('the whole journey can be walked with the "Next" bar alone, from Build to Monitor, and it ends', () => {
-  assert.deepEqual(walk('config'), ['config', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
-  assert.deepEqual(walk('describe'), ['describe', 'config', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
-  assert.deepEqual(walk('workflow'), ['workflow', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
-  assert.deepEqual(walk('knowledge'), ['knowledge', 'test', 'scenarios', 'checks', 'versions', 'deploy', 'calls']);
-  assert.equal(NEXT.calls, null, 'the last stop has no next');
-  TAB_IDS.filter((t) => t !== 'calls').forEach((tab) => {
-    assert.ok(NEXT[tab].label && NEXT[tab].then && TAB_IDS.includes(NEXT[tab].tab), `${tab} has a next`);
-  });
-  assert.equal(nextStep('mystery').tab, 'test', 'an unknown tab gets the first step');
+  assert.equal(routeHref('acme', 'config'), '#/bots/acme/config', 'every page is named in its address');
+  assert.equal(routeHref('acme'), '#/bots/acme', 'with no page, the agent opens on its Home');
 });
 
 test('an agent has one state, named once: a problem outranks a milestone, and a later milestone outranks an earlier one', () => {

@@ -189,7 +189,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
             <dt>Version</dt>
             <dd>
               {call.version || '—'}
-              {call.ref ? ` (${call.ref})` : ''}
+              {call.ref && call.ref !== call.version ? ` (${call.ref})` : ''}
             </dd>
           </div>
           {tokens.input || tokens.output ? (
@@ -256,7 +256,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
               </button>
             }
           >
-            Open this call from the agent’s own Calls tab to play it again against the draft, or to keep it as a test.
+            Open this call from the agent’s own Calls page to play it again against the draft, or to keep it as a test.
           </Notice>
         ))}
       {added && (

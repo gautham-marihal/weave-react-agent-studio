@@ -1,8 +1,9 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
 import { navigate, routeHref } from '../route.js';
 import { PAGE_GROUPS } from './pages.js';
+import { revealIn } from '../../ui/scrollEdges.js';
 
 // The agent's menu in the sidebar, in the order the work is done: its overview, then building it, testing and launching it, watching it, and its settings.
 // While it is not ready, a card at the top says how far along it is and opens the next step. Beside a page: a number when the checks found problems there
@@ -18,6 +19,10 @@ export default function AgentNav({ botId, page, counts = {}, dots = {}, plan = n
     wide.addEventListener?.('change', pick);
     return () => wide.removeEventListener?.('change', pick);
   }, []);
+  // in a short window the sidebar scrolls: the page that is open is brought into view in it
+  useEffect(() => {
+    revealIn(slot?.closest('.sideNav'), 'button.on');
+  }, [slot, page]);
 
   // the steps still to do, by the page where each is done
   const todo = {};

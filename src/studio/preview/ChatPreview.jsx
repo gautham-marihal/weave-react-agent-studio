@@ -107,7 +107,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           disabled={!connected || micUnavailable}
           title={
             micUnavailable
-              ? 'This browser can’t turn speech into text. Use the Test tab to speak with the real agent.'
+              ? 'This browser can’t turn speech into text. Use Tests › Try it to speak with the real agent.'
               : !connected
                 ? 'Start a conversation first'
                 : micOn
@@ -345,7 +345,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
             ))}
             <li ref={endRef} aria-hidden="true" />
           </ul>
-          {voice && <p className="pvHint">This agent talks by voice. Use the Test tab to speak with it; typing here still works.</p>}
+          {voice && <p className="pvHint">This agent talks by voice. Use Tests › Try it to speak with it; typing here still works.</p>}
           {(note || dictation.error) && (
             <p className="pvHint warn" role="alert">
               {note || dictation.error}

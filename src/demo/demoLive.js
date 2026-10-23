@@ -189,6 +189,7 @@ export function liveCallsFor(bot, nowMs, { keepMs = KEEP_MS } = {}) {
       const written = full.events.filter((e) => e.event !== 'session_closed' && e.event !== 'call_ended');
       const stops = written[written.length - 1].elapsed_s;
       const events = written.filter((e) => e.elapsed_s <= elapsedS);
+      if (!events.length) continue;
       const status = elapsedS - stops > CUT_OFF_AFTER_S ? 'unfinished' : 'in_progress';
       if (status === 'unfinished' && nowMs - (startMs + stops * 1000) > keepMs) continue;
       out.push({ summary: summaryOf(full, events, status, Math.min(elapsedS, stops)), events });

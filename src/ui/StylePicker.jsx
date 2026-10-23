@@ -128,7 +128,10 @@ export function StyleMenu({ theme, onToggleTheme }) {
               ))}
             </div>
           </header>
-          <StyleCards />
+          {/* the light/dark switch stays put; the styles and colours scroll under it when the window is short */}
+          <div className="styleMenuScroll">
+            <StyleCards />
+          </div>
         </section>
       )}
     </div>

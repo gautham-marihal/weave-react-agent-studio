@@ -168,6 +168,62 @@ export function describeScore(score) {
   return 'unrelated';
 }
 
+// The same in the words of the page's own check ("What would it find?"), with a tone for its badge.
+export function matchWords(score) {
+  if (typeof score !== 'number') return { text: '', tone: 'idle' };
+  if (score >= 0.5) return { text: 'Close match', tone: 'good' };
+  if (score >= 0.25) return { text: 'Might be related', tone: 'warn' };
+  return { text: 'Not related', tone: 'idle' };
+}
+
+// What a base's index read, against what it lists now: the files added since (they are not in the index), the files the index still holds that were
+// taken out, the ones that changed after it was read (the server says so in a problem), and the ones that are not on the server any more. Files only:
+// the server names a web page's documents in its own way. With no documents from the server, or none named like a source, nothing is compared.
+export function sinceRead(base) {
+  const sources = list(base?.sources);
+  const files = sources.filter((s) => s.kind === 'file').map((s) => s.label);
+  const missing = sources.filter((s) => s.kind === 'file' && s.uploaded === false).map((s) => s.label);
+  const changed = list(base?.problems)
+    .map((p) => /^The file (.+?) changed after/i.exec(p.problem)?.[1])
+    .filter(Boolean);
+  const documents = list(base?.index?.documents).map((d) => d.name);
+  const listed = new Set(sources.map((s) => s.label));
+  const comparable = documents.some((name) => listed.has(name));
+  const read = new Set(documents);
+  return {
+    added: comparable ? files.filter((name) => !read.has(name) && !missing.includes(name)) : [],
+    removed: comparable ? documents.filter((name) => !listed.has(name) && !/^https?:\/\//i.test(name)) : [],
+    changed,
+    missing,
+  };
+}
+
+const draftKey = (s) => (s?.type === 'url' ? `url:${s.url}` : `file:${s?.file_id}`);
+const savedKey = (s) => `${s.kind === 'url' ? 'url' : 'file'}:${s.label}`;
+
+// How far one base of documents and pages is from being something the agent answers from, for the Knowledge page's status line and "Getting it
+// ready": { state, names }. state: 'unsaved' (the draft lists other sources than the saved one, or the server has no such base yet) | 'reading' |
+// 'missing' (a file it lists is not on the server) | 'failed' | 'unread' (saved, never read) | 'changed' (read, but something changed since) |
+// 'ready'. names: the files a 'missing' or 'changed' is about.
+//   draftSources: the base's sources in the draft (left out, the saved ones are taken as they are); build: a build followed on this screen
+export function readingState(base, { draftSources, build } = {}) {
+  if (!base) return { state: 'unsaved', names: [] };
+  if (draftSources) {
+    const draft = [...new Set(list(draftSources).map(draftKey))].sort();
+    const saved = [...new Set(base.sources.map(savedKey))].sort();
+    if (draft.join('\n') !== saved.join('\n')) return { state: 'unsaved', names: [] };
+  }
+  const live = build || base.build;
+  if (isBuilding(live)) return { state: 'reading', names: [] };
+  const since = sinceRead(base);
+  if (since.missing.length) return { state: 'missing', names: since.missing };
+  if (live?.status === 'failed') return { state: 'failed', names: [] };
+  if (!base.index) return { state: 'unread', names: [] };
+  const changed = [...new Set([...since.changed, ...since.added, ...since.removed])];
+  if (changed.length || baseState({ ...base, build: live }) === 'stale') return { state: 'changed', names: changed };
+  return { state: 'ready', names: [] };
+}
+
 // What is set in the config for one base, so the screen can show it next to the scores.
 export const settingsOf = (config, baseId) => {
   const base = list(config?.knowledge).find((b) => b?.id === baseId);

@@ -16,6 +16,7 @@ export default function SectionPage({
   focusRequest,
   onShowJson,
   onOpenJson,
+  onShowModels,
   actions,
   parts,
   part,
@@ -35,6 +36,7 @@ export default function SectionPage({
           focusRequest={focusRequest}
           onShowJson={onShowJson}
           onOpenJson={onOpenJson}
+          onShowModels={onShowModels}
         />
       </Suspense>
     </PageShell>

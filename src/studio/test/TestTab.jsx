@@ -273,15 +273,14 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
       {noWebChannel && (
         <Notice kind="info" title="This agent can’t be tried in the browser">
-          The Test tab talks to the agent over the web, so it needs a web chat or web voice channel
+          Trying it here talks to the agent over the web, so it needs a web chat or web voice channel
           {reach.phone.length ? `. This one only has a phone line (${reach.phone.join(', ')}), and a phone line is tried by calling its number` : ''}. Add a web
-          channel under Config → Channels to test here. Phone numbers aren’t connected from the studio yet: for now they are set up with the platform’s SIP
-          tool.
+          channel on the Channels page to try it here. Phone numbers aren’t connected from the studio yet: for now they are set up with the platform’s SIP tool.
         </Notice>
       )}
       {reach.state === 'off' && !running && (
         <Notice kind="warn" title="The web channels of this agent are switched off">
-          Switch one on under Config → Channels, or the server may refuse to start a conversation.
+          Switch one on on the Channels page, or the server may refuse to start a conversation.
         </Notice>
       )}
       {simulated && <DemoNote kind="test">Replies in this conversation are made up in your browser. Nothing here is the real agent or its models.</DemoNote>}

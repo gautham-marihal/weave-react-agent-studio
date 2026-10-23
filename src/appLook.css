@@ -372,6 +372,14 @@ html[data-theme] body .nlPill.bad {
   background: color-mix(in srgb, var(--danger) 14%, transparent);
   color: var(--danger-text);
 }
+html[data-theme] body .nlPill.warn {
+  background: color-mix(in srgb, var(--warn-text) 14%, transparent);
+  color: var(--warn-text);
+}
+html[data-theme] body .nlPill.good {
+  background: color-mix(in srgb, var(--good-text) 14%, transparent);
+  color: var(--good-text);
+}
 html[data-theme] body .nlEmpty {
   padding: 40px 24px;
   border: 1px dashed var(--line2);
@@ -498,21 +506,14 @@ html[data-theme] body .asBlock h4,
 html[data-theme] body .asCard h3,
 html[data-theme] body .asFacts dt,
 html[data-theme] body .asWho,
-html[data-theme] body .builderAttemptTop span,
-html[data-theme] body .builderChecklistGroup h4,
-html[data-theme] body .builderRowHeader span,
-html[data-theme] body .builderSubhead,
 html[data-theme] body .callFacts dt,
 html[data-theme] body .hjHead,
 html[data-theme] body .infoDialogGroup h3,
 html[data-theme] body .integrationCategory,
 html[data-theme] body .pvHud small,
 html[data-theme] body .pvPanel > header strong,
-html[data-theme] body .readinessRunner label span,
 html[data-theme] body .ruleSection legend,
-html[data-theme] body .sessionTranscript h3,
 html[data-theme] body .settingsFacts dt,
-html[data-theme] body .smList em,
 html[data-theme] body .stAgentHead,
 html[data-theme] body .stAgentSummary span,
 html[data-theme] body .stChangeBody small,
@@ -520,7 +521,6 @@ html[data-theme] body .stChannelBlock legend,
 html[data-theme] body .stComboGroup,
 html[data-theme] body .stFSectionLabel,
 html[data-theme] body .stModelView strong,
-html[data-theme] body .stNext small,
 html[data-theme] body .stPickGroup h6,
 html[data-theme] body .stPublishPanel > header small,
 html[data-theme] body .stRow.head,
@@ -544,17 +544,13 @@ html[data-theme] body .cardEyebrow,
 html[data-theme] body .createEyebrow,
 html[data-theme] body .eyebrow,
 html[data-theme] body .headerHint,
-html[data-theme] body .healthLead small,
 html[data-theme] body .landingBottom,
 html[data-theme] body .loginHighlights span,
 html[data-theme] body .metricTop,
 html[data-theme] body .miniHeading,
 html[data-theme] body .miniStep span,
 html[data-theme] body .navLabel,
-html[data-theme] body .profileStep,
 html[data-theme] body .searchGroupLabel,
-html[data-theme] body .sessionSummaryLabel,
-html[data-theme] body .sessionsTable thead th,
 html[data-theme] body .showcaseHeader,
 html[data-theme] body .sideLink em,
 html[data-theme] body .telephonyStatLabel,
@@ -741,9 +737,6 @@ html[data-theme] body .avatar {
   background: var(--surface2);
   color: var(--textStrong);
 }
-html[data-theme] body .themeIcon {
-  color: var(--textStrong);
-}
 html[data-theme] body .linkButton {
   color: var(--textStrong);
   text-decoration: underline;
@@ -819,50 +812,6 @@ html[data-theme] body .nlNav button {
 }
 html[data-theme] body .nlNavHead {
   padding: 8px 10px 2px;
-}
-html[data-theme] body .telephonyNavItem {
-  min-height: 36px;
-  border: 0;
-  border-radius: 8px;
-  color: var(--text);
-  font-weight: 450;
-}
-html[data-theme] body .telephonyNavItem:hover {
-  background: var(--surface2);
-  color: var(--textStrong);
-}
-html[data-theme] body .telephonyNavItem.active {
-  border: 0;
-  background: var(--surface2);
-  box-shadow: none;
-  color: var(--textStrong);
-  font-weight: 600;
-}
-html[data-theme] body .telephonyNavItem.active span {
-  color: var(--textStrong);
-}
-/* the classic layout's stage headings in the sidebar read like the new layout's ("Build", "Test"), not as numbered capitals */
-html[data-theme] body :is(.stStageHead, .stStageHead b, .agentSideNav .stStageHead) {
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  color: var(--dim);
-}
-/* a number card whose "value" is where to look instead */
-html[data-theme] body .telephonyStatLink {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--textStrong);
-  font: inherit;
-  text-decoration: underline;
-  text-decoration-color: var(--line2);
-  text-underline-offset: 6px;
-  cursor: pointer;
-}
-html[data-theme] body .telephonyStatLink:hover {
-  text-decoration-color: currentColor;
 }
 
 /* focus: one ring everywhere, in the ink colour */

@@ -2,7 +2,8 @@ import React, { useContext, useEffect, useId, useMemo, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import Sheet, { DepthCtx } from './Sheet.jsx';
 import { cardsThatMayOpen } from './cardSize.js';
-import { isObj } from './engine.js';
+import { humanize, isObj } from './engine.js';
+import { PLAIN_KIND } from './plainKinds.js';
 import { keysNotOffered, modalityChoices } from './channelTypes.js';
 import {
   OwnerCtx,
@@ -18,6 +19,7 @@ import {
   useOwner,
   useStableCallback,
 } from './ctx.js';
+import { hiddenParts } from './hiddenParts.js';
 import SmartSelect from '../SmartSelect.jsx';
 import ModelField from './ModelField.jsx';
 import { enumLabels } from './plainEnums.js';
@@ -32,7 +34,7 @@ import InlineCreate from './InlineCreate.jsx';
 import ToolBody from './ToolBody.jsx';
 import { PromptPreviewFromForm } from './PromptPreview.jsx';
 import AddPicker from './AddPicker.jsx';
-import { WHAT, pickerFor } from './pickerOptions.js';
+import { INTRO, WHAT, pickerFor, takenIdsAt } from './pickerOptions.js';
 import { setRecordingNotice } from '../simple/simpleModel.js';
 import RecordingNoticeOffer from '../records/RecordingNoticeOffer.jsx';
 import ScheduleStrip from '../relations/ScheduleStrip.jsx';
@@ -78,8 +80,8 @@ const REF_WORD = {
   tasks: 'tasks',
   knowledge: 'knowledge bases',
   forms: 'forms',
-  wrapups: 'wrap-ups',
-  messages: 'messages',
+  wrapups: 'closing messages',
+  messages: 'fixed lines',
   notifications: 'notifications',
   channels: 'channels',
   transfers: 'transfers',
@@ -94,7 +96,8 @@ const REF_WORD = {
 // What "Add …" calls one item of a list or map, where its key's own word would read oddly ("Add notification" for the messages it sends).
 const ADD_WORDS = {
   notifications: 'message',
-  wrapups: 'wrap-up',
+  wrapups: 'closing message',
+  artifacts: 'file to save',
   variables: 'variable',
   constants: 'value',
   http: 'connection',
@@ -476,11 +479,12 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
             <TrySpeech path={path} />
           </>
         );
+      // (not when what it hides is asked above the form, by After the call's card, which has its own)
       if (path.length === 2 && path[0] === 'post_call' && path[1] === 'redaction')
         return (
           <>
             <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />
-            <TryRedaction />
+            {!ctx.hidden?.has('post_call.redaction.entities') && <TryRedaction />}
           </>
         );
       if (path.length === 1 && path[0] === 'guardrails')
@@ -513,14 +517,33 @@ function ScopedTemplateField({ path, ...props }) {
   const signature = useConfigSelect((c) => scopeSignature(c, path), Object.is);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope changes exactly when its signature does
   const scope = useMemo(() => scopeAt(store.get(), path), [signature, keyOf(path), store]);
-  return <TemplateField {...props} scope={scope} />;
+  // text written to the agent about a channel (its extra instructions) gets the plain menu, as the Agent page's instructions do
+  const plain = path[0] === 'channels' && path[path.length - 1] === 'instructions_append';
+  return <TemplateField {...props} scope={scope} plain={plain} />;
+}
+
+// What a field points at, by name: an agent by its own name, anything else by its id in words ("escalate_to_human" → "Escalate to human"); two that
+// would read the same keep their ids beside them. With technical names on, the ids.
+function refLabels(name, options, config) {
+  const agents = Array.isArray(config?.agents?.items) ? config.agents.items.filter(isObj) : [];
+  const words = (id) => {
+    if (name === 'agents') {
+      const agent = agents.find((a) => a.id === id);
+      if (typeof agent?.name === 'string' && agent.name.trim()) return agent.name.trim();
+      if (agent && agents.length === 1 && typeof config?.meta?.name === 'string' && config.meta.name.trim()) return config.meta.name.trim();
+    }
+    return humanize(String(id));
+  };
+  const first = options.map(words);
+  return Object.fromEntries(options.map((id, i) => [id, first.indexOf(first[i]) !== first.lastIndexOf(first[i]) ? `${first[i]} (${id})` : first[i]]));
 }
 
 function RefSelect({ shape, value, onChange, disabled, id, invalid, path }) {
-  const { refOptions, goTo } = useForm();
+  const { refOptions, goTo, technical, store } = useForm();
   const [creating, setCreating] = useState(false);
   const name = shape['x-ref'];
   const options = refOptions[name] || [];
+  const labels = technical ? undefined : refLabels(name, options, store.get());
   const [target, label] = REF_TARGET[name] || [];
   // Some of what a field points at can be made right here: the new thing is added and the field points at it.
   const spec = !disabled ? CREATABLE[name] : null;
@@ -567,6 +590,7 @@ function RefSelect({ shape, value, onChange, disabled, id, invalid, path }) {
         id={id}
         value={value}
         options={options}
+        labels={labels}
         onChange={onChange}
         disabled={disabled}
         invalid={invalid}
@@ -702,9 +726,16 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
   const openExtra = shape.additionalProperties === undefined && shape.unevaluatedProperties === undefined;
 
   const setProp = (key, v) => onChange(v === undefined ? omit(obj, key) : orderedSet(obj, key, v, order));
+  // Deleting a row takes out what the row shows. The parts the page asks for elsewhere (a card above the form: After the call's switches and ticks) stay,
+  // and a row holding nothing but those has no Delete.
+  const keptOf = (key) => hiddenParts(obj[key], [...path, key].join('.'), hidden);
+  const onlyHidden = (key) => {
+    const kept = keptOf(key);
+    return kept !== undefined && JSON.stringify(kept) === JSON.stringify(obj[key]);
+  };
   const del = (key, label) => {
     markDelete(label || wordsOf(key).label);
-    setProp(key, undefined);
+    setProp(key, keptOf(key));
   };
   // Fields that are set and optional can be deleted; required ones are always part of the object.
   const renderRow = (key) => (
@@ -722,7 +753,7 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
       sole={rows.length === 1}
       onChange={(v) => setProp(key, v)}
       onAdd={() => setProp(key, engine.defaultFor(shape.properties[key]))}
-      onRemove={!required.includes(key) ? () => del(key) : null}
+      onRemove={!required.includes(key) && !onlyHidden(key) ? () => del(key) : null}
     />
   );
 
@@ -971,14 +1002,21 @@ export function FieldRow({
 
 // ---- unions ----------------------------------------------------------------------------------
 
+// A check on what is said is chosen by what it does ("Refuses tricks to change its instructions"), as Add names it, not by the schema's title
+// ("Prompt-injection detector"); with technical names on, the schema's own.
+const isCheckPath = (path) => path.length === 3 && path[0] === 'guardrails' && (path[1] === 'input' || path[1] === 'output') && typeof path[2] === 'number';
+
 function UnionBody({ shape, value, path, onChange, disabled }) {
-  const { engine } = useForm();
+  const { engine, technical } = useForm();
   const branches = useMemo(() => engine.branchesOf(shape), [engine, shape]);
   const picked = engine.pickBranch(branches, value);
   // The kind is clear when the value fits it, or carries its marker (`type: "http"`) with some required fields still missing: then
   // that kind's editor is shown with what is missing marked, instead of raw JSON.
   const fitsBranch = engine.fits(branches[picked], value) || matchesDiscriminator(engine, branches[picked], value);
-  const labels = branches.map((b, i) => engine.branchLabel(b, i));
+  const labels = branches.map((b, i) => {
+    const kind = engine.flatten(b).properties?.type?.const;
+    return isCheckPath(path) && !technical && PLAIN_KIND[kind] ? PLAIN_KIND[kind] : engine.branchLabel(b, i);
+  });
   const segmented = branches.length <= 4 && labels.join('').length <= 48;
   const choose = (index) => {
     if (index !== picked || !fitsBranch) onChange(carryOver(engine, value, branches[index], engine.defaultFor(branches[index])));
@@ -1198,10 +1236,12 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
   const lastKey = path[path.length - 1];
   const base = singular(lastKey === 'items' ? path[path.length - 2] : lastKey);
   const word = ADD_WORDS[lastKey] || base.replace(/_/g, ' '); // what "Add …" calls one of them
-  const takenIds = list
+  const ownIds = list
     .filter(isObj)
     .map((item) => item.id)
     .filter((id) => typeof id === 'string');
+  // a list of guardrails shares its ids with the other two (takenIdsAt), so a new check is named clear of all three
+  const takenIds = path[0] === 'guardrails' ? [...new Set([...ownIds, ...takenIdsAt(ctx.store.get(), path)])] : ownIds;
   // Some lists are added to by choosing a job from cards (tools, channels, guardrails), not a kind from a drop-down.
   const pickerKey =
     collection === 'tools'
@@ -1327,6 +1367,7 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
       {picker ? (
         <AddPicker
           what={WHAT[pickerKey]}
+          intro={INTRO[pickerKey]}
           options={picker}
           disabled={disabled}
           onPick={(option, made) => {

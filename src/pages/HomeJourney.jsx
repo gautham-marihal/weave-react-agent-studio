@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import Icon from '../ui/Icon.jsx';
 import { useAgentHealth } from '../studio/health/useAgentHealth.js';
+import { useKnowledge } from '../studio/knowledge/useKnowledge.js';
 import { readinessSteps, stepRoute } from '../studio/newlayout/readiness.js';
 import { useGate } from '../studio/release/gate.js';
 import { isFinished, normalizeHeadline } from '../studio/scenarios/runResults.js';
@@ -54,6 +55,8 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
   );
   const [gateOn] = useGate(bot?.id || '');
   const config = answer?.config || null;
+  // what the server has read of its documents, when it has any (so this says what its menu says)
+  const knowledge = useKnowledge(Array.isArray(config?.knowledge) && config.knowledge.length ? bot.id : null);
   const plan = useMemo(
     () =>
       config
@@ -64,9 +67,10 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
             scenarioCount: Array.isArray(config.tests) ? config.tests.length : 0,
             latestRun,
             gate: gateOn ? { enabled: true, savedAt: bot?.updated_at || '', dirty: false } : null,
+            knowledgeRead: knowledge.data,
           })
         : null,
-    [config, bot, answer?.report, latestRun, gateOn],
+    [config, bot, answer?.report, latestRun, gateOn, knowledge.data],
   );
   useEffect(() => {
     if (chosen && !list.some((b) => b.id === chosen)) setChosen('');

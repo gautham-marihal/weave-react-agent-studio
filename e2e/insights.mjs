@@ -2,7 +2,7 @@
 // a person keeps failing and Front Desk answers slowly. Alerts finds both on its own, the bell and the sidebar count them, "I'm on it" and Snooze take
 // them off the count, a rule can be changed and put back, and "Open the tool" lands on the tool's panel. On Questions, the questions callers asked that
 // the agent couldn't answer are grouped (Sunday delivery first, asked five times); answering one puts a rule and a test in the draft, Undo takes both
-// out, Dismiss and "Bring it back" move it between the lists, and the classic layout has the page too. Nothing is written anywhere but the demo.
+// out, Dismiss and "Bring it back" move it between the lists. Nothing is written anywhere but the demo.
 //
 //   npm run dev:demo      (in one terminal)
 //   node e2e/insights.mjs
@@ -35,7 +35,6 @@ await context.addInitScript(() => {
   if (sessionStorage.getItem('insights')) return;
   sessionStorage.setItem('insights', '1');
   localStorage.setItem('weave_theme', 'light');
-  localStorage.setItem('weave_layout', 'new');
   localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e2e@example.test', workspaceName: 'Test', role: 'dev' }));
   localStorage.removeItem('weave_demo_state');
   localStorage.removeItem('weave_insights_v1');
@@ -196,16 +195,6 @@ check('Dismiss moves it to Dismissed', /Dismissed \(1\)/.test(await page.getByRo
 await page.getByRole('tab', { name: /Dismissed/ }).click();
 await page.getByRole('button', { name: 'Bring it back' }).click();
 check('“Bring it back” puts it back', !/\(\d\)/.test(await page.getByRole('tab', { name: /Dismissed/ }).textContent()));
-
-// the classic layout has the page too
-await page.evaluate(() => {
-  localStorage.setItem('weave_layout', 'classic');
-  location.hash = '#/bots/front-desk/questions';
-  location.reload();
-});
-await page.waitForSelector('.stStageTabs');
-await page.waitForSelector('.inQuestions');
-check('the classic layout has Questions beside Calls', (await page.locator('.stStageTabs button', { hasText: 'Questions' }).count()) === 1);
 
 check('no errors in the page', problems.length === 0, problems.slice(0, 3).join(' | '));
 await browser.close();

@@ -1,12 +1,12 @@
-// Typing speed on a big agent, in a real browser. It makes agents with 3, 27 and 100 HTTP tools in demo mode (nothing reaches an API), opens
-// the Tools section with every card expanded (the worst case: tens of thousands of DOM nodes), types 40 letters into one description, and
-// times each from the keystroke to the second animation frame. A keystroke should re-render ONE card, not all of them, so the time must not
-// grow with the number of tools: past about 100 ms typing feels sticky.
+// Typing speed on a big agent, in a real browser. It makes agents with 3, 27 and 100 HTTP tools in demo mode (nothing reaches an API), opens the
+// Tools page (a row per tool) and one tool's panel, types 40 letters into its description, and times each from the keystroke to the second
+// animation frame. A keystroke changes the panel's copy of the whole draft, so the time must not grow with the number of tools: past about
+// 100 ms typing feels sticky.
 //
 //   npm run build -- --mode demo      then      npx vite preview --mode demo --port 4180      then      E2E_BASE=http://localhost:4180 npm run e2e:typing
 //
 // Measure a PRODUCTION build: the dev server (npm run dev:demo) adds React's development checks and is several times slower.
-// The budget: with 100 tools expanded the median stays within 40 ms of the 3-tool median (which is the browser's two-frame floor, about 33 ms).
+// The budget: with 100 tools the median stays within 40 ms of the 3-tool median (which is the browser's two-frame floor, about 33 ms).
 // Environment: E2E_BASE (default http://localhost:4180), E2E_BROWSER (Chrome or Edge), E2E_TOOLS (comma list, default 3,27,100), E2E_STYLE (a design
 // style: simple, premium, futuristic or vibrant; default simple) and E2E_THEME (light or dark), to time the styles that blur and glow too.
 import { chromium } from 'playwright-core';
@@ -71,7 +71,6 @@ async function measure(browser, tools) {
     ([cfg, style, theme]) => {
       if (sessionStorage.getItem('seeded')) return;
       sessionStorage.setItem('seeded', '1');
-      localStorage.setItem('weave_layout', 'classic'); // this script types in the classic layout's config form
       localStorage.setItem('weave_style', style);
       localStorage.setItem('weave_theme', theme);
       localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e@t.dev', workspaceName: 'Test', role: 'dev' }));
@@ -100,26 +99,16 @@ async function measure(browser, tools) {
   await page.getByPlaceholder('Enter your password').fill('whatever123');
   await page.getByRole('button', { name: /continue to workspace/i }).click();
   await page.waitForSelector('.dashMain');
-  await page.goto(`${BASE}/#/bots/big/config`);
-  await page.waitForSelector('.smCard');
-  await page.getByRole('button', { name: 'All settings', exact: true }).click();
-  await page.waitForSelector('.stForm');
-  await page.getByRole('tab', { name: /^What it can do/ }).click(); // "All settings" is grouped by task: the tools are under "What it can do"
-  await page.locator('[data-section="tools"]').click();
-  await page.waitForSelector('.stFSection');
-  for (let pass = 0; pass < 4; pass += 1) {
-    // expand every card and every fold: the worst case
-    await page.evaluate(() => {
-      document.querySelectorAll('.stForm details:not([open])').forEach((d) => {
-        d.open = true;
-      });
-      // (a deeper part opens in a panel over the page, one at a time: those stay closed)
-      document.querySelectorAll('.stFGroup:not(.drill) > header .stFGroupToggle[aria-expanded=false]').forEach((b) => b.click());
-    });
-    await page.waitForTimeout(700);
-  }
+  await page.goto(`${BASE}/#/bots/big/tools`);
+  await page.waitForSelector('.nlPage .nlRow');
+  // the tool's own panel, over the page with a row for every tool
+  await page.locator('.nlSection', { hasText: 'All its tools' }).locator('.nlRow').first().click();
+  // its settings in full, unfolded (the most a keystroke can make the panel draw again), then type in when it uses the tool, above them
+  await page.locator('.nlDrawer .stFFold > summary').click();
+  await page.waitForSelector('.nlDrawer .stTool');
+  await page.waitForTimeout(700);
   const nodes = await page.evaluate(() => document.querySelectorAll('*').length);
-  const target = page.locator('.stTool').first().getByLabel('Description').first();
+  const target = page.locator('.nlDrawer .nlToolWhen textarea');
   await target.scrollIntoViewIfNeeded();
   await target.click();
   const times = await page.evaluate(async () => {
@@ -153,6 +142,6 @@ const floor = rows[0].median;
 const worst = rows[rows.length - 1];
 const ok = worst.median <= floor + BUDGET_MS;
 console.log(
-  `${ok ? 'PASS' : 'FAIL'}  ${worst.tools} tools expanded: median ${worst.median} ms, budget ${floor + BUDGET_MS} ms (the ${rows[0].tools}-tool floor ${floor} ms + ${BUDGET_MS})`,
+  `${ok ? 'PASS' : 'FAIL'}  ${worst.tools} tools: median ${worst.median} ms, budget ${floor + BUDGET_MS} ms (the ${rows[0].tools}-tool floor ${floor} ms + ${BUDGET_MS})`,
 );
 process.exit(ok ? 0 : 1);

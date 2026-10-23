@@ -213,6 +213,8 @@ export function toLegacyAgent(bot) {
     versions: bot.latest_version ? [{ version, configured: true, createdAt: bot.draft_saved_at }] : [],
     configuration: { format: 'json' },
     createdAt: bot.draft_saved_at,
+    // which save of the draft this is: a page that keeps agents' configurations (Voices) reads one again when it changes
+    draftRevision: bot.draft_revision ?? null,
     sessions: 0,
     deployed,
   };

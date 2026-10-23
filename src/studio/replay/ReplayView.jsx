@@ -290,8 +290,8 @@ export default function ReplayView({ botId, events, editor, onMakeTest, draftLab
       )}
 
       {!editor && !noWords && (
-        <Notice kind="info" title="Open this call from the agent’s own Calls tab to replay it">
-          Replays use the agent’s draft, which that tab has open.
+        <Notice kind="info" title="Open this call from the agent’s own Calls page to replay it">
+          Replays use the agent’s draft, which that page has open.
         </Notice>
       )}
       {problem && (

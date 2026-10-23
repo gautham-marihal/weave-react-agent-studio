@@ -43,7 +43,7 @@ export const SETTINGS = {
   identity: E('Who the caller is', 'How the agent works out who is calling, for example from their phone number.', 'detailed'),
   telephony: E('Phone transfers', 'How calls are passed to a person or another number.', 'detailed'),
   observability: E('Call records and monitoring', 'What is recorded about each call, how long it is kept, and where metrics go.', 'detailed'),
-  tests: E('Test scenarios', 'Practice conversations with what must be true afterwards. Use the Scenarios tab to write and run them.', 'detailed'),
+  tests: E('Test scenarios', 'Practice conversations with what must be true afterwards. Use Tests › Scenarios to write and run them.', 'detailed'),
   builder: E('Studio settings', 'Settings for the studio itself; the runtime ignores them.', 'expert'),
   $schema: E('Schema', 'Which version of the configuration format this file uses.', 'expert'),
   schema_version: E('Format version', 'Which version of the configuration format this agent uses.', 'expert'),
@@ -385,7 +385,7 @@ export const SETTINGS = {
   collection: E('Collection', 'The collection to search in your search service.', 'detailed'),
   mode: E('How it is used', 'How the setting is applied.', 'detailed'),
   sources: E('Sources', 'Where the content comes from, tried in order.', 'guided'),
-  file_id: E('Uploaded file', 'The name of a file uploaded in the Knowledge tab.', 'guided'),
+  file_id: E('Uploaded file', 'The name of a file uploaded on the Knowledge page.', 'guided'),
   crawl_depth: E('How many links to follow', 'For a web page: how many levels of links to read as well.', 'detailed', '1'),
   chunking: E('How documents are cut up', 'How sources are cut into passages. Rebuild the index after changing it.', 'expert'),
   size: E('Passage length (characters)', 'Smaller passages match a question more exactly; larger ones carry more context.', 'expert'),
@@ -565,7 +565,14 @@ export const CONTEXT = {
   'entry.sip_trunk': E('Phone line (note)', 'A note of the carrier connection. The platform sets up the trunk when a number is added.', 'expert'),
   'entry.dispatch_rule': E('Routing rule (note)', 'A note of the routing rule. The platform sets up the rule when a number is added.', 'expert'),
   'meta.name': E('Name', 'What people see in lists. The agent speaks as this unless the personality sets another name.', 'guided'),
-  'persona.name': E('The agent’s name', 'How the agent introduces itself.', 'guided', 'Sam'),
+  'persona.name': E('Name it introduces itself by', 'How the agent introduces itself, as in “I’m Sam, from Acme”.', 'guided', 'Sam'),
+  // not the agent's languages (asked once, with the agent): a code the speech service may need of its own, such as "multi" to hear several languages
+  'stt.language': E(
+    'Language code for listening',
+    'Only when the speech service needs its own code, such as “multi” to hear several languages. Usually left empty: the agent’s languages are set with the agent.',
+    'detailed',
+    'multi',
+  ),
   'identity.caller_id': E('Caller’s number', 'How the caller’s number is worked out.', 'detailed'),
   'tools.description': E(
     'When to use it',
@@ -650,6 +657,9 @@ export const CONTEXT = {
   'channels.enabled': E('Switched on', 'Turn a channel off without deleting it.', 'guided'),
   'summary.enabled': E('Write a call summary', 'A short summary written after each call.', 'guided'),
   'redaction.enabled': E('Hide sensitive details', 'Replace sensitive text before a transcript is written.', 'guided'),
+  // under After the call's cards, which ask whether summaries are written and what is hidden: what is left of each
+  'post_call.summary': E('Model that writes the summaries', 'Which AI model writes each call’s summary, once summaries are on.', 'guided'),
+  'post_call.redaction': E('Your own patterns to hide', 'More patterns to hide, what replaces what is hidden, and remembered secrets.', 'guided'),
   'artifacts.enabled': E('Save this file', 'Write this file when a call ends.', 'detailed'),
   'session_log.enabled': E(
     'Keep a log of each call',
@@ -670,6 +680,22 @@ export const CONTEXT = {
   ),
   'input.text': E('The rule', 'The rule, in a sentence.', 'guided'),
   'output.text': E('The rule', 'The rule, in a sentence.', 'guided'),
+  // a check looks for these and acts as its “When it triggers” says (block, deflect, hide in the records): not the redaction's "patterns to hide"
+  'input.patterns': E(
+    'Patterns to look for',
+    'Patterns (regular expressions) to look for in what the caller says. What it does on a match is under “When it triggers”.',
+    'detailed',
+  ),
+  'output.patterns': E(
+    'Patterns to look for',
+    'Patterns (regular expressions) to look for in what the agent says. What it does on a match is under “When it triggers”.',
+    'detailed',
+  ),
+  'input.entities': E('Kinds of detail to look for', 'The kinds of personal detail to notice in what the caller says, such as card numbers.', 'detailed'),
+  'output.entities': E('Kinds of detail to look for', 'The kinds of personal detail to notice in what the agent says, such as card numbers.', 'detailed'),
+  // a hand-over rule passes the caller to another agent of the workflow, not to an address or a number
+  'escalation.to': E('Hand over to', 'The agent that takes over the caller.', 'guided'),
+  'escalation.id': E('Its name in the configuration', 'Made for it when it is added. Tests and other settings may point at it by this name.', 'expert'),
   'agents.entry': E('Who answers first', 'The agent that answers a new caller first.', 'guided'),
   'interruption.mode': E(
     'How interruptions are noticed',

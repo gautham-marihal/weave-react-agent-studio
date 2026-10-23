@@ -62,6 +62,11 @@ export function buildEvents({
   let inputTokens = 0;
   let outputTokens = 0;
   const gap = (value, turn, fallback) => (typeof value === 'function' ? value(turn) : typeof value === 'number' ? value : fallback);
+  // a voice call records what the runtime times on one (in seconds): waiting to be sure the caller finished, the text of what they said, and, on the
+  // answer, the model starting, the voice starting and the whole delay the caller heard. Varied a little from turn to turn, the same every time.
+  const voice = channel?.type === 'sip_voice' || channel?.type === 'web_voice';
+  const r3 = (v) => Math.round(v * 1000) / 1000;
+  let heard = 0; // making sure the caller finished, on the turn being answered
   messages.forEach((m) => {
     if (m.role === 'user') {
       callerTurns += 1;
@@ -69,11 +74,14 @@ export function buildEvents({
       // what a request costs grows with the conversation: the instructions, plus every line so far
       inputTokens += model ? 900 + 45 * spoken : 120;
       add('model_request', { agent, model: model?.model || 'demo-model', messages: spoken, tools: [] }, gap(callerGap, callerTurns, stepSeconds));
-      add('user_said', { text: m.text }, 0.02);
+      if (voice) heard = r3(0.55 + ((seq * 37) % 60) / 100);
+      add('user_said', { text: m.text, ...(voice ? { timing: { end_of_turn_delay: heard, transcription_delay: r3(heard * 0.85) } } : {}) }, 0.02);
     } else {
+      let toolMs = 0; // the tools of this answer, which the delay a voice call records includes
       list(m.tools).forEach((t) => {
         // a tool takes a few hundred milliseconds to a second or so on a call that looks real, and a moment otherwise
         const took = typeof t.ms === 'number' ? t.ms : model ? 180 + ((seq * 389 + String(t.tool).length * 97) % 1300) : 12;
+        toolMs += took;
         add('tool_called', { tool: t.tool, args: t.args || {}, ...(t.error ? { error: t.error } : { result: t.output ?? null }), duration_ms: took }, 0.3);
         if (t.handoff) {
           handoffs += 1;
@@ -89,7 +97,16 @@ export function buildEvents({
           text: m.text,
           interrupted: false,
           ...(m.simulated ? { simulated: true } : {}),
-          ...(replyGap !== null && callerTurns > 0 ? { timing: { llm_node_ttft: Math.round(wait * 0.55 * 1000) / 1000 } } : {}),
+          ...(voice && callerTurns > 0
+            ? (() => {
+                // the whole delay the caller heard is its parts and a little more, as the runtime records it
+                const ttft = r3(wait * 0.55);
+                const ttfb = r3(0.18 + ((seq * 53) % 40) / 100);
+                return { timing: { llm_node_ttft: ttft, tts_node_ttfb: ttfb, e2e_latency: r3(heard + ttft + ttfb + toolMs / 1000 + 0.06) } };
+              })()
+            : replyGap !== null && callerTurns > 0
+              ? { timing: { llm_node_ttft: Math.round(wait * 0.55 * 1000) / 1000 } }
+              : {}),
         },
         wait,
       );
@@ -180,7 +197,7 @@ export function makeCall({
 
 const SEED_VERSION = '0.1.1'; // the version the made-up calls say they ran (the agent's draft has moved on)
 
-// The model an agent runs on, as its calls report it (the draft's language model), so their usage can be priced.
+// The model an agent runs on, as its calls report it (the draft's language model), written in their usage as a real call writes it.
 export const llmOf = (config) => {
   const llm = config?.defaults?.models?.llm;
   return llm && typeof llm.model === 'string' && llm.model
@@ -433,6 +450,9 @@ export function seedHistory(botId, config, nowIso) {
   const other = agents.find((id) => id !== entry) || 'specialist';
   const tool = list(config?.tools).find((t) => t && t.id && !t.builtin)?.id || 'lookup_order';
   const chan = { id: web?.id || 'web-chat', type: web?.type || 'web_chat' };
+  // an agent people can also ring takes some of these on its phone line or its web voice
+  const spoken = channels.find((c) => c?.type === 'sip_voice' || c?.type === 'web_voice');
+  const voiceChan = spoken ? { id: spoken.id || spoken.type, type: spoken.type } : null;
   const ago = (hours) => new Date(Date.parse(nowIso) - hours * 3600 * 1000).toISOString();
   const asks = [
     'Where is my order?',
@@ -462,7 +482,8 @@ export function seedHistory(botId, config, nowIso) {
         botId,
         ref,
         version,
-        channel: chan,
+        channel: voiceChan && n % 3 === 1 ? voiceChan : chan,
+        ...(voiceChan && n % 3 === 1 && voiceChan.type === 'sip_voice' ? { caller: `+65912${String(34500 + n * 17).slice(-5)}` } : {}),
         startedAt: ago(hours),
         agent: entry,
         idSuffix: `h${n}`,

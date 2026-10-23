@@ -200,7 +200,7 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
                   : range !== 'all'
                     ? `Nothing in the ${(RANGES.find((r) => r.id === range)?.label || '').toLowerCase()}. Try a longer time range.`
                     : 'Nothing has called yet.'}{' '}
-              {bots.length > 0 && 'A conversation from an agent’s Test tab is a call too.'}
+              {bots.length > 0 && 'Trying an agent out makes a call too.'}
             </p>
             {onOpenAgent && effectiveBot && (
               <button type="button" className="secondaryCta" onClick={() => onOpenAgent(effectiveBot)}>

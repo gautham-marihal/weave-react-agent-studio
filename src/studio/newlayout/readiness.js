@@ -3,10 +3,11 @@
 // deployed); it informs and never blocks. It is the one answer to "is it ready?": the menu's progress card, the Overview, Home and Releases all read it.
 // Pure: no React, no DOM.
 
-import { readSimple } from '../simple/simpleModel.js';
+import { languageName, readSimple } from '../simple/simpleModel.js';
 import { readModels } from '../models/config.js';
 import { modelLabel, providerLabel } from '../models/catalog.js';
 import { gateCheck } from '../release/gateCheck.js';
+import { readingState } from '../knowledge/model.js';
 import { tabFor } from './pages.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -17,10 +18,21 @@ const words = (text) =>
       .match(/\S+/g) || []
   ).length;
 
+// What a step about the documents says while they are not ready, the worst first.
+const KNOWLEDGE_TODO = {
+  failed: 'Reading its documents failed.',
+  missing: 'A document it lists is not on the server.',
+  unsaved: 'Its documents are not saved yet.',
+  changed: 'Its documents changed since they were read.',
+  unread: 'Its documents are saved but not read yet.',
+  reading: 'Its documents are being read.',
+};
+
 // steps: [{ id, label, text, state: 'done' | 'todo' | 'blocked' | 'optional', page, part?, target? }]; `target` says what to open on the Agent page, { open: <panel> } or { focus: 'role' | 'greeting' }; `next` is the first blocked step, else the first to do.
 //   latestRun: the newest finished run of the tests ({ status, passed, total }), null when they were never run, undefined when not known (then written tests count as done).
 //   gate: { enabled, savedAt, dirty } when "tests must pass before publishing" is on for the agent.
-export function readinessSteps({ config, summary = null, report = null, scenarioCount = 0, latestRun, gate = null } = {}) {
+//   knowledgeRead: what the server has read of its documents (useKnowledge's data); left out, a draft with documents counts that step as done.
+export function readinessSteps({ config, summary = null, report = null, scenarioCount = 0, latestRun, gate = null, knowledgeRead = null } = {}) {
   const steps = [];
   if (!config || typeof config !== 'object') return { steps, next: null, done: 0, total: 0 };
   const read = readSimple(config);
@@ -73,7 +85,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
       ? {
           id: 'voice',
           label: read.voiceChannel ? 'Pick a language and a voice' : 'Pick its language',
-          text: read.voiceChannel ? `${read.primaryLanguage}, with a voice chosen.` : `${read.primaryLanguage}.`,
+          text: read.voiceChannel ? `${languageName(read.primaryLanguage)}, with a voice chosen.` : `${languageName(read.primaryLanguage)}.`,
           state: 'done',
           page: 'agent',
           target: { open: 'language' },
@@ -127,6 +139,21 @@ export function readinessSteps({ config, summary = null, report = null, scenario
           page: 'tools',
         },
   );
+
+  // documents and web pages are read before the agent can answer from them: a step while some are not saved, not read, or changed since they were read
+  const readable = knowledge.filter((b) => b && typeof b === 'object' && b.type === 'vector_store');
+  if (readable.length) {
+    const states = knowledgeRead
+      ? readable.map((b) => readingState(list(knowledgeRead.bases).find((s) => s.id === b.id) || null, { draftSources: list(b.sources) }).state)
+      : [];
+    const worst = Object.keys(KNOWLEDGE_TODO).find((state) => states.includes(state));
+    const step = { id: 'knowledge', label: 'Let it read its documents', page: 'knowledge' };
+    add(
+      worst
+        ? { ...step, text: KNOWLEDGE_TODO[worst], state: 'todo' }
+        : { ...step, text: knowledgeRead ? 'Read, and ready to answer from.' : 'Its documents and web pages.', state: 'done' },
+    );
+  }
 
   const errors = list(report?.errors).length;
   if (report) {

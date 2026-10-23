@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client.js';
 import { ALL_AGENTS_LIMIT } from '../calls/callModel.js';
+import { readFinishedCall } from '../insights/callData.js';
 import { readCall } from '../replay/callFacts.js';
+import { sampleOf, spreadPick } from '../speed/speedModel.js';
+import { PER_AGENT } from '../speed/useSpeedData.js';
 
-// Reads what the monitoring page needs, and only reads: the list of calls of each agent for the period and the one before it, and the records of the
-// newest few calls of each agent (for answer times, failed tools and the like). Agents are asked a few at a time. One agent failing does not hide the others.
+// Reads what the monitoring page needs, and only reads: the list of calls of each agent for the period and the one before it, and the records of some
+// finished calls of each agent, spread over the days of the period as the Speed page picks them (for answer times, failed tools and the like). Each
+// sample keeps its answers' waits measured as the Speed page measures them, so the same period gives the same numbers there. Agents are asked a few at
+// a time. One agent failing does not hide the others.
+//   perAgent, cap: how many calls of each agent are read (as many as Speed reads), and of all of them (none for the Monitoring page; Home keeps to a
+//   couple of hundred, shared evenly, so a big workspace reads fewer of each agent's and a small one reads exactly what Speed reads)
 const AT_A_TIME = 4;
 const PAGE = 100;
 const MAX_PAGES = 3; // up to 300 calls an agent: past that, the numbers say they rest on the newest
-const SAMPLE_PER_AGENT = 15;
-const SAMPLE_CAP = 120;
+const SAMPLE_CAP = 200;
 
 async function inChunks(items, size, work) {
   const out = [];
@@ -17,9 +23,9 @@ async function inChunks(items, size, work) {
   return out;
 }
 
-export function useMonitoring({ bots = [], days = 7 }) {
+export function useMonitoring({ bots = [], days = 7, perAgent = PER_AGENT, cap = SAMPLE_CAP }) {
   const ids = bots.slice(0, ALL_AGENTS_LIMIT).map((b) => b.id);
-  const key = `${ids.join(',')}|${days}`;
+  const key = `${ids.join(',')}|${days}|${perAgent}|${cap}`;
   const [state, setState] = useState({ loading: true, calls: [], samples: {}, errors: [], nowMs: Date.now(), truncated: false });
   const generation = useRef(0);
 
@@ -52,20 +58,27 @@ export function useMonitoring({ bots = [], days = 7 }) {
     const errors = listed.filter((l) => l.error).map((l) => ({ botId: l.id, message: l.error }));
     setState({ loading: false, calls, samples: {}, errors, nowMs, truncated });
 
-    // the records of the newest calls of each agent, read in the background so the page is already useful
+    // the records of finished calls of the period, spread over its days, read in the background so the page is already useful
+    const start = nowMs - days * 24 * 3600 * 1000;
+    const each = Math.min(perAgent, Math.max(1, Math.floor(cap / Math.max(1, ids.length))));
     const wanted = listed
       .flatMap((l) =>
-        [...l.calls]
-          .sort((a, b) => Date.parse(b.started_at) - Date.parse(a.started_at))
-          .filter((c) => c.status !== 'in_progress')
-          .slice(0, SAMPLE_PER_AGENT),
+        spreadPick(
+          [...l.calls]
+            .sort((a, b) => Date.parse(b.started_at) - Date.parse(a.started_at))
+            .filter((c) => c.status !== 'in_progress' && Date.parse(c.started_at) >= start),
+          each,
+        ),
       )
-      .slice(0, SAMPLE_CAP);
+      .slice(0, cap);
     const samples = {};
     await inChunks(wanted, AT_A_TIME, async (c) => {
       try {
-        const page = await api.getCall(c.bot, c.id, { limit: 500 });
-        samples[`${c.bot}/${c.id}`] = readCall(Array.isArray(page?.events) ? page.events : []);
+        const page = await readFinishedCall(c);
+        samples[`${c.bot}/${c.id}`] = {
+          ...readCall(Array.isArray(page?.events) ? page.events : []),
+          answerMs: sampleOf(c, page).answers.map((a) => a.ms),
+        };
       } catch {
         /* one call that cannot be read is left out of the sample */
       }

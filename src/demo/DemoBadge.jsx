@@ -70,7 +70,7 @@ export function DemoBadge() {
         title="This is demo mode"
       >
         <i aria-hidden="true" />
-        DEMO
+        Demo
       </button>
       {open && (
         <div className="demoPopover" role="dialog" aria-label="About demo mode">

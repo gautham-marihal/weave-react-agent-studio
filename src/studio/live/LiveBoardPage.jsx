@@ -173,7 +173,7 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
       <div className="lvStats" role="group" aria-label="Right now">
         <div className="lvStat">
           <strong>{sum.live}</strong>
-          <span>call{sum.live === 1 ? '' : 's'} now</span>
+          <span>{sum.live === 1 ? 'Call now' : 'Calls now'}</span>
         </div>
         <button
           type="button"
@@ -183,11 +183,11 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
           title="Show only the calls that need a look"
         >
           <strong>{sum.attention}</strong>
-          <span>need{sum.attention === 1 ? 's' : ''} a look</span>
+          <span>{sum.attention === 1 ? 'Needs a look' : 'Need a look'}</span>
         </button>
         <a className="lvStat" href="#lvEnded">
           <strong>{sum.ended}</strong>
-          <span>ended in the last 10 min</span>
+          <span>Ended in the last 10 min</span>
         </a>
       </div>
 

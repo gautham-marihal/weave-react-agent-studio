@@ -141,6 +141,19 @@ export function setVoiceId(config, voiceId) {
   });
 }
 
+// What would stop a part of the call from starting with the model chosen for it, from what the server says it can run (GET /providers): '' when
+// nothing (or nothing is chosen, or the server's list is not known). The Agent page's row and the AI models panel say the same.
+//   -> { short, text } | null
+export function slotProblem(stage, slot, providers) {
+  if (!slot?.provider || !Array.isArray(providers) || !providers.length) return null;
+  const current = providers.find((p) => p.name === slot.provider);
+  const runnable = current && current.installed !== false && (current.stages || []).includes(stage);
+  if (!runnable) return { short: 'Can’t run', text: `The runtime can’t run “${slot.provider}” for this. Choose one from the list.` };
+  if (current.default_secret && current.key_available === false)
+    return { short: 'Key missing', text: `The server doesn’t have ${current.default_secret} set, so a call would fail to start until it does.` };
+  return null;
+}
+
 // ---- default speech models --------------------------------------------------------------------------------------------------------------
 // A phone or web-voice channel needs a speech-to-text and a text-to-speech model, and a new agent has neither. This picks, from what the
 // server says it can run (GET /providers), a provider for each missing stage: one that is installed and has its key set, else one that is

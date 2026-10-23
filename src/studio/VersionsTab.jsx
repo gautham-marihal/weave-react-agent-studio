@@ -42,6 +42,7 @@ const BOOKKEEPING = new Set(['version', 'status', 'created_at', 'updated_at']);
 const isBookkeeping = (change) => change.path?.[0] === 'meta' && change.path.length === 2 && BOOKKEEPING.has(change.path[1]);
 
 const sideName = (v) => (String(v) === 'draft' ? 'the draft' : `version ${v}`);
+const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 function DiffView({ diff }) {
   const [showMeta, setShowMeta] = useState(false);
@@ -72,7 +73,8 @@ function DiffView({ diff }) {
       return (
         <div className="stDiff">
           <p className="stMuted">
-            {sideName(diff.from)} and {sideName(diff.to)} are the same{hiddenCount ? ', apart from details the server sets when a version is published' : ''}.
+            {capital(sideName(diff.from))} and {sideName(diff.to)} are the same
+            {hiddenCount ? ', apart from details the server sets when a version is published' : ''}.
           </p>
         </div>
       );
@@ -196,7 +198,9 @@ function RestoreDialog({ botId, version, dirty, onClose, onDone }) {
   );
 }
 
-export default function VersionsTab({ botId, editor, refreshKey, summary }) {
+// quietSteps: the progress card's button is a quiet one (the new layout passes it: its bar above the page has the one strong button)
+//   knowledgeRead: what the server has read of its documents (so the steps still to do match the menu's)
+export default function VersionsTab({ botId, editor, refreshKey, summary, knowledgeRead = null, quietSteps = false }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const list = useMemo(() => versions.data || [], [versions.data]);
   // test runs say which exact configuration they tested, so a version can show whether IT passed (a read; nothing is run)
@@ -250,10 +254,18 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
       scenarioCount: Array.isArray(draft?.tests) ? draft.tests.length : 0,
       latestRun,
       gate: gateOn ? { enabled: true, savedAt: editor.meta?.savedAt || '', dirty: editor.dirty } : null,
+      knowledgeRead,
     });
     return plan.steps.filter((step) => (step.state === 'todo' || step.state === 'blocked') && !['checks', 'tests', 'releases'].includes(step.page));
-  }, [editor.parsed, editor.report, editor.meta?.savedAt, editor.dirty, summary, latestRun, gateOn]);
-  const goTo = (action) => navigate(action.publish ? routeHref(botId, 'versions', { publish: '1' }) : routeHref(botId, action.tab), { guard: false });
+  }, [editor.parsed, editor.report, editor.meta?.savedAt, editor.dirty, summary, latestRun, gateOn, knowledgeRead]);
+  // a step's button: saving is done here (the draft's edits are this page's too), anything else is a page to go to
+  const goTo = (action) => {
+    if (action.save) {
+      editor.save();
+      return;
+    }
+    navigate(action.publish ? routeHref(botId, 'versions', { publish: '1' }) : routeHref(botId, action.tab, action.params), { guard: false });
+  };
   const openStep = (step) => {
     const { tab, params } = stepRoute(step);
     navigate(routeHref(botId, tab, params), { guard: false });
@@ -275,7 +287,7 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
 
   return (
     <div className="stVersions">
-      {!latest.loading && <ShipFlow flow={flow} onAction={goTo} buildLeft={buildLeft} onStep={openStep} />}
+      {!latest.loading && <ShipFlow flow={flow} onAction={goTo} buildLeft={buildLeft} onStep={openStep} quiet={quietSteps} />}
       {list.length === 0 ? (
         <section className="emptyPanel">
           <div className="emptyPanelIcon" aria-hidden="true">

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import Icon from '../../ui/Icon.jsx';
+import { channelLabel } from '../newlayout/rowNames.js';
 import {
   EXPECT_KINDS,
   GUARDRAIL_ACTION_CHOICES,
@@ -726,7 +727,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
                 invalid={!!show('channel')}
                 onChange={(chosen) => set({ channel: chosen })}
                 options={[
-                  ...channels,
+                  ...channels.map((id) => ({ value: id, label: channelLabel(config, id) })),
                   ...(scenario.channel && !channels.includes(scenario.channel)
                     ? [{ value: scenario.channel, label: `${scenario.channel} (not in this agent)` }]
                     : []),

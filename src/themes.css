@@ -741,7 +741,7 @@ html[data-style="premium"][data-theme] body :is(.nlParts, .inTabs) button.on {
   box-shadow: inset 0 -2px 0 var(--gold);
 }
 /* chips: hairline, small capitals */
-html[data-style="premium"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .csTag, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
+html[data-style="premium"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
   border-radius: 2px;
   letter-spacing: 0.06em;
 }
@@ -1020,9 +1020,7 @@ html[data-style="futuristic"][data-theme] body :is(.nlParts, .inTabs) button.on 
   box-shadow: inset 0 -2px 0 var(--hud);
 }
 /* chips: readouts */
-html[data-style="futuristic"][data-theme]
-  body
-  :is(.stPill, .nlPill, .lvFlags li, .inChip, .csTag, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag, .csDelta) {
+html[data-style="futuristic"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
   border-radius: 2px;
   font-family: var(--font-mono);
   letter-spacing: 0.06em;
@@ -1060,7 +1058,7 @@ html[data-style="futuristic"][data-theme] body .stSwitch.on i {
 html[data-style="futuristic"][data-theme] body :is(.lvDot, .inBell b) {
   box-shadow: 0 0 10px var(--glow);
 }
-html[data-style="futuristic"][data-theme] body :is(.csSeg.llm, .csHistBar i) {
+html[data-style="futuristic"][data-theme] body .csHistBar i {
   background: linear-gradient(90deg, var(--ink), var(--ink2));
   box-shadow: 0 0 12px -2px var(--glow);
 }
@@ -1276,9 +1274,7 @@ html[data-style="vibrant"][data-theme] body :is(.nlParts, .inTabs) button.on {
   color: #ffffff;
   box-shadow: 0 6px 14px -8px var(--glow);
 }
-html[data-style="vibrant"][data-theme]
-  body
-  :is(.stPill, .nlPill, .lvFlags li, .inChip, .csTag, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag, .csDelta) {
+html[data-style="vibrant"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
   border-radius: 999px;
 }
 /* the menu: every place has its own colour, and the open one is candy */
@@ -1344,7 +1340,7 @@ html[data-style="vibrant"][data-theme] body :is(.nlRowIcon, .nlDrawerIcon) {
 html[data-style="vibrant"][data-theme] body .stSwitch.on i {
   background: var(--candy);
 }
-html[data-style="vibrant"][data-theme] body :is(.csSeg.llm, .csHistBar i) {
+html[data-style="vibrant"][data-theme] body .csHistBar i {
   background: var(--candy);
 }
 html[data-style="vibrant"][data-theme] body :is(.dashboard .dashTopbar.dashTopbar, .nlBar) {
@@ -1574,11 +1570,12 @@ html[data-style="vibrant"][data-theme] body .sidebar {
   right: 0;
   z-index: 6000;
   width: min(440px, calc(100vw - 24px));
-  /* it opens from a bar fixed at the top: it never runs past the bottom of the window, and scrolls inside when the window is short */
+  /* it opens from a bar fixed at the top: it never runs past the bottom of the window, and its styles scroll inside when the window is short */
+  display: flex;
+  flex-direction: column;
   max-height: calc(100dvh - 128px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 14px;
+  overflow: hidden;
+  padding: 14px 0 0;
   border: 1px solid var(--line2);
   border-radius: 14px;
   background: var(--panel);
@@ -1615,7 +1612,15 @@ html[data-style="vibrant"][data-theme] body .sidebar {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
+  padding: 0 14px;
+}
+.styleMenuScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 14px 14px;
 }
 .styleMenuPanel header strong {
   color: var(--textStrong);
@@ -2055,9 +2060,7 @@ html[data-style="professional"][data-theme] body :is(.nlParts, .inTabs) button.o
   color: var(--accent-text);
   box-shadow: inset 0 -2px 0 var(--accent);
 }
-html[data-style="professional"][data-theme]
-  body
-  :is(.stPill, .nlPill, .lvFlags li, .inChip, .csTag, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag, .csDelta) {
+html[data-style="professional"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
   border-radius: 4px;
 }
 /* the menu: a blue edge on the open page */
@@ -2075,7 +2078,7 @@ html[data-style="professional"][data-theme] body .workspaceAvatar {
   background: var(--ink);
   color: var(--on-ink);
 }
-html[data-style="professional"][data-theme] body :is(.csSeg.llm, .csHistBar i) {
+html[data-style="professional"][data-theme] body .csHistBar i {
   background: var(--accent);
 }
 html[data-style="professional"][data-theme] body .assistantFace {
@@ -2318,9 +2321,7 @@ html[data-style="calm"][data-theme] body :is(.nlParts, .inTabs, .segmented, .stF
 html[data-style="calm"][data-theme] body :is(.nlParts, .inTabs) button.on {
   color: var(--accent-text);
 }
-html[data-style="calm"][data-theme]
-  body
-  :is(.stPill, .nlPill, .lvFlags li, .inChip, .csTag, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag, .csDelta) {
+html[data-style="calm"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
   border-radius: 999px;
 }
 /* the menu: a soft green pill for the open page */
@@ -2339,7 +2340,7 @@ html[data-style="calm"][data-theme] body :is(.agentRowAvatar, .workspaceAvatar, 
 html[data-style="calm"][data-theme] body .stSwitch.on i {
   background: var(--accent);
 }
-html[data-style="calm"][data-theme] body :is(.csSeg.llm, .csHistBar i) {
+html[data-style="calm"][data-theme] body .csHistBar i {
   background: var(--accent);
 }
 html[data-style="calm"][data-theme] body :is(.dashboard .dashTopbar.dashTopbar, .nlBar) {
@@ -2553,13 +2554,43 @@ html:not([data-style="simple"])[data-theme] body .stFGrid > .stFRow[data-groupro
    two neighbours, in every style; it steps aside beside the chosen one, which has its own mark. (Each style may move it, see below.) */
 html[data-theme]
   body
-  :is(.nlParts, .inTabs, .segmented, .segmentedChoice, .stFSeg, .stFNavChips, .stFNavGroups, .pvModes, .styleMenuModes, .voiceWorkspaceTabs, .stExportChoices)
+  :is(
+    .nlParts,
+    .inTabs,
+    .segmented,
+    .segmentedChoice,
+    .stFSeg,
+    .stFNavChips,
+    .stFNavGroups,
+    .pvModes,
+    .styleMenuModes,
+    .voiceWorkspaceTabs,
+    .stExportChoices,
+    .clViews,
+    .filterPills,
+    .settingsSeg
+  )
   > :is(button, a, [role="tab"], [role="radio"]) {
   position: relative;
 }
 html[data-theme]
   body
-  :is(.nlParts, .inTabs, .segmented, .segmentedChoice, .stFSeg, .stFNavChips, .stFNavGroups, .pvModes, .styleMenuModes, .voiceWorkspaceTabs, .stExportChoices)
+  :is(
+    .nlParts,
+    .inTabs,
+    .segmented,
+    .segmentedChoice,
+    .stFSeg,
+    .stFNavChips,
+    .stFNavGroups,
+    .pvModes,
+    .styleMenuModes,
+    .voiceWorkspaceTabs,
+    .stExportChoices,
+    .clViews,
+    .filterPills,
+    .settingsSeg
+  )
   > :is(button, a, [role="tab"], [role="radio"])
   + :is(button, a, [role="tab"], [role="radio"])::before {
   content: "";
@@ -2574,11 +2605,41 @@ html[data-theme]
 }
 html[data-theme]
   body
-  :is(.nlParts, .inTabs, .segmented, .segmentedChoice, .stFSeg, .stFNavChips, .stFNavGroups, .pvModes, .styleMenuModes, .voiceWorkspaceTabs, .stExportChoices)
+  :is(
+    .nlParts,
+    .inTabs,
+    .segmented,
+    .segmentedChoice,
+    .stFSeg,
+    .stFNavChips,
+    .stFNavGroups,
+    .pvModes,
+    .styleMenuModes,
+    .voiceWorkspaceTabs,
+    .stExportChoices,
+    .clViews,
+    .filterPills,
+    .settingsSeg
+  )
   > :is(.on, .active, [aria-pressed="true"], [aria-selected="true"], [aria-checked="true"])::before,
 html[data-theme]
   body
-  :is(.nlParts, .inTabs, .segmented, .segmentedChoice, .stFSeg, .stFNavChips, .stFNavGroups, .pvModes, .styleMenuModes, .voiceWorkspaceTabs, .stExportChoices)
+  :is(
+    .nlParts,
+    .inTabs,
+    .segmented,
+    .segmentedChoice,
+    .stFSeg,
+    .stFNavChips,
+    .stFNavGroups,
+    .pvModes,
+    .styleMenuModes,
+    .voiceWorkspaceTabs,
+    .stExportChoices,
+    .clViews,
+    .filterPills,
+    .settingsSeg
+  )
   > :is(.on, .active, [aria-pressed="true"], [aria-selected="true"], [aria-checked="true"])
   + *::before {
   opacity: 0;
@@ -2594,7 +2655,19 @@ html[data-style="professional"][data-theme] body :is(.nlParts, .inTabs) {
    and in dark a fill a shade lighter than the bar rather than darker. Page tabs keep their own mark in the styles that underline, light or candy them. */
 html[data-theme]
   body
-  :is(.segmented, .segmentedChoice, .stFSeg, .stFNavChips, .pvModes, .styleMenuModes, .voiceWorkspaceTabs, .stExportChoices)
+  :is(
+    .segmented,
+    .segmentedChoice,
+    .stFSeg,
+    .stFNavChips,
+    .pvModes,
+    .styleMenuModes,
+    .voiceWorkspaceTabs,
+    .stExportChoices,
+    .clViews,
+    .filterPills,
+    .settingsSeg
+  )
   > :is(button, a, [role="tab"], [role="radio"]):is(.on, .active, [aria-pressed="true"], [aria-selected="true"], [aria-checked="true"]),
 html:is([data-style="simple"], [data-style="calm"])[data-theme] body :is(.nlParts, .inTabs) > :is(button, a, [role="tab"]):is(.on, [aria-selected="true"]) {
   box-shadow:
@@ -2603,7 +2676,19 @@ html:is([data-style="simple"], [data-style="calm"])[data-theme] body :is(.nlPart
 }
 html[data-theme="dark"]
   body
-  :is(.segmented, .segmentedChoice, .stFSeg, .stFNavChips, .pvModes, .styleMenuModes, .voiceWorkspaceTabs, .stExportChoices)
+  :is(
+    .segmented,
+    .segmentedChoice,
+    .stFSeg,
+    .stFNavChips,
+    .pvModes,
+    .styleMenuModes,
+    .voiceWorkspaceTabs,
+    .stExportChoices,
+    .clViews,
+    .filterPills,
+    .settingsSeg
+  )
   > :is(button, a, [role="tab"], [role="radio"]):is(.on, .active, [aria-pressed="true"], [aria-selected="true"], [aria-checked="true"]),
 html:is([data-style="simple"], [data-style="calm"])[data-theme="dark"]
   body

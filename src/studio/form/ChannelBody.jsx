@@ -1,6 +1,6 @@
 import React from 'react';
 import { isObj } from './engine.js';
-import { useConfigSelect, useForm } from './ctx.js';
+import { keyOf, useConfigSelect, useForm } from './ctx.js';
 import { StringList, Switch, TextInput } from './fields.jsx';
 import { IdChip } from './IdTools.jsx';
 import { useProviders } from '../models/useProviders.js';
@@ -14,7 +14,9 @@ import { canForms, canKeypad, entryFieldsFor, findVoiceOnly, infoOf, isVoiceChan
 
 // One channel, drawn for what it is: the type decides which fields are shown, so a phone line never offers a widget id
 // and a web chat never offers a phone number. The id is a permanent key (Rename… rewrites everything that points at it).
-// What is left (modalities, greeting, instructions) uses the ordinary form; the rarely-needed parts are collapsed.
+// What a person changes comes first (on or off, what it can do, extra instructions); the rest (its id, its kind, how it is reached, what it can hear and
+// say, exceptions and advanced settings) is folded under "Technical details", with a line that says what is in it. What it says first is asked on the
+// Agent page; a voice channel keeps only whether the caller may talk over it.
 
 const HANDLED = ['id', 'type', 'enabled', 'entry', 'capabilities'];
 const REQUIRES_ENTRY = ['sip_voice', 'web_chat'];
@@ -23,6 +25,19 @@ const REQUIRES_ENTRY = ['sip_voice', 'web_chat'];
 // noted are shown, and can be removed: they route nothing.
 const PLATFORM_ROUTE = ['dnis', 'sip_trunk', 'dispatch_rule'];
 const COLLAPSED = new Set(['match', 'inputs', 'overrides']);
+// asked above the fold; what it says first is the Agent page's (and the switch for talking over it is drawn here)
+const PLAIN_KEYS = ['instructions_append'];
+const OWN_KEYS = ['greeting'];
+// "text in and out", "voice in and out", "voice and text in, voice out"
+const WORDS = { audio: 'voice', text: 'text', image: 'pictures', video: 'video' };
+const together = (items) => (items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items.at(-1)}` : items[0] || '');
+function modalityWords(modalities) {
+  const input = (Array.isArray(modalities?.input) ? modalities.input : []).map((m) => WORDS[m] || m);
+  const output = (Array.isArray(modalities?.output) ? modalities.output : []).map((m) => WORDS[m] || m);
+  if (!input.length && !output.length) return '';
+  if (input.join() === output.join()) return `${together(input)} in and out`;
+  return [input.length ? `${together(input)} in` : '', output.length ? `${together(output)} out` : ''].filter(Boolean).join(', ');
+}
 
 // What each capability means and what it is when nobody has said (the schema's own wording).
 const CAPABILITIES = [
@@ -186,12 +201,23 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   };
 
   const caps = isObj(obj.capabilities) ? obj.capabilities : {};
+  // the folded part: what it holds in a line, and open when something in it needs fixing
+  const techKeys = Object.keys(restShape.properties).filter((key) => !PLAIN_KEYS.includes(key) && !OWN_KEYS.includes(key));
+  const techProblems = ['id', 'type', 'entry', ...techKeys].some((key) => ctx.issuesUnder(keyOf([...path, key])).length > 0);
+  const route = phoneLine ? 'a number added when it goes live' : typeof entry.widget_id === 'string' && entry.widget_id ? `widget ${entry.widget_id}` : '';
+  const techSummary = [TYPE_LABELS[type] || type, modalityWords(obj.modalities), route].filter(Boolean).join(' · ');
+  // a voice channel that says something first: whether the caller may talk over it (unset, they may)
+  const greeting = isObj(obj.greeting) ? obj.greeting : null;
+  // (a channel that speaks: its first line is heard, so it can be talked over; one that only writes has nothing to interrupt)
+  const speaks = Array.isArray(obj.modalities?.output) ? obj.modalities.output.includes('audio') : type === 'sip_voice' || type === 'web_voice';
+  const interruptible = speaks && greeting && greeting.say !== undefined;
+  const setInterrupt = (on) => set({ greeting: { ...greeting, allow_interruptions: on } });
   // a switch is offered only for what the kind of channel can have (the keypad needs a phone line, a form needs a screen)
   const unavailable = (cap) => !!kind && ((cap.key === 'dtmf' && !canKeypad(types, type)) || (cap.key === 'forms' && !canForms(types, type)));
   const setCap = (key, on) => set({ capabilities: { ...caps, [key]: on } });
 
-  return (
-    <div className="stFObject stChannel" data-channel-type={type}>
+  const technical = (
+    <>
       <div className="stFGrid">
         {obj.id ? (
           <IdChip id={obj.id} disabled={disabled} onRename={() => ctx.requestRename('channels', obj.id)} />
@@ -234,17 +260,6 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
               {kind.note}
             </p>
           )}
-          {kind && !kind.runsToday && (
-            <p className="stFWarn" role="note" data-note="not-running">
-              Nothing connects {kind.label} to the runtime yet, so this channel is saved but nobody can reach the agent through it.
-            </p>
-          )}
-        </div>
-        <div className="stFRow toggle bare">
-          <div className="stFLabel">
-            <label>Enabled</label>
-          </div>
-          <Switch checked={obj.enabled !== false} onChange={(v) => set({ enabled: v })} disabled={disabled} label="Enabled" />
         </div>
       </div>
 
@@ -293,6 +308,34 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
         </fieldset>
       )}
 
+      <ObjectBody
+        shape={restShape}
+        value={rest}
+        path={path}
+        disabled={disabled}
+        collapsedKeys={COLLAPSED}
+        onlyKeys={techKeys}
+        onChange={(nextRest) => onChange(sortByOrder({ ...handled, ...nextRest }, order))}
+      />
+    </>
+  );
+
+  return (
+    <div className="stFObject stChannel" data-channel-type={type}>
+      <div className="stFGrid">
+        <div className="stFRow toggle bare">
+          <div className="stFLabel">
+            <label>Enabled</label>
+          </div>
+          <Switch checked={obj.enabled !== false} onChange={(v) => set({ enabled: v })} disabled={disabled} label="Enabled" />
+        </div>
+      </div>
+      {kind && !kind.runsToday && (
+        <p className="stFWarn" role="note" data-note="not-running">
+          Nothing connects {kind.label} to the runtime yet, so this channel is saved but nobody can reach the agent through it.
+        </p>
+      )}
+
       <fieldset className="stChannelBlock">
         <legend>What it can do</legend>
         <div className="stCaps">
@@ -321,14 +364,40 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
         </div>
       </fieldset>
 
+      {interruptible && (
+        <div className="stFRow toggle bare" data-path={`${path.join('.')}.greeting.allow_interruptions`}>
+          <div className="stFLabel">
+            <label>Let the caller interrupt the first line</label>
+          </div>
+          <Switch
+            checked={greeting.allow_interruptions !== false}
+            onChange={setInterrupt}
+            disabled={disabled}
+            label="Let the caller interrupt the first line"
+          />
+          <p className="stFHelp">
+            Whether someone can talk over what it says first (set on the Agent page){'allow_interruptions' in greeting ? '' : ' (using the default)'}.
+          </p>
+        </div>
+      )}
+
       <ObjectBody
         shape={restShape}
         value={rest}
         path={path}
         disabled={disabled}
-        collapsedKeys={COLLAPSED}
+        onlyKeys={PLAIN_KEYS}
+        showUnknown={false}
         onChange={(nextRest) => onChange(sortByOrder({ ...handled, ...nextRest }, order))}
       />
+
+      <details className="stFFold stChannelTech" open={techProblems || undefined}>
+        <summary>
+          Technical details
+          {techSummary && <small>{techSummary}</small>}
+        </summary>
+        {technical}
+      </details>
 
       {(mislabelled || voiceOnlySet.length > 0) && (
         <ul className="stChannelNotes" aria-label="What does not fit this channel">
@@ -363,7 +432,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
             <li key={index} className={note.level}>
               <span>{note.text}</span>
               {note.fix === 'models' && ctx.openModels && (
-                <button type="button" className="stLink" onClick={ctx.openModels}>
+                <button type="button" className="stLink" onClick={() => ctx.openModels()}>
                   Open Models
                 </button>
               )}

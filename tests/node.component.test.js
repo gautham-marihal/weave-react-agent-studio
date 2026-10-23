@@ -526,7 +526,7 @@ test('every section of a full configuration draws without breaking, and the sect
       assert.ok($(app.container, '.stFSection'), `${name}: the section is drawn`);
       assert.ok(textOf($(app.container, '.stFSectionHead')).length > 0, `${name}: it has a heading`);
       const notes = $$(app.container, '.stFSectionNote').map(textOf).join(' ');
-      if (name === 'tests') assert.match(notes, /Scenarios tab writes and runs them/);
+      if (name === 'tests') assert.match(notes, /Tests › Scenarios writes and runs them/);
       if (name === 'tasks') assert.match(notes, /Try this task/);
       if (name === 'tasks') assert.doesNotMatch(notes, /does not run tasks|no effect on a call/, 'the runtime runs tasks now: no sentence says it does not');
       if (name === 'telephony') assert.match(notes, /set up under Telephony/);
@@ -557,23 +557,23 @@ test('every section of a full configuration draws without breaking, and the sect
 // ---------------------------------------------------------------- the add pickers
 test('adding a tool is a choice of jobs: search, pick, and the tool is in the draft with the right kind', async () => {
   const app = await open(base({ tools: [] }), 'tools');
-  assert.equal($(app.container, '.stPickPanel'), null, 'the cards are closed until asked for');
+  assert.equal($(document.body, '.stPickDialog'), null, 'the cards are closed until asked for');
   await a.click(byText(app.container, 'button.stAddBtn', /^Add a tool/));
-  const panel = $(app.container, '.stPickPanel');
-  assert.ok(panel, 'the cards opened in place');
+  const panel = $(document.body, '.stPickDialog');
+  assert.ok(panel, 'the cards opened in a window over the page');
   assert.ok($$(panel, '.stPickCard').length >= 9, 'every kind is a card');
   assert.match(textOf(panel), /Hand over to a person/);
   assert.match(textOf(byText(panel, '.stPickCard', /^Run your own code/)), /Not available in the runtime yet/);
   await a.type($(panel, 'input[type=search]'), 'hand over');
   assert.deepEqual(
-    $$(app.container, '.stPickCard').map((c) => c.getAttribute('data-option')),
+    $$(document.body, '.stPickCard').map((c) => c.getAttribute('data-option')),
     ['hand_over'],
   );
   await a.type($(panel, 'input[type=search]'), 'zzz');
-  assert.match(textOf($(app.container, '.stPickPanel')), /Nothing matches “zzz”/);
-  await a.type($(app.container, '.stPickPanel input[type=search]'), '');
-  await a.click($(app.container, '.stPickCard[data-option="end_call"]'));
-  assert.equal($(app.container, '.stPickPanel'), null, 'the cards close once one is picked');
+  assert.match(textOf($(document.body, '.stPickDialog')), /Nothing matches “zzz”/);
+  await a.type($(document.body, '.stPickDialog input[type=search]'), '');
+  await a.click($(document.body, '.stPickCard[data-option="end_call"]'));
+  assert.equal($(document.body, '.stPickDialog'), null, 'the window closes once one is picked');
   assert.equal(app.config.tools.length, 1);
   assert.deepEqual(
     { id: app.config.tools[0].id, type: app.config.tools[0].type, builtin: app.config.tools[0].builtin },
@@ -585,7 +585,7 @@ test('adding a tool is a choice of jobs: search, pick, and the tool is in the dr
 test('adding a voice channel asks whether callers should be told they may be recorded, once, and a click writes the notice', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X' } }), 'channels');
   await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
-  await a.click($(app.container, '.stPickCard[data-option="phone"]'));
+  await a.click($(document.body, '.stPickCard[data-option="phone"]'));
   assert.equal(app.config.channels.length, 1);
   assert.equal(app.config.channels[0].type, 'sip_voice');
   const offer = $(app.container, '.stFOffer');
@@ -600,10 +600,10 @@ test('adding a voice channel asks whether callers should be told they may be rec
 test('a text channel does not ask about recording, and “Not now” leaves the notice unset', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X' } }), 'channels');
   await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
-  await a.click($(app.container, '.stPickCard[data-option="web_chat"]'));
+  await a.click($(document.body, '.stPickCard[data-option="web_chat"]'));
   assert.equal($(app.container, '.stFOffer'), null, 'chat is not a recorded call');
   await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
-  await a.click($(app.container, '.stPickCard[data-option="web_voice"]'));
+  await a.click($(document.body, '.stPickCard[data-option="web_voice"]'));
   assert.ok($(app.container, '.stFOffer'));
   await a.click(byText($(app.container, '.stFOffer'), 'button', 'Not now'));
   assert.equal($(app.container, '.stFOffer'), null);
@@ -614,7 +614,7 @@ test('a text channel does not ask about recording, and “Not now” leaves the 
 test('a voice channel does not ask when callers are already told', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X', disclosures: { recording_notice: 'Calls are recorded.' } } }), 'channels');
   await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
-  await a.click($(app.container, '.stPickCard[data-option="phone"]'));
+  await a.click($(document.body, '.stPickCard[data-option="phone"]'));
   assert.equal($(app.container, '.stFOffer'), null);
   await app.unmount();
 });
@@ -622,7 +622,7 @@ test('a voice channel does not ask when callers are already told', async () => {
 test('the picker closes on Escape and the arrow keys move between the cards', async () => {
   const app = await open(base({ tools: [] }), 'tools');
   await a.click(byText(app.container, 'button.stAddBtn', /^Add a tool/));
-  const first = $(app.container, '.stPickCard');
+  const first = $(document.body, '.stPickCard');
   first.focus();
   await act(async () => {
     first.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
@@ -632,7 +632,7 @@ test('the picker closes on Escape and the arrow keys move between the cards', as
   await act(async () => {
     window.document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
   });
-  assert.equal($(app.container, '.stPickPanel'), null);
+  assert.equal($(document.body, '.stPickDialog'), null);
   await app.unmount();
 });
 

@@ -35,7 +35,6 @@ await context.addInitScript(() => {
   if (sessionStorage.getItem('numbers')) return;
   sessionStorage.setItem('numbers', '1');
   localStorage.setItem('weave_theme', 'light');
-  localStorage.setItem('weave_layout', 'new');
   localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e2e@example.test', workspaceName: 'Test', role: 'dev' }));
   localStorage.removeItem('weave_demo_state');
 });
@@ -183,7 +182,9 @@ check('the numbers set up by hand are still there', (await page.locator('tbody t
 // ---- an agent: its phone line asks for no route, and its Deploy page lists its numbers
 await page.evaluate(() => (location.hash = '#/bots/front-desk/channels'));
 await page.waitForTimeout(1500);
-await page.locator('.nlRow', { hasText: 'phone' }).first().click();
+await page.locator('.nlRow', { hasText: /phone/i }).first().click();
+// how callers reach it is under the panel's technical details
+await page.locator('.nlDrawer .stChannelTech > summary').click();
 await page.waitForSelector('[data-route="platform"]');
 check(
   'a phone line asks for no number, trunk or routing rule',

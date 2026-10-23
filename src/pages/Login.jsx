@@ -75,7 +75,8 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
           <p className="formIntro">{demo ? 'Enter any email and password to continue.' : 'Use your work email to open your workspaces.'}</p>
           {/* sign-in isn't checked by a server yet: said plainly, because it decides who can change the agents */}
           <p className="demoNotice" role="note">
-            <b>{demo ? 'Demo sign-in' : 'Sign-in isn’t verified yet'}</b>
+            {/* in demo mode the card's own label already says "Demo sign-in" */}
+            {!demo && <b>Sign-in isn’t verified yet</b>}
             <span>
               {demo
                 ? 'Nothing is checked, and what you enter stays in this browser. It is not a security measure: anyone who can open this site can edit, publish and deploy the agents behind it.'

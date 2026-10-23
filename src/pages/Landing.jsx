@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Logo, openHelpDialog, openInfoDialog } from './shared.jsx';
+import { Logo, openHelpDialog } from './shared.jsx';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
@@ -24,8 +24,7 @@ const LANDING_MENUS = {
   ],
 };
 
-// Landing navigation: Product, Solutions and Resources open menus; Pricing explains the
-// early-access status. Menus close on outside click and Escape.
+// Landing navigation: Product, Solutions and Resources open menus. Menus close on outside click and Escape.
 function LandingNav({ onStart }) {
   const [open, setOpen] = useState(null);
   const navRef = useRef(null);
@@ -72,20 +71,6 @@ function LandingNav({ onStart }) {
           )}
         </div>
       ))}
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(null);
-          openInfoDialog({
-            eyebrow: 'Pricing',
-            title: 'Pricing isn’t published yet',
-            body: 'Weave Agent Studio is in early access.',
-            detail: 'Pricing will be announced before general availability. Until then you can create and test agents.',
-          });
-        }}
-      >
-        Pricing
-      </button>
     </nav>
   );
 }

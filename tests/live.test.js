@@ -396,3 +396,14 @@ test('demo: following a live call gives its records in order as the clock moves,
   assert.equal(new Set(got).size, got.length, 'each record once');
   assert.ok(ended || call.summary.id.includes('live'), 'it ends (or was a call that gets cut off)');
 });
+
+test('demo: a call read the moment it starts (a cut-off one included) is listed only once it has a record, and never breaks the board', async () => {
+  const bots = await demoBots();
+  // every second of two hours: the instant each made-up call begins is in there
+  for (let s = 0; s < 2 * 3600; s += 1) {
+    const nowMs = T0 + s * 1000;
+    bots.forEach((b) => {
+      liveCallsFor(b, nowMs).forEach((c) => assert.ok(c.events.length > 0 && c.summary.last_event_at, `${b.id} at ${s} s: ${c.summary.id}`));
+    });
+  }
+});

@@ -16,7 +16,7 @@ import { speechText } from '../../demo/simulatedAgent.js';
 import { buildAgentMap } from '../relations/agentMap.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-export const SIZE = { start: { w: 168, h: 56 }, agent: { w: 236, h: 92 }, step: { w: 216, h: 60 } };
+export const SIZE = { start: { w: 236, h: 72 }, agent: { w: 236, h: 92 }, step: { w: 216, h: 60 } };
 const GAP = { col: 56, row: 112, stack: 14 };
 const PAD = 40;
 
@@ -55,8 +55,10 @@ function enterBlock(action, config) {
     }
     case 'end_call':
       return { type: 'end', label: 'End the call', sub: clip(speechText(action.say, config), 60) };
-    case 'transfer':
-      return { type: 'transfer', label: 'Phone number transfer', sub: action.transfer || '' };
+    case 'transfer': {
+      const transfer = list(config?.telephony?.transfers).find((t) => isObj(t) && t.id === action.transfer);
+      return { type: 'transfer', label: 'Phone number transfer', ...numberWords(transfer) };
+    }
     case 'send_form':
       return { type: 'step', label: 'Show a form', sub: action.form || '' };
     case 'notify':
@@ -76,10 +78,16 @@ function enterBlock(action, config) {
 
 // How a number or lookup reads on a transfer block.
 function targetWords(target) {
-  if (typeof target === 'string') return target;
+  if (typeof target === 'string') return target.trim();
   if (isObj(target) && target.secret) return `from the secret ${target.secret}`;
   if (isObj(target) && target.lookup) return 'chosen by what the caller wants';
   return '';
+}
+// A transfer block's line: where calls go, or (with no number yet) what callers get instead, marked so the block can say it needs one.
+const NO_NUMBER = 'No number yet: callers are offered a callback';
+function numberWords(transfer) {
+  const words = clip(targetWords(transfer?.target), 40);
+  return words ? { sub: words } : { sub: NO_NUMBER, noNumber: true };
 }
 
 export function buildWorkflow(config, { tools = true } = {}) {
@@ -110,17 +118,33 @@ export function buildWorkflow(config, { tools = true } = {}) {
     edges.push({ ...edge, id });
   };
 
+  // what it says first, on the block (in full in its tooltip)
+  const first = greeting ? speechText(greeting.greeting.say, config) : '';
   nodes.push({
     id: 'start',
     type: 'start',
     label: 'Start',
-    sub: greeting ? clip(speechText(greeting.greeting.say, config), 50) : 'A call or chat begins',
+    sub: first ? `Says “${clip(first, 54)}”` : 'Waits for the caller to speak first',
+    full: first,
     ...SIZE.start,
   });
   if (entry) addEdge({ id: `start->${entry}`, from: 'start', to: entry, kind: 'start', label: '' });
 
+  // the built-in tools that let a call leave an agent: hanging up, passing to a person, going back to the agent that answers first
+  const LEAVING = ['end_call', 'transfer_or_callback', 'return_to_entry'];
+  const leavesBy = (toolId) => {
+    const tool = list(config?.tools).find((t) => isObj(t) && t.id === toolId);
+    return !!tool && (tool.type === 'builtin' || (!tool.type && tool.builtin)) && LEAVING.includes(tool.builtin);
+  };
   agents.forEach((agent, index) => {
     const offered = list(agent.tools).filter((t) => typeof t === 'string');
+    // a subagent a call can reach but never leave: it can't hang up, hand over or pass the caller back (the one that answers first is left alone: a
+    // caller can always end a call it starts)
+    const deadEnd =
+      agent.id !== entry &&
+      !list(agent.handoffs).some((h) => isObj(h) && h.to) &&
+      !list(agent.on_enter).some((a) => isObj(a) && (a.type === 'handoff' || a.type === 'return_to_entry')) &&
+      !offered.some(leavesBy);
     nodes.push({
       id: agent.id,
       type: 'agent',
@@ -130,6 +154,7 @@ export function buildWorkflow(config, { tools = true } = {}) {
       index,
       entry: agent.id === entry,
       detail: `${offered.length} tool${offered.length === 1 ? '' : 's'}`,
+      deadEnd,
       ...SIZE.agent,
     });
 
@@ -183,6 +208,7 @@ export function buildWorkflow(config, { tools = true } = {}) {
       const type = builtin === 'end_call' ? 'end' : builtin === 'transfer_or_callback' ? 'transfer' : 'tool';
       if (type === 'tool' && !tools) return;
       const transfer = type === 'transfer' ? transfersById.get(tool?.params?.transfer) : null;
+      const number = type === 'transfer' ? numberWords(transfer) : null;
       const id = toolNodeId(agent.id, toolId);
       nodes.push({
         id,
@@ -196,11 +222,12 @@ export function buildWorkflow(config, { tools = true } = {}) {
           type === 'end'
             ? clip(speechText(tool?.params?.say, config), 60) || 'Says goodbye, then hangs up'
             : type === 'transfer'
-              ? clip(targetWords(transfer?.target), 40) || tool?.params?.transfer || 'Choose a number'
+              ? number.sub
               : tool
                 ? BUILTIN_WORDS[builtin] || plainKind(tool.type)
                 : 'Missing tool',
         missing: !tool,
+        noNumber: !!number?.noNumber,
         ...SIZE.step,
       });
       addEdge({ id: `${agent.id}->${id}`, from: agent.id, to: id, kind: type === 'tool' ? 'uses' : 'exit', label: '' });
@@ -247,6 +274,7 @@ export function buildWorkflow(config, { tools = true } = {}) {
     entry,
     empty,
     stranded: stranded.map((n) => n.label),
+    strandedIds: stranded.map((n) => n.id),
     crowded: displaced >= 3,
     bounds: { w: right + PAD, h: bottom + PAD },
     toolBlocks: tools ? nodes.filter((n) => n.type === 'tool').length : toolBlockCount(config),
@@ -408,9 +436,13 @@ export function describeItems(flow) {
     if (e.kind === 'enter') return `${name(e.from)}: when ${name(e.to)} takes over (${flow.nodes.find((n) => n.id === e.from)?.sub || 'no details yet'}).`;
     if (e.kind === 'exit') {
       const to = flow.nodes.find((n) => n.id === e.to);
-      return to?.type === 'transfer' ? `${name(e.from)} can transfer the caller${to.sub ? ` (${to.sub})` : ''}.` : `${name(e.from)} can end the call.`;
+      if (to?.type !== 'transfer') return `${name(e.from)} can end the call.`;
+      return to.noNumber
+        ? `${name(e.from)} can pass the caller to a person, but has no number yet: callers are offered a callback.`
+        : `${name(e.from)} can pass the caller to a person (${to.sub}).`;
     }
     if (e.kind === 'uses') return `${name(e.from)} can use ${name(e.to)}.`;
-    return `${name(e.from)} ${how[e.kind]} ${name(e.to)}${e.label ? ` (${e.full || e.label})` : ''}.`;
+    // the arrow's own words end with the sentence's full stop, not one of their own inside the brackets
+    return `${name(e.from)} ${how[e.kind]} ${name(e.to)}${e.label ? ` (${(e.full || e.label).replace(/[.\s]+$/, '')})` : ''}.`;
   }
 }

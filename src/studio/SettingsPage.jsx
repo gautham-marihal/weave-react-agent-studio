@@ -5,7 +5,6 @@ import { navigate, routeHref } from './route.js';
 import { envLabel } from './ui.jsx';
 import { useAsync } from './useAsync.js';
 import { DENSITIES, useDensity, useTechnicalNames } from './usePref.js';
-import { useLayout } from './newlayout/layoutPref.js';
 import { StyleCards } from '../ui/StylePicker.jsx';
 
 // Workspace settings. A workspace here is a label kept in this browser, and so is which workspace an agent is in;
@@ -21,7 +20,6 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
 
   const [density, setDensity] = useDensity();
   const [technical, setTechnical] = useTechnicalNames();
-  const [layout, setLayout] = useLayout();
   const health = useAsync((signal) => api.health({ signal }), []);
   const envs = useAsync((signal) => api.environments({ signal }), []);
 
@@ -107,7 +105,7 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
           <section className="settingsCard" aria-labelledby="settings-running">
             <h2 id="settings-running">What is running where</h2>
             <div className="settingsEnvironments">
-              <p>You choose this per agent on its Deploy tab.</p>
+              <p>You choose this per agent, under Releases › Deploy.</p>
               {envs.loading && !envs.data ? (
                 <p className="stMuted">Loading…</p>
               ) : (
@@ -161,10 +159,10 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
                   ? DEMO_NOTE
                   : 'Agents are read from and saved to the Agent Builder API. To try the studio without a backend, switch to demo data: sample agents kept in this browser, with simulated saving, publishing and deploying.'}
               </p>
-              <div className="demoSwitch" role="group" aria-label="Data source">
+              <div className="settingsSeg" role="group" aria-label="Data source">
                 <button
                   type="button"
-                  className={isDemoMode() ? 'quietButton' : 'primaryCta compactCta'}
+                  className={isDemoMode() ? '' : 'on'}
                   disabled={!isDemoMode()}
                   aria-pressed={!isDemoMode()}
                   onClick={() => setDemoMode(false)}
@@ -173,7 +171,7 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
                 </button>
                 <button
                   type="button"
-                  className={isDemoMode() ? 'primaryCta compactCta' : 'quietButton'}
+                  className={isDemoMode() ? 'on' : ''}
                   disabled={isDemoMode()}
                   aria-pressed={isDemoMode()}
                   onClick={() => setDemoMode(true)}
@@ -214,12 +212,12 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
             </fieldset>
             <fieldset className="settingsChoice">
               <legend>Spacing</legend>
-              <div className="demoSwitch" role="group" aria-label="Spacing">
+              <div className="settingsSeg" role="group" aria-label="Spacing">
                 {DENSITIES.map((option) => (
                   <button
                     key={option}
                     type="button"
-                    className={density === option ? 'primaryCta compactCta' : 'quietButton'}
+                    className={density === option ? 'on' : ''}
                     aria-pressed={density === option}
                     onClick={() => setDensity(option)}
                   >
@@ -228,31 +226,6 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
                 ))}
               </div>
               <small className="stMuted">Compact fits more on a screen, for people who use the studio all day.</small>
-            </fieldset>
-            <fieldset className="settingsChoice">
-              <legend>Layout of an agent</legend>
-              <div className="demoSwitch" role="group" aria-label="Layout of an agent">
-                <button
-                  type="button"
-                  className={layout === 'new' ? 'primaryCta compactCta' : 'quietButton'}
-                  aria-pressed={layout === 'new'}
-                  onClick={() => setLayout('new')}
-                >
-                  New: one page for each part
-                </button>
-                <button
-                  type="button"
-                  className={layout === 'classic' ? 'primaryCta compactCta' : 'quietButton'}
-                  aria-pressed={layout === 'classic'}
-                  onClick={() => setLayout('classic')}
-                >
-                  Classic: stages and tabs
-                </button>
-              </div>
-              <small className="stMuted">
-                The new layout gives an agent one menu down the side (Agent, Tools, Knowledge, Workflow, Channels, Guardrails, Tests, Releases...) and one page
-                for each. Every link and every setting works in both, and you can switch back at any time.
-              </small>
             </fieldset>
             <label className="settingsCheck">
               <input type="checkbox" checked={technical} onChange={(event) => setTechnical(event.target.checked)} />

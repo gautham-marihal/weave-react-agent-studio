@@ -45,6 +45,20 @@ export const BOT_ID_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 // The folders the runtime writes call data to: the API answers 400 for an agent with one of these ids.
 export const RESERVED_BOT_IDS = ['transcripts', 'metrics', 'logs', 'sessions', 'tmp'];
 
+// The id a new agent gets from its name when nobody typed one: the name in id form ('agent' when nothing of the name can be used, as with a name in
+// another script), made free with -2, -3... when it is taken or reserved. So a person only ever gives a name, and never meets an id problem.
+export function freeBotId(name, existing = []) {
+  const base = slugify(name) || 'agent';
+  const taken = (id) => existing.includes(id) || RESERVED_BOT_IDS.includes(id);
+  if (!taken(base)) return base;
+  for (let n = 2; n < 1000; n += 1) {
+    const suffix = `-${n}`;
+    const id = `${base.slice(0, 64 - suffix.length)}${suffix}`;
+    if (!taken(id)) return id;
+  }
+  return base;
+}
+
 // What is wrong with an id typed for a new agent ('' when nothing is). `existing` are the ids already taken.
 export function botIdProblem(id, existing = []) {
   if (!id) return '';

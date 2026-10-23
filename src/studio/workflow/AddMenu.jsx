@@ -19,6 +19,8 @@ const ITEMS = [
 export default function AddMenu({ agentId, flow, config, onPick, onClose }) {
   const [view, setView] = useState('menu');
   const [number, setNumber] = useState('');
+  // a new subagent's name and when it takes over, asked as it is added (rather than a "New subagent" with stand-in words to find and change later)
+  const [helper, setHelper] = useState({ name: '', when: '' });
   const [tried, setTried] = useState(false);
   const root = useRef(null);
   const agent = (config?.agents?.items || []).find((a) => a?.id === agentId);
@@ -58,11 +60,16 @@ export default function AddMenu({ agentId, flow, config, onPick, onClose }) {
   };
 
   const pick = (id) => {
-    if (id === 'agent' || id === 'phone' || id === 'tool') {
+    if (id === 'agent' || id === 'phone' || id === 'tool' || id === 'subagent') {
       setView(id);
       return;
     }
     onPick(id, {});
+  };
+  const submitHelper = (event) => {
+    event.preventDefault();
+    setTried(true);
+    if (helper.name.trim() && helper.when.trim()) onPick('subagent', { name: helper.name.trim(), when: helper.when.trim() });
   };
   const submitPhone = (event) => {
     event.preventDefault();
@@ -145,6 +152,47 @@ export default function AddMenu({ agentId, flow, config, onPick, onClose }) {
             ))}
           </ul>
         </div>
+      )}
+      {view === 'subagent' && (
+        <form className="wfMenuPane" onSubmit={submitHelper} noValidate>
+          <header>
+            <button type="button" className="wfBack" onClick={() => setView('menu')} aria-label="Back">
+              <Icon name="chevronLeft" size={15} />
+            </button>
+            <strong>A new subagent</strong>
+          </header>
+          <label className="wfField">
+            <span>Its name</span>
+            <input
+              value={helper.name}
+              onChange={(event) => setHelper({ ...helper, name: event.target.value })}
+              placeholder="Billing"
+              aria-invalid={tried && !helper.name.trim()}
+            />
+          </label>
+          <label className="wfField">
+            <span>When should {agent?.name || agentId} pass callers to it?</span>
+            <input
+              value={helper.when}
+              onChange={(event) => setHelper({ ...helper, when: event.target.value })}
+              placeholder="The caller asks about a bill or a refund"
+              aria-invalid={tried && !helper.when.trim()}
+            />
+          </label>
+          <small className={tried && (!helper.name.trim() || !helper.when.trim()) ? 'bad' : ''}>
+            {tried && (!helper.name.trim() || !helper.when.trim())
+              ? 'Give it a name, and say when callers go to it.'
+              : 'Then write what it should do in the panel beside the picture.'}
+          </small>
+          <div className="wfMenuActions">
+            <button type="submit" className="primaryCta compactCta">
+              Add the subagent
+            </button>
+            <button type="button" className="quietButton" onClick={onClose}>
+              Cancel
+            </button>
+          </div>
+        </form>
       )}
       {view === 'phone' && (
         <form className="wfMenuPane" onSubmit={submitPhone} noValidate>

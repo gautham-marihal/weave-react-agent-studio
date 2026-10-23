@@ -20,7 +20,10 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
   const [configs, setConfigs] = useState({});
   useEffect(() => {
     let off = false;
-    loadConfigs(agents.map((item) => item.id)).then((list) => {
+    loadConfigs(
+      agents.map((item) => item.id),
+      agents.map((item) => item.draftRevision),
+    ).then((list) => {
       if (!off) setConfigs(Object.fromEntries(agents.map((item, index) => [item.id, list[index]])));
     });
     return () => {
@@ -199,7 +202,7 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                         <div className="voiceNameStack">
                           <strong>{voice.name}</strong>
                           <span className="voiceIdCell">
-                            <code title="The provider's id for this voice: this is what goes in the agent's configuration">{voice.voiceId}</code>
+                            <code title={`${voice.voiceId}: the provider's id for this voice, what goes in the agent's configuration`}>{voice.voiceId}</code>
                             <button
                               type="button"
                               className="iconButton"

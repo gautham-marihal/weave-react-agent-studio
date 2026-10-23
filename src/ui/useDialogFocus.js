@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // The keyboard stays with an open dialog: focus moves into it when it opens (unless something in it already has it, such as a field with
 // autoFocus), Tab and Shift+Tab go round its controls instead of wandering to the page behind, and focus goes back where it was when it closes.
@@ -26,10 +26,12 @@ export function trapTab(event, box) {
 }
 
 export function useDialogFocus(ref, initial) {
+  // what had the keyboard before the dialog opened, read as it is first drawn: a field in it with autoFocus has taken the focus by the time effects run
+  const [opener] = useState(() => (typeof document === 'undefined' ? null : document.activeElement));
   useEffect(() => {
     const box = ref.current;
     if (!box) return undefined;
-    const before = document.activeElement;
+    const before = opener && !box.contains(opener) ? opener : document.activeElement;
     if (!box.contains(document.activeElement)) {
       const target = (typeof initial === 'function' ? initial() : initial) || box;
       target.focus?.({ preventScroll: true });

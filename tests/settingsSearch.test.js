@@ -83,3 +83,77 @@ test('settings that sit in the engine group say so, so nobody mistakes them for 
   assert.equal(worker.group.advanced, true);
   assert.match(worker.where, /Engine and operator settings/);
 });
+
+// ---- the new layout: where a setting is shown, in its own words, and the agent's pages and actions
+test('everyday words find a part by what people call it: opening hours, documents, hand over', async () => {
+  assert.equal(find('opening hours')[0]?.trail.join('.'), 'schedules');
+  assert.ok(find('documents').some((e) => e.trail.join('.') === 'knowledge'));
+  assert.ok(find('hand over').some((e) => e.trail.join('.').startsWith('telephony.transfers') || e.label === 'Hand over to a person'));
+});
+
+test('new layout: a setting opens on the page and panel that hold it, and says so in the page’s words', async () => {
+  const { searchTarget, settingWhere } = await import('../src/studio/newlayout/pages.js');
+  const entry = (trail) => index.find((e) => e.trail.join('.') === trail);
+  const hours = entry('schedules');
+  assert.deepEqual(searchTarget(hours), { page: 'channels', path: ['schedules'] });
+  assert.match(settingWhere(hours), /^Channels/);
+  // what it says first and what it should do are fields of the Agent page
+  const greeting = index.find((e) => e.trail[0] === 'channels' && e.trail.includes('greeting'));
+  assert.deepEqual(searchTarget(greeting), { page: 'agent', focus: 'greeting', path: ['channels'] });
+  assert.equal(settingWhere(greeting), 'Agent › What it says first');
+  // a panel of the Agent page is named as the page names it, and nothing deeper
+  const voice = entry('defaults.models.tts.voice_id');
+  assert.equal(searchTarget(voice).drawer, 'voice');
+  assert.equal(settingWhere(voice), 'Agent › Voice');
+  const recording = entry('post_call.recording');
+  assert.equal(searchTarget(recording).page, 'aftercall');
+  assert.match(settingWhere(recording), /^After the call › /);
+  // nothing found by the search is placed on a page the new layout does not have
+  const { PAGE_IDS } = await import('../src/studio/newlayout/pages.js');
+  const lost = index.filter((e) => !PAGE_IDS.includes(searchTarget(e).page)).map((e) => e.trail.join('.'));
+  assert.deepEqual(lost, []);
+  assert.ok(
+    index.every((e) => !/How it behaves|Where it is available|Quality and records/.test(settingWhere(e))),
+    'no classic section names',
+  );
+});
+
+test('new layout: a setting found under one name in many places is listed twice at most, so other settings still fit', async () => {
+  const { capSameLabel } = await import('../src/studio/newlayout/pages.js');
+  const found = find('hours', 24);
+  const count = (list) => list.filter((e) => e.label === 'Business hours').length;
+  assert.ok(count(found) > 2, 'the search finds business hours in many places');
+  const capped = capSameLabel(found, 2);
+  assert.equal(count(capped), 2);
+  assert.equal(capped[0], found[0], 'the best match stays first');
+  assert.ok(capped.length > 2 && capped.some((e) => e.label !== 'Business hours'), 'other settings it found are kept');
+  assert.deepEqual(capSameLabel(found, Infinity), found);
+});
+
+test('new layout: the agent’s pages and the things people come to do are found by the words they use, the best match first', async () => {
+  const { searchAgent } = await import('../src/studio/newlayout/pages.js');
+  const ids = (q) => searchAgent(q).map((i) => i.id);
+  assert.equal(searchAgent('').length, 15, 'with nothing typed, the pages');
+  assert.equal(ids('deploy')[0], 'deploy');
+  assert.equal(ids('roll back')[0], 'rollback');
+  assert.equal(ids('publish')[0], 'publish');
+  assert.ok(ids('phone number').includes('number'));
+  assert.ok(ids('documents').includes('page-knowledge'));
+  assert.ok(ids('wizard').includes('setup'));
+  assert.ok(!ids('voice').includes('page-settings'), 'Settings says the voice is NOT there; it is not offered for it');
+  assert.ok(ids('voice').includes('page-agent'));
+  assert.deepEqual(ids('zzz'), []);
+});
+
+test('new layout: an agent’s own instructions open on the Agent page only when there is one agent to have them', async () => {
+  const { searchTarget } = await import('../src/studio/newlayout/pages.js');
+  const role = index.find((e) => e.trail[0] === 'agents' && e.trail.at(-1) === 'role');
+  assert.ok(role, 'the instructions are in the index');
+  const one = { agents: { items: [{ id: 'assistant' }] } };
+  const two = { agents: { items: [{ id: 'assistant' }, { id: 'billing' }] } };
+  assert.equal(searchTarget(role, one).focus, 'role');
+  assert.equal(searchTarget(role).focus, 'role', 'not knowing the draft, as on one agent');
+  const several = searchTarget(role, two);
+  assert.equal(several.focus, undefined);
+  assert.equal(several.page, 'workflow', 'with several, the Workflow’s settings, where each agent is');
+});

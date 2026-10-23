@@ -4,7 +4,7 @@
 //   2. the blocks of the Workflow canvas keep every word inside them, with long names and long things to say
 //   3. on every page, text meant to fit on one line and end in "…" stays on one line (a style that switches wrapping back on, such as the
 //      "text-wrap" shorthand, made such text spill out of its box)
-//   4. on every page, what opens in place ("Insert a value", "Preview the prompt", "As a list") shows the app's chevron, never the browser's
+//   4. on every page, what opens in place ("Insert a value", "Preview the prompt", "Using the picture") shows the app's chevron, never the browser's
 //      own triangle, and never nothing at all
 //
 //   npm run dev:demo   then   node e2e/fit.mjs
@@ -49,7 +49,6 @@ async function open(browser, { width, height, style }) {
     sessionStorage.setItem('fit', '1');
     localStorage.setItem('weave_theme', 'light');
     localStorage.setItem('weave_style', s);
-    localStorage.setItem('weave_layout', 'new');
     localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e2e@example.test', workspaceName: 'Test', role: 'dev' }));
     localStorage.removeItem('weave_demo_state');
   }, style);
@@ -243,7 +242,7 @@ const ROUTES = [
   '#/calls',
   '#/live',
   '#/monitoring',
-  '#/cost',
+  '#/speed',
   '#/alerts',
   '#/voices',
   '#/integrations',
@@ -263,9 +262,11 @@ const ROUTES = [
     'releases',
     'calls',
     'monitoring',
-    'cost',
+    'speed',
     'settings',
   ].map((p) => `#/bots/acme-support/${p}`),
+  // the guided setup, step by step (last: moving between its steps saves nothing, so nothing is asked before the next style)
+  ...['purpose', 'reach', 'voice', 'knowledge', 'actions', 'try', 'live'].map((s) => `#/bots/front-desk/setup?step=${s}`),
 ];
 for (const style of STYLES) {
   const { context, page } = await open(browser, { width: 1440, height: 900, style });

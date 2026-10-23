@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { SEARCH_AFTER, filterOptions, normalizeOptions } from './selectOptions.js';
 import './smartSelect.css';
 import Icon from '../ui/Icon.jsx';
+import { useDropPlace } from '../ui/dropPlace.js';
 
 // One selector for every list of choices. A short list (8 or fewer) is the browser's own <select>: nothing to learn and it works everywhere.
 // A longer list (tools, state variables, agents, versions, languages…) is a combobox: type to narrow it, arrows to move, Enter to pick, Escape
@@ -13,6 +14,7 @@ import Icon from '../ui/Icon.jsx';
 
 export { SEARCH_AFTER, filterOptions, normalizeOptions };
 const MAX_SHOWN = 200;
+const LIST_MAX = 290; // px, as .stComboPop's max-height in smartSelect.css
 
 function Native({ value, options, onChange, placeholder, ariaLabel, id, disabled, invalid, action, className }) {
   const grouped = options.some((o) => o.group);
@@ -57,6 +59,11 @@ function Combo({ value, options, onChange, placeholder, ariaLabel, id, disabled,
   const [active, setActive] = useState(0);
   const inputRef = useRef(null);
   const listRef = useRef(null);
+  const popRef = useRef(null);
+  // under the field, or above it when there is more room there; no taller than the room on its side (ui/dropPlace.js)
+  const place = useDropPlace(inputRef, popRef, open, (pop) =>
+    Math.min(LIST_MAX, pop.offsetHeight - (listRef.current?.clientHeight || 0) + (listRef.current?.scrollHeight || 0)),
+  );
   const selected = options.find((o) => o.value === String(value ?? ''));
   const matches = useMemo(() => filterOptions(options, query), [options, query]);
   const shown = matches.slice(0, MAX_SHOWN);
@@ -158,50 +165,52 @@ function Combo({ value, options, onChange, placeholder, ariaLabel, id, disabled,
         <Icon name="chevronDown" size={15} />
       </span>
       {open && (
-        <ul id={listId} ref={listRef} role="listbox" aria-label={ariaLabel} className="stComboList">
-          {shown.map((option, index) => {
-            const heading = option.group && option.group !== lastGroup ? option.group : null;
-            if (option.group) lastGroup = option.group;
-            return (
-              <React.Fragment key={option.value}>
-                {heading && (
-                  <li role="presentation" className="stComboGroup">
-                    {heading}
+        <div ref={popRef} className={`stComboPop ${place.up ? 'up' : ''}`} style={place.room != null ? { '--dropRoom': `${place.room}px` } : undefined}>
+          <ul id={listId} ref={listRef} role="listbox" aria-label={ariaLabel} className="stComboList">
+            {shown.map((option, index) => {
+              const heading = option.group && option.group !== lastGroup ? option.group : null;
+              if (option.group) lastGroup = option.group;
+              return (
+                <React.Fragment key={option.value}>
+                  {heading && (
+                    <li role="presentation" className="stComboGroup">
+                      {heading}
+                    </li>
+                  )}
+                  <li
+                    id={`${listId}-${index}`}
+                    role="option"
+                    aria-selected={!action && option.value === String(value ?? '')}
+                    aria-disabled={option.disabled || undefined}
+                    data-active={index === active}
+                    data-value={option.value}
+                    className={`stComboOption ${index === active ? 'active' : ''} ${option.disabled ? 'off' : ''}`}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      choose(option);
+                    }}
+                    onMouseMove={() => {
+                      if (!option.disabled) setActive(index);
+                    }}
+                  >
+                    <span>{option.label}</span>
+                    {option.description && <small>{option.description}</small>}
                   </li>
-                )}
-                <li
-                  id={`${listId}-${index}`}
-                  role="option"
-                  aria-selected={!action && option.value === String(value ?? '')}
-                  aria-disabled={option.disabled || undefined}
-                  data-active={index === active}
-                  data-value={option.value}
-                  className={`stComboOption ${index === active ? 'active' : ''} ${option.disabled ? 'off' : ''}`}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    choose(option);
-                  }}
-                  onMouseMove={() => {
-                    if (!option.disabled) setActive(index);
-                  }}
-                >
-                  <span>{option.label}</span>
-                  {option.description && <small>{option.description}</small>}
-                </li>
-              </React.Fragment>
-            );
-          })}
-          {shown.length === 0 && (
-            <li role="status" className="stComboEmpty">
-              {emptyText || `Nothing matches “${query}”.`}
-            </li>
-          )}
-          {matches.length > MAX_SHOWN && (
-            <li role="status" className="stComboEmpty">
-              {matches.length - MAX_SHOWN} more: keep typing to narrow the list.
-            </li>
-          )}
-        </ul>
+                </React.Fragment>
+              );
+            })}
+            {shown.length === 0 && (
+              <li role="status" className="stComboEmpty">
+                {emptyText || `Nothing matches “${query}”.`}
+              </li>
+            )}
+            {matches.length > MAX_SHOWN && (
+              <li role="status" className="stComboEmpty">
+                {matches.length - MAX_SHOWN} more: keep typing to narrow the list.
+              </li>
+            )}
+          </ul>
+        </div>
       )}
     </div>
   );

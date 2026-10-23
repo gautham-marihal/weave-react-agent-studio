@@ -22,11 +22,17 @@ export const clampZoom = (z) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round
 
 const nodeWords = (n) => {
   if (n.type === 'start') return 'Start: where a call begins';
-  if (n.type === 'agent') return `${n.label}, subagent${n.entry ? ', answers first' : ''}${n.stranded ? ', cannot be reached from Start' : ''}`;
+  if (n.type === 'agent')
+    return `${n.label}, subagent${n.entry ? ', answers first' : ''}${n.stranded ? ', cannot be reached from Start' : ''}${n.deadEnd ? ', cannot end the call or pass the caller on' : ''}`;
   return `${n.label}${n.sub ? `: ${n.sub}` : ''}`;
 };
-// everything a block says, for its tooltip (each of its lines may end in "…")
-const nodeTip = (n) => (n.type === 'start' ? nodeWords(n) : [n.label, n.sub, n.type === 'agent' ? n.detail : ''].filter(Boolean).join('\n'));
+// everything a block says, for its tooltip (each of its lines may end in "…"; the first line a call hears is given in full)
+const nodeTip = (n) =>
+  n.type === 'start'
+    ? [nodeWords(n), n.full ? `Says “${n.full}”` : n.sub].filter(Boolean).join('\n')
+    : [n.label, n.sub, n.type === 'agent' ? n.detail : ''].filter(Boolean).join('\n');
+const labelWidth = (label) => label.length * 6.6 + 16;
+const overlaps = (r, b) => r.x < b.x + b.w && r.x + r.w > b.x && r.y < b.y + b.h && r.y + r.h > b.y;
 
 export default function WorkflowCanvas({ flow, selected, onSelect, onMove, zoom, onZoom, badges, overlay, onDeleteKey, viewportRef }) {
   const [live, setLiveState] = useState(null);
@@ -75,6 +81,50 @@ export default function WorkflowCanvas({ flow, selected, onSelect, onMove, zoom,
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [zoom, onZoom]);
+
+  // how each arrow runs: once per drawing, around the other blocks (shared by the arrows, their words and where the words go). While a block is dragged the
+  // arrows take their plain curves, which cost next to nothing on every move, and find their way round again when it is let go.
+  const dragging = !!live;
+  const routes = useMemo(() => {
+    const out = new Map();
+    flow.edges.forEach((edge) => {
+      const a = byId.get(edge.from);
+      const b = byId.get(edge.to);
+      if (a && b) out.set(edge.id, routeEdge(a, b, { ...lanes.get(edge.id), kind: edge.kind, obstacles: dragging ? [] : nodes }));
+    });
+    return out;
+  }, [flow, nodes, byId, lanes, dragging]);
+
+  // where the words of each arrow go: on the arrow, unless they would cover a block or other words; then a little up or down it, or to one side, as
+  // close as there is room (with no room anywhere near, on the arrow as before)
+  const spots = useMemo(() => {
+    const blocks = nodes.map((n) => ({ x: n.x - 6, y: n.y - 6, w: n.w + 12, h: n.h + 12 }));
+    const placed = [];
+    const out = new Map();
+    flow.edges.forEach((edge) => {
+      const a = byId.get(edge.from);
+      const b = byId.get(edge.to);
+      const label = edge.label && edge.kind !== 'start' ? edge.label : '';
+      const g = routes.get(edge.id);
+      if (!a || !b || !label || !g) return;
+      const w = labelWidth(label);
+      const box = ([dx, dy]) => ({ x: g.lx + dx - w / 2 - 2, y: g.ly + dy - 12, w: w + 4, h: 24 });
+      // up or down the arrow first, then beside it, then both; the nearest free spot wins
+      const tries = [];
+      for (const dx of [0, w / 2 + 14, -(w / 2 + 14), w + 28, -(w + 28)]) for (let k = -8; k <= 8; k += 1) tries.push([dx, k * 14]);
+      tries.sort((p, q) => Math.hypot(p[0], p[1] * 1.6) - Math.hypot(q[0], q[1] * 1.6));
+      // never past the picture's edge, where the words would be cut off
+      const onCanvas = (t) => {
+        const r = box(t);
+        return r.x >= 2 && r.y >= 2 && r.x + r.w <= bounds.w - 2 && r.y + r.h <= bounds.h - 2;
+      };
+      const clear = tries.find((t) => onCanvas(t) && !blocks.some((r) => overlaps(box(t), r)) && !placed.some((r) => overlaps(box(t), r)));
+      const offBlocks = clear || tries.find((t) => onCanvas(t) && !blocks.some((r) => overlaps(box(t), r))) || [0, 0];
+      placed.push(box(offBlocks));
+      out.set(edge.id, { x: g.lx + offBlocks[0], y: g.ly + offBlocks[1], label });
+    });
+    return out;
+  }, [flow, nodes, byId, routes, bounds]);
 
   const followers = (node) => (node.type === 'agent' ? flow.nodes.filter((n) => n.agent === node.id && !n.moved) : []);
 
@@ -202,10 +252,8 @@ export default function WorkflowCanvas({ flow, selected, onSelect, onMove, zoom,
               ))}
             </defs>
             {flow.edges.map((edge) => {
-              const a = byId.get(edge.from);
-              const b = byId.get(edge.to);
-              if (!a || !b) return null;
-              const g = routeEdge(a, b, { ...lanes.get(edge.id), kind: edge.kind });
+              const g = routes.get(edge.id);
+              if (!g) return null;
               const on = selectedEdge === edge.id;
               return (
                 <g key={edge.id} className={`wfEdge ${edge.kind} ${on ? 'sel' : ''}`}>
@@ -251,12 +299,13 @@ export default function WorkflowCanvas({ flow, selected, onSelect, onMove, zoom,
                 </span>
                 <span className="wfText">
                   <strong>{n.label}</strong>
-                  {n.type !== 'start' && n.sub && <small>{n.sub}</small>}
+                  {n.sub && <small className={n.noNumber ? 'wfWarnText' : undefined}>{n.sub}</small>}
                   {n.type === 'agent' && (
                     <small className="wfMeta">
                       {n.entry ? <b>Answers first</b> : null}
                       {n.stranded ? <b className="wfWarnText">Not reachable from Start</b> : null}
-                      {n.entry || n.stranded ? ' · ' : ''}
+                      {!n.stranded && n.deadEnd ? <b className="wfWarnText">Can’t end the call</b> : null}
+                      {n.entry || n.stranded || n.deadEnd ? ' · ' : ''}
                       {n.detail}
                     </small>
                   )}
@@ -272,22 +321,20 @@ export default function WorkflowCanvas({ flow, selected, onSelect, onMove, zoom,
           {/* the words on the arrows are drawn above the blocks, so a block never hides them */}
           <svg className="wfLabels" width={bounds.w} height={bounds.h} role="presentation" aria-hidden="true">
             {flow.edges.map((edge) => {
-              const a = byId.get(edge.from);
-              const b = byId.get(edge.to);
-              const label = edge.label && edge.kind !== 'start' ? edge.label : '';
-              if (!a || !b || !label) return null;
-              const g = routeEdge(a, b, { ...lanes.get(edge.id), kind: edge.kind });
+              const spot = spots.get(edge.id);
+              if (!spot) return null;
+              const { label } = spot;
               return (
                 <g key={edge.id} className={`wfEdge ${edge.kind} ${selectedEdge === edge.id ? 'sel' : ''}`}>
                   <g
                     className="wfEdgeLabel"
-                    transform={`translate(${g.lx} ${g.ly})`}
+                    transform={`translate(${spot.x} ${spot.y})`}
                     onClick={(event) => {
                       event.stopPropagation();
                       onSelect({ type: 'edge', id: edge.id });
                     }}
                   >
-                    <rect x={-(label.length * 3.3 + 8)} y="-10" width={label.length * 6.6 + 16} height="20" rx="10" />
+                    <rect x={-labelWidth(label) / 2} y="-10" width={labelWidth(label)} height="20" rx="10" />
                     <text textAnchor="middle" dy="4">
                       {label}
                     </text>

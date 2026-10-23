@@ -10,6 +10,22 @@ import { SKIPPED_SECTIONS, layoutFor, viewForPath } from './form/layout.js';
 // added under Releases › Deploy). Offering them as settings would lead to a field that isn't there.
 const PLATFORM_SET = new Set(['channels.[].entry.dnis', 'channels.[].entry.sip_trunk', 'channels.[].entry.dispatch_rule']);
 
+// The everyday words for a part of the configuration that its own name does not use ("opening hours" for business hours), by its path. They find the
+// part itself, as well as its own name does.
+const ALSO = {
+  schedules: 'opening hours office hours open closed holidays',
+  'telephony.transfers': 'hand over handover human person escalate',
+  knowledge: 'documents files faq website pages',
+  guardrails: 'safety block blocked forbidden topics',
+  post_call: 'summary wrap up',
+  channels: 'phone chat website widget reach whatsapp sms',
+  tools: 'actions abilities integrations lookup webhook',
+  connections: 'api webhook endpoint integration',
+  'defaults.language': 'languages multilingual',
+  'defaults.models': 'llm gpt ai',
+  tests: 'scenarios test cases',
+};
+
 const deref = (schema, node) => {
   let n = node;
   for (let i = 0; i < 24 && isObj(n) && n.$ref; i += 1) {
@@ -87,6 +103,8 @@ export function buildSettingsIndex(schema) {
       });
       return {
         ...entry,
+        also: ALSO[entry.trail.join('.')] || '',
+        crumbs,
         screen: view ? { id: view.id, label: view.label } : null,
         group: group ? { id: group.id, label: group.label, advanced: !!group.advanced } : null,
         where: [group?.label, view?.label, ...crumbs].filter(Boolean).join(' › '),
@@ -111,6 +129,7 @@ export function searchSettings(index, query, limit = 8) {
     const label = norm(entry.label);
     const labelWords = wordsOf(entry.label);
     const nameWords = wordsOf(entry.name);
+    const alsoWords = wordsOf(entry.also);
     const purpose = norm(entry.purpose);
     const where = norm(entry.where);
     let total = 0;
@@ -120,7 +139,7 @@ export function searchSettings(index, query, limit = 8) {
       if (labelWords.includes(word)) best = 10;
       else if (labelWords.some((w) => w.startsWith(word))) best = 8;
       else if (label.includes(word)) best = 6;
-      else if (nameWords.some((w) => w === word)) best = 7;
+      else if (nameWords.some((w) => w === word) || alsoWords.includes(word)) best = 7;
       else if (nameWords.some((w) => w.startsWith(word)) || norm(entry.name).includes(word)) best = 5;
       else if (purpose.includes(word)) best = 3;
       else if (where.includes(word)) best = 2;

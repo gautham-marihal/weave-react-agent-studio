@@ -47,9 +47,25 @@ export function agentsUsingTool(config, toolId) {
 }
 
 // Tools that no agent offers (the validator warns about the same).
+// Whether something other than an agent's list of tools names the tool: a guardrail rule, what is done off topic, a task step's check, a test. Such a
+// tool is in use (the validator says so too) even when no agent offers it.
+export function toolNamedElsewhere(config, toolId) {
+  const list = (v) => (Array.isArray(v) ? v : []);
+  const guardrails = config?.guardrails;
+  if (list(guardrails?.escalation).some((r) => isObj(r) && r.tool === toolId) || guardrails?.topics?.on_off_topic?.then === toolId) return true;
+  if (list(config?.tasks).some((task) => list(task?.steps).some((step) => step?.validate?.tool === toolId))) return true;
+  return list(config?.tests).some(
+    (test) =>
+      list(test?.model_script).some((m) => m?.tool === toolId) ||
+      list(test?.expect).some((e) => isObj(e) && [e.tool_called, e.tool_not_called, e.tool_called_with?.tool].includes(toolId)),
+  );
+}
+
 export function unusedTools(config) {
   const tools = Array.isArray(config?.tools) ? config.tools : [];
-  return tools.filter((tool) => isObj(tool) && tool.id && agentsUsingTool(config, tool.id).length === 0).map((tool) => tool.id);
+  return tools
+    .filter((tool) => isObj(tool) && tool.id && agentsUsingTool(config, tool.id).length === 0 && !toolNamedElsewhere(config, tool.id))
+    .map((tool) => tool.id);
 }
 
 // What a typical call cares about: a lookup keeps the caller waiting, so a short timeout and few retries.

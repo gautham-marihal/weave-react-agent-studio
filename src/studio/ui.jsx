@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { sentenceCase } from '../ui/text.js';
 import Icon from '../ui/Icon.jsx';
+import { trapTab, useDialogFocus } from '../ui/useDialogFocus.js';
 
 const NOTICE_ICON = { error: 'alert', warn: 'alert', good: 'check', info: 'info' };
 
@@ -21,11 +22,18 @@ export function Notice({ kind = 'info', title, children, actions }) {
 }
 
 export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wide = false, busy = false }) {
+  const box = useRef(null);
+  // the keyboard goes into the dialog when it opens (unless a field in it took it), and back where it was when it closes
+  useDialogFocus(box);
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // Escape while the keyboard is outside the dialog (one pressed in it is taken below); an open list closes first (it marks its Escape as handled)
     const onKey = (event) => {
-      if (event.key === 'Escape' && !busy) onClose?.();
+      if (event.key === 'Escape' && !busy && !event.defaultPrevented) {
+        event.preventDefault();
+        onClose?.();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => {
@@ -33,6 +41,19 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
       document.removeEventListener('keydown', onKey);
     };
   }, [onClose, busy]);
+  // the keys pressed in the dialog stay in it: Escape closes it, and not the side panel or sheet it was opened from too; Tab goes round its own buttons
+  const keys = (event) => {
+    if (event.key === 'Escape') {
+      if (!busy && !event.defaultPrevented) {
+        event.preventDefault();
+        onClose?.();
+      }
+      event.stopPropagation();
+    } else if (event.key === 'Tab') {
+      trapTab(event, box.current);
+      event.stopPropagation();
+    }
+  };
   return createPortal(
     <div
       className="createOverlay"
@@ -42,8 +63,9 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onClose?.();
       }}
+      onKeyDown={keys}
     >
-      <section className={`createModal stModal ${wide ? 'wide' : ''}`}>
+      <section ref={box} tabIndex={-1} className={`createModal stModal ${wide ? 'wide' : ''}`}>
         <div className="createModalHeader">
           <div>
             {eyebrow && <span className="createEyebrow">{sentenceCase(eyebrow)}</span>}
@@ -54,7 +76,8 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
             <Icon name="close" size={18} />
           </button>
         </div>
-        {children}
+        {/* the title and the buttons stay put; what is between them scrolls when it is taller than the window */}
+        <div className="stModalBody">{children}</div>
         {footer && <div className="createModalFooter">{footer}</div>}
       </section>
     </div>,
@@ -170,9 +193,10 @@ export function Spinner({ label = 'Loading' }) {
 // message, the setting to check) is one click further down.
 export function ErrorState({ error, onRetry, what = 'this' }) {
   const kind = error?.kind;
+  // a server that does not answer is said once, by the strip across the top of every page; here, what that leaves missing
   const title =
     kind === 'network'
-      ? 'Can’t reach the server'
+      ? `Couldn’t load ${what}`
       : kind === 'auth'
         ? 'The server didn’t accept the studio’s access key'
         : kind === 'not_found'
@@ -180,7 +204,7 @@ export function ErrorState({ error, onRetry, what = 'this' }) {
           : `Couldn’t load ${what}`;
   const lead =
     kind === 'network'
-      ? 'It may be down or restarting. Try again in a moment.'
+      ? 'The server isn’t answering: it may be down or restarting. Try again in a moment.'
       : kind === 'auth'
         ? 'Ask the person who runs Weave to check the studio’s settings.'
         : kind === 'not_found'

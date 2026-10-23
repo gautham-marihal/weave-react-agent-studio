@@ -7,7 +7,6 @@ import { minimalConfig } from '../../demo/minimalConfig.js';
 import { isObj } from '../form/engine.js';
 import { useSchema } from '../form/useSchema.js';
 import { navigate, routeHref } from '../route.js';
-import { requestSettingFocus } from '../settingFocus.js';
 import { entryAgent, languageName, readSimple } from '../simple/simpleModel.js';
 import { Notice, Spinner } from '../ui.jsx';
 import { usePref } from '../usePref.js';
@@ -81,7 +80,8 @@ const nextId = () => {
   return `t${counter}`;
 };
 
-export default function AssistantTab({ editor, botId, name }) {
+//   onShowSetting(path), onShowJson(path): how the agent's workspace shows a setting (it opens the page and panel that hold it), and the JSON
+export default function AssistantTab({ editor, botId, name, onShowSetting = null, onShowJson = null }) {
   const config = editor.parsed?.value;
   const ok = editor.status === 'ready' && !editor.parsed?.error && isObj(config);
   const { schema, error: schemaError } = useSchema();
@@ -204,13 +204,8 @@ export default function AssistantTab({ editor, botId, name }) {
   const discard = (turn) => patchTurn(turn.id, { discarded: true });
   const go = (tab) => navigate(routeHref(botId, tab), { guard: false });
   const openIn = (view, path) => {
-    try {
-      window.localStorage.setItem('weave_config_mode', view);
-    } catch {
-      /* storage unavailable */
-    }
-    if (path?.length) requestSettingFocus(botId, path);
-    go('config');
+    if (view === 'json') onShowJson?.(path);
+    else onShowSetting?.(path?.length ? path : ['meta']);
   };
   const askFor = (phrase) => {
     setText(phrase);
@@ -224,12 +219,12 @@ export default function AssistantTab({ editor, botId, name }) {
         kind="warn"
         title="The draft can’t be changed yet"
         actions={
-          <button type="button" className="quietButton" onClick={() => go('config')}>
-            Open Config
+          <button type="button" className="quietButton" onClick={() => onShowJson?.()}>
+            Open the JSON
           </button>
         }
       >
-        {editor.parsed?.error ? 'The JSON has a syntax error. Fix it in Config first.' : 'The draft could not be read.'}
+        {editor.parsed?.error ? 'The JSON has a syntax error. Fix it in Settings › Edit as JSON first.' : 'The draft could not be read.'}
       </Notice>
     );
 
@@ -678,7 +673,7 @@ function Answer({ turn, phase, onApply, onUndo, onDiscard, go, draftNow, canUndo
               <span>{r.where.sections.join(', ') || 'No setting changed'}</span>
               <span className="asRow">
                 <button type="button" className="quietButton" onClick={() => openIn('form', r.where.path)}>
-                  Open in All settings
+                  Show me
                 </button>
                 <button type="button" className="quietButton" onClick={() => openIn('json', r.where.path)}>
                   Open in JSON
@@ -698,8 +693,7 @@ function Answer({ turn, phase, onApply, onUndo, onDiscard, go, draftNow, canUndo
             </li>
           </ul>
           <small>
-            It is one draft: what was just applied is what All settings, Simple, the JSON and the Workflow show, and a change made in any of them is what the
-            next request starts from.
+            It is one draft: what was just applied is what every page of the agent shows, and a change made on any of them is what the next request starts from.
           </small>
         </section>
       )}

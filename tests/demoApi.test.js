@@ -144,3 +144,22 @@ test('the demo validator says it is a demo, and catches the cheap mistakes the r
   assert.deepEqual(r2.secrets_required, ['OPENAI_API_KEY']);
   assert.equal(validateDemo([], 'a').valid, false);
 });
+
+test('demo: a made-up call says where the agent really runs, and a test conversation stays the draft', async () => {
+  const { placeCall } = await import('../src/demo/demoApi.js');
+  const call = { summary: { id: 'c', ref: 'production', version: '0.1.1' } };
+  assert.equal(placeCall(call, { production: '0.1.1' }), call, 'live in production: as it is');
+  // the environment that runs its version, not merely the first one the agent is in
+  assert.deepEqual(placeCall(call, { staging: '0.1.0', development: '0.1.1' }).summary, { id: 'c', ref: 'development', version: '0.1.1' });
+  // a version never published becomes the one running where the agent runs; one published ran there before the one there now
+  assert.deepEqual(placeCall(call, { development: '0.1.0' }, ['0.1.0']).summary, { id: 'c', ref: 'development', version: '0.1.0' });
+  assert.deepEqual(placeCall(call, { development: '0.1.2' }, ['0.1.1', '0.1.2']).summary, { id: 'c', ref: 'development', version: '0.1.1' });
+  // a call made in another environment is placed the same way: one the agent was never put in is not claimed
+  const dev = { summary: { id: 'd', ref: 'development', version: '0.1.1' } };
+  assert.deepEqual(placeCall(dev, {}).summary, { id: 'd', ref: 'draft', version: 'draft' });
+  assert.equal(placeCall(dev, { development: '0.1.1' }), dev);
+  assert.deepEqual(placeCall(call, { development: '0.1.1' }).summary.ref, 'development');
+  assert.deepEqual(placeCall(call, {}).summary, { id: 'c', ref: 'draft', version: 'draft' }, 'never put live: a test conversation');
+  const tried = { summary: { id: 't', ref: 'draft', version: 'draft' } };
+  assert.equal(placeCall(tried, { production: '1.0.0' }), tried);
+});

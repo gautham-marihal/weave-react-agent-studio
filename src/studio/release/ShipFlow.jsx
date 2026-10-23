@@ -7,7 +7,9 @@ const MARK = { done: 'check', blocked: 'alert', todo: null, optional: null };
 // The way from a draft to callers as one line of five steps, and the one thing to do next. It informs; every step is still done in its own tab.
 // `buildLeft`: the steps of building the agent still to do (readiness.js, the list the menu and the Overview show): while there are some, the draft can be
 // shipped but the agent is not called ready, and the first of them is offered (`onStep`).
-export default function ShipFlow({ flow, onAction, buildLeft = [], onStep }) {
+//   quiet: its button is a quiet one (the new layout, whose bar above the page has the page's one strong button)
+export default function ShipFlow({ flow, onAction, buildLeft = [], onStep, quiet = false }) {
+  const cta = quiet ? 'quietButton compactCta' : 'primaryCta compactCta';
   const { steps, done, total, next, ready } = flow;
   const left = buildLeft[0] || null;
   const allReady = ready && !left;
@@ -21,11 +23,11 @@ export default function ShipFlow({ flow, onAction, buildLeft = [], onStep }) {
       <header>
         <h3>{title}</h3>
         {next && next.action ? (
-          <button type="button" className="primaryCta compactCta" onClick={() => onAction(next.action)}>
+          <button type="button" className={cta} onClick={() => onAction(next.action)}>
             {next.action.label}
           </button>
         ) : left && onStep ? (
-          <button type="button" className="primaryCta compactCta" onClick={() => onStep(left)}>
+          <button type="button" className={cta} onClick={() => onStep(left)}>
             {left.label}
           </button>
         ) : null}

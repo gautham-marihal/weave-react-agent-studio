@@ -33,7 +33,7 @@ export function buildChecklist({ config, report, version, runs = [], knowledge, 
         state: 'bad',
         text: `${plural(errors.length, 'error')} to fix first`,
         detail: errors.slice(0, 3).map((e) => e.message),
-        action: { tab: 'config', label: 'Open Config' },
+        action: { tab: 'agent', params: { show: 'problems' }, label: 'See what to fix' },
       });
     else
       add({
@@ -196,7 +196,7 @@ export function buildChecklist({ config, report, version, runs = [], knowledge, 
       state: flow.chosen ? 'info' : 'warn',
       text: flow.sentence,
       detail: flow.chosen && flow.names.length > 1 ? flow.lines : [],
-      action: { tab: 'config', label: 'Review the AI model' },
+      action: { tab: 'agent', params: { open: 'models' }, label: 'Review the AI model' },
     });
     const records = describeRecords(config, { unsupported: report?.unsupported });
     add({
@@ -205,7 +205,8 @@ export function buildChecklist({ config, report, version, runs = [], knowledge, 
       state: records.problems.length ? 'warn' : 'info',
       text: records.headline,
       detail: [...records.lines, ...records.problems],
-      action: { tab: 'config', label: 'Review' },
+      // what is kept and what callers are told are on After the call
+      action: { tab: 'aftercall', label: 'Review' },
     });
     if (recordingNoticeState(config).missing)
       add({
@@ -214,7 +215,7 @@ export function buildChecklist({ config, report, version, runs = [], knowledge, 
         state: 'warn',
         text: 'Callers on a voice channel are not told the call may be recorded',
         detail: ['A log of each call is kept, and in many places callers must be told.'],
-        action: { tab: 'config', label: 'Add a notice' },
+        action: { tab: 'aftercall', label: 'Add a notice' },
       });
   }
 

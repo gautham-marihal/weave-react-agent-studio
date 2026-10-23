@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { $, $$, actions, byText, setupDom, teardownDom, textOf } from './component/dom.js';
 import { applyStarter } from '../src/studio/starters.js';
 import { minimalConfig } from '../src/demo/demoApi.js';
+import { humanize } from '../src/studio/newlayout/rowNames.js';
 
 // The pages of the new layout, mounted in jsdom with a config in state: the Agent page (text on the page, choices in panels that work on a copy), a list page
 // (rows, a picker to add, a panel for one item), the Home checklist and the menu. Clicks and typing are replayed and the config that comes out is read back.
@@ -39,7 +40,7 @@ test('the menu is in the order of the work, the current page marked, with a numb
       'calls',
       'monitoring',
       'questions',
-      'cost',
+      'speed',
       'settings',
     ],
   );
@@ -119,7 +120,23 @@ test('a list page shows each item as a row, says what is used or not, and has on
   assert.equal(await until(app, () => $$(app.container, '.nlRow').length >= 2), true, 'a row for each tool');
   assert.ok($(app.container, '.nlPageActions .stAddBtn'), 'one Add, in the page header');
   assert.equal($$(app.container, '.nlPageActions .stAddBtn').length, 1);
-  assert.match(textOf($(app.container, '.nlRow')), /used by/i);
+  // a readable name; the tooltip has what the row says in full (a narrow row cuts it short) and the id. A tool a switch above stands for says so.
+  // With one agent, no "used by" (it is that agent's), and an unused tool says so
+  const first = app.config.tools[0];
+  assert.equal(textOf($(app.container, '.nlRow strong')), humanize(first.id));
+  assert.equal($(app.container, '.nlRow small').textContent, 'Ends the call · switched on above');
+  assert.equal($(app.container, '.nlRow').getAttribute('title'), `Ends the call · switched on above\nId: ${first.id}`);
+  assert.doesNotMatch(textOf($(app.container, '.nlRow')), /used by/i);
+  await app.unmount();
+});
+
+test('with several agents, a tool row says which use it, by name', async () => {
+  const config = agent();
+  const toolId = config.tools[0].id;
+  config.agents.items.push({ id: 'billing', name: 'Billing desk', instructions: { role: 'You answer billing questions.' }, tools: [toolId] });
+  const app = await mountScreen('listpage', config, { ready: '.nlPage', props: { lists: TOOL_LISTS } });
+  assert.equal(await until(app, () => $$(app.container, '.nlRow').length >= 2), true);
+  assert.match(textOf($(app.container, '.nlRow')), /used by .*Billing desk/);
   await app.unmount();
 });
 
@@ -128,7 +145,7 @@ test('a list page opens one item in a panel, and its edits wait for Done', async
   assert.equal(await until(app, () => $$(app.container, '.nlRow').length >= 2), true);
   const first = app.config.tools[0];
   await a.click($$(app.container, '.nlRow')[0]);
-  assert.match(textOf($(drawer(), '.nlDrawerHead h2')), new RegExp(first.id));
+  assert.match(textOf($(drawer(), '.nlDrawerHead h2')), new RegExp(humanize(first.id)), 'the panel is named as the row is');
   assert.equal(await until(app, () => !!$(drawer(), 'textarea')), true, 'the item’s own settings load');
   await a.type($(drawer(), 'textarea'), 'A new description for this tool.');
   assert.equal(app.config.tools[0].description, first.description, 'not in the draft yet');
@@ -143,16 +160,74 @@ test('adding picks a kind, opens a new item in a panel, and Cancel adds nothing 
   assert.equal(await until(app, () => !!$(app.container, '.nlPageActions .stAddBtn')), true);
   const before = app.config.tools.length;
   await a.click($(app.container, '.nlPageActions .stAddBtn'));
-  assert.ok($(app.container, '.stPickPanel'), 'the choices open');
-  await a.click($(app.container, '.stPickCard[data-option="end_call"]'));
+  const dialog = $(document.body, '.stPickDialog[role="dialog"]');
+  assert.ok(dialog, 'the choices open in a window over the page');
+  assert.equal($(app.container, '.stPickPanel'), null, 'not in place, where they would push the page down');
+  assert.match(textOf($(dialog, 'h2')), /^Add a tool/);
+  assert.ok($$(dialog, '.stPickCard .stPickIcon').length >= 9, 'each choice has its picture');
+  await a.click($(document.body, '.stPickCard[data-option="rules_only"]'));
+  assert.equal($(document.body, '.stPickDialog'), null, 'the window closes once one is picked');
   assert.match(textOf($(drawer(), '.nlDrawerHead h2')), /^New tool/);
   await a.click(byText(drawer(), 'button', 'Cancel'));
   assert.equal(app.config.tools.length, before, 'Cancel adds nothing');
   await a.click($(app.container, '.nlPageActions .stAddBtn'));
-  await a.click($(app.container, '.stPickCard[data-option="end_call"]'));
+  await a.click($(document.body, '.stPickCard[data-option="rules_only"]'));
   await a.click(byText(drawer(), 'button', 'Done'));
   assert.equal(app.config.tools.length, before + 1, 'Done adds it');
   assert.equal(new Set(app.config.tools.map((t) => t.id)).size, before + 1, 'with an id of its own');
+  await app.unmount();
+});
+
+test('a kind an agent needs only one of (ending the call) opens the one it has, rather than adding a second that nothing would use', async () => {
+  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
+  assert.equal(await until(app, () => !!$(app.container, '.nlPageActions .stAddBtn')), true);
+  const before = app.config.tools.length;
+  await a.click($(app.container, '.nlPageActions .stAddBtn'));
+  assert.match(textOf($(document.body, '.stPickCard[data-option="end_call"]')), /It has one already/);
+  await a.click($(document.body, '.stPickCard[data-option="end_call"]'));
+  assert.match(textOf($(drawer(), '.nlDrawerHead h2')), /^Tool “End call”/, 'its own panel opens');
+  await a.click(byText(drawer(), 'button', 'Close'));
+  assert.equal(app.config.tools.length, before, 'and nothing is added');
+  await app.unmount();
+});
+
+test('a new tool is given to the agent that answers first, and its panel asks which agents can use it', async () => {
+  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
+  assert.equal(await until(app, () => !!$(app.container, '.nlPageActions .stAddBtn')), true);
+  await a.click($(app.container, '.nlPageActions .stAddBtn'));
+  await a.click($(document.body, '.stPickCard[data-option="rules_only"]'));
+  const box = $(drawer(), '.nlToolAgents input[type=checkbox]');
+  assert.ok(box && box.checked, 'ticked for the agent that answers');
+  await a.click(byText(drawer(), 'button', 'Done'));
+  const made = app.config.tools.at(-1).id;
+  assert.ok(app.config.agents.items[0].tools.includes(made), 'and in the draft, it can use it');
+  await app.unmount();
+});
+
+test('the choices window keeps the keyboard: Escape closes it alone (not a panel behind it) and the keyboard goes back to Add', async () => {
+  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
+  assert.equal(await until(app, () => !!$(app.container, '.nlPageActions .stAddBtn')), true);
+  const add = $(app.container, '.nlPageActions .stAddBtn');
+  await a.click(add);
+  const dialog = $(document.body, '.stPickDialog');
+  assert.equal(document.activeElement, $(dialog, 'input[type=search]'), 'the search takes the keyboard');
+  let reached = 0;
+  const behind = () => {
+    reached += 1;
+  };
+  document.addEventListener('keydown', behind);
+  await act(async () => {
+    document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+  });
+  assert.ok(document.activeElement.classList.contains('stPickCard'), 'the arrow keys go on to the cards');
+  await act(async () => {
+    document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 30));
+  });
+  document.removeEventListener('keydown', behind);
+  assert.equal($(document.body, '.stPickDialog'), null, 'Escape closes the window');
+  assert.equal(reached, 0, 'no key reaches what is behind it, so a panel there stays open');
+  assert.equal(document.activeElement, add, 'and the keyboard is back on Add');
   await app.unmount();
 });
 
@@ -160,14 +235,22 @@ test('deleting an item from its panel removes it and closes the panel, and Cance
   const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
   assert.equal(await until(app, () => $$(app.container, '.nlRow').length >= 2), true);
   await a.click($(app.container, '.nlPageActions .stAddBtn'));
-  await a.click($(app.container, '.stPickCard[data-option="end_call"]'));
+  await a.click($(document.body, '.stPickCard[data-option="rules_only"]'));
   await a.click(byText(drawer(), 'button', 'Done'));
   const added = app.config.tools.length;
   await a.click($$(app.container, '.nlRow')[added - 1]);
   assert.equal(await until(app, () => !!byText(drawer(), 'button', /Delete this tool/)), true);
   await a.click(byText(drawer(), 'button', /Delete this tool/));
+  // the agent offers it (a new tool is given to the agent that answers), so it asks first
+  assert.equal(await until(app, () => !!byText(document.body, 'button', 'Delete and remove those references')), true);
+  await a.click(byText(document.body, 'button', 'Delete and remove those references'));
   assert.equal(await until(app, () => app.config.tools.length === added - 1), true, 'the tool is gone from the draft');
+  assert.ok(!app.config.agents.items[0].tools.some((t) => !app.config.tools.some((x) => x.id === t)), 'and from the agent’s tools');
   assert.equal(await until(app, () => !drawer()), true, 'and the panel has closed');
+  // and it can be put back
+  assert.equal(await until(app, () => !!byText(app.container, 'button', 'Undo')), true, 'an Undo is offered');
+  await a.click(byText(app.container, 'button', 'Undo'));
+  assert.equal(app.config.tools.length, added, 'Undo puts it back');
   await app.unmount();
 });
 

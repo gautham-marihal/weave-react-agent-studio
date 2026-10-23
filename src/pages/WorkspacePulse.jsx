@@ -5,16 +5,13 @@ import { useMonitoring } from '../studio/monitoring/useMonitoring.js';
 import { useLiveCount } from '../studio/live/useLiveCount.js';
 import { withStatus } from '../studio/insights/alertsModel.js';
 import { useInsights, useLiveAlerts } from '../studio/insights/insightsStore.js';
-import { useCostData } from '../studio/cost/useCostData.js';
-import { money, summarize } from '../studio/cost/costModel.js';
-import { mergePrices, usePrices } from '../studio/cost/prices.js';
+import { seconds } from '../studio/speed/speedModel.js';
 
 const DAYS = 7;
-const sumOf = (values) => values.reduce((a, b) => a + b, 0);
 
-// Home's four numbers for the workspace: calls today (with the week by day), calls going on now, the alerts that hold, and what the week's calls cost.
-// Each is worked out the way its own page works it out (Monitoring, Live, Alerts, Cost and speed) and opens that page. It only reads.
-//   onOpen(pageId): 'sessions' | 'live' | 'alerts' | 'cost'
+// Home's four numbers for the workspace: calls today (with the week by day), calls going on now, the alerts that hold, and how fast the week's calls were
+// answered. Each is worked out the way its own page works it out (Monitoring, Live, Alerts, Speed) and opens that page. It only reads.
+//   onOpen(pageId): 'sessions' | 'live' | 'alerts' | 'speed'
 export default function WorkspacePulse({ bots, onOpen }) {
   const agents = useMemo(() => bots.map((b) => ({ id: b.id, name: b.name || b.id, deployed: b.deployed || {} })), [bots]);
 
@@ -36,14 +33,9 @@ export default function WorkspacePulse({ bots, onOpen }) {
   const fresh = holding.filter((a) => a.status === 'new').length;
   const critical = holding.filter((a) => a.severity === 'critical').length;
 
-  const own = usePrices();
-  const prices = useMemo(() => mergePrices(own), [own]);
-  const costs = useCostData(agents, { days: DAYS, perAgent: 10 });
-  const estimate = useMemo(
-    () => summarize({ samples: costs.samples, totalCalls: sumOf(Object.values(costs.totals)), modelsByBot: costs.modelsByBot, prices, days: DAYS }),
-    [costs.samples, costs.totals, costs.modelsByBot, prices],
-  );
-  const week = estimate.costPerCall !== null ? estimate.costPerCall * estimate.totalCalls : null;
+  // the answer time comes from the same calls as Monitoring's (and Speed's): the records of some, spread over the days, are read after the list
+  const timing = !watched.loading && watched.calls.length > 0 && Object.keys(watched.samples).length === 0;
+  const { waitP50, waitP90 } = report.totals;
 
   return (
     <section className="ovStats wsPulse" aria-label="The workspace now">
@@ -70,18 +62,12 @@ export default function WorkspacePulse({ bots, onOpen }) {
         onOpen={() => onOpen('alerts')}
       />
       <Stat
-        label={`Cost · last ${DAYS} days`}
-        loading={costs.loading && !costs.samples.length}
-        value={money(week)}
-        sub={
-          week !== null
-            ? `About ${money(estimate.costPerCall)} a call${estimate.missing.length ? ' · some prices missing' : ''}`
-            : estimate.totalCalls
-              ? 'Add prices to estimate it'
-              : 'No calls yet'
-        }
-        title="An estimate from each agent's newest calls and the prices on the Cost and speed page"
-        onOpen={() => onOpen('cost')}
+        label={`Answer time · last ${DAYS} days`}
+        loading={reading || timing}
+        value={seconds(waitP50)}
+        sub={waitP50 !== null ? `Half the answers; 1 in 10 over ${seconds(waitP90)}` : report.totals.calls ? 'No answers timed yet' : 'No calls yet'}
+        title="How long callers waited for an answer, from the calls' records"
+        onOpen={() => onOpen('speed')}
       />
     </section>
   );

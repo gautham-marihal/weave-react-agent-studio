@@ -69,7 +69,7 @@ export default function ReleaseChecklist({ botId, config, report, version, envir
               )}
             </div>
             {item.action && (
-              <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, item.action.tab), { guard: false })}>
+              <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, item.action.tab, item.action.params), { guard: false })}>
                 {item.action.label}
               </button>
             )}

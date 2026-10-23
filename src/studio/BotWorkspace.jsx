@@ -1,44 +1,26 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { sentenceCase } from '../ui/text.js';
 import { api } from '../api/client.js';
-import ConfigTab from './ConfigTab.jsx';
 import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { useLiveSession } from './test/useLiveSession.js';
 import { useSimulatedSession } from './test/useSimulatedSession.js';
 import { isDemoMode } from '../demo/demoMode.js';
 import { refreshBots, useBots } from './agents.js';
 import { applyChange, takeChange } from './pendingChange.js';
-import { compareVersions, currentStage, nextVersion, publishOptions } from './format.js';
-import Menu from './manage/Menu.jsx';
+import { nextVersion, publishOptions } from './format.js';
 import { useManage } from './manage/useManage.jsx';
 import { splitUnsupported } from './preflight.js';
 import { DemoNote } from '../demo/DemoBadge.jsx';
 import { dismissNotes, peekNotes } from './assistantNotes.js';
 import { navigate, routeHref, setLeaveGuard } from './route.js';
 import { useGateStatus } from './release/gate.js';
-import { EnvSlots, ErrorState, Modal, Notice, Spinner } from './ui.jsx';
+import { ErrorState, Modal, Notice } from './ui.jsx';
 import NotFound from '../ui/NotFound.jsx';
 import { useAsync } from './useAsync.js';
 import { useDraftEditor } from './useDraftEditor.js';
-import JourneyNav, { NextBar } from './JourneyNav.jsx';
-import AgentStatusLine from './AgentStatusLine.jsx';
-import CallsView from './calls/CallsView.jsx';
 import NewAgentWorkspace from './newlayout/NewAgentWorkspace.jsx';
-import { useLayout } from './newlayout/layoutPref.js';
-import { classicTab } from './newlayout/pages.js';
 import Icon from '../ui/Icon.jsx';
 
-// The tabs other than Config are loaded when first opened, so the first screen doesn't carry the code of the test runner, the trace viewer
-// and the knowledge screen (the live-conversation library is loaded separately, only when a real conversation starts).
-const DeployTab = lazy(() => import('./DeployTab.jsx'));
-const VersionsTab = lazy(() => import('./VersionsTab.jsx'));
-const TestTab = lazy(() => import('./test/TestTab.jsx'));
-const ScenariosTab = lazy(() => import('./scenarios/ScenariosTab.jsx'));
-const WorkflowTab = lazy(() => import('./workflow/WorkflowTab.jsx'));
-const AssistantTab = lazy(() => import('./assistant/AssistantTab.jsx'));
-const KnowledgeTab = lazy(() => import('./knowledge/KnowledgeTab.jsx'));
-const ChecksTab = lazy(() => import('./checks/ChecksTab.jsx'));
-const QuestionsPage = lazy(() => import('./insights/QuestionsPage.jsx'));
-const CostPage = lazy(() => import('./cost/CostPage.jsx'));
 const PlainIssues = lazy(() => import('./validation/PlainIssues.jsx')); // problems named by their labels, not their paths
 
 // Publishing is a step of the Release stage, so it is drawn on the Versions page, in place, with the release checklist beside the choice of version.
@@ -53,7 +35,7 @@ function PublishFrame({ inline, eyebrow, title, subtitle, onClose, busy, footer,
   return (
     <section className="stCard stPublishPanel" aria-label={title}>
       <header>
-        {eyebrow && <small>{eyebrow}</small>}
+        {eyebrow && <small>{sentenceCase(eyebrow)}</small>}
         <h3>{title}</h3>
         {subtitle && <p className="stMuted">{subtitle}</p>}
       </header>
@@ -63,7 +45,9 @@ function PublishFrame({ inline, eyebrow, title, subtitle, onClose, busy, footer,
   );
 }
 
-function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inline = false }) {
+//   done: what was just published, when the owner keeps it (the new layout reads the agent again after a publish, which draws this panel anew)
+//   quickDeploy: offer to put it live in Development from here (the new layout), beside choosing where; onDeployed() after it is
+function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inline = false, done = null, quickDeploy = false, onDeployed }) {
   const gate = useGateStatus(botId, editor);
   const [anyway, setAnyway] = useState(false);
   const held = gate.enabled && !gate.check.ok && !anyway;
@@ -76,6 +60,7 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inl
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [allWarnings, setAllWarnings] = useState(false);
+  const [deploy, setDeploy] = useState({ phase: 'idle', error: null }); // putting it live from here: idle | working | done
   const blocked = !!editor.parsed.error || !editor.isObject || !editor.report || !editor.report.valid;
   const picked =
     options.find((option) => option.value === choice && !option.disabled) || options.find((option) => option.value === defaultChoice) || options[0];
@@ -103,45 +88,76 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inl
     }
   };
 
-  if (phase === 'done' && result) {
+  const shown = done || (phase === 'done' ? result : null);
+  if (shown) {
+    const chooseWhere = () => {
+      onClose();
+      navigate(routeHref(botId, 'deploy', { version: shown.version }), { guard: false });
+    };
+    const putLive = async () => {
+      setDeploy({ phase: 'working', error: null });
+      try {
+        await api.deploy(botId, { version: shown.version, environment: 'development', note: 'Put live after publishing' });
+        setDeploy({ phase: 'done', error: null });
+        onDeployed?.();
+      } catch (err) {
+        setDeploy({ phase: 'idle', error: err });
+      }
+    };
+    const live = deploy.phase === 'done';
     return (
       <PublishFrame
         inline={inline}
-        eyebrow="PUBLISHED"
-        title={`Version ${result.version} is published`}
-        subtitle="It is now frozen. Deploy it to an environment to put it in use."
+        eyebrow={live ? 'LIVE' : 'PUBLISHED'}
+        title={live ? `Version ${shown.version} is live in Development` : `Version ${shown.version} is published`}
+        subtitle={
+          live
+            ? 'It answers in Development from now on: try it for real there. Staging and Production are chosen on Deploy.'
+            : quickDeploy
+              ? 'It is now frozen. Put it live in Development to try it for real, or choose where it runs.'
+              : 'It is now frozen. Deploy it to an environment to put it in use.'
+        }
         onClose={onClose}
         footer={
           <>
             <button type="button" className="modalCancel" onClick={onClose}>
               Close
             </button>
-            <button
-              type="button"
-              className="modalCreate"
-              onClick={() => {
-                onClose();
-                navigate(routeHref(botId, 'deploy', { version: result.version }), { guard: false });
-              }}
-            >
-              Deploy it
-            </button>
+            {quickDeploy && !live ? (
+              <>
+                <button type="button" className="modalCancel" onClick={chooseWhere} disabled={deploy.phase === 'working'}>
+                  Choose where
+                </button>
+                <button type="button" className="modalCreate" onClick={putLive} disabled={deploy.phase === 'working'}>
+                  {deploy.phase === 'working' ? 'Putting it live…' : 'Put it live in Development'}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="modalCreate" onClick={chooseWhere}>
+                {live ? 'See where it runs' : 'Deploy it'}
+              </button>
+            )}
           </>
         }
       >
-        {result.warnings?.length > 0 && (
-          <Notice kind="warn" title={`${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'}`}>
+        {deploy.error && (
+          <Notice kind="error" title="It couldn’t be put live">
+            {deploy.error.message}
+          </Notice>
+        )}
+        {shown.warnings?.length > 0 && (
+          <Notice kind="warn" title={`${shown.warnings.length} warning${shown.warnings.length === 1 ? '' : 's'}`}>
             <Suspense fallback={null}>
-              <PlainIssues issues={result.warnings} />
+              <PlainIssues issues={shown.warnings} />
             </Suspense>
           </Notice>
         )}
-        {result.secrets_required?.length > 0 && (
+        {shown.secrets_required?.length > 0 && (
           <p className="stMuted">
-            Needs {result.secrets_required.length} secret{result.secrets_required.length === 1 ? '' : 's'}: {result.secrets_required.join(', ')}.
+            Needs {shown.secrets_required.length} secret{shown.secrets_required.length === 1 ? '' : 's'}: {shown.secrets_required.join(', ')}.
           </p>
         )}
-        <p className="stMuted">The draft has moved on to {nextVersion(result.version, 'patch')}, so your next publish won’t collide.</p>
+        <p className="stMuted">The draft has moved on to {nextVersion(shown.version, 'patch')}, so your next publish won’t collide.</p>
       </PublishFrame>
     );
   }
@@ -289,10 +305,7 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, inl
   );
 }
 
-export default function BotWorkspace({ botId, tab: routeTab, bare = false, params, onRecordSession, readinessRuns = [], onRecordReadiness }) {
-  // The new layout shows every address as a page of its own; the classic one maps the new pages onto the nearest of its tabs.
-  const [layout] = useLayout();
-  const tab = layout === 'new' ? routeTab : classicTab(routeTab);
+export default function BotWorkspace({ botId, tab, bare = false, params, onRecordSession, readinessRuns = [], onRecordReadiness }) {
   const [refresh, setRefresh] = useState(0);
   const bot = useAsync((signal) => api.getBot(botId, { signal }), [botId, refresh]);
   const editor = useDraftEditor(botId);
@@ -354,6 +367,11 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
   const live = [realSession.status, simSession.status].some((status) => ['starting', 'connecting', 'waiting', 'live'].includes(status));
   const publishOpen = tab === 'versions' && params?.publish === '1';
   const closePublish = () => navigate(routeHref(botId, 'versions'), { guard: false });
+  // the new layout's publish panel: what was just published, kept here while the agent is read again (which draws the panel anew); gone once it closes
+  const [justPublished, setJustPublished] = useState(null);
+  useEffect(() => {
+    if (!publishOpen) setJustPublished(null);
+  }, [publishOpen]);
 
   // Reloading the page would lose unsaved edits and hang up a running test conversation.
   useEffect(() => {
@@ -391,7 +409,6 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
   useEffect(() => {
     if (editor.savedTick) refreshBots();
   }, [editor.savedTick]);
-  const leave = () => navigate(routeHref());
 
   // the agent as the list of agents already knows it, until its own details arrive (so the bar doesn't show its id, or "Draft", while they load)
   const listed = (useBots().all || []).find((b) => b.id === botId) || null;
@@ -426,7 +443,6 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
     onMoved: () => navigate(routeHref(), { guard: false }),
   });
   const manageBot = { id: botId, name, latest_version: summary?.latest_version, deployed: summary?.deployed || {} };
-  const stage = useMemo(() => currentStage(summary), [summary]);
 
   if (bot.error && !bot.data && bot.error.kind === 'not_found') {
     return (
@@ -452,270 +468,106 @@ export default function BotWorkspace({ botId, tab: routeTab, bare = false, param
     );
   }
 
-  if (layout === 'new') {
-    const notices = (
-      <>
-        {applied && (
-          <Notice
-            kind="info"
-            title={applied.unchanged ? 'Already set on this draft' : 'Added to this draft, not saved yet'}
-            actions={
-              <button type="button" className="quietButton" onClick={() => setApplied(null)}>
-                Dismiss
-              </button>
-            }
-          >
-            {applied.note} {applied.unchanged ? 'Nothing needed to change.' : 'Check it below, then save the draft.'}
-          </Notice>
-        )}
-        {assistantNote && (
-          <Notice
-            kind="warn"
-            title="This draft was made from your description by the demo assistant"
-            actions={
-              <button
-                type="button"
-                className="quietButton"
-                onClick={() => {
-                  dismissNotes(botId);
-                  setAssistantNote(null);
-                }}
-              >
-                I’ve read this
-              </button>
-            }
-          >
-            The demo assistant is rule-based, not an AI model: it picked a starter and filled in what it could from keywords. Read the role and rules, and try
-            the draft in the preview.
-            <details className="stFold" open>
-              <summary>What it assumed ({assistantNote.assumptions?.length || 0})</summary>
-              <ul className="stPlain">
-                {(assistantNote.assumptions || []).map((a) => (
-                  <li key={a}>{a}</li>
-                ))}
-              </ul>
-            </details>
-            <details className="stFold amber" open>
-              <summary>What you still need to decide ({assistantNote.questions?.length || 0})</summary>
-              <ul className="stPlain">
-                {(assistantNote.questions || []).map((q) => (
-                  <li key={q}>{q}</li>
-                ))}
-              </ul>
-            </details>
-          </Notice>
-        )}
-      </>
-    );
-    const publishPanel = publishOpen ? (
-      <PublishDialog
-        inline
-        botId={botId}
-        editor={editor}
-        latestVersion={summary?.latest_version || null}
-        onClose={closePublish}
-        onPublished={() => {
-          bump();
-          editor.reload();
-        }}
-      />
-    ) : null;
-    return (
-      <NewAgentWorkspace
-        ws={{
-          botId,
-          tab,
-          bare,
-          params,
-          editor,
-          summary,
-          bot,
-          name,
-          refresh,
-          bump,
-          session,
-          sessionMode,
-          modeLocked,
-          setSessionMode,
-          realSession,
-          manage,
-          manageBot,
-          live,
-          publishPanel,
-          readinessRuns,
-          onRecordReadiness,
-          notices,
-        }}
-      />
-    );
-  }
-
-  return (
-    <div className="stWorkspace">
-      <button type="button" className="agentBackLink stBack" onClick={leave}>
-        <Icon name="arrowLeft" size={15} />
-        Agents
-      </button>
-      <header className="stHeader">
-        <span className="agentRowAvatar" aria-hidden="true">
-          {name.slice(0, 1).toUpperCase()}
-        </span>
-        <AgentStatusLine
-          botId={botId}
-          name={name}
-          description={editor.parsed.value?.meta?.description}
-          summary={summary}
-          editor={editor}
-          refreshKey={refresh}
-          newerPublished={
-            summary && stage.kind === 'env' && summary.latest_version && compareVersions(summary.latest_version, stage.version) > 0
-              ? summary.latest_version
-              : ''
+  const notices = (
+    <>
+      {applied && (
+        <Notice
+          kind="info"
+          title={applied.unchanged ? 'Already set on this draft' : 'Added to this draft, not saved yet'}
+          actions={
+            <button type="button" className="quietButton" onClick={() => setApplied(null)}>
+              Dismiss
+            </button>
           }
-        />
-        {summary && (
-          <div className="stHeaderEnvs">
-            <EnvSlots compact deployed={summary.deployed} onPick={() => navigate(routeHref(botId, 'deploy'), { guard: false })} />
-          </div>
-        )}
-        <div className="stHeaderActions">
-          {editor.dirty && (
-            <span className="stDirtyDot" title="Unsaved edits">
-              Unsaved
-            </span>
-          )}
-          <button
-            type="button"
-            className="primaryCta compactCta"
-            onClick={() => navigate(routeHref(botId, 'versions', { publish: '1' }), { guard: false })}
-            disabled={editor.status !== 'ready'}
-          >
-            Publish
-          </button>
-          <Menu label="Agent actions" items={manage.menuItems(manageBot, { dirty: editor.dirty })} className="stHeaderMenu" />
-        </div>
-      </header>
-
-      <JourneyNav botId={botId} tab={tab} live={live} />
-
-      <div className="stTabBody">
-        {/* The draft lives in useDraftEditor above the tabs, so edits survive switching tabs. */}
-        {applied && tab === 'config' && (
-          <Notice
-            kind="info"
-            title={applied.unchanged ? 'Already set on this draft' : 'Added to this draft, not saved yet'}
-            actions={
-              <button type="button" className="quietButton" onClick={() => setApplied(null)}>
-                Dismiss
-              </button>
-            }
-          >
-            {applied.note} {applied.unchanged ? 'Nothing needed to change.' : 'Check it below, then save the draft.'}
-          </Notice>
-        )}
-        {assistantNote && tab === 'config' && (
-          <Notice
-            kind="warn"
-            title="This draft was made from your description by the demo assistant"
-            actions={
-              <button
-                type="button"
-                className="quietButton"
-                onClick={() => {
-                  dismissNotes(botId);
-                  setAssistantNote(null);
-                }}
-              >
-                I’ve read this
-              </button>
-            }
-          >
-            The demo assistant is rule-based, not an AI model: it picked a starter and filled in what it could from keywords. Read the role and rules, and try
-            the draft in the preview.
-            <details className="stFold" open>
-              <summary>What it assumed ({assistantNote.assumptions?.length || 0})</summary>
-              <ul className="stPlain">
-                {(assistantNote.assumptions || []).map((a) => (
-                  <li key={a}>{a}</li>
-                ))}
-              </ul>
-            </details>
-            <details className="stFold amber" open>
-              <summary>What you still need to decide ({assistantNote.questions?.length || 0})</summary>
-              <ul className="stPlain">
-                {(assistantNote.questions || []).map((q) => (
-                  <li key={q}>{q}</li>
-                ))}
-              </ul>
-            </details>
-          </Notice>
-        )}
-        {tab === 'config' && (
-          <ConfigTab
-            editor={editor}
-            focusPath={applied?.where}
-            botId={botId}
-            preview={{ session, mode: sessionMode, locked: modeLocked, onMode: setSessionMode }}
-          />
-        )}
-        <Suspense fallback={<Spinner label="Loading" />}>
-          {tab === 'describe' && <AssistantTab editor={editor} botId={botId} name={name} />}
-          {tab === 'workflow' && <WorkflowTab editor={editor} botId={botId} />}
-          {tab === 'versions' && publishOpen && (
-            <PublishDialog
-              inline
-              botId={botId}
-              editor={editor}
-              latestVersion={summary?.latest_version || null}
-              onClose={closePublish}
-              onPublished={() => {
-                bump();
-                editor.reload();
+        >
+          {applied.note} {applied.unchanged ? 'Nothing needed to change.' : 'Check it below, then save the draft.'}
+        </Notice>
+      )}
+      {assistantNote && (
+        <Notice
+          kind="warn"
+          title="This draft was made from your description by the demo assistant"
+          actions={
+            <button
+              type="button"
+              className="quietButton"
+              onClick={() => {
+                dismissNotes(botId);
+                setAssistantNote(null);
               }}
-            />
-          )}
-          {tab === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} summary={summary} />}
-          {tab === 'deploy' && <DeployTab botId={botId} name={name} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
-          {tab === 'scenarios' && <ScenariosTab botId={botId} name={name} editor={editor} />}
-          {tab === 'knowledge' && <KnowledgeTab botId={botId} name={name} editor={editor} />}
-          {tab === 'checks' && <ChecksTab botId={botId} name={name} runs={readinessRuns} onRun={onRecordReadiness} />}
-          {tab === 'questions' && <QuestionsPage botId={botId} editor={editor} />}
-          {tab === 'cost' && (
-            <CostPage
-              agentOnly
-              bots={[{ id: botId, name }]}
-              editor={editor}
-              onOpenCall={(id, callId) => navigate(routeHref(botId, 'calls', { call: callId }), { guard: false })}
-            />
-          )}
-          {tab === 'calls' && (
-            <CallsView
-              bots={[{ id: botId, name }]}
-              fixedBotId={botId}
-              editor={editor}
-              initialCall={params?.call ? { botId, id: params.call, raw: null, view: params.view } : null}
-              onOpenAgent={() => navigate(routeHref(botId, 'test'), { guard: false })}
-            />
-          )}
-          {tab === 'test' && (
-            <TestTab
-              botId={botId}
-              name={name}
-              summary={summary}
-              editor={editor}
-              session={session}
-              mode={sessionMode}
-              modeLocked={modeLocked}
-              onMode={setSessionMode}
-            />
-          )}
-        </Suspense>
-        <NextBar botId={botId} tab={tab} />
-      </div>
-
-      {manage.element}
-      {/* The agent's voice is played from here, so it keeps playing when you switch tabs. */}
-      <div ref={realSession.audioHostRef} className="stTAudio" aria-hidden="true" />
-    </div>
+            >
+              I’ve read this
+            </button>
+          }
+        >
+          The demo assistant is rule-based, not an AI model: it picked a starter and filled in what it could from keywords. Read the role and rules, and try the
+          draft in the preview.
+          <details className="stFold" open>
+            <summary>What it assumed ({assistantNote.assumptions?.length || 0})</summary>
+            <ul className="stPlain">
+              {(assistantNote.assumptions || []).map((a) => (
+                <li key={a}>{a}</li>
+              ))}
+            </ul>
+          </details>
+          <details className="stFold amber" open>
+            <summary>What you still need to decide ({assistantNote.questions?.length || 0})</summary>
+            <ul className="stPlain">
+              {(assistantNote.questions || []).map((q) => (
+                <li key={q}>{q}</li>
+              ))}
+            </ul>
+          </details>
+        </Notice>
+      )}
+    </>
+  );
+  const publishPanel = publishOpen ? (
+    <PublishDialog
+      inline
+      botId={botId}
+      editor={editor}
+      latestVersion={summary?.latest_version || null}
+      onClose={closePublish}
+      done={justPublished}
+      quickDeploy
+      onPublished={(published) => {
+        setJustPublished(published);
+        bump();
+        editor.reload();
+      }}
+      onDeployed={() => {
+        bump();
+        refreshBots();
+      }}
+    />
+  ) : null;
+  return (
+    <NewAgentWorkspace
+      ws={{
+        botId,
+        tab,
+        bare,
+        params,
+        editor,
+        summary,
+        bot,
+        name,
+        refresh,
+        bump,
+        session,
+        sessionMode,
+        modeLocked,
+        setSessionMode,
+        realSession,
+        manage,
+        manageBot,
+        live,
+        publishPanel,
+        readinessRuns,
+        onRecordReadiness,
+        notices,
+      }}
+    />
   );
 }

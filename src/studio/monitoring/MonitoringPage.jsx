@@ -4,7 +4,8 @@ import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { Notice, Spinner } from '../ui.jsx';
 import { formatWhen } from '../format.js';
 import { formatSeconds } from '../calls/callModel.js';
-import { analyse, deltaOf, pct, seconds } from './monitorModel.js';
+import { analyse, changeWords, pct } from './monitorModel.js';
+import { seconds } from '../speed/speedModel.js'; // a wait is written as Speed writes it, so the two show the same number
 import { useMonitoring } from './useMonitoring.js';
 import './monitoring.css';
 
@@ -86,7 +87,8 @@ function DayBars({ series }) {
 // `agentOnly`: the page is one agent's own (inside that agent), so it speaks of that agent and does not list agents.
 export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, agentOnly = false, top = null }) {
   const [days, setDays] = useState(14);
-  const data = useMonitoring({ bots, days });
+  // with no cap on the calls read, they are the ones the Speed page reads, so the answer time here is Speed's for the same period
+  const data = useMonitoring({ bots, days, cap: Infinity });
   const report = useMemo(
     () => analyse({ calls: data.calls, samples: data.samples, bots, nowMs: data.nowMs, days }),
     [data.calls, data.samples, bots, data.nowMs, days],
@@ -144,8 +146,8 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
           <h2>No calls to look at yet</h2>
           <p>
             {agentOnly
-              ? `Once ${bots[0]?.name || 'this agent'} has had calls in the last ${days * 2} days, this page shows how many, how they went, and where to look when something is off. A conversation in Test is a call too.`
-              : `Once an agent has had calls in the last ${days * 2} days, this page shows how many, how they went, and where to look when something is off. A conversation from an agent’s Test tab is a call too.`}
+              ? `Once ${bots[0]?.name || 'this agent'} has had calls, this page shows how many, how they went, and where to look when something is off. A conversation in Test is a call too.`
+              : `Once an agent has had calls, this page shows how many, how they went, and where to look when something is off. Trying an agent out makes a call too.`}
           </p>
           {bots[0] && (
             <button type="button" className="primaryCta compactCta" onClick={() => onOpenAgent(bots[0].id, 'test')}>
@@ -187,11 +189,7 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
       {!empty && (
         <>
           <section className="mnKpis" aria-label="The numbers">
-            <Kpi
-              label="Calls"
-              value={totals.calls}
-              note={deltaOf(totals.calls, previous.calls) ? `${deltaOf(totals.calls, previous.calls)} on the period before` : `in ${days} days`}
-            />
+            <Kpi label="Calls" value={totals.calls} note={changeWords(totals.calls, previous.calls) || `in ${days} days`} />
             <Kpi
               label="Handed over"
               value={pct(totals.handoffRate)}
@@ -223,8 +221,8 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
             />
           </section>
           <p className="mnBasis">
-            Time to answer and failed tools come from the newest {report.sampled} calls whose records were read; the other numbers are from all {totals.calls}{' '}
-            calls of the period.
+            Time to answer and failed tools come from {report.sampled} calls whose records were read, spread over the period; the other numbers are from all{' '}
+            {totals.calls} calls of the period.
           </p>
 
           <section className="mnCard" aria-label="Calls per day">
@@ -338,7 +336,13 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
                       </td>
                       <td>
                         {p.calls}
-                        {deltaOf(p.calls, p.previousCalls) ? <small className="mnDelta"> {deltaOf(p.calls, p.previousCalls)}</small> : null}
+                        {/* what it was the period before, when that differs: a bare "−2" beside the count reads as minus two calls */}
+                        {p.previousCalls && p.previousCalls !== p.calls ? (
+                          <small className="mnDelta" title={changeWords(p.calls, p.previousCalls)}>
+                            {' '}
+                            was {p.previousCalls}
+                          </small>
+                        ) : null}
                       </td>
                       <td>{pct(p.handoffRate)}</td>
                       <td className={p.cutOffRate > 0.1 ? 'bad' : ''}>{pct(p.cutOffRate)}</td>

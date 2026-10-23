@@ -4,7 +4,8 @@ import CallsView from '../calls/CallsView.jsx';
 import ChangesPanel from '../changes/ChangesPanel.jsx';
 import { changesSince, revertSection } from '../changes/sinceRelease.js';
 import { useLatestPublished } from '../changes/useLatestPublished.js';
-import { JsonEditor, ValidationPanel } from '../ConfigTab.jsx';
+import { JsonPart } from '../JsonEditor.jsx';
+import { ValidationPanel } from '../ValidationPanel.jsx';
 import MonitoringPage from '../monitoring/MonitoringPage.jsx';
 import AgentAlerts from '../insights/AgentAlerts.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
@@ -19,11 +20,20 @@ import AgentNav from './AgentNav.jsx';
 import { readinessSteps } from './readiness.js';
 import AgentTopBar from './AgentTopBar.jsx';
 import ShareAgentDrawer from '../team/ShareAgentDrawer.jsx';
+import { ActionSwitches, KnowledgeBlock, ReachChoices } from '../setup/SimpleBlocks.jsx';
+import { KNOWLEDGE_ID, reachOf, whoReadsKnowledge } from '../setup/setupModel.js';
+import { LimitsBlock, MomentsBlock, TopicsBlock } from './simple/GuardrailBlocks.jsx';
+import { QuestionsBlock, RecordingBlock, SensitiveBlock, SummaryBlock } from './simple/AfterCallBlocks.jsx';
+import { askedAbove } from './simple/afterCallModel.js';
+import { inSetup, useSetupProgress } from '../setup/setupProgress.js';
 import CallersPanel from '../callers/CallersPanel.jsx';
 import GateStrip from '../release/GateStrip.jsx';
 import Drawer from './Drawer.jsx';
 import PageShell, { Section } from './PageShell.jsx';
-import { PAGE_LABELS, PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, tabFor } from './pages.js';
+import { humanize } from './rowNames.js';
+import { entryAgentIndex, readSimple } from '../simple/simpleModel.js';
+import { PAGE_LABELS, PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, searchTarget, tabFor } from './pages.js';
+import { onSettingFocus, takeSettingFocus } from '../settingFocus.js';
 import AgentPage from './pages/AgentPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ListPage from './pages/ListPage.jsx';
@@ -31,6 +41,11 @@ import { TryGuardrailsView } from '../form/TryPanels.jsx';
 import SectionPage from './pages/SectionPage.jsx';
 import './newlayout.css';
 import { askConfirm } from '../../ui/dialogs.js';
+import { whenPanelKept } from './stagedPanel.js';
+import { useLiveNumbers } from '../../pages/LiveNumbers.jsx';
+import { useKnowledge } from '../knowledge/useKnowledge.js';
+import { describeWeek } from '../relations/scheduleStrip.js';
+import { usedBy } from '../relations/usedBy.js';
 
 const AssistantTab = lazy(() => import('../assistant/AssistantTab.jsx'));
 const DeployTab = lazy(() => import('../DeployTab.jsx'));
@@ -41,9 +56,41 @@ const ChecksTab = lazy(() => import('../checks/ChecksTab.jsx'));
 const KnowledgeTab = lazy(() => import('../knowledge/KnowledgeTab.jsx'));
 const WorkflowTab = lazy(() => import('../workflow/WorkflowTab.jsx'));
 const QuestionsPage = lazy(() => import('../insights/QuestionsPage.jsx'));
-const CostPage = lazy(() => import('../cost/CostPage.jsx'));
+const SpeedPage = lazy(() => import('../speed/SpeedPage.jsx'));
+const SetupWizard = lazy(() => import('../setup/SetupWizard.jsx'));
+
+// The steps of getting ready that the guided setup asks for: while the agent is being set up (setupProgress.js `inSetup`), opening one opens the setup at
+// that step, so there is one place to get it ready. Once it is published the steps open the agent's own pages and panels.
+const SETUP_STEP = { prompt: 'purpose', hello: 'purpose', voice: 'voice', abilities: 'actions', publish: 'live', deploy: 'live' };
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+// "a, b and 2 more": a few names, the rest counted
+const namesInWords = (names) => {
+  const shown = names.filter(Boolean).slice(0, 2);
+  const more = names.filter(Boolean).length - shown.length;
+  return `${shown.join(', ')}${more > 0 ? ` and ${more} more` : ''}`;
+};
+const hostOf = (url) => {
+  try {
+    return new URL(String(url)).host;
+  } catch {
+    return '';
+  }
+};
+// The phone transfers in words: where calls go, or that a number is still to be set
+function transfersInWords(config) {
+  const transfers = (Array.isArray(config?.telephony?.transfers) ? config.telephony.transfers : []).filter((t) => t && typeof t === 'object');
+  if (!transfers.length) return 'None yet. Where a call can be passed to a person.';
+  const numbers = transfers.map((t) => (typeof t.target === 'string' ? t.target.trim() : t.target ? 'a number chosen during the call' : '')).filter(Boolean);
+  const waiting = transfers.length - numbers.length;
+  const parts = [
+    numbers.length ? `Passes calls to ${namesInWords(numbers)}` : '',
+    waiting ? `${plural(waiting, 'transfer')} with no number yet: callers are offered a callback` : '',
+  ];
+  return parts.filter(Boolean).join(' · ');
+}
+// the part of a page that holds its settings form, for a page that has other parts
+const FORM_PART = { workflow: 'settings', knowledge: 'settings', settings: 'settings' };
 const TOOL_LISTS = [
   {
     id: 'tools',
@@ -51,29 +98,41 @@ const TOOL_LISTS = [
     kind: 'tools',
     word: 'tool',
     pickerKey: 'tools',
+    title: 'All its tools',
+    lead: 'Everything it can use, what the switches above add included. Open one to change how it works.',
     empty: { title: 'No tools yet', text: 'Tools let the agent do things: end the call, hand over to a person, look something up.' },
   },
 ];
 const TOOL_EXTRAS = [
+  {
+    key: 'telephony',
+    title: 'Phone transfers',
+    icon: 'phoneTransfer',
+    // what is set, not what the section is: the numbers calls go to, or that none is set yet (callers are then offered a callback)
+    value: (c) => transfersInWords(c),
+  },
   {
     key: 'connections',
     title: 'Connections',
     icon: 'plug',
     value: (c, n) =>
       n
-        ? `${plural(n, 'connection')}: the web services its tools call`
+        ? `${plural(n, 'connection')}: ${namesInWords(Object.entries(c?.connections || {}).map(([id, x]) => hostOf(x?.base_url) || humanize(id)))}`
         : 'None yet. A connection is a web service its tools call, such as your billing system.',
   },
   {
     key: 'forms',
     title: 'Forms',
     icon: 'records',
-    value: (c, n) => (n ? `${plural(n, 'form')} to show a caller` : 'None yet. A form collects details such as a name and number on screen.'),
+    value: (c, n) =>
+      n
+        ? `${plural(n, 'form')}: ${namesInWords((Array.isArray(c?.forms) ? c.forms : []).map((f) => f?.title || humanize(f?.id || 'form')))}`
+        : 'None yet. A form collects details such as a name and number on screen.',
   },
   {
     key: 'notifications',
     title: 'Messages it sends',
-    icon: 'quote',
+    icon: 'mail',
     value: (c, n) => (n ? `${plural(n, 'message')} it can text or email` : 'None yet. Texts and emails it can send during or after a call.'),
   },
   {
@@ -90,21 +149,54 @@ const CHANNEL_LISTS = [
     kind: 'channels',
     word: 'channel',
     pickerKey: 'channels',
+    title: 'All channels',
+    lead: 'Each place it can be reached, and what it says first there. Open one for its details.',
     empty: { title: 'No channels yet', text: 'A channel is where people reach the agent: a phone line, a chat on your website.' },
   },
 ];
+// Business hours in words: the one schedule's week and time zone ("Monday to Friday 09:00–17:00, Asia/Singapore"), or the names of several. They change
+// nothing on their own (a phone transfer or a rule follows them), so one nothing uses says so, and an empty panel starts from a ready week.
+const scheduleWords = (c, n) => {
+  const all = Object.entries(c?.schedules && typeof c.schedules === 'object' ? c.schedules : {});
+  if (!n || !all.length) return 'None yet. Opening hours your hand-overs and rules can follow; on their own they change nothing.';
+  if (all.length === 1) {
+    const [, s] = all[0];
+    return `${describeWeek(s).replace(/[.]$/, '')}${typeof s?.timezone === 'string' && s.timezone ? `, ${s.timezone}` : ''}`;
+  }
+  return `${plural(all.length, 'schedule')}: ${namesInWords(all.map(([id, s]) => (typeof s?.description === 'string' && s.description.trim()) || humanize(id)))}`;
+};
+const localZone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+};
 const CHANNEL_EXTRAS = [
-  {
-    key: 'telephony',
-    title: 'Phone transfers',
-    icon: 'phoneTransfer',
-    value: (c, n) => (n ? 'Where a call can be passed to a person' : 'None yet. Where a call can be passed to a person.'),
-  },
   {
     key: 'schedules',
     title: 'Business hours',
     icon: 'clock',
-    value: (c, n) => (n ? plural(n, 'schedule') : 'None yet. When the agent, or a person it hands over to, is available.'),
+    value: scheduleWords,
+    status: (c, engine) =>
+      engine && Object.keys(c?.schedules && typeof c.schedules === 'object' ? c.schedules : {}).some((id) => !usedBy(engine, c, 'schedules', id).length)
+        ? { tone: '', text: 'Not used' }
+        : null,
+    start: {
+      title: 'No business hours yet',
+      text: 'A phone transfer or a rule can follow them, for example to pass calls to a person only while someone is there.',
+      label: 'Start with Monday to Friday, 9 to 5',
+      make: (c) => ({
+        ...c,
+        schedules: {
+          business_hours: {
+            description: 'Office hours',
+            timezone: localZone(),
+            weekly: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '09:00', end: '17:00' }],
+          },
+        },
+      }),
+    },
   },
   { key: 'identity', title: 'Caller identity', icon: 'user', value: () => 'How the agent knows who is calling' },
 ];
@@ -131,6 +223,16 @@ const GUARDRAIL_LISTS = [
     title: 'On what the agent says',
     lead: 'Checks that run on the agent’s own words before they are spoken.',
     empty: { title: 'No checks on the agent yet', text: 'For example: block a promise it must not make, or keep secret fields out of everything it says.' },
+  },
+  {
+    id: 'escalation',
+    path: ['guardrails', 'escalation'],
+    kind: 'escalation',
+    word: 'rule',
+    pickerKey: 'guardrails.escalation',
+    title: 'All its hand-over and ending rules',
+    lead: 'The ones switched on above, and any of your own: when a call meets one, it hands over or ends by itself.',
+    empty: { title: 'No rules yet', text: 'Switch one on above, or add one of your own.' },
   },
 ];
 const TEST_PARTS = [
@@ -214,39 +316,56 @@ export default function NewAgentWorkspace({ ws }) {
   const { published } = useLatestPublished(botId, refresh);
   const changes = useMemo(() => (published?.config && config ? changesSince(published.config, config) : { total: 0, groups: [] }), [published, config]);
 
-  // a request to open something on a page is for that visit only: leaving the page ends it, so coming back later does not open it again
+  // A request to open something on a page names the page it is for (`page`), and is for that visit only: arriving keeps it (what the page draws, a
+  // form that loads a moment later included, can still take it), leaving the page ends it, so coming back later does not open it again.
   useEffect(() => {
-    setOpenRequest(null);
-    setFocusRequest(null);
+    setOpenRequest((r) => (r && r.page === page ? r : null));
+    setFocusRequest((r) => (r && r.page === page ? r : null));
   }, [page]);
   // a link to a step from elsewhere (Home, Releases): ?open=<panel> or ?focus=<field> on the Agent page, ?show=problems for what the checks found
   const askOpen = page === 'agent' ? params?.open || '' : '';
   const askFocus = page === 'agent' ? params?.focus || '' : '';
   const askShow = params?.show || '';
+  // a link to one setting from outside the agent (Speed's suggestions on the workspace): ?setting=defaults.models.llm opens the place that holds it
+  const askSetting = params?.setting || '';
   useEffect(() => {
-    if (askOpen) setOpenRequest({ open: askOpen, nonce: Date.now() });
-    else if (askFocus) setOpenRequest({ focus: askFocus, nonce: Date.now() });
+    if (askOpen) setOpenRequest({ open: askOpen, nonce: Date.now(), page: 'agent' });
+    else if (askFocus) setOpenRequest({ focus: askFocus, nonce: Date.now(), page: 'agent' });
   }, [askOpen, askFocus]);
   useEffect(() => {
     if (askShow === 'problems') setDrawer('problems');
+    // ?show=json on Settings: its JSON (the publish checklist's "Edit as JSON" when the draft can't be read)
+    if (askShow === 'json') setLocalPart((old) => ({ ...old, settings: 'json' }));
   }, [askShow]);
+  // the recording notice, asked for from elsewhere (the search, "Show me"): After the call asks for it in its Recording card, above the page's form,
+  // which brings it into view with the cursor in it. Not cancelled when the request is cleared: the field is there a moment after the page.
+  useEffect(() => {
+    if (page !== 'aftercall' || openRequest?.focus !== 'notice') return;
+    window.setTimeout(() => {
+      const el = document.querySelector('input[aria-label="What callers hear first"]');
+      if (el) {
+        el.scrollIntoView({ block: 'center' });
+        el.focus({ preventScroll: true });
+      }
+    }, 60);
+  }, [page, openRequest]);
   // a link to one tool (an alert's "Open the tool"): its panel opens on the Tools page, once per visit; one the draft no longer has is said so
   const toolsList = config?.tools;
   const toolIndex =
     page === 'tools' && params?.tool && Array.isArray(toolsList) ? toolsList.findIndex((t) => t && (t.id === params.tool || t.name === params.tool)) : -1;
   const missingTool = page === 'tools' && params?.tool && Array.isArray(toolsList) && toolIndex < 0 ? params.tool : '';
   useEffect(() => {
-    if (toolIndex >= 0) setFocusRequest({ path: ['tools', toolIndex], nonce: Date.now() });
+    if (toolIndex >= 0) setFocusRequest({ path: ['tools', toolIndex], nonce: Date.now(), page: 'tools' });
   }, [toolIndex, params?.tool]);
 
   const go = useCallback((target, query) => navigate(routeHref(botId, target, query), { guard: false }), [botId]);
-  // Ctrl/Cmd+S saves the draft from any page of the agent (the Workflow page has its own, which does the same), and only when there is something to save
+  // Ctrl/Cmd+S saves the draft from any page of the agent, the Workflow's canvas and settings included, and only when there
+  // is something to save
   const saveKey = useRef(null);
-  saveKey.current = { save: editor.save, can: editor.dirty && !editor.saving && !editor.parsed.error && editor.isObject, page };
+  saveKey.current = { save: editor.save, can: editor.dirty && !editor.saving && !editor.parsed.error && editor.isObject };
   useEffect(() => {
     const onKey = (event) => {
       if (!((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's')) return;
-      if (saveKey.current.page === 'workflow') return;
       event.preventDefault();
       if (saveKey.current.can) saveKey.current.save();
     };
@@ -265,10 +384,24 @@ export default function NewAgentWorkspace({ ws }) {
     () => (gateOn ? { enabled: true, savedAt: editor.meta?.savedAt || '', dirty: editor.dirty } : null),
     [gateOn, editor.meta?.savedAt, editor.dirty],
   );
+  // what the server has read of its documents (a step to get ready while they need reading): read while the draft has knowledge, or on the Knowledge
+  // page (which shares it, so the menu follows a build there), and again after each save
+  const hasKnowledge = Array.isArray(config?.knowledge) && config.knowledge.length > 0;
+  const knowledgeRead = useKnowledge(hasKnowledge || page === 'knowledge' ? botId : null);
+  const reloadKnowledge = knowledgeRead.reload;
+  const knowledgeSaved = useRef(editor.meta?.savedAt || '');
+  useEffect(() => {
+    const savedAt = editor.meta?.savedAt || '';
+    if (savedAt === knowledgeSaved.current) return;
+    knowledgeSaved.current = savedAt;
+    reloadKnowledge();
+  }, [editor.meta?.savedAt, reloadKnowledge]);
   const plan = useMemo(
-    () => readinessSteps({ config, summary, report: editor.report, scenarioCount, latestRun, gate }),
-    [config, summary, editor.report, scenarioCount, latestRun, gate],
+    () => readinessSteps({ config, summary, report: editor.report, scenarioCount, latestRun, gate, knowledgeRead: knowledgeRead.data }),
+    [config, summary, editor.report, scenarioCount, latestRun, gate, knowledgeRead.data],
   );
+  const [setupProgress] = useSetupProgress(botId);
+  const settingUp = inSetup(setupProgress, summary);
   const openStep = useCallback(
     (step) => {
       if (!step) return;
@@ -276,26 +409,36 @@ export default function NewAgentWorkspace({ ws }) {
         setDrawer('problems');
         return;
       }
+      if (settingUp && SETUP_STEP[step.id]) {
+        go('setup', { step: SETUP_STEP[step.id] });
+        return;
+      }
       if (step.target) {
-        setOpenRequest({ ...step.target, nonce: Date.now() });
+        setOpenRequest({ ...step.target, nonce: Date.now(), page: 'agent' });
         go('agent');
         return;
       }
       go(tabFor(step.page, step.part));
     },
-    [go],
+    [go, settingUp],
   );
-  // Shows a place in the configuration: the page that holds it, and (on the Agent page) the panel, or (on a settings page) the field.
+  // Shows a place in the configuration: the page that holds it, and (on the Agent page) the panel, or (on a settings page) the field. A page whose
+  // settings form is one of its parts (Workflow's canvas, Knowledge's files, the JSON of Settings) shows that part, where the field is.
   const showPath = useCallback(
     (path) => {
       const where = locate(path);
-      setFocusRequest({ path, nonce: Date.now() });
-      if (where.drawer) setOpenRequest({ id: where.drawer, nonce: Date.now() });
+      if (FORM_PART[where.page]) setLocalPart((old) => ({ ...old, [where.page]: FORM_PART[where.page] }));
+      setFocusRequest({ path, nonce: Date.now(), page: where.page });
+      if (where.drawer || where.focus) setOpenRequest({ id: where.drawer, focus: where.focus, nonce: Date.now(), page: where.page });
       setDrawer(null);
       go(tabFor(where.page, where.part));
     },
     [go],
   );
+  // ?setting=… once the draft is read (going to the setting's page drops the parameter, so it is asked for once)
+  useEffect(() => {
+    if (askSetting && editor.isObject) showPath(askSetting.split('.'));
+  }, [askSetting, editor.isObject, showPath]);
   const applyFix = (next, label, jumpTo) => {
     setLastFix({ label, previous: editor.parsed.value });
     editor.setValue(next);
@@ -311,7 +454,58 @@ export default function NewAgentWorkspace({ ws }) {
     setLocalPart((old) => ({ ...old, settings: 'json' }));
     go('settings');
   };
-  const form = (id) => ({ keys: PAGE_SECTIONS[id], editor, focusRequest, onShowJson: openJson, onOpenJson: openJson });
+  // "Open Models" in a form (a voice channel without speech models, a problem whose fix is choosing one): the Agent page's AI models panel; a side
+  // panel with changes not yet put in is asked about first
+  //   stage: 'stt' | 'llm' | 'tts', the model to show (a problem's fix names it); anything else (a click) shows the panel
+  const openModels = (stage) => whenPanelKept(() => showPath(['defaults', 'models', ...(['stt', 'llm', 'tts'].includes(stage) ? [stage] : [])]));
+  const form = (id) => ({ keys: PAGE_SECTIONS[id], editor, focusRequest, onShowJson: openJson, onOpenJson: openJson, onShowModels: openModels });
+  // the newest draft, for what finishes later than the render that started it (an upload)
+  const latestConfig = useRef(config);
+  latestConfig.current = config;
+  // the Workflow's toolbar is drawn beside the page's tabs (so its picture gets the height): the element it goes in
+  const [wfToolbarSlot, setWfToolbarSlot] = useState(null);
+  // A setting asked for from elsewhere (the search, Ctrl K): its page, and its panel or field; what it says first and what it should do are fields of the
+  // Agent page. Taken when it is asked for, and when the agent opens with one waiting.
+  // a field asked on another page (a link such as "change it on the Agent page"): that page, with the cursor in the field; a side panel with changes not
+  // yet put in is asked about first
+  const showField = (target, focus) =>
+    whenPanelKept(() => {
+      setDrawer(null);
+      setOpenRequest({ focus, nonce: Date.now(), page: target });
+      go(target);
+    });
+  // the numbers callers dial for this agent (read only), said on the Channels page's phone line: a phone line with no number can't be called yet
+  const phoneNumbers = useLiveNumbers(page === 'channels' && !!config && reachOf(config).sip_voice, { botId });
+  const phoneLine =
+    phoneNumbers.mode !== 'live'
+      ? ''
+      : phoneNumbers.rows.length
+        ? `Callers dial ${phoneNumbers.rows.map((r) => r.number).join(', ')}`
+        : 'No number yet: one is added when it goes live (Releases › Deploy)';
+  const showSetting = useRef(null);
+  showSetting.current = (request) => {
+    if (request.view === 'json') {
+      openJson();
+      return;
+    }
+    const target = searchTarget({ trail: request.trail, jump: request.path }, config);
+    if (target.focus) {
+      setDrawer(null);
+      setOpenRequest({ focus: target.focus, nonce: Date.now(), page: target.page });
+      go(target.page);
+      return;
+    }
+    showPath(target.path);
+  };
+  useEffect(() => {
+    const take = () => {
+      const request = takeSettingFocus(botId);
+      // a panel with changes not yet put in (no Done pressed) is asked about first, rather than replaced and its changes lost
+      if (request) whenPanelKept(() => showSetting.current(request));
+    };
+    take();
+    return onSettingFocus(take);
+  }, [botId]);
 
   let body = null;
   if (page === 'home') {
@@ -323,7 +517,6 @@ export default function NewAgentWorkspace({ ws }) {
         editor={editor}
         scenarioCount={scenarioCount}
         onProblems={() => setDrawer('problems')}
-        onDescribe={() => setDrawer('describe')}
         plan={plan}
         onTest={() => setDrawer('test')}
         onStep={openStep}
@@ -331,7 +524,17 @@ export default function NewAgentWorkspace({ ws }) {
       />
     );
   } else if (page === 'agent') {
-    body = <AgentPage editor={editor} openRequest={openRequest} notices={notices} onShowJson={openJson} onOpenJson={openJson} />;
+    body = (
+      <AgentPage
+        editor={editor}
+        openRequest={openRequest}
+        notices={notices}
+        plan={plan}
+        onShowJson={openJson}
+        onOpenJson={openJson}
+        onShowModels={openModels}
+      />
+    );
   } else if (page === 'tools') {
     body = (
       <ListPage
@@ -345,12 +548,21 @@ export default function NewAgentWorkspace({ ws }) {
         title="Tools"
         lead={PAGE_LEAD.tools}
         editor={editor}
+        top={
+          editor.isObject ? (
+            // the setup's own switches, so changing them later is the same move as the first time
+            <Section title="What it can do" lead="Switch on what it may do in a conversation.">
+              <ActionSwitches config={config} set={editor.setValue} onPage />
+            </Section>
+          ) : null
+        }
         lists={TOOL_LISTS}
         extras={TOOL_EXTRAS}
-        extrasTitle="Connections, forms, messages and tasks"
+        extrasTitle="Transfers, connections, forms, messages and tasks"
         openRequest={focusRequest}
         onShowJson={openJson}
         onOpenJson={openJson}
+        onShowModels={openModels}
       />
     );
   } else if (page === 'channels') {
@@ -359,12 +571,35 @@ export default function NewAgentWorkspace({ ws }) {
         title="Channels"
         lead={PAGE_LEAD.channels}
         editor={editor}
+        top={
+          editor.isObject ? (
+            <Section title="Where people reach it" lead="Switch each one on or off. A new one says what it says first, set on the Agent page.">
+              <ReachChoices
+                config={config}
+                set={editor.setValue}
+                botId={botId}
+                onPage
+                onShowNotice={() => showField('aftercall', 'notice')}
+                onShowVoice={() =>
+                  whenPanelKept(() => {
+                    setOpenRequest({ open: 'voice', nonce: Date.now(), page: 'agent' });
+                    go('agent');
+                  })
+                }
+                onShowNumber={() => go(tabFor('releases', 'deploy'))}
+              />
+            </Section>
+          ) : null
+        }
         lists={CHANNEL_LISTS}
         extras={CHANNEL_EXTRAS}
-        extrasTitle="Hand-overs, hours and callers"
+        extrasTitle="Hours and callers"
+        onShowGreeting={() => showField('agent', 'greeting')}
+        rowInfo={(kind, item) => (kind === 'channels' && item.type === 'sip_voice' ? phoneLine : '')}
         openRequest={focusRequest}
         onShowJson={openJson}
         onOpenJson={openJson}
+        onShowModels={openModels}
       />
     );
   } else if (page === 'guardrails') {
@@ -373,27 +608,72 @@ export default function NewAgentWorkspace({ ws }) {
         title="Guardrails"
         lead={PAGE_LEAD.guardrails}
         editor={editor}
+        top={
+          editor.isObject ? (
+            <>
+              <Section title="Topics" lead="What it keeps to, and what it stays away from.">
+                <TopicsBlock config={config} set={editor.setValue} />
+              </Section>
+              <Section title="When it hands over or ends the call" lead="Moments it acts on by itself, whatever the conversation.">
+                <MomentsBlock config={config} set={editor.setValue} />
+              </Section>
+            </>
+          ) : null
+        }
         lists={GUARDRAIL_LISTS}
         footer={
-          <Section title="Test the checks" lead="See what these checks would do with something a caller might say, before anyone calls.">
-            <TryGuardrailsView config={config} />
-          </Section>
+          <>
+            {editor.isObject && (
+              <Section title="Limits" lead="The most a call can take, whatever happens in it. Leave a box empty for no limit.">
+                <LimitsBlock config={config} set={editor.setValue} onShowNudges={() => whenPanelKept(() => showPath(['defaults', 'conversation']))} />
+              </Section>
+            )}
+            <Section title="Test the checks" lead="See what these checks would do with something a caller might say, before anyone calls.">
+              <TryGuardrailsView config={config} />
+            </Section>
+          </>
         }
         openRequest={focusRequest}
         onShowJson={openJson}
         onOpenJson={openJson}
+        onShowModels={openModels}
       />
     );
   } else if (page === 'aftercall') {
-    body = <SectionPage title="After the call" lead={PAGE_LEAD.aftercall} {...form('aftercall')} />;
+    body = (
+      <SectionPage title="After the call" lead={PAGE_LEAD.aftercall} {...form('aftercall')} hide={askedAbove(config)}>
+        {editor.isObject && (
+          <>
+            <Section title="After each call" lead="What is written, answered and kept once a call ends.">
+              <div className="suFields">
+                <SummaryBlock config={config} set={editor.setValue} unsupported={editor.report?.unsupported} />
+                <QuestionsBlock config={config} set={editor.setValue} unsupported={editor.report?.unsupported} />
+                <RecordingBlock config={config} set={editor.setValue} unsupported={editor.report?.unsupported} />
+                <SensitiveBlock config={config} set={editor.setValue} unsupported={editor.report?.unsupported} />
+              </div>
+            </Section>
+            <section className="nlSection smMore">
+              <header>
+                <div>
+                  <h2>More after-call settings</h2>
+                  <p>The model that writes the summaries once they are on, files sent after each call, closing messages, and the call records and logs.</p>
+                </div>
+              </header>
+            </section>
+          </>
+        )}
+      </SectionPage>
+    );
   } else if (page === 'knowledge') {
     const p = part('knowledge', 'files');
+    const bases = Array.isArray(config?.knowledge) ? config.knowledge : [];
+    const simpleKnowledge =
+      editor.isObject && (bases.length === 0 || bases.every((b) => b?.id === KNOWLEDGE_ID && b.type === 'vector_store' && b.mode === 'inject'));
     body =
       p === 'files' ? (
         <PageShell
           title="Knowledge"
           lead={PAGE_LEAD.knowledge}
-          wide
           parts={[
             { id: 'files', label: 'Files and index' },
             { id: 'settings', label: 'Settings' },
@@ -401,7 +681,24 @@ export default function NewAgentWorkspace({ ws }) {
           part={p}
           onPart={setPart('knowledge')}
         >
-          <KnowledgeTab botId={botId} name={name} editor={editor} />
+          <KnowledgeTab
+            botId={botId}
+            name={name}
+            editor={editor}
+            knowledge={knowledgeRead}
+            // the setup's own "What it knows" while the agent has no knowledge, or only the base the setup makes; an agent with bases of its own keeps
+            // the page as it was
+            simple={simpleKnowledge}
+            top={
+              simpleKnowledge
+                ? ({ reload }) => (
+                    <Section title="What it knows" lead={`Documents and web pages it answers from. ${whoReadsKnowledge(config)}`}>
+                      <KnowledgeBlock botId={botId} config={config} set={editor.setValue} latest={() => latestConfig.current} onPage onUploaded={reload} />
+                    </Section>
+                  )
+                : null
+            }
+          />
         </PageShell>
       ) : (
         <SectionPage
@@ -430,8 +727,20 @@ export default function NewAgentWorkspace({ ws }) {
           ]}
           part={p}
           onPart={setPart('workflow')}
+          partsSide={<div className="nlPartsSide" ref={setWfToolbarSlot} />}
         >
-          <WorkflowTab editor={editor} botId={botId} />
+          <WorkflowTab
+            editor={editor}
+            botId={botId}
+            onShowSetting={showPath}
+            onShowJson={openJson}
+            onShowRole={() => {
+              setOpenRequest({ focus: 'role', nonce: Date.now(), page: 'agent' });
+              go('agent');
+            }}
+            onShowGreeting={() => showField('agent', 'greeting')}
+            toolbarSlot={wfToolbarSlot}
+          />
         </PageShell>
       ) : (
         <SectionPage
@@ -444,7 +753,18 @@ export default function NewAgentWorkspace({ ws }) {
           part={p}
           onPart={setPart('workflow')}
           {...form('workflow')}
-        />
+          // the first agent's instructions are the Agent page's "What it should do": asked there, not again here
+          hide={config ? [['agents', 'items', entryAgentIndex(config), 'instructions', 'role']] : undefined}
+        >
+          {config && (
+            <p className="nlHint smElsewhere">
+              What {readSimple(config).name || 'the first agent'} should do is written on the Agent page.{' '}
+              <button type="button" className="linkButton" onClick={() => showField('agent', 'role')}>
+                Open it
+              </button>
+            </p>
+          )}
+        </SectionPage>
       );
   } else if (page === 'settings') {
     // the sections of the settings are its tabs; the whole configuration as JSON is one button away, for the people who want it
@@ -458,7 +778,7 @@ export default function NewAgentWorkspace({ ws }) {
     body =
       p === 'json' ? (
         <PageShell title="Settings" lead="The whole configuration as JSON. Edits here are the same draft as every page: save as usual." actions={toggle}>
-          <JsonEditor text={editor.text} onChange={editor.setText} errorLines={new Set()} />
+          <JsonPart editor={editor} />
         </PageShell>
       ) : (
         <SectionPage title="Settings" lead={PAGE_LEAD.settings} actions={toggle} {...form('settings')} {...SETTINGS_ELSEWHERE} />
@@ -487,10 +807,10 @@ export default function NewAgentWorkspace({ ws }) {
         />
       </div>
     );
-  } else if (page === 'cost') {
+  } else if (page === 'speed') {
     body = (
       <div className="nlPage wide">
-        <CostPage agentOnly bots={[{ id: botId, name }]} editor={editor} onOpenCall={(id, callId) => go('calls', { call: callId })} />
+        <SpeedPage agentOnly bots={[{ id: botId, name }]} onOpenCall={(id, callId) => go('calls', { call: callId })} onShowSetting={showPath} />
       </div>
     );
   } else if (page === 'questions') {
@@ -527,7 +847,7 @@ export default function NewAgentWorkspace({ ws }) {
     body = (
       <PageShell title="Releases" lead={PAGE_LEAD.releases} wide parts={RELEASE_PARTS} part={p} onPart={setPart('releases')}>
         {p === 'versions' && params?.publish === '1' && publishPanel}
-        {p === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} summary={summary} />}
+        {p === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} summary={summary} knowledgeRead={knowledgeRead.data} quietSteps />}
         {p === 'deploy' && <DeployTab botId={botId} name={name} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
       </PageShell>
     );
@@ -548,6 +868,36 @@ export default function NewAgentWorkspace({ ws }) {
       <PageShell title={PAGE_LABELS[page] || 'Agent'}>
         <ErrorState error={editor.loadError} onRetry={editor.reload} what="this agent’s draft" />
       </PageShell>
+    );
+  }
+
+  // The guided setup is a page of its own: its steps take the menu's place, and the agent's own top bar (Publish, Test...) gives way to its Back and Next.
+  if (page === 'setup') {
+    return (
+      <div className="stWorkspace nlWorkspace" data-layout="new" data-page="setup">
+        {editor.status === 'error' ? (
+          <PageShell title="Set up">
+            <ErrorState error={editor.loadError} onRetry={editor.reload} what="this agent’s draft" />
+          </PageShell>
+        ) : (
+          <Suspense fallback={<Spinner label="Loading" />}>
+            <SetupWizard
+              botId={botId}
+              name={name}
+              editor={editor}
+              summary={summary}
+              session={session}
+              sessionMode={sessionMode}
+              modeLocked={modeLocked}
+              setSessionMode={setSessionMode}
+              bump={bump}
+              initialStep={params?.step || ''}
+            />
+          </Suspense>
+        )}
+        {manage.element}
+        <div ref={realSession.audioHostRef} className="stTAudio" aria-hidden="true" />
+      </div>
     );
   }
 
@@ -671,7 +1021,7 @@ export default function NewAgentWorkspace({ ws }) {
         <Drawer title="Describe it" icon="sparkle" width="wide" onClose={() => setDrawer(null)}>
           <div className="nlDescribe">
             <Suspense fallback={<Spinner label="Loading" />}>
-              <AssistantTab editor={editor} botId={botId} name={name} />
+              <AssistantTab editor={editor} botId={botId} name={name} onShowSetting={showPath} onShowJson={openJson} />
             </Suspense>
           </div>
         </Drawer>
@@ -687,7 +1037,7 @@ export default function NewAgentWorkspace({ ws }) {
             editor={editor}
             onJump={(path) => showPath(path)}
             onApply={applyFix}
-            onOpenModels={() => showPath(['defaults', 'models'])}
+            onOpenModels={openModels}
             onJumpOffset={() => {
               setDrawer(null);
               openJson();

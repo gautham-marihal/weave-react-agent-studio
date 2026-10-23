@@ -7,8 +7,8 @@ import NotFound from '../ui/NotFound.jsx';
 import { ErrorState } from '../studio/ui.jsx';
 import AiOrb from '../studio/preview/AiOrb.jsx';
 import { OfflineBanner, ServerDownBanner, SkipToContent } from '../ui/Connectivity.jsx';
-import { TAB_LABELS } from '../studio/journey.js';
-import { useLayout } from '../studio/newlayout/layoutPref.js';
+import { capSameLabel, searchAgent, settingWhere } from '../studio/newlayout/pages.js';
+import { whenPanelKept } from '../studio/newlayout/stagedPanel.js';
 import { PAGE_LABELS, resolvePage } from '../studio/newlayout/pages.js';
 import { loadSchema } from '../studio/form/useSchema.js';
 import { requestSettingFocus } from '../studio/settingFocus.js';
@@ -24,7 +24,6 @@ import '../studio/models/models.css';
 import '../studio/simple/simple.css';
 import '../studio/changes/changes.css';
 import '../studio/release/release.css';
-import '../studio/journey.css';
 import '../studio/agentRail.css';
 import '../studio/trace/trace.css';
 import '../studio/replay/replay.css';
@@ -39,7 +38,8 @@ import '../studio/studio.css';
 import '../studio/form/form.css';
 import '../studio/form/formLook.css';
 import '../studio/live/live.css';
-import '../studio/cost/cost.css';
+import '../studio/speed/speed.css';
+import '../studio/setup/setup.css';
 import { openTeam } from '../studio/team/useTeam.js';
 import { isDemoMode } from '../demo/demoMode.js';
 import { AgentTable } from '../studio/AgentTable.jsx';
@@ -85,6 +85,7 @@ import { StyleMenu } from '../ui/StylePicker.jsx';
 import Icon from '../ui/Icon.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import { SkeletonRows } from '../ui/Skeleton.jsx';
+import { revealIn } from '../ui/scrollEdges.js';
 
 // Each page's code arrives when the page is first opened, so the first screen loads only what Home needs.
 const named = (load, name) => lazy(() => load().then((m) => ({ default: m[name] })));
@@ -94,7 +95,7 @@ const TeamPage = lazy(() => import('../studio/team/TeamPage.jsx'));
 const MonitoringPage = lazy(() => import('../studio/monitoring/MonitoringPage.jsx'));
 const AlertsPage = lazy(() => import('../studio/insights/AlertsPage.jsx'));
 const LiveBoardPage = lazy(() => import('../studio/live/LiveBoardPage.jsx'));
-const CostPage = lazy(() => import('../studio/cost/CostPage.jsx'));
+const SpeedPage = lazy(() => import('../studio/speed/SpeedPage.jsx'));
 const CallsPage = named(() => import('./Sessions.jsx'), 'CallsPage');
 const TelephonyWorkspace = named(() => import('./Telephony.jsx'), 'TelephonyWorkspace');
 const VoicesWorkspace = named(() => import('./Voices.jsx'), 'VoicesWorkspace');
@@ -206,7 +207,6 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const workspaceName = currentWorkspace?.name || 'My workspace';
   // Agents are the Agent Builder API's. Which workspace an agent is in is kept in this browser (see studio/agents.js),
   // so this is the open workspace's agents. The older pages read them in their own shape.
-  const [layout] = useLayout();
   const { bots, removed: removedBots, all: allBots, refresh: refreshAgents, error: agentsError } = useBots();
   const botList = useMemo(() => bots || [], [bots]);
   // the team of this workspace is opened here, so the Team page and an agent's Share panel read the same one; "Open the Team page" in a Share panel asks for it
@@ -439,13 +439,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       { type: 'page', id: 'sessions', title: 'Calls', description: 'Every conversation your agents have had', icon: 'phone' },
       { type: 'page', id: 'live', title: 'Live', description: 'Calls going on right now, as they happen', icon: 'live' },
       { type: 'page', id: 'monitoring', title: 'Monitoring', description: 'How your agents are doing, and what needs attention', icon: 'monitor' },
-      {
-        type: 'page',
-        id: 'cost',
-        title: 'Cost and speed',
-        description: 'What your agents cost per call and per month, and how fast they answer',
-        icon: 'gauge',
-      },
+      { type: 'page', id: 'speed', title: 'Speed', description: 'How fast your agents answer, and where the time goes', icon: 'gauge' },
       { type: 'page', id: 'alerts', title: 'Alerts', description: 'When something breaks: failing tools, cut-off calls, no calls, slow answers', icon: 'bell' },
       { type: 'page', id: 'voices', title: 'Voices', description: 'Hear and choose a voice', icon: 'voice' },
       { type: 'page', id: 'integrations', title: 'Integrations', description: 'Connect your stack', icon: 'plug' },
@@ -506,7 +500,6 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           ]
         : []),
     ];
-    if (!q) return groups.filter((group) => group.items.length);
     const matching = groups
       .map((group) => ({
         ...group,
@@ -515,26 +508,44 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       .filter((group) => group.items.length);
     const settings =
       agentOpen && settingsIndex
-        ? settingsIndex.search(settingsIndex.entries, searchQuery, 8).map((entry) => ({
-            type: 'setting',
-            id: entry.trail.join('.'),
-            title: entry.label,
-            description: `${entry.where}${entry.level === 'expert' ? ' · advanced' : ''}`,
-            icon: 'sliders',
-            entry,
-          }))
+        ? capSameLabel(settingsIndex.search(settingsIndex.entries, searchQuery, 24), 2)
+            .slice(0, 8)
+            .map((entry) => ({
+              type: 'setting',
+              id: entry.trail.join('.'),
+              title: entry.label,
+              // where it is, in the words of the agent's pages and panels
+              description: `${settingWhere(entry)}${entry.level === 'expert' ? ' · advanced' : ''}`,
+              icon: 'sliders',
+              entry,
+            }))
         : [];
-    return settings.length ? [...matching, { group: 'Settings of this agent', items: settings }] : matching;
+    // the agent's own pages and the things people come to do (publish, put live, add a number...), first
+    const agentItems = agentOpen
+      ? searchAgent(searchQuery).map((item) => ({ type: 'agentPage', id: item.id, title: item.title, description: item.description, icon: item.icon, item }))
+      : [];
+    const withAgent = agentItems.length ? [{ group: 'This agent', items: agentItems }, ...(q ? matching : groups.filter((g) => g.items.length))] : null;
+    if (!q) return withAgent || groups.filter((group) => group.items.length);
+    const base = withAgent || matching;
+    return settings.length ? [...base, { group: 'Settings of this agent', items: settings }] : base;
   }, [botList, searchQuery, workspaces, currentWorkspace, settingsIndex, agentOpen]);
 
   const selectSearchResult = (result) => {
     setSearchOpen(false);
     setSearchQuery('');
+    // a side panel of the new layout with changes not yet put in (no Done pressed) is asked about before a result replaces it, whatever the result opens
+    whenPanelKept(() => openSearchResult(result));
+  };
+  const openSearchResult = (result) => {
     if (result.type === 'setting') {
       if (route.view === 'bot') {
-        requestSettingFocus(route.botId, result.entry.jump);
-        studioNavigate(routeHref(route.botId, 'config'), { guard: false });
+        // the agent's workspace takes the request and opens the page and panel that hold it
+        requestSettingFocus(route.botId, result.entry.jump, { trail: result.entry.trail });
       }
+      return;
+    }
+    if (result.type === 'agentPage') {
+      if (route.view === 'bot') studioNavigate(routeHref(route.botId, result.item.tab, result.item.params), { guard: false });
       return;
     }
     if (result.type === 'workspace') {
@@ -718,9 +729,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     : missingAgent
       ? 'Agent not found'
       : inAgent
-        ? layout === 'new'
-          ? PAGE_LABELS[resolvePage(route.tab, { bare: route.bare }).page]
-          : TAB_LABELS[route.tab] || 'Config'
+        ? PAGE_LABELS[resolvePage(route.tab, { bare: route.bare }).page]
         : [...NAV, ...LIBRARY_NAV, ...SETTINGS_NAV].find((item) => item.id === active)?.label || 'Home';
   const sectionLabel = active === 'telephony' && !lostAddress ? TELEPHONY_SECTIONS.find((item) => item.id === telephonySection)?.label : '';
   // most specific first, so a row of tabs still tells them apart: "Tools · Acme Support · Weave", "Phone numbers · Telephony · Weave"
@@ -728,6 +737,10 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   useEffect(() => {
     document.title = tabTitle;
   }, [tabTitle]);
+  // in a short window the menu scrolls: the page that is open is brought into view in it
+  useEffect(() => {
+    revealIn(document.querySelector('.dashboard > .sidebar > .sideNav:not(.agentSideNav)'), '.sideLink.selected');
+  }, [active, lostAddress]);
   return (
     <div className={`dashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''} ${inAgentView ? 'inAgent' : ''}`}>
       <SkipToContent target="pageContent" />
@@ -913,10 +926,10 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           {/* a page that breaks says so on its own; the menu and the bar above keep working, and opening another page starts afresh */}
           <PageErrorBoundary resetKey={`${active}|${route.view}|${route.botId || ''}|${route.tab || ''}`}>
             <Suspense fallback={<PageLoading />}>
-              {bots === null && !agentsError && ['sessions', 'live', 'monitoring', 'cost', 'alerts'].includes(active) ? (
+              {bots === null && !agentsError && ['sessions', 'live', 'monitoring', 'speed', 'alerts'].includes(active) ? (
                 // these pages are about the agents' calls: until the agents are known they can't say "none yet"
                 <PageLoading />
-              ) : bots === null && agentsError && ['sessions', 'live', 'monitoring', 'cost', 'alerts'].includes(active) ? (
+              ) : bots === null && agentsError && ['sessions', 'live', 'monitoring', 'speed', 'alerts'].includes(active) ? (
                 <div className="agentsUnavailable">
                   <section className="welcomeBlock">
                     <div>
@@ -1014,13 +1027,13 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                     })
                   }
                 />
-              ) : active === 'cost' ? (
-                <CostPage
+              ) : active === 'speed' ? (
+                <SpeedPage
                   bots={botList}
-                  onOpenAgent={(botId, tab) =>
+                  onOpenAgent={(botId, tab, params) =>
                     whenLeaveConfirmed(() => {
                       setActive('agents');
-                      studioNavigate(routeHref(botId, tab));
+                      studioNavigate(routeHref(botId, tab, params));
                     })
                   }
                   onOpenCall={(botId, callId) =>

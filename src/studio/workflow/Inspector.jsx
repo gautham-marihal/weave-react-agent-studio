@@ -4,11 +4,23 @@ import { isObj } from '../form/engine.js';
 import { getAt, setAt } from '../form/inlineCreate.js';
 import { formatPath } from '../format.js';
 import { speechText } from '../../demo/simulatedAgent.js';
-import { addStateVariable, blankValue, removeHandoff, removeRule, removeToolHandoff, retargetRule, retargetToolHandoff, setEntry } from './workflowOps.js';
-import { parseNodeId } from './workflowModel.js';
+import {
+  addEnd,
+  addStateVariable,
+  blankValue,
+  removeHandoff,
+  removeRule,
+  removeToolHandoff,
+  retargetRule,
+  retargetToolHandoff,
+  setEntry,
+} from './workflowOps.js';
+import { describeItems, parseNodeId } from './workflowModel.js';
+import { channelName } from '../simple/simpleModel.js';
 
 // The panel beside the picture: what the selected block or arrow is, in plain words, with the few settings that belong to it. Everything it changes is a
-// field of the configuration; "All settings" has the rest. With nothing selected it says how to read and use the picture.
+// field of the configuration; "All settings" has the rest. With nothing selected it tells the call step by step (each step picks its arrow), with how to
+// use the picture folded under it.
 const list = (v) => (Array.isArray(v) ? v : []);
 const KINDS = [
   ['router', 'Passes callers on'],
@@ -46,7 +58,7 @@ const Text = ({ id, value, onChange, placeholder, multiline, rows = 4, mono }) =
     />
   );
 
-// Where what is selected lives in the configuration: the path, the JSON as it is right now, and a way to open it in All settings or in the file. Whatever is
+// Where what is selected lives in the configuration: the path, the JSON as it is right now, and a way to open it in its settings or in the file. Whatever is
 // changed here is written to that place at once, and whatever is changed there is what this panel and the picture show.
 const WhereCtx = createContext(null);
 export function placesFor(selected, config) {
@@ -113,7 +125,7 @@ function Where() {
       </p>
       <div className="wfRow">
         <button type="button" className="quietButton" onClick={() => ctx.onOpenSettings(main.path)}>
-          Open in All settings
+          Open its settings
         </button>
         <button type="button" className="quietButton" onClick={() => ctx.onOpenJson(main.path)}>
           Open in JSON
@@ -147,7 +159,7 @@ export default function Inspector(props) {
   );
 }
 
-function InspectorBody({ flow, config, selected, apply, onSelect, onOpenSettings, onRemove }) {
+function InspectorBody({ flow, config, selected, apply, onSelect, onOpenSettings, onRemove, onShowRole, onShowGreeting }) {
   const agents = list(config?.agents?.items);
   const agentOf = (id) => agents.find((a) => a?.id === id);
   const indexOf = (id) => agents.findIndex((a) => a?.id === id);
@@ -155,7 +167,7 @@ function InspectorBody({ flow, config, selected, apply, onSelect, onOpenSettings
   const node = selected?.type === 'node' ? flow.nodes.find((n) => n.id === selected.id) : null;
   const edge = selected?.type === 'edge' ? flow.edges.find((e) => e.id === selected.id) : null;
 
-  if (!node && !edge) return <Overview flow={flow} config={config} apply={apply} />;
+  if (!node && !edge) return <Overview flow={flow} config={config} apply={apply} onSelect={onSelect} />;
   if (edge)
     return (
       <EdgeView
@@ -172,7 +184,7 @@ function InspectorBody({ flow, config, selected, apply, onSelect, onOpenSettings
     );
 
   const at = parseNodeId(node.id);
-  if (node.type === 'start') return <StartView flow={flow} config={config} apply={apply} onClose={() => onSelect(null)} />;
+  if (node.type === 'start') return <StartView flow={flow} config={config} apply={apply} onClose={() => onSelect(null)} onShowGreeting={onShowGreeting} />;
   if (node.type === 'agent') {
     const i = indexOf(node.id);
     const agent = agents[i];
@@ -197,15 +209,27 @@ function InspectorBody({ flow, config, selected, apply, onSelect, onOpenSettings
             ))}
           </select>
         </Field>
-        <Field label="What it does" id={`${id}-role`} hint="Written to the agent, as you would brief a person.">
-          <Text
-            id={`${id}-role`}
-            multiline
-            rows={6}
-            value={agent.instructions?.role || ''}
-            onChange={(v) => set(['agents', 'items', i, 'instructions', 'role'], v)}
-          />
-        </Field>
+        {onShowRole && flow.entry === node.id ? (
+          // the agent that answers first: its instructions are asked on the Agent page, and shown here
+          <Field label="What it does" id={`${id}-role`} hint="It answers first, so its instructions are the ones on the Agent page.">
+            <p className="wfRoleRead" id={`${id}-role`} title={agent.instructions?.role || undefined}>
+              {agent.instructions?.role?.trim() || 'No instructions yet.'}
+            </p>
+            <button type="button" className="quietButton" onClick={onShowRole}>
+              Change them on the Agent page
+            </button>
+          </Field>
+        ) : (
+          <Field label="What it does" id={`${id}-role`} hint="Written to the agent, as you would brief a person.">
+            <Text
+              id={`${id}-role`}
+              multiline
+              rows={6}
+              value={agent.instructions?.role || ''}
+              onChange={(v) => set(['agents', 'items', i, 'instructions', 'role'], v)}
+            />
+          </Field>
+        )}
         <div className="wfRow">
           {flow.entry === node.id ? (
             <span className="wfTag good">
@@ -220,6 +244,18 @@ function InspectorBody({ flow, config, selected, apply, onSelect, onOpenSettings
             All settings for this agent
           </button>
         </div>
+        {node.deadEnd && (
+          // a caller passed to it would stay there: one click gives it a way to finish
+          <section className="wfSection">
+            <p className="wfWarnText">A caller passed to it can’t leave: it can’t end the call, hand over to a person or pass them back.</p>
+            <div className="wfRow">
+              <button type="button" className="quietButton" onClick={() => apply(addEnd(config, node.id).config)}>
+                Let it end the call
+              </button>
+            </div>
+            <p className="wfMuted">Or press ＋ under the block to pass callers on from it.</p>
+          </section>
+        )}
         <section className="wfSection">
           <h4>Where it can send the caller</h4>
           {handoffs.length === 0 ? (
@@ -346,9 +382,11 @@ function DeleteButton({ label, why, onConfirm, disabled }) {
 }
 
 // ---- nothing selected
-function Overview({ flow, config, apply }) {
+function Overview({ flow, config, apply, onSelect }) {
   const agents = list(config?.agents?.items);
   const counts = { agents: agents.length, hand: flow.edges.filter((e) => e.kind === 'handoff').length };
+  // the call in sentences, in the order the picture is read; each one picks its arrow
+  const steps = describeItems(flow);
   return (
     <aside className="wfInspector" aria-label="About the workflow">
       <header>
@@ -380,8 +418,22 @@ function Overview({ flow, config, apply }) {
             </select>
           </Field>
         )}
-        <section className="wfSection">
-          <h4>Using the picture</h4>
+        {steps.length > 0 && (
+          <section className="wfSection">
+            <h4>This call, step by step</h4>
+            <ol className="wfSteps">
+              {steps.map((step) => (
+                <li key={step.id}>
+                  <button type="button" className="wfListItem" onClick={() => onSelect({ type: 'edge', id: step.id })}>
+                    {step.text}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+        <details className="wfSection wfHelp">
+          <summary>Using the picture</summary>
           <ul className="wfTips">
             <li>
               <b>Move</b> a block by dragging it, or with the arrow keys once it is selected (Shift moves further).
@@ -396,8 +448,6 @@ function Overview({ flow, config, apply }) {
               <b>Zoom</b> with the buttons above, or Ctrl and the mouse wheel. Drag the empty space to move around.
             </li>
           </ul>
-        </section>
-        <section className="wfSection">
           <h4>Arrows</h4>
           <dl className="wfLegend">
             <div>
@@ -436,22 +486,45 @@ function Overview({ flow, config, apply }) {
               <dd>The caller is sent back to the first agent.</dd>
             </div>
           </dl>
-        </section>
+        </details>
       </div>
     </aside>
   );
 }
 
-function StartView({ flow, config, apply, onClose }) {
+function StartView({ flow, config, apply, onClose, onShowGreeting }) {
   const agents = list(config?.agents?.items);
-  const greeting = list(config?.channels).find((c) => isObj(c) && c.greeting?.say !== undefined);
+  // what each channel says first (the same line on most, so each different line is said once, with the channels that say it)
+  const lines = [];
+  list(config?.channels)
+    .filter((c) => isObj(c) && c.enabled !== false)
+    .forEach((c) => {
+      const text = c.greeting?.say !== undefined ? speechText(c.greeting.say, config) || '…' : '';
+      const same = lines.find((l) => l.text === text);
+      if (same) same.channels.push(channelName(c.type));
+      else lines.push({ text, channels: [channelName(c.type)] });
+    });
   return (
     <Shell icon="flag" title="Start" kicker="Where a call begins" onClose={onClose}>
-      <p className="wfMuted">
-        A call or a chat begins here.{' '}
-        {greeting ? <>The channel greets the caller first: “{speechText(greeting.greeting.say, config) || '…'}”.</> : 'No channel has a greeting yet.'} Then
-        this agent takes over.
-      </p>
+      <p className="wfMuted">A call or a chat begins here: the channel says its first line, then the agent below takes over.</p>
+      {lines.length > 0 && (
+        <section className="wfSection">
+          <h4>What it says first</h4>
+          <ul className="wfFirstLines">
+            {lines.map((l) => (
+              <li key={l.text || '(none)'}>
+                <small>{l.channels.join(', ')}</small>
+                <span>{l.text ? `“${l.text}”` : 'Nothing: it waits for the caller to speak first.'}</span>
+              </li>
+            ))}
+          </ul>
+          {onShowGreeting && (
+            <button type="button" className="quietButton" onClick={onShowGreeting}>
+              Change it on the Agent page
+            </button>
+          )}
+        </section>
+      )}
       <Field label="Who answers first" id="wf-start-entry">
         <select id="wf-start-entry" className="stFInput" value={flow.entry} onChange={(event) => apply(setEntry(config, event.target.value))}>
           {agents
@@ -487,7 +560,7 @@ function EnterView({ node, agent, ai, owner, config, set, apply, onSelect, onRem
             <Text id={`${id}-text`} multiline rows={4} value={action.text || ''} onChange={(v) => set([...base, 'text'], v)} />
           </Field>
         ) : (
-          <p className="wfMuted">It says the saved message “{action.text.message}”. Change the message in All settings.</p>
+          <p className="wfMuted">It says the saved message “{action.text.message}”. Change the message under Agent › Fixed lines.</p>
         ))}
       {action?.type === 'set_state' && (
         <StateRows values={isObj(action.values) ? action.values : {}} variables={variables} config={config} apply={apply} path={[...base, 'values']} />
@@ -506,12 +579,12 @@ function EnterView({ node, agent, ai, owner, config, set, apply, onSelect, onRem
       {!['say', 'set_state', 'transfer'].includes(action?.type) && (
         <p className="wfMuted">
           {node.label}
-          {node.sub ? `: ${node.sub}` : ''}. Its details are in All settings.
+          {node.sub ? `: ${node.sub}` : ''}. Its details are in its settings.
         </p>
       )}
       <div className="wfRow">
         <button type="button" className="quietButton" onClick={() => onOpenSettings(['agents', 'items', ai, 'on_enter'])}>
-          Open in All settings
+          Open its settings
         </button>
       </div>
       <section className="wfSection">
@@ -555,7 +628,7 @@ function StateRows({ values, variables, config, apply, path }) {
           <li key={name} className="wfPair">
             <span className="wfPairName">{name}</span>
             {['object', 'array'].includes(variables[name]?.type) ? (
-              <code className="wfPairName" title="Change this one in All settings">
+              <code className="wfPairName" title="Change this one in its settings">
                 {JSON.stringify(value)}
               </code>
             ) : variables[name]?.type === 'enum' ? (
@@ -665,11 +738,12 @@ function StateRows({ values, variables, config, apply, path }) {
 }
 
 // ---- what an agent can do: its tools
-function ToolView({ node, owner, config, set, onSelect, onRemove, onOpenSettings }) {
+// A tool block: what the tool does here, in words. Its settings (when it is used, what it says before it hangs up, the number it passes calls to) are asked
+// once, in its panel on the Tools page (the transfer's number in Phone transfers): shown here, with the way there.
+function ToolView({ node, owner, config, onSelect, onRemove, onOpenSettings }) {
   const toolId = parseNodeId(node.id).tool;
   const ti = list(config?.tools).findIndex((t) => t?.id === toolId);
   const tool = list(config?.tools)[ti];
-  const id = `wf-${node.id}`;
   const transfer = node.type === 'transfer' ? list(config?.telephony?.transfers).find((t) => t?.id === tool?.params?.transfer) : null;
   const ti2 = transfer ? list(config.telephony.transfers).indexOf(transfer) : -1;
   const shared =
@@ -679,6 +753,8 @@ function ToolView({ node, owner, config, set, onSelect, onRemove, onOpenSettings
         for all of them.
       </p>
     ) : null;
+  const when = typeof tool?.description === 'string' ? tool.description.trim() : '';
+  const goodbye = node.type === 'end' && tool ? speechText(tool.params?.say, config) : '';
   return (
     <Shell
       icon={node.type === 'end' ? 'endCall' : node.type === 'transfer' ? 'phoneTransfer' : 'tools'}
@@ -686,61 +762,49 @@ function ToolView({ node, owner, config, set, onSelect, onRemove, onOpenSettings
       kicker={`${owner} can use this`}
       onClose={() => onSelect(null)}
     >
-      {!tool && <p className="wfWarn">This agent offers “{toolId}”, but there is no such tool. Delete this block, or create the tool in All settings.</p>}
-      {node.type === 'end' &&
-        tool &&
-        (typeof tool.params?.say === 'string' || tool.params?.say === undefined ? (
-          <Field label="What it says before it hangs up" id={`${id}-say`} hint="Said in full, then the call ends.">
-            <Text
-              id={`${id}-say`}
-              multiline
-              rows={3}
-              value={tool.params?.say || ''}
-              onChange={(v) => {
-                const params = { ...(tool.params || {}) };
-                if (v) params.say = v;
-                else delete params.say;
-                set(['tools', ti, 'params'], params);
-              }}
-            />
-          </Field>
-        ) : (
-          <p className="wfMuted">It says the saved message “{tool.params.say.message}”.</p>
-        ))}
+      {!tool && <p className="wfWarn">This agent offers “{toolId}”, but there is no such tool. Delete this block, or create the tool on the Tools page.</p>}
+      {node.type === 'tool' && tool && <p className="wfMuted">{node.sub}.</p>}
       {node.type === 'transfer' && tool && (
-        <>
-          {transfer && typeof transfer.target === 'string' ? (
-            <Field label="Phone number or SIP address" id={`${id}-number`}>
-              <Text id={`${id}-number`} mono value={transfer.target} onChange={(v) => set(['telephony', 'transfers', ti2, 'target'], v)} />
-            </Field>
-          ) : (
-            <p className="wfMuted">{transfer ? `The number is ${node.sub}. Change it in All settings.` : 'This transfer is not set up yet.'}</p>
+        <p className={node.noNumber ? 'wfWarnText wfNumber' : 'wfMuted wfNumber'}>
+          {!transfer
+            ? 'This transfer is not set up yet.'
+            : node.noNumber
+              ? 'No number yet: callers are offered a callback instead of being passed to a person.'
+              : typeof transfer.target === 'string'
+                ? `Passes calls to ${transfer.target.trim()}.`
+                : `The number is ${node.sub}.`}{' '}
+          {transfer && (
+            <button type="button" className="linkButton" onClick={() => onOpenSettings(['telephony', 'transfers', ti2])}>
+              {node.noNumber ? 'Add the number' : 'Change it'}
+            </button>
           )}
-          <Field label="When should it do this?" id={`${id}-when`} hint="Tells the agent when to hand the caller to a person.">
-            <Text id={`${id}-when`} multiline rows={3} value={tool.description || ''} onChange={(v) => set(['tools', ti, 'description'], v)} />
-          </Field>
-        </>
+        </p>
       )}
-      {node.type === 'tool' && tool && (
-        <>
-          <p className="wfMuted">{node.sub}.</p>
-          <Field label="When should it use this?" id={`${id}-desc`}>
-            <Text id={`${id}-desc`} multiline rows={3} value={tool.description || ''} onChange={(v) => set(['tools', ti, 'description'], v)} />
-          </Field>
-        </>
+      {tool && (
+        <dl className="wfFacts">
+          {node.type === 'end' && (
+            <div>
+              <dt>What it says before it hangs up</dt>
+              <dd>
+                {goodbye ? `“${goodbye}”` : <span className="wfWarnText">Nothing yet: the call ends without a goodbye.</span>}
+                {goodbye && isObj(tool.params?.say) && <small> One of its fixed lines (Agent page › Fixed lines).</small>}
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt>When it uses it</dt>
+            <dd>{when ? `“${when}”` : <span className="wfWarnText">Not said yet, so the agent may not know when to use it.</span>}</dd>
+          </div>
+        </dl>
       )}
       {shared}
-      <div className="wfRow">
-        {tool && (
-          <button
-            type="button"
-            className="quietButton"
-            onClick={() => onOpenSettings(node.type === 'transfer' && ti2 >= 0 ? ['telephony', 'transfers', ti2] : ['tools', ti])}
-          >
-            Open in All settings
+      {tool && (
+        <div className="wfRow">
+          <button type="button" className="quietButton" onClick={() => onOpenSettings(['tools', ti])}>
+            Change it on the Tools page
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <section className="wfSection">
         <h4>Delete</h4>
         <DeleteButton
@@ -749,7 +813,7 @@ function ToolView({ node, owner, config, set, onSelect, onRemove, onOpenSettings
             node.shared > 1
               ? `Other agents keep it. ${owner} can no longer do this.`
               : node.type === 'tool'
-                ? `${owner} can no longer use the tool. The tool stays in All settings.`
+                ? `${owner} can no longer use the tool. The tool stays on the Tools page.`
                 : `${owner} can no longer do this.`
           }
           onConfirm={() => onRemove(node.id)}

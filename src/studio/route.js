@@ -1,14 +1,15 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { TAB_IDS } from './journey.js';
 import { EXTRA_PAGE_IDS } from './newlayout/pages.js';
-import { isNewLayout } from './newlayout/layoutPref.js';
 import { askConfirm } from '../ui/dialogs.js';
 
 // Hash routes, so a bot has a link and a refresh keeps you where you were:
 //   #/bots                 the list      (#/bots?new=1 opens the create dialog)
-//   #/bots/{id}            a bot, on its Config tab
+//   #/bots/{id}            a bot, on its Home
 //   #/bots/{id}/{tab}      config | knowledge | test | scenarios | checks | versions | deploy | calls   (the stages of the journey, see journey.js)
 export const TABS = [...TAB_IDS, ...EXTRA_PAGE_IDS];
+// Pages that were renamed, so an old link still opens them (Cost and speed became Speed when the costs were taken out).
+const OLD_TABS = { cost: 'speed' };
 
 export function parseRoute(hash) {
   const [pathPart, query = ''] = String(hash || '')
@@ -17,16 +18,17 @@ export function parseRoute(hash) {
   const parts = pathPart.split('/').filter(Boolean);
   const params = Object.fromEntries(new URLSearchParams(query));
   if (parts[0] !== 'bots' || !parts[1]) return { view: 'list', params };
-  const tab = TABS.includes(parts[2]) ? parts[2] : 'config';
-  // `bare`: no page was named (an agent opened from a list). The new layout opens its Home then; the classic one its Config.
+  const named = OLD_TABS[parts[2]] || parts[2];
+  const tab = TABS.includes(named) ? named : 'config';
+  // `bare`: no page was named (an agent opened from a list): it opens on its Home.
   return { view: 'bot', botId: parts[1], tab, bare: !parts[2], params };
 }
 
 export function routeHref(botId, tab, params) {
   const query = params && Object.keys(params).length ? `?${new URLSearchParams(params)}` : '';
   if (!botId) return `#/bots${query}`;
-  // In the new layout the Config tab is a page like any other, so it is named; an address with no page opens the agent's Home.
-  return `#/bots/${botId}${tab && (tab !== 'config' || isNewLayout()) ? `/${tab}` : ''}${query}`;
+  // every page is named; an address with no page opens the agent's Home
+  return `#/bots/${botId}${tab ? `/${tab}` : ''}${query}`;
 }
 
 // A page with unsaved work registers a guard: a function saying what leaving would lose ("Your unsaved edits will be lost."), or '' when nothing.

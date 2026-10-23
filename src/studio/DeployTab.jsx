@@ -11,7 +11,7 @@ import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { normalizePreflightKnowledge } from './release/checklist.js';
 import { AgentNumbers, useLiveNumbers } from '../pages/LiveNumbers.jsx';
 
-const STATUS_TEXT = { active: 'Active', pending: 'Deploying…', failed: 'Failed' };
+const STATUS_TEXT = { active: 'Active', pending: 'Deploying…', failed: 'Failed', replaced: 'Replaced' };
 
 function StatusPill({ status }) {
   return (
@@ -198,7 +198,15 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
 
   const current = deployments.data?.current || {};
   // The API lists deployments oldest first; show the latest at the top.
-  const history = [...(deployments.data?.history || [])].reverse();
+  // newest first; a deployment that went through but has a newer one to the same environment after it is not what runs there any more: "Replaced"
+  const history = (() => {
+    const seen = new Set();
+    return [...(deployments.data?.history || [])].reverse().map((item) => {
+      const shown = item.status === 'active' && seen.has(item.environment) ? { ...item, status: 'replaced' } : item;
+      if (item.status === 'active') seen.add(item.environment);
+      return shown;
+    });
+  })();
   const environments = envs.data || [];
   const inFlight = deploying || last?.deployment?.status === 'pending';
   const running = current[environment]?.version;

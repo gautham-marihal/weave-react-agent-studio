@@ -56,7 +56,7 @@
 }
 .shipSteps li.done .shipMark {
   border-color: transparent;
-  background: var(--good-soft, var(--surface2));
+  background: color-mix(in srgb, var(--good-text) 14%, var(--panel));
   color: var(--good-text);
 }
 .shipSteps li.blocked .shipMark {

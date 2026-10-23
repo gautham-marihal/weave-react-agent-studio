@@ -7,7 +7,7 @@ export const NAV = [
   { id: 'sessions', label: 'Calls', icon: 'phone' },
   { id: 'live', label: 'Live', icon: 'live' },
   { id: 'monitoring', label: 'Monitoring', icon: 'monitor' },
-  { id: 'cost', label: 'Cost and speed', icon: 'gauge' },
+  { id: 'speed', label: 'Speed', icon: 'gauge' },
   { id: 'alerts', label: 'Alerts', icon: 'bell' },
 ];
 export const LIBRARY_NAV = [
@@ -84,7 +84,7 @@ const PAGE_SLUGS = {
   sessions: 'calls',
   live: 'live',
   monitoring: 'monitoring',
-  cost: 'cost',
+  speed: 'speed',
   alerts: 'alerts',
   voices: 'voices',
   integrations: 'integrations',
@@ -96,6 +96,8 @@ export function workspaceHref(id, section) {
   const slug = PAGE_SLUGS[id] || 'home';
   return id === 'telephony' && TELEPHONY_SECTIONS.some((item) => item.id === section) ? `#/${slug}/${section}` : `#/${slug}`;
 }
+// Addresses a page used to have, so an old link or bookmark still opens it (Cost and speed became Speed when the costs were taken out).
+const OLD_SLUGS = { cost: 'speed' };
 // { id, section? } for a workspace page's address, else null (an agent's address, or none)
 export function parseWorkspaceHash(hash) {
   const parts = String(hash || '')
@@ -103,7 +105,8 @@ export function parseWorkspaceHash(hash) {
     .split('?')[0]
     .split('/')
     .filter(Boolean);
-  const id = Object.keys(PAGE_SLUGS).find((key) => PAGE_SLUGS[key] === parts[0]);
+  const slug = OLD_SLUGS[parts[0]] || parts[0];
+  const id = Object.keys(PAGE_SLUGS).find((key) => PAGE_SLUGS[key] === slug);
   if (!id) return null;
   if (id !== 'telephony') return { id };
   return { id, section: TELEPHONY_SECTIONS.some((item) => item.id === parts[1]) ? parts[1] : 'calls' };

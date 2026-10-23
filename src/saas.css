@@ -566,8 +566,7 @@ html[data-theme] body .promptArrow {
   display: grid;
   place-items: center;
 }
-html[data-theme] body .landingActions .demoBadgeWrap.inBar,
-html[data-theme] body .loginTopActions .demoBadgeWrap.inBar {
+html[data-theme] body .landingActions .demoBadgeWrap.inBar {
   margin-right: 4px;
 }
 
@@ -642,26 +641,17 @@ html[data-style="futuristic"][data-theme="dark"] body {
 /* labels and states read in sentence case, without wide letter spacing (generated from every rule that set capitals; a style that wants capitals,
    such as Futuristic, sets them again in themes.css) */
 html[data-theme] body .agentStatus,
-html[data-theme] body .builderSubhead,
-html[data-theme] body .builderAttemptTop span,
-html[data-theme] body .builderRowHeader span,
 html[data-theme] body .integrationCategory,
 html[data-theme] body .voiceLibraryTable th,
-html[data-theme] body .builderChecklistGroup h4,
 html[data-theme] body .infoDialogGroup h3,
 html[data-theme] body .tableColumnsTitle,
 html[data-theme] body .statusConsequences h3,
-html[data-theme] body .sessionTranscript h3,
-html[data-theme] body .readinessRunner label span,
 html[data-theme] body .settingsFacts dt,
 html[data-theme] body .settingsEnvironments h3,
 html[data-theme] body .ruleSection legend,
 html[data-theme] body .callFacts dt,
-html[data-theme] body .builderModelTag,
 html[data-theme] body .demoNote b,
 html[data-theme] body .hjHead,
-html[data-theme] body .stStageHead,
-html[data-theme] body .stNext small,
 html[data-theme] body .stComboGroup,
 html[data-theme] body .stRow.head,
 html[data-theme] body .stChangeBody small,
@@ -689,7 +679,6 @@ html[data-theme] body .pvPanel > header strong,
 html[data-theme] body .pvStatus,
 html[data-theme] body .pvBanner b,
 html[data-theme] body .pvHud small,
-html[data-theme] body .smList em,
 html[data-theme] body .tmHead,
 html[data-theme] body .stTDetails dt,
 html[data-theme] body .stTStatus,
@@ -928,6 +917,10 @@ html[data-theme] body .skipLink:focus-visible {
 html[data-theme] body #pageContent :is(h1, h2)[tabindex="-1"]:focus {
   outline: none;
 }
+/* a dialog's box that holds the focus as it opens (ui/FocusBox.jsx): the next Tab reaches its first control; no ring on the box itself */
+html[data-theme] body [data-focus-box]:focus {
+  outline: none;
+}
 
 /* Home's "Build an agent from an idea": the orb on a quiet surface (the old teal glow and orbit lines are gone) */
 html[data-theme] body .starterVisual {
@@ -1111,7 +1104,14 @@ html[data-theme] body :is(.mnRowActions, .mnCard td:last-child) .quietButton.sma
 /* Voices: a voice's language on one line, its code under it (it wrapped over three) */
 html[data-theme] body .voiceLibraryTable td:nth-child(2) {
   max-width: none;
+  min-width: 112px;
   white-space: nowrap;
+}
+/* its style may take two lines, so the table fits a 1280-wide window without the pinned Actions column hiding the one before it */
+html[data-theme] body .voiceLibraryTable td:nth-child(5) {
+  min-width: 96px;
+  max-width: 140px;
+  white-space: normal;
 }
 /* Home's narrower table: the state under the name, the same on every row (beside it there is no room for both) */
 html[data-theme] body .agentRow.compact .stRowTitle {
@@ -1170,17 +1170,17 @@ html[data-theme] body .stPromptPreview > .stPromptBody {
 }
 
 /* the smaller ones: the same chevron after the words */
-html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary {
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra) > summary {
   display: flex;
   align-items: center;
   gap: 8px;
   list-style: none;
   cursor: pointer;
 }
-html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary::-webkit-details-marker {
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra) > summary::-webkit-details-marker {
   display: none;
 }
-html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary::after {
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra) > summary::after {
   content: "";
   flex: none;
   width: 6px;
@@ -1192,10 +1192,10 @@ html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromp
   transform: translateY(-2px) rotate(45deg);
   transition: transform 0.15s ease;
 }
-html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList)[open] > summary::after {
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra)[open] > summary::after {
   transform: translateY(1px) rotate(-135deg);
 }
-html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary:hover {
+html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra) > summary:hover {
   color: var(--textStrong);
 }
 /* the tools offered and the exact text: boxes like the other parts of the preview */
@@ -1212,9 +1212,6 @@ html[data-theme] body :is(.stPromptTools, .stPromptExact, .stPromptExtra) > summ
 }
 html[data-theme] body :is(.stPromptTools, .stPromptExact) > :not(summary) {
   margin: 0 12px 10px;
-}
-html[data-theme] body .wfAsList > summary {
-  padding: 12px 0;
 }
 
 /* the strip under a long text: one band, the count on the left and "Insert a value" on the right, no seam between them */
@@ -1235,7 +1232,7 @@ html[data-theme] body .stTplInsert > .stTplChips:first-of-type {
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-theme] body .stPromptPreview .stPromptChev,
-  html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra, .wfAsList) > summary::after {
+  html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra) > summary::after {
     transition: none;
   }
 }
@@ -1251,7 +1248,8 @@ html[data-theme] body .stPromptBody > .stPromptExtra {
   margin-top: 0;
 }
 
-/* a list page with several lists (Guardrails): the page's main button stays the one strong button; each list's "Add" is a quiet one */
+/* the "Add" of a list page is a quiet button: the bar above the page has its one strong button (Publish, or Save when there is something to save) */
+html[data-theme] body .nlPageActions .nlAddPicker.quiet .stAddBtn,
 html[data-theme] body .nlSection > header .nlAddPicker.quiet .stAddBtn {
   min-height: 34px;
   padding: 0 14px;
@@ -1263,6 +1261,7 @@ html[data-theme] body .nlSection > header .nlAddPicker.quiet .stAddBtn {
   opacity: 1;
   filter: none;
 }
+html[data-theme] body .nlPageActions .nlAddPicker.quiet .stAddBtn:hover,
 html[data-theme] body .nlSection > header .nlAddPicker.quiet .stAddBtn:hover {
   border-color: color-mix(in srgb, var(--textStrong) 28%, var(--line2));
   background: var(--surface2);
@@ -1284,7 +1283,7 @@ html[data-theme] body .integrationCard > .integrationFooter {
   margin-top: auto;
 }
 
-/* every other part that opens in place (in panels, dialogs, the classic editor): the browser's own triangle drawn as the app's chevron, pointing
+/* every other part that opens in place (in panels, dialogs, the settings forms): the browser's own triangle drawn as the app's chevron, pointing
    right when closed and down when open. Only a summary that would show the triangle has a ::marker, so ones with their own chevron are untouched. */
 html[data-theme] body summary::marker {
   content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='12' viewBox='0 0 36 24'%3E%3Cpath d='M9 6l6 6-6 6' fill='none' stroke='%236b6f76' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -1297,10 +1296,6 @@ html[data-theme="dark"] body summary::marker {
 }
 html[data-theme="dark"] body details[open] > summary::marker {
   content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='12' viewBox='0 0 36 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23a3a7af' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-/* Cost: the money bar's biggest share in the chart colour, like the other charts (the other shares stay grey) */
-html[data-theme] body .csSeg.llm {
-  background: var(--chart-1);
 }
 
 /* ---- phone numbers (FRONTEND_GUIDE 10.5): an agent's numbers on its Deploy page, and the details support asks for, folded ------------------------ */
@@ -1454,4 +1449,416 @@ html[data-theme] body .pkModelList li:not(.pkNone) button:disabled {
 }
 html[data-theme] body .pkModelList li:not(.pkNone) button:disabled:hover {
   background: none;
+}
+
+/* ---- scroll areas: an edge with more past it fades out (ui/scrollEdges.js marks it data-edges), so a line is never sliced by the edge with nothing
+   to say the list goes on. The area's own top and bottom lines (--edgeT, --edgeB) and its scrollbar's strip (--edgeBar) keep their full look. */
+html[data-theme] body [data-edges] {
+  --edgeFadeT: 0px;
+  --edgeFadeB: 0px;
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      #000 var(--edgeT, 0px),
+      transparent var(--edgeT, 0px),
+      #000 calc(var(--edgeT, 0px) + var(--edgeFadeT)),
+      #000 calc(100% - var(--edgeB, 0px) - var(--edgeFadeB)),
+      transparent calc(100% - var(--edgeB, 0px)),
+      #000 calc(100% - var(--edgeB, 0px))
+    ),
+    linear-gradient(#000, #000);
+  mask-image:
+    linear-gradient(
+      to bottom,
+      #000 var(--edgeT, 0px),
+      transparent var(--edgeT, 0px),
+      #000 calc(var(--edgeT, 0px) + var(--edgeFadeT)),
+      #000 calc(100% - var(--edgeB, 0px) - var(--edgeFadeB)),
+      transparent calc(100% - var(--edgeB, 0px)),
+      #000 calc(100% - var(--edgeB, 0px))
+    ),
+    linear-gradient(#000, #000);
+  -webkit-mask-size:
+    100% 100%,
+    var(--edgeBar, 0px) 100%;
+  mask-size:
+    100% 100%,
+    var(--edgeBar, 0px) 100%;
+  -webkit-mask-position:
+    0 0,
+    100% 0;
+  mask-position:
+    0 0,
+    100% 0;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+html[data-theme] body [data-edges~="top"] {
+  --edgeFadeT: 28px;
+}
+html[data-theme] body [data-edges~="bottom"] {
+  --edgeFadeB: 28px;
+}
+
+/* a short window (a laptop at 125 %, 1366 × 768): the menus' rows close up, so the workspace's menu fits and the agent's needs little scrolling (what
+   is left scrolls, its edge faded, the open page brought into view: ui/scrollEdges.js) */
+@media (max-height: 860px) {
+  html[data-theme] body .sideNav .sideLink {
+    min-height: 32px;
+  }
+  html[data-theme] body .sideNav .navLabel {
+    padding: 7px 12px 3px;
+  }
+  html[data-theme] body .sideNav .sideDivider {
+    margin-top: 6px;
+    margin-bottom: 3px;
+  }
+  /* .sidebar: above newlayout.css, which loads after this file (Vibrant keeps its own, for its bigger tiles) */
+  html[data-theme] body .sidebar .nlNav {
+    gap: 6px;
+  }
+  html[data-theme] body .dashboard.inAgent .sidebar .nlNavGroup button {
+    min-height: 28px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+  html[data-theme] body .sidebar .nlNavHead {
+    padding: 6px 10px 1px;
+  }
+}
+
+/* ================================================================================================================================================
+   One system, everywhere (the consistency pass of 2026-10-23). What looked alike but measured different now is the same: one control height, one
+   radius for controls and one for cards, one title, one segmented switch, one badge, one link. Each style still overrides what makes it itself.
+   ================================================================================================================================================ */
+
+/* the older design-system tokens (styles.css) follow the ones above: 12 px cards, 8 px controls, 40 px controls, a neutral card shadow */
+html[data-theme] body {
+  --ds-radius-card: var(--r-card);
+  --ds-radius-control: var(--r-control);
+  --ds-control-h: 40px;
+  --ds-control-h-sm: 34px;
+  --ds-card-shadow: 0 1px 2px rgba(16, 16, 20, 0.04), 0 8px 24px rgba(16, 16, 20, 0.05);
+}
+html[data-theme="dark"] body {
+  --ds-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+/* ---- page titles: the same on a workspace page, an agent's page and a setup step ---- */
+html[data-theme] body .dashboard :is(.welcomeBlock, .pageHeaderBlock, .featureHero, .nlPageHead, .suHead) h1 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+html[data-theme] body .dashboard :is(.welcomeBlock, .pageHeaderBlock, .featureHero, .nlPageHead, .suHead) h1 + p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+/* section and card titles: one weight (600); the small ones keep their size */
+html[data-theme] body .dashContent :is(h2, h3, h4, h5) {
+  font-weight: 600;
+}
+html[data-theme] body .dashContent :is(.sectionHeader, .mnCard, .settingsCard, .csSection, .stCard, .nlSection > header) h2 {
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+}
+html[data-theme] body .dashContent .settingsCard.settingsDanger h2 {
+  color: var(--danger-text);
+}
+html[data-theme] body .integrationCard h2 {
+  font-size: var(--fs-lg);
+}
+
+/* ---- one control height: a button, a field and a list beside them line up (40 px; 34 px for the compact ones in table rows) ---- */
+html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal, .loginCard) .stFInput:not(textarea):not(.csTarget),
+html[data-theme] body :is(.stCompare, .stDeployForm, .stSort, .voiceLibraryToolbar, .stTControls) :is(select, input:not([type="checkbox"]):not([type="radio"])),
+html[data-theme] body .settingsRow input,
+html[data-theme] body .settingsField :is(input, select) {
+  box-sizing: border-box;
+  height: 40px;
+  min-height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-control);
+  background-color: var(--field, var(--panel));
+  font-size: var(--fs-md);
+}
+html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal) .stFInput.small:not(textarea):not(.csTarget) {
+  font-size: var(--fs-sm);
+}
+html[data-theme] body :is(.nlDrawer, .stFSheet, .createModal) :is(.quietButton, .secondaryCta, .primaryCta, .modalCreate, .modalCancel, .dangerButton) {
+  min-height: 40px;
+}
+html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal) .stAddBtn {
+  min-height: 40px;
+  border-radius: var(--r-control);
+}
+/* the buttons in a table or list row are the compact ones */
+html[data-theme] body .dashboard :is(.tmActions, .cpActions, .mnRowActions, .stTable td, .scItem header) :is(.quietButton, .secondaryCta, .dangerButton) {
+  height: var(--ds-control-h-sm);
+  min-height: var(--ds-control-h-sm);
+  font-size: var(--fs-sm);
+}
+/* search fields: white with a line, like every other field */
+html[data-theme] body :is(.inlineSearch, .featureSearch) {
+  box-sizing: border-box;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-control);
+  background: var(--field, var(--panel));
+  box-shadow: none;
+}
+html[data-theme] body :is(.inlineSearch, .featureSearch) input {
+  height: 100%;
+  font-size: var(--fs-md);
+}
+html[data-theme] body :is(.inlineSearch, .featureSearch):focus-within {
+  border-color: color-mix(in srgb, var(--textStrong) 45%, var(--line2));
+}
+
+/* ---- one segmented switch: page parts, tabs, filters, view and mode switches, Light or Dark ---- */
+html[data-theme] body :is(.inTabs, .segmented, .stFSeg, .pvModes, .styleMenuModes, .clViews, .filterPills, .settingsSeg) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  padding: 3px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface2);
+  box-shadow: none;
+  overflow: visible;
+}
+html[data-theme] body :is(.inTabs, .segmented, .stFSeg, .pvModes, .styleMenuModes, .clViews, .filterPills, .settingsSeg) > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: auto;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  white-space: nowrap;
+}
+html[data-theme] body :is(.inTabs, .segmented, .stFSeg, .pvModes, .styleMenuModes, .clViews, .filterPills, .settingsSeg) > button:hover:not(:disabled) {
+  background: none;
+  color: var(--textStrong);
+}
+html[data-theme]
+  body
+  :is(.inTabs, .segmented, .stFSeg, .pvModes, .styleMenuModes, .clViews, .filterPills, .settingsSeg)
+  > button:is(.on, .active, [aria-pressed="true"], [aria-selected="true"]) {
+  background: var(--panel);
+  color: var(--textStrong);
+  font-weight: 600;
+  box-shadow: var(--raise);
+}
+html[data-theme]
+  body
+  :is(.inTabs, .segmented, .stFSeg, .pvModes, .styleMenuModes, .clViews, .filterPills, .settingsSeg)
+  > button:disabled:not(.on, .active, [aria-pressed="true"], [aria-selected="true"]) {
+  opacity: 0.5;
+}
+/* the chosen one of a pair that cannot be chosen again stays as clear as the others */
+html[data-theme]
+  body
+  :is(.inTabs, .segmented, .stFSeg, .pvModes, .styleMenuModes, .clViews, .filterPills, .settingsSeg)
+  > button:disabled:is(.on, .active, [aria-pressed="true"], [aria-selected="true"]) {
+  opacity: 1;
+  cursor: default;
+}
+html[data-theme] body .clViews > button + button {
+  border-left: 0;
+}
+
+/* ---- one badge: a pill 22 px high, the same size and weight whatever it says; its colour says what it means ---- */
+html[data-theme]
+  body
+  :is(
+    .lvOutcome,
+    .lvChannel,
+    .lvFlags > li,
+    .statusPill,
+    .stAgentTag,
+    .smDefault,
+    .tmRole,
+    .tmStatus,
+    .stStatus,
+    .nlPill,
+    .stEnvTag,
+    .stTestChip,
+    .voiceUsedChip,
+    .stTag,
+    .inChip,
+    .cpJudge,
+    .voiceWorkspaceTabs em
+  ) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 550;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+/* a state in a table (a person's, a deployment's) is the same soft badge with a dot as a call's outcome */
+html[data-theme] body :is(.tmStatus, .stStatus) {
+  border: 1px solid color-mix(in srgb, var(--pill, var(--muted)) 22%, transparent);
+  background: color-mix(in srgb, var(--pill, var(--muted)) 8%, var(--panel));
+  color: var(--pill, var(--muted));
+}
+html[data-theme] body .tmStatus::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+html[data-theme] body .stStatus i {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+}
+html[data-theme] body :is(.tmStatus.good, .stStatus.active) {
+  --pill: var(--good-text);
+}
+html[data-theme] body .tmStatus.wait {
+  --pill: var(--warn-text);
+}
+html[data-theme] body .stStatus.pending {
+  --pill: var(--accent-text);
+}
+html[data-theme] body .stStatus.failed {
+  --pill: var(--danger-text);
+}
+
+/* ---- links read as links: underlined in a tint of their own colour, solid on hover ---- */
+html[data-theme] body :is(.linkButton, .stLink) {
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+html[data-theme] body :is(.linkButton, .stLink):hover:not(:disabled) {
+  text-decoration-color: currentColor;
+}
+
+/* ---- cards: one radius ---- */
+html[data-theme]
+  body
+  :is(
+    .mnCard,
+    .mnKpis,
+    .nlEmpty,
+    .cpRun,
+    .stEnvCard,
+    .tmTable,
+    .stActions,
+    .wfCanvasBox,
+    .wfInspector,
+    .settingsCard,
+    .integrationCard,
+    .featureToolbar,
+    .csStat,
+    .csSection
+  ) {
+  border-radius: var(--r-card);
+}
+
+/* ---- one-offs that stood out ---- */
+/* Releases › Deploy: the deploy button is a button, not a bar across the page; the roll-back link sits with the rest of its card */
+html[data-theme] body .stActions > :is(.primaryCta, .dangerButton) {
+  flex: none;
+  justify-self: start;
+  width: auto;
+}
+html[data-theme] body .stEnvCard .stLink {
+  align-self: flex-start;
+  justify-self: start;
+  text-align: left;
+}
+/* Scenarios with none yet: the same empty state as every other list (a dashed box, its words in the middle) */
+html[data-theme] body .scEmpty {
+  justify-items: center;
+  padding: 36px 24px;
+  border: 1px dashed var(--line2);
+  border-radius: var(--r-card);
+  text-align: center;
+}
+html[data-theme] body .stCard:has(> .scEmpty) {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+/* a list's group headings in sentence case, like every other label */
+html[data-theme] body .stComboGroup {
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Live and Speed: their tiles read like every other number tile (Home, Agents, Monitoring): what it is, the number, what it means */
+html[data-theme] body :is(.lvStat, .csStat) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+html[data-theme] body :is(.lvStat, .csStat) > span {
+  order: -1;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+html[data-theme] body :is(.lvStat, .csStat) > strong {
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+/* the Add button beside a page's or a section's title is as tall as the other buttons there */
+html[data-theme] body :is(.nlPageActions, .nlSection > header) .nlAddPicker.quiet .stAddBtn {
+  min-height: 40px;
+}
+/* the "…" menus: 8 px corners like every control; the agent bar's as tall as its buttons, a table row's compact */
+html[data-theme] body .stMenuBtn {
+  border-radius: var(--r-control);
+}
+html[data-theme] body .dashboard .nlBarActions .stMenuBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-control);
+}
+html[data-theme] body .dashboard .agentRowMenu.stMenuBtn {
+  width: 34px;
+  height: 34px;
+}
+
+/* a line to try and its button: bottoms level */
+html[data-theme] body .stTryRow > .stAddBtn {
+  align-self: flex-end;
 }

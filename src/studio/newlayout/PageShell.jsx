@@ -2,8 +2,20 @@ import React from 'react';
 import Icon from '../../ui/Icon.jsx';
 
 // The shape every page of an agent has: a title with a line about it, the one main action on the right, parts to switch between (when the page has
-// several), then the page. `wide` lets a page use the whole width (a canvas, a table); the rest read in a column.
-export default function PageShell({ title, lead, actions, parts, part, onPart, wide = false, children, className = '' }) {
+// several), then the page. `wide` lets a page use the whole width (a canvas, a table); the rest read in a column. `partsSide` goes on the row of the parts,
+// on the right (the Workflow's toolbar, so its picture gets the height).
+export default function PageShell({ title, lead, actions, parts, part, onPart, wide = false, children, className = '', partsSide = null }) {
+  const tabs =
+    parts && parts.length > 1 ? (
+      <div className="nlParts" role="tablist" aria-label={`${title} sections`}>
+        {parts.map((p) => (
+          <button key={p.id} type="button" role="tab" aria-selected={part === p.id} className={part === p.id ? 'on' : ''} onClick={() => onPart(p.id)}>
+            {p.label}
+            {p.badge ? <b>{p.badge}</b> : null}
+          </button>
+        ))}
+      </div>
+    ) : null;
   return (
     <section className={`nlPage ${wide ? 'wide' : ''} ${className}`} aria-label={title}>
       <header className="nlPageHead">
@@ -13,15 +25,13 @@ export default function PageShell({ title, lead, actions, parts, part, onPart, w
         </div>
         {actions && <div className="nlPageActions">{actions}</div>}
       </header>
-      {parts && parts.length > 1 && (
-        <div className="nlParts" role="tablist" aria-label={`${title} sections`}>
-          {parts.map((p) => (
-            <button key={p.id} type="button" role="tab" aria-selected={part === p.id} className={part === p.id ? 'on' : ''} onClick={() => onPart(p.id)}>
-              {p.label}
-              {p.badge ? <b>{p.badge}</b> : null}
-            </button>
-          ))}
+      {tabs && partsSide ? (
+        <div className="nlPartsRow">
+          {tabs}
+          {partsSide}
         </div>
+      ) : (
+        tabs
       )}
       {children}
     </section>
@@ -29,9 +39,16 @@ export default function PageShell({ title, lead, actions, parts, part, onPart, w
 }
 
 // One setting as a row: what it is, what it is now, and a chevron that opens its panel. A row that needs attention says so without being opened.
-export function SettingRow({ icon, title, value, hint, status, onOpen, children }) {
+//   tip: more for the tooltip (the id the configuration uses, for whoever needs it); the tooltip starts with the value, which a narrow row cuts short
+export function SettingRow({ icon, title, value, hint, status, onOpen, tip, children }) {
   return (
-    <button type="button" className={`nlRow ${status ? status.tone || '' : ''}`} onClick={onOpen} aria-label={`${title}: ${value || 'not set'}`}>
+    <button
+      type="button"
+      className={`nlRow ${status ? status.tone || '' : ''}`}
+      onClick={onOpen}
+      aria-label={`${title}: ${value || 'not set'}`}
+      title={[value, tip].filter(Boolean).join('\n') || undefined}
+    >
       {icon && (
         <span className="nlRowIcon" aria-hidden="true">
           <Icon name={icon} size={18} />

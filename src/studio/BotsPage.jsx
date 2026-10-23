@@ -9,7 +9,7 @@ import { rememberNotes } from './assistantNotes.js';
 import { generateDraft } from '../demo/draftAssistant.js';
 import { setGreeting, setRole } from './simple/simpleModel.js';
 import { applyStarter, STARTERS } from './starters.js';
-import { botIdProblem, formatWhen, slugify } from './format.js';
+import { botIdProblem, formatWhen, freeBotId } from './format.js';
 import { applyTemplate, deleteTemplate, loadTemplates, parseTemplateFile, saveTemplate } from './savedTemplates.js';
 import { PAGE_SIZE, SORTS, collectFacets, filterBots, paginate, sortBots } from './agentList.js';
 import { knownMeta, useAgentHealth } from './health/useAgentHealth.js';
@@ -18,6 +18,8 @@ import { useAlertsByAgent } from './insights/AlertBell.jsx';
 import { BotRow } from './AgentTable.jsx';
 import { useManage } from './manage/useManage.jsx';
 import { navigate, routeHref } from './route.js';
+import { startSetup } from './setup/setupProgress.js';
+import { withMainLanguage } from './setup/setupModel.js';
 import { ErrorState, Modal, Notice } from './ui.jsx';
 import Icon from '../ui/Icon.jsx';
 import { SkeletonRows } from '../ui/Skeleton.jsx';
@@ -42,7 +44,8 @@ function CreateBotDialog({ existingIds, onClose }) {
   const { current: workspaceId, spaces } = useWorkspaces();
   const workspaceName = spaces.find((space) => space.id === workspaceId)?.name;
 
-  const effectiveId = idTouched ? id : slugify(name);
+  // made from the name, and free: a name another agent has gets "-2" (the id is a technical key, tucked away under Advanced)
+  const effectiveId = idTouched ? id : name.trim() ? freeBotId(name, existingIds) : '';
   const idProblem = botIdProblem(effectiveId, existingIds);
   const described = how === 'describe';
   const canCreate = !!name.trim() && !!effectiveId && !idProblem && !busy && (!described || (generated?.result?.ok && generated.for === description));
@@ -55,12 +58,16 @@ function CreateBotDialog({ existingIds, onClose }) {
       const draft = await api.createBot({ id: effectiveId, name: name.trim() });
       // The agent belongs to the workspace it is created in.
       if (workspaceId) assignBot(effectiveId, workspaceId);
+      // It also starts with a main language, the person's own (the browser's), whichever step of the setup they open first; the language step shows it
+      // to change. A template or a description that names one keeps it.
+      const languages = typeof navigator === 'undefined' ? [] : navigator.languages || [navigator.language];
+      const withLanguage = (config) => withMainLanguage(config, languages);
       if (described) {
         // The draft is made from the real new draft (so its id and version are right), with what was changed in the review applied.
         const made = generateDraft(description, draft.config, { name: name.trim() });
         let config = made.config;
         config = setRole(config, edits.role);
-        config = setGreeting(config, edits.greeting);
+        config = withLanguage(setGreeting(config, edits.greeting));
         rememberNotes(effectiveId, { source: made.source, assumptions: made.assumptions, questions: made.questions, description });
         try {
           await api.saveDraft(effectiveId, config, draft.revision);
@@ -72,7 +79,7 @@ function CreateBotDialog({ existingIds, onClose }) {
         const template = templates.find((t) => `tpl:${t.id}` === starter);
         if (template) {
           try {
-            await api.saveDraft(effectiveId, applyTemplate(draft.config, template), draft.revision);
+            await api.saveDraft(effectiveId, withLanguage(applyTemplate(draft.config, template)), draft.revision);
           } catch {
             queueChange(effectiveId, { kind: 'assistant', config: applyTemplate(draft.config, template) });
           }
@@ -81,14 +88,19 @@ function CreateBotDialog({ existingIds, onClose }) {
         // Every new agent starts from the same minimal draft; the starter is what makes it its own. If saving it
         // fails the agent still exists, and the starter is put into its draft unsaved for the person to review.
         try {
-          await api.saveDraft(effectiveId, applyStarter(draft.config, starter), draft.revision);
+          await api.saveDraft(effectiveId, withLanguage(applyStarter(draft.config, starter)), draft.revision);
         } catch {
           queueChange(effectiveId, { kind: 'starter', starter });
         }
+      } else {
+        // blank: nothing but the language, which the setup would otherwise ask for first
+        await api.saveDraft(effectiveId, withLanguage(draft.config), draft.revision).catch(() => {});
       }
       refreshBots();
       onClose();
-      navigate(routeHref(effectiveId), { guard: false });
+      // a new agent goes straight into the guided setup, at the step after this dialog
+      startSetup(effectiveId);
+      navigate(routeHref(effectiveId, 'setup'), { guard: false });
     } catch (err) {
       setError(err);
       setBusy(false);
