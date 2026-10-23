@@ -3,6 +3,7 @@ import Drawer from '../newlayout/Drawer.jsx';
 import AccessPicker from './AccessPicker.jsx';
 import { WHOLE_WORKSPACE, agentsScope, checkInvite, describeScope, hueOf, initialsOf, normalizeScope, roleOf, scopeProblem } from './teamModel.js';
 import './team.css';
+import Icon from '../../ui/Icon.jsx';
 
 // One panel for the two ways of giving access: inviting people (their addresses, then what they may do and where) and changing the access of someone who is
 // already in. Nothing changes until the button at the bottom is pressed; Cancel and Escape leave the team as it was.
@@ -89,7 +90,7 @@ export default function MemberDrawer({ mode, member = null, members, agents, sta
                   <li key={email}>
                     <span>{email}</span>
                     <button type="button" aria-label={`Remove ${email}`} onClick={() => setEmails(emails.filter((e) => e !== email))}>
-                      ×
+                      <Icon name="close" size={18} />
                     </button>
                   </li>
                 ))}

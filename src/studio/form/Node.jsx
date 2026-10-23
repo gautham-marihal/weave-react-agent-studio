@@ -1,6 +1,9 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useId, useMemo, useState } from 'react';
+import Icon from '../../ui/Icon.jsx';
+import Sheet, { DepthCtx } from './Sheet.jsx';
 import { cardsThatMayOpen } from './cardSize.js';
-import { isObj } from './engine.js';
+import { humanize, isObj } from './engine.js';
+import { PLAIN_KIND } from './plainKinds.js';
 import { keysNotOffered, modalityChoices } from './channelTypes.js';
 import {
   OwnerCtx,
@@ -16,11 +19,12 @@ import {
   useOwner,
   useStableCallback,
 } from './ctx.js';
+import { hiddenParts } from './hiddenParts.js';
 import SmartSelect from '../SmartSelect.jsx';
 import ModelField from './ModelField.jsx';
 import { enumLabels } from './plainEnums.js';
 import { modelStageOf } from './modelFields.js';
-import { CheckGroup, FreeValue, JsonInput, MultiPick, NumberInput, Select, StringList, Switch, TextInput } from './fields.jsx';
+import { CheckGroup, FreeValue, JsonInput, MultiPick, NumberInput, RangeNumber, Select, StringList, Switch, TextInput } from './fields.jsx';
 import ChannelBody from './ChannelBody.jsx';
 import ConditionBuilder from './ConditionBuilder.jsx';
 import MessageText from './MessageText.jsx';
@@ -30,7 +34,7 @@ import InlineCreate from './InlineCreate.jsx';
 import ToolBody from './ToolBody.jsx';
 import { PromptPreviewFromForm } from './PromptPreview.jsx';
 import AddPicker from './AddPicker.jsx';
-import { WHAT, pickerFor } from './pickerOptions.js';
+import { INTRO, WHAT, pickerFor, takenIdsAt } from './pickerOptions.js';
 import { setRecordingNotice } from '../simple/simpleModel.js';
 import RecordingNoticeOffer from '../records/RecordingNoticeOffer.jsx';
 import ScheduleStrip from '../relations/ScheduleStrip.jsx';
@@ -43,7 +47,7 @@ import { IdChip } from './IdTools.jsx';
 import { collectionAt, COLLECTIONS, lockedIdCollection } from './references.js';
 import { arrayStyle, carryOver, isActionList, isComplex, isRuleList, matchesDiscriminator, summarize } from './cardLogic.js';
 import EffectsEditor, { ActionSteps } from './EffectsEditor.jsx';
-import { isPromptPath, isTemplateString, scopeAt } from './templates.js';
+import { isPromptPath, isTemplateString, scopeAt, scopeSignature } from './templates.js';
 import { languageHint } from './messages.js';
 import { describeSetting } from './plainLanguage.js';
 import { TechName } from './TechName.jsx';
@@ -76,8 +80,8 @@ const REF_WORD = {
   tasks: 'tasks',
   knowledge: 'knowledge bases',
   forms: 'forms',
-  wrapups: 'wrap-ups',
-  messages: 'messages',
+  wrapups: 'closing messages',
+  messages: 'fixed lines',
   notifications: 'notifications',
   channels: 'channels',
   transfers: 'transfers',
@@ -89,27 +93,94 @@ const REF_WORD = {
   notifiers: 'SMS/email connections',
 };
 
+// What "Add …" calls one item of a list or map, where its key's own word would read oddly ("Add notification" for the messages it sends).
+const ADD_WORDS = {
+  notifications: 'message',
+  wrapups: 'closing message',
+  artifacts: 'file to save',
+  variables: 'variable',
+  constants: 'value',
+  http: 'connection',
+  mcp: 'MCP connection',
+  notifiers: 'SMS or email connection',
+};
+
 // What a setting is for, in plain words, with an example when there is one. The schema's own description (the technical wording) is one click
 // away, or open already when technical names are on. When there is no hand-written purpose the lead is the schema's first sentence.
-function Help({ lead, example, full, moreLabel = 'Technical detail', open: startOpen = false }) {
+// the last word of a text and the rest, so the "i" can be kept on the line of the last word
+const lastWord = (text) => {
+  const t = String(text).trimEnd();
+  const i = t.lastIndexOf(' ');
+  return i < 0 ? ['', t] : [t.slice(0, i + 1), t.slice(i + 1)];
+};
+
+// The "i" that shows a setting's technical detail. Drawn with CSS, not an SVG: there is one beside nearly every setting, and hundreds of SVGs slow typing
+// on a long screen.
+function InfoButton({ shown, onToggle, moreLabel = 'Technical detail' }) {
+  return (
+    <button
+      type="button"
+      className={`stFInfo ${shown ? 'on' : ''}`}
+      aria-expanded={shown}
+      aria-label={shown ? `Hide the ${moreLabel.toLowerCase()}` : moreLabel}
+      title={shown ? 'Hide' : moreLabel}
+      onClick={onToggle}
+    >
+      <span className="stFInfoMark" aria-hidden="true">
+        i
+      </span>
+    </button>
+  );
+}
+// the technical description of a setting, when it says more than the plain words
+const moreOf = (words) => (words.full && words.full.trim() && words.full.trim() !== words.lead ? words.full.trim() : '');
+
+//   shown: when given, the row draws the "i" beside the setting's name and says here whether the detail is open; else the "i" ends the help line.
+function Help({ lead, example, full, moreLabel = 'Technical detail', open: startOpen = false, shown: shownFromRow }) {
   const [open, setOpen] = useState(false);
   const more = full && full.trim() && full.trim() !== lead ? full.trim() : '';
-  const shown = open || (startOpen && !!more);
-  if (!lead && !example && !more) return null;
+  const inline = shownFromRow === undefined;
+  const shown = inline ? open || (startOpen && !!more) : shownFromRow;
+  if (!lead && !example && !(more && (inline || shown))) return null;
+  const info = more && inline ? <InfoButton shown={shown} onToggle={() => setOpen((v) => !v)} moreLabel={moreLabel} /> : null;
+  // the "i" goes with the last word, in a piece that does not wrap, so it never sits alone on a line
+  const [leadHead, leadLast] = lead ? lastWord(lead) : ['', ''];
+  const [exHead, exLast] = example ? lastWord(example) : ['', ''];
   return (
     <p className="stFHelp">
-      {lead && <span>{lead} </span>}
+      {lead &&
+        (info && !example ? (
+          <span>
+            {leadHead}
+            <span className="stFTail">
+              {leadLast} {info}
+            </span>
+          </span>
+        ) : (
+          <span>{lead} </span>
+        ))}
       {example && (
         <span className="stFExample">
-          For example: <em>{example}</em>{' '}
+          {info && exHead ? (
+            <>
+              For example: <em>{exHead}</em>
+              <span className="stFTail">
+                <em>{exLast}</em> {info}
+              </span>
+            </>
+          ) : info ? (
+            <span className="stFTail">
+              For example: <em>{exLast}</em> {info}
+            </span>
+          ) : (
+            <>
+              For example: <em>{example}</em>
+            </>
+          )}{' '}
         </span>
       )}
-      {more && (
-        <button type="button" className="stLink" aria-expanded={shown} onClick={() => setOpen((v) => !v)}>
-          {shown ? 'Less' : moreLabel}
-        </button>
-      )}
-      {more && shown && <span className="stFMore"> {more}</span>}
+      {!lead && !example && info}
+      {more && shown && <span className="stFMore">{more}</span>}
     </p>
   );
 }
@@ -155,49 +226,113 @@ function Issues({ pathKey, deep = false }) {
   });
 }
 
-function Group({ pathKey, title, hint, tooltip, count, onRemove, defaultOpen = true, actions, children, flat = false }) {
-  const { focus, countUnder } = useForm();
-  const [open, setOpen] = useState(defaultOpen);
-  useEffect(() => {
-    if (focus && isUnder(focus.key, pathKey)) setOpen(true);
-  }, [focus, pathKey]);
-  const c = countUnder(pathKey);
-  // a problem inside is never left behind a closed group
-  useEffect(() => {
-    if (c.errors > 0) setOpen(true);
-  }, [c.errors]);
+// The bin button beside a setting or a group: an icon, with the words for a screen reader and a tooltip.
+function DeleteButton({ what, onClick, disabled, small = false }) {
   return (
-    <section className={`stFGroup ${c.errors ? 'hasErr' : ''} ${flat ? 'flat' : ''}`} data-path={pathKey}>
+    <button
+      type="button"
+      className={`stFDel stFDelIcon ${small ? 'small' : ''}`}
+      aria-label={`Delete ${what}`}
+      title={`Delete ${what}`}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon name="trash" size={small ? 15 : 16} />
+    </button>
+  );
+}
+
+// A focus request opens what holds it only while it is fresh: a sheet that was closed by hand does not open again when its screen is drawn again later.
+const FRESH_FOCUS_MS = 2500;
+
+// A group of settings. On the screen itself (depth 0) it is a section that folds; inside one (depth 1 and deeper) it is a row that opens a sheet, so boxes are
+// never drawn inside boxes. `sub` is the line under a row's title when it has no hint of its own.
+function Group({ pathKey, title, hint, sub, tooltip, count, onRemove, defaultOpen = true, actions, children, flat = false }) {
+  const { focus, countUnder } = useForm();
+  const depth = useContext(DepthCtx);
+  const drill = !flat && depth >= 1;
+  const [open, setOpen] = useState(drill ? false : defaultOpen);
+  useEffect(() => {
+    if (focus && isUnder(focus.key, pathKey) && (!drill || !focus.nonce || Date.now() - focus.nonce < FRESH_FOCUS_MS)) setOpen(true);
+  }, [focus, pathKey, drill]);
+  const c = countUnder(pathKey);
+  // a problem inside is never left behind a closed section (a row that opens a sheet shows the count instead)
+  useEffect(() => {
+    if (!drill && c.errors > 0) setOpen(true);
+  }, [c.errors, drill]);
+  const dots = (
+    <>
+      {c.errors > 0 && (
+        <b className="stFDot err" title={`${c.errors} error${c.errors === 1 ? '' : 's'} inside`}>
+          {c.errors}
+        </b>
+      )}
+      {c.errors === 0 && c.warnings > 0 && (
+        <b className="stFDot warn" title={`${c.warnings} warning${c.warnings === 1 ? '' : 's'} inside`}>
+          {c.warnings}
+        </b>
+      )}
+    </>
+  );
+  const remove = onRemove ? <DeleteButton what={title} onClick={onRemove} /> : null;
+  if (drill) {
+    const line = hint || sub;
+    return (
+      <section className={`stFGroup drill ${c.errors ? 'hasErr' : ''}`} data-path={pathKey}>
+        <header>
+          <button
+            type="button"
+            className="stFGroupToggle"
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            title={tooltip || undefined}
+            onClick={() => setOpen(true)}
+          >
+            <span className="stFDrillText">
+              <strong>{title}</strong>
+              {line && <span className="stFHint">{line}</span>}
+            </span>
+            {count != null && <em>{count}</em>}
+            {dots}
+            <Icon name="chevronRight" size={16} className="stFChev" />
+          </button>
+          {(actions || remove) && (
+            <div className="stFGroupActions">
+              {actions}
+              {remove}
+            </div>
+          )}
+        </header>
+        {open && (
+          <Sheet title={title} pathKey={pathKey} onClose={() => setOpen(false)} actions={remove}>
+            <Issues pathKey={pathKey} />
+            {children}
+          </Sheet>
+        )}
+      </section>
+    );
+  }
+  return (
+    <section className={`stFGroup ${c.errors ? 'hasErr' : ''} ${flat ? 'flat' : ''} ${open ? 'open' : ''}`} data-path={pathKey}>
       <header>
         <button type="button" className="stFGroupToggle" aria-expanded={open} title={tooltip || undefined} onClick={() => setOpen((v) => !v)}>
-          <i aria-hidden="true">{open ? '▾' : '▸'}</i>
+          <Icon name="chevronRight" size={16} className="stFChev" />
           <strong>{title}</strong>
           {hint && <span className="stFHint">{hint}</span>}
           {count != null && <em>{count}</em>}
-          {c.errors > 0 && (
-            <b className="stFDot err" title={`${c.errors} error${c.errors === 1 ? '' : 's'} inside`}>
-              {c.errors}
-            </b>
-          )}
-          {c.errors === 0 && c.warnings > 0 && (
-            <b className="stFDot warn" title={`${c.warnings} warning${c.warnings === 1 ? '' : 's'} inside`}>
-              {c.warnings}
-            </b>
-          )}
+          {dots}
         </button>
-        <div className="stFGroupActions">
-          {actions}
-          {onRemove && (
-            <button type="button" className="stFDel" aria-label={`Delete ${title}`} onClick={onRemove}>
-              Delete
-            </button>
-          )}
-        </div>
+        {(actions || remove) && (
+          <div className="stFGroupActions">
+            {actions}
+            {remove}
+          </div>
+        )}
       </header>
       {(open || flat) && (
         <div className="stFGroupBody">
           <Issues pathKey={pathKey} />
-          {children}
+          <DepthCtx.Provider value={flat ? depth : depth + 1}>{children}</DepthCtx.Provider>
         </div>
       )}
     </section>
@@ -226,17 +361,23 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
     case 'boolean':
       return <Switch id={id} checked={!!value} onChange={onChange} disabled={disabled} label={id ? undefined : shape.title || 'Setting'} />;
     case 'number': {
+      const min = shape.minimum ?? (shape.exclusiveMinimum !== undefined ? shape.exclusiveMinimum : undefined);
+      const max = shape.maximum;
+      const integer = [].concat(shape.type).includes('integer');
+      const ranged = typeof min === 'number' && typeof max === 'number' && max > min && max - min <= 100 && readXui(shape).widget !== 'duration';
+      const Field = ranged ? RangeNumber : NumberInput;
       const input = (
-        <NumberInput
+        <Field
           id={id}
           value={value}
           onChange={onChange}
-          min={shape.minimum ?? (shape.exclusiveMinimum !== undefined ? shape.exclusiveMinimum : undefined)}
-          max={shape.maximum}
-          integer={[].concat(shape.type).includes('integer')}
+          min={min}
+          max={max}
+          integer={integer}
           nullable={engine.isNullable(shape)}
           disabled={disabled}
           invalid={invalid}
+          placeholder={value === undefined ? 'Not set' : undefined}
         />
       );
       return readXui(shape).widget === 'duration' ? (
@@ -338,11 +479,12 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
             <TrySpeech path={path} />
           </>
         );
+      // (not when what it hides is asked above the form, by After the call's card, which has its own)
       if (path.length === 2 && path[0] === 'post_call' && path[1] === 'redaction')
         return (
           <>
             <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />
-            <TryRedaction />
+            {!ctx.hidden?.has('post_call.redaction.entities') && <TryRedaction />}
           </>
         );
       if (path.length === 1 && path[0] === 'guardrails')
@@ -371,21 +513,43 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
 // A template box whose scope (the names a template may use here) comes from the config in the form's store, so it only re-renders when
 // those names change, not on every keystroke elsewhere.
 function ScopedTemplateField({ path, ...props }) {
-  const scope = useConfigSelect((c) => scopeAt(c, path));
-  return <TemplateField {...props} scope={scope} />;
+  const { store } = useForm();
+  const signature = useConfigSelect((c) => scopeSignature(c, path), Object.is);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope changes exactly when its signature does
+  const scope = useMemo(() => scopeAt(store.get(), path), [signature, keyOf(path), store]);
+  // text written to the agent about a channel (its extra instructions) gets the plain menu, as the Agent page's instructions do
+  const plain = path[0] === 'channels' && path[path.length - 1] === 'instructions_append';
+  return <TemplateField {...props} scope={scope} plain={plain} />;
+}
+
+// What a field points at, by name: an agent by its own name, anything else by its id in words ("escalate_to_human" → "Escalate to human"); two that
+// would read the same keep their ids beside them. With technical names on, the ids.
+function refLabels(name, options, config) {
+  const agents = Array.isArray(config?.agents?.items) ? config.agents.items.filter(isObj) : [];
+  const words = (id) => {
+    if (name === 'agents') {
+      const agent = agents.find((a) => a.id === id);
+      if (typeof agent?.name === 'string' && agent.name.trim()) return agent.name.trim();
+      if (agent && agents.length === 1 && typeof config?.meta?.name === 'string' && config.meta.name.trim()) return config.meta.name.trim();
+    }
+    return humanize(String(id));
+  };
+  const first = options.map(words);
+  return Object.fromEntries(options.map((id, i) => [id, first.indexOf(first[i]) !== first.lastIndexOf(first[i]) ? `${first[i]} (${id})` : first[i]]));
 }
 
 function RefSelect({ shape, value, onChange, disabled, id, invalid, path }) {
-  const { refOptions, goTo } = useForm();
+  const { refOptions, goTo, technical, store } = useForm();
   const [creating, setCreating] = useState(false);
   const name = shape['x-ref'];
   const options = refOptions[name] || [];
+  const labels = technical ? undefined : refLabels(name, options, store.get());
   const [target, label] = REF_TARGET[name] || [];
   // Some of what a field points at can be made right here: the new thing is added and the field points at it.
   const spec = !disabled ? CREATABLE[name] : null;
   const newButton = spec && (
     <button type="button" className="stLink stNewBtn" onClick={() => setCreating((v) => !v)}>
-      ＋ New {spec.word}
+      <Icon name="plus" size={14} /> New {spec.word}
     </button>
   );
   const form = creating && (
@@ -426,6 +590,7 @@ function RefSelect({ shape, value, onChange, disabled, id, invalid, path }) {
         id={id}
         value={value}
         options={options}
+        labels={labels}
         onChange={onChange}
         disabled={disabled}
         invalid={invalid}
@@ -545,23 +710,32 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
     const h = readXui(flatOf(k));
     return { ...h, advanced: h.advanced || (!expertHome && (h.audience || wordsOf(k).level) === 'expert') };
   };
+  // a channel with no voice is not offered the settings only a voice channel has (what is already set stays, and the channel says so)
+  const notOffered = channelTypes ? keysNotOffered(store.get(), channelTypes, path) : [];
+  // Every setting is on the screen, the ones not set too: those show the value the agent uses anyway (the default), and changing it sets it. Nothing is
+  // hidden behind an "add" menu. A deprecated one, or one this kind of channel can't use, is shown only while it is set.
+  const unsetShown = (k) => !(k in obj) && !required.includes(k) && !flatOf(k).deprecated && !notOffered.includes(k);
   const rows = orderKeys(
-    visible.filter((k) => k in obj || required.includes(k)),
+    visible.filter((k) => k in obj || required.includes(k) || unsetShown(k)),
     hintsOf,
   );
   const { main, advanced } = splitAdvanced(rows, hintsOf);
   const sections = groupKeys(main, hintsOf);
-  // a channel with no voice is not offered the settings only a voice channel has (what is already set stays, and the channel says so)
-  const notOffered = channelTypes ? keysNotOffered(store.get(), channelTypes, path) : [];
-  const addable = visible.filter((k) => !(k in obj) && !required.includes(k) && !flatOf(k).deprecated && !notOffered.includes(k));
   const unknown = showUnknown ? Object.keys(obj).filter((k) => !(k in shape.properties)) : [];
   const extra = isObj(shape.additionalProperties) ? shape.additionalProperties : null;
   const openExtra = shape.additionalProperties === undefined && shape.unevaluatedProperties === undefined;
 
   const setProp = (key, v) => onChange(v === undefined ? omit(obj, key) : orderedSet(obj, key, v, order));
+  // Deleting a row takes out what the row shows. The parts the page asks for elsewhere (a card above the form: After the call's switches and ticks) stay,
+  // and a row holding nothing but those has no Delete.
+  const keptOf = (key) => hiddenParts(obj[key], [...path, key].join('.'), hidden);
+  const onlyHidden = (key) => {
+    const kept = keptOf(key);
+    return kept !== undefined && JSON.stringify(kept) === JSON.stringify(obj[key]);
+  };
   const del = (key, label) => {
     markDelete(label || wordsOf(key).label);
-    setProp(key, undefined);
+    setProp(key, keptOf(key));
   };
   // Fields that are set and optional can be deleted; required ones are always part of the object.
   const renderRow = (key) => (
@@ -572,13 +746,14 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
       value={obj[key]}
       path={[...path, key]}
       required={required.includes(key)}
-      missing={!(key in obj)}
+      missing={!(key in obj) && required.includes(key)}
+      unset={unsetShown(key)}
       disabled={disabled}
       collapsed={collapsedKeys?.has(key)}
       sole={rows.length === 1}
       onChange={(v) => setProp(key, v)}
       onAdd={() => setProp(key, engine.defaultFor(shape.properties[key]))}
-      onRemove={!required.includes(key) ? () => del(key) : null}
+      onRemove={!required.includes(key) && !onlyHidden(key) ? () => del(key) : null}
     />
   );
 
@@ -592,7 +767,9 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
       ))}
       {advanced.length > 0 && (
         <details className="stFAdvanced" open={advanced.some((key) => issuesUnder(keyOf([...path, key])).length > 0) || undefined}>
-          <summary>Advanced ({advanced.length})</summary>
+          <summary>
+            Advanced settings <span className="stFCount">{advanced.length}</span>
+          </summary>
           <div className="stFGrid">{advanced.map(renderRow)}</div>
         </details>
       )}
@@ -613,51 +790,78 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
             <div className="stFLabel">
               <label>{key}</label>
               <span className={`stFTag ${openExtra ? '' : 'bad'}`}>{openExtra ? 'custom field' : 'not in the schema'}</span>
-              <button type="button" className="stFDel small" aria-label={`Delete ${key}`} disabled={disabled} onClick={() => del(key, key)}>
-                Delete
-              </button>
+              <DeleteButton small what={key} disabled={disabled} onClick={() => del(key, key)} />
             </div>
             <FreeValue value={obj[key]} onChange={(v) => setProp(key, v)} disabled={disabled} />
             <Issues pathKey={keyOf([...path, key])} />
           </div>
         ),
       )}
-      {(addable.length > 0 || extra || openExtra) && (
+      {(extra || openExtra) && (
         <div className="stFAddRow">
-          {addable.length > 0 && (
-            <SmartSelect
-              action
-              className="stFInput small"
-              disabled={disabled}
-              ariaLabel="Add a setting"
-              placeholder="More settings…"
-              options={addable.map((k) => ({ value: k, label: wordsOf(k).label }))}
-              onChange={(k) => {
-                if (k) setProp(k, engine.defaultFor(shape.properties[k]));
-              }}
-            />
-          )}
-          {(extra || openExtra) && (
-            <AddKey existing={Object.keys(obj)} disabled={disabled} label="custom field" onAdd={(k) => setProp(k, extra ? engine.defaultFor(extra) : '')} />
-          )}
+          <AddKey existing={Object.keys(obj)} disabled={disabled} label="custom field" onAdd={(k) => setProp(k, extra ? engine.defaultFor(extra) : '')} />
         </div>
       )}
-      {rows.length === 0 && unknown.length === 0 && addable.length === 0 && !extra && <p className="stFEmpty">Nothing to set here.</p>}
+      {rows.length === 0 && unknown.length === 0 && !extra && <p className="stFEmpty">Nothing to set here.</p>}
     </div>
   );
 }
 
 // ---- one labelled property of an object ------------------------------------------------------
 
-export function FieldRow({ name, schema, value, path, required, missing, disabled, onChange, onAdd, onRemove, label, collapsed, sole }) {
+// `unset`: an optional setting that is not in the configuration. It is drawn like any other, with the value the agent uses anyway (the schema's
+// default) and "Default" beside its name; the first change sets it. It is the same markup as a set row, so typing into it keeps the cursor.
+export function FieldRow({
+  name,
+  schema,
+  value: given,
+  path,
+  required,
+  missing,
+  unset: unsetOptional = false,
+  disabled,
+  onChange: change,
+  onAdd,
+  onRemove: remove,
+  label,
+  collapsed,
+  sole,
+}) {
+  // a setting that isn't in the configuration, optional or required: it is drawn with its control (and its default) all the same, so filling it in is
+  // one step; a required one is also marked as needing a value
+  const unset = unsetOptional || !!missing;
+  missing = !!missing && !!required; // an optional part a caller marks as absent is just not set
   const ctx = useForm();
   const { engine } = ctx;
   const key = keyOf(path);
   const inputId = useId();
-  const shape = engine.resolveShape(schema, value);
+  const [infoToggled, setInfoToggled] = useState(false);
+  const declared = engine.resolveShape(schema, given);
+  const kindUnset = engine.kindOf(declared);
+  const styleUnset = kindUnset === 'array' ? arrayStyle(engine, declared) : null;
+  const groupedUnset = kindUnset === 'object' || kindUnset === 'map' || (kindUnset === 'array' && styleUnset === 'cards');
+  // what an unset setting shows: its default (a group shows the defaults of its parts); a yes/no with no default is "no"
+  const shownDefault = !unset
+    ? given
+    : groupedUnset
+      ? engine.defaultFor(schema)
+      : declared.default !== undefined
+        ? declared.default
+        : kindUnset === 'boolean'
+          ? false
+          : kindUnset === 'array'
+            ? []
+            : undefined;
+  const value = shownDefault;
+  // an unset setting is set by a real change only: clearing an empty box leaves it unset
+  // (a choice of kinds is a real change even when the chosen kind starts empty)
+  const onChange = unset && kindUnset !== 'union' ? (v) => (v === '' || v === undefined || v === null ? undefined : change(v)) : change;
+  const onRemove = unset ? null : remove;
+  const shape = unset ? engine.resolveShape(schema, value) : declared;
   const kind = engine.kindOf(shape);
   const readOnly = ctx.readOnly.has(key);
   const words = useSettingWords(name, shape, label);
+  const hasDefault = declared.default !== undefined;
   const lockedIn = name === 'id' && !missing && typeof value === 'string' && value ? lockedIdCollection(path) : null;
   if (lockedIn)
     return (
@@ -667,7 +871,12 @@ export function FieldRow({ name, schema, value, path, required, missing, disable
     );
   const { title } = words;
   const technical = ctx.technical;
+  // the technical detail opens from an "i" beside the setting's name (open from the start when technical names are on)
+  const more = moreOf(words);
+  const infoShown = !!more && (technical ? !infoToggled : infoToggled);
+  const infoButton = more ? <InfoButton shown={infoShown} onToggle={() => setInfoToggled((v) => !v)} moreLabel={words.moreLabel} /> : null;
   const helpLine = <Help lead={words.lead} example={words.example} full={words.full} moreLabel={words.moreLabel} open={technical} />;
+  const rowHelp = <Help lead={words.lead} example={words.example} full={words.full} moreLabel={words.moreLabel} shown={infoShown} />;
   const tags = (
     <>
       {required && (
@@ -675,25 +884,30 @@ export function FieldRow({ name, schema, value, path, required, missing, disable
           *
         </abbr>
       )}
+      {infoButton}
       {shape.deprecated && <span className="stFTag warn">deprecated</span>}
       {readOnly && <span className="stFTag">set by the server</span>}
       {technical && <TechName name={name} path={path} />}
     </>
   );
 
-  if (missing) {
+  // a kind with no plain control to show (raw JSON, a fixed value): one button sets it
+  if (unset && ['json', 'const', 'null'].includes(kind)) {
     return (
-      <div className={`stFRow wide ${required ? 'missing' : ''}`} data-path={key}>
+      <div className={`stFRow ${required ? 'missing' : ''}`} data-path={key}>
         <div className="stFLabel">
           <label title={words.lead || undefined}>{title}</label>
           {tags}
           {required && <span className="stFTag bad">required, not set</span>}
+          {!required && <span className="stFDefault">Not set</span>}
         </div>
-        <button type="button" className="stAddBtn" disabled={disabled} onClick={onAdd}>
-          ＋ Set {title.toLowerCase()}
-        </button>
-        <Issues pathKey={key} />
-        {helpLine}
+        {rowHelp}
+        <div className="stFRowCtl">
+          <button type="button" className="stAddBtn" disabled={disabled} onClick={onAdd}>
+            <Icon name="plus" size={14} /> Set {title.toLowerCase()}
+          </button>
+          <Issues pathKey={key} />
+        </div>
       </div>
     );
   }
@@ -708,11 +922,21 @@ export function FieldRow({ name, schema, value, path, required, missing, disable
           pathKey={key}
           title={title}
           tooltip={words.lead}
+          sub={words.lead}
           actions={technical ? <TechName name={name} path={path} /> : null}
-          count={count}
+          count={unset ? null : count}
+          hint={missing ? 'Needed: not set yet' : unset ? 'Using the defaults' : undefined}
           onRemove={onRemove}
           flat={sole && !onRemove && kind !== 'array' && path.length <= 2}
-          defaultOpen={collapsed ? false : kind === 'array' ? Array.isArray(value) && value.length <= 4 : sole || words.level === 'guided'}
+          defaultOpen={
+            missing
+              ? true
+              : collapsed || (unset && !sole)
+                ? false
+                : kind === 'array'
+                  ? Array.isArray(value) && value.length <= 4
+                  : sole || words.level === 'guided'
+          }
         >
           {helpLine}
           <OwnerCtx.Provider value={name}>
@@ -730,51 +954,102 @@ export function FieldRow({ name, schema, value, path, required, missing, disable
     (kind === 'string' && (shape['x-ui']?.widget === 'textarea' || String(value ?? '').length > 60)) ||
     kind === 'secret';
   const deepIssues = kind === 'array' || kind === 'json';
+  // a single control takes the label (clicking the name focuses it); a list, a choice of kinds or a fixed value is a group named by it instead
+  const takesId = !['const', 'null', 'object', 'array', 'map', 'union'].includes(kind) && !(kind === 'string' && readXui(shape).widget === 'jsonpath');
+  const labelId = `${inputId}-name`;
   return (
-    <div className={`stFRow ${wide ? 'wide' : ''} ${readOnly ? 'ro' : ''}`} data-path={key}>
+    <div className={`stFRow ${wide ? 'wide' : ''} ${readOnly ? 'ro' : ''} ${kind === 'boolean' ? 'toggle' : ''} ${missing ? 'missing' : ''}`} data-path={key}>
       <div className="stFLabel">
-        <label htmlFor={inputId} title={words.lead || undefined}>
+        <label htmlFor={takesId ? inputId : undefined} id={labelId} title={words.lead || undefined}>
           {title}
         </label>
         {tags}
+        {missing && <span className="stFTag bad">required, not set</span>}
+        {unsetOptional && hasDefault && <span className="stFDefault">Default</span>}
         {onRemove && !readOnly && (
-          <button type="button" className="stFDel small" aria-label={`Delete ${title}`} disabled={disabled} onClick={onRemove}>
-            Delete
+          <button
+            type="button"
+            className="stFReset"
+            disabled={disabled}
+            aria-label={hasDefault ? `Reset ${title} to its default` : `Clear ${title}`}
+            title={hasDefault ? 'Back to the default' : 'Take this setting out'}
+            onClick={onRemove}
+          >
+            <Icon name="undo" size={14} />
+            {hasDefault ? 'Reset' : 'Clear'}
           </button>
         )}
       </div>
-      <OwnerCtx.Provider value={name}>
-        <Node
-          schema={schema}
-          value={value}
-          path={path}
-          onChange={onChange}
-          disabled={disabled || readOnly}
-          id={inputId}
-          invalid={(ctx.exact.get(key) || []).some((i) => i.severity === 'error')}
-        />
-      </OwnerCtx.Provider>
-      <Issues pathKey={key} deep={deepIssues} />
-      {helpLine}
-      <FieldNote path={path} value={value} />
+      {rowHelp}
+      <div className="stFRowCtl" role={takesId ? undefined : 'group'} aria-labelledby={takesId ? undefined : labelId}>
+        <OwnerCtx.Provider value={name}>
+          <Node
+            schema={schema}
+            value={value}
+            path={path}
+            onChange={onChange}
+            disabled={disabled || readOnly}
+            id={inputId}
+            invalid={(ctx.exact.get(key) || []).some((i) => i.severity === 'error')}
+          />
+        </OwnerCtx.Provider>
+        <Issues pathKey={key} deep={deepIssues} />
+        <FieldNote path={path} value={value} />
+      </div>
     </div>
   );
 }
 
 // ---- unions ----------------------------------------------------------------------------------
 
+// A check on what is said is chosen by what it does ("Refuses tricks to change its instructions"), as Add names it, not by the schema's title
+// ("Prompt-injection detector"); with technical names on, the schema's own.
+const isCheckPath = (path) => path.length === 3 && path[0] === 'guardrails' && (path[1] === 'input' || path[1] === 'output') && typeof path[2] === 'number';
+
 function UnionBody({ shape, value, path, onChange, disabled }) {
-  const { engine } = useForm();
+  const { engine, technical } = useForm();
   const branches = useMemo(() => engine.branchesOf(shape), [engine, shape]);
   const picked = engine.pickBranch(branches, value);
   // The kind is clear when the value fits it, or carries its marker (`type: "http"`) with some required fields still missing: then
   // that kind's editor is shown with what is missing marked, instead of raw JSON.
   const fitsBranch = engine.fits(branches[picked], value) || matchesDiscriminator(engine, branches[picked], value);
-  const labels = branches.map((b, i) => engine.branchLabel(b, i));
+  const labels = branches.map((b, i) => {
+    const kind = engine.flatten(b).properties?.type?.const;
+    return isCheckPath(path) && !technical && PLAIN_KIND[kind] ? PLAIN_KIND[kind] : engine.branchLabel(b, i);
+  });
   const segmented = branches.length <= 4 && labels.join('').length <= 48;
   const choose = (index) => {
     if (index !== picked || !fitsBranch) onChange(carryOver(engine, value, branches[index], engine.defaultFor(branches[index])));
   };
+  // not set yet: the choice of kinds, and nothing chosen (a single kind is simply drawn, with its defaults)
+  if (value === undefined) {
+    if (branches.length === 1) return <Node schema={branches[0]} value={engine.defaultFor(branches[0])} path={path} onChange={onChange} disabled={disabled} />;
+    return (
+      <div className="stFUnion">
+        {segmented ? (
+          <div className="stFSeg" role="group" aria-label="Kind">
+            {labels.map((text, i) => (
+              <button key={i} type="button" disabled={disabled} aria-pressed={false} onClick={() => choose(i)}>
+                {text}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <SmartSelect
+            className="stFInput small"
+            disabled={disabled}
+            ariaLabel="Kind"
+            value=""
+            placeholder="Choose…"
+            options={labels.map((text, i) => ({ value: String(i), label: text }))}
+            onChange={(v) => {
+              if (v !== '') choose(Number(v));
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="stFUnion">
@@ -907,7 +1182,7 @@ const CardItem = React.memo(function CardItem({
         !disabled && count > 1 ? (
           <>
             <button type="button" className="stIconBtn" aria-label={`Move ${title} up`} disabled={index === 0} onClick={() => onMoveItem(index, index - 1)}>
-              ↑
+              <Icon name="chevronUp" size={14} />
             </button>
             <button
               type="button"
@@ -916,7 +1191,7 @@ const CardItem = React.memo(function CardItem({
               disabled={index === count - 1}
               onClick={() => onMoveItem(index, index + 1)}
             >
-              ↓
+              <Icon name="chevronDown" size={14} />
             </button>
           </>
         ) : null
@@ -960,10 +1235,13 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
   const branches = isUnion ? engine.branchesOf(items) : null;
   const lastKey = path[path.length - 1];
   const base = singular(lastKey === 'items' ? path[path.length - 2] : lastKey);
-  const takenIds = list
+  const word = ADD_WORDS[lastKey] || base.replace(/_/g, ' '); // what "Add …" calls one of them
+  const ownIds = list
     .filter(isObj)
     .map((item) => item.id)
     .filter((id) => typeof id === 'string');
+  // a list of guardrails shares its ids with the other two (takenIdsAt), so a new check is named clear of all three
+  const takenIds = path[0] === 'guardrails' ? [...new Set([...ownIds, ...takenIdsAt(ctx.store.get(), path)])] : ownIds;
   // Some lists are added to by choosing a job from cards (tools, channels, guardrails), not a kind from a drop-down.
   const pickerKey =
     collection === 'tools'
@@ -1078,7 +1356,8 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
           onMoveItem={moveItem}
         />
       ))}
-      {list.length === 0 && (
+      {/* an empty list is just its "Add" (a line saying it is empty would only repeat that) */}
+      {list.length === 0 && (collection === 'tools' || disabled) && (
         <p className="stFEmpty">
           {collection === 'tools'
             ? 'No tools yet. Handing a caller over to another agent isn’t a tool: it is set up under the agent’s Handoffs.'
@@ -1088,6 +1367,7 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
       {picker ? (
         <AddPicker
           what={WHAT[pickerKey]}
+          intro={INTRO[pickerKey]}
           options={picker}
           disabled={disabled}
           onPick={(option, made) => {
@@ -1101,8 +1381,8 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
           action
           className="stFInput small"
           disabled={disabled}
-          ariaLabel={`Add ${base}`}
-          placeholder={`＋ Add ${base}…`}
+          ariaLabel={`Add ${word}`}
+          placeholder={`Add ${word}…`}
           options={branches.map((b, i) => {
             const kind = engine.flatten(b).properties?.type?.const;
             const missing = collection === 'tools' && UNSUPPORTED_KINDS[kind];
@@ -1114,7 +1394,7 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
         />
       ) : (
         <button type="button" className="stAddBtn" disabled={disabled} onClick={() => add()}>
-          ＋ Add {base}
+          <Icon name="plus" size={14} /> Add {word}
         </button>
       )}
       {offerNotice && !disabled && <NoticeOffer onDone={() => setOfferNotice(false)} />}
@@ -1151,7 +1431,7 @@ function AddKey({ existing, onAdd, pattern, options, disabled, label = 'entry' }
         className="stFInput small"
         disabled={disabled || left.length === 0}
         ariaLabel={`Add ${label}`}
-        placeholder={left.length ? `＋ Add ${label}…` : `No more ${label}s to add`}
+        placeholder={left.length ? `Add ${label}…` : `No more ${label}s to add`}
         options={left}
         onChange={(o) => {
           if (o) onAdd(o);
@@ -1181,7 +1461,7 @@ function AddKey({ existing, onAdd, pattern, options, disabled, label = 'entry' }
         }}
       />
       <button type="button" className="stAddBtn" disabled={disabled || !text.trim()} onClick={() => commit(text)}>
-        ＋ Add
+        <Icon name="plus" size={14} /> Add
       </button>
       {error && <small className="stFErr">{error}</small>}
     </div>
@@ -1272,6 +1552,9 @@ function MapBody({ shape, value, path, onChange, disabled }) {
     else remove();
   };
   const add = (key) => onChange({ ...obj, [key]: valueSchema ? engine.defaultFor(valueSchema) : '' });
+  const word = ADD_WORDS[String(path[path.length - 1])] || singular(String(path[path.length - 1])).replace(/_/g, ' ');
+  const madeKey = fixedKeys ? null : uniqueId(keys, word);
+  const autoKey = madeKey && (!pattern || new RegExp(pattern).test(madeKey)) ? madeKey : null;
 
   return (
     <div className="stFMap">
@@ -1331,20 +1614,27 @@ function MapBody({ shape, value, path, onChange, disabled }) {
               disabled={disabled}
               onClick={() => removeEntry(key)}
             >
-              ×
+              <Icon name="close" size={14} />
             </button>
           </div>
         );
       })}
-      {keys.length === 0 && <p className="stFEmpty">Nothing here yet.</p>}
-      <AddKey
-        existing={keys}
-        pattern={pattern}
-        options={fixedKeys ? refOptions[refName] || [] : null}
-        disabled={disabled}
-        label={fixedKeys ? (REF_WORD[refName] || 'entry').replace(/s$/, '') : 'entry'}
-        onAdd={add}
-      />
+      {keys.length === 0 && disabled && <p className="stFEmpty">Nothing here yet.</p>}
+      {autoKey ? (
+        // one click adds one, with a name made up for it that can be changed in place (no name to type before it exists)
+        <button type="button" className="stAddBtn" disabled={disabled} onClick={() => add(autoKey)}>
+          <Icon name="plus" size={14} /> Add {word}
+        </button>
+      ) : (
+        <AddKey
+          existing={keys}
+          pattern={pattern}
+          options={fixedKeys ? refOptions[refName] || [] : null}
+          disabled={disabled}
+          label={fixedKeys ? (REF_WORD[refName] || 'entry').replace(/s$/, '') : word}
+          onAdd={add}
+        />
+      )}
     </div>
   );
 }

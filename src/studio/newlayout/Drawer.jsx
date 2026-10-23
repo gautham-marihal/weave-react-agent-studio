@@ -1,28 +1,44 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
+import { holdStagedPanel } from './stagedPanel.js';
+
+// Whether another dialog sits over the panel (a confirmation opened from inside it, the search): the key was pressed in that dialog, or it was put on
+// the page after the panel (each dialog goes to the end of the page when it opens, and is drawn above what came before).
+export function coveredBy(panel, target) {
+  if (!panel) return false;
+  const layer = typeof target?.closest === 'function' ? target.closest('[aria-modal="true"]') : null;
+  if (layer && layer !== panel) return true;
+  const layers = document.querySelectorAll('[aria-modal="true"]');
+  const top = layers[layers.length - 1];
+  return !!top && top !== panel;
+}
 
 // A panel that slides in from the right and keeps the page where it was. The keyboard goes into it (to the close button), Tab stays inside it, Escape
-// closes it (an open list inside it closes first), and closing puts the keyboard back on whatever opened it.
-export default function Drawer({ title, icon, onClose, children, footer = null, width = 'normal', label }) {
-  const ref = useRef(null);
+// closes it (an open list inside it closes first, and a dialog opened over it closes alone), and closing puts the keyboard back on whatever opened it.
+//   panelRef: a ref that is given the panel too (StagedDrawer gives the keyboard back to it)
+export default function Drawer({ title, icon, onClose, children, footer = null, width = 'normal', label, className = '', panelRef }) {
+  const own = useRef(null);
+  const ref = panelRef || own;
   useEffect(() => {
     const opener = document.activeElement;
     ref.current?.querySelector('.nlDrawerClose')?.focus({ preventScroll: true });
     return () => {
       if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus({ preventScroll: true });
     };
-  }, []);
+    // once per opening: the ref is the same for as long as the panel is open
+  }, [ref]);
   useEffect(() => {
     const onKey = (event) => {
-      if (event.key === 'Escape' && !event.defaultPrevented) {
-        event.preventDefault();
-        onClose();
-      }
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      // a dialog over the panel takes its own Escape: closing the panel too would drop what is in it
+      if (coveredBy(ref.current, event.target)) return;
+      event.preventDefault();
+      onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, ref]);
   const keepFocusInside = (event) => {
     if (event.key !== 'Tab' || !ref.current) return;
     const items = [...ref.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]')].filter(
@@ -41,8 +57,17 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
   };
   return createPortal(
     <>
-      <div className="nlScrim" aria-hidden="true" onMouseDown={onClose} />
-      <aside className={`nlDrawer ${width}`} role="dialog" aria-modal="true" aria-label={label || title} ref={ref} onKeyDown={keepFocusInside}>
+      {/* on click, not on press: closing on the press would let the release land on whatever is under the scrim, so one click would both close the
+          panel and open that (a menu item, a button) */}
+      <div className="nlScrim" aria-hidden="true" onClick={onClose} />
+      <aside
+        className={`nlDrawer ${width} ${className}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label || title}
+        ref={ref}
+        onKeyDown={keepFocusInside}
+      >
         <header className="nlDrawerHead">
           {icon && (
             <span className="nlDrawerIcon" aria-hidden="true">
@@ -87,12 +112,27 @@ export function StagedDrawer({ editor, title, icon, onClose, children, width, do
     if (JSON.stringify(d) !== JSON.stringify(e.parsed.value)) e.setValue(d);
     close();
   }, []);
+  // while it has changes waiting, whatever would replace it (the search opening another panel or page) asks first: keep them, or stay (stagedPanel.js)
+  const panel = useRef(null);
+  useEffect(() => {
+    if (!changed) return undefined;
+    return holdStagedPanel({
+      title,
+      doneLabel,
+      done,
+      refocus: () => {
+        const box = panel.current;
+        if (box && !box.contains(document.activeElement)) box.querySelector('.nlDrawerClose')?.focus({ preventScroll: true });
+      },
+    });
+  }, [changed, title, doneLabel, done]);
   return (
     <Drawer
       title={title}
       icon={icon}
       onClose={onClose}
       width={width}
+      panelRef={panel}
       footer={
         <>
           <button type="button" className="quietButton" onClick={onClose}>

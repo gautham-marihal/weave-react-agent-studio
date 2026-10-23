@@ -20,6 +20,7 @@ import {
 import { previewPromptDemo, previewResultDemo } from './demoPreview.js';
 import { demoEntities, tryPreviewDemo } from './demoTryPreviews.js';
 import { routeNumbers } from './demoNumbers.js';
+import { followLive, liveCallOf, liveCallsFor } from './demoLive.js';
 import { FALLBACK_TYPES } from '../studio/form/channelTypes.js';
 import { minimalConfig } from './minimalConfig.js';
 import { callFromConversation, followCallOf, getCallOf, listCallsOf, seedCalls, transcriptOf } from './demoCalls.js';
@@ -76,6 +77,24 @@ export function browserStorage(key = STORAGE_KEY) {
   };
 }
 
+// The made-up calls (seeded, and the ones going on from the clock) are written as run in an environment, with a version. When they are read they say
+// where the agent really runs and what: the environment that runs the call's version now (its own first), else, for a version that was published, where
+// the agent runs now (it ran there before the version that is there now), and a version never published becomes the one running there. An agent never
+// put live has test conversations only ("draft"). So a call never claims an environment the agent was never put in, nor a version that does not exist.
+// Calls from real test conversations say "draft" already and are left alone.
+//   published: the agent's published versions (left out, every version counts as published)
+const ENVIRONMENTS_RUN = ['production', 'staging', 'development'];
+export function placeCall(call, deployed = {}, published = null) {
+  const s = call?.summary;
+  if (!s || !ENVIRONMENTS_RUN.includes(s.ref)) return call;
+  const live = ENVIRONMENTS_RUN.filter((env) => deployed?.[env]);
+  if (!live.length) return { ...call, summary: { ...s, ref: 'draft', version: 'draft' } };
+  const runs = [s.ref, ...live].find((env) => deployed?.[env] && deployed[env] === s.version);
+  const ref = runs || (deployed?.[s.ref] ? s.ref : live[0]);
+  const version = runs || !published || published.includes(s.version) ? s.version : deployed[ref];
+  return ref === s.ref && version === s.version ? call : { ...call, summary: { ...s, ref, version } };
+}
+
 export function createDemoApi({
   storage = memoryStorage(),
   loadSchema = async () => ({}),
@@ -83,6 +102,9 @@ export function createDemoApi({
   seed = true,
   stepMs = STEP_MS,
   history = true,
+  // an agent created here starts with no calls, as on a real server, and made-up ones come in once it is put live; off, it is given sample calls at once
+  // (what the screen tests build on)
+  quietNewAgents = false,
 } = {}) {
   let counter = 0;
   const uid = (prefix) => {
@@ -112,6 +134,27 @@ export function createDemoApi({
     const support = make('acme-support', 'Acme Support', 'support');
     const front = make('front-desk', 'Front Desk', 'receptionist');
     make('bookings', 'Bookings', 'appointment');
+    // Front Desk also answers the phone, so the screens that are about voice (phone callers on the Live board, voice calls on Calls) have something to show
+    front.config.channels = [
+      ...front.config.channels,
+      {
+        id: 'phone',
+        type: 'sip_voice',
+        enabled: true,
+        // how callers reach it is a phone number the platform sets up (Releases › Deploy), never typed into the channel
+        entry: {},
+        modalities: { input: ['audio'], output: ['audio'] },
+        greeting: { say: 'Welcome to the front desk. How can I help you?' },
+      },
+    ];
+    front.config.defaults = {
+      ...front.config.defaults,
+      models: {
+        ...front.config.defaults.models,
+        stt: { provider: 'deepgram', model: 'nova-3', language: 'en', api_key: { secret: 'DEEPGRAM_API_KEY' } },
+        tts: { provider: 'elevenlabs', model: 'eleven_flash_v2_5', voice_id: 'EXAVITQu4vr4xnSDxMaL', api_key: { secret: 'ELEVEN_API_KEY' } },
+      },
+    };
     // a little history, so the Versions and Deploy screens have something to show
     const publish = (bot, version) => {
       {
@@ -209,7 +252,7 @@ export function createDemoApi({
           { name: 'silero', stages: ['vad'], installed: true, realtime_runnable: false, default_secret: null, key_available: false },
         ],
         stages: { stt: 'Speech-to-text', llm: 'Language model', tts: 'Text-to-speech', realtime: 'Realtime', vad: 'Voice activity' },
-        turn_detectors: [],
+        turn_detectors: ['livekit-multilingual', 'livekit-english'],
         note: 'Demo mode: this is a made-up list of what a server could offer, not a real server.',
       });
     }
@@ -254,6 +297,11 @@ export function createDemoApi({
       if (RESERVED_IDS.includes(id)) return fail(400, `'${id}' is reserved and cannot be used as an agent id.`);
       if (state.bots[id]) return fail(409, `An agent with the id '${id}' already exists.`);
       state.bots[id] = newBot(id, String(name || id));
+      // a new agent has had no calls, as on a real server; made-up calls start coming in once it is put live (`quiet` goes at its first deploy)
+      if (quietNewAgents) {
+        state.bots[id].calls = [];
+        state.bots[id].quiet = true;
+      }
       commit();
       return ok(draftOf(state.bots[id]), 201);
     }
@@ -343,6 +391,7 @@ export function createDemoApi({
         };
         bot.deployments.push(deployment);
         bot.deployed[environment] = version;
+        delete bot.quiet;
         commit();
         const report = validateDemo(target.config, bot.id);
         return ok({
@@ -426,15 +475,40 @@ export function createDemoApi({
           bot.calls = seedCalls(bot.id, bot.config, now(), { history });
           commit();
         }
-        if (rest === '/calls' && method === 'GET') return ok(listCallsOf(bot.calls, params, Date.parse(now())));
+        if (rest === '/calls' && method === 'GET') {
+          // calls in progress (made up from the clock, see demoLive.js) are listed only when they are asked for: the ones in progress, or the last half hour
+          const nowMs = Date.parse(now());
+          const since = params.get('since') ? Date.parse(params.get('since')) : -Infinity;
+          const wantsLive = params.get('status') === 'in_progress' || nowMs - since <= 30 * 60 * 1000;
+          const calls = wantsLive && !bot.quiet ? [...liveCallsFor(bot, nowMs), ...bot.calls] : bot.calls;
+          return ok(
+            listCallsOf(
+              calls.map((c) =>
+                placeCall(
+                  c,
+                  bot.deployed,
+                  bot.versions.map((v) => v.version),
+                ),
+              ),
+              params,
+              nowMs,
+            ),
+          );
+        }
         const callMatch = rest.match(/^\/calls\/([^/]+)(\/transcript)?$/);
         if (callMatch && method === 'GET') {
           const key = decodeURIComponent(callMatch[1]);
           const found =
+            (!bot.quiet && liveCallOf(bot, key, Date.parse(now()))) ||
             bot.calls.find((c) => c.summary.id === key) ||
             bot.calls.filter((c) => c.summary.room === key).sort((x, y) => Date.parse(y.summary.started_at) - Date.parse(x.summary.started_at))[0];
           if (!found) return fail(404, 'No such call.');
-          return ok(callMatch[2] ? transcriptOf(found) : getCallOf(found, params));
+          const placed = placeCall(
+            found,
+            bot.deployed,
+            bot.versions.map((v) => v.version),
+          );
+          return ok(callMatch[2] ? transcriptOf(placed) : getCallOf(placed, params));
         }
       }
       // ---- test scenarios (imitated: see demoTests.js)
@@ -485,6 +559,9 @@ export function createDemoApi({
     const bot = read().bots[botId];
     const call = bot?.calls?.find((c) => c.summary.id === callId || c.summary.room === callId);
     if (!call) {
+      // a call in progress is followed as the clock moves (see demoLive.js)
+      if (bot && !bot.quiet && liveCallOf(bot, callId, Date.parse(now())))
+        return followLive(bot, callId, handlers, { read: () => Date.parse(now()), after: Number(handlers.after) || 0 });
       return () => {};
     }
     return followCallOf(call, handlers);
@@ -523,7 +600,7 @@ const historyOn = () => {
   }
 };
 export const getDemoApi = () => {
-  instance ||= createDemoApi({ storage: browserStorage(), loadSchema: loadPublicSchema, history: historyOn() });
+  instance ||= createDemoApi({ storage: browserStorage(), loadSchema: loadPublicSchema, history: historyOn(), quietNewAgents: true });
   return instance;
 };
 export const resetDemoData = () => {

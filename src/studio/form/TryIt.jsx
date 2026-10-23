@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useConfigSelect } from './ctx.js';
 import { useResultPreview } from './usePreview.js';
-import { sampleArgs } from './serverPreview.js';
+import { sampleArgs, taskWords } from './serverPreview.js';
 import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
 
 // "Try it" for one tool, answered by the server: type the arguments the model would give, paste an answer the API might send, and see the
@@ -97,6 +97,11 @@ export default function TryIt({ toolId, parameters, sample, sampleError, hasSamp
             </p>
           )}
           {view.preconditions?.holds && <p className="stFOk">The tool’s preconditions hold.</p>}
+          {view.task && (
+            <p className="stFHelp" data-block="task">
+              {taskWords(view.task)}
+            </p>
+          )}
           {view.request && (
             <div className="stTryBlock" data-block="request">
               <strong>The request that would be sent</strong>

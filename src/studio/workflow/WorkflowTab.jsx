@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
 import { groupIssues } from '../../api/client.js';
 import { isObj } from '../form/engine.js';
-import { formatWhen } from '../format.js';
-import { navigate, routeHref } from '../route.js';
-import { requestSettingFocus } from '../settingFocus.js';
+
 import { Notice, Spinner } from '../ui.jsx';
 import { usePref } from '../usePref.js';
 import AddMenu from './AddMenu.jsx';
 import Inspector from './Inspector.jsx';
 import WorkflowCanvas, { clampZoom } from './WorkflowCanvas.jsx';
-import { buildWorkflow, describeItems, SIZE, toolBlockCount } from './workflowModel.js';
+import { buildWorkflow, parseNodeId, SIZE, toolBlockCount } from './workflowModel.js';
 import {
   addAgentTransfer,
   addEnd,
@@ -25,6 +24,7 @@ import {
   hasSavedPositions,
   removeNode,
   setPositions,
+  whyKeepAgent,
 } from './workflowOps.js';
 import './workflow.css';
 
@@ -36,7 +36,12 @@ const BLANK = { past: [], future: [] };
 // way in between (then the steps no longer lead anywhere sensible).
 const HISTORY = new Map();
 
-export default function WorkflowTab({ editor, botId }) {
+// onShowSetting(path), onShowJson(path): how the agent's workspace shows a setting (it opens its page and panel) and the JSON
+// onShowRole(), onShowGreeting(): where the instructions of the agent that answers first, and what it says first, are written (the Agent page); given,
+// they are shown here, not asked
+// toolbarSlot: an element of the page around (beside its tabs) to draw the toolbar in, so the picture gets the height
+// (saving, Ctrl+S and a failed save are the workspace's, in its top bar, as on every page)
+export default function WorkflowTab({ editor, botId, onShowSetting = null, onShowJson = null, onShowRole = null, onShowGreeting = null, toolbarSlot = null }) {
   const config = editor.parsed?.value;
   const ok = editor.status === 'ready' && !editor.parsed?.error && isObj(config);
   const [zoomPref, setZoomPref] = usePref('weave_workflow_zoom', 'auto');
@@ -63,19 +68,39 @@ export default function WorkflowTab({ editor, botId }) {
   );
   const lastGroup = useRef({ group: '', at: 0 });
   const pendingSelect = useRef(null);
+  // what was just deleted, said above the picture with Undo until the next change
+  const [deleted, setDeleted] = useState(null); // { label, after: the draft the deletion left, as JSON }
+  // the picture's height: what is left of the window below its top edge (never less than is comfortable), measured when it is drawn and when the window
+  // changes size
+  const workRef = useRef(null);
+  const [workH, setWorkH] = useState(0);
+  const measure = useCallback(() => {
+    const el = workRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    // the same height again changes nothing (no new render)
+    setWorkH(Math.round(Math.max(440, Math.min(980, window.innerHeight - top - 24))));
+  }, []);
+  // after every render: what is above the picture (a note, the toolbar moving beside the tabs) may have changed where it starts
+  useLayoutEffect(measure);
+  useEffect(() => {
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [measure]);
 
   // tools are shown unless there are so many that they would bury the agents; the person can choose either way
   const toolBlocks = useMemo(() => (ok ? toolBlockCount(config) : 0), [config, ok]);
   const showTools = toolsPref === 'auto' ? toolBlocks <= 8 : toolsPref === '1';
   const flow = useMemo(() => (ok ? buildWorkflow(config, { tools: showTools }) : null), [config, ok, showTools]);
 
-  // the first time it is opened it is sized to fit the window (never smaller than is comfortable to read); after that the zoom is the person's
+  // the first time it is opened it is sized to fit the window (never smaller than is comfortable to read), once the picture has its height; after that the
+  // zoom is the person's
   useLayoutEffect(() => {
     const el = viewport.current;
-    if (autoDone.current || !flow || !el) return;
+    if (autoDone.current || !flow || !el || !workH) return;
     autoDone.current = true;
-    setAutoZoom(clampZoom(Math.max(0.55, Math.min(1, (el.clientWidth - 16) / flow.bounds.w, (el.clientHeight - 16) / flow.bounds.h))));
-  }, [flow]);
+    setAutoZoom(clampZoom(Math.max(0.75, Math.min(1, (el.clientWidth - 16) / flow.bounds.w, (el.clientHeight - 16) / flow.bounds.h))));
+  }, [flow, workH]);
 
   // the undo history belongs to the edits made here: when the draft changes some other way (reloaded, edited elsewhere) it starts again
   useEffect(() => {
@@ -84,6 +109,11 @@ export default function WorkflowTab({ editor, botId }) {
     if (lastApplied.current && now !== lastApplied.current) setHist(BLANK);
     lastApplied.current = now;
   }, [config, ok]);
+  // "Deleted …, Undo" goes with the next change of the draft
+  useEffect(() => {
+    // by content: the editor hands the draft back as a new copy
+    if (deleted && JSON.stringify(config) !== deleted.after) setDeleted(null);
+  }, [config, deleted]);
 
   useEffect(() => {
     if (ok) HISTORY.set(botId, { past: hist.past, future: hist.future, last: lastApplied.current });
@@ -155,18 +185,8 @@ export default function WorkflowTab({ editor, botId }) {
     return { map, total: issues.length };
   }, [config, editor.report, ok]);
 
-  // open the same place in All settings, or in the file, on the Config tab (it opens in the view that was asked for)
-  const openIn = (view) => (path) => {
-    try {
-      window.localStorage.setItem('weave_config_mode', view);
-    } catch {
-      /* storage unavailable: it opens in the view it had */
-    }
-    requestSettingFocus(botId, path);
-    navigate(routeHref(botId, 'config'), { guard: false });
-  };
-  const openSettings = openIn('form');
-  const openJson = openIn('json');
+  const openSettings = (path) => onShowSetting?.(path);
+  const openJson = (path) => onShowJson?.(path);
   const note = (text) => setAnnounce(text);
 
   const place = (nodeId) => {
@@ -178,9 +198,9 @@ export default function WorkflowTab({ editor, botId }) {
     let select = null;
     if (type === 'subagent') {
       const spot = hasSavedPositions(config) ? freeSpot(flow, place(agentId), SIZE.agent) : undefined;
-      result = addSubagent(config, agentId, { at: spot });
+      result = addSubagent(config, agentId, { at: spot, ...(payload?.name ? { name: payload.name, when: payload.when } : {}) });
       select = { type: 'node', id: result.id };
-      note('Added a subagent. Name it and say what it does in the panel.');
+      note(payload?.name ? `Added ${payload.name}. Write what it should do in the panel.` : 'Added a subagent. Name it and say what it does in the panel.');
     } else if (type === 'say') {
       result = addSay(config, agentId);
       select = { type: 'node', id: result.id };
@@ -222,6 +242,14 @@ export default function WorkflowTab({ editor, botId }) {
     setMenuFor('');
     setSelected(null);
     apply(next);
+    setDeleted({ label: n?.label || 'the block', after: JSON.stringify(next) });
+    // the keyboard goes to the agent the block belonged to (or, for an agent, the one that answers first), not to the page
+    const owner = parseNodeId(nodeId).agent;
+    const to = n?.type === 'agent' ? next.agents?.entry : owner;
+    window.requestAnimationFrame(() => {
+      const nodes = [...document.querySelectorAll('.wfNode')];
+      (nodes.find((el) => el.dataset.node === to) || nodes[0])?.focus({ preventScroll: true });
+    });
   };
   const duplicate = (nodeId) => {
     const n = flow.nodes.find((x) => x.id === nodeId);
@@ -266,20 +294,6 @@ export default function WorkflowTab({ editor, botId }) {
       } else if (selected && !field) setSelected(null);
     }
   };
-  // Ctrl/Cmd+S saves from anywhere on this tab, like the Config tab
-  const saveRef = useRef(editor.save);
-  saveRef.current = editor.save;
-  useEffect(() => {
-    const onKey = (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-        event.preventDefault();
-        saveRef.current();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
   if (editor.status === 'loading') return <Spinner label="Loading the draft" />;
   if (!ok) {
     return (
@@ -287,24 +301,30 @@ export default function WorkflowTab({ editor, botId }) {
         kind="warn"
         title="The draft can’t be drawn yet"
         actions={
-          <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'config'), { guard: false })}>
-            Open Config
+          <button type="button" className="quietButton" onClick={() => onShowJson?.()}>
+            Open the JSON
           </button>
         }
       >
-        {editor.parsed?.error ? 'The JSON has a syntax error. Fix it in Config and the workflow comes back.' : 'The draft could not be read.'}
+        {editor.parsed?.error ? 'The JSON has a syntax error. Fix it in Settings › Edit as JSON and the workflow comes back.' : 'The draft could not be read.'}
       </Notice>
     );
   }
 
-  const dirty = editor.dirty;
-  const canSave = dirty && !editor.saving && !editor.parsed.error;
-  const sentences = describeItems(flow);
+  // "Let <the first agent> pass callers to <one no call reaches>": a hand-over from the agent that answers first, selected so its words can be written
+  const entryName = flow.nodes.find((n) => n.id === flow.entry)?.label || 'the first agent';
+  const reach = (agentId) => {
+    const before = (config.agents.items.find((a) => a.id === flow.entry)?.handoffs || []).length;
+    pendingSelect.current = { type: 'edge', id: `${flow.entry}->${agentId}::h${before}` };
+    note('Added a way to pass the caller on. Say when, in the panel.');
+    apply(addAgentTransfer(config, flow.entry, agentId));
+  };
   const overlay = ({ nodes }) => {
     const n = selected?.type === 'node' ? nodes.get(selected.id) : null;
     if (!n) return null;
     const z = zoom;
     const isAgent = n.type === 'agent';
+    const keepReason = isAgent && confirmFor === n.id ? whyKeepAgent(config, parseNodeId(n.id).agent) : '';
     return (
       <>
         {n.type !== 'start' && (
@@ -350,159 +370,125 @@ export default function WorkflowTab({ editor, botId }) {
             />
           </div>
         )}
-        {confirmFor === n.id && (
-          <div className="wfOverlayItem wfConfirmPop" role="alertdialog" aria-label={`Delete ${n.label}?`} style={{ left: (n.x + n.w) * z + 56, top: n.y * z }}>
-            <strong>Delete “{n.label}”?</strong>
-            <p>Callers can no longer be passed to it, and the hand-overs to it are removed.</p>
-            <div className="wfRow">
-              <button type="button" className="dangerButton" onClick={() => remove(n.id)}>
-                Delete
-              </button>
-              <button type="button" className="quietButton" onClick={() => setConfirmFor('')}>
-                Cancel
-              </button>
+        {confirmFor === n.id &&
+          (keepReason ? (
+            // an agent that can't go (the only one, or one something else can't do without): why, rather than a Delete that does nothing
+            <div
+              className="wfOverlayItem wfConfirmPop"
+              role="alertdialog"
+              aria-label={`${n.label} can’t be deleted`}
+              style={{ left: (n.x + n.w) * z + 56, top: n.y * z }}
+            >
+              <strong>“{n.label}” can’t be deleted</strong>
+              <p>{keepReason}</p>
+              <div className="wfRow">
+                <button type="button" className="quietButton" onClick={() => setConfirmFor('')}>
+                  Close
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div
+              className="wfOverlayItem wfConfirmPop"
+              role="alertdialog"
+              aria-label={`Delete ${n.label}?`}
+              style={{ left: (n.x + n.w) * z + 56, top: n.y * z }}
+            >
+              <strong>Delete “{n.label}”?</strong>
+              <p>Callers can no longer be passed to it, and the hand-overs to it are removed.</p>
+              <div className="wfRow">
+                <button type="button" className="dangerButton" onClick={() => remove(n.id)}>
+                  Delete
+                </button>
+                <button type="button" className="quietButton" onClick={() => setConfirmFor('')}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
       </>
     );
   };
 
+  const toolbar = (
+    // drawn in the page's own row when it gives one; its keys still reach the picture's handler (a portal passes them on)
+    <div className="wfToolbar" role="toolbar" aria-label="Workflow tools">
+      <div className="wfGroup">
+        <button type="button" onClick={undo} disabled={!hist.past.length} aria-label="Undo" title="Undo (Ctrl+Z)">
+          <Icon name="undo" size={16} /> Undo
+        </button>
+        <button type="button" onClick={redo} disabled={!hist.future.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)">
+          <Icon name="redo" size={16} /> Redo
+        </button>
+      </div>
+      <div className="wfGroup" role="group" aria-label="Zoom">
+        <button type="button" onClick={() => setZoom(zoom - 0.1)} disabled={zoom <= 0.4} aria-label="Zoom out" title="Zoom out">
+          <Icon name="minus" size={16} />
+        </button>
+        <button type="button" className="wfZoom" onClick={() => setZoom(1)} aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%`} title="Reset to 100%">
+          {Math.round(zoom * 100)}%
+        </button>
+        <button type="button" onClick={() => setZoom(zoom + 0.1)} disabled={zoom >= 1.6} aria-label="Zoom in" title="Zoom in">
+          <Icon name="plus" size={16} />
+        </button>
+        <button type="button" onClick={fit} aria-label="Fit to the window" title="Fit everything in the window">
+          <Icon name="fit" size={16} /> Fit
+        </button>
+      </div>
+      <div className="wfGroup">
+        <button type="button" onClick={tidy} disabled={!hasSavedPositions(config)} title="Put every block back where it is placed automatically">
+          Tidy up
+        </button>
+        <button
+          type="button"
+          aria-pressed={showTools}
+          onClick={() => setToolsPref(showTools ? '0' : '1')}
+          title={showTools ? 'Hide the tools to see the agents more clearly' : 'Show the tools each agent can use'}
+        >
+          {showTools ? 'Tools shown' : 'Tools hidden'}
+          {!showTools && toolBlocks ? ` (${toolBlocks})` : ''}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="wfTab" onKeyDown={onKeyDown}>
-      {editor.conflict && (
-        <Notice
-          kind="warn"
-          title="Someone else saved this draft after you opened it"
-          actions={
-            <>
-              <button type="button" className="quietButton" onClick={editor.reload}>
-                Load theirs (drop my edits)
-              </button>
-              <button type="button" className="dangerButton" onClick={() => editor.save({ overwrite: true })}>
-                Overwrite with mine
-              </button>
-            </>
-          }
-        >
-          Your changes were not saved. Overwriting replaces their version of the draft.
-        </Notice>
-      )}
-      {editor.saveError && (
-        <Notice
-          kind="error"
-          title="Couldn’t save the draft"
-          actions={
-            <button type="button" className="quietButton" onClick={editor.dismissSaveError}>
-              Dismiss
-            </button>
-          }
-        >
-          {editor.saveError.message}
-        </Notice>
-      )}
+      {toolbarSlot ? createPortal(toolbar, toolbarSlot) : toolbar}
 
-      <header className="wfHead">
-        <div>
-          <h2>Workflow</h2>
-          <p>How a call moves through this agent. Drag blocks where they read best, and press ＋ under an agent to add what comes next.</p>
-        </div>
-        <div className="wfSave" aria-live="polite">
-          {dirty ? (
-            <span className="warn">Unsaved changes</span>
-          ) : (
-            <span className="good">Saved{editor.meta?.savedAt ? ` ${formatWhen(editor.meta.savedAt)}` : ''}</span>
-          )}
-          {problems.total > 0 && (
-            <button
-              type="button"
-              className="wfProblems"
-              onClick={() => navigate(routeHref(botId, 'config'), { guard: false })}
-              title="Open Config to see what to fix"
-            >
-              {problems.total} problem{problems.total === 1 ? '' : 's'}
-            </button>
-          )}
-          <button
-            type="button"
-            className="quietButton"
-            onClick={() => {
-              if (dirty && !window.confirm('Discard your unsaved edits and reload the saved draft?')) return;
-              editor.reload();
-            }}
-          >
-            {dirty ? 'Discard changes' : 'Reload'}
-          </button>
-          <button type="button" className="primaryCta compactCta" onClick={() => editor.save()} disabled={!canSave}>
-            {editor.saving ? 'Saving…' : 'Save draft'}
+      {/* what needs saying about the picture, above it (never over a block) */}
+      {deleted && (
+        <div className="wfHint" role="status">
+          <span>Deleted “{deleted.label}”.</span>
+          <button type="button" className="quietButton" onClick={undo} disabled={!hist.past.length}>
+            Undo
           </button>
         </div>
-      </header>
-
-      <div className="wfToolbar" role="toolbar" aria-label="Workflow tools">
-        <div className="wfGroup">
-          <button type="button" onClick={undo} disabled={!hist.past.length} aria-label="Undo" title="Undo (Ctrl+Z)">
-            <Icon name="undo" size={16} /> Undo
-          </button>
-          <button type="button" onClick={redo} disabled={!hist.future.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)">
-            <Icon name="redo" size={16} /> Redo
-          </button>
-        </div>
-        <div className="wfGroup" role="group" aria-label="Zoom">
-          <button type="button" onClick={() => setZoom(zoom - 0.1)} disabled={zoom <= 0.4} aria-label="Zoom out" title="Zoom out">
-            <Icon name="minus" size={16} />
-          </button>
-          <button
-            type="button"
-            className="wfZoom"
-            onClick={() => setZoom(1)}
-            aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%`}
-            title="Reset to 100%"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-          <button type="button" onClick={() => setZoom(zoom + 0.1)} disabled={zoom >= 1.6} aria-label="Zoom in" title="Zoom in">
-            <Icon name="plus" size={16} />
-          </button>
-          <button type="button" onClick={fit} aria-label="Fit to the window" title="Fit everything in the window">
-            <Icon name="fit" size={16} /> Fit
-          </button>
-        </div>
-        <div className="wfGroup">
-          <button type="button" onClick={tidy} disabled={!hasSavedPositions(config)} title="Put every block back where it is placed automatically">
+      )}
+      {!flow.empty &&
+        flow.strandedIds.map((id, i) => (
+          <div key={id} className="wfHint warn" role="note">
+            <span>
+              “{flow.stranded[i]}” can’t be reached: nothing passes the caller to it from Start. Let an agent pass callers to it, or make it answer first.
+            </span>
+            {flow.entry && (
+              <button type="button" className="quietButton" onClick={() => reach(id)}>
+                Let {entryName} pass callers to it
+              </button>
+            )}
+          </div>
+        ))}
+      {!flow.empty && !flow.stranded.length && flow.crowded && hasSavedPositions(config) && (
+        <div className="wfHint" role="note">
+          <span>Some blocks sit close together because the saved layout has no room for them.</span>
+          <button type="button" className="quietButton" onClick={tidy}>
             Tidy up
           </button>
-          <button
-            type="button"
-            aria-pressed={showTools}
-            onClick={() => setToolsPref(showTools ? '0' : '1')}
-            title={showTools ? 'Hide the tools to see the agents more clearly' : 'Show the tools each agent can use'}
-          >
-            {showTools ? 'Tools shown' : 'Tools hidden'}
-            {!showTools && toolBlocks ? ` (${toolBlocks})` : ''}
-          </button>
         </div>
-      </div>
+      )}
 
-      <div className="wfWork">
+      <div className="wfWork" ref={workRef} style={workH ? { '--wfH': `${workH}px` } : undefined}>
         <div className="wfCanvasBox">
-          {!flow.empty && flow.stranded.length > 0 && (
-            <div className="wfHint warn" role="note">
-              <span>
-                {flow.stranded.map((l) => `“${l}”`).join(', ')} can’t be reached: nothing passes the caller to {flow.stranded.length === 1 ? 'it' : 'them'} from
-                Start. Add an Agent transfer to {flow.stranded.length === 1 ? 'it' : 'them'}, or make {flow.stranded.length === 1 ? 'it' : 'one of them'} answer
-                first.
-              </span>
-            </div>
-          )}
-          {!flow.empty && !flow.stranded.length && flow.crowded && hasSavedPositions(config) && (
-            <div className="wfHint" role="note">
-              <span>Some blocks sit close together because the saved layout has no room for them.</span>
-              <button type="button" className="quietButton" onClick={tidy}>
-                Tidy up
-              </button>
-            </div>
-          )}
           {flow.empty ? (
             <div className="wfEmpty">
               <Icon name="subagent" size={28} />
@@ -517,7 +503,7 @@ export default function WorkflowTab({ editor, botId }) {
                   apply(r.config);
                 }}
               >
-                ＋ Add the first agent
+                <Icon name="plus" size={14} /> Add the first agent
               </button>
             </div>
           ) : (
@@ -550,21 +536,11 @@ export default function WorkflowTab({ editor, botId }) {
           onOpenSettings={openSettings}
           onOpenJson={openJson}
           onRemove={remove}
+          onShowRole={onShowRole}
+          onShowGreeting={onShowGreeting}
         />
       </div>
 
-      <details className="wfAsList">
-        <summary>As a list</summary>
-        <ul>
-          {sentences.map((s) => (
-            <li key={s.id}>
-              <button type="button" className="wfListItem" onClick={() => setSelected({ type: 'edge', id: s.id })}>
-                {s.text}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </details>
       <p className="srOnly" role="status">
         {announce}
       </p>

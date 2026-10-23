@@ -82,7 +82,7 @@ test('without the agent’s draft open, a call offers to open it in the agent in
   await openFirstCall(app);
   assert.ok(!byText(app.container, 'button', 'Keep as a test'), 'no way to keep it without a draft');
   await a.click(byText(app.container, '.clViews button', 'Replay'));
-  assert.equal(await until(app, () => /Open this call from the agent’s own Calls tab/.test(textOf(app.container))), true);
+  assert.equal(await until(app, () => /Open this call from the agent’s own Calls page/.test(textOf(app.container))), true);
   await app.unmount();
 });
 
@@ -97,7 +97,7 @@ test('the monitoring page counts the calls, names what needs attention and links
   assert.equal(await until(app, () => Number(textOf($(app.container, '.mnKpi strong'))) > 5), true, 'the calls are counted');
   assert.equal(await until(app, () => $$(app.container, '.mnList > li').length > 0), true, 'calls with something wrong are listed');
   assert.ok($$(app.container, '.mnBar, .mnBarCut').length > 3, 'a bar for each day with calls');
-  assert.match(textOf($(app.container, '.mnBasis')), /newest .* calls whose records were read/);
+  assert.match(textOf($(app.container, '.mnBasis')), /calls whose records were read, spread over the period/);
   await a.click(byText($(app.container, '.mnList'), 'button', 'Replay'));
   assert.equal(opened.length, 1);
   assert.equal(opened[0][0], 'x');

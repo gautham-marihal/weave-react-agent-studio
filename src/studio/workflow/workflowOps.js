@@ -6,6 +6,8 @@ import { isObj } from '../form/engine.js';
 import { freshId } from '../form/references.js';
 import { createAndPoint } from '../form/inlineCreate.js';
 import { parseNodeId } from './workflowModel.js';
+import { toolNamedElsewhere } from '../form/toolInfo.js';
+import { dropLines } from '../setup/setupModel.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -56,14 +58,13 @@ export function addSubagent(config, fromId, { name = 'New subagent', when = '', 
   const agent = { id, name, kind: 'specialist', instructions: { role: DEFAULT_ROLE }, tools: [] };
   next.agents = { ...(isObj(next.agents) ? next.agents : {}), items: [...items, agent] };
   if (!next.agents.entry) next.agents.entry = id;
-  if (from) {
-    if (from.kind === 'standalone') from.kind = 'router';
-    addHandoffTo(next, from, id, when || `The caller needs ${name}.`);
-  }
+  if (from) addHandoffTo(next, from, id, when || `The caller needs ${name}.`);
   const done = at ? setPositions(next, { [id]: at }) : next;
   return { config: done, id };
 }
 
+// An agent that "answers on its own" has its hand-overs ignored (the checks call the agent it hands to unreachable), so one that is given a hand-over
+// passes callers on from then on, whichever way the hand-over was added.
 function addHandoffTo(next, from, toId, description) {
   const tools = new Set([
     ...list(next.tools).map((t) => t?.id),
@@ -72,7 +73,13 @@ function addHandoffTo(next, from, toId, description) {
   ]);
   const used = new Set(agentsOf(next).flatMap((a) => list(a.handoffs).map((h) => h?.id))); // the validator wants a hand-over id to be unique across the whole agent
   const id = freshId(used, `to_${toId}`);
+  if (from.kind === 'standalone') from.kind = 'router';
   from.handoffs = [...list(from.handoffs), { id, tool: freshId(tools, `go_to_${toId.replace(/-/g, '_')}`), description, to: toId, carry_context: true }];
+}
+// And back: the one agent left, passing callers on to nobody, answers on its own again.
+function settleKind(next) {
+  const items = agentsOf(next);
+  if (items.length === 1 && isObj(items[0]) && items[0].kind === 'router' && !list(items[0].handoffs).length) items[0].kind = 'standalone';
 }
 
 // "Agent transfer": an arrow from one existing agent to another.
@@ -118,9 +125,41 @@ export function addUpdateState(config, agentId) {
 }
 export const addStateVariable = (config, name, kind) => createAndPoint(config, 'state_vars', { name, kind }).config;
 
-// "Phone number transfer": a transfer to this number, and the tool that lets the agent use it.
+// "Phone number transfer": a transfer to this number, and the tool that lets the agent use it. The agent's own way to hand over to a person comes first:
+// the same number again is the block it already has, and one still waiting for its number (every starter has one, and only this agent uses it) is given
+// this number, rather than a second hand-over beside it that the Tools page's switch would not know about.
+const sameNumber = (a, b) =>
+  String(a ?? '')
+    .replace(/[^0-9a-z]+/gi, '')
+    .toLowerCase() ===
+  String(b ?? '')
+    .replace(/[^0-9a-z]+/gi, '')
+    .toLowerCase();
 export function addPhoneTransfer(config, agentId, number) {
-  if (!agentAt(config, agentId) || !String(number || '').trim()) return { config, id: '' };
+  const agent = agentAt(config, agentId);
+  const target = String(number || '').trim();
+  if (!agent || !target) return { config, id: '' };
+  const transferOf = (tool) => list(config.telephony?.transfers).find((t) => isObj(t) && t.id === tool?.params?.transfer);
+  const own = list(agent.tools)
+    .map((toolId) => list(config.tools).find((t) => t?.id === toolId))
+    .filter((t) => isBuiltin(t, 'transfer_or_callback'));
+  const same = own.find((t) => typeof transferOf(t)?.target === 'string' && sameNumber(transferOf(t).target, target));
+  if (same) return { config, id: `${agentId}::tool::${same.id}` };
+  const waiting = own.find((t) => {
+    const transfer = transferOf(t);
+    const blank = transfer?.target === undefined || (typeof transfer?.target === 'string' && !transfer.target.trim());
+    return (
+      transfer?.method === 'sip_refer' &&
+      blank &&
+      agentsOf(config).filter((a) => list(a?.tools).includes(t.id)).length === 1 &&
+      list(config.tools).filter((x) => x?.params?.transfer === transfer.id).length === 1
+    );
+  });
+  if (waiting) {
+    const next = clone(config);
+    list(next.telephony.transfers).find((t) => isObj(t) && t.id === waiting.params.transfer).target = target;
+    return { config: next, id: `${agentId}::tool::${waiting.id}` };
+  }
   const next = clone(config);
   const digits = String(number)
     .replace(/[^0-9a-z]+/gi, '')
@@ -145,8 +184,8 @@ export function addPhoneTransfer(config, agentId, number) {
       params: { transfer: transferId, fallback: [{ type: 'say', text: 'Sorry, I can’t put you through right now. Someone will call you back.' }] },
     },
   ];
-  const agent = agentAt(next, agentId);
-  agent.tools = [...list(agent.tools), toolId];
+  const giver = agentAt(next, agentId);
+  giver.tools = [...list(giver.tools), toolId];
   return { config: next, id: `${agentId}::tool::${toolId}` };
 }
 
@@ -273,32 +312,56 @@ export function removeRule(config, ruleId) {
 }
 
 // ---- taking away
-// Every step anywhere in the configuration that hands the caller to this agent (an on_enter step, a tool's rules, a transfer's steps, a safety rule), taken out;
-// a rule block left with nothing to do goes, and a list left empty is not kept (the schema wants at least one step in them).
+// Every step anywhere in the configuration that hands the caller to this agent (an on_enter step, a tool's rules, a transfer's steps, a safety rule, what
+// ends a silence), taken out. A list left with no steps is left out, and a tool's rule or an event left with nothing to do goes. A list that must keep a
+// step, held by something that can't simply go with it (what a wrap-up does when the caller stays quiet, what ends a silence, a task step's actions), is
+// kept as it was and its place is added to `stuck`: then the agent is not deleted, and whyKeepAgent says why.
 const GONE = Symbol('gone');
 const isHandoffTo = (v, id) => isObj(v) && v.to === id && (v.type === 'handoff' || v.action === 'handoff');
-function dropHandoffsTo(value, id) {
+const goesWhole = (path) => path.at(-1) === 'do' && typeof path.at(-2) === 'number' && ['effects', 'events'].includes(path.at(-3));
+const mustKeep = (path) => path.at(-1) === 'on_silence' || (path.at(-1) === 'do' && (path.at(-2) === 'on_exhausted' || path.at(-3) === 'steps'));
+function dropHandoffsTo(value, id, stuck = [], path = []) {
   if (Array.isArray(value)) {
     const out = [];
-    value.forEach((v) => {
+    value.forEach((v, i) => {
       if (isHandoffTo(v, id)) return;
-      const r = dropHandoffsTo(v, id);
+      const r = dropHandoffsTo(v, id, stuck, [...path, i]);
       if (r !== GONE) out.push(r);
     });
     return out;
   }
   if (isObj(value)) {
     const out = {};
-    let emptied = false;
+    let gone = false;
     Object.entries(value).forEach(([k, v]) => {
-      const r = dropHandoffsTo(v, id);
-      if (Array.isArray(v) && v.length && Array.isArray(r) && r.length === 0) emptied = true;
-      else out[k] = r;
+      const at = [...path, k];
+      const r = dropHandoffsTo(v, id, stuck, at);
+      if (!(Array.isArray(v) && v.length && Array.isArray(r) && r.length === 0)) out[k] = r;
+      else if (goesWhole(at)) gone = true;
+      else if (mustKeep(at)) {
+        stuck.push(at);
+        out[k] = v;
+      }
     });
-    if (emptied && 'do' in value && !('do' in out)) return GONE;
-    return out;
+    return gone ? GONE : out;
   }
   return value;
+}
+// The checks of the tests that are about the agent: that a call ends with it, or that a hand-over to or from it was (or wasn't) used. They go with it; a
+// test left with nothing to check is `stuck` instead (deleting a test is the person's call).
+function dropChecks(tests, agentId, toolNames, stuck) {
+  return tests.map((test, i) => {
+    if (!isObj(test) || !Array.isArray(test.expect)) return test;
+    const about = (e) =>
+      isObj(e) && (e.agent_is === agentId || toolNames.has(e.tool_called) || toolNames.has(e.tool_not_called) || toolNames.has(e.tool_called_with?.tool));
+    const expect = test.expect.filter((e) => !about(e));
+    if (expect.length === test.expect.length) return test;
+    if (!expect.length) {
+      stuck.push(['tests', i]);
+      return test;
+    }
+    return { ...test, expect };
+  });
 }
 const forgetEnterPositions = (next, agentId) =>
   forgetPositions(
@@ -306,42 +369,62 @@ const forgetEnterPositions = (next, agentId) =>
     Object.keys(next.builder?.ui?.graph_positions || {}).filter((k) => k.startsWith(`${agentId}::enter::`)),
   );
 
-// Deletes an agent and every hand-over that led to it; the agent that answers first moves on to the next one when it was the one deleted.
+// The configuration without the agent, and the places that would be left with nothing to do (`stuck`).
+function withoutAgent(config, agentId) {
+  const stuck = [];
+  const items = agentsOf(config);
+  // the hand-over tools that go with it: the ones that lead to it, and its own
+  const toolNames = new Set(
+    items
+      .flatMap((a) => list(a?.handoffs).filter((h) => isObj(h) && (h.to === agentId || a.id === agentId)))
+      .map((h) => h.tool)
+      .filter(Boolean),
+  );
+  const start = clone(config);
+  start.agents.items = items
+    .filter((a) => !(isObj(a) && a.id === agentId))
+    .map((a) => {
+      if (!isObj(a) || !Array.isArray(a.handoffs)) return a;
+      const copy = { ...a, handoffs: a.handoffs.filter((h) => !(isObj(h) && h.to === agentId)) };
+      if (!copy.handoffs.length) delete copy.handoffs;
+      return copy;
+    });
+  const next = dropHandoffsTo(start, agentId, stuck);
+  if (Array.isArray(next.tests)) next.tests = dropChecks(next.tests, agentId, toolNames, stuck);
+  return { next, stuck };
+}
+
+// Why an agent can't be deleted, in a sentence ('' when it can): an assistant needs an agent, and deleting one must not leave something else with nothing
+// to do, or delete it as well.
+export function whyKeepAgent(config, agentId) {
+  if (!agentAt(config, agentId)) return '';
+  if (agentsOf(config).length <= 1) return 'An assistant needs at least one agent.';
+  const [first] = withoutAgent(config, agentId).stuck;
+  if (!first) return '';
+  const at = (path) => path.reduce((node, part) => (node == null ? node : node[part]), config);
+  const name = (path, fallback) => `“${at([...path, 'id']) || fallback}”`;
+  if (first[0] === 'tests') return `Everything the test ${name(first, 'without a name')} checks is about it. Change or delete that test first.`;
+  if (first[0] === 'wrapups')
+    return `Callers who stay quiet after the wrap-up ${name(first.slice(0, 2), 'without a name')} are passed to it. Change that first.`;
+  if (first[0] === 'tasks' && first[2] === 'steps')
+    return `The step ${name(first.slice(0, 4), 'without a name')} of the task ${name(first.slice(0, 2), 'without a name')} passes callers to it. Change that first.`;
+  return 'Callers who stay quiet too long are passed to it. Change that first.';
+}
+
+// Deletes an agent and every hand-over that led to it; the agent that answers first moves on to the next one when it was the one deleted. When that would
+// leave something with nothing to do (whyKeepAgent), nothing changes.
 export function removeAgent(config, agentId) {
   const items = agentsOf(config);
   if (!agentAt(config, agentId) || items.length <= 1) return config;
-  const next = clone(config);
-  next.agents.items = items.filter((a) => isObj(a) && a.id !== agentId);
+  const { next, stuck } = withoutAgent(config, agentId);
+  if (stuck.length) return config;
   next.agents.items.forEach((a) => {
-    if (Array.isArray(a.handoffs)) {
-      a.handoffs = a.handoffs.filter((h) => !(isObj(h) && h.to === agentId));
-      if (!a.handoffs.length) delete a.handoffs;
-    }
+    if (isObj(a) && JSON.stringify(a.on_enter) !== JSON.stringify(agentAt(config, a.id)?.on_enter)) forgetEnterPositions(next, a.id);
   });
-  const before = new Map(next.agents.items.map((a) => [a.id, JSON.stringify(a.on_enter)]));
-  Object.keys(next).forEach((key) => {
-    if (key !== 'agents') next[key] = dropHandoffsTo(next[key], agentId);
-  });
-  next.agents.items = next.agents.items.map((a) => {
-    const r = dropHandoffsTo({ on_enter: a.on_enter }, agentId);
-    const copy = { ...a };
-    if (Array.isArray(r.on_enter) && r.on_enter.length) copy.on_enter = r.on_enter;
-    else delete copy.on_enter;
-    return copy;
-  });
-  next.agents.items.forEach((a) => {
-    if (JSON.stringify(a.on_enter) !== before.get(a.id)) forgetEnterPositions(next, a.id);
-  });
-  // a test that expected this agent to be the one in charge at the end no longer has anything to point at
-  const clearExpectations = (value) => {
-    if (Array.isArray(value)) value.forEach(clearExpectations);
-    else if (isObj(value)) {
-      if (value.agent_is === agentId) delete value.agent_is;
-      Object.values(value).forEach(clearExpectations);
-    }
-  };
-  clearExpectations(next.tests);
   if (next.agents.entry === agentId) next.agents.entry = next.agents.items[0].id;
+  // what only it could do goes with it, as when those blocks are deleted: its way to end the call, its transfers to a person
+  list(agentAt(config, agentId).tools).forEach((toolId) => dropIfOrphan(next, toolId));
+  settleKind(next);
   forgetPositions(next, [agentId, ...Object.keys(next.builder?.ui?.graph_positions || {}).filter((k) => k.startsWith(`${agentId}::`))]);
   return next;
 }
@@ -359,16 +442,19 @@ export function removeHandoff(config, agentId, ref) {
     if (!agent.on_enter.length) delete agent.on_enter;
     forgetEnterPositions(next, agentId);
   } else if (ref.tool) agent.tools = list(agent.tools).filter((t) => t !== ref.tool);
+  settleKind(next);
   return next;
 }
 
 // A tool nobody offers any more goes too when it was only ever a way to end the call or to hand over to a person: leaving it would leave something unused in
-// the settings that the person just took away here.
+// the settings that the person just took away here. One that something else still names (a safety rule, a task, a test) stays.
 function dropIfOrphan(next, toolId) {
   if (agentsOf(next).some((a) => list(a.tools).includes(toolId))) return;
   const tool = list(next.tools).find((t) => t?.id === toolId);
-  if (!tool || !(isBuiltin(tool, 'end_call') || isBuiltin(tool, 'transfer_or_callback'))) return;
+  if (!tool || !(isBuiltin(tool, 'end_call') || isBuiltin(tool, 'transfer_or_callback')) || toolNamedElsewhere(next, toolId)) return;
   next.tools = list(next.tools).filter((t) => t?.id !== toolId);
+  // and the fixed lines only it said, while they read as the studio wrote them (a goodbye, a callback line)
+  dropLines(next, tool);
   const transferId = tool.params?.transfer;
   // the transfer goes with it only when nothing else in the configuration names it (another tool, an on_enter step…)
   if (transferId && Array.isArray(next.telephony?.transfers)) {

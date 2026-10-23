@@ -129,7 +129,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
               className="quietButton"
               onClick={() => setMakingTest(true)}
               disabled={!editor.parsed?.value}
-              title={editor.parsed?.value ? undefined : 'The draft can’t be read right now: fix the JSON on the Config tab first'}
+              title={editor.parsed?.value ? undefined : 'The draft can’t be read right now: fix its JSON in the agent’s settings first'}
             >
               Keep as a test
             </button>
@@ -143,9 +143,11 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
               Download the log
             </button>
           )}
-          <button type="button" className="quietButton" onClick={onClose}>
-            Close
-          </button>
+          {onClose && (
+            <button type="button" className="quietButton" onClick={onClose}>
+              Close
+            </button>
+          )}
         </div>
       </header>
 
@@ -165,8 +167,14 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
           </div>
           <div>
             <dt>Caller</dt>
-            <dd>{call.caller || 'unknown'}</dd>
+            <dd>{call.caller || (/web|chat|widget/.test(String(call.channel?.type || '')) ? 'Web visitor' : 'No number')}</dd>
           </div>
+          {call.dialled && (
+            <div>
+              <dt>Number dialled</dt>
+              <dd>{call.dialled}</dd>
+            </div>
+          )}
           <div>
             <dt>Duration</dt>
             <dd>{formatSeconds(call.duration_s) || '—'}</dd>
@@ -181,7 +189,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
             <dt>Version</dt>
             <dd>
               {call.version || '—'}
-              {call.ref ? ` (${call.ref})` : ''}
+              {call.ref && call.ref !== call.version ? ` (${call.ref})` : ''}
             </dd>
           </div>
           {tokens.input || tokens.output ? (
@@ -248,7 +256,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
               </button>
             }
           >
-            Open this call from the agent’s own Calls tab to play it again against the draft, or to keep it as a test.
+            Open this call from the agent’s own Calls page to play it again against the draft, or to keep it as a test.
           </Notice>
         ))}
       {added && (

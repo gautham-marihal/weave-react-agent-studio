@@ -35,6 +35,16 @@ async function open(config, screen) {
 }
 const optionValue = (select, text) => [...select.options].find((o) => o.text === text)?.value;
 
+// A group inside a group (an agent in the list of agents, the steps of an event) opens in a sheet drawn over the page, outside the form's own box: this
+// opens every one, and what is in them is then looked up in the whole page.
+async function openSheets() {
+  for (let pass = 0; pass < 4; pass += 1) {
+    const rows = $$(document.body, '.stFGroup.drill > header .stFGroupToggle[aria-expanded=false]');
+    if (!rows.length) return;
+    for (const row of rows) await a.click(row);
+  }
+}
+
 // ---------------------------------------------------------------- choices (oneOf)
 
 test('choosing another kind of tool keeps its id and description, and drops what only the old kind has', async () => {
@@ -74,7 +84,7 @@ test('an optional part that isn’t set (the direct delivery of a response) is n
   assert.ok(block, 'the optional direct delivery is offered');
   assert.doesNotMatch(textOf(block), /required, not set/);
   assert.doesNotMatch(block.className, /missing/);
-  assert.match(textOf(block), /Set sent straight to the caller/i);
+  assert.match(textOf(block), /Sent straight to the caller.*Using the defaults/i, 'it is drawn with its defaults, ready to change');
   // and when something really is required and absent, it still says so
   const app2 = await open(base({ agents: { items: [{ id: 'a', name: 'A', kind: 'standalone', instructions: { role: 'Help.' } }] } }), 'agents');
   assert.match(textOf(app2.container), /required, not set/);
@@ -109,6 +119,34 @@ test('a voice channel on an agent with no speech models offers “Add default sp
   );
   assert.match(textOf($(app.container, '.stFToast')), /Added default speech models/);
   await app.unmount();
+});
+
+test('a phone line asks for no number, trunk or routing rule: the platform sets them up; old notes are shown and can be removed (FRONTEND_GUIDE 4)', async () => {
+  const phone = {
+    id: 'phone',
+    type: 'sip_voice',
+    enabled: true,
+    entry: { dnis: '+6561234567', sip_trunk: 'main', dispatch_rule: 'acme-in' },
+    modalities: { input: ['audio'], output: ['audio'] },
+    greeting: { say: 'Hi' },
+  };
+  const app = await open(base({ channels: [phone] }), 'channels');
+  const block = $(app.container, '[data-route="platform"]');
+  assert.ok(block, 'the phone line says how callers reach it');
+  assert.match(textOf(block), /Through a phone number\. Add one for this agent under Releases › Deploy/);
+  assert.equal($$(block, 'input').length, 0, 'nothing to fill in');
+  assert.equal($(app.container, '.stChannelAdvanced'), null, 'no Advanced fold with a trunk and a rule');
+  const notes = $(block, '[data-note="route-notes"]');
+  assert.match(textOf(notes), /only a note: calls are not routed by them/);
+  assert.match(textOf(notes), /\+6561234567/);
+  await a.click($$(notes, 'button').find((b) => /Remove these notes/.test(textOf(b))));
+  assert.deepEqual(app.config.channels[0].entry, {}, 'the notes are gone; the empty entry a phone line needs stays');
+  assert.equal($(app.container, '[data-note="route-notes"]'), null);
+  await app.unmount();
+  // a new phone line has nothing to note
+  const fresh = await open(base({ channels: [{ ...phone, entry: {} }] }), 'channels');
+  assert.equal($(fresh.container, '[data-note="route-notes"]'), null);
+  await fresh.unmount();
 });
 
 test('a long list of tools can be searched, filtered by kind and narrowed to the unused, and each card says who uses it', async () => {
@@ -169,7 +207,7 @@ test('a list of texts: edit one, add one, delete one, and Undo puts the list bac
   const app = await open(base({ persona: { name: 'X', style_rules: ['One', 'Two', 'Three'] } }), 'persona');
   await a.type(byLabel(app.container, 'Item 2'), 'Deux');
   assert.deepEqual(app.config.persona.style_rules, ['One', 'Deux', 'Three']);
-  await a.click(byText(app.container, 'button', '＋ Add'));
+  await a.click(byText(app.container, 'button', 'Add'));
   assert.deepEqual(app.config.persona.style_rules, ['One', 'Deux', 'Three', '']);
   await a.type(byLabel(app.container, 'Item 4'), 'Four');
   await a.click(byLabel(app.container, 'Delete item 1'));
@@ -217,15 +255,16 @@ test('a list of ids picked from another list: add and remove, never a duplicate'
     agents: { entry: 'a', items: [{ id: 'a', name: 'A', instructions: { role: 'Help' }, tools: ['t1'] }] },
   });
   const app = await open(config, 'agents');
-  const add = $$(app.container, 'select').find((el) => el.getAttribute('aria-label') === 'Add' && [...el.options].some((o) => o.text === 't2'));
+  await openSheets();
+  const add = $$(document.body, 'select').find((el) => el.getAttribute('aria-label') === 'Add' && [...el.options].some((o) => o.text === 't2'));
   assert.deepEqual(
     [...add.options].map((o) => o.text),
-    ['＋ Add…', 't2'],
+    ['Add…', 't2'],
     'what is already chosen is not offered again',
   );
   await a.choose(add, 't2');
   assert.deepEqual(app.config.agents.items[0].tools, ['t1', 't2']);
-  await a.click(byLabel(app.container, 'Delete t1'));
+  await a.click(byLabel(document.body, 'Delete t1'));
   assert.deepEqual(app.config.agents.items[0].tools, ['t2']);
   await app.unmount();
 });
@@ -267,7 +306,7 @@ test('what was typed is still there after visiting other sections and coming bac
 test('effects: add a rule, change its step, add a condition and a second step, reorder, delete', async () => {
   const app = await open(base({ tools: [complete()], connections, state: { variables: { done: { type: 'boolean', default: false } } } }), 'tools');
   assert.match(textOf($(app.container, '.stEffects')), /Nothing happens after this tool succeeds/);
-  await a.click(byText(app.container, 'button', '＋ Add a rule'));
+  await a.click(byText(app.container, 'button', 'Add a rule'));
   assert.deepEqual(app.config.tools[0].effects, [{ do: [{ type: 'say', text: '' }] }]);
   assert.match(textOf($(app.container, '.stRule')), /Always: say/);
 
@@ -321,8 +360,8 @@ const promptConfig = () =>
       items: [{ id: 'a', name: 'A', instructions: { role: 'Help with bills on the {{state.plan}} plan.', rules: ['Be brief.'] }, tools: [] }],
     },
   });
-const openPrompt = async (app) => {
-  const details = $(app.container, '.stPromptPreview');
+const openPrompt = async () => {
+  const details = $(document.body, '.stPromptPreview');
   assert.ok(details);
   assert.equal($(details, '.stPromptBody'), null, 'closed until asked for');
   await act(async () => {
@@ -361,6 +400,7 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
   };
   try {
     const app = await open(promptConfig(), 'agents');
+    await openSheets();
     const details = await openPrompt(app);
     await app.wait(700);
     assert.match(textOf($(details, 'summary')), /exact/);
@@ -406,6 +446,7 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
 
 test('when the server can’t be asked, the prompt preview is built here, labelled approximate, and still follows the fields', async () => {
   const app = await open(promptConfig(), 'agents');
+  await openSheets();
   const details = await openPrompt(app);
   await app.wait(700);
   assert.match(textOf($(details, 'summary')), /approximate/);
@@ -414,10 +455,10 @@ test('when the server can’t be asked, the prompt preview is built here, labell
   assert.deepEqual(sections, ['persona', 'role', 'rules']);
   assert.match(textOf($(details, '[data-section="role"] pre')), /Help with bills on the basic plan\./);
   // editing the role changes the preview
-  const role = $$(app.container, 'textarea').find((el) => /Help with bills/.test(el.value));
+  const role = $$(document.body, 'textarea').find((el) => /Help with bills/.test(el.value));
   await a.type(role, 'Only greet.');
   await app.wait(700);
-  assert.match(textOf($(app.container, '.stPromptPreview [data-section="role"] pre')), /^Only greet\.$/);
+  assert.match(textOf($(document.body, '.stPromptPreview [data-section="role"] pre')), /^Only greet\.$/);
   await app.unmount();
 });
 
@@ -429,23 +470,24 @@ test('an agent’s on-enter actions are numbered steps with a plain-language men
     agents: { entry: 'a', items: [{ id: 'a', name: 'A', instructions: { role: 'Help' }, tools: [], on_enter: [{ type: 'say', text: 'Welcome' }] }] },
   });
   const app = await open(config, 'agents');
-  const step = byLabel(app.container, 'Step 1 of the list: what to do');
+  await openSheets();
+  const step = byLabel(document.body, 'Step 1 of the list: what to do');
   assert.ok(step, 'the step has a kind menu');
   assert.equal(step.getAttribute('role'), 'combobox', 'more than eight kinds of step: a searchable list, not a long dropdown');
   assert.equal(step.value, 'Say a line', 'it shows the kind in words');
   assert.deepEqual((await a.options(step)).slice(0, 3), ['Say a line', 'Say something the model writes', 'Change state']);
-  assert.match(textOf($(app.container, '.stActionSentence')), /^Say “Welcome”$/);
-  await a.choose(byLabel(app.container, 'Add a step to the list'), 'end_call');
+  assert.match(textOf($(document.body, '.stActionSentence')), /^Say “Welcome”$/);
+  await a.choose(byLabel(document.body, 'Add a step to the list'), 'end_call');
   assert.deepEqual(
     app.config.agents.items[0].on_enter.map((s) => s.type),
     ['say', 'end_call'],
   );
-  await a.click(byLabel(app.container, 'Move step 2 of the list up'));
+  await a.click(byLabel(document.body, 'Move step 2 of the list up'));
   assert.deepEqual(
     app.config.agents.items[0].on_enter.map((s) => s.type),
     ['end_call', 'say'],
   );
-  await a.choose(byLabel(app.container, 'Step 1 of the list: what to do'), 'handoff');
+  await a.choose(byLabel(document.body, 'Step 1 of the list: what to do'), 'handoff');
   assert.equal(app.config.agents.items[0].on_enter[0].type, 'handoff');
   assert.equal(app.config.agents.items[0].on_enter[1].text, 'Welcome', 'the other step is untouched');
   await app.unmount();
@@ -453,11 +495,12 @@ test('an agent’s on-enter actions are numbered steps with a plain-language men
 
 test('an event keeps its own fields and gets steps for what it does', async () => {
   const app = await open(base({ events: [{ on: 'call_started', do: [{ type: 'log', message: 'started' }] }] }), 'events');
-  assert.ok(byLabel(app.container, 'Step 1 of the list: what to do'));
+  await openSheets();
+  assert.ok(byLabel(document.body, 'Step 1 of the list: what to do'));
   assert.equal(app.config.events[0].on, 'call_started');
-  await a.click(byLabel(app.container, 'Delete step 1 of the list'));
+  await a.click(byLabel(document.body, 'Delete step 1 of the list'));
   assert.deepEqual(app.config.events[0].do, [], 'the list is empty, and the card says a step is needed');
-  assert.match(textOf(app.container), /Needs at least one step/);
+  assert.match(textOf(document.body), /Needs at least one step/);
   await app.unmount();
 });
 
@@ -483,7 +526,7 @@ test('every section of a full configuration draws without breaking, and the sect
       assert.ok($(app.container, '.stFSection'), `${name}: the section is drawn`);
       assert.ok(textOf($(app.container, '.stFSectionHead')).length > 0, `${name}: it has a heading`);
       const notes = $$(app.container, '.stFSectionNote').map(textOf).join(' ');
-      if (name === 'tests') assert.match(notes, /Scenarios tab writes and runs them/);
+      if (name === 'tests') assert.match(notes, /Tests › Scenarios writes and runs them/);
       if (name === 'tasks') assert.match(notes, /Try this task/);
       if (name === 'tasks') assert.doesNotMatch(notes, /does not run tasks|no effect on a call/, 'the runtime runs tasks now: no sentence says it does not');
       if (name === 'telephony') assert.match(notes, /set up under Telephony/);
@@ -514,23 +557,23 @@ test('every section of a full configuration draws without breaking, and the sect
 // ---------------------------------------------------------------- the add pickers
 test('adding a tool is a choice of jobs: search, pick, and the tool is in the draft with the right kind', async () => {
   const app = await open(base({ tools: [] }), 'tools');
-  assert.equal($(app.container, '.stPickPanel'), null, 'the cards are closed until asked for');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a tool/));
-  const panel = $(app.container, '.stPickPanel');
-  assert.ok(panel, 'the cards opened in place');
+  assert.equal($(document.body, '.stPickDialog'), null, 'the cards are closed until asked for');
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a tool/));
+  const panel = $(document.body, '.stPickDialog');
+  assert.ok(panel, 'the cards opened in a window over the page');
   assert.ok($$(panel, '.stPickCard').length >= 9, 'every kind is a card');
   assert.match(textOf(panel), /Hand over to a person/);
   assert.match(textOf(byText(panel, '.stPickCard', /^Run your own code/)), /Not available in the runtime yet/);
   await a.type($(panel, 'input[type=search]'), 'hand over');
   assert.deepEqual(
-    $$(app.container, '.stPickCard').map((c) => c.getAttribute('data-option')),
+    $$(document.body, '.stPickCard').map((c) => c.getAttribute('data-option')),
     ['hand_over'],
   );
   await a.type($(panel, 'input[type=search]'), 'zzz');
-  assert.match(textOf($(app.container, '.stPickPanel')), /Nothing matches “zzz”/);
-  await a.type($(app.container, '.stPickPanel input[type=search]'), '');
-  await a.click($(app.container, '.stPickCard[data-option="end_call"]'));
-  assert.equal($(app.container, '.stPickPanel'), null, 'the cards close once one is picked');
+  assert.match(textOf($(document.body, '.stPickDialog')), /Nothing matches “zzz”/);
+  await a.type($(document.body, '.stPickDialog input[type=search]'), '');
+  await a.click($(document.body, '.stPickCard[data-option="end_call"]'));
+  assert.equal($(document.body, '.stPickDialog'), null, 'the window closes once one is picked');
   assert.equal(app.config.tools.length, 1);
   assert.deepEqual(
     { id: app.config.tools[0].id, type: app.config.tools[0].type, builtin: app.config.tools[0].builtin },
@@ -541,8 +584,8 @@ test('adding a tool is a choice of jobs: search, pick, and the tool is in the dr
 
 test('adding a voice channel asks whether callers should be told they may be recorded, once, and a click writes the notice', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X' } }), 'channels');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a channel/));
-  await a.click($(app.container, '.stPickCard[data-option="phone"]'));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
+  await a.click($(document.body, '.stPickCard[data-option="phone"]'));
   assert.equal(app.config.channels.length, 1);
   assert.equal(app.config.channels[0].type, 'sip_voice');
   const offer = $(app.container, '.stFOffer');
@@ -556,11 +599,11 @@ test('adding a voice channel asks whether callers should be told they may be rec
 
 test('a text channel does not ask about recording, and “Not now” leaves the notice unset', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X' } }), 'channels');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a channel/));
-  await a.click($(app.container, '.stPickCard[data-option="web_chat"]'));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
+  await a.click($(document.body, '.stPickCard[data-option="web_chat"]'));
   assert.equal($(app.container, '.stFOffer'), null, 'chat is not a recorded call');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a channel/));
-  await a.click($(app.container, '.stPickCard[data-option="web_voice"]'));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
+  await a.click($(document.body, '.stPickCard[data-option="web_voice"]'));
   assert.ok($(app.container, '.stFOffer'));
   await a.click(byText($(app.container, '.stFOffer'), 'button', 'Not now'));
   assert.equal($(app.container, '.stFOffer'), null);
@@ -570,16 +613,16 @@ test('a text channel does not ask about recording, and “Not now” leaves the 
 
 test('a voice channel does not ask when callers are already told', async () => {
   const app = await open(base({ channels: [], persona: { name: 'X', disclosures: { recording_notice: 'Calls are recorded.' } } }), 'channels');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a channel/));
-  await a.click($(app.container, '.stPickCard[data-option="phone"]'));
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a channel/));
+  await a.click($(document.body, '.stPickCard[data-option="phone"]'));
   assert.equal($(app.container, '.stFOffer'), null);
   await app.unmount();
 });
 
 test('the picker closes on Escape and the arrow keys move between the cards', async () => {
   const app = await open(base({ tools: [] }), 'tools');
-  await a.click(byText(app.container, 'button.stAddBtn', /^＋ Add a tool/));
-  const first = $(app.container, '.stPickCard');
+  await a.click(byText(app.container, 'button.stAddBtn', /^Add a tool/));
+  const first = $(document.body, '.stPickCard');
   first.focus();
   await act(async () => {
     first.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
@@ -589,7 +632,7 @@ test('the picker closes on Escape and the arrow keys move between the cards', as
   await act(async () => {
     window.document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
   });
-  assert.equal($(app.container, '.stPickPanel'), null);
+  assert.equal($(document.body, '.stPickDialog'), null);
   await app.unmount();
 });
 
@@ -626,6 +669,7 @@ test('the prompt preview also shows what runs on taking over, what is searched, 
   };
   try {
     const app = await open(promptConfig(), 'agents');
+    await openSheets();
     const details = await openPrompt(app);
     await app.wait(700);
     assert.match(textOf($(details, '[data-extra="on_enter"]')), /What runs when it takes over \(1\).*Welcome back/);

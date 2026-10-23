@@ -5,46 +5,14 @@ import { Login, ProfileSetup } from './pages/Login.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { AccountDialog, InfoDialogHost } from './pages/shared.jsx';
 import { DemoBadge } from './demo/DemoBadge.jsx';
-import { useDensity } from './studio/usePref.js';
+import { useAccent, useDensity, useStyle } from './studio/usePref.js';
+import DialogHost from './ui/DialogHost.jsx';
+import { PageErrorBoundary } from './ui/ErrorBoundary.jsx';
+import { forgetHealth } from './studio/health/useAgentHealth.js';
 
-export class AppErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error) {
-    console.error('Weave UI error:', error);
-  }
-
-  render() {
-    if (!this.state.hasError) return this.props.children;
-    return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--bg)', color: 'var(--text)' }}>
-        <div
-          style={{
-            width: 'min(520px, 100%)',
-            border: '1px solid var(--line2)',
-            borderRadius: 18,
-            padding: 28,
-            background: 'var(--panel)',
-            boxShadow: 'var(--shadow-lg)',
-          }}
-        >
-          <div className="eyebrow cyan">WEAVE</div>
-          <h1 style={{ margin: '10px 0 8px', color: 'var(--textStrong)' }}>We hit a display error.</h1>
-          <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.6 }}>Refresh the page to continue. Your saved workspace data is kept locally.</p>
-          <button className="primaryCta" type="button" style={{ marginTop: 20 }} onClick={() => window.location.reload()}>
-            Reload Weave <span className="buttonArrow">→</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
+// the last line of defence: a break outside any page (each page has its own, in the Dashboard) shows a calm screen with a reload
+export function AppErrorBoundary({ children }) {
+  return <PageErrorBoundary full>{children}</PageErrorBoundary>;
 }
 
 // "Keep me signed in": remembered in localStorage (until sign out) or sessionStorage (until the browser closes).
@@ -67,11 +35,13 @@ function rememberSignIn(keep) {
   } catch {}
 }
 
+// signing out also drops what was read about the agents (their tags, owners and health), so the next person to sign in reads it afresh
 function forgetSignIn() {
   try {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
   } catch {}
+  forgetHealth();
 }
 
 export function App() {
@@ -107,6 +77,13 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.density = density;
   }, [density]);
+  // The design style (Simple, Premium, Futuristic, Vibrant): one attribute on the page, read by src/themes.css, in light and in dark.
+  const [designStyle] = useStyle();
+  const [accent] = useAccent(designStyle);
+  useEffect(() => {
+    document.documentElement.dataset.style = designStyle;
+    document.documentElement.dataset.accent = accent; // its colour option (src/accents.css)
+  }, [designStyle, accent]);
   const [profile, setProfile] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('weave_profile') || 'null');
@@ -141,6 +118,12 @@ export function App() {
     setScreen('dashboard');
   };
 
+  // the browser tab before the workspace opens (inside it, the Dashboard names each page)
+  useEffect(() => {
+    const titles = { landing: 'Weave · Build, test and run AI agents', login: 'Sign in · Weave', onboarding: 'Set up your workspace · Weave' };
+    if (titles[screen]) document.title = titles[screen];
+  }, [screen]);
+
   let view;
   if (screen === 'landing') {
     view = <Landing theme={theme} onToggleTheme={toggleTheme} onSignIn={() => setScreen('login')} onStart={() => setScreen('login')} />;
@@ -154,7 +137,6 @@ export function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         profile={profile}
-        onProfileUpdate={setProfile}
         onSignOut={() => {
           setAccountOpen(false);
           forgetSignIn();
@@ -172,6 +154,7 @@ export function App() {
     <>
       {view}
       <InfoDialogHost />
+      <DialogHost />
       <DemoBadge />
       {!['landing', 'login', 'onboarding'].includes(screen) && <MobileNav />}
       {accountOpen && profile && screen !== 'landing' && screen !== 'login' && screen !== 'onboarding' && (

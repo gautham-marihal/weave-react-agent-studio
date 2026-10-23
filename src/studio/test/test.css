@@ -172,6 +172,9 @@
 .stTMsg.me .stTBubble small {
   text-align: right;
 }
+.stTBubble small .pvSimTag {
+  margin-left: 6px;
+}
 .stTBubble p {
   margin: 0;
   padding: 10px 14px;
@@ -428,39 +431,9 @@
   }
 }
 
-.stTLiveDot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-left: 8px;
-  border-radius: 50%;
-  background: #22b07d;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #22b07d 25%, transparent);
-  vertical-align: 1px;
-}
-
 /* ---- the Test tab in the same look as the preview: glass cards, a lit status, a living orb, glowing composer ---- */
 .stTest .stCard {
   position: relative;
-  border-color: color-mix(in srgb, var(--accent) 20%, var(--line));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, var(--panel)), var(--panel) 55%);
-  box-shadow: 0 24px 60px -44px color-mix(in srgb, var(--accent) 60%, transparent);
-}
-.stTest .stCard::before {
-  content: "";
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, #fff), transparent);
-  opacity: 0.7;
-  pointer-events: none;
-}
-.stTHead {
-  background:
-    radial-gradient(90% 140% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, var(--panel)), var(--panel));
 }
 .stTIntro h3 {
   letter-spacing: 0.02em;
@@ -478,21 +451,8 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 .stTControls .primaryCta {
-  position: relative;
-  overflow: hidden;
   border-radius: 999px;
   padding-inline: 22px;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent),
-    0 10px 30px -10px var(--accent);
-}
-.stTControls .primaryCta:not(:disabled)::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
-  transform: translateX(-120%);
-  animation: pvShine 4s ease-in-out infinite;
 }
 .stTControls .dangerButton {
   border-radius: 999px;
@@ -541,39 +501,12 @@
 .stTHud {
   margin: 12px 14px 0;
 }
-.stTMessages {
-  background:
-    radial-gradient(60% 40% at 50% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%),
-    repeating-linear-gradient(0deg, transparent 0 27px, color-mix(in srgb, var(--accent) 5%, transparent) 27px 28px);
-}
 .stTEmpty {
   position: relative;
 }
 .stTStage {
   width: 100%;
-  min-height: 230px;
-  padding-block: 14px 24px;
-}
-.stTStage .pvOrb {
-  display: block;
-  width: 128px;
-  height: 128px;
-  cursor: default;
-}
-.stTStage .pvRing {
-  width: 128px;
-  height: 128px;
-  margin: -64px 0 0 -64px;
-}
-.stTStage .pvSat {
-  width: 176px;
-  height: 176px;
-  margin: -88px 0 0 -88px;
-}
-.stTStage::after {
-  width: 200px;
-  height: 200px;
-  margin: -100px 0 0 -100px;
+  padding-block: 30px 22px;
 }
 .stTMsg {
   animation: pvIn 0.28s ease-out both;
@@ -695,7 +628,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stTControls .primaryCta::after,
   .stTMsg,
   .stTStatus i {
     animation: none !important;

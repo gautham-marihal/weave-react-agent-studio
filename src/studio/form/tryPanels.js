@@ -4,6 +4,7 @@
 // This module reads each answer TOLERANTLY (a missing part is left out, never an error) and turns it into the plain words the panels show. Pure: no DOM.
 
 import { isObj } from './engine.js';
+import { enumLabel } from './plainEnums.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v));
@@ -138,8 +139,51 @@ export function normalizeGuardrails(raw) {
     howActionsWork: isObj(r.how_actions_work)
       ? Object.entries(r.how_actions_work).map(([k, v]) => ({ action: k, text: text(v) }))
       : list(r.how_actions_work).map(text),
+    defaultLines: isObj(r.default_lines)
+      ? Object.entries(r.default_lines)
+          .map(([action, line]) => ({ action, line: sayText(line) }))
+          .filter((l) => l.line)
+      : [],
     limits: isObj(r.limits) ? r.limits : null,
   };
+}
+
+// A line as the config holds it (`say`): words, a catalogue message, or words per language; '' when it can't be put in a sentence.
+function sayText(v) {
+  if (typeof v === 'string') return v;
+  if (!isObj(v)) return '';
+  if (typeof v.message === 'string') return `the message “${v.message}”`;
+  if (typeof v.text === 'string') return v.text;
+  const first = Object.values(v).find((x) => typeof x === 'string');
+  return first || '';
+}
+
+// How each action works, with the line it says by default (FRONTEND_GUIDE 10.1: `how_actions_work` and `default_lines` are the form's help text), in the
+// order of how strongly they act. [{ action, label, text, line }]
+export function guardrailActions(view) {
+  const lines = Object.fromEntries((view?.defaultLines || []).map((l) => [l.action, l.line]));
+  const how = Object.fromEntries((view?.howActionsWork || []).filter((a) => isObj(a)).map((a) => [a.action, a.text]));
+  const order = ['redact_in_logs', 'rewrite', 'deflect', 'block', 'end_call'];
+  const actions = [...new Set([...Object.keys(how), ...Object.keys(lines)])].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+  return actions.map((action) => ({ action, label: enumLabel('action', action), text: how[action] || '', line: lines[action] || '' }));
+}
+
+// The limits in force and the goodbye said when one is reached (`limits` of the guardrails preview), in a sentence; '' when none is set.
+export function limitsSentence(limits) {
+  if (!isObj(limits)) return '';
+  const n = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
+  const parts = [];
+  const minutes = n(limits.max_call_duration_s);
+  if (minutes) parts.push(`after ${minutes % 60 === 0 ? `${minutes / 60} minute${minutes === 60 ? '' : 's'}` : `${minutes} seconds`} on the line`);
+  if (n(limits.max_silence_s)) parts.push(`after ${limits.max_silence_s} seconds with nothing from the caller`);
+  if (n(limits.max_tool_calls_per_call)) parts.push(`at tool call ${limits.max_tool_calls_per_call + 1}`);
+  if (n(limits.max_handoffs_per_call)) parts.push(`at move ${limits.max_handoffs_per_call + 1} to another agent`);
+  const said = sayText(limits.say);
+  // a catalogue message is named, words are quoted; a sentence that ends in its own stop gets no second one
+  const goodbye = !said ? '' : said.startsWith('the message') ? `${said}.` : /[.!?]$/.test(said) ? `“${said}”` : `“${said}”.`;
+  if (!parts.length) return goodbye ? `When a limit is reached the call ends, and the agent first says ${goodbye}` : '';
+  const last = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}` : parts[0];
+  return `Limits in force: a call ends ${last}.${goodbye ? ` Before it ends the agent says ${goodbye}` : ''}`;
 }
 
 export function guardrailsVerdict(view) {

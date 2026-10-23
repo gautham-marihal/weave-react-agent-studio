@@ -1,4 +1,5 @@
 import React, { useId, useState } from 'react';
+import Icon from '../../ui/Icon.jsx';
 
 // A form the agent asked for during a conversation. Whether and when it appears is the agent's decision;
 // this only draws it and sends the answers back. The server validates again and may answer with errors.
@@ -39,8 +40,15 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
           <strong>{form.title}</strong>
           {form.description && <p>{form.description}</p>}
         </div>
-        <button type="button" className="stIconBtn" aria-label="Dismiss the form" onClick={onDismiss} disabled={form.busy}>
-          ×
+        <button
+          type="button"
+          className="stIconBtn"
+          aria-label="Cancel the form"
+          title="Cancel the form: the agent is told"
+          onClick={onDismiss}
+          disabled={form.busy}
+        >
+          <Icon name="close" size={16} />
         </button>
       </header>
       {form.fields.map((field) => {

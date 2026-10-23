@@ -25,12 +25,12 @@ const entries = corpus(engine);
 
 async function expandAll(app) {
   for (let pass = 0; pass < 5; pass += 1) {
-    const closed = $$(app.container, '.stFGroupToggle[aria-expanded=false]');
+    const closed = $$(app.container.ownerDocument.body, '.stFGroupToggle[aria-expanded=false]');
     if (!closed.length) return;
     for (const toggle of closed) await a.click(toggle);
   }
   // the Advanced folds are part of the form: open them too
-  $$(app.container, 'details.stFAdvanced').forEach((d) => {
+  $$(app.container.ownerDocument.body, 'details.stFAdvanced').forEach((d) => {
     d.open = true;
   });
 }
@@ -75,9 +75,9 @@ for (const entry of entries.filter((e) => ['example', 'scaled', 'stress'].includ
     const problems = [];
     let labels = 0;
     await walk(app, (screen) => {
-      assert.equal($$(app.container, '.stFKey').length, 0, `${screen}: no key chip is drawn`);
-      assert.equal($$(app.container, '.stFTech').length, 0, `${screen}: no copy-path control is drawn`);
-      labelsIn(app.container).forEach((item) => {
+      assert.equal($$(document.body, '.stFKey').length, 0, `${screen}: no key chip is drawn`);
+      assert.equal($$(document.body, '.stFTech').length, 0, `${screen}: no copy-path control is drawn`);
+      labelsIn(document.body).forEach((item) => {
         labels += 1;
         if (!item.text || /_/.test(item.text) || ABBREVIATION.test(item.text)) problems.push(`${screen} › ${item.at}: “${item.text}”`);
       });

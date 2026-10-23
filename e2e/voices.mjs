@@ -31,7 +31,6 @@ await context.addInitScript(() => {
   if (sessionStorage.getItem('voices')) return;
   sessionStorage.setItem('voices', '1');
   localStorage.setItem('weave_theme', 'light');
-  localStorage.setItem('weave_layout', 'new');
   localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e2e@example.test', workspaceName: 'Test', role: 'dev' }));
   localStorage.removeItem('weave_demo_state');
 });

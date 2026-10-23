@@ -9,17 +9,24 @@ import { rememberNotes } from './assistantNotes.js';
 import { generateDraft } from '../demo/draftAssistant.js';
 import { setGreeting, setRole } from './simple/simpleModel.js';
 import { applyStarter, STARTERS } from './starters.js';
-import { botIdProblem, formatWhen, slugify } from './format.js';
+import { botIdProblem, formatWhen, freeBotId } from './format.js';
 import { applyTemplate, deleteTemplate, loadTemplates, parseTemplateFile, saveTemplate } from './savedTemplates.js';
 import { PAGE_SIZE, SORTS, collectFacets, filterBots, paginate, sortBots } from './agentList.js';
-import { healthTitle } from './health/health.js';
 import { knownMeta, useAgentHealth } from './health/useAgentHealth.js';
-import Menu from './manage/Menu.jsx';
+import { useAgentActivity } from './health/useAgentActivity.js';
+import { useAlertsByAgent } from './insights/AlertBell.jsx';
+import { BotRow } from './AgentTable.jsx';
 import { useManage } from './manage/useManage.jsx';
 import { navigate, routeHref } from './route.js';
-import { EnvSlots, ErrorState, Modal, Notice, Spinner } from './ui.jsx';
-import StatePill from './StatePill.jsx';
-import { stateFromHealth } from './status.js';
+import { startSetup } from './setup/setupProgress.js';
+import { withMainLanguage } from './setup/setupModel.js';
+import { ErrorState, Modal, Notice } from './ui.jsx';
+import Icon from '../ui/Icon.jsx';
+import { SkeletonRows } from '../ui/Skeleton.jsx';
+import { askConfirm } from '../ui/dialogs.js';
+
+// a picture for each starting point in the create dialog
+const STARTER_ICONS = { support: 'agent', receptionist: 'home', knowledge: 'records', lead: 'team', appointment: 'flag', feedback: 'quote', blank: 'plus' };
 
 function CreateBotDialog({ existingIds, onClose }) {
   const [name, setName] = useState('');
@@ -37,7 +44,8 @@ function CreateBotDialog({ existingIds, onClose }) {
   const { current: workspaceId, spaces } = useWorkspaces();
   const workspaceName = spaces.find((space) => space.id === workspaceId)?.name;
 
-  const effectiveId = idTouched ? id : slugify(name);
+  // made from the name, and free: a name another agent has gets "-2" (the id is a technical key, tucked away under Advanced)
+  const effectiveId = idTouched ? id : name.trim() ? freeBotId(name, existingIds) : '';
   const idProblem = botIdProblem(effectiveId, existingIds);
   const described = how === 'describe';
   const canCreate = !!name.trim() && !!effectiveId && !idProblem && !busy && (!described || (generated?.result?.ok && generated.for === description));
@@ -50,12 +58,16 @@ function CreateBotDialog({ existingIds, onClose }) {
       const draft = await api.createBot({ id: effectiveId, name: name.trim() });
       // The agent belongs to the workspace it is created in.
       if (workspaceId) assignBot(effectiveId, workspaceId);
+      // It also starts with a main language, the person's own (the browser's), whichever step of the setup they open first; the language step shows it
+      // to change. A template or a description that names one keeps it.
+      const languages = typeof navigator === 'undefined' ? [] : navigator.languages || [navigator.language];
+      const withLanguage = (config) => withMainLanguage(config, languages);
       if (described) {
         // The draft is made from the real new draft (so its id and version are right), with what was changed in the review applied.
         const made = generateDraft(description, draft.config, { name: name.trim() });
         let config = made.config;
         config = setRole(config, edits.role);
-        config = setGreeting(config, edits.greeting);
+        config = withLanguage(setGreeting(config, edits.greeting));
         rememberNotes(effectiveId, { source: made.source, assumptions: made.assumptions, questions: made.questions, description });
         try {
           await api.saveDraft(effectiveId, config, draft.revision);
@@ -67,7 +79,7 @@ function CreateBotDialog({ existingIds, onClose }) {
         const template = templates.find((t) => `tpl:${t.id}` === starter);
         if (template) {
           try {
-            await api.saveDraft(effectiveId, applyTemplate(draft.config, template), draft.revision);
+            await api.saveDraft(effectiveId, withLanguage(applyTemplate(draft.config, template)), draft.revision);
           } catch {
             queueChange(effectiveId, { kind: 'assistant', config: applyTemplate(draft.config, template) });
           }
@@ -76,14 +88,19 @@ function CreateBotDialog({ existingIds, onClose }) {
         // Every new agent starts from the same minimal draft; the starter is what makes it its own. If saving it
         // fails the agent still exists, and the starter is put into its draft unsaved for the person to review.
         try {
-          await api.saveDraft(effectiveId, applyStarter(draft.config, starter), draft.revision);
+          await api.saveDraft(effectiveId, withLanguage(applyStarter(draft.config, starter)), draft.revision);
         } catch {
           queueChange(effectiveId, { kind: 'starter', starter });
         }
+      } else {
+        // blank: nothing but the language, which the setup would otherwise ask for first
+        await api.saveDraft(effectiveId, withLanguage(draft.config), draft.revision).catch(() => {});
       }
       refreshBots();
       onClose();
-      navigate(routeHref(effectiveId), { guard: false });
+      // a new agent goes straight into the guided setup, at the step after this dialog
+      startSetup(effectiveId);
+      navigate(routeHref(effectiveId, 'setup'), { guard: false });
     } catch (err) {
       setError(err);
       setBusy(false);
@@ -92,6 +109,7 @@ function CreateBotDialog({ existingIds, onClose }) {
 
   return (
     <Modal
+      wide
       eyebrow="NEW AGENT"
       title="Create an agent"
       subtitle={
@@ -151,26 +169,44 @@ function CreateBotDialog({ existingIds, onClose }) {
             {idProblem && <small className="stFieldError">{idProblem}</small>}
           </label>
         </details>
-        <div className="pvModes asHow" role="group" aria-label="How to start">
-          <button type="button" className={!described ? 'on' : ''} aria-pressed={!described} onClick={() => setHow('template')} disabled={busy}>
-            Start from a template
-          </button>
-          <button type="button" className={described ? 'on' : ''} aria-pressed={described} onClick={() => setHow('describe')} disabled={busy}>
-            Describe it
-          </button>
-        </div>
+        {/* one choice of how it starts: describe it in words (a draft is made to review), or a template; the name above is all else that is asked */}
+        <fieldset className="stStartGrid" disabled={busy}>
+          <legend>How it starts</legend>
+          <label className={described ? 'on ai' : 'ai'}>
+            <input type="radio" name="start" value="describe" checked={described} onChange={() => setHow('describe')} />
+            <span className="stStartIcon" aria-hidden="true">
+              <Icon name="sparkle" size={18} />
+            </span>
+            <span>
+              <strong>Describe it</strong>
+              <small>Say in your own words what it should do. A draft is made for you to check.</small>
+            </span>
+          </label>
+          {[...STARTERS.filter((item) => item.id !== 'blank'), STARTERS[0]].map((item) => (
+            <label key={item.id} className={!described && starter === item.id ? 'on' : ''}>
+              <input
+                type="radio"
+                name="start"
+                value={item.id}
+                checked={!described && starter === item.id}
+                onChange={() => {
+                  setHow('template');
+                  setStarter(item.id);
+                }}
+              />
+              <span className="stStartIcon" aria-hidden="true">
+                <Icon name={STARTER_ICONS[item.id] || 'agent'} size={18} />
+              </span>
+              <span>
+                <strong>{item.label}</strong>
+                <small>{item.blurb}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
         {!described ? (
-          <fieldset className="stBump stStarters">
-            <legend>Starting point</legend>
-            {[...STARTERS.filter((item) => item.id !== 'blank'), STARTERS[0]].map((item) => (
-              <label key={item.id} className={starter === item.id ? 'on' : ''}>
-                <input type="radio" name="starter" value={item.id} checked={starter === item.id} onChange={() => setStarter(item.id)} disabled={busy} />
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.blurb}</small>
-                </span>
-              </label>
-            ))}
+          <fieldset className="stBump stStarters stYourTemplates">
+            <legend className="srOnly">Your templates</legend>
             <div className="stTemplatesHead">
               <strong>Your templates</strong>
               <label className="quietButton stImport">
@@ -191,6 +227,7 @@ function CreateBotDialog({ existingIds, onClose }) {
                     }
                     const saved = saveTemplate(parsed.template);
                     setTemplates(saved.list);
+                    setHow('template');
                     setStarter(`tpl:${saved.template.id}`);
                     setImportNote(`Imported “${saved.template.name}”.`);
                   }}
@@ -212,7 +249,10 @@ function CreateBotDialog({ existingIds, onClose }) {
                   name="starter"
                   value={`tpl:${item.id}`}
                   checked={starter === `tpl:${item.id}`}
-                  onChange={() => setStarter(`tpl:${item.id}`)}
+                  onChange={() => {
+                    setHow('template');
+                    setStarter(`tpl:${item.id}`);
+                  }}
                   disabled={busy}
                 />
                 <span>
@@ -224,9 +264,15 @@ function CreateBotDialog({ existingIds, onClose }) {
                   className="stFDel small"
                   aria-label={`Remove the template ${item.name}`}
                   disabled={busy}
-                  onClick={(event) => {
+                  onClick={async (event) => {
                     event.preventDefault();
-                    if (window.confirm(`Remove the template “${item.name}” from this browser? Agents already made from it are not affected.`)) {
+                    const ok = await askConfirm({
+                      title: `Remove the template “${item.name}”?`,
+                      body: 'Agents already made from it are not affected.',
+                      confirmLabel: 'Remove template',
+                      tone: 'danger',
+                    });
+                    if (ok) {
                       setTemplates(deleteTemplate(item.id));
                       if (starter === `tpl:${item.id}`) setStarter('support');
                     }
@@ -257,61 +303,6 @@ function CreateBotDialog({ existingIds, onClose }) {
         )}
       </div>
     </Modal>
-  );
-}
-
-// One agent in a list: name and id, where it runs (one slot per environment), its latest published version and when
-// the draft was last saved. `menuItems` adds the "⋯" menu (Rename, Export, Remove). Also used on the Overview.
-export function BotRow({ bot, menuItems, onOpen, health, tags }) {
-  const state = stateFromHealth(bot, health);
-  // Another page (the Overview) passes onOpen so it can switch to the Agents area too; a hash change alone wouldn't.
-  const open = () => (onOpen ? onOpen(bot) : navigate(routeHref(bot.id), { guard: false }));
-  const name = bot.name || bot.id;
-  return (
-    <div className={`agentRow stAgentRow ${menuItems ? 'withMenu' : ''}`}>
-      <button type="button" className="agentRowMain" onClick={open} aria-label={`Open ${name}`}>
-        <span className="agentRowAvatar" aria-hidden="true">
-          {name.slice(0, 1).toUpperCase()}
-        </span>
-        <span className="agentRowCopy">
-          <span className="stRowTitle">
-            <strong>{name}</strong>
-            <StatePill state={state} />
-          </span>
-          <small>
-            <code>{bot.id}</code>
-            {tags?.length > 0 &&
-              tags.slice(0, 3).map((tag) => (
-                <span key={tag} className="stAgentTag">
-                  {tag}
-                </span>
-              ))}
-          </small>
-          {health && health.state !== 'unknown' && (
-            <span className={`stHealth ${health.state}`} title={healthTitle(health)} data-health={health.state}>
-              {health.parts.length === 0 ? (
-                <span className="stHealthOk">✓ no problems found</span>
-              ) : (
-                health.parts.slice(0, 3).map((part) => (
-                  <span key={part.id} className={`stHealthPart ${part.tone}`}>
-                    {part.text}
-                  </span>
-                ))
-              )}
-            </span>
-          )}
-        </span>
-        <EnvSlots deployed={bot.deployed} compact />
-        <span className="stRowFacts">
-          <span className={bot.latest_version ? 'stRowVersion' : 'stRowVersion none'}>{bot.latest_version ? `v${bot.latest_version}` : 'Not published'}</span>
-          <small title={bot.draft_saved_at ? new Date(bot.draft_saved_at).toLocaleString() : ''}>Draft saved {formatWhen(bot.draft_saved_at) || 'never'}</small>
-        </span>
-      </button>
-      <button type="button" className="quietButton agentRowAction" onClick={open}>
-        Open
-      </button>
-      {menuItems && <Menu label={`Actions for ${name}`} items={menuItems(bot)} className="agentRowMenu" />}
-    </div>
   );
 }
 
@@ -380,6 +371,8 @@ export default function BotsPage({ route }) {
   const paged = paginate(sorted, page, PAGE_SIZE);
   const visible = paged.rows;
   const health = useAgentHealth(everything || wantAll ? list : visible);
+  const activity = useAgentActivity(visible);
+  const alertsByAgent = useAlertsByAgent();
   const facets = collectFacets(list, known);
   const unread = list.filter((bot) => !known[bot.id]).length;
   // a new search, filter or sort starts again from the first page
@@ -410,18 +403,22 @@ export default function BotsPage({ route }) {
         </div>
         <div className="pageHeaderActions">
           <button className="primaryCta createButton" type="button" onClick={() => setCreating(true)}>
-            ＋ Create agent
+            <Icon name="plus" size={14} /> Create agent
           </button>
         </div>
       </section>
 
-      {bots === null && loading && <Spinner label="Loading agents" />}
+      {bots === null && loading && (
+        <div className="agentRowList agentTable">
+          <SkeletonRows rows={3} label="Loading agents" />
+        </div>
+      )}
       {error && <ErrorState error={error} onRetry={refresh} what="the agents" />}
 
       {bots && list.length === 0 && (
         <section className="emptyPanel">
           <div className="emptyPanelIcon" aria-hidden="true">
-            ✦
+            <Icon name="sparkle" size={24} />
           </div>
           <h2>{removed.length ? 'No agents in your list' : 'No agents yet'}</h2>
           <p>
@@ -429,7 +426,8 @@ export default function BotsPage({ route }) {
               ? `${removed.length} removed from your list. You can restore ${removed.length === 1 ? 'it' : 'them'} below, or create a new one.`
               : 'Create one to get a valid starting draft. You can edit everything afterwards.'}
           </p>
-          <button className="primaryCta compactCta" type="button" onClick={() => setCreating(true)}>
+          {/* quiet: the page's "Create agent" above is its one strong button, and does the same */}
+          <button className="quietButton compactCta" type="button" onClick={() => setCreating(true)}>
             Create {removed.length ? 'an' : 'your first'} agent
           </button>
         </section>
@@ -458,7 +456,7 @@ export default function BotsPage({ route }) {
           {list.length > 1 && (
             <div className="stListTools">
               <label className="inlineSearch">
-                <span aria-hidden="true">⌕</span>
+                <Icon name="search" size={15} />
                 <input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search by name or id" aria-label="Search agents" />
               </label>
               <label className="stSort">
@@ -522,15 +520,23 @@ export default function BotsPage({ route }) {
               {health.pending > 0 && <>Checking… {health.pending} left.</>}
             </p>
           )}
-          <div className="stAgentHead" aria-hidden="true">
-            <span>Agent</span>
-            <span>Deployed to</span>
-            <span>Latest version</span>
-            <span />
-          </div>
-          <div className="agentRowList">
+          <div className="agentRowList agentTable">
+            <div className="stAgentHead" aria-hidden="true">
+              <span>Agent</span>
+              <span>Where it runs</span>
+              <span>Calls · 7 days</span>
+              <span>Latest version</span>
+            </div>
             {visible.map((bot) => (
-              <BotRow key={bot.id} bot={bot} menuItems={manage.menuItems} health={known[bot.id]?.health} tags={known[bot.id]?.tags} />
+              <BotRow
+                key={bot.id}
+                bot={bot}
+                menuItems={manage.menuItems}
+                health={known[bot.id]?.health}
+                tags={known[bot.id]?.tags}
+                activity={activity.byBot[bot.id]}
+                alerts={alertsByAgent[bot.id]}
+              />
             ))}
             {visible.length === 0 && (
               <div className="agentRowEmpty">{filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.'}</div>

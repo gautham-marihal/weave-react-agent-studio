@@ -119,7 +119,7 @@ test('where one name means different things, the place decides', () => {
   assert.equal(labelOf('description', { path: ['meta', 'description'] }), 'Description');
   assert.equal(labelOf('type', { path: ['channels', 0, 'type'] }), 'Kind of channel');
   assert.equal(labelOf('type', { path: ['tools', 2, 'type'] }), 'Kind of tool');
-  assert.equal(labelOf('name', { path: ['persona', 'name'] }), 'The agent’s name');
+  assert.equal(labelOf('name', { path: ['persona', 'name'] }), 'Name it introduces itself by');
   assert.equal(labelOf('method', { path: ['tools', 0, 'request', 'method'] }), 'Request kind');
   assert.equal(labelOf('mode', { path: ['knowledge', 0, 'mode'] }), 'How it is searched');
   assert.equal(labelOf('timeout_s', { path: ['defaults', 'conversation', 'inactivity', 'timeout_s'] }), 'Wait before nudging (seconds)');

@@ -18,7 +18,8 @@ async function read(bot) {
   const report = await api.validate(config).catch(() => null);
   const tests = Array.isArray(config?.tests) && config.tests.length ? await api.listTests(bot.id, { ref: 'draft' }).catch(() => null) : null;
   const knowledge = Array.isArray(config?.knowledge) && config.knowledge.length ? await api.getKnowledge(bot.id, { ref: 'draft' }).catch(() => null) : null;
-  return { ...metaOfConfig(config), health: healthFrom({ config, report, tests, knowledge }) };
+  // the draft and its check are kept too: Home works out the agent's steps to get ready from them (readiness.js)
+  return { ...metaOfConfig(config), health: healthFrom({ config, report, tests, knowledge }), config, report };
 }
 
 export function useAgentHealth(visibleBots, { enabled = true } = {}) {

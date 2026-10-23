@@ -2,8 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   answeredBy,
+  changeWords,
   checkWords,
   createBody,
+  environmentOption,
+  hasPhoneChannel,
+  lastCallWords,
+  noPhoneSystem,
   normalizeCheck,
   normalizeNumber,
   normalizeNumberSettings,
@@ -15,7 +20,11 @@ import {
   parseAddresses,
   parseMaxDuration,
   patchBody,
+  ruleTarget,
+  setUpWords,
+  setupWarnings,
   statusWords,
+  supportDetails,
 } from '../src/pages/numbersModel.js';
 import { createDemoApi, memoryStorage } from '../src/demo/demoApi.js';
 
@@ -60,7 +69,8 @@ test('the status says what is going on, in a customer’s words', () => {
   const bad = statusWords({ ...row, status: 'problem', problems: ['Nothing is deployed to production.'] });
   assert.equal(bad.tone, 'bad');
   assert.match(bad.words, /Nothing is deployed/);
-  assert.equal(statusWords(normalizeNumber(hand)).label, 'Set up by hand');
+  assert.equal(statusWords(normalizeNumber(hand)).label, 'Set up outside the builder', 'the guide’s words for a number this builder did not make');
+  assert.match(statusWords(normalizeNumber(hand)).words, /can’t be changed or released here/);
 });
 
 test('who answers a call is said for every case', () => {
@@ -254,6 +264,30 @@ test('the real server’s shapes are read: agents as pairs, nulls, and a recordi
   assert.equal(real.bot, '');
   assert.equal(real.options.maxCallDurationS, undefined);
   assert.equal(answeredBy(real), 'Sent to CIMBBot by the phone system.');
+  // one of ours (read with GET on 2026-10-22): the rule sends calls to the builder's runtime, with the bot and environment as JSON metadata
+  const mine = normalizeNumber({
+    number: '90004',
+    managed: true,
+    bot: 'voice-test',
+    environment: 'development',
+    trunk: { id: 'ST_dw2jApjw7HJR', name: 'agent-builder voice-test' },
+    rule: {
+      id: 'SDR_pUusmoNDbzpB',
+      name: 'agent-builder voice-test (development)',
+      agents: [['agent-builder-runtime', '{"bot":"voice-test","ref":"development"}']],
+    },
+    options: { record_audio: false, krisp: false, allowed_addresses: [], max_call_duration_s: null },
+    problems: [],
+    deployment: { deployed: true, version: '1.0.0' },
+    phone_channel: true,
+    last_call: null,
+    routing: 'no_calls_yet',
+    status: 'waiting_for_calls',
+  });
+  assert.deepEqual(mine.rule.agents, ['voice-test'], 'the bot, not the runtime’s name');
+  assert.deepEqual(mine.rule.targets, [{ agent: 'agent-builder-runtime', bot: 'voice-test', ref: 'development' }]);
+  assert.deepEqual(ruleTarget(['nigeriabot', '']), { agent: 'nigeriabot', bot: '', ref: '' });
+  assert.deepEqual(ruleTarget(['x', '{not json']), { agent: 'x', bot: '', ref: '' }, 'metadata that does not parse is ignored');
   const settings = normalizeNumberSettings({
     number_pattern: String.raw`^\+?[0-9]{3,15}$`,
     recording: { format: 'MP3, audio only', path: '/out/{room_name}-{time}' },
@@ -274,4 +308,79 @@ test('an empty “longest call” takes the limit away, and leaving it alone sen
     'no limit before, none now: nothing to send',
   );
   assert.deepEqual(patchBody(before, { ...form, maxMinutes: 'soon' }), {}, 'a value that does not parse is not sent as a removal');
+});
+
+// FRONTEND_GUIDE 4 (2026-10-22) section 10.5, "How the screens should be built"
+test('the trunk and rule are only details for support, with their ids, and the last call is said in words', () => {
+  const row = normalizeNumber({
+    ...ours,
+    rule: { id: 'SDR_2', name: 'agent-builder acme (production)', agents: [['agent-builder-runtime', '{"bot":"acme","ref":"production"}']] },
+    last_call: { id: 'c1', at: '2026-10-22T09:55:00Z', caller: '+6591234567', status: 'unfinished' },
+  });
+  assert.deepEqual(supportDetails(row), [
+    { label: 'Trunk', value: 'builder (ST_2)' },
+    { label: 'Dispatch rule', value: 'agent-builder acme (production) (SDR_2)' },
+    { label: 'Sends calls to', value: 'agent-builder-runtime, for acme (production)' },
+  ]);
+  assert.deepEqual(supportDetails(normalizeNumber(hand)).at(-1), { label: 'Sends calls to', value: 'agent-x' });
+  const now = Date.parse('2026-10-22T10:00:00Z');
+  assert.equal(lastCallWords(row, now), 'Last call 5 min ago, from +6591234567 (cut off)');
+  assert.equal(lastCallWords({ ...row, lastCall: { ...row.lastCall, status: 'ended', caller: '' } }, now), 'Last call 5 min ago');
+  assert.equal(lastCallWords(normalizeNumber(ours), now), '', 'no call yet, nothing to say');
+});
+
+test('before a number is set up: which version answers in each environment, and a warning when no call would be answered', () => {
+  const current = { development: { version: '0.1.1' }, staging: { version: '0.1.0' } };
+  assert.equal(environmentOption('development', current), 'Development · runs v0.1.1');
+  assert.equal(environmentOption('production', current), 'Production · nothing deployed');
+  assert.equal(environmentOption('production', null), 'Production', 'not known yet: just the name');
+  assert.match(setupWarnings({ env: 'production', deployed: '', phone: null, botName: 'Acme' })[0], /Nothing is deployed to Production for Acme yet/);
+  assert.match(setupWarnings({ env: 'staging', deployed: '0.1.0', phone: false })[0], /Version 0\.1\.0, deployed to Staging, has no phone line that is on/);
+  assert.deepEqual(setupWarnings({ env: 'staging', deployed: '0.1.0', phone: true }), []);
+  assert.deepEqual(setupWarnings({ env: 'staging', deployed: '0.1.0', phone: null }), [], 'still being read: no warning yet');
+  assert.deepEqual(setupWarnings({ env: 'staging', deployed: null, phone: null }), [], 'not known: no warning');
+  assert.equal(hasPhoneChannel({ channels: [{ type: 'sip_voice', enabled: true }] }), true);
+  assert.equal(hasPhoneChannel({ channels: [{ type: 'sip_voice', enabled: false }, { type: 'web_chat' }] }), false, 'a phone line that is off');
+  assert.equal(hasPhoneChannel(null), false);
+});
+
+test('a change is said in sentences before it is sent, and setting a number up twice says nothing changed', () => {
+  const before = normalizeNumber(ours);
+  assert.deepEqual(changeWords(before, { environment: 'staging', record_audio: false, allowed_addresses: [], max_call_duration_s: null }), [
+    'Move it to Staging: calls are then answered by the version deployed there.',
+    'Stop recording the audio of calls.',
+    'Accept calls from any address.',
+    'Take away the longest-call limit.',
+  ]);
+  assert.deepEqual(changeWords(before, { krisp: true, allowed_addresses: ['10.0.0.0/8'], max_call_duration_s: 3600 }), [
+    'Start filtering background noise.',
+    'Only accept calls from 10.0.0.0/8.',
+    'End calls after 60 minutes.',
+  ]);
+  const args = { number: '99999', botName: 'Acme', env: 'production' };
+  assert.equal(setUpWords({ changed: ['already set up'] }, args), '99999 was already set up for Acme in Production. Nothing was changed.');
+  assert.equal(setUpWords({ changed: ['trunk', 'dispatch rule'] }, args), '99999 was set up for Acme in Production.');
+  assert.equal(setUpWords(null, args), '99999 was set up for Acme in Production.');
+});
+
+test('no phone-system credentials (503) hides the feature; it is not “no numbers”', () => {
+  assert.equal(noPhoneSystem({ status: 503, kind: 'unavailable' }), true);
+  assert.equal(noPhoneSystem({ status: 404, kind: 'not_found' }), false);
+  assert.equal(notSupported({ status: 503, kind: 'unavailable' }), false);
+  assert.equal(noPhoneSystem(null), false);
+});
+
+test('demo numbers have the live server’s shapes: our rule names the runtime with the bot as metadata, and the pattern allows 3 to 15 digits', async () => {
+  const api = demo();
+  const made = await api.handle('POST', '/bots/acme-support/numbers', { number: '+6599990000', environment: 'staging' });
+  assert.equal(made.body.trunk.name, 'agent-builder acme-support');
+  assert.equal(made.body.rule.name, 'agent-builder acme-support (staging)');
+  assert.deepEqual(made.body.rule.agents, [['agent-builder-runtime', '{"bot":"acme-support","ref":"staging"}']]);
+  assert.match(made.body.routing_note, /^No call to \+6599990000 has been logged yet/);
+  assert.deepEqual(normalizeNumber(made.body).rule.agents, ['acme-support']);
+  const taken = (await api.handle('GET', '/numbers/check?number=%2B6599990000')).body;
+  assert.equal(taken.owner.trunk, 'agent-builder acme-support');
+  assert.equal(taken.owner.environment, 'staging');
+  assert.equal((await api.handle('GET', '/numbers/check?number=1234567890123456')).body.status, 'invalid', '16 digits is too long');
+  assert.equal((await api.handle('GET', '/numbers/check?number=123456789012345')).body.status, 'free');
 });

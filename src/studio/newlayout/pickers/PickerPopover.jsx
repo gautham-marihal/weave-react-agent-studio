@@ -1,9 +1,13 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
+import { useDropPlace } from '../../../ui/dropPlace.js';
 
 // A list that opens under a button, with a search box on top: pick one (it closes), or pick several (it stays open and each choice is ticked).
 // The search box takes the keyboard when it opens; the arrows move, Enter picks, Escape closes it and gives the keyboard back to the button.
+// It opens under the button, or above it when there is more room there, no taller than the room on that side (ui/dropPlace.js).
 //   options:  [{ value, label, hint?, badge? }]      selected: the values ticked      onSearch: (text) => void, when the caller narrows the list itself
+const MENU_MAX = 336; // px, as .pkMenu's max-height in pickers.css
+
 export default function PickerPopover({
   options,
   selected = [],
@@ -28,9 +32,15 @@ export default function PickerPopover({
   const root = useRef(null);
   const button = useRef(null);
   const input = useRef(null);
+  const menu = useRef(null);
   const listId = useId();
   const chosen = useMemo(() => new Set(selected), [selected]);
   const shown = options;
+  // its full height: the search box and the whole list, up to the menu's own limit (pickers.css)
+  const place = useDropPlace(button, menu, open, (box) => {
+    const list = box.querySelector('.pkList');
+    return Math.min(MENU_MAX, box.offsetHeight - (list?.clientHeight || 0) + (list?.scrollHeight || 0));
+  });
 
   useEffect(() => {
     if (!open) return undefined;
@@ -93,7 +103,13 @@ export default function PickerPopover({
         <Icon name="chevronDown" size={14} />
       </button>
       {open && (
-        <div className="pkMenu" role="presentation" onKeyDown={onKey}>
+        <div
+          className={`pkMenu ${place.up ? 'up' : ''}`}
+          ref={menu}
+          role="presentation"
+          style={place.room != null ? { '--dropRoom': `${place.room}px` } : undefined}
+          onKeyDown={onKey}
+        >
           <input
             ref={input}
             className="pkSearch"

@@ -23,9 +23,16 @@
     "e2e:tryline": "node e2e/tryline.mjs",
     "e2e:numbers": "node e2e/numbers.mjs",
     "e2e:voices": "node e2e/voices.mjs",
-    "e2e:channels": "node e2e/channels.mjs"
+    "e2e:channels": "node e2e/channels.mjs",
+    "e2e:insights": "node e2e/insights.mjs",
+    "e2e:live": "node e2e/live.mjs",
+    "e2e:speed": "node e2e/speed.mjs",
+    "e2e:setup": "node e2e/setup.mjs",
+    "e2e:guardrails": "node e2e/guardrails.mjs",
+    "e2e:fit": "node e2e/fit.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
     "livekit-client": "^2.22.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

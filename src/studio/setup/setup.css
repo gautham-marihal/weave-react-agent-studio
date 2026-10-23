@@ -1,0 +1,656 @@
+/* The guided setup (SetupWizard.jsx): the steps in the sidebar, one step at a time in the page, Back and Next at the bottom. */
+
+/* ---- the steps in the sidebar ---- */
+.suSteps {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0;
+}
+.suStepsHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+}
+.suStepsHead strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.suStepsHead span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.suSteps ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.suStep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+}
+.suStep:hover:not(:disabled) {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.suStep:disabled {
+  cursor: default;
+}
+.suStep.current {
+  background: var(--surface2);
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.suStepMark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--line2);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.suStep.current .suStepMark {
+  border-color: var(--textStrong);
+  color: var(--textStrong);
+}
+.suStep.done .suStepMark,
+.suReview li.done .suStepMark {
+  border-color: var(--good-text);
+  background: var(--good-text);
+  color: var(--panel);
+}
+.suStepText {
+  display: grid;
+  min-width: 0;
+}
+.suStepText small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+/* ---- the page ---- */
+.suPage {
+  display: grid;
+  gap: 20px;
+  width: min(100%, 860px);
+  margin: 0 auto;
+  padding: 8px 0 0;
+}
+.suHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.suEyebrow {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.suHead h1 {
+  margin: 6px 0 4px;
+  color: var(--textStrong);
+  font-size: var(--fs-2xl);
+  line-height: 1.2;
+}
+/* the heading takes the focus when a step opens (to start the keyboard there), and is not something to act on: no ring */
+.suHead h1:focus {
+  outline: none;
+}
+.suHead p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.suSaved {
+  flex: none;
+  padding-top: 4px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.suBody {
+  min-width: 0;
+}
+.suFoot {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 14px 0 18px;
+  border-top: 1px solid var(--line);
+  background: var(--bg, var(--panel));
+}
+.suFootRight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.suFoot .primaryCta,
+.suFoot .quietButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- fields ---- */
+.suFields {
+  display: grid;
+  gap: 20px;
+}
+.suField {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.suField > span,
+.suFieldLabel {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.suField > small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+/* a suggestion under a field (the starter's own words, still untouched): quiet, set apart from the field's own description */
+.suField > small.suTip {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text);
+}
+.suField textarea.stFInput {
+  min-height: 160px;
+  resize: vertical;
+  line-height: 1.6;
+}
+.suFieldFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.suWarn {
+  color: var(--warn-text);
+}
+.suInline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.suInline .grow {
+  flex: 1 1 240px;
+}
+.suNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+.suNote.warn {
+  color: var(--warn-text);
+}
+.suBlock {
+  display: grid;
+  gap: 10px;
+}
+.suBlock h3 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+}
+
+/* ---- choices (where people reach it) and actions ---- */
+.suChoices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.suChoice {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 150px;
+  padding: 16px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.suChoice:hover {
+  border-color: color-mix(in srgb, var(--textStrong) 30%, var(--line2));
+}
+.suChoice.on {
+  border-color: var(--textStrong);
+  box-shadow: 0 0 0 1px var(--textStrong) inset;
+}
+.suChoiceIcon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel2, var(--surface2));
+  color: var(--text);
+}
+.suChoiceText {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.suChoiceText strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.suChoiceText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.suTick {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--line2);
+  border-radius: 999px;
+  color: var(--panel);
+}
+.suChoice.on .suTick {
+  border-color: var(--textStrong);
+  background: var(--textStrong);
+}
+.suAction {
+  border: 1px solid var(--line2);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+}
+.suAction.on {
+  border-color: color-mix(in srgb, var(--textStrong) 35%, var(--line2));
+}
+.suActionHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.suActionHead .suChoiceText {
+  flex: 1;
+}
+.suActionMore {
+  display: grid;
+  gap: 14px;
+  padding: 2px 16px 16px 66px;
+}
+.suActionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.suChecks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.suCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+/* under the web page box: whether the pages it links to are read too */
+.suLinked {
+  flex-wrap: wrap;
+  margin-top: -6px;
+}
+.suLinked small,
+.suLinkedNote {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.suSystems {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.suChip {
+  padding: 3px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.suChip:hover {
+  background: var(--surface2);
+}
+
+/* ---- what it knows ---- */
+.suDrop {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 28px 16px;
+  border: 1.5px dashed var(--line2);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+  color: var(--muted);
+  text-align: center;
+  cursor: pointer;
+}
+.suDrop strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.suDrop small {
+  font-size: var(--fs-sm);
+}
+.suDrop.over,
+.suDrop:hover {
+  border-color: color-mix(in srgb, var(--textStrong) 45%, var(--line2));
+  background: var(--surface2);
+}
+.suDrop.busy {
+  cursor: progress;
+  opacity: 0.7;
+}
+/* its file box is hidden from sight but takes the keyboard focus: the whole drop zone shows it */
+.suDrop:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring, var(--ink));
+  outline-offset: 2px;
+}
+.suList {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 12px);
+  list-style: none;
+}
+.suList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+.suList li + li {
+  border-top: 1px solid var(--line);
+}
+.suList li > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suList li .wIcon {
+  flex: none;
+  color: var(--muted);
+}
+
+/* ---- try it ---- */
+.suTry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 20px;
+  align-items: start;
+}
+.suTryPanel {
+  container: testpanel / size;
+  display: flex;
+  flex-direction: column;
+  height: min(640px, calc(100vh - 300px));
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+}
+.suTryPanel > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.suTryTips {
+  display: grid;
+  gap: 10px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.suTryTips strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.suTryTips ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* ---- go live ---- */
+.suReview {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+  list-style: none;
+}
+.suReview li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.suReview li + li {
+  border-top: 1px solid var(--line);
+}
+.suReview li > span:nth-child(2) {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.suReview li small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.suProblems {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--danger, #d03b3b) 45%, var(--line2));
+  border-radius: var(--r-card, 14px);
+  background: color-mix(in srgb, var(--danger, #d03b3b) 6%, var(--panel));
+}
+.suProblems strong {
+  color: var(--textStrong);
+}
+.suProblems ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.suProblems li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.suWhere {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.suWhere legend {
+  margin-bottom: 8px;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.suWhere .suCheck small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.suGoLive {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+}
+.suDone {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--good-text) 45%, var(--line2));
+  border-radius: var(--r-card, 14px);
+  background: color-mix(in srgb, var(--good-text) 7%, var(--panel));
+}
+.suDone strong {
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+}
+.suDone p {
+  margin: 4px 0 0;
+  color: var(--text);
+}
+.suDoneMark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--good-text);
+  color: var(--panel);
+}
+
+/* the setup page: a calm page of its own, without the agent's own top bar */
+.nlWorkspace[data-page="setup"] .nlBody {
+  padding-bottom: 0;
+}
+
+/* ---- on the agent's Overview: the way back into the setup ---- */
+.suBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+}
+.suBanner > div {
+  flex: 1;
+  min-width: 0;
+}
+.suBanner strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.suBanner p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.suBanner .primaryCta {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+/* what switching one way of reaching it on (or off) did besides, under the choices, until dismissed */
+.suBrought {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+}
+.suBrought.warn {
+  border-color: color-mix(in srgb, var(--warn-text) 40%, var(--line2));
+}
+.suBrought ul {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+.suBrought p {
+  flex: 1;
+  margin: 0;
+}
+.suBrought strong {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.suBroughtClose {
+  flex: none;
+}

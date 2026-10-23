@@ -4,7 +4,7 @@
 // (under "More", named by the schema) and nothing the schema has is left out. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
-import { CHANNEL_PRESETS, buildChannel } from './presets.js';
+import { CHANNEL_PRESETS, REACH_WORDS, buildChannel } from './presets.js';
 import { UNSUPPORTED_BUILTINS, UNSUPPORTED_KINDS } from './toolInfo.js';
 import { uniqueId } from './ctx.js';
 import { NOT_RUNNING, notRunningYet } from './channelTypes.js';
@@ -164,6 +164,15 @@ const GUARDRAILS = {
       seed: { enforcement: 'code' },
     },
     {
+      id: 'firewall',
+      group: 'Protect the caller',
+      label: 'Keep secret fields away from the model',
+      help: 'Name fields such as a password or a one-time code: they are removed from what the model sees and from what it says.',
+      kind: 'field_firewall',
+      base: 'secret_fields',
+      seed: { enforcement: 'code' },
+    },
+    {
       id: 'statement',
       group: 'Something else',
       label: 'A rule in words',
@@ -212,6 +221,26 @@ const GUARDRAILS = {
     },
   ],
 };
+
+// Kinds the schema allows in a list but the runtime does not run there, so Add does not offer them. The real validator (POST /validate, 2026-10-23)
+// lists a prompt-injection check on the agent's own words as unsupported: it looks for tricks in what the caller says.
+const NOT_RUN_THERE = { 'guardrails.output': ['prompt_injection'] };
+
+// The ids a new item of the list at `path` must not take: those of the list itself, and for a list of guardrails those of all three (the checks on
+// what the caller says, on what the agent says, and the hand-over rules), which the server takes as one set: "personal_details" on both lists is refused.
+export function takenIdsAt(config, path) {
+  const at = (p) => p.reduce((v, key) => (v && typeof v === 'object' ? v[key] : undefined), config);
+  const idsAt = (p) => {
+    const items = at(p);
+    return (Array.isArray(items) ? items : [])
+      .filter(isObj)
+      .map((item) => item.id)
+      .filter((id) => typeof id === 'string');
+  };
+  const parts = ['input', 'output', 'escalation'];
+  const guardrails = path.length === 2 && path[0] === 'guardrails' && parts.includes(path[1]);
+  return guardrails ? [...new Set(parts.flatMap((part) => idsAt(['guardrails', part])))] : idsAt(path);
+}
 
 // ---- pronunciation rules: how written text is said aloud, by what the rule does (not by its kind in the file)
 const PRONUNCIATION = [
@@ -274,6 +303,40 @@ const PRONUNCIATION = [
   },
 ];
 
+// The picture on each choice's card, so a long list can be scanned at a glance. One table: a choice has the same id (and picture) wherever it is offered.
+const OPTION_ICONS = {
+  hand_over: 'phoneTransfer',
+  back_to_start: 'undo',
+  end_call: 'endCall',
+  show_form: 'records',
+  lookup: 'plug',
+  search: 'search',
+  keypad_collect: 'keypad',
+  keypad_send: 'keypad',
+  task: 'flag',
+  server: 'tools',
+  code: 'code',
+  rules_only: 'sliders',
+  injection: 'shield',
+  pii: 'lock',
+  blocklist: 'block',
+  statement: 'pencil',
+  firewall: 'shield',
+  say_words: 'sound',
+  find_replace: 'pencil',
+  spell_out: 'quote',
+  say_digits: 'dial',
+  say_money: 'dial',
+  say_times: 'clock',
+  say_dates: 'clock',
+  phone: 'phone',
+  web_voice: 'mic',
+  web_chat: 'chat',
+  whatsapp: 'chat',
+  sms: 'chat',
+  email: 'mail',
+};
+
 const CHANNEL_GROUPS = { sip_voice: 'Voice', web_voice: 'Voice', web_chat: 'Text', whatsapp: 'Text', sms: 'Text', email: 'Text' };
 const CHANNEL_HELP = {
   phone: 'Callers dial a number and talk to the agent.',
@@ -298,6 +361,15 @@ export const WHAT = {
   pronunciation: 'a pronunciation rule',
 };
 
+// The line under the title of the window the choices open in: what is being chosen, and that its details come next.
+export const INTRO = {
+  tools: 'Pick what it should be able to do. Its details come next.',
+  channels: 'Pick where people will reach it. Its details come next.',
+  'guardrails.input': 'Pick what to look for in what callers say, before the agent answers. Its details come next.',
+  'guardrails.output': 'Pick what to look for in what the agent says, before it is said. Its details come next.',
+  pronunciation: 'Pick how some written text should be said aloud. Its details come next.',
+};
+
 // Options for a list, or null when the list should use the plain add control. `collection` is 'tools', 'channels', 'guardrails.input'…
 // `ctx` has what building an item needs: the engine, the ids already taken, the agent's id.
 export function pickerFor(collection, { engine, branches, takenIds = [], botId = '', channelTypes = null }) {
@@ -306,7 +378,8 @@ export function pickerFor(collection, { engine, branches, takenIds = [], botId =
       id: preset.id,
       group: CHANNEL_GROUPS[preset.type] || 'More',
       label: preset.label,
-      help: CHANNEL_HELP[preset.id] || preset.note,
+      help: REACH_WORDS[preset.type]?.text || CHANNEL_HELP[preset.id] || preset.note,
+      icon: OPTION_ICONS[preset.id] || 'chat',
       type: preset.type,
       // a kind nothing connects to the runtime yet says so on its card (the server's list, `runs_today`)
       ...(notRunningYet(channelTypes, preset.type) ? { badge: NOT_RUNNING, unavailable: NOT_RUNNING } : {}),
@@ -326,6 +399,7 @@ export function pickerFor(collection, { engine, branches, takenIds = [], botId =
       group: info.group,
       label: info.label,
       help: info.help,
+      icon: OPTION_ICONS[info.id] || 'plus',
       badge: info.unavailable ? NOT_YET : '',
       unavailable: info.unavailable || '',
       make: () => {
@@ -336,15 +410,17 @@ export function pickerFor(collection, { engine, branches, takenIds = [], botId =
       },
     });
   });
-  // a branch the schema has and this table doesn't know: still offered, by the schema's own name
+  // a branch the schema has and this table doesn't know: still offered, by the schema's own name (but not one the runtime does not run there)
   branches.forEach((branch, i) => {
     if (covered.has(branch)) return;
     const kind = branchKind(engine, branch);
+    if (NOT_RUN_THERE[collection]?.includes(kind)) return;
     listed.push({
       id: `schema-${i}`,
       group: 'More',
       label: engine.branchLabel(branch, i),
       help: '',
+      icon: 'plus',
       badge: '',
       unavailable: '',
       make: () => {

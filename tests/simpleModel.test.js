@@ -5,9 +5,7 @@ import { minimalConfig } from '../src/demo/demoApi.js';
 import {
   BASE_LANGUAGES,
   languageName,
-  readConnections,
   readSimple,
-  readTools,
   setAgentName,
   setGreeting,
   setPrimaryLanguage,
@@ -99,24 +97,4 @@ test('the primary language also makes its base language spoken, first; the prima
   assert.equal(languageName('pt-BR'), 'Portuguese (Brazil)');
   assert.equal(languageName('es-CO'), 'Spanish');
   assert.ok(BASE_LANGUAGES.some((l) => l.code === 'en') && BASE_LANGUAGES.filter((l) => l.code === 'en').length === 1);
-});
-
-test('connections and tools are summarised for the card', () => {
-  const config = base();
-  config.connections = { billing_api: { type: 'http', base_url: 'https://api.example.com', auth: { type: 'bearer', token: { secret: 'BILLING_KEY' } } } };
-  config.tools = [
-    ...config.tools,
-    {
-      id: 'orphan',
-      type: 'http',
-      connection: 'billing_api',
-      description: 'x',
-      request: { method: 'GET', path: '/' },
-      parameters: { type: 'object', properties: {} },
-    },
-  ];
-  assert.deepEqual(readConnections(config), [{ id: 'billing_api', type: 'http', detail: 'https://api.example.com', secrets: ['BILLING_KEY'] }]);
-  const tools = readTools(config);
-  assert.equal(tools.find((t) => t.id === 'end_call').used, true);
-  assert.equal(tools.find((t) => t.id === 'orphan').used, false);
 });

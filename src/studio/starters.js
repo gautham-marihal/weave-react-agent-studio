@@ -103,7 +103,7 @@ const INACTIVITY_MESSAGES = [
     allow_interruptions: false,
   },
 ];
-const CALLBACK_MESSAGE = {
+export const CALLBACK_MESSAGE = {
   id: 'callback_line',
   text: 'I’m sorry, I can’t put you through to a person from here right now. Please get in touch with us again a little later.',
 };
@@ -191,15 +191,17 @@ export function applyStarter(config, starterId) {
 // "Put me through to a person": a tool the agent can offer, a transfer for it to use and the line the caller hears when no one can take
 // the call. No number is known yet, so the transfer has none and the fallback line is what callers hear until one is set under Telephony.
 // Anything already there is left alone, so applying it twice changes nothing.
-export function addPersonHandoff(config) {
+//   id: the tool's id, when the usual one is taken by a tool of another kind
+export function addPersonHandoff(config, { id = ESCALATE_ID } = {}) {
   if (!config) return config;
   const next = clone(config);
   const tools = Array.isArray(next.tools) ? next.tools : [];
   const messages = [];
-  if (!tools.some((t) => t?.id === ESCALATE_ID)) {
-    messages.push(CALLBACK_MESSAGE);
+  if (!tools.some((t) => t?.id === id)) {
+    // a callback line already there (its wording changed, or other languages added) is kept
+    if (!(Array.isArray(next.messages) && next.messages.some((m) => m?.id === CALLBACK_MESSAGE.id))) messages.push(CALLBACK_MESSAGE);
     tools.push({
-      id: ESCALATE_ID,
+      id,
       type: 'builtin',
       builtin: 'transfer_or_callback',
       description: 'Use when the caller asks for a person, or you cannot help them.',
@@ -226,7 +228,7 @@ export function addPersonHandoff(config) {
   const items = next.agents?.items;
   if (Array.isArray(items) && items.length) {
     const entry = items.find((agent) => agent.id === next.agents.entry) || items[0];
-    entry.tools = [...new Set([...(entry.tools || []), ESCALATE_ID])];
+    entry.tools = [...new Set([...(entry.tools || []), id])];
   }
   return next;
 }

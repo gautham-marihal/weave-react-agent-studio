@@ -51,7 +51,7 @@ export const LAYOUT = [
     short: 'Availability',
     views: [view('channels', 'Channels'), view('telephony', 'Phone transfers'), view('identity', 'Caller identity')],
   },
-  { id: 'after', label: 'After the call', views: [view('post_call', 'Summary, recording and redaction'), view('wrapups', 'Closing messages')] },
+  { id: 'after', label: 'After the call', views: [view('post_call', 'Summary model, own patterns and saved files'), view('wrapups', 'Closing messages')] },
   { id: 'quality', label: 'Quality and records', short: 'Quality', views: [view('tests', 'Test scenarios'), view('observability', 'Call records and logs')] },
   {
     id: 'engine',

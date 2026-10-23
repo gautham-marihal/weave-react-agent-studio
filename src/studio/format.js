@@ -15,16 +15,22 @@ export function formatDiffPath(path) {
   }, '');
 }
 
-export function formatWhen(iso) {
+// When something happened, the same way on every page: "just now", "5 min ago", "3 hours ago", "4 days ago", then the date ("Oct 22", with the year
+// when it is another year's). `days` is how far back it still counts days.
+export function formatWhen(iso, { days = 30, nowMs = Date.now() } = {}) {
   if (!iso) return '';
-  const then = new Date(iso).getTime();
+  const date = new Date(iso);
+  const then = date.getTime();
   if (Number.isNaN(then)) return '';
-  const seconds = Math.round((Date.now() - then) / 1000);
+  const seconds = Math.round((nowMs - then) / 1000);
   if (seconds < 45) return 'just now';
   if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))} min ago`;
-  if (seconds < 86400) return `${Math.round(seconds / 3600)} h ago`;
-  if (seconds < 86400 * 30) return `${Math.round(seconds / 86400)} d ago`;
-  return new Date(iso).toLocaleDateString();
+  const hours = Math.round(seconds / 3600);
+  if (seconds < 86400) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const ago = Math.round(seconds / 86400);
+  if (ago < days) return `${ago} day${ago === 1 ? '' : 's'} ago`;
+  const sameYear = date.getFullYear() === new Date(nowMs).getFullYear();
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
 
 export const slugify = (value) =>
@@ -38,6 +44,20 @@ export const slugify = (value) =>
 export const BOT_ID_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 // The folders the runtime writes call data to: the API answers 400 for an agent with one of these ids.
 export const RESERVED_BOT_IDS = ['transcripts', 'metrics', 'logs', 'sessions', 'tmp'];
+
+// The id a new agent gets from its name when nobody typed one: the name in id form ('agent' when nothing of the name can be used, as with a name in
+// another script), made free with -2, -3... when it is taken or reserved. So a person only ever gives a name, and never meets an id problem.
+export function freeBotId(name, existing = []) {
+  const base = slugify(name) || 'agent';
+  const taken = (id) => existing.includes(id) || RESERVED_BOT_IDS.includes(id);
+  if (!taken(base)) return base;
+  for (let n = 2; n < 1000; n += 1) {
+    const suffix = `-${n}`;
+    const id = `${base.slice(0, 64 - suffix.length)}${suffix}`;
+    if (!taken(id)) return id;
+  }
+  return base;
+}
 
 // What is wrong with an id typed for a new agent ('' when nothing is). `existing` are the ids already taken.
 export function botIdProblem(id, existing = []) {

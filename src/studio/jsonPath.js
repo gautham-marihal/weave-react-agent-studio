@@ -106,3 +106,11 @@ export function lineOf(text, offset) {
   for (let i = 0; i < offset && i < text.length; i += 1) if (text[i] === '\n') line += 1;
   return line;
 }
+
+// Where a syntax error is: the line the browser names ("… (line 3 column 22)"), else the line of the position it names ("… at position 1234").
+export function syntaxErrorLine(message, text) {
+  const named = /\(line (\d+) column \d+\)/.exec(String(message || ''));
+  if (named) return Number(named[1]);
+  const at = /position (\d+)/.exec(String(message || ''));
+  return at ? lineOf(text, Number(at[1])) : null;
+}

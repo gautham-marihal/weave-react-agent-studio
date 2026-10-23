@@ -3,6 +3,8 @@
 // by hand on the phone system, which are read-only here. This module reads the API's rows TOLERANTLY (a missing part is left out, never an error) and says
 // everything in plain words. Pure: no network, no DOM.
 
+import { formatWhen } from '../studio/format.js';
+
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v));
@@ -10,6 +12,23 @@ const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
 
 export const ENVIRONMENT_WORDS = { development: 'Development', staging: 'Staging', production: 'Production' };
 export const environmentWord = (env) => ENVIRONMENT_WORDS[env] || text(env) || '—';
+
+// Who a dispatch rule sends calls to. The platform lists them as [agent name, metadata] pairs: for a number this builder set up the agent is the builder's
+// runtime and the metadata says which bot and environment ({"bot":"voice-test","ref":"development"}); for one set up by hand it is that agent's own name.
+export function ruleTarget(entry) {
+  const [name, metadata] = Array.isArray(entry) ? entry : [entry, ''];
+  const meta = readMetadata(metadata);
+  return { agent: text(name), bot: text(meta?.bot), ref: text(meta?.ref) };
+}
+function readMetadata(metadata) {
+  if (isObj(metadata)) return metadata;
+  if (typeof metadata !== 'string' || !metadata.trim().startsWith('{')) return null;
+  try {
+    return JSON.parse(metadata);
+  } catch {
+    return null;
+  }
+}
 
 // ---- a row of the list -------------------------------------------------------------------------------------------------------------------------
 export function normalizeNumber(raw) {
@@ -23,14 +42,18 @@ export function normalizeNumber(raw) {
     trunk: isObj(r.trunk) ? { id: text(r.trunk.id), name: text(r.trunk.name) } : null,
     bot: text(r.bot),
     environment: text(r.environment),
-    // the platform lists a rule's agents as [bot, ref] pairs
+    // `agents`: who the rule sends calls to, by name (the bot, for one of ours); `targets`: the pairs as the platform has them, for the support details
     rule: isObj(r.rule)
       ? {
           id: text(r.rule.id),
           name: text(r.rule.name),
           agents: list(r.rule.agents)
-            .map((a) => (Array.isArray(a) ? text(a[0]) : text(a)))
+            .map(ruleTarget)
+            .map((t) => t.bot || t.agent)
             .filter(Boolean),
+          targets: list(r.rule.agents)
+            .map(ruleTarget)
+            .filter((t) => t.agent || t.bot),
         }
       : null,
     options: {
@@ -57,7 +80,11 @@ export const normalizeNumbers = (raw) =>
 // What a row's status means, in a customer's words.
 export function statusWords(row) {
   if (!row.managed)
-    return { tone: 'muted', label: 'Set up by hand', words: 'This number was set up on the phone system by hand. It can be seen here but not changed.' };
+    return {
+      tone: 'muted',
+      label: 'Set up outside the builder',
+      words: 'This number was set up on the phone system outside the builder. It is shown so it isn’t used twice, and can’t be changed or released here.',
+    };
   if (row.status === 'ready') return { tone: 'good', label: 'Ready', words: 'A call to this number has been logged.' };
   if (row.status === 'waiting_for_calls') return { tone: 'wait', label: 'Waiting for calls', words: 'Set up and deployed. No call has been logged yet.' };
   if (row.status === 'problem')
@@ -75,16 +102,83 @@ export function answeredBy(row, botName = '') {
   return `Answered by ${row.deployment?.version ? `version ${row.deployment.version} of ` : ''}${who}, in ${environmentWord(row.environment)}.`;
 }
 
+// "Last call 5 min ago, from +6591234567 (cut off)", or '' before the first one.
+const CALL_ENDINGS = { ended: '', in_progress: 'still going on', unfinished: 'cut off' };
+export function lastCallWords(row, nowMs = Date.now()) {
+  const call = row?.lastCall;
+  if (!call) return '';
+  const when = formatWhen(call.at, { nowMs });
+  const ending = CALL_ENDINGS[call.status] ?? text(call.status).replace(/_/g, ' ');
+  return `Last call ${when || 'at an unknown time'}${call.caller ? `, from ${call.caller}` : ''}${ending ? ` (${ending})` : ''}`;
+}
+
+// The details support asks for, never needed to set a number up: the trunk and dispatch rule the platform made, with their ids.
+export function supportDetails(row) {
+  const out = [];
+  if (row.trunk) out.push({ label: 'Trunk', value: [row.trunk.name, row.trunk.id && `(${row.trunk.id})`].filter(Boolean).join(' ') });
+  if (row.rule) {
+    out.push({ label: 'Dispatch rule', value: [row.rule.name, row.rule.id && `(${row.rule.id})`].filter(Boolean).join(' ') });
+    const targets = (row.rule.targets || []).map((t) => (t.bot ? `${t.agent || 'the runtime'}, for ${t.bot}${t.ref ? ` (${t.ref})` : ''}` : t.agent));
+    if (targets.length) out.push({ label: 'Sends calls to', value: targets.join('; ') });
+  }
+  return out;
+}
+
+// Does this configuration have a phone line that is on? A call to a number is answered only by a version that has one.
+export const hasPhoneChannel = (config) => list(isObj(config) ? config.channels : null).some((c) => isObj(c) && c.type === 'sip_voice' && c.enabled !== false);
+
+// An environment as the picker offers it, short enough for the box: "Production · runs v0.1.1" or "Staging · nothing deployed". `current` is GET
+// deployments' `current`.
+export function environmentOption(env, current) {
+  if (!isObj(current)) return environmentWord(env);
+  const version = text(current[env]?.version);
+  return `${environmentWord(env)} · ${version ? `runs v${version}` : 'nothing deployed'}`;
+}
+
+// What to warn about before a number is set up (or moved) for an agent and an environment: a call to it would not be answered. `deployed` is the version
+// deployed there ('' for none, null while not known); `phone` whether that version has a phone line that is on (null while not known).
+export function setupWarnings({ env, deployed, phone, botName = 'this agent' }) {
+  const where = environmentWord(env);
+  if (deployed === '')
+    return [
+      `Nothing is deployed to ${where} for ${botName} yet, so a call to this number would not be answered. Deploy a version that has a phone line to ${where} first, or choose another environment.`,
+    ];
+  if (deployed && phone === false)
+    return [
+      `Version ${deployed}, deployed to ${where}, has no phone line that is on, so a call to this number would not be answered. Add a phone line on the Channels page, then publish and deploy.`,
+    ];
+  return [];
+}
+
+// What a change does, one sentence each, for the person to confirm before it is sent. `body` is what patchBody would send.
+export function changeWords(before, body) {
+  const out = [];
+  if (body.environment) out.push(`Move it to ${environmentWord(body.environment)}: calls are then answered by the version deployed there.`);
+  if (body.record_audio !== undefined) out.push(body.record_audio ? 'Start recording the audio of calls.' : 'Stop recording the audio of calls.');
+  if (body.krisp !== undefined) out.push(body.krisp ? 'Start filtering background noise.' : 'Stop filtering background noise.');
+  if (body.allowed_addresses !== undefined)
+    out.push(body.allowed_addresses.length ? `Only accept calls from ${body.allowed_addresses.join(', ')}.` : 'Accept calls from any address.');
+  if (body.max_call_duration_s === null) out.push('Take away the longest-call limit.');
+  else if (body.max_call_duration_s !== undefined) out.push(`End calls after ${durationWords(body.max_call_duration_s)}.`);
+  return out;
+}
+
+const durationWords = (seconds) => (Math.round(seconds / 60) >= 1 ? `${Math.round((seconds / 60) * 10) / 10} minutes` : `${seconds} seconds`);
+
+// What to say once a number has been set up. Creating is safe to repeat: the second time the platform answers `changed: ["already set up"]`.
+export function setUpWords(result, { number, botName, env }) {
+  const changed = list(isObj(result) ? result.changed : null).map(text);
+  if (changed.includes('already set up')) return `${number} was already set up for ${botName} in ${environmentWord(env)}. Nothing was changed.`;
+  return `${number} was set up for ${botName} in ${environmentWord(env)}.`;
+}
+
 // The settings of a number in a line.
 export function optionWords(row) {
   const o = row.options;
   const parts = [];
   if (o.recordAudio !== undefined) parts.push(o.recordAudio ? 'calls are recorded' : 'calls are not recorded');
   if (o.krisp) parts.push('noise filtering on');
-  if (o.maxCallDurationS)
-    parts.push(
-      `calls end after ${Math.round(o.maxCallDurationS / 60) >= 1 ? `${Math.round((o.maxCallDurationS / 60) * 10) / 10} minutes` : `${o.maxCallDurationS} seconds`}`,
-    );
+  if (o.maxCallDurationS) parts.push(`calls end after ${durationWords(o.maxCallDurationS)}`);
   if (o.allowedAddresses.length) parts.push(`only from ${o.allowedAddresses.length} address${o.allowedAddresses.length === 1 ? '' : 'es'}`);
   return parts.join(' · ');
 }
@@ -210,3 +304,6 @@ export function numbersProblem(error) {
 
 // Does this failure mean "this server has no numbers feature" (so the old preview stays), rather than a real problem?
 export const notSupported = (error) => !!error && (error.status === 404 || error.status === 405 || error.kind === 'not_found');
+
+// Does it mean "this server has no phone-system credentials" (503)? Then the feature is hidden, not shown as an empty list.
+export const noPhoneSystem = (error) => !!error && error.status === 503;

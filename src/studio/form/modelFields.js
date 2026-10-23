@@ -1,5 +1,6 @@
 // Which setting a Provider or Model box belongs to.
-const STAGES = ['stt', 'llm', 'tts', 'realtime'];
+// (voice-activity detection and the turn detector have a provider and no model; their providers come from GET /providers too)
+const STAGES = ['stt', 'llm', 'tts', 'realtime', 'vad', 'turn_detector'];
 
 // 'llm' for defaults.models.llm.model, and for its fallbacks too; null for any other setting called "model" or "provider".
 export function modelStageOf(path) {

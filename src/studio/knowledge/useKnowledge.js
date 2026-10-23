@@ -5,8 +5,9 @@ import { isBuilding, normalizeBuild, normalizeKnowledge } from './model.js';
 
 // The knowledge of an agent as the server sees it: its bases, their files and indexes. It reads the SAVED draft (`ref: "draft"`): the
 // server builds and searches from what is saved, not from unsaved edits in the editor. Reading changes nothing.
+// No botId: nothing is read (the page around has read it already, or does not need it).
 export function useKnowledge(botId, ref = 'draft') {
-  const load = useAsync((signal) => api.getKnowledge(botId, { ref }, { signal }), [botId, ref]);
+  const load = useAsync((signal) => (botId ? api.getKnowledge(botId, { ref }, { signal }) : Promise.resolve(null)), [botId, ref]);
   const data = useMemo(() => (load.data ? normalizeKnowledge(load.data) : null), [load.data]);
   return { data, raw: load.data, loading: load.loading, error: load.error, reload: load.reload };
 }

@@ -78,12 +78,23 @@ test('the ＋ under an agent offers the seven kinds; Subagent adds a real agent,
   ]);
   assert.equal(menuItem(app, 'Agent transfer').disabled, true, 'with one agent there is nobody to pass the caller to');
   await a.click(menuItem(app, 'Subagent'));
+  // its name and when it takes over are asked first, so nothing is left with stand-in words
+  const pane = $(app.container, '.wfMenu form');
+  await a.click(byText(pane, 'button', 'Add the subagent'));
+  assert.equal(app.config.agents.items.length, 1, 'not added without a name and when');
+  assert.match(textOf(pane), /Give it a name, and say when callers go to it/);
+  const [name, when] = $$(pane, 'input');
+  await a.type(name, 'Billing');
+  await a.type(when, 'The caller asks about a bill');
+  await a.click(byText(pane, 'button', 'Add the subagent'));
   assert.equal(app.config.agents.items.length, 2);
   const added = app.config.agents.items[1];
+  assert.equal(added.name, 'Billing');
   assert.equal(app.config.agents.items[0].handoffs[0].to, added.id);
+  assert.equal(app.config.agents.items[0].handoffs[0].when ?? app.config.agents.items[0].handoffs[0].description, 'The caller asks about a bill');
   assert.equal(node(app, added.id).getAttribute('aria-pressed'), 'true', 'the new block is the one selected');
   assert.equal($$(app.container, '.wfMenu').length, 0, 'the menu closes');
-  assert.match($(app.container, '[role=status]').textContent, /Added a subagent/);
+  assert.match($(app.container, '[role=status]').textContent, /Added Billing/);
   await app.unmount();
 });
 
@@ -104,7 +115,7 @@ test('Say, Update state (with a new variable), a phone number (checked first), a
 
   await open();
   await a.click(menuItem(app, 'Update state'));
-  await a.click(byText(app.container, 'button', '＋ New variable'));
+  await a.click(byText(app.container, 'button', 'New variable'));
   await a.type(byLabel(app.container, 'Variable name'), 'caller_intent');
   await a.click(byText(app.container, 'button', 'Add it'));
   await a.type(byLabel(app.container, 'Value of caller_intent'), 'billing');
@@ -221,15 +232,15 @@ test('with no agents there is one thing to do: add the first', async () => {
   await app.unmount();
 });
 
-test('the picture is also a list, for anyone who cannot use it', async () => {
+test('the picture is also a list, for anyone who cannot use it: the call step by step, beside it while nothing is selected', async () => {
   const app = await mount(example());
-  const items = $$(app.container, '.wfAsList li').map(textOf);
+  const items = $$(app.container, '.wfSteps li').map(textOf);
   assert.ok(items.includes('A call starts with Front Door.'));
   assert.ok(items.some((s) => /^Front Door hands the caller to Billing/.test(s)));
   await app.unmount();
 });
 
-test('every block says where it lives in the configuration, shows that JSON as it is now (it follows what is typed), and can be opened in All settings or the file', async () => {
+test('every block says where it lives in the configuration, shows that JSON as it is now (it follows what is typed), and can be opened in its settings or the file', async () => {
   const app = await mount(example());
   await press(node(app, 'billing'));
   const where = $(app.container, '.wfWhere');
@@ -243,7 +254,7 @@ test('every block says where it lives in the configuration, shows that JSON as i
     'a change made here is in the JSON shown, and in the draft',
   );
   assert.equal(app.config.agents.items[1].name, 'Billing desk');
-  assert.ok(byText($(app.container, '.wfWhere'), 'button', 'Open in All settings') && byText($(app.container, '.wfWhere'), 'button', 'Open in JSON'));
+  assert.ok(byText($(app.container, '.wfWhere'), 'button', 'Open its settings') && byText($(app.container, '.wfWhere'), 'button', 'Open in JSON'));
   await press(node(app, 'greeter::tool::end_call'));
   assert.match(textOf($(app.container, '.wfWhere')), /tools\[\d+\]/);
   await app.unmount();
@@ -318,5 +329,23 @@ test('a press that hardly moves selects the block; a drag that is cancelled, or 
   await pointer(scaler, 'pointerdown', 5, 5);
   await pointer(scaler, 'pointerup', 5, 5);
   assert.equal(node(app, id).getAttribute('aria-pressed'), 'false', 'a click on the empty space deselects');
+  await app.unmount();
+});
+
+test('a tool block shows when the tool is used and what it says, and sends you to its panel on the Tools page to change them (asked once)', async () => {
+  const config = agent();
+  const shown = [];
+  const app = await mountScreen('workflow', config, { ready: '.wfTab', props: { onShowSetting: (path) => shown.push(path) } });
+  const entry = app.config.agents.items[0];
+  const endId = entry.tools.find((t) => app.config.tools.find((x) => x.id === t)?.builtin === 'end_call');
+  assert.ok(endId, 'the starter can end the call');
+  await press(node(app, `${entry.id}::tool::${endId}`));
+  const panel = $(app.container, '.wfInspector');
+  assert.equal($$(panel, 'textarea, input[type=text]').length, 0, 'nothing of the tool is typed here');
+  assert.match(textOf($(panel, '.wfFacts')), /What it says before it hangs up/);
+  assert.match(textOf($(panel, '.wfFacts')), /When it uses it/);
+  await a.click(byText(panel, 'button', 'Change it on the Tools page'));
+  const index = app.config.tools.findIndex((t) => t.id === endId);
+  assert.deepEqual(shown.at(-1), ['tools', index]);
   await app.unmount();
 });

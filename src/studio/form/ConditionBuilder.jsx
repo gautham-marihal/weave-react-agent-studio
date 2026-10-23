@@ -4,6 +4,7 @@ import { FreeValue, Select, StringList } from './fields.jsx';
 import InlineCreate from './InlineCreate.jsx';
 import { useConfigSelect, useForm } from './ctx.js';
 import { argNamesOf } from './templates.js';
+import Icon from '../../ui/Icon.jsx';
 
 // A condition ("when the caller is verified", "when the argument is at least 3") as one readable row instead of a
 // choice between nine kinds of object. Combining conditions (all / any / not), channels and business hours still use the
@@ -79,7 +80,7 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
           <Select value={subject} options={stateVars} onChange={setSubject} disabled={disabled} placeholder="Choose a variable…" />
           {!disabled && (
             <button type="button" className="stLink" onClick={() => setCreating((v) => !v)}>
-              ＋ New
+              <Icon name="plus" size={14} /> New
             </button>
           )}
         </>

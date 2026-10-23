@@ -118,6 +118,10 @@
   z-index: 30;
   left: 0;
   top: calc(100% + 6px);
+  /* a search box over a list that takes what is left; no taller than the room on its side (--dropRoom, PickerPopover.jsx: 336 is MENU_MAX there) */
+  display: flex;
+  flex-direction: column;
+  max-height: min(336px, var(--dropRoom, 336px));
   width: max(100%, 320px);
   max-width: min(440px, 80vw);
   border: 1px solid var(--line2);
@@ -127,6 +131,7 @@
   overflow: hidden;
 }
 .pkSearch {
+  flex: none;
   width: 100%;
   padding: 10px 12px;
   border: 0;
@@ -144,10 +149,15 @@
 .pkSearch.big:focus {
   border-color: var(--accent);
 }
+.pkMenu.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
 .pkList {
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 0;
   padding: 4px;
-  max-height: 280px;
   overflow-y: auto;
   list-style: none;
 }

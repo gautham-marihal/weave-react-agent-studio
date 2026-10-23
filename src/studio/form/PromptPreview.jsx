@@ -5,6 +5,7 @@ import { promptAdvice } from './serverPreview.js';
 import { describeWhen } from './promptPreview.js';
 import PromptExtras from './PromptExtras.jsx';
 import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
+import Icon from '../../ui/Icon.jsx';
 
 // What the model will actually be told, from the server: the exact instructions, every conditional block and whether it is in right now,
 // the tools as the model sees them, and how big it all is. Nothing is built here: the API runs the runtime's own code on what is in the
@@ -55,13 +56,23 @@ export default function PromptPreview({ agentId, config }) {
 
   return (
     <details className="stPromptPreview" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      {/* a row like the setting rows around it: what it is, one grey line, and a chevron that turns when it opens */}
       <summary>
-        Preview the prompt{' '}
-        {source && (
-          <span className={`stTag ${preview.source === 'server' ? 'good' : ''}`} title={source.title}>
-            {source.text}
-          </span>
-        )}
+        <span className="nlRowIcon" aria-hidden="true">
+          <Icon name="records" size={18} />
+        </span>
+        <span className="nlRowText">
+          <strong>
+            Preview the prompt{' '}
+            {source && (
+              <span className={`stTag ${preview.source === 'server' ? 'good' : ''}`} title={source.title}>
+                {source.text}
+              </span>
+            )}
+          </strong>
+          <small>Everything the model is told, put together from this page</small>
+        </span>
+        <Icon name="chevronDown" size={16} className="stPromptChev" />
       </summary>
       {open && (
         <div className="stPromptBody">

@@ -1,0 +1,1070 @@
+/* The look of the settings form. A setting reads top to bottom: its name, one line about it, then the control, with air between settings instead of
+   lines and frames. A yes/no setting has its switch on the right of its name. A group of settings on the screen is a heading; anything deeper is a
+   row in a box that opens a panel from the right (see Sheet.jsx), and a list is one box with a row per item and "Add" as its last row. So there is
+   never a box inside a box. Loaded after form.css and wins over it; theme variables only, so light and dark both work. */
+
+.stFSection,
+.stFSheetBody {
+  container-type: inline-size;
+}
+
+/* ---- one setting ----------------------------------------------------------------------------------------------------------------------------------- */
+.stFObject {
+  gap: 28px;
+}
+.stFGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.stFRow,
+.stFRow.wide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+}
+.stFRow > .stFLabel {
+  order: 0;
+}
+.stFRow > .stFHelp {
+  order: 1;
+}
+.stFRow > .stFRowCtl {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 8px;
+}
+.stFLabel {
+  gap: 6px 8px;
+  min-height: 22px;
+}
+.stFLabel label {
+  font-size: var(--fs-md);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--textStrong);
+}
+.stFHelp,
+.stFRow > .stFHelp {
+  max-width: 68ch;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--muted);
+}
+.stFHelp .stLink {
+  color: var(--muted);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.stFHelp .stLink:hover,
+.stFHelp .stLink:focus-visible {
+  color: var(--textStrong);
+}
+.stFExample em {
+  font-style: normal;
+  color: var(--text);
+}
+
+/* a yes/no setting: the switch sits on the right of its name and line */
+.stFRow.toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 24px;
+  row-gap: 4px;
+  align-items: center;
+}
+.stFRow.toggle > .stFLabel {
+  grid-column: 1;
+  grid-row: 1;
+}
+.stFRow.toggle > .stFHelp {
+  grid-column: 1;
+  grid-row: 2;
+}
+.stFRow.toggle > .stFRowCtl {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+  align-items: flex-end;
+}
+
+/* a required setting that has no value yet */
+.stFRow.missing {
+  padding: 16px;
+  border: 1px dashed color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: 12px;
+}
+.stFRowCtl > .stAddBtn {
+  align-self: flex-start;
+}
+
+/* ---- controls ---------------------------------------------------------------------------------------------------------------------------------- */
+.stFInput {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--field);
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.stFInput:hover:not(:disabled):not(:focus) {
+  border-color: color-mix(in srgb, var(--textStrong) 22%, var(--line2));
+}
+.stFInput:focus,
+.stFInput:focus-visible {
+  outline: 0;
+  border-color: color-mix(in srgb, var(--textStrong) 45%, var(--line2));
+  box-shadow: 0 0 0 3px var(--ring, rgba(127, 127, 127, 0.16));
+}
+textarea.stFInput {
+  min-height: 96px;
+  line-height: 1.55;
+}
+.stFInput.small {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 10px;
+}
+.stFUnit .stFInput {
+  max-width: 180px;
+}
+
+/* the switch: no words beside it (the setting's name says what it is) */
+.stSwitch {
+  gap: 0;
+}
+.stSwitch > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* a choice of a few: one bar, the chosen one raised */
+.stFSeg {
+  display: flex;
+  width: 100%;
+  max-width: 560px;
+  gap: 2px;
+  padding: 3px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--surface2);
+  overflow: visible;
+}
+.stFSeg button,
+.stFSeg button:last-child {
+  flex: 1 1 0;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.stFSeg button:hover:not(:disabled) {
+  color: var(--textStrong);
+}
+.stFSeg button.on {
+  background: var(--panel);
+  color: var(--textStrong);
+  font-weight: 600;
+  box-shadow: var(--raise, 0 1px 2px rgba(0, 0, 0, 0.12));
+}
+.stFUnion {
+  gap: 16px;
+}
+
+/* tags beside a name */
+.stFTag {
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  font-weight: 500;
+}
+.stFReq {
+  color: var(--danger-text);
+}
+
+/* ---- delete: a bin beside the thing, quiet until it is wanted -------------------------------------------------------------------------------------- */
+.stFDelIcon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+}
+.stFDelIcon.small {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+}
+.stFDelIcon:hover:not(:disabled),
+.stFDelIcon:focus-visible {
+  color: var(--danger-text);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.stFDelIcon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.stFRow:not(:hover):not(:focus-within) > .stFLabel > .stFDelIcon {
+  opacity: 0;
+}
+
+/* ---- a group on the screen: a heading, the settings under it ------------------------------------------------------------------------------------ */
+.stFGroup,
+.stFGroup .stFGroup,
+.stFGroup.hasErr {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.stFGroup > header {
+  padding: 0;
+  gap: 4px;
+}
+.stFGroupToggle {
+  gap: 10px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--textStrong);
+}
+.stFGroupToggle strong {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.stFGroupToggle em {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  font-weight: 500;
+}
+.stFGroup:not(.drill) > header .stFChev {
+  order: 9;
+  margin-left: auto;
+  flex: none;
+  color: var(--dim);
+  transform: rotate(90deg);
+  transition: transform 0.15s ease;
+}
+.stFGroup:not(.drill):not(.open) > header .stFChev {
+  transform: none;
+}
+.stFGroupToggle:hover .stFChev {
+  color: var(--textStrong);
+}
+.stFGroupActions {
+  align-items: center;
+  gap: 2px;
+}
+.stFGroupActions .stIconBtn {
+  width: 30px;
+  height: 30px;
+  border-color: transparent;
+  background: none;
+  color: var(--dim);
+}
+.stFGroupActions .stIconBtn:hover:not(:disabled) {
+  color: var(--textStrong);
+  background: var(--surface2);
+}
+.stFGroupBody {
+  gap: 28px;
+  padding: 8px 0 0;
+  border-top: 0;
+}
+.stFGroupBody > .stFHelp:first-child {
+  margin-top: -14px;
+}
+/* a group that is one setting of a longer list: a box of its own, so where one ends and the next starts is plain on any page, in any style.
+   Folded it is one line (its name, what it is set to, a chevron); open, its settings follow under a line. Boxes next to each other sit closer. */
+.stFRow[data-grouprow] {
+  display: block;
+}
+.stFGrid > .stFRow[data-grouprow] > .stFGroup:not(.drill):not(.flat) {
+  padding: 2px 8px 2px 16px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.stFGrid > .stFRow[data-grouprow] > .stFGroup:not(.drill):not(.flat):not(.open):hover {
+  border-color: color-mix(in srgb, var(--textStrong) 28%, var(--line2));
+}
+.stFGrid > .stFRow[data-grouprow] > .stFGroup.open:not(.drill):not(.flat) {
+  padding-bottom: 20px;
+}
+.stFGrid > .stFRow[data-grouprow] > .stFGroup.open:not(.drill):not(.flat) > header {
+  margin: 0 -8px 12px -16px;
+  padding: 2px 8px 2px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.stFGrid > .stFRow[data-grouprow] + .stFRow[data-grouprow] {
+  margin-top: -16px;
+}
+.stFGroup.flat > .stFGroupBody {
+  padding: 0;
+}
+
+/* ---- a deeper group: a row in a box that opens a panel -------------------------------------------------------------------------------------------- */
+.stFGroup.drill {
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.stFGroup.drill > header {
+  margin: 0;
+  padding: 0 6px 0 0;
+  border-radius: 11px;
+}
+.stFGroup.drill > header:hover {
+  background: var(--surface2);
+}
+.stFGroup.drill .stFGroupToggle {
+  min-height: 56px;
+  padding: 10px 14px 10px 16px;
+}
+.stFDrillText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stFDrillText strong {
+  font-size: var(--fs-md);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stFDrillText .stFHint {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.stFGroup.drill .stFChev {
+  flex: none;
+  color: var(--dim);
+}
+.stFGroup.drill.hasErr {
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--line2));
+}
+
+/* ---- a list: one box, one row per item, "Add" as the last row ------------------------------------------------------------------------------------ */
+.stFCards {
+  gap: 0;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.stFCards > .stFGroup.drill {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.stFCards > .stFGroup.drill > header {
+  margin: 4px;
+  border-radius: 10px;
+}
+.stFCards > * + * {
+  border-top: 1px solid var(--line);
+}
+.stFCards > .stFGroup:not(.drill) > header {
+  padding: 0 8px 0 16px;
+}
+.stFCards > .stFGroup:not(.drill) > header .stFGroupToggle strong {
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+.stFCards > .stFGroup:not(.drill) > .stFGroupBody {
+  padding: 8px 16px 20px;
+}
+.stFCards > .stFGroup:not(.drill).open > header {
+  border-bottom: 1px solid var(--line);
+}
+.stFCards > .stFEmpty {
+  padding: 16px;
+}
+.stFCards > .stFFind {
+  padding: 12px 16px;
+}
+.stFCards > .stAddBtn,
+.stFCards > .stPicker > .stAddBtn,
+.stFCards > select.stFInput.small,
+.stFCards > .stCombo .stComboInput {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0 0 13px 13px;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  text-align: left;
+}
+.stFCards > .stCombo,
+.stFCards > .stPicker {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: none;
+  align-self: stretch;
+}
+.stFCards > .stAddBtn:hover:not(:disabled),
+.stFCards > .stPicker > .stAddBtn:hover:not(:disabled),
+.stFCards > select.stFInput.small:hover,
+.stFCards > .stCombo .stComboInput:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+  box-shadow: none;
+}
+.stFCards > .stCombo .stComboInput::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+/* steps of a list of actions: numbered rows in one box */
+.stActions {
+  gap: 0;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.stActions:empty {
+  display: none;
+}
+.stAction {
+  container-type: inline-size;
+  gap: 6px;
+  padding: 16px;
+  border-left: 0;
+}
+.stAction + .stAction {
+  border-top: 1px solid var(--line);
+}
+.stActionHead {
+  gap: 10px;
+}
+.stActionHead > .stRuleActions {
+  margin-left: auto;
+}
+.stActionHead .stFInput.small,
+.stActionHead .stCombo {
+  width: auto;
+  min-width: 220px;
+}
+.stActionNo {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.stActionSentence {
+  padding-left: 34px;
+  color: var(--muted);
+}
+.stAction > .stFObject,
+.stAction > .stFUnion {
+  padding: 8px 0 0 34px;
+}
+.stRuleActions .stIconBtn {
+  border-color: transparent;
+  background: none;
+  color: var(--dim);
+}
+.stRuleActions .stIconBtn:hover:not(:disabled) {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.stActions ~ .stCombo,
+.stActions ~ .stCombo .stComboInput,
+.stActions ~ select.stFInput.small {
+  width: 100%;
+}
+.stActions ~ .stCombo,
+.stActions ~ select.stFInput.small {
+  margin-top: 10px;
+}
+.stActions ~ .stCombo .stComboInput,
+.stActions ~ select.stFInput.small {
+  min-height: 44px;
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ---- "Advanced settings" and "Add a setting" --------------------------------------------------------------------------------------------------- */
+.stFAdvanced {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.stFAdvanced > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 0 2px;
+  list-style: none;
+  font-size: var(--fs-md);
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+.stFAdvanced > summary::-webkit-details-marker {
+  display: none;
+}
+.stFAdvanced > summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
+  border-right: 1.75px solid currentColor;
+  border-bottom: 1.75px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.15s ease;
+}
+.stFAdvanced[open] > summary::after {
+  transform: rotate(-135deg) translateY(-1px);
+}
+.stFAdvanced > summary:hover {
+  color: var(--textStrong);
+}
+.stFAdvanced > .stFGrid {
+  margin-top: 24px;
+}
+.stFCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+.stFAddRow,
+.stFGroupBody .stFAddRow {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.stFAddRow select.stFInput.small,
+.stFAddRow .stCombo,
+.stFGroupBody .stFAddRow select.stFInput.small,
+.stFGroupBody .stFAddRow .stCombo {
+  width: auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line2);
+  border-style: solid;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+.stFAddRow select.stFInput.small:hover,
+.stFGroupBody .stFAddRow select.stFInput.small:hover,
+.stFGroupBody .stFAddRow .stCombo:hover,
+.stFGroupBody .stFAddRow .stCombo:focus-within {
+  border: 1px solid var(--line2);
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+
+/* lists of words, chips and checks */
+.stFChecks label {
+  min-height: 38px;
+  border-radius: 10px;
+  border-color: var(--line2);
+}
+.stFChecks label.on {
+  border-color: color-mix(in srgb, var(--textStrong) 50%, var(--line2));
+  background: var(--surface2);
+}
+.stFChip {
+  border-radius: 8px;
+}
+
+/* the parts of a tool: headed parts of one list, not frames */
+.stToolBlock {
+  gap: 20px;
+  padding: 24px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+}
+.stToolBlock legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--textStrong);
+}
+.stToolBlock legend + * {
+  clear: both;
+}
+
+/* the screen's own tabs inside a page: a quiet bar */
+.stForm.embedded .stFNavChips {
+  gap: 2px;
+  padding: 3px;
+  width: max-content;
+  max-width: 100%;
+  border-radius: 10px;
+  background: var(--surface2);
+}
+.stForm.embedded .stFChipBtn {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+.stForm.embedded .stFChipBtn:hover {
+  color: var(--textStrong);
+  background: none;
+}
+.stForm.embedded .stFChipBtn.on {
+  background: var(--panel);
+  color: var(--textStrong);
+  font-weight: 600;
+  box-shadow: var(--raise, 0 1px 2px rgba(0, 0, 0, 0.12));
+}
+
+/* ---- the sheet ------------------------------------------------------------------------------------------------------------------------------------ */
+.stFSheetLayer {
+  position: fixed;
+  inset: 0;
+}
+.stFSheetScrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.32);
+  animation: stFSheetFade 0.16s ease-out;
+}
+.stFSheet {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(600px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  color: var(--text);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--panel-shadow, -24px 0 60px rgba(0, 0, 0, 0.3));
+  animation: stFSheetIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.stFSheetHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 14px 16px 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.stFSheetBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 34%;
+  height: 32px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--line2);
+  border-radius: 9px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.stFSheetBack span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stFSheetBack:hover {
+  color: var(--textStrong);
+  background: var(--surface2);
+}
+.wIcon.flip {
+  transform: rotate(180deg);
+}
+.stFSheetTitle {
+  flex: 1;
+  min-width: 0;
+}
+.stFSheetTitle h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--textStrong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stFSheetTrail {
+  margin: 0 0 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stFSheetActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.stFSheetClose {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+}
+.stFSheetClose:hover {
+  color: var(--textStrong);
+  background: var(--surface2);
+}
+.stFSheetBody {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.stFSheetBody > .stFHelp:first-of-type {
+  margin-top: -8px;
+}
+.stFSheetFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-sm);
+}
+@keyframes stFSheetIn {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes stFSheetFade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stFSheet,
+  .stFSheetScrim {
+    animation: none;
+  }
+  .stFChev,
+  .stFAdvanced > summary::after {
+    transition: none;
+  }
+}
+
+/* "Default" beside a setting that is not set, "Reset" beside one that is */
+.stFDefault {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+}
+.stFReset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -4px 0 -4px auto;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.stFReset:hover:not(:disabled),
+.stFReset:focus-visible {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.stFRow:not(:hover):not(:focus-within) > .stFLabel > .stFReset {
+  opacity: 0;
+}
+.stFRow > .stFLabel {
+  min-height: 0;
+}
+
+/* a number with both ends known: a slider and the exact value */
+.stFRange {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 560px;
+}
+.stFRange > input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  accent-color: var(--ink, var(--textStrong));
+  cursor: pointer;
+}
+.stFRange > .stFInput {
+  flex: none;
+  width: 96px;
+}
+
+/* a yes/no setting drawn by another part (a channel's "Enabled", what it can do): the switch on the right too */
+.stFRow.toggle.bare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 24px;
+  align-items: center;
+}
+.stFRow.toggle > .stSwitch {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.stCaps {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.stCap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 24px;
+  row-gap: 4px;
+  align-items: center;
+}
+.stCap > .stCapName {
+  grid-column: 1;
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+.stCap > .stSwitch {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.stCap > .stFHelp,
+.stCap > .stFWarn {
+  grid-column: 1;
+}
+.stChannelBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--line);
+}
+.stChannelBlock legend,
+.stFSectionLabel {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--textStrong);
+}
+.stChannel {
+  gap: 28px;
+}
+
+/* an item's id: a plain line, not a grey slab */
+.stFIdRow {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  justify-content: flex-start;
+  gap: 8px 12px;
+}
+.stFIdRow .stFLabel > label {
+  font-size: var(--fs-md);
+  font-weight: 500;
+  color: var(--textStrong);
+}
+.stFIdRow .stFIdChip {
+  padding: 4px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+
+/* the technical wording of a setting: an (i) at the end of its line, the wording under it when asked */
+.stFInfo {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--dim);
+  vertical-align: -4px;
+  cursor: pointer;
+}
+.stFInfo:hover,
+.stFInfo:focus-visible,
+.stFInfo.on {
+  color: var(--textStrong);
+  background: var(--surface2);
+}
+.stFHelp > .stFMore {
+  display: block;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* the box a long text is written in: the words, then one quiet strip with the count and "Insert a value" */
+body .stTpl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+body .stTpl > :not(.stTplCount):not(.stTplInsert) {
+  grid-column: 1 / -1;
+}
+body .stTpl > .stTplCount {
+  grid-column: 1;
+  align-self: center;
+}
+body .stTpl > .stTplInsert {
+  grid-column: 2;
+  border-top: 1px solid var(--line);
+}
+body .stTpl > .stTplCount + .stTplInsert {
+  padding-top: 10px;
+}
+body .stTpl > .stTplInsert[open] {
+  grid-column: 1 / -1;
+  border-top: 0;
+}
+body .stTpl > .stTplInsert > summary {
+  text-align: right;
+}
+.stFRange.unset > input[type="range"] {
+  opacity: 0.45;
+}
+
+.stFRow.stFIdRow {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+.stFRow.stFIdRow .stFLabel > .stFTag {
+  margin-left: auto;
+}
+
+.stFGrid > .stFRow[data-grouprow] > .stFGroup:not(.drill):not(.open) .stFHint {
+  font-size: var(--fs-sm);
+  color: var(--dim);
+}
+
+/* "Remove all" / "Reset to defaults" beside a screen's heading: a quiet word, red when pointed at */
+.stFSectionHead > .stFDel {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.stFSectionHead > .stFDel:hover {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger-text);
+}
+.stFInfoMark {
+  display: inline-grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: var(--fs-xs);
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* a long list (a hundred tools) stays quick to type in: the browser skips the items that are off screen until they scroll in. Only for a long list:
+   a short one is drawn whole, as before */
+.stFCards:has(> :nth-child(13)) > .stFGroup {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
+
+/* a value the server sets: shown, not editable, and it looks it */
+html[data-theme] body .stFRow.ro .stFRowCtl :is(input, textarea, select):disabled {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+  color: var(--text);
+  box-shadow: none;
+  cursor: default;
+  opacity: 1;
+}
+.stFTail {
+  white-space: nowrap;
+}

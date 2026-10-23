@@ -64,7 +64,8 @@ const keyOf = (c) => `${c.bot}/${c.id}`;
 // The numbers of a group of calls.
 function totalsOf(calls, samples) {
   const facts = calls.map((c) => samples[keyOf(c)]).filter(Boolean);
-  const waits = facts.flatMap((f) => list(f.turns).map((t) => t.waitMs)).filter((w) => typeof w === 'number');
+  // each answer's wait as the Speed page measures it, when the sample has it
+  const waits = facts.flatMap((f) => (Array.isArray(f.answerMs) ? f.answerMs : list(f.turns).map((t) => t.waitMs))).filter((w) => typeof w === 'number');
   const toolCalls = facts.flatMap((f) => list(f.turns).flatMap((t) => t.tools)).filter((t) => !t.handoff);
   return {
     calls: calls.length,
@@ -195,5 +196,12 @@ export function deltaOf(now, before) {
   if (typeof now !== 'number' || typeof before !== 'number' || before === 0) return '';
   const d = now - before;
   return d === 0 ? 'no change' : `${d > 0 ? '+' : '−'}${Math.abs(d)}`;
+}
+// The calls of a period against the one before it, in words: "Down from 12 the period before", never a bare "−4" (which reads as minus four calls).
+// '' when there is nothing to compare with.
+export function changeWords(now, before, period = 'the period before') {
+  if (typeof now !== 'number' || typeof before !== 'number' || before === 0) return '';
+  if (now === before) return `The same as ${period}`;
+  return `${now > before ? 'Up' : 'Down'} from ${before} ${period}`;
 }
 export const seconds = (ms) => (typeof ms === 'number' ? (ms < 10000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 1000)} s`) : '—');

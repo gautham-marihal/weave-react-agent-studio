@@ -91,9 +91,9 @@ await page.getByPlaceholder('you@company.com').fill('asha@harbour.example');
 await page.getByPlaceholder('Enter your password').fill('a-demo-password');
 await page.getByRole('button', { name: /continue to workspace/i }).click();
 // the demo's own profile step (real sign-in brings the person's details with it)
-await page.getByPlaceholder('e.g. Gautham Marrihal').waitFor();
-await page.getByPlaceholder('e.g. Gautham Marrihal').fill('Asha Rao');
-await page.getByPlaceholder('e.g. Customer Support AI').fill('Harbour Plumbing');
+await page.getByPlaceholder('e.g. Alex Morgan').waitFor();
+await page.getByPlaceholder('e.g. Alex Morgan').fill('Asha Rao');
+await page.getByPlaceholder('e.g. Acme Inc.').fill('Harbour Plumbing');
 await page.locator('select').selectOption({ label: 'Customer Support' });
 await page.getByRole('button', { name: /continue to my workspace/i }).click();
 await page.waitForSelector('.dashMain');
@@ -107,13 +107,20 @@ await page
 await page.getByPlaceholder('e.g. Acme Support').waitFor();
 await scan();
 await page.getByPlaceholder('e.g. Acme Support').fill('Harbour Plumbing');
-await page.getByRole('button', { name: 'Create agent', exact: true }).click();
-// the agent opens in whichever layout is the default: the classic one has its Test tab to open, the new one a Test button in its top bar
-await page.waitForSelector('.stHeader h1, .nlBar h1');
+await page.getByRole('dialog').getByRole('button', { name: 'Create agent', exact: true }).click();
+// a new agent opens in its guided setup, where trying it is a step of its own (and an agent opened outside the setup has a Test button in its top bar)
+await page.waitForSelector('.nlBar h1, .suPage');
 await scan();
-if (await page.locator('.nlBar').count()) {
+if (await page.locator('.suPage').count()) {
+  await page
+    .locator('.suSteps')
+    .getByRole('button', { name: /^Try it/ })
+    .click();
+  await page.locator('.suTryPanel').waitFor();
+} else if (await page.locator('.nlBar').count()) {
   await page.locator('.nlBar').getByRole('button', { name: /^Test/ }).click();
-  await page.locator('.nlDrawer').waitFor();
+  // beside the page on a wide screen (this one), over it on a narrower one
+  await page.locator('.nlTestDock, .nlDrawer').first().waitFor();
 }
 await page
   .getByRole('button', { name: /Start a simulated chat/ })

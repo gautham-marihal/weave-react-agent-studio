@@ -1,11 +1,16 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { sentenceCase } from '../ui/text.js';
+import Icon from '../ui/Icon.jsx';
+import { trapTab, useDialogFocus } from '../ui/useDialogFocus.js';
+
+const NOTICE_ICON = { error: 'alert', warn: 'alert', good: 'check', info: 'info' };
 
 export function Notice({ kind = 'info', title, children, actions }) {
   return (
     <div className={`stNotice ${kind}`} role={kind === 'error' ? 'alert' : 'status'}>
       <span className="stNoticeIcon" aria-hidden="true">
-        {kind === 'error' ? '!' : kind === 'warn' ? '▲' : kind === 'good' ? '✓' : 'i'}
+        <Icon name={NOTICE_ICON[kind] || 'info'} size={16} />
       </span>
       <div className="stNoticeBody">
         {title && <strong>{title}</strong>}
@@ -17,11 +22,18 @@ export function Notice({ kind = 'info', title, children, actions }) {
 }
 
 export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wide = false, busy = false }) {
+  const box = useRef(null);
+  // the keyboard goes into the dialog when it opens (unless a field in it took it), and back where it was when it closes
+  useDialogFocus(box);
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // Escape while the keyboard is outside the dialog (one pressed in it is taken below); an open list closes first (it marks its Escape as handled)
     const onKey = (event) => {
-      if (event.key === 'Escape' && !busy) onClose?.();
+      if (event.key === 'Escape' && !busy && !event.defaultPrevented) {
+        event.preventDefault();
+        onClose?.();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => {
@@ -29,6 +41,19 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
       document.removeEventListener('keydown', onKey);
     };
   }, [onClose, busy]);
+  // the keys pressed in the dialog stay in it: Escape closes it, and not the side panel or sheet it was opened from too; Tab goes round its own buttons
+  const keys = (event) => {
+    if (event.key === 'Escape') {
+      if (!busy && !event.defaultPrevented) {
+        event.preventDefault();
+        onClose?.();
+      }
+      event.stopPropagation();
+    } else if (event.key === 'Tab') {
+      trapTab(event, box.current);
+      event.stopPropagation();
+    }
+  };
   return createPortal(
     <div
       className="createOverlay"
@@ -38,19 +63,21 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onClose?.();
       }}
+      onKeyDown={keys}
     >
-      <section className={`createModal stModal ${wide ? 'wide' : ''}`}>
+      <section ref={box} tabIndex={-1} className={`createModal stModal ${wide ? 'wide' : ''}`}>
         <div className="createModalHeader">
           <div>
-            {eyebrow && <span className="createEyebrow">{eyebrow}</span>}
+            {eyebrow && <span className="createEyebrow">{sentenceCase(eyebrow)}</span>}
             <h2>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
           <button type="button" className="modalClose" aria-label="Close" disabled={busy} onClick={onClose}>
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
-        {children}
+        {/* the title and the buttons stay put; what is between them scrolls when it is taller than the window */}
+        <div className="stModalBody">{children}</div>
         {footer && <div className="createModalFooter">{footer}</div>}
       </section>
     </div>,
@@ -98,17 +125,36 @@ export function StageChip({ stage }) {
   );
 }
 
-// What runs where, one slot per environment, so nothing is hidden in a tooltip. `onPick(env)` makes slots clickable.
+const SHORT_ENV = { development: 'Dev', staging: 'Staging', production: 'Prod' };
+
+// What runs where, one slot per environment, so nothing is hidden in a tooltip. `onPick(env)` makes slots clickable. `compact` (a list of agents) shows
+// only the environments something runs in, or "Not deployed" when there are none.
 export function EnvSlots({ deployed = {}, compact = false, onPick }) {
-  const envs = ['development', 'staging', 'production'];
+  const all = ['development', 'staging', 'production'];
+  const running = all.filter((env) => deployed?.[env]);
+  if (compact && !running.length) {
+    const none = <span className="stEnvNone">Not deployed</span>;
+    return (
+      <span className="stEnvSlots compact" aria-label="Deployments">
+        {onPick ? (
+          <button type="button" className="stEnvSlot none" title="Not deployed anywhere. Open Deploy." onClick={() => onPick('development')}>
+            {none}
+          </button>
+        ) : (
+          none
+        )}
+      </span>
+    );
+  }
+  const envs = compact ? running : all;
   return (
     <span className={`stEnvSlots ${compact ? 'compact' : ''}`} role="list" aria-label="Deployments">
       {envs.map((env) => {
         const version = deployed?.[env];
-        const text = version ? `v${version}` : compact ? '—' : 'Not deployed';
+        const text = version ? `v${version}` : 'Not deployed';
         const content = (
           <>
-            <b>{compact ? (env === 'production' ? 'PROD' : env === 'staging' ? 'STG' : 'DEV') : envLabel(env)}</b>
+            <b>{compact ? SHORT_ENV[env] : envLabel(env)}</b>
             <span>{text}</span>
           </>
         );
@@ -143,24 +189,32 @@ export function Spinner({ label = 'Loading' }) {
   );
 }
 
+// Why something couldn't be loaded, in words for the person using the studio; what the person who runs the server needs (the server's own
+// message, the setting to check) is one click further down.
 export function ErrorState({ error, onRetry, what = 'this' }) {
   const kind = error?.kind;
+  // a server that does not answer is said once, by the strip across the top of every page; here, what that leaves missing
   const title =
     kind === 'network'
-      ? 'Can’t reach the Agent Builder API'
+      ? `Couldn’t load ${what}`
       : kind === 'auth'
-        ? 'The API rejected the access key'
+        ? 'The server didn’t accept the studio’s access key'
         : kind === 'not_found'
-          ? 'Not found'
+          ? `Couldn’t find ${what}`
           : `Couldn’t load ${what}`;
-  const hint =
+  const lead =
     kind === 'network'
-      ? 'It may be down or restarting. Check that it is running, then try again.'
+      ? 'The server isn’t answering: it may be down or restarting. Try again in a moment.'
       : kind === 'auth'
-        ? 'Check AGENT_BUILDER_API_KEY in .env.local and restart the dev server.'
-        : kind === 'client_bug'
-          ? 'This looks like a bug in the app, not something you did.'
-          : '';
+        ? 'Ask the person who runs Weave to check the studio’s settings.'
+        : kind === 'not_found'
+          ? 'It may have been deleted.'
+          : kind === 'client_bug'
+            ? 'This looks like a problem in the studio, not something you did.'
+            : 'Try again in a moment.';
+  const forOperator = [error?.message, kind === 'auth' ? 'Check AGENT_BUILDER_API_KEY in the studio’s environment, then restart it.' : '']
+    .filter(Boolean)
+    .join(' ');
   return (
     <Notice
       kind="error"
@@ -173,8 +227,13 @@ export function ErrorState({ error, onRetry, what = 'this' }) {
         )
       }
     >
-      {error?.message}
-      {hint ? ` ${hint}` : ''}
+      {lead}
+      {forOperator && (
+        <details className="stErrDetail">
+          <summary>Details for the person who runs the server</summary>
+          <p>{forOperator}</p>
+        </details>
+      )}
     </Notice>
   );
 }

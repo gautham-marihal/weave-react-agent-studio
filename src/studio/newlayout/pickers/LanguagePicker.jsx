@@ -9,7 +9,8 @@ import './pickers.css';
 
 // The language of an agent in two parts, as one decision each: the main language (one choice from a list you can search) and the other languages it
 // understands (the ones chosen are chips you can take away; "Add a language" opens a list of the rest).
-export default function LanguagePicker({ config, set }) {
+//   brief: only those two (the guided setup); the languages it only recognises are left to the Agent page
+export default function LanguagePicker({ config, set, brief = false }) {
   const read = readSimple(config);
   const [mainQuery, setMainQuery] = React.useState('');
   const [extraQuery, setExtraQuery] = React.useState('');
@@ -104,68 +105,70 @@ export default function LanguagePicker({ config, set }) {
         <p className="pkNote">Write the fixed lines for each language under “Fixed lines” on the Agent page.</p>
       </section>
 
-      <section className="pkBlock">
-        <header>
-          <h3>
-            Recognising callers <SimpleKey path={['defaults', 'language', 'also_understands']} />
-          </h3>
-          <p>Languages it can recognise from a caller without answering in them, and whether it switches to the caller’s language by itself.</p>
-        </header>
-        <label className="pkSwitch">
-          <input
-            type="checkbox"
-            checked={lang.auto_detect === true}
-            onChange={(event) => set(setLanguageField(config, 'auto_detect', event.target.checked))}
-            aria-label="Detect the caller’s language automatically"
-          />
-          <span>
-            Detect the caller’s language automatically <small>Switch to it when it can tell.</small>
-          </span>
-        </label>
-        <ul className="pkChips" aria-label="Languages it only understands">
-          {understood.map((code) => (
-            <li key={code}>
-              <span className="pkBadge" aria-hidden="true">
-                {languageBadge(code)}
-              </span>
-              <span>{nameOf(code)}</span>
-              <button
-                type="button"
-                aria-label={`Stop recognising ${nameOf(code)}`}
-                onClick={() =>
-                  set(
-                    setLanguageField(
-                      config,
-                      'also_understands',
-                      understood.filter((c) => c !== code),
-                    ),
-                  )
-                }
-              >
-                <Icon name="close" size={12} />
-              </button>
-            </li>
-          ))}
-          {understood.length === 0 && <li className="none">None besides the languages it speaks.</li>}
-        </ul>
-        <PickerPopover
-          label="Add a language to recognise"
-          placeholder="Search languages"
-          options={hearOptions}
-          multi
-          query={hearQuery}
-          onQuery={setHearQuery}
-          emptyText={hearQuery ? 'Nothing matches' : 'Every language is added'}
-          onPick={(code) => set(setLanguageField(config, 'also_understands', [...understood, code]))}
-          className="pkAdd"
-          trigger={
-            <span className="pkAddLabel">
-              <Icon name="plus" size={14} />
-              Recognise another language
+      {!brief && (
+        <section className="pkBlock">
+          <header>
+            <h3>
+              Recognising callers <SimpleKey path={['defaults', 'language', 'also_understands']} />
+            </h3>
+            <p>Languages it can recognise from a caller without answering in them, and whether it switches to the caller’s language by itself.</p>
+          </header>
+          <label className="pkSwitch">
+            <input
+              type="checkbox"
+              checked={lang.auto_detect === true}
+              onChange={(event) => set(setLanguageField(config, 'auto_detect', event.target.checked))}
+              aria-label="Detect the caller’s language automatically"
+            />
+            <span>
+              Detect the caller’s language automatically <small>Switch to it when it can tell.</small>
             </span>
-          }
-        />
-      </section>
+          </label>
+          <ul className="pkChips" aria-label="Languages it only understands">
+            {understood.map((code) => (
+              <li key={code}>
+                <span className="pkBadge" aria-hidden="true">
+                  {languageBadge(code)}
+                </span>
+                <span>{nameOf(code)}</span>
+                <button
+                  type="button"
+                  aria-label={`Stop recognising ${nameOf(code)}`}
+                  onClick={() =>
+                    set(
+                      setLanguageField(
+                        config,
+                        'also_understands',
+                        understood.filter((c) => c !== code),
+                      ),
+                    )
+                  }
+                >
+                  <Icon name="close" size={12} />
+                </button>
+              </li>
+            ))}
+            {understood.length === 0 && <li className="none">None besides the languages it speaks.</li>}
+          </ul>
+          <PickerPopover
+            label="Add a language to recognise"
+            placeholder="Search languages"
+            options={hearOptions}
+            multi
+            query={hearQuery}
+            onQuery={setHearQuery}
+            emptyText={hearQuery ? 'Nothing matches' : 'Every language is added'}
+            onPick={(code) => set(setLanguageField(config, 'also_understands', [...understood, code]))}
+            className="pkAdd"
+            trigger={
+              <span className="pkAddLabel">
+                <Icon name="plus" size={14} />
+                Recognise another language
+              </span>
+            }
+          />
+        </section>
+      )}
     </div>
   );
 }

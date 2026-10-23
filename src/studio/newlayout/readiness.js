@@ -1,9 +1,14 @@
 // "Getting it ready": the steps between a new agent and one that is live, as a checklist a person can follow while building, each pointing at the page where
-// it is done. It is built from the draft and what the studio already knows (the checks, the published versions, what is deployed); it informs and never blocks.
+// it is done. It is built from the draft and what the studio already knows (the checks, the tests and their latest run, the published versions, what is
+// deployed); it informs and never blocks. It is the one answer to "is it ready?": the menu's progress card, the Overview, Home and Releases all read it.
 // Pure: no React, no DOM.
 
-import { readSimple } from '../simple/simpleModel.js';
+import { languageName, readSimple } from '../simple/simpleModel.js';
 import { readModels } from '../models/config.js';
+import { modelLabel, providerLabel } from '../models/catalog.js';
+import { gateCheck } from '../release/gateCheck.js';
+import { readingState } from '../knowledge/model.js';
+import { tabFor } from './pages.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const words = (text) =>
@@ -13,8 +18,21 @@ const words = (text) =>
       .match(/\S+/g) || []
   ).length;
 
+// What a step about the documents says while they are not ready, the worst first.
+const KNOWLEDGE_TODO = {
+  failed: 'Reading its documents failed.',
+  missing: 'A document it lists is not on the server.',
+  unsaved: 'Its documents are not saved yet.',
+  changed: 'Its documents changed since they were read.',
+  unread: 'Its documents are saved but not read yet.',
+  reading: 'Its documents are being read.',
+};
+
 // steps: [{ id, label, text, state: 'done' | 'todo' | 'blocked' | 'optional', page, part?, target? }]; `target` says what to open on the Agent page, { open: <panel> } or { focus: 'role' | 'greeting' }; `next` is the first blocked step, else the first to do.
-export function readinessSteps({ config, summary = null, report = null, scenarioCount = 0 } = {}) {
+//   latestRun: the newest finished run of the tests ({ status, passed, total }), null when they were never run, undefined when not known (then written tests count as done).
+//   gate: { enabled, savedAt, dirty } when "tests must pass before publishing" is on for the agent.
+//   knowledgeRead: what the server has read of its documents (useKnowledge's data); left out, a draft with documents counts that step as done.
+export function readinessSteps({ config, summary = null, report = null, scenarioCount = 0, latestRun, gate = null, knowledgeRead = null } = {}) {
   const steps = [];
   if (!config || typeof config !== 'object') return { steps, next: null, done: 0, total: 0 };
   const read = readSimple(config);
@@ -67,7 +85,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
       ? {
           id: 'voice',
           label: read.voiceChannel ? 'Pick a language and a voice' : 'Pick its language',
-          text: read.voiceChannel ? `${read.primaryLanguage}, with a voice chosen.` : `${read.primaryLanguage}.`,
+          text: read.voiceChannel ? `${languageName(read.primaryLanguage)}, with a voice chosen.` : `${languageName(read.primaryLanguage)}.`,
           state: 'done',
           page: 'agent',
           target: { open: 'language' },
@@ -87,7 +105,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
       ? {
           id: 'model',
           label: 'Choose the AI model',
-          text: `${models.llm.provider} · ${models.llm.model}`,
+          text: `${providerLabel(models.llm.provider)} · ${modelLabel('llm', models.llm.provider, models.llm.model)}`, // in words: "OpenAI · GPT-4.1 Mini"
           state: 'done',
           page: 'agent',
           target: { open: 'models' },
@@ -122,6 +140,21 @@ export function readinessSteps({ config, summary = null, report = null, scenario
         },
   );
 
+  // documents and web pages are read before the agent can answer from them: a step while some are not saved, not read, or changed since they were read
+  const readable = knowledge.filter((b) => b && typeof b === 'object' && b.type === 'vector_store');
+  if (readable.length) {
+    const states = knowledgeRead
+      ? readable.map((b) => readingState(list(knowledgeRead.bases).find((s) => s.id === b.id) || null, { draftSources: list(b.sources) }).state)
+      : [];
+    const worst = Object.keys(KNOWLEDGE_TODO).find((state) => states.includes(state));
+    const step = { id: 'knowledge', label: 'Let it read its documents', page: 'knowledge' };
+    add(
+      worst
+        ? { ...step, text: KNOWLEDGE_TODO[worst], state: 'todo' }
+        : { ...step, text: knowledgeRead ? 'Read, and ready to answer from.' : 'Its documents and web pages.', state: 'done' },
+    );
+  }
+
   const errors = list(report?.errors).length;
   if (report) {
     add(
@@ -137,25 +170,36 @@ export function readinessSteps({ config, summary = null, report = null, scenario
     );
   }
 
-  add(
-    scenarioCount > 0
-      ? {
-          id: 'tests',
-          label: 'Write a test',
-          text: `${scenarioCount} test${scenarioCount === 1 ? '' : 's'} written.`,
-          state: 'done',
-          page: 'tests',
-          part: 'scenarios',
-        }
-      : {
-          id: 'tests',
-          label: 'Write a test',
-          text: 'Optional: a conversation it must always get right, checked every time it changes.',
-          state: 'optional',
-          page: 'tests',
-          part: 'scenarios',
-        },
-  );
+  const tests = `${scenarioCount} test${scenarioCount === 1 ? '' : 's'}`;
+  const held = gate?.enabled
+    ? gateCheck({ enabled: true, scenarioCount, latestRun: latestRun || null, savedAt: gate.savedAt || '', dirty: !!gate.dirty })
+    : null;
+  const testStep = { id: 'tests', page: 'tests', part: 'scenarios' };
+  if (held && !held.ok)
+    add({ ...testStep, label: 'Pass the tests', text: held.why, state: 'blocked', part: held.action === 'callers' ? 'callers' : 'scenarios' });
+  else if (scenarioCount === 0)
+    add({
+      ...testStep,
+      label: 'Write a test',
+      text: 'Optional: a conversation it must always get right, checked every time it changes.',
+      state: 'optional',
+    });
+  else if (latestRun === undefined) add({ ...testStep, label: 'Write a test', text: `${tests} written.`, state: 'done' });
+  else if (latestRun === null) add({ ...testStep, label: 'Run the tests', text: `${tests} written, not run yet.`, state: 'todo' });
+  else if (latestRun.status === 'passed')
+    add({
+      ...testStep,
+      label: 'Run the tests',
+      text: `The latest run passed (${latestRun.passed ?? scenarioCount} of ${latestRun.total ?? scenarioCount}).`,
+      state: 'done',
+    });
+  else
+    add({
+      ...testStep,
+      label: 'Fix the failing tests',
+      text: `The latest run ${latestRun.status === 'error' ? 'broke' : latestRun.status === 'skipped' ? 'skipped everything' : 'failed'}.`,
+      state: 'blocked',
+    });
 
   const published = !!summary?.latest_version;
   const live = Object.values(summary?.deployed || {}).some(Boolean);
@@ -188,7 +232,8 @@ export function readinessSteps({ config, summary = null, report = null, scenario
           id: 'deploy',
           label: 'Put it live',
           text: published ? 'Choose where this version runs.' : 'Publish first, then choose where it runs.',
-          state: published ? 'todo' : 'optional',
+          // to do either way (it is never optional, only not possible yet), so the number of steps stays the same once a version is published
+          state: 'todo',
           page: 'releases',
           part: 'deploy',
         },
@@ -197,4 +242,14 @@ export function readinessSteps({ config, summary = null, report = null, scenario
   const counted = steps.filter((s) => s.state !== 'optional');
   const next = steps.find((s) => s.state === 'blocked') || steps.find((s) => s.state === 'todo') || null;
   return { steps, next, done: counted.filter((s) => s.state === 'done').length, total: counted.length };
+}
+
+// Where a step is done, as an address: the page (and its part), and on the Agent page the panel or field to open. A step about what the checks found
+// opens the list of problems.
+export function stepRoute(step) {
+  if (!step) return { tab: 'home', params: undefined };
+  if (step.page === 'checks') return { tab: 'agent', params: { show: 'problems' } };
+  const tab = tabFor(step.page, step.part);
+  const params = step.target?.open ? { open: step.target.open } : step.target?.focus ? { focus: step.target.focus } : undefined;
+  return { tab, params };
 }
