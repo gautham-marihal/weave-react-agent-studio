@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { Logo, ThemeToggle } from './shared.jsx';
-import { isDemoMode, setDemoMode } from '../demo/demoMode.js';
+import { Logo } from './shared.jsx';
+import { isDemoMode } from '../demo/demoMode.js';
+import { StyleMenu } from '../ui/StylePicker.jsx';
+import { DemoSlot } from '../demo/DemoBadge.jsx';
+import Icon from '../ui/Icon.jsx';
 
 export function Login({ theme, onToggleTheme, onLogin, onBack }) {
   const [keep, setKeep] = useState(true);
@@ -12,6 +15,7 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
   const emailError = submitted && !emailValid ? (email.trim() ? 'Enter a valid email address, like you@company.com.' : 'Enter your work email.') : '';
   const passwordError = submitted && !password.trim() ? 'Enter your password.' : '';
   const canLogin = emailValid && password.trim();
+  const demo = isDemoMode();
 
   return (
     <div className="loginScreen">
@@ -19,17 +23,18 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
       <div className="loginBackdrop loginBackdropB" />
       <header className="simpleHeader">
         <button className="backButton" onClick={onBack}>
-          ← Back
+          <Icon name="arrowLeft" size={15} /> Back
         </button>
         <Logo />
         <div className="headerTools">
-          <div className="headerHint">AI AGENT WORKSPACE</div>
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <div className="headerHint">AI agent workspace</div>
+          <DemoSlot />
+          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
         </div>
       </header>
       <div className="loginWrap">
         <div className="loginIntro">
-          <div className="eyebrow cyan">WELCOME BACK</div>
+          <div className="eyebrow cyan">Welcome back</div>
           <h1>Pick up where you left off.</h1>
           <p>Your agents, tests, configurations, and workspace settings stay together in one place.</p>
           <div className="loginHighlights">
@@ -61,29 +66,23 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
           }}
         >
           <div className="loginCardTop">
-            <span className="cardEyebrow">DEMO SIGN-IN</span>
-            <span className="lockMark">⌁</span>
+            <span className="cardEyebrow">{demo ? 'Demo sign-in' : 'Sign in'}</span>
+            <span className="lockMark" aria-hidden="true">
+              <Icon name="shield" size={15} />
+            </span>
           </div>
           <h2>Sign in to Weave</h2>
-          <p className="formIntro">Enter any email and password to continue.</p>
+          <p className="formIntro">{demo ? 'Enter any email and password to continue.' : 'Use your work email to open your workspaces.'}</p>
+          {/* sign-in isn't checked by a server yet: said plainly, because it decides who can change the agents */}
           <p className="demoNotice" role="note">
-            <b>Demo sign-in</b>
+            {/* in demo mode the card's own label already says "Demo sign-in" */}
+            {!demo && <b>Sign-in isn’t verified yet</b>}
             <span>
-              Nothing is checked, and what you enter stays in this browser. It is not a security measure: anyone who can open this site can edit, publish and
-              deploy the agents behind it.
+              {demo
+                ? 'Nothing is checked, and what you enter stays in this browser. It is not a security measure: anyone who can open this site can edit, publish and deploy the agents behind it.'
+                : 'This copy of Weave doesn’t check passwords yet, so anyone who can open it can edit, publish and deploy its agents. Keep it where only your team can reach it.'}
             </span>
           </p>
-          {!isDemoMode() && (
-            <p className="demoNotice" role="note">
-              <b>No backend?</b>
-              <span>
-                Browse with demo data: sample agents kept in this browser, with simulated saving, publishing and deploying.{' '}
-                <button type="button" className="textAction" onClick={() => setDemoMode(true)}>
-                  Use demo data
-                </button>
-              </span>
-            </p>
-          )}
           <label className={emailError ? 'hasError' : ''}>
             <span>Work email</span>
             <input
@@ -130,10 +129,7 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
           {resetOpen && (
             <div className="resetPanel" role="region" aria-label="Reset password">
               <strong>Reset your password</strong>
-              <p>
-                In this prototype, sign-in is stored only in this browser, so there’s no password to reset. Continue with your work email and your workspaces on
-                this device will open as before.
-              </p>
+              <p>Sign-in is kept on this device for now, so there’s no password to reset. Continue with your work email and your workspaces open as before.</p>
               <div className="resetActions">
                 <button type="button" className="secondaryCta compactSecondary" disabled={!emailValid} onClick={() => onLogin(email.trim(), keep)}>
                   {emailValid ? `Continue as ${email.trim()}` : 'Enter your work email above'}
@@ -176,18 +172,19 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
       <div className="profileSetupGlow profileGlowB" />
       <header className="simpleHeader profileHeader">
         <button className="backButton" onClick={onBack}>
-          ← Back
+          <Icon name="arrowLeft" size={15} /> Back
         </button>
         <Logo />
         <div className="headerTools">
-          <div className="headerHint">FIRST-TIME SETUP</div>
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <div className="headerHint">First-time setup</div>
+          <DemoSlot />
+          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
         </div>
       </header>
 
       <main className="profileSetupWrap">
         <section className="profileSetupIntro">
-          <div className="eyebrow cyan">LET’S SET UP YOUR WORKSPACE</div>
+          <div className="eyebrow cyan">Let’s set up your workspace</div>
           <h1>Before you start building, tell us a little about you.</h1>
           <p>We’ll use these details to personalize your workspace. You only need to do this once.</p>
           <div className="setupStepsMini">
@@ -212,21 +209,20 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
         <form className="profileCard" onSubmit={submit}>
           <div className="profileCardTop">
             <div>
-              <span className="cardEyebrow">YOUR DETAILS</span>
+              <span className="cardEyebrow">Your details</span>
               <h2>Welcome to Weave</h2>
             </div>
-            <span className="profileStep">1 / 1</span>
           </div>
-          <p className="profileIntro">These details stay with your local prototype for now.</p>
+          <p className="profileIntro">A few details to set up your workspace.</p>
 
           <label>
             <span>What should we call you?</span>
-            <input autoFocus type="text" placeholder="e.g. Gautham Marrihal" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <input autoFocus type="text" placeholder="e.g. Alex Morgan" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </label>
 
           <label>
             <span>What should we call your workspace?</span>
-            <input type="text" placeholder="e.g. Customer Support AI" value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
+            <input type="text" placeholder="e.g. Acme Inc." value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
           </label>
 
           <label>
@@ -248,7 +244,7 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
             <b>{email || 'your account'}</b>
           </div>
           <button className="primaryCta full" type="submit" disabled={!canContinue}>
-            Continue to my workspace <span className="buttonArrow">→</span>
+            Continue to my workspace <Icon name="arrowRight" size={16} />
           </button>
           <small className="privacyNote">You can change these details later from workspace settings.</small>
         </form>

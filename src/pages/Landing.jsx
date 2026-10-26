@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Logo, ThemeToggle, openHelpDialog, openInfoDialog } from './shared.jsx';
+import { Logo, openHelpDialog } from './shared.jsx';
+import { StyleMenu } from '../ui/StylePicker.jsx';
+import { DemoSlot } from '../demo/DemoBadge.jsx';
+import Icon from '../ui/Icon.jsx';
+import AiOrb from '../studio/preview/AiOrb.jsx';
 
 const LANDING_MENUS = {
   Product: [
@@ -20,8 +24,7 @@ const LANDING_MENUS = {
   ],
 };
 
-// Landing navigation: Product, Solutions and Resources open menus; Pricing explains the
-// early-access status. Menus close on outside click and Escape.
+// Landing navigation: Product, Solutions and Resources open menus. Menus close on outside click and Escape.
 function LandingNav({ onStart }) {
   const [open, setOpen] = useState(null);
   const navRef = useRef(null);
@@ -51,7 +54,7 @@ function LandingNav({ onStart }) {
       {Object.keys(LANDING_MENUS).map((name) => (
         <div className="landingMenuWrap" key={name}>
           <button type="button" aria-expanded={open === name} aria-haspopup="true" onClick={() => setOpen((value) => (value === name ? null : name))}>
-            {name} <span aria-hidden="true">⌄</span>
+            {name} <Icon name="chevronDown" size={14} />
           </button>
           {open === name && (
             <div className="landingMenu" role="menu">
@@ -59,7 +62,7 @@ function LandingNav({ onStart }) {
                 <button key={item.title} type="button" role="menuitem" className="landingMenuItem" onClick={() => choose(item)}>
                   <strong>
                     {item.title}
-                    {item.action === 'link' && <span aria-hidden="true"> ↗</span>}
+                    {item.action === 'link' && <Icon name="external" size={13} />}
                   </strong>
                   <small>{item.text}</small>
                 </button>
@@ -68,20 +71,6 @@ function LandingNav({ onStart }) {
           )}
         </div>
       ))}
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(null);
-          openInfoDialog({
-            eyebrow: 'PRICING',
-            title: 'Pricing isn’t published yet',
-            body: 'Weave Agent Studio is in early access.',
-            detail: 'Pricing for this early-access prototype hasn’t been announced. You can create and test agents in the meantime.',
-          });
-        }}
-      >
-        Pricing
-      </button>
     </nav>
   );
 }
@@ -91,26 +80,27 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
     <div className="landing">
       <div className="landingNoise" />
       <div className="announcement">
-        <span className="announcementPulse" /> Weave Agent Studio is now in early access <span>↗</span>
+        <span className="announcementPulse" /> Weave Agent Studio is now in early access <Icon name="arrowRight" size={13} />
       </div>
 
       <header className="landingNav">
         <Logo />
         <LandingNav onStart={onStart} />
         <div className="landingActions">
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <DemoSlot />
+          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
           <button className="textButton" onClick={onSignIn}>
             Sign in
           </button>
           <button className="topStart" type="button" onClick={onStart}>
-            Create an agent <span className="buttonArrow">→</span>
+            Create an agent <Icon name="arrowRight" size={15} />
           </button>
         </div>
       </header>
 
       <main className="hero">
         <section className="heroCopy">
-          <div className="eyebrow cyan">THE AI AGENT WORKSPACE</div>
+          <div className="eyebrow cyan">The AI agent workspace</div>
           <h1>
             Turn an idea into an agent people can <span>actually use.</span>
           </h1>
@@ -120,7 +110,7 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           </p>
           <div className="heroButtons">
             <button className="primaryCta heroPrimary" type="button" onClick={onStart}>
-              Create your first agent <span className="buttonArrow">→</span>
+              Create your first agent <Icon name="arrowRight" size={16} />
             </button>
             <button className="secondaryCta" onClick={onSignIn}>
               Sign in
@@ -128,13 +118,13 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           </div>
           <div className="heroMeta">
             <span>
-              <i>✓</i> Guided setup
+              <Icon name="check" size={14} /> Guided setup
             </span>
             <span>
-              <i>✓</i> Voice + chat
+              <Icon name="check" size={14} /> Voice and chat
             </span>
             <span>
-              <i>✓</i> Config you can export
+              <Icon name="check" size={14} /> Configuration you can export
             </span>
           </div>
         </section>
@@ -146,12 +136,13 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           <div className="showcaseCard showcaseMain">
             <div className="showcaseHeader">
               <div>
-                <span className="liveDot" /> LIVE PREVIEW
+                <span className="liveDot" /> Live preview
               </div>
-              <span className="statusPill">READY</span>
+              <span className="statusPill">Ready</span>
             </div>
-            <div className="assistantFace">
-              <span>✦</span>
+            {/* the same orb the studio's test conversation shows, in the style's colours */}
+            <div className="assistantFace orbFace">
+              <AiOrb size={84} state="live" />
             </div>
             <div className="showcaseTitle">Your agent is ready.</div>
             <div className="showcaseText">Ask questions, take action, and hand off to a person when needed.</div>
@@ -167,16 +158,18 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
               <i />
             </div>
             <div className="previewControls">
-              <span>◁</span>
+              <Icon name="mic" size={15} />
               <div className="previewTime">00:18</div>
-              <button>END SESSION</button>
+              <button>End session</button>
             </div>
           </div>
 
           <div className="showcaseCard showcasePrompt">
-            <div className="miniHeading">PLAIN-LANGUAGE SETUP</div>
+            <div className="miniHeading">Plain-language setup</div>
             <div className="promptBubble">“Help customers check their account and transfer to a person when needed.”</div>
-            <div className="promptArrow">↓</div>
+            <div className="promptArrow">
+              <Icon name="chevronDown" size={16} />
+            </div>
             <div className="mappedRow">
               <span>Intent</span>
               <b>Account support</b>
@@ -188,26 +181,26 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
           </div>
 
           <div className="showcaseCard showcaseConfig">
-            <div className="miniHeading">UNDER THE HOOD</div>
+            <div className="miniHeading">Under the hood</div>
             <div className="configLine">
-              <span>model</span>
-              <b>gpt-5</b>
+              <span>Model</span>
+              <b>GPT-5</b>
             </div>
             <div className="configLine">
-              <span>voice</span>
-              <b>elevenlabs</b>
+              <span>Voice</span>
+              <b>ElevenLabs</b>
             </div>
             <div className="configLine">
-              <span>tools</span>
-              <b>04 enabled</b>
+              <span>Tools</span>
+              <b>4 enabled</b>
             </div>
           </div>
         </section>
       </main>
 
       <div className="landingBottom">
-        <span>BUILT FOR PRODUCT • OPS • ENGINEERING</span>
-        <span>WEAVE / AI AGENT WORKSPACE</span>
+        <span>Built for product, operations and engineering teams</span>
+        <span>© Weave · AI agent workspace</span>
       </div>
     </div>
   );

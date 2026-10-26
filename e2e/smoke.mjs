@@ -1,5 +1,5 @@
-// An end-to-end smoke test of the studio, in a real browser: sign in, create an agent from a starter, edit a field, save, publish,
-// deploy to development, and have a test conversation. Run it with the dev server up (npm run dev) in either mode:
+// An end-to-end smoke test of the studio, in a real browser: sign in, create an agent from a starter (it opens in its guided setup), edit a field,
+// save, publish, put it live in development, and have a test conversation. Run it with the dev server up (npm run dev) in either mode:
 //
 //   E2E_MODE=mock  (default) the API is the imitation one the app uses in demo mode (src/demo/demoApi.js), so no backend is needed.
 //   E2E_MODE=live  talks to the real API through the dev server's /api proxy. It WRITES: it creates an agent named e2e-<time>.
@@ -43,7 +43,6 @@ await context.addInitScript(() => {
   if (sessionStorage.getItem('e2e-seeded')) return;
   sessionStorage.setItem('e2e-seeded', '1');
   localStorage.setItem('weave_tech_names', '1'); // the raw JSON view is offered with technical names
-  localStorage.setItem('weave_layout', 'classic'); // this script walks the classic layout (the stages and tabs); the new one is the default
   localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E Tester', email: 'e2e@example.com', workspaceName: 'E2E', role: 'dev' }));
 });
 const page = await context.newPage();
@@ -89,26 +88,30 @@ try {
   await page.waitForSelector('.dashMain');
   step('signs in and reaches the workspace', true);
 
-  // ---- create an agent from a starter
+  // ---- create an agent from a starter: it opens in its guided setup
   await page
     .getByRole('button', { name: /^\W*Agents/ })
     .first()
     .click();
   // a fresh server has no agents yet: the list is then the empty state, not rows, and both are a loaded list
-  await page.waitForSelector('.agentRow, .emptyPanel');
+  await page.waitForSelector('.agentRow, .emptyPanel, .agentTable');
   await page
     .getByRole('button', { name: /Create agent/ })
     .first()
     .click();
   await page.getByPlaceholder('e.g. Acme Support').fill(agentName);
   await page.getByRole('radio', { name: /Customer care/ }).check();
-  await page.getByRole('button', { name: 'Create agent', exact: true }).click();
-  await page.waitForSelector('.stHeader h1');
-  step('creates an agent from the Customer care starter', (await page.locator('.stHeader h1').innerText()).trim() === agentName);
+  await page.getByRole('dialog').getByRole('button', { name: 'Create agent', exact: true }).click();
+  await page.waitForSelector('.suPage', { timeout: 15000 });
+  step('creates an agent from the Customer care starter, and its guided setup opens', /\/setup/.test(await page.evaluate(() => location.hash)));
 
-  // ---- the starter is in the draft; edit a field and save
-  await page.getByRole('button', { name: 'JSON', exact: true }).click();
-  const area = page.locator('.stTextarea');
+  // ---- the starter is in the draft; edit a field as JSON (Settings) and save
+  await page.evaluate((id) => (location.hash = `#/bots/${id}/settings`), agentId);
+  await page.waitForSelector('.nlPage');
+  step('the agent’s pages carry its name', (await page.locator('.nlBar h1').innerText()).trim() === agentName);
+  await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
+  const area = page.locator('.nlPage textarea').first();
+  await area.waitFor();
   const config = JSON.parse(await area.inputValue());
   step(
     'the starter filled in the agent (instructions, goodbye, inactivity)',
@@ -119,28 +122,33 @@ try {
   );
   config.persona.tone = tone;
   await area.fill(JSON.stringify(config, null, 2));
-  await page.getByRole('button', { name: 'Save draft' }).first().click();
-  await page.waitForSelector('text=/Saved|saved/', { timeout: 15000 });
+  await page
+    .locator('.nlBar')
+    .getByRole('button', { name: /^Save$/ })
+    .click();
+  await page.waitForFunction(() => /^Saved/.test(document.querySelector('.nlSaveState')?.textContent || ''), null, { timeout: 15000 });
   step('edits a field and saves the draft', true);
 
-  // ---- publish, then deploy to development
-  await page.getByRole('button', { name: 'Publish', exact: true }).first().click();
-  const dialog = page.locator('.stPublishPanel'); // publishing is a step on the Versions page
-  await dialog.waitFor();
-  await dialog.getByRole('button', { name: 'Publish', exact: true }).click();
-  await dialog.getByText(/is published/).waitFor({ timeout: 15000 });
-  const published = (await dialog.getByRole('heading', { name: /is published/ }).innerText())
+  // ---- publish, then put it live in Development from the same panel
+  await page.locator('.nlBar').getByRole('button', { name: 'Publish', exact: true }).click();
+  const panel = page.locator('.stPublishPanel'); // publishing is a step on the Releases page
+  await panel.waitFor();
+  await panel.locator('.modalCreate').first().click();
+  await panel
+    .getByText(/is published/)
+    .first()
+    .waitFor({ timeout: 15000 });
+  const published = (await panel.getByRole('heading', { name: /is published/ }).innerText())
     .replace(/^Version\s+/, '')
     .replace(/\s+is published.*/, '')
     .trim();
   step('publishes a version', /^\d+\.\d+\.\d+$/.test(published), published);
-  await dialog.getByRole('button', { name: 'Deploy it' }).click();
-  await page.getByRole('button', { name: /^Deploy to Development/ }).click();
-  await page.waitForSelector('.stLast .stStatus.active', { timeout: 15000 });
-  step('deploys it to development', /Active/.test(await page.locator('.stLast').innerText()));
+  await panel.getByRole('button', { name: 'Put it live in Development' }).click();
+  await panel.getByRole('heading', { name: /is live in Development/ }).waitFor({ timeout: 15000 });
+  step('puts it live in Development', true);
 
-  // ---- a test conversation (the conversation itself is mocked)
-  await page.getByRole('button', { name: 'Test', exact: true }).click();
+  // ---- a test conversation on the Tests page (the conversation itself is mocked)
+  await page.evaluate((id) => (location.hash = `#/bots/${id}/test`), agentId);
   await page.getByRole('button', { name: 'Start conversation' }).click();
   await page.waitForSelector('.stTStatus.live', { timeout: 15000 });
   await page.getByText('Hello there!').first().waitFor({ timeout: 10000 });

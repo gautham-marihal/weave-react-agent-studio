@@ -40,9 +40,6 @@
 .ckRunner label span {
   font-weight: 600;
 }
-.ckEmpty {
-  padding: 14px 4px;
-}
 .ckRuns {
   list-style: none;
   margin: 0;

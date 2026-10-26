@@ -19,22 +19,35 @@
   color: var(--dim);
   font-size: var(--fs-xs);
 }
-.stComboList {
+/* the list's frame, under the field or above it (.up), no taller than the room on its side (--dropRoom, SmartSelect.jsx: 290 is LIST_MAX there);
+   the list scrolls inside it, so its edges can fade (ui/scrollEdges.js) */
+.stComboPop {
   position: absolute;
   z-index: 30;
   left: 0;
   right: 0;
   top: calc(100% + 4px);
-  max-height: 280px;
-  overflow-y: auto;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
+  display: flex;
+  flex-direction: column;
+  max-height: min(290px, var(--dropRoom, 290px));
+  min-width: 220px;
+  overflow: hidden;
   border: 1px solid var(--line2);
   border-radius: 10px;
   background: var(--panel, var(--surface));
   box-shadow: var(--shadow-md, 0 10px 30px rgba(0, 0, 0, 0.25));
-  min-width: 220px;
+}
+.stComboPop.up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+.stComboList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
 }
 .stComboOption {
   display: grid;

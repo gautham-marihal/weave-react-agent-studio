@@ -7,7 +7,6 @@ import { minimalConfig } from '../../demo/minimalConfig.js';
 import { isObj } from '../form/engine.js';
 import { useSchema } from '../form/useSchema.js';
 import { navigate, routeHref } from '../route.js';
-import { requestSettingFocus } from '../settingFocus.js';
 import { entryAgent, languageName, readSimple } from '../simple/simpleModel.js';
 import { Notice, Spinner } from '../ui.jsx';
 import { usePref } from '../usePref.js';
@@ -15,6 +14,7 @@ import { buildWorkflow, describeWorkflow } from '../workflow/workflowModel.js';
 import { countChanges, diffConfigs, groupChanges } from './diffConfig.js';
 import { askAssistant, loadStatus, postToModel } from './engine.js';
 import './assistant.css';
+import { askConfirm } from '../../ui/dialogs.js';
 
 // "Describe it": a place to say, in plain English, what the agent should be and do, and have the AI make the settings. Nothing is changed behind anyone's back:
 // the answer arrives as a proposal (what it built, what it assumed, what it still needs to know, what would change, how a call would move), is checked by the
@@ -80,7 +80,8 @@ const nextId = () => {
   return `t${counter}`;
 };
 
-export default function AssistantTab({ editor, botId, name }) {
+//   onShowSetting(path), onShowJson(path): how the agent's workspace shows a setting (it opens the page and panel that hold it), and the JSON
+export default function AssistantTab({ editor, botId, name, onShowSetting = null, onShowJson = null }) {
   const config = editor.parsed?.value;
   const ok = editor.status === 'ready' && !editor.parsed?.error && isObj(config);
   const { schema, error: schemaError } = useSchema();
@@ -186,12 +187,15 @@ export default function AssistantTab({ editor, botId, name }) {
     editor.setValue(turn.result.config);
     patchTurn(turn.id, { applied: true, undone: false, appliedAt: Date.now() });
   };
-  const undo = (turn) => {
+  const undo = async (turn) => {
     if (
       !sameJson(config, turn.result.config) &&
-      !window.confirm(
-        'The draft has been changed since this was applied. Undoing puts the draft back as it was before, and loses those later changes. Undo anyway?',
-      )
+      !(await askConfirm({
+        title: 'Undo anyway?',
+        body: 'The draft has changed since this was applied. Undoing puts it back as it was before, and loses those later changes.',
+        confirmLabel: 'Undo',
+        tone: 'danger',
+      }))
     )
       return;
     editor.setValue(turn.result.before);
@@ -200,13 +204,8 @@ export default function AssistantTab({ editor, botId, name }) {
   const discard = (turn) => patchTurn(turn.id, { discarded: true });
   const go = (tab) => navigate(routeHref(botId, tab), { guard: false });
   const openIn = (view, path) => {
-    try {
-      window.localStorage.setItem('weave_config_mode', view);
-    } catch {
-      /* storage unavailable */
-    }
-    if (path?.length) requestSettingFocus(botId, path);
-    go('config');
+    if (view === 'json') onShowJson?.(path);
+    else onShowSetting?.(path?.length ? path : ['meta']);
   };
   const askFor = (phrase) => {
     setText(phrase);
@@ -220,12 +219,12 @@ export default function AssistantTab({ editor, botId, name }) {
         kind="warn"
         title="The draft can’t be changed yet"
         actions={
-          <button type="button" className="quietButton" onClick={() => go('config')}>
-            Open Config
+          <button type="button" className="quietButton" onClick={() => onShowJson?.()}>
+            Open the JSON
           </button>
         }
       >
-        {editor.parsed?.error ? 'The JSON has a syntax error. Fix it in Config first.' : 'The draft could not be read.'}
+        {editor.parsed?.error ? 'The JSON has a syntax error. Fix it in Settings › Edit as JSON first.' : 'The draft could not be read.'}
       </Notice>
     );
 
@@ -274,9 +273,15 @@ export default function AssistantTab({ editor, botId, name }) {
             'Demo mode keeps everything in this browser, so nothing can be sent to an AI service. What you write here is read by simple built-in rules instead: they are not an AI model, they only look for keywords, and they make a first draft that replaces what is there.'
           ) : (
             <>
-              Add <code>ANTHROPIC_API_KEY</code> to <code>.env.local</code> and restart the server to let an AI model build and change the agent from what you
-              write. Until then, only the simple built-in rules are available: they are not an AI model, they only look for keywords, and they make a first
-              draft that replaces what is there.
+              Until the person who runs Weave turns it on, what you write here is read by simple built-in rules: they are not an AI model, they only look for
+              keywords, and they make a first draft that replaces what is there.
+              <details className="stErrDetail">
+                <summary>Details for the person who runs the server</summary>
+                <p>
+                  Add <code>ANTHROPIC_API_KEY</code> to the studio’s environment and restart it to let an AI model build and change agents from what people
+                  write.
+                </p>
+              </details>
             </>
           )}
         </Notice>
@@ -668,7 +673,7 @@ function Answer({ turn, phase, onApply, onUndo, onDiscard, go, draftNow, canUndo
               <span>{r.where.sections.join(', ') || 'No setting changed'}</span>
               <span className="asRow">
                 <button type="button" className="quietButton" onClick={() => openIn('form', r.where.path)}>
-                  Open in All settings
+                  Show me
                 </button>
                 <button type="button" className="quietButton" onClick={() => openIn('json', r.where.path)}>
                   Open in JSON
@@ -688,8 +693,7 @@ function Answer({ turn, phase, onApply, onUndo, onDiscard, go, draftNow, canUndo
             </li>
           </ul>
           <small>
-            It is one draft: what was just applied is what All settings, Simple, the JSON and the Workflow show, and a change made in any of them is what the
-            next request starts from.
+            It is one draft: what was just applied is what every page of the agent shows, and a change made on any of them is what the next request starts from.
           </small>
         </section>
       )}

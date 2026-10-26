@@ -1,10 +1,13 @@
 import React, { useRef } from 'react';
 import { RUNTIME_ROOTS, TEMPLATE_FILTERS, highlightSegments, insertAt, insertables, templateProblems, wordCount } from './templates.js';
+import { humanize } from './engine.js';
 
 // A text box for a string the runtime reads as a template ({{state.x}}, {{args.x}}, {{const.x}}). It helps write one
 // (a click inserts a value at the caret), shows which parts are templates, and hints at a name that may point at nothing (in amber, never
 // red: the names depend on where the text sits, so the server's check, with its path, is the one that counts).
 // `scope` says which names exist (see templateScope). `showCount` adds a word count (for the text a model is given).
+// `plain`: the menu for a person writing to the agent (the Agent page's instructions): "Insert a detail", the details by name ("Order number", not
+// state.order_number, which is in the tooltip), and none of the filters or open-ended roots a template author uses.
 export default function TemplateField({
   value,
   onChange,
@@ -18,8 +21,11 @@ export default function TemplateField({
   ariaLabel,
   invalid,
   showCount = false,
+  plain = false,
 }) {
   const ref = useRef(null);
+  // whether the box has had the cursor: until it has, there is no place in it the person chose, and a value goes at the end
+  const placed = useRef(false);
   const text = typeof value === 'string' ? value : value == null ? '' : String(value);
   const problems = templateProblems(text, scope);
   const chips = insertables(scope);
@@ -27,9 +33,12 @@ export default function TemplateField({
   // `back` puts the caret that many characters before the end of what was inserted (`{{call.}}` with 2: before the braces).
   const insert = (snippet, back = 0) => {
     const el = ref.current;
-    const start = el?.selectionStart ?? text.length;
-    const end = el?.selectionEnd ?? start;
-    const result = insertAt(text, start, end, snippet);
+    const start = placed.current ? (el?.selectionStart ?? text.length) : text.length;
+    const end = placed.current ? (el?.selectionEnd ?? start) : start;
+    // at the end of words, after a space, so it is not glued to the last one
+    const spaced = !placed.current && text && !/\s$/.test(text) ? ` ${snippet}` : snippet;
+    placed.current = true;
+    const result = insertAt(text, start, end, spaced);
     onChange(result.text);
     window.requestAnimationFrame(() => {
       el?.focus();
@@ -44,6 +53,9 @@ export default function TemplateField({
     spellCheck: false,
     'aria-label': ariaLabel,
     'aria-invalid': invalid ? true : undefined,
+    onFocus: () => {
+      placed.current = true;
+    },
     onChange: (event) => onChange(event.target.value),
     ref,
   };
@@ -78,7 +90,30 @@ export default function TemplateField({
           {problem.text} {problem.reason}
         </small>
       ))}
-      {!disabled && (
+      {!disabled && plain && (
+        <details className="stTplInsert">
+          <summary>Insert a detail</summary>
+          <div className="stTplChips">
+            {chips.filter((chip) => chip.group !== 'argument').length === 0 && (
+              <span className="stMuted">Nothing to insert yet. What it keeps during a call, and fixed values you set, show here.</span>
+            )}
+            {chips
+              .filter((chip) => chip.group !== 'argument')
+              .map((chip) => (
+                <button
+                  type="button"
+                  key={chip.label}
+                  className="stTplChip plain"
+                  title={`${chip.group === 'state' ? 'What it keeps during the call' : 'A fixed value'}: inserts ${chip.snippet}`}
+                  onClick={() => insert(chip.snippet)}
+                >
+                  {humanize(chip.label.replace(/^(state|const)[.]/, ''))}
+                </button>
+              ))}
+          </div>
+        </details>
+      )}
+      {!disabled && !plain && (
         <details className="stTplInsert">
           <summary>Insert a value</summary>
           <div className="stTplChips">

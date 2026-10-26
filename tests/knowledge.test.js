@@ -164,9 +164,9 @@ test('the settings that matter to a search are read from the config, and a file 
       { id: 'api', type: 'rag_api' },
     ],
   };
-  assert.deepEqual(settingsOf(config, 'faq'), { minScore: 0.4, topK: 6, mode: 'inject' });
-  assert.deepEqual(settingsOf(config, 'api'), { minScore: undefined, topK: undefined, mode: 'tool' });
-  assert.deepEqual(settingsOf(config, 'ghost'), { minScore: undefined, topK: undefined, mode: 'tool' });
+  assert.deepEqual(settingsOf(config, 'faq'), { minScore: 0.4, topK: 6, mode: 'inject', refresh: 'manual' });
+  assert.deepEqual(settingsOf(config, 'api'), { minScore: undefined, topK: undefined, mode: 'tool', refresh: 'manual' });
+  assert.deepEqual(settingsOf(config, 'ghost'), { minScore: undefined, topK: undefined, mode: 'tool', refresh: 'manual' });
   const next = addFileSource(config, 'faq', 'b.md');
   assert.deepEqual(next.knowledge[0].sources, [
     { type: 'file', file_id: 'a.md' },

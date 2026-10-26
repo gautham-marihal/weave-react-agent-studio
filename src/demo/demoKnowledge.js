@@ -105,9 +105,12 @@ export function settle(bot, nowMs) {
       documents.push({ name: file.name, passages: parts.length });
     });
     if (!passages.length) {
+      const pagesOnly = list(base?.sources).length > 0 && list(base?.sources).every((s) => s?.type === 'url');
       Object.assign(job, {
         status: 'failed',
-        error: 'None of the sources gave any text to index. Upload a text, markdown, HTML, CSV or JSON file and add it to this base.',
+        error: pagesOnly
+          ? 'Demo mode can’t fetch web pages, so there was nothing to read. Add a text, markdown, HTML, CSV or JSON file to try it.'
+          : 'None of the sources gave any text to index. Upload a text, markdown, HTML, CSV or JSON file and add it to this base.',
         log,
         finished_at: new Date(nowMs).toISOString(),
       });

@@ -43,7 +43,7 @@ export const SETTINGS = {
   identity: E('Who the caller is', 'How the agent works out who is calling, for example from their phone number.', 'detailed'),
   telephony: E('Phone transfers', 'How calls are passed to a person or another number.', 'detailed'),
   observability: E('Call records and monitoring', 'What is recorded about each call, how long it is kept, and where metrics go.', 'detailed'),
-  tests: E('Test scenarios', 'Practice conversations with what must be true afterwards. Use the Scenarios tab to write and run them.', 'detailed'),
+  tests: E('Test scenarios', 'Practice conversations with what must be true afterwards. Use Tests › Scenarios to write and run them.', 'detailed'),
   builder: E('Studio settings', 'Settings for the studio itself; the runtime ignores them.', 'expert'),
   $schema: E('Schema', 'Which version of the configuration format this file uses.', 'expert'),
   schema_version: E('Format version', 'Which version of the configuration format this agent uses.', 'expert'),
@@ -160,8 +160,9 @@ export const SETTINGS = {
   dispatch_name: E('Dispatch name', 'Deprecated and ignored.', 'expert'),
 
   // channels
-  entry: E('How callers reach it', 'The details that connect this channel to a number or a website. They depend on the kind of channel.', 'guided'),
-  dnis: E('Phone number it answers', 'The number callers dial to reach this agent.', 'guided', '+6561234567'),
+  entry: E('How callers reach it', 'Notes on how this channel is reached. They depend on the kind of channel; the runtime reads none of them.', 'guided'),
+  // the phone system's own record of the number (telephony.pbx.dnis); a channel's notes of its route are worded in CONTEXT
+  dnis: E('Phone number it answers', 'The number callers dial to reach this agent. It is written in the call records.', 'guided', '+6561234567'),
   sip_trunk: E('Phone line (trunk)', 'The carrier connection the calls arrive on.', 'expert'),
   dispatch_rule: E('Routing rule', 'The rule that sends a call on this number to this agent.', 'expert'),
   widget_id: E('Chat widget id', 'Identifies the chat widget on your website that talks to this agent.', 'guided'),
@@ -384,13 +385,17 @@ export const SETTINGS = {
   collection: E('Collection', 'The collection to search in your search service.', 'detailed'),
   mode: E('How it is used', 'How the setting is applied.', 'detailed'),
   sources: E('Sources', 'Where the content comes from, tried in order.', 'guided'),
-  file_id: E('Uploaded file', 'The name of a file uploaded in the Knowledge tab.', 'guided'),
+  file_id: E('Uploaded file', 'The name of a file uploaded on the Knowledge page.', 'guided'),
   crawl_depth: E('How many links to follow', 'For a web page: how many levels of links to read as well.', 'detailed', '1'),
   chunking: E('How documents are cut up', 'How sources are cut into passages. Rebuild the index after changing it.', 'expert'),
   size: E('Passage length (characters)', 'Smaller passages match a question more exactly; larger ones carry more context.', 'expert'),
   overlap: E('Overlap (characters)', 'Characters repeated between passages.', 'expert'),
   embedding: E('Search model', 'The model that turns text into something searchable.', 'expert'),
-  refresh: E('Rebuild automatically', 'How often to rebuild the index. Manual means only when you press the button.', 'detailed'),
+  refresh: E(
+    'How often to rebuild',
+    'How often the index should be rebuilt. The server doesn’t rebuild indexes on a timer yet, so press Build after the files change.',
+    'detailed',
+  ),
   retrieval: E('How a search behaves', 'Limits and wording for searches of this knowledge.', 'detailed'),
   min_score: E('How closely a passage must match', 'Passages that match less closely are dropped. Test a search to choose it.', 'detailed', '0.5'),
   max_chars: E('Most text per search', 'The most passage text given to the model for one search.', 'detailed'),
@@ -555,8 +560,19 @@ export const SETTINGS = {
 
 // ---- context overrides: "parent.name" where one name means different things in different places -------------------------------------------
 export const CONTEXT = {
+  // a phone channel's route is set up by the platform when a number is added (Releases › Deploy): these are only old notes, never asked for
+  'entry.dnis': E('Phone number (note)', 'A note of the number callers dial. Numbers are added under Releases › Deploy; this note connects nothing.', 'expert'),
+  'entry.sip_trunk': E('Phone line (note)', 'A note of the carrier connection. The platform sets up the trunk when a number is added.', 'expert'),
+  'entry.dispatch_rule': E('Routing rule (note)', 'A note of the routing rule. The platform sets up the rule when a number is added.', 'expert'),
   'meta.name': E('Name', 'What people see in lists. The agent speaks as this unless the personality sets another name.', 'guided'),
-  'persona.name': E('The agent’s name', 'How the agent introduces itself.', 'guided', 'Sam'),
+  'persona.name': E('Name it introduces itself by', 'How the agent introduces itself, as in “I’m Sam, from Acme”.', 'guided', 'Sam'),
+  // not the agent's languages (asked once, with the agent): a code the speech service may need of its own, such as "multi" to hear several languages
+  'stt.language': E(
+    'Language code for listening',
+    'Only when the speech service needs its own code, such as “multi” to hear several languages. Usually left empty: the agent’s languages are set with the agent.',
+    'detailed',
+    'multi',
+  ),
   'identity.caller_id': E('Caller’s number', 'How the caller’s number is worked out.', 'detailed'),
   'tools.description': E(
     'When to use it',
@@ -641,6 +657,9 @@ export const CONTEXT = {
   'channels.enabled': E('Switched on', 'Turn a channel off without deleting it.', 'guided'),
   'summary.enabled': E('Write a call summary', 'A short summary written after each call.', 'guided'),
   'redaction.enabled': E('Hide sensitive details', 'Replace sensitive text before a transcript is written.', 'guided'),
+  // under After the call's cards, which ask whether summaries are written and what is hidden: what is left of each
+  'post_call.summary': E('Model that writes the summaries', 'Which AI model writes each call’s summary, once summaries are on.', 'guided'),
+  'post_call.redaction': E('Your own patterns to hide', 'More patterns to hide, what replaces what is hidden, and remembered secrets.', 'guided'),
   'artifacts.enabled': E('Save this file', 'Write this file when a call ends.', 'detailed'),
   'session_log.enabled': E(
     'Keep a log of each call',
@@ -661,6 +680,22 @@ export const CONTEXT = {
   ),
   'input.text': E('The rule', 'The rule, in a sentence.', 'guided'),
   'output.text': E('The rule', 'The rule, in a sentence.', 'guided'),
+  // a check looks for these and acts as its “When it triggers” says (block, deflect, hide in the records): not the redaction's "patterns to hide"
+  'input.patterns': E(
+    'Patterns to look for',
+    'Patterns (regular expressions) to look for in what the caller says. What it does on a match is under “When it triggers”.',
+    'detailed',
+  ),
+  'output.patterns': E(
+    'Patterns to look for',
+    'Patterns (regular expressions) to look for in what the agent says. What it does on a match is under “When it triggers”.',
+    'detailed',
+  ),
+  'input.entities': E('Kinds of detail to look for', 'The kinds of personal detail to notice in what the caller says, such as card numbers.', 'detailed'),
+  'output.entities': E('Kinds of detail to look for', 'The kinds of personal detail to notice in what the agent says, such as card numbers.', 'detailed'),
+  // a hand-over rule passes the caller to another agent of the workflow, not to an address or a number
+  'escalation.to': E('Hand over to', 'The agent that takes over the caller.', 'guided'),
+  'escalation.id': E('Its name in the configuration', 'Made for it when it is added. Tests and other settings may point at it by this name.', 'expert'),
   'agents.entry': E('Who answers first', 'The agent that answers a new caller first.', 'guided'),
   'interruption.mode': E(
     'How interruptions are noticed',

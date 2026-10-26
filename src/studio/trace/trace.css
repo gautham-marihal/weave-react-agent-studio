@@ -96,21 +96,28 @@
 .trChip.bad:not(.on) {
   color: var(--danger-text);
 }
+/* the steps in a frame; they scroll inside it, so its edges can fade (ui/scrollEdges.js) instead of slicing a row */
+.trListBox {
+  display: flex;
+  flex-direction: column;
+  max-height: 560px;
+  overflow: hidden;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.compact .trListBox {
+  max-height: 320px;
+}
 .trList {
+  flex: 1 1 auto;
+  min-height: 0;
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--line2);
-  border-radius: 12px;
-  overflow: hidden;
-  max-height: 560px;
   overflow-y: auto;
-  background: var(--surface);
-}
-.compact .trList {
-  max-height: 320px;
 }
 .trRow {
   display: grid;

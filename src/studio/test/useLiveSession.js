@@ -40,7 +40,7 @@ export function describeStartError(error, ref) {
             title: 'This agent can’t be tried in a browser',
             body: `${error.message} The Test panel needs a web chat or web voice channel. Phone-only agents are tested by calling them.`,
           }
-        : { title: 'The configuration has errors, so it can’t be tried', body: 'Fix these on the Config tab and save the draft.', errors: error.errors };
+        : { title: 'The configuration has errors, so it can’t be tried', body: 'Fix them, save the draft and try again.', errors: error.errors };
     }
     case 'unavailable':
       // What a customer needs is what to do; the names of the server's settings are for whoever runs it, one click away.
@@ -50,9 +50,13 @@ export function describeStartError(error, ref) {
         details: error.message,
       };
     case 'network':
-      return { title: 'Can’t reach the Agent Builder API', body: error.message };
+      return { title: 'Can’t reach the server', body: 'It may be down or restarting. Try again in a moment, or use the simulated preview meanwhile.' };
     case 'auth':
-      return { title: 'The API rejected the access key', body: error.message };
+      return {
+        title: 'The server didn’t accept the studio’s access key',
+        body: 'Ask the person who runs Weave to check the studio’s settings.',
+        details: error.message,
+      };
     default:
       return { title: 'Couldn’t start the conversation', body: error.message };
   }
@@ -198,7 +202,22 @@ export function useLiveSession({ onFinished } = {}) {
     [form],
   );
 
-  const dismissForm = useCallback(() => setForm(null), []);
+  // Closing the form is an answer too: the bot is told the visitor cancelled it (FORM_PROTOCOL: `{request_id, cancelled: true}`), so it can run what the
+  // form's `otherwise` says instead of waiting for values that will never come.
+  const dismissForm = useCallback(async () => {
+    const room = roomRef.current;
+    const current = form;
+    setForm(null);
+    if (!room || !current) return;
+    const body = JSON.stringify({ request_id: current.requestId, cancelled: true });
+    try {
+      if (formViaRef.current === 'stream') await room.localParticipant.sendText(body, { topic: TOPIC_FORM_SUBMIT });
+      else await room.localParticipant.publishData(encoder.encode(body), { reliable: true, topic: TOPIC_FORM_SUBMIT });
+      addSystem('You closed the form. The agent was told.');
+    } catch {
+      addSystem('You closed the form, but the agent couldn’t be told: it may still wait for it.');
+    }
+  }, [form, addSystem]);
 
   // ---- starting and stopping -----------------------------------------------------------------------
 

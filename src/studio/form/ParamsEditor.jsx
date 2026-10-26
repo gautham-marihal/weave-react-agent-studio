@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { JsonInput, StringList } from './fields.jsx';
 import { PARAM_KINDS, modelView, problems as paramProblems, readParams, writeParams } from './paramSchema.js';
+import Icon from '../../ui/Icon.jsx';
 
 // A tool's parameters as rows (name, kind, what it is for, needed or not, choices) instead of hand-written JSON Schema.
 // Anything the rows can't show (a pattern, a nested object, a list) is kept and written back untouched; "Edit as JSON"
@@ -145,7 +146,7 @@ export default function ParamsEditor({ value, onChange, toolName, description, d
           disabled={disabled}
           onClick={() => update([...rows, { name: '', kind: 'string', description: '', choices: [], required: false, extra: {} }])}
         >
-          ＋ Add a parameter
+          <Icon name="plus" size={14} /> Add a parameter
         </button>
         <button type="button" className="stLink" onClick={() => setJson(true)}>
           Edit as JSON

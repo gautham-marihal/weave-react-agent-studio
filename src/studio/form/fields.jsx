@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { prettyJson } from '../format.js';
 import { parseJsonStrict } from '../jsonDuplicates.js';
+import Icon from '../../ui/Icon.jsx';
 
 export function TextInput({ value, onChange, placeholder, disabled, multiline, invalid, id, mono }) {
   const common = {
@@ -21,7 +22,7 @@ export function TextInput({ value, onChange, placeholder, disabled, multiline, i
 }
 
 // Keeps what you type ("1.", "-") while the stored value is a number.
-export function NumberInput({ value, onChange, min, max, integer, nullable, disabled, invalid, id }) {
+export function NumberInput({ value, onChange, min, max, integer, nullable, disabled, invalid, id, placeholder }) {
   const toText = (v) => (v === null || v === undefined ? '' : String(v));
   const [text, setText] = useState(toText(value));
   useEffect(() => {
@@ -39,6 +40,7 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
       max={max}
       disabled={disabled}
       aria-invalid={invalid || undefined}
+      placeholder={placeholder}
       value={text}
       onChange={(event) => {
         const raw = event.target.value;
@@ -54,6 +56,40 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
       }}
       onBlur={() => setText(toText(value))}
     />
+  );
+}
+
+// A number with both ends known (how creative, how fast, a share): a slider beside the box, the box for an exact value. The slider is a second way to
+// change the same number, so it is not in the tab order (the box is the control a screen reader announces).
+export function RangeNumber({ value, onChange, min, max, integer, disabled, invalid, id, placeholder, nullable }) {
+  const step = integer ? 1 : Math.max((max - min) / 100, 0.01);
+  const shown = typeof value === 'number' ? value : min;
+  return (
+    <div className={`stFRange ${typeof value === 'number' ? '' : 'unset'}`}>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={shown}
+        disabled={disabled}
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(event) => onChange(integer ? Math.round(Number(event.target.value)) : Math.round(Number(event.target.value) * 100) / 100)}
+      />
+      <NumberInput
+        id={id}
+        value={value}
+        onChange={onChange}
+        min={min}
+        max={max}
+        integer={integer}
+        nullable={nullable}
+        disabled={disabled}
+        invalid={invalid}
+        placeholder={placeholder}
+      />
+    </div>
   );
 }
 
@@ -127,12 +163,12 @@ export function StringList({ values, onChange, placeholder, disabled, addLabel =
               )
             }
           >
-            ×
+            <Icon name="close" size={14} />
           </button>
         </div>
       ))}
       <button type="button" className="stAddBtn" disabled={disabled} onClick={() => onChange([...list, ''])}>
-        ＋ {addLabel}
+        <Icon name="plus" size={14} /> {addLabel}
       </button>
     </div>
   );
@@ -162,7 +198,7 @@ export function MultiPick({ options, values, onChange, disabled, emptyText, labe
                 )
               }
             >
-              ×
+              <Icon name="close" size={14} />
             </button>
           </span>
         ))}
@@ -172,7 +208,7 @@ export function MultiPick({ options, values, onChange, disabled, emptyText, labe
           action
           className="stFInput small"
           ariaLabel="Add"
-          placeholder="＋ Add…"
+          placeholder="Add…"
           disabled={disabled}
           options={left.map((option) => ({ value: option, label: labels?.[option] || option }))}
           onChange={(chosen) => {

@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { sentenceCase } from '../ui/text.js';
+import { Glyph } from './shared.jsx';
+import Icon from '../ui/Icon.jsx';
+import { askConfirm } from '../ui/dialogs.js';
 
 // The parts the Telephony pages share: a table with search, column choice and row actions, and the dialog frame with its labelled fields.
 
-// Table with working search (⌕), column visibility (⌘), row deletion and an empty state.
+// Table with working search, a choice of visible columns, row deletion and an empty state.
 export function TelephonyTablePanel({
   title,
   columns,
   rows = [],
   compact = false,
-  emptyIcon = '◫',
+  emptyIcon = 'records',
   emptyTitle = 'Nothing here yet',
   emptyText = '',
   emptyAction = null,
@@ -94,7 +98,7 @@ export function TelephonyTablePanel({
               setColumnsOpen(false);
             }}
           >
-            ⌕
+            <Icon name="search" size={15} />
           </button>
           <button
             type="button"
@@ -104,7 +108,7 @@ export function TelephonyTablePanel({
             title="Columns"
             onClick={() => setColumnsOpen((value) => !value)}
           >
-            ⌘
+            <Icon name="sliders" size={15} />
           </button>
           {columnsOpen && (
             <div className="tableColumnsMenu" role="dialog" aria-label="Visible columns">
@@ -134,7 +138,7 @@ export function TelephonyTablePanel({
           <thead>
             <tr>
               {visibleIndexes.map((index) => (
-                <th key={columns[index]}>{columns[index]}</th>
+                <th key={columns[index]}>{sentenceCase(columns[index])}</th>
               ))}
               {hasActions && (
                 <th className="actionsCol">
@@ -175,8 +179,15 @@ export function TelephonyTablePanel({
                       <button
                         type="button"
                         className="tableRowDelete"
-                        onClick={() => {
-                          if (window.confirm(confirmDelete ? confirmDelete(row) : `${deleteLabel} this ${itemLabel}? This can’t be undone.`)) onDelete(row.id);
+                        onClick={async () => {
+                          const words = confirmDelete ? confirmDelete(row) : 'This can’t be undone.';
+                          const ok = await askConfirm({
+                            title: `${deleteLabel} this ${itemLabel}?`,
+                            ...(typeof words === 'string' ? { body: words } : words),
+                            confirmLabel: deleteLabel,
+                            tone: 'danger',
+                          });
+                          if (ok) onDelete(row.id);
                         }}
                       >
                         {deleteLabel}
@@ -191,7 +202,7 @@ export function TelephonyTablePanel({
                 <td colSpan={colSpan}>
                   <div className="telephonyNoResults">
                     <span className="telephonyNoResultsIcon" aria-hidden="true">
-                      {needle ? '⌕' : emptyIcon}
+                      <Glyph icon={needle ? 'search' : emptyIcon} size={20} />
                     </span>
                     <strong>{needle ? `No matches for “${query.trim()}”` : emptyTitle}</strong>
                     {needle ? <span>Try a different search, or clear it to see everything.</span> : emptyText && <span>{emptyText}</span>}
@@ -245,12 +256,12 @@ export function TelephonyDialog({ eyebrow, title, subtitle, onClose, children, f
       >
         <div className="createModalHeader">
           <div>
-            <span className="createEyebrow">{eyebrow}</span>
+            <span className="createEyebrow">{sentenceCase(eyebrow)}</span>
             <h2 id="telephony-dialog-title">{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
           <button type="button" className="modalClose" aria-label="Close" onClick={onClose}>
-            ×
+            <Icon name="close" size={14} />
           </button>
         </div>
         {!live && (

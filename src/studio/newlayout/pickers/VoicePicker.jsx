@@ -6,19 +6,25 @@ import { applyVoice, readModels, setVoiceId } from '../../models/config.js';
 import { withArticle } from '../../form/channelTypes.js';
 import { providerLabel } from '../../models/catalog.js';
 import { useProviders } from '../../models/useProviders.js';
+import { languageName, readSimple } from '../../simple/simpleModel.js';
 import { filterVoices, voiceFilters, voiceHue, voiceInUse } from './pickerLogic.js';
 import './pickers.css';
 
 // The voice of an agent, chosen from a list: search, filter by engine, gender and language, listen, and pick. Picking a voice also sets the engine it
-// belongs to (and that engine's model), which the line under the list says.
-export default function VoicePicker({ config, set }) {
+// belongs to (and that engine's model), which the line under the list says. The list opens on the voices of the agent's main language when there are some
+// (the language filter says so, and the voice in use stays at the top whatever it speaks).
+// speech: whether it talks anywhere (a phone line or talking on the website); an agent that only chats needs no voice yet
+export default function VoicePicker({ config, set, speech = true }) {
   const { providers } = useProviders();
   const tts = readModels(config).tts;
   const [query, setQuery] = useState('');
   const [gender, setGender] = useState('');
   const [engine, setEngine] = useState('');
-  const [language, setLanguage] = useState('');
   const filters = useMemo(() => voiceFilters(), []);
+  const [language, setLanguage] = useState(() => {
+    const main = languageName(readSimple(config).primaryLanguage);
+    return filters.languages.includes(main) ? main : '';
+  });
   const [opened] = useState(() => tts); // the order is worked out from the voice the panel opened with, so the list does not jump when one is picked
   const inUse = voiceInUse(tts);
   const voices = useMemo(() => filterVoices({ query, gender, engine, language, current: opened }), [query, gender, engine, language, opened]);
@@ -74,8 +80,8 @@ export default function VoicePicker({ config, set }) {
           </>
         ) : (
           <span className="pkNowText">
-            <strong>No voice chosen yet</strong>
-            <small>Pick one below. Listen first with the play button.</small>
+            <strong>{speech ? 'No voice chosen yet' : 'Not needed while it only chats'}</strong>
+            <small>{speech ? 'Pick one below.' : 'Choose one for phone calls or talking on your website.'} Listen first with the play button.</small>
           </span>
         )}
         <SimpleKey path={['defaults', 'models', 'tts', 'voice_id']} />
@@ -207,6 +213,8 @@ export default function VoicePicker({ config, set }) {
             spellCheck={false}
             value={tts.voiceId}
             placeholder="The voice id shown by your provider"
+            // an id with no engine to use it with would be a voice the configuration can't have: the engine comes first (one already typed can be cleared)
+            disabled={!tts.provider && !tts.voiceId}
             onChange={(event) => set(setVoiceId(config, event.target.value))}
             aria-label="Voice id"
           />

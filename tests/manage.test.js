@@ -100,6 +100,8 @@ test('API agents are mapped for the older pages by where they run', () => {
   assert.deepEqual([staged.status, staged.environment, staged.version, staged.versions.length], ['staging', 'staging', '0.2.0', 1]);
   assert.equal(toLegacyAgent({ ...base, latest_version: '1.0.0', deployed: { staging: '1.0.0', production: '1.0.0' } }).status, 'published');
   assert.equal(toLegacyAgent({ id: 'only-id' }).name, 'only-id');
+  assert.equal(toLegacyAgent(base).draftRevision, 1, 'the draft revision is kept, so Voices reads a saved change again');
+  assert.equal(toLegacyAgent({ id: 'only-id' }).draftRevision, null);
 });
 
 test('exported files are named safely and are readable JSON', () => {

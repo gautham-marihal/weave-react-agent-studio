@@ -66,7 +66,7 @@ test('a name that points at nothing offers the names that exist, nearest first, 
 
 test('a missing required setting is named, and added with its starting value', () => {
   const persona = describe(err(['persona'], "'name' is a required property"));
-  assert.equal(persona.text, '“The agent’s name” has to be filled in here, and it is missing.');
+  assert.equal(persona.text, '“Name it introduces itself by” has to be filled in here, and it is missing.');
   const fixed = persona.fixes[0].apply({ ...example, persona: { tone: 'warm' } });
   assert.equal(fixed.persona.name, '');
   assert.equal(fixed.persona.tone, 'warm', 'the rest is kept');

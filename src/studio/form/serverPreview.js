@@ -152,7 +152,39 @@ export function normalizeResultPreview(raw) {
     storedInState: isObj(pick('stored_in_state')) ? pick('stored_in_state') : {},
     keptFromModel: list(pick('kept_from_the_model')).map(text),
     effects: list(pick('effects')).map((e) => (typeof e === 'string' ? e : text(e?.text || e?.description || e))),
+    // a task tool's preview also says which task it starts, its steps and whether it would run (FRONTEND_GUIDE 10.1)
+    task: taskOfResult(r.task),
   };
+}
+
+function taskOfResult(raw) {
+  if (typeof raw === 'string') return raw ? { id: raw, steps: [], wouldRun: null, why: '' } : null;
+  if (!isObj(raw)) return null;
+  const id = text(raw.id || raw.task);
+  if (!id) return null;
+  const run = [raw.would_run, raw.runs, raw.runs_now].find((v) => typeof v === 'boolean');
+  return {
+    id,
+    steps: list(raw.steps ?? raw.step_ids)
+      .map((s) => (isObj(s) ? text(s.id) : text(s)))
+      .filter(Boolean),
+    // "would run" said outright, or known from "skipped now" (already satisfied)
+    wouldRun: run ?? (raw.skipped_now === true ? false : raw.skipped_now === false ? true : null),
+    why: text(raw.reason || raw.why_not || raw.why),
+  };
+}
+
+// "Starts the task “verify_identity” (3 steps: ask_dob, ask_postcode, check). It would run now." from a result preview's `task`
+export function taskWords(task) {
+  if (!task) return '';
+  const steps = task.steps.length ? ` (${task.steps.length} step${task.steps.length === 1 ? '' : 's'}: ${task.steps.join(', ')})` : '';
+  const run =
+    task.wouldRun === true
+      ? ' It would run now.'
+      : task.wouldRun === false
+        ? ` It would not run now${task.why ? `: ${task.why.replace(/\.$/, '')}` : ', because it is already done'}.`
+        : '';
+  return `Starts the task “${task.id}”${steps}.${run}`;
 }
 
 // Starting arguments for the "Try it" panel: a value for each parameter the tool takes, from its schema's example, default or type.

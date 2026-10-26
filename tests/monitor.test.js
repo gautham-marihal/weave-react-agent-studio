@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyse, deltaOf, issuesOf, percentile, pct, seconds, MIN_FOR_ALERT } from '../src/studio/monitoring/monitorModel.js';
+import { analyse, changeWords, deltaOf, issuesOf, percentile, pct, seconds, MIN_FOR_ALERT } from '../src/studio/monitoring/monitorModel.js';
 
 const NOW = Date.parse('2026-10-15T12:00:00.000Z');
 const H = 3600 * 1000;
@@ -44,6 +44,15 @@ test('percentiles and formats', () => {
   assert.equal(deltaOf(8, 10), '−2');
   assert.equal(deltaOf(5, 5), 'no change');
   assert.equal(deltaOf(5, 0), '');
+});
+
+test('a change in calls is said in words, never as a bare minus that reads as minus calls', () => {
+  assert.equal(changeWords(8, 12, 'the week before'), 'Down from 12 the week before');
+  assert.equal(changeWords(12, 8), 'Up from 8 the period before');
+  assert.equal(changeWords(5, 5, 'the week before'), 'The same as the week before');
+  assert.equal(changeWords(5, 0), '', 'nothing to compare with');
+  assert.equal(changeWords(undefined, 3), '');
+  assert.doesNotMatch(changeWords(8, 12), /[-−]\s*\d/);
 });
 
 test('totals count only the period, and compare with the one before', () => {

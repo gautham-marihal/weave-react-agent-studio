@@ -112,7 +112,7 @@ test('every record the runtime writes today gets a readable row, with the fields
   assert.equal(rows[2].tone, 'agent');
   assert.equal(rows[4].tone, 'caller');
   assert.deepEqual(rows[5].facts, [['llm node ttft', '2106 ms']]);
-  assert.match(rows[0].text, /Started on web_chat/);
+  assert.equal(rows[0].text, 'Started on web chat', 'the channel in words, not its type');
   assert.match(rows[1].text, /assistant answers first/);
   assert.match(rows[3].text, /gpt-4\.1-mini was asked as assistant/);
   assert.deepEqual(rows[3].facts, [

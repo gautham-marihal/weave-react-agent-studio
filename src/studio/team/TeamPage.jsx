@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import { Notice } from '../ui.jsx';
-import PageShell from '../newlayout/PageShell.jsx';
 import '../newlayout/newlayout.css';
 import MemberDrawer from './MemberDrawer.jsx';
 import { useTeam } from './useTeam.js';
@@ -99,24 +98,26 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
   };
 
   return (
-    <PageShell
-      title="Team"
-      wide
-      className="tmPage"
-      lead={`Who can work in ${workspaceName || 'this workspace'}. Give each person the whole workspace, or only the agents they need.`}
-      actions={
-        <button
-          type="button"
-          className="primaryCta compactCta"
-          onClick={() => {
-            setPanel({ mode: 'invite' });
-            setNotice('');
-          }}
-        >
-          <Icon name="plus" size={14} /> Invite people
-        </button>
-      }
-    >
+    // the same title as every page of the workspace, then the team
+    <div className="tmPage">
+      <section className="welcomeBlock pageHeaderBlock">
+        <div>
+          <h1>Team</h1>
+          <p>Who can work in {workspaceName || 'this workspace'}. Give each person the whole workspace, or only the agents they need.</p>
+        </div>
+        <div className="pageHeaderActions">
+          <button
+            type="button"
+            className="primaryCta createButton"
+            onClick={() => {
+              setPanel({ mode: 'invite' });
+              setNotice('');
+            }}
+          >
+            <Icon name="plus" size={14} /> Invite people
+          </button>
+        </div>
+      </section>
       <Notice kind="info" title="Preview: saved in this browser only">
         The team and its access are kept here for now. No emails are sent and the server does not check them yet, so this does not limit anyone in practice. It
         is ready for when the server can.
@@ -259,6 +260,6 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
           onChange={(patch) => change(editing.id, patch)}
         />
       )}
-    </PageShell>
+    </div>
   );
 }

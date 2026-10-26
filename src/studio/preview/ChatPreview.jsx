@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Notice } from '../ui.jsx';
 import './preview.css';
 import Icon from '../../ui/Icon.jsx';
+import AiOrb from './AiOrb.jsx';
 import { inputCapabilities, pictureProblem, useDictation } from './useDictation.js';
 
 // The preview beside the agent's settings: talk to the agent while you edit it, with the state of the connection always visible.
@@ -106,7 +107,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           disabled={!connected || micUnavailable}
           title={
             micUnavailable
-              ? 'This browser can’t turn speech into text. Use the Test tab to speak with the real agent.'
+              ? 'This browser can’t turn speech into text. Use Tests › Try it to speak with the real agent.'
               : !connected
                 ? 'Start a conversation first'
                 : micOn
@@ -194,7 +195,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
         </div>
         {onClose && (
           <button type="button" className="stIconBtn" aria-label="Hide the preview" onClick={onClose}>
-            ×
+            <Icon name="close" size={16} />
           </button>
         )}
       </header>
@@ -221,14 +222,9 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
       {state === 'idle' && (
         <div className="pvEmpty">
           <div className="pvStage">
-            <i className="pvRing r1" aria-hidden="true" />
-            <i className="pvRing r2" aria-hidden="true" />
-            <i className="pvRing r3" aria-hidden="true" />
-            <i className="pvSat" aria-hidden="true" />
-            <button type="button" className="pvOrb" onClick={start} tabIndex={-1} aria-hidden="true">
-              <span className="pvOrbCall">
-                <Icon name="phone" size={22} />
-              </span>
+            {/* a shortcut for the mouse: the button below is the one for everyone */}
+            <button type="button" className="pvOrbButton" onClick={start} tabIndex={-1} aria-hidden="true">
+              <AiOrb size="var(--pv-orb, 132px)" />
             </button>
           </div>
           <strong>No conversation yet</strong>
@@ -241,7 +237,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
 
       {state === 'loading' && (
         <div className="pvLoading" role="status" aria-live="polite">
-          <i className="pvSpin" aria-hidden="true" />
+          <AiOrb size="var(--pv-orb-small, 96px)" state="thinking" />
           <strong>{LOADING_TEXT[session.status] || 'Connecting…'}</strong>
           <span>
             {session.agentHint
@@ -331,7 +327,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
             </p>
           )}
           <div className={`pvHud ${state}`} aria-hidden="true">
-            <span className="pvMiniOrb" />
+            <AiOrb size={26} state={state === 'ended' ? 'rest' : state === 'reconnecting' ? 'thinking' : 'live'} />
             <span className="pvBars">
               <i />
               <i />
@@ -341,7 +337,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
               <i />
               <i />
             </span>
-            <small>{state === 'ended' ? 'Signal closed' : state === 'reconnecting' ? 'Re-linking…' : 'Linked'}</small>
+            <small>{state === 'ended' ? 'Ended' : state === 'reconnecting' ? 'Reconnecting…' : 'Connected'}</small>
           </div>
           <ul className="pvLog" aria-label="Conversation" aria-live="polite">
             {session.messages.map((message) => (
@@ -349,7 +345,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
             ))}
             <li ref={endRef} aria-hidden="true" />
           </ul>
-          {voice && <p className="pvHint">This agent talks by voice. Use the Test tab to speak with it; typing here still works.</p>}
+          {voice && <p className="pvHint">This agent talks by voice. Use Tests › Try it to speak with it; typing here still works.</p>}
           {(note || dictation.error) && (
             <p className="pvHint warn" role="alert">
               {note || dictation.error}

@@ -7,6 +7,13 @@
 // still gets a row (its name, made readable, and its fields) instead of being dropped.
 
 import { isObj } from '../form/engine.js';
+import { channelName } from '../simple/simpleModel.js';
+
+// "web_chat" → "web chat", "sip_voice" → "phone": a channel as a sentence says it
+const channelWords = (type) => {
+  const name = channelName(type);
+  return name === String(type) ? String(type).replace(/_/g, ' ') : name.toLowerCase();
+};
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const first = (...values) => values.find((v) => v !== undefined && v !== null && v !== '');
@@ -246,7 +253,7 @@ export function describeRecord(record, index = 0) {
         ...base,
         tone: 'muted',
         label: 'Call',
-        text: `Started${r.channel?.type ? ` on ${r.channel.type}` : r.channel?.id ? ` on ${r.channel.id}` : ''}`,
+        text: `Started${r.channel?.type ? ` on ${channelWords(r.channel.type)}` : r.channel?.id ? ` on ${r.channel.id}` : ''}`,
         facts: [
           ...(r.caller ? [['caller', String(r.caller)]] : []),
           ...(list(r.not_supported_yet).length

@@ -152,6 +152,43 @@ test('arrows leave the sides that face each other and the curve ends on the bloc
   );
 });
 
+// every point of a route's path, sampled from its "d" (cubic pieces), for testing it against a block
+const sampled = (d) => {
+  const nums = d.match(/-?[0-9.]+/g).map(Number);
+  const pts = [];
+  let [x, y] = nums.slice(0, 2);
+  for (let i = 2; i + 5 < nums.length; i += 6) {
+    const [c1x, c1y, c2x, c2y, ex, ey] = nums.slice(i, i + 6);
+    for (let s = 0; s <= 20; s += 1) {
+      const t = s / 20;
+      const u = 1 - t;
+      pts.push([u ** 3 * x + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t ** 3 * ex, u ** 3 * y + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t ** 3 * ey]);
+    }
+    [x, y] = [ex, ey];
+  }
+  return pts;
+};
+const through = (d, r) => sampled(d).some(([x, y]) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h);
+
+test('an arrow goes around a block in its way, not behind it, and is left as it was when nothing is in the way', () => {
+  const a = { id: 'a', x: 0, y: 0, w: 200, h: 80 };
+  const b = { id: 'b', x: 400, y: 300, w: 200, h: 80 };
+  const plain = routeEdge(a, b);
+  // a block across the usual curve
+  const wall = { id: 'w', x: 220, y: 120, w: 200, h: 80 };
+  assert.ok(through(plain.d, wall), 'the usual curve would run through it');
+  const around = routeEdge(a, b, { obstacles: [a, b, wall] });
+  assert.ok(!through(around.d, wall), around.d);
+  // with nothing in the way the route is the usual one, and the arrow's own ends never count as in its way
+  assert.equal(routeEdge(a, b, { obstacles: [a, b, { id: 'far', x: 900, y: 900, w: 50, h: 50 }] }).d, plain.d);
+  // boxed in on the way down, it bends round the side of the block
+  const shelf = { id: 's', x: -40, y: 150, w: 700, h: 60 };
+  const bent = routeEdge(a, b, { obstacles: [a, b, shelf] });
+  assert.ok(!through(bent.d, shelf), bent.d);
+  // the words sit on the route that is drawn
+  assert.ok(Number.isFinite(around.lx) && Number.isFinite(around.ly));
+});
+
 // ---- editing
 test('Subagent: a real agent with a hand-over from the one it was added to; the first agent stops being "standalone"; nothing else changes', () => {
   const config = single();
@@ -424,7 +461,7 @@ test('deleting an agent leaves nothing pointing at it, however deep, and takes t
     { type: 'say', text: 'a' },
     { type: 'say', text: 'b' },
   ];
-  config.tests = [{ id: 't', steps: [], expect: { agent_is: second } }];
+  config.tests = [{ id: 't', channel: 'web_chat', turns: [], expect: [{ agent_is: second }, { said_matches: 'hello' }] }];
   const placed = ops.setPositions(config, { [`${first}::enter::2`]: { x: 1, y: 1 } });
   const removed = ops.removeAgent(placed, second);
   assert.ok(!JSON.stringify(removed).includes(`"to":"${second}"`), 'no hand-over to it is left, even one nested in another step');
@@ -432,7 +469,7 @@ test('deleting an agent leaves nothing pointing at it, however deep, and takes t
     removed.agents.items[0].on_enter.map((x) => x.type),
     ['say', 'say'],
   );
-  assert.equal(removed.tests[0].expect.agent_is, undefined);
+  assert.deepEqual(removed.tests[0].expect, [{ said_matches: 'hello' }], 'a check about it goes; the test keeps its other checks');
   assert.equal(removed.builder?.ui?.graph_positions?.[`${first}::enter::2`], undefined, 'a saved place for a step that is now another step is forgotten');
   const gone = ops.removeHandoff(placed, first, { enter: 0 });
   assert.equal(gone.builder?.ui?.graph_positions?.[`${first}::enter::2`], undefined);

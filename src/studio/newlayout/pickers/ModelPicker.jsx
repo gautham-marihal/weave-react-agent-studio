@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
 import SimpleKey from '../../simple/SimpleKey.jsx';
 import { modelLabel, modelStatus, providerLabel } from '../../models/catalog.js';
-import { readModels, setModel, setProvider } from '../../models/config.js';
+import { readModels, setModel, setProvider, slotProblem } from '../../models/config.js';
 import { modelRows, providerChips } from './pickerLogic.js';
 import './pickers.css';
 
@@ -72,10 +72,13 @@ function ModelList({ part, config, set, providers }) {
       <ul className="pkModelList" aria-label={`${part.title} models`}>
         {rows.map((row) => (
           <li key={`${row.provider}/${row.id}`} className={row.selected ? 'on' : ''}>
+            {/* a provider whose plugin isn't installed on the server can't run: shown, not chosen (the one in use stays visible) */}
             <button
               type="button"
               aria-pressed={row.selected}
               aria-label={`${row.selected ? 'Using' : 'Use'} ${row.label} from ${row.providerName}`}
+              disabled={!row.installed && !row.selected}
+              title={!row.installed ? `${row.providerName} isn’t installed on this server, so its models can’t run here.` : undefined}
               onClick={() => choose(row)}
             >
               <span className="pkModelText">
@@ -135,12 +138,12 @@ function ModelList({ part, config, set, providers }) {
   );
 }
 
-function PartCard({ part, config, set, providers, open, onToggle }) {
+// speech: the agent takes calls or talks on a website; without, the parts that hear and speak are said to be not needed (they can still be chosen)
+function PartCard({ part, config, set, providers, open, onToggle, speech = true }) {
+  const notNeeded = !speech && part.id !== 'llm';
   const slot = readModels(config)[part.id];
-  const current = providers.find((p) => p.name === slot.provider);
   const status = slot.provider ? modelStatus(part.id, slot.provider, slot.model) : null;
-  const runnable = !slot.provider || (current && current.installed !== false && (current.stages || []).includes(part.id));
-  const keyMissing = current && current.default_secret && current.key_available === false;
+  const problem = slotProblem(part.id, slot, providers);
   return (
     <section className={`pkPart ${open ? 'open' : ''}`} data-stage={part.id}>
       <header>
@@ -161,8 +164,8 @@ function PartCard({ part, config, set, providers, open, onToggle }) {
           </span>
         ) : (
           <span className="pkChosenText">
-            <strong>Nothing chosen yet</strong>
-            <small>Choose a model to use for this part of the call.</small>
+            <strong>{notNeeded ? 'Not needed while it only chats' : 'Nothing chosen yet'}</strong>
+            <small>{notNeeded ? 'Choose one for phone calls or talking on your website.' : 'Choose a model to use for this part of the call.'}</small>
           </span>
         )}
         <button
@@ -175,17 +178,17 @@ function PartCard({ part, config, set, providers, open, onToggle }) {
           {open ? 'Done choosing' : slot.provider ? 'Change' : 'Choose'}
         </button>
       </div>
-      {!runnable && <p className="pkWarn">The runtime can’t run “{slot.provider}” for this. Choose one from the list.</p>}
-      {runnable && keyMissing && <p className="pkWarn">The server doesn’t have {current.default_secret} set, so a call would fail to start until it does.</p>}
+      {problem && <p className="pkWarn">{problem.text}</p>}
       {status && ['custom', 'free', 'empty'].includes(status.state) ? <p className={`pkStatus ${status.state}`}>{status.text}</p> : null}
       {open && <ModelList part={part} config={config} set={set} providers={providers} />}
     </section>
   );
 }
 
-export default function ModelPicker({ config, set, providers, live }) {
+// speech: whether the agent hears and speaks (a phone or website voice channel); the list that opens first is the first part still to choose that it needs
+export default function ModelPicker({ config, set, providers, live, speech = true }) {
   const models = readModels(config);
-  const [open, setOpen] = useState(() => (PARTS.find((p) => !models[p.id].provider) || {}).id || '');
+  const [open, setOpen] = useState(() => (PARTS.find((p) => !models[p.id].provider && (speech || p.id === 'llm')) || {}).id || '');
   return (
     <div className="pkPicker">
       {!live && <p className="pkNote">The server’s list of what it can run couldn’t be read, so these are the usual choices.</p>}
@@ -198,6 +201,7 @@ export default function ModelPicker({ config, set, providers, live }) {
           providers={providers}
           open={open === part.id}
           onToggle={() => setOpen(open === part.id ? '' : part.id)}
+          speech={speech}
         />
       ))}
       <p className="pkNote">Models come from a catalogue kept in the studio, not a live check. Typing any other model id is fine.</p>

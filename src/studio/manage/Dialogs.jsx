@@ -355,7 +355,7 @@ export function RemoveDialog({ bot, onClose, onDone }) {
         </>
       }
     >
-      <Notice kind="info" title="The Agent Builder API has no delete yet">
+      <Notice kind="info" title="Agents can’t be deleted from the server yet">
         The agent, its draft, its versions and its deployments stay on the server exactly as they are. You can bring it back any time from “Removed from your
         list” on the Agents page.
       </Notice>

@@ -82,16 +82,24 @@ test('Calls: the calls of an agent, newest first, filters that narrow them, and 
   await seedDemo(agent());
   const app = await mountScreen('calls', {}, { ready: '.clView', props: { fixedBotId: 'x' } });
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 3), true);
+  // who can read the calls, and (in the demo) that they are made up, in one line until "Got it"
   assert.match(textOf($(app.container, '.clPrivacy')), /These records contain what callers said/);
-  assert.match(textOf($(app.container, '.demoNote')), /made-up examples/);
+  assert.match(textOf($(app.container, '.clPrivacy')), /made-up examples/);
   const times = $$(app.container, '.clRow').map((r) => r.querySelector('td').textContent);
   assert.equal(times.length, 3);
-  // a status filter with nothing in it says so
-  await a.choose($$(app.container, '.clFilters select')[1], 'unfinished');
+  // each call says how it went in a word
+  assert.ok(
+    $$(app.container, '.clRow .clStatus').every((el) => ['Handled', 'Passed to a person', 'Cut off', 'In progress'].includes(textOf(el))),
+    'an outcome per call',
+  );
+  // an outcome filter with nothing in it says so
+  await a.choose($$(app.container, '.clFilters select')[1], 'cutoff');
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 0 && !!$(app.container, '.clEmpty strong')), true);
-  assert.match(textOf($(app.container, '.clEmpty')), /No calls found/);
-  await a.choose($$(app.container, '.clFilters select')[1], 'ended');
+  assert.match(textOf($(app.container, '.clEmpty')), /No calls match these filters/);
+  await a.choose($$(app.container, '.clFilters select')[1], '');
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 3), true);
+  await a.click(byText(app.container, '.clPrivacy button', 'Got it'));
+  assert.equal($(app.container, '.clPrivacy'), null, 'the notice is gone once it is read');
   // open one
   await a.click($$(app.container, '.clRow')[0]);
   assert.equal(await until(app, () => !!$(app.container, '.clDetail .trView')), true);
@@ -181,12 +189,16 @@ test('Knowledge: a base that isn’t built says what to do, a file is uploaded, 
   const base = () => $(app.container, '[data-base=faq]');
   assert.match(textOf($(base(), '.kwState')), /Not built/);
   assert.match(textOf($(base(), '.kwProblems')), /The file faq\.md is not uploaded/);
-  assert.match(textOf($(base(), '.kwUsed')), /No agent or tool uses this base/);
+  assert.match(textOf($(base(), '.kwUsed')), /Nothing reads it yet, so no agent answers from it/);
   assert.match(textOf($(app.container, '.demoNote')), /no embedding model/);
+  // the base in words, and one click gives it to the agent that answers (a knowledge tool that searches it)
+  assert.equal(textOf($(base(), 'h3')), 'Faq');
+  await a.click(byText(base(), 'button', 'Let Acme use it'));
+  assert.match(textOf($(base(), '.kwUsed')), /^Looked up with the “Search faq” tool \(Acme\)\.$/);
   assert.equal(byText(base(), 'button', 'Test a search').disabled, true, 'nothing to search until it is built');
   await pickFile(app, 'faq.md', FAQ);
   assert.equal(await until(app, () => !!$(app.container, '.kwTable') && /uploaded/.test(textOf($(base(), '.kwSources')))), true);
-  assert.match(textOf($(app.container, '.kwTable')), /faq\.md.*faq/, 'the file is read by the base');
+  assert.match(textOf($(app.container, '.kwTable')), /faq\.md.*Faq/, 'the file is read by the base');
   await a.click(byText(base(), 'button', 'Build the index'));
   assert.equal(await until(app, () => /Ready/.test(textOf($(base(), '.kwState')))), true);
   assert.match(textOf($(base(), '.kwIndex')), /Index built .*\d+ passages? with demo word-index/);
@@ -220,7 +232,7 @@ test('Knowledge: a search shows scores in words, what min_score would drop, and 
   await app.unmount();
 });
 
-test('Knowledge: a file that is wrong is refused with a reason, and “Use in a new base” makes one', async () => {
+test('Knowledge: a file that is wrong is refused with a reason, and the first file uploaded makes the base by itself', async () => {
   const config = agent();
   const app = await kw(config);
   await until(app, () => !!$(app.container, '.kwFiles'));
@@ -230,13 +242,12 @@ test('Knowledge: a file that is wrong is refused with a reason, and “Use in a 
   assert.match(textOf($(app.container, '.kwProblemsList')), /isn’t a kind of file knowledge can read/);
   await pickFile(app, 'Return policy.md', 'Returns are accepted within thirty days if the item is unused.');
   assert.equal(await until(app, () => !!$(app.container, '.kwTable')), true);
-  // a new base from the file goes into the draft
-  await a.choose(byLabel(app.container, 'Use Return policy.md in a base'), '__new');
+  // with no base yet, the upload itself puts a new base with the file into the draft: there is no second step
   assert.deepEqual(
     app.config.knowledge.map((b) => [b.id, b.type, b.sources]),
-    [['return-policy', 'vector_store', [{ type: 'file', file_id: 'Return policy.md' }]]],
+    [['knowledge', 'vector_store', [{ type: 'file', file_id: 'Return policy.md' }]]],
   );
-  assert.match(textOf($(app.container, '.kwDone')), /Made the base “return-policy”/);
+  assert.match(textOf($(app.container, '.kwDone')), /Made the knowledge base “knowledge”/);
   assert.match(textOf($(app.container, '.stNotice')), /Knowledge works from the saved draft/);
   await app.unmount();
 });

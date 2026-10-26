@@ -241,10 +241,6 @@
 .asVerb.changed {
   color: var(--warn-text);
 }
-.asDetail {
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
 .asCheck {
   display: flex;
   flex-wrap: wrap;
@@ -333,7 +329,7 @@
   border: 1px solid var(--line2);
   border-radius: 18px;
   background: var(--panel);
-  box-shadow: 0 10px 30px -18px rgba(8, 20, 24, 0.45);
+  box-shadow: 0 10px 30px -18px rgba(16, 16, 20, 0.45);
 }
 .asComposer:focus-within {
   border-color: var(--accent);

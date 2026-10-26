@@ -10,6 +10,7 @@ import TryIt from './TryIt.jsx';
 import { bodyFromParams } from './paramSchema.js';
 import TemplateField from './TemplateField.jsx';
 import { TechKey } from './TechName.jsx';
+import Icon from '../../ui/Icon.jsx';
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const CREDENTIAL_NAME = /authori[sz]ation|api[-_ ]?key|token|secret|password|passwd|bearer/i;
@@ -78,7 +79,7 @@ function KeyValueRows({ value, onChange, scope, disabled, keyLabel, warnCredenti
         </div>
       ))}
       <button type="button" className="stAddBtn" disabled={disabled} onClick={() => setRows([...rows, { key: '', value: '' }])}>
-        ＋ Add {keyLabel.toLowerCase()}
+        <Icon name="plus" size={14} /> Add {keyLabel.toLowerCase()}
       </button>
     </div>
   );
@@ -126,7 +127,7 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
           )}
           {!disabled && (
             <button type="button" className="stLink stNewBtn" onClick={() => setCreating((v) => !v)}>
-              ＋ New HTTP connection
+              <Icon name="plus" size={14} /> New HTTP connection
             </button>
           )}
           {creating && <InlineCreate collection="http_connections" target={connectionPath} onClose={() => setCreating(false)} />}
@@ -237,7 +238,7 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
               disabled={disabled}
               onClick={() => set({ body: paramRows.length && req.method !== 'GET' ? bodyFromParams(paramRows) : {} })}
             >
-              ＋ Add a body{paramRows.length && req.method !== 'GET' ? ' from the parameters' : ''}
+              <Icon name="plus" size={14} /> Add a body{paramRows.length && req.method !== 'GET' ? ' from the parameters' : ''}
             </button>
           </div>
         )}
@@ -343,7 +344,7 @@ export function ResponsePanel({ path: toolPath = [], result, onChange, outOfBand
           </div>
         ))}
         <button type="button" className="stAddBtn" disabled={disabled} onClick={() => set({ to_llm: [...toLlm, ''] })}>
-          ＋ Add a field
+          <Icon name="plus" size={14} /> Add a field
         </button>
       </div>
 
@@ -378,14 +379,14 @@ export function ResponsePanel({ path: toolPath = [], result, onChange, outOfBand
               action
               className="stFInput small"
               ariaLabel="Keep a value in a state variable"
-              placeholder="＋ Keep a value in…"
+              placeholder="Keep a value in…"
               options={unmapped}
               onChange={(name) => {
                 if (name) addToState(name, '');
               }}
             />
             <button type="button" className="stLink" onClick={() => setCreating((v) => !v)}>
-              ＋ New state variable
+              <Icon name="plus" size={14} /> New state variable
             </button>
           </div>
         )}

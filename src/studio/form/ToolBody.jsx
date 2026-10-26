@@ -51,6 +51,8 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
   const unavailable = notAvailable(obj);
   const users = useConfigSelect((c) => (obj.id ? agentsUsingTool(c, obj.id) : []));
   const advice = has('description') ? describeAdvice(obj.description) : null;
+  // asked above the form by the panel around it (a tool's panel on the Tools page asks when it is used in words)
+  const descriptionHere = has('description') && !ctx.hidden?.has([...path, 'description'].join('.'));
   const paramRows = has('parameters') ? readParams(obj.parameters).rows : [];
   const showName = has('name') && obj.name !== undefined && obj.name !== obj.id;
   const timeoutNotes = has('timeout_s') ? timeoutAdvice(obj) : [];
@@ -109,7 +111,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
 
       {obj.builtin && BUILTIN_HELP[obj.builtin] && <p className="stToolNote info">{BUILTIN_HELP[obj.builtin]}</p>}
 
-      {has('description') && (
+      {descriptionHere && (
         <div className="stFRow wide stDescRow" data-path={`${path.join('.')}.description`}>
           <div className="stFLabel">
             <label htmlFor={`${path.join('-')}-desc`}>Description</label>

@@ -4,6 +4,7 @@ import { isObj } from './engine.js';
 import { useForm } from './ctx.js';
 import Node from './Node.jsx';
 import { ACTION_KINDS, describeAction, describeRule, kindLabel, moveItem } from './effects.js';
+import Icon from '../../ui/Icon.jsx';
 
 // A list of actions as ordered, numbered steps: pick what each step does from a plain-language menu, and fill in its details with
 // the ordinary form for that kind of action. Used wherever the schema asks for actions (a tool's effects, an agent's on-enter
@@ -52,7 +53,7 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
                       disabled={j === 0}
                       onClick={() => onChange(moveItem(actions, j, j - 1))}
                     >
-                      ↑
+                      <Icon name="chevronUp" size={14} />
                     </button>
                     <button
                       type="button"
@@ -61,7 +62,7 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
                       disabled={j === actions.length - 1}
                       onClick={() => onChange(moveItem(actions, j, j + 1))}
                     >
-                      ↓
+                      <Icon name="chevronDown" size={14} />
                     </button>
                     <button
                       type="button"
@@ -72,7 +73,7 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
                         onChange(actions.filter((_, k) => k !== j));
                       }}
                     >
-                      ×
+                      <Icon name="close" size={14} />
                     </button>
                   </span>
                 )}
@@ -96,7 +97,7 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
           action
           className="stFInput small"
           ariaLabel={`Add a step to ${label}`}
-          placeholder="＋ Add a step…"
+          placeholder="Add a step…"
           options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))}
           onChange={(chosen) => {
             if (chosen) onChange([...actions, makeAction(chosen)]);
@@ -156,7 +157,7 @@ export default function EffectsEditor({
                     disabled={index === 0}
                     onClick={() => onChange(moveItem(rules, index, index - 1))}
                   >
-                    ↑
+                    <Icon name="chevronUp" size={14} />
                   </button>
                   <button
                     type="button"
@@ -165,7 +166,7 @@ export default function EffectsEditor({
                     disabled={index === rules.length - 1}
                     onClick={() => onChange(moveItem(rules, index, index + 1))}
                   >
-                    ↓
+                    <Icon name="chevronDown" size={14} />
                   </button>
                   <button type="button" className="stFDel small" aria-label={`Delete rule ${index + 1}`} onClick={() => removeRule(index)}>
                     Delete
@@ -227,7 +228,7 @@ export default function EffectsEditor({
       })}
       {!disabled && (
         <button type="button" className="stAddBtn" onClick={addRule}>
-          ＋ Add a rule
+          <Icon name="plus" size={14} /> Add a rule
         </button>
       )}
     </div>

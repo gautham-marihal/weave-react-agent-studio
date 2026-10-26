@@ -1,22 +1,13 @@
 import { useEffect, useState } from 'react';
-import { visibleCount } from '../studio/agents.js';
 import { getCachedConfig, loadConfigs } from '../studio/configCache.js';
 import { hasHumanHandoff } from '../studio/scenarios.js';
 import { createPortal } from 'react-dom';
-import {
-  RANGE_MS,
-  TELEPHONY_SECTIONS,
-  formatShortDate,
-  agentLifecycle,
-  compactDateTime,
-  formatDuration,
-  getInitials,
-  makeRecordId,
-  normalizeTelephony,
-} from './helpers.js';
+import { RANGE_MS, TELEPHONY_SECTIONS, formatShortDate, agentLifecycle, compactDateTime, formatDuration, makeRecordId, normalizeTelephony } from './helpers.js';
 import { TelephonyDialog, DialogField, TelephonyTablePanel } from './telephonyParts.jsx';
 import { LiveNumbersPage, useLiveNumbers } from './LiveNumbers.jsx';
-import { Glyph, HelpTip, Logo, ProfileMenu, SHORTCUT_LABEL, StatusBadge, ThemeToggle, helpText, openHelpDialog } from './shared.jsx';
+import { Glyph, HelpTip, StatusBadge, helpText } from './shared.jsx';
+import { sentenceCase } from '../ui/text.js';
+import Icon from '../ui/Icon.jsx';
 
 // The Telephony pages are a local mock: everything here is kept in this browser and nothing is sent to any phone system.
 // Said plainly on every section, so nobody believes a number or a trunk exists.
@@ -24,7 +15,7 @@ const TELEPHONY_PREVIEW_COPY = {
   calls:
     'These calls are simulated in your browser to show how your rules would route a call. No real call is placed or received, and the sessions they add are kept in this browser only.',
   dispatch:
-    'Rules here are saved in this browser and route no real call. On the platform a call reaches an agent through a LiveKit SIP trunk and a dispatch rule that names the agent and its environment: when this server supports it, adding a number under Phone numbers makes both for you. Business hours, caller-prefix routing, priority, hold limits, hold messages and overflow to another agent are not features of the platform yet.',
+    'Rules here are saved in this browser and route no real call. On the platform a call reaches an agent through a SIP trunk and a dispatch rule that names the agent and its environment: when this server supports it, adding a number under Phone numbers makes both for you. Business hours, caller-prefix routing, priority, hold limits, hold messages and overflow to another agent are not features of the platform yet.',
   numbers:
     'This server does not set up phone numbers from here, so nothing is bought or connected: “Get a number” only adds a row in this browser. A real phone number is connected on the platform. A phone channel’s number field in the agent’s configuration is a description and doesn’t route calls either.',
   trunks:
@@ -40,200 +31,105 @@ function TelephonyPreviewBanner({ section }) {
   );
 }
 
-export function TelephonyPage({
+// Telephony, a page of the workspace like the others (its sidebar and top bar are the Dashboard's): its title, its four parts as tabs, and the part that is
+// open. Each part has an address of its own (#/telephony/numbers...), so `section` comes from the address and `onSectionChange` changes it.
+export function TelephonyWorkspace({
   onRecordSession,
   telephony = normalizeTelephony(),
   onTelephonyChange,
   agents = [],
-  onOpenSearch,
-  profile,
-  theme,
-  onToggleTheme,
-  onSignOut,
-  onAccountOpen,
-  workspaceName,
-  initials,
-  workspaces = [],
-  currentWorkspaceId,
-  workspaceOpen,
-  setWorkspaceOpen,
-  onSwitchWorkspace,
-  onCreateWorkspace,
   onNavigate,
   section,
   onSectionChange,
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // the real phone numbers, when this server has them; otherwise the numbers page is the local preview
   const live = useLiveNumbers(section === 'numbers');
-  const title = TELEPHONY_SECTIONS.find((item) => item.id === section)?.label || 'Phone numbers';
   return (
-    <div className={`dashboard telephonyDashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''}`}>
-      <aside className="sidebar telephonySidebar">
-        <div className="sideBrand">
-          <Logo />
+    <div className="telephonyWorkspace">
+      <section className="welcomeBlock pageHeaderBlock">
+        <div>
+          <h1>
+            Telephony <em className="telephonyPreviewTag">Preview</em>
+          </h1>
+          <p>Phone numbers, the rules that send a call to an agent, and SIP trunks; and calls simulated through them.</p>
+        </div>
+      </section>
+      <div className="nlParts telephonyTabs" role="tablist" aria-label="Telephony sections">
+        {TELEPHONY_SECTIONS.map((item) => (
           <button
-            className="collapse"
+            key={item.id}
             type="button"
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-expanded={!sidebarCollapsed}
-            onClick={() => setSidebarCollapsed((value) => !value)}
+            role="tab"
+            aria-selected={section === item.id}
+            className={section === item.id ? 'on' : ''}
+            onClick={() => onSectionChange?.(item.id)}
           >
-            ◫
+            <Glyph icon={item.icon} size={15} />
+            {item.label}
           </button>
-        </div>
+        ))}
+      </div>
 
-        <button
-          className="workspaceSwitch"
-          type="button"
-          aria-label="Current workspace"
-          aria-expanded={workspaceOpen}
-          onClick={() => setWorkspaceOpen?.((value) => !value)}
-        >
-          <span className="workspaceAvatar">{getInitials(workspaceName).slice(0, 1)}</span>
-          <span className="workspaceCopy">
-            <small>WORKSPACE</small>
-            <strong>{workspaceName}</strong>
-          </span>
-          <b className="buttonChevron">{workspaceOpen ? '⌃' : '⌄'}</b>
-        </button>
-        {workspaceOpen && (
-          <div className="workspaceMenu" role="menu">
-            <div className="workspaceMenuLabel">YOUR WORKSPACES</div>
-            <div className="workspaceMenuList">
-              {workspaces.map((workspace) => (
-                <button
-                  key={workspace.id}
-                  type="button"
-                  className={`workspaceOption ${workspace.id === currentWorkspaceId ? 'current' : ''}`}
-                  onClick={() => onSwitchWorkspace?.(workspace.id)}
-                >
-                  <span className={`tinyDot ${workspace.id === currentWorkspaceId ? 'green' : ''}`} />
-                  <span className="workspaceOptionName">{workspace.name}</span>
-                  <span className="workspaceOptionMeta">
-                    {visibleCount(workspace.id)} {visibleCount(workspace.id) === 1 ? 'agent' : 'agents'}
-                  </span>
-                  {workspace.id === currentWorkspaceId && <span className="workspaceCheck">✓</span>}
-                </button>
-              ))}
-            </div>
-            <p className="workspaceMenuNote">Workspaces group agents in this browser. They don’t control who can see an agent.</p>
-            <button type="button" className="workspaceMenuAction" onClick={onCreateWorkspace}>
-              <span className="tinyDot" /> Create workspace <b>＋</b>
-            </button>
+      <div className="telephonyContent">
+        {section === 'numbers' && live.mode === 'unavailable' ? null : section === 'numbers' && live.mode === 'live' ? (
+          <div className="telephonyPreview connected" role="note">
+            <b>Connected</b>
+            <span>
+              These are the numbers of your phone system. Adding, changing or releasing one here changes the real trunk and dispatch rule. Dispatch rules,
+              trunks and calls in the other sections are still a preview.
+            </span>
           </div>
+        ) : (
+          <TelephonyPreviewBanner section={section} />
         )}
-
-        <div className="telephonySideTitle">
-          <button type="button" aria-label="Back to workspace overview" title="Back to overview" onClick={() => onNavigate?.('home')}>
-            ←
-          </button>
-          <strong>Telephony</strong>
-          <em className="telephonyPreviewTag">Preview</em>
-        </div>
-        <nav className="telephonyNav" aria-label="Telephony">
-          {TELEPHONY_SECTIONS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`telephonyNavItem ${section === item.id ? 'active' : ''}`}
-              aria-label={item.label}
-              aria-current={section === item.id ? 'page' : undefined}
-              title={sidebarCollapsed ? item.label : undefined}
-              onClick={() => onSectionChange?.(item.id)}
-            >
-              <span aria-hidden="true">
-                <Glyph icon={item.icon} size={16} />
-              </span>
-              <strong>{item.label}</strong>
-            </button>
-          ))}
-        </nav>
-
-        <div className="sideBottom">
-          <button className="sideUtility" type="button" onClick={onOpenSearch}>
-            <span>⌕</span>
-            <span>Search</span>
-            <kbd>{SHORTCUT_LABEL}</kbd>
-          </button>
-          <button className="sideUtility" type="button" onClick={openHelpDialog}>
-            <span>?</span>
-            <span>Help & docs</span>
-            <b className="buttonArrow">↗</b>
-          </button>
-          <ProfileMenu profile={profile} initials={initials} onAccountOpen={onAccountOpen} onSignOut={onSignOut} />
-        </div>
-      </aside>
-
-      <main className="dashMain telephonyMain">
-        <div className="dashTopbar">
-          <div className="topbarCrumb">
-            <span>{workspaceName}</span>
-            <b>/</b>
-            <strong>Telephony</strong>
-            <b>/</b>
-            <strong>{title}</strong>
-          </div>
-          <div className="topbarActions">
-            <button className="quietButton" type="button" onClick={onOpenSearch}>
-              ⌕ <span>Search</span>
-            </button>
-            <button className="quietButton" type="button" onClick={openHelpDialog}>
-              ? <span>Help</span>
-            </button>
-            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-            <ProfileMenu profile={profile} initials={initials} compact onAccountOpen={onAccountOpen} onSignOut={onSignOut} />
-          </div>
-        </div>
-
-        <div className="telephonyContent">
-          {section === 'numbers' && live.mode === 'live' ? (
-            <div className="telephonyPreview connected" role="note">
-              <b>Connected</b>
-              <span>
-                These are the numbers of your phone system. Adding, changing or releasing one here changes the real trunk and dispatch rule. Dispatch rules,
-                trunks and calls in the other sections are still a preview.
-              </span>
+        {section === 'numbers' && live.mode === 'preview' && live.error && (
+          <p className="telephonyNotice bad" role="alert">
+            Your phone numbers couldn’t be read ({live.error.message.replace(/\.$/, '')}). What follows is the local preview.
+          </p>
+        )}
+        {/* no phone-system credentials on this server (503): the feature is hidden, not shown as an empty list or a pretend one */}
+        {section === 'numbers' && live.mode === 'unavailable' && (
+          <section className="emptyPanel" data-numbers="unavailable">
+            <div className="emptyPanelIcon" aria-hidden="true">
+              <Icon name="dial" size={22} />
             </div>
-          ) : (
-            <TelephonyPreviewBanner section={section} />
-          )}
-          {section === 'numbers' && live.mode === 'preview' && live.error && (
-            <p className="telephonyNotice bad" role="alert">
-              Your real phone numbers could not be read: {live.error.message} What follows is the local preview.
+            <h2>Phone numbers aren’t available on this server</h2>
+            <p>
+              It has no phone-system (LiveKit) credentials, so numbers can’t be listed or set up here. Ask whoever runs the server to add them; then this page
+              lists every number and lets you add one.
             </p>
-          )}
-          {section === 'calls' && (
-            <TelephonyCallsPage
-              telephony={telephony}
-              onNavigateSection={onSectionChange}
-              agents={agents}
-              onChange={onTelephonyChange}
-              onRecordSession={onRecordSession}
-              onOpenSessions={() => onNavigate?.('sessions')}
-            />
-          )}
-          {section === 'dispatch' && (
-            <TelephonyDispatchPage
-              telephony={telephony}
-              onChange={onTelephonyChange}
-              agents={agents}
-              onNavigateSection={onSectionChange}
-              onNavigate={onNavigate}
-            />
-          )}
-          {section === 'numbers' && live.mode === 'live' && <LiveNumbersPage live={live} agents={agents} />}
-          {section === 'numbers' && live.mode === 'loading' && (
-            <p className="telephonyNotice" role="status">
-              Reading your phone numbers…
-            </p>
-          )}
-          {section === 'numbers' && live.mode === 'preview' && (
-            <TelephonyNumbersPage telephony={telephony} onChange={onTelephonyChange} agents={agents} onNavigateSection={onSectionChange} />
-          )}
-          {section === 'trunks' && <TelephonyTrunksPage telephony={telephony} onChange={onTelephonyChange} />}
-        </div>
-      </main>
+          </section>
+        )}
+        {section === 'calls' && (
+          <TelephonyCallsPage
+            telephony={telephony}
+            onNavigateSection={onSectionChange}
+            agents={agents}
+            onChange={onTelephonyChange}
+            onRecordSession={onRecordSession}
+            onOpenSessions={() => onNavigate?.('sessions')}
+          />
+        )}
+        {section === 'dispatch' && (
+          <TelephonyDispatchPage
+            telephony={telephony}
+            onChange={onTelephonyChange}
+            agents={agents}
+            onNavigateSection={onSectionChange}
+            onNavigate={onNavigate}
+          />
+        )}
+        {section === 'numbers' && live.mode === 'live' && <LiveNumbersPage live={live} agents={agents} />}
+        {section === 'numbers' && live.mode === 'loading' && (
+          <p className="telephonyNotice" role="status">
+            Reading your phone numbers…
+          </p>
+        )}
+        {section === 'numbers' && live.mode === 'preview' && (
+          <TelephonyNumbersPage telephony={telephony} onChange={onTelephonyChange} agents={agents} onNavigateSection={onSectionChange} />
+        )}
+        {section === 'trunks' && <TelephonyTrunksPage telephony={telephony} onChange={onTelephonyChange} />}
+      </div>
     </div>
   );
 }
@@ -278,7 +174,7 @@ function TelephonyRangeControls({ range: controlledRange, onRangeChange }) {
     <div className="telephonyHeaderActions">
       <label className="selectButton">
         <span className="buttonIcon" aria-hidden="true">
-          ◷
+          <Icon name="clock" size={15} />
         </span>
         <select value={range} onChange={(event) => setRange(event.target.value)} aria-label="Time range">
           {['Past 24 hours', 'Past 7 days', 'Past 30 days', 'Past 90 days'].map((option) => (
@@ -553,7 +449,7 @@ function CallDetailDialog({ call, onClose, onOpenSessions }) {
       <section className="createModal statusDialog callDetailDialog">
         <div className="createModalHeader">
           <div>
-            <span className="createEyebrow">{call.simulated ? 'SIMULATED CALL' : 'CALL'}</span>
+            <span className="createEyebrow">{call.simulated ? 'Simulated call' : 'Call'}</span>
             <h2 id="call-detail-title">Call #{call.id.slice(-6).toUpperCase()}</h2>
             <p>
               {call.from} to {call.to}, {formatShortDate(call.startedAt)}
@@ -561,7 +457,7 @@ function CallDetailDialog({ call, onClose, onOpenSessions }) {
             </p>
           </div>
           <button type="button" className="modalClose" aria-label="Close" onClick={onClose}>
-            ×
+            <Icon name="close" size={14} />
           </button>
         </div>
         <dl className="callFacts">
@@ -577,7 +473,7 @@ function CallDetailDialog({ call, onClose, onOpenSessions }) {
               {formatDuration(call.holdSec)}
               {call.maxHold != null && (
                 <small>
-                  {(call.agentWaitSec || 0) !== call.holdSec ? `${formatDuration(call.agentWaitSec || 0)} for the agent, ` : ''}limit {call.maxHold} sec
+                  {(call.agentWaitSec || 0) !== call.holdSec ? `${formatDuration(call.agentWaitSec || 0)} for the agent, ` : ''}limit {call.maxHold} s
                 </small>
               )}
             </dd>
@@ -730,7 +626,7 @@ function SimulateCallDialog({ telephony, agents, onClose, onSimulate }) {
       </label>
       <p className="telephonyDialogNote">
         {preview.length
-          ? `This call would match “${preview[0].name}” and go to ${agents.find((agent) => agent.id === preview[0].agentId)?.name || 'a deleted agent'} (hold limit ${ruleSettings(preview[0]).maxHold} sec).`
+          ? `This call would match “${preview[0].name}” and go to ${agents.find((agent) => agent.id === preview[0].agentId)?.name || 'a deleted agent'} (hold limit ${ruleSettings(preview[0]).maxHold} s).`
           : 'No dispatch rule matches this number, caller and time, so the call won’t be answered.'}
       </p>
     </TelephonyDialog>
@@ -779,7 +675,7 @@ function TelephonyCallsPage({ telephony, onNavigateSection, agents = [], onChang
     const record = { ...call, sessionId };
     onChange(
       (current) => ({ ...current, calls: [record, ...(current.calls || [])].slice(0, 500) }),
-      call.issues.length ? { kind: 'telephony', icon: '☎', title: `Simulated call: ${call.status.toLowerCase()}`, detail: call.issues[0] } : null,
+      call.issues.length ? { kind: 'telephony', icon: 'phone', title: `Simulated call: ${call.status.toLowerCase()}`, detail: call.issues[0] } : null,
     );
     setSimulateOpen(false);
     setOpenCall(record);
@@ -802,9 +698,7 @@ function TelephonyCallsPage({ telephony, onNavigateSection, agents = [], onChang
       <span
         key="hold"
         className={`holdCell ${call.overLimit ? 'isOver' : ''}`}
-        title={
-          call.maxHold != null ? `Total time on hold. Waited ${formatDuration(call.agentWaitSec || 0)} for the agent; rule limit ${call.maxHold} sec.` : ''
-        }
+        title={call.maxHold != null ? `Total time on hold. Waited ${formatDuration(call.agentWaitSec || 0)} for the agent; rule limit ${call.maxHold} s.` : ''}
       >
         {call.ruleId ? formatDuration(call.holdSec) : '—'}
         {call.overLimit && <small>over limit</small>}
@@ -828,10 +722,14 @@ function TelephonyCallsPage({ telephony, onNavigateSection, agents = [], onChang
     <>
       <section className="telephonyPageHeader">
         <div>
-          <h1>Simulated calls</h1>
+          <h2>Simulated calls</h2>
           <p>
             Calls you simulate here, to see how your dispatch rules would route them and how long callers would wait. Real calls, from callers and from tests,
-            are on the <strong>Calls</strong> page.
+            are on the{' '}
+            <button type="button" className="linkButton" onClick={() => onOpenSessions?.()}>
+              Calls
+            </button>{' '}
+            page.
           </p>
         </div>
         <div className="telephonyHeaderActions">
@@ -847,37 +745,49 @@ function TelephonyCallsPage({ telephony, onNavigateSection, agents = [], onChang
           </button>
         </div>
       </section>
-      <section className="telephonyStatsGrid three">
-        <TelephonyStat
-          label="SIMULATED CALLS"
-          value={String(calls.length)}
-          note={calls.length ? `${connected.length} connected in the ${range.toLowerCase()}` : 'None simulated in this time range'}
-        />
-        <TelephonyStat label="TOTAL CALL DURATION" value={formatDuration(totalConnected)} note="Combined talk time, not counting hold" />
-        <TelephonyStat
-          label="AVERAGE CALL DURATION"
-          value={formatDuration(connected.length ? totalConnected / connected.length : 0)}
-          note="Talk time per connected call"
-        />
-      </section>
-      <section className="telephonyStatsGrid three">
-        <TelephonyStat
-          label="AVERAGE HOLD TIME"
-          value={formatDuration(avgHold)}
-          note={longest ? `Longest ${formatDuration(longest.holdSec)}${overLimit ? `, ${overLimit} over the rule limit` : ''}` : 'Time callers spend waiting'}
-          accent
-        />
-        <TelephonyStat label="REAL CALLS" value="See Calls" note="This page only knows the calls you simulate" accent />
-        <TelephonyStat
-          label="CALLS WITH ISSUES"
-          value={String(withIssues)}
-          note={withIssues ? 'Open a call to see what happened' : 'No call issues detected'}
-          accent
-        />
-      </section>
+      {/* the numbers once there is something to count; before the first call, the table below says what to do */}
+      {(telephony.calls || []).length > 0 && (
+        <>
+          <section className="telephonyStatsGrid three">
+            <TelephonyStat
+              label="SIMULATED CALLS"
+              value={String(calls.length)}
+              note={calls.length ? `In the ${range.toLowerCase()}` : 'None simulated in this time range'}
+            />
+            <TelephonyStat label="TOTAL CALL DURATION" value={formatDuration(totalConnected)} note="Combined talk time, not counting hold" />
+            <TelephonyStat
+              label="AVERAGE CALL DURATION"
+              value={formatDuration(connected.length ? totalConnected / connected.length : 0)}
+              note="Talk time per connected call"
+            />
+          </section>
+          <section className="telephonyStatsGrid three">
+            <TelephonyStat
+              label="AVERAGE HOLD TIME"
+              value={formatDuration(avgHold)}
+              note={
+                longest ? `Longest ${formatDuration(longest.holdSec)}${overLimit ? `, ${overLimit} over the rule limit` : ''}` : 'Time callers spend waiting'
+              }
+              accent
+            />
+            <TelephonyStat
+              label="ANSWERED BY AN AGENT"
+              value={String(connected.length)}
+              note={calls.length ? `${Math.round((connected.length / calls.length) * 100)}% of the simulated calls` : 'No simulated calls yet'}
+              accent
+            />
+            <TelephonyStat
+              label="CALLS WITH ISSUES"
+              value={String(withIssues)}
+              note={withIssues ? 'Open a call to see what happened' : 'No call issues detected'}
+              accent
+            />
+          </section>
+        </>
+      )}
       <TelephonyTablePanel
         title="Calls"
-        emptyIcon="☎"
+        emptyIcon="phone"
         emptyTitle="No calls yet"
         emptyText={
           ready
@@ -950,7 +860,7 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
         routingLabel(rule),
         <RuleHoursCell key="hours" rule={rule} />,
         agentCell(rule.agentId),
-        `${r.maxHold} sec`,
+        `${r.maxHold} s`,
         r.overflow === 'agent' ? `Send to ${fallback || 'a deleted agent'}` : OVERFLOW_OPTIONS[r.overflow].short,
         String(r.priority),
         stats.count ? String(stats.count) : '—',
@@ -973,11 +883,11 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
     <>
       <section className="telephonyPageHeader">
         <div>
-          <h1>Dispatch rules</h1>
+          <h2>Dispatch rules</h2>
           <p>Control how inbound calls are routed to agents.</p>
         </div>
         <button className="primaryCta compactCta" type="button" onClick={() => setDialogOpen(true)}>
-          ＋ Create dispatch rule
+          <Icon name="plus" size={14} /> Create dispatch rule
         </button>
       </section>
       <section className="telephonyStatsGrid two">
@@ -1002,7 +912,7 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
       )}
       <TelephonyTablePanel
         title="Dispatch rules"
-        emptyIcon="⇢"
+        emptyIcon="arrowRight"
         emptyTitle="No dispatch rules yet"
         emptyText="Create a rule to decide which agent answers inbound calls."
         emptyAction={{ label: 'Create dispatch rule', onClick: () => setDialogOpen(true) }}
@@ -1016,7 +926,7 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
           const rule = telephony.rules.find((item) => item.id === id);
           onChange((current) => ({ ...current, rules: current.rules.filter((item) => item.id !== id) }), {
             kind: 'telephony',
-            icon: '⇢',
+            icon: 'arrowRight',
             title: `Dispatch rule “${rule?.name || id}” deleted`,
             detail: 'Calls it routed are no longer handled.',
           });
@@ -1036,9 +946,9 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
           onCreate={(rule) => {
             onChange((current) => ({ ...current, rules: current.rules.map((item) => (item.id === rule.id ? rule : item)) }), {
               kind: 'telephony',
-              icon: '⇢',
+              icon: 'arrowRight',
               title: `Dispatch rule “${rule.name}” updated`,
-              detail: `${describeRuleHours(rule)}, hold limit ${ruleSettings(rule).maxHold} sec.`,
+              detail: `${describeRuleHours(rule)}, hold limit ${ruleSettings(rule).maxHold} s.`,
             });
             setEditing(null);
           }}
@@ -1057,7 +967,7 @@ function TelephonyDispatchPage({ telephony, onChange, agents, onNavigateSection,
           onCreate={(rule) => {
             onChange((current) => ({ ...current, rules: [...current.rules, rule] }), {
               kind: 'telephony',
-              icon: '⇢',
+              icon: 'arrowRight',
               title: `Dispatch rule “${rule.name}” created`,
               detail: `Sends callers from ${describeRuleRouting(telephony, rule)} to ${agentName(rule.agentId)}.`,
             });
@@ -1096,7 +1006,7 @@ function TelephonyNumbersPage({ telephony, onChange, agents, onNavigateSection }
       }),
       {
         kind: 'telephony',
-        icon: '#',
+        icon: 'dial',
         title: `Phone number ${telephony.numbers.find((item) => item.id === id)?.number || ''} released`,
         detail: 'Any rule that used it is now unassigned.',
       },
@@ -1105,11 +1015,11 @@ function TelephonyNumbersPage({ telephony, onChange, agents, onNavigateSection }
     <>
       <section className="telephonyPageHeader">
         <div>
-          <h1>Phone numbers</h1>
+          <h2>Phone numbers</h2>
           <p>Give your agents a phone number people can call.</p>
         </div>
         <button className="primaryCta compactCta" type="button" onClick={() => setDialogOpen(true)}>
-          ＋ Get a number
+          <Icon name="plus" size={14} /> Get a number
         </button>
       </section>
       {telephony.numbers.length === 0 ? (
@@ -1118,7 +1028,7 @@ function TelephonyNumbersPage({ telephony, onChange, agents, onNavigateSection }
           <h2>No phone numbers yet</h2>
           <p>Get a number to start receiving inbound calls. You can add more numbers later as your workspace grows.</p>
           <button className="primaryCta compactCta" type="button" onClick={() => setDialogOpen(true)}>
-            ＋ Get a phone number
+            <Icon name="plus" size={14} /> Get a phone number
           </button>
         </section>
       ) : (
@@ -1148,7 +1058,7 @@ function TelephonyNumbersPage({ telephony, onChange, agents, onNavigateSection }
           onCreate={(number) => {
             onChange((current) => ({ ...current, numbers: [...current.numbers, number] }), {
               kind: 'telephony',
-              icon: '#',
+              icon: 'dial',
               title: `Phone number ${number.number} added`,
               detail: number.label ? `Labelled “${number.label}”.` : 'Add a dispatch rule to route its calls.',
             });
@@ -1173,7 +1083,7 @@ function TelephonyTrunksPage({ telephony, onChange }) {
       }),
       {
         kind: 'telephony',
-        icon: '⇄',
+        icon: 'plug',
         title: `SIP trunk “${telephony.trunks.find((item) => item.id === id)?.name || id}” deleted`,
         detail: 'Any rule that used it is now unassigned.',
       },
@@ -1182,11 +1092,11 @@ function TelephonyTrunksPage({ telephony, onChange }) {
     <>
       <section className="telephonyPageHeader">
         <div>
-          <h1>SIP trunks</h1>
+          <h2>SIP trunks</h2>
           <p>Manage the SIP connections that carry calls into and out of Weave.</p>
         </div>
         <button className="primaryCta compactCta" type="button" onClick={() => setDialog('inbound')}>
-          ＋ Create SIP trunk
+          <Icon name="plus" size={14} /> Create SIP trunk
         </button>
       </section>
       <section className="telephonyStatsGrid three">
@@ -1208,7 +1118,7 @@ function TelephonyTrunksPage({ telephony, onChange }) {
       </div>
       <TelephonyTablePanel
         title="Inbound trunks"
-        emptyIcon="↙"
+        emptyIcon="plug"
         emptyTitle="No inbound trunks"
         emptyText="Inbound trunks bring calls from your carrier into Weave."
         emptyAction={{ label: 'Create inbound trunk', onClick: () => setDialog('inbound') }}
@@ -1222,12 +1132,12 @@ function TelephonyTrunksPage({ telephony, onChange }) {
         compact
       />
       <div className="telephonySectionTitle">
-        <span>↗</span>
+        <Icon name="external" size={14} />
         <h2>Outbound</h2>
       </div>
       <TelephonyTablePanel
         title="Outbound trunks"
-        emptyIcon="↗"
+        emptyIcon="external"
         emptyTitle="No outbound trunks"
         emptyText="Outbound trunks let agents place calls through your carrier."
         emptyAction={{ label: 'Create outbound trunk', onClick: () => setDialog('outbound') }}
@@ -1248,7 +1158,7 @@ function TelephonyTrunksPage({ telephony, onChange }) {
           onCreate={(trunk) => {
             onChange((current) => ({ ...current, trunks: [...current.trunks, trunk] }), {
               kind: 'telephony',
-              icon: '⇄',
+              icon: 'plug',
               title: `${trunk.direction === 'outbound' ? 'Outbound' : 'Inbound'} SIP trunk “${trunk.name}” created`,
               detail: trunk.numbers.length ? `Carries ${trunk.numbers.length} number${trunk.numbers.length === 1 ? '' : 's'}.` : 'Accepts calls to any number.',
             });
@@ -1264,7 +1174,7 @@ function TelephonyStat({ label, value, note, accent, mono }) {
   return (
     <div className="telephonyStatCard">
       <div className="telephonyStatLabel">
-        {label}
+        {sentenceCase(label)}
         <HelpTip text={helpText(label)} />
       </div>
       <strong className={`${accent ? 'accentValue' : ''} ${mono ? 'monoValue' : ''}`}>{value}</strong>
@@ -1610,7 +1520,7 @@ function PhoneNumberDialog({ existing, onClose, onCreate }) {
         <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="e.g. Support hotline" maxLength={40} />
       </DialogField>
       <p className="telephonyDialogNote">
-        This prototype assigns a test number from a range reserved for fictional use. It is saved with this workspace but can’t receive real calls.
+        In this preview, a test number is assigned from a range reserved for fictional use. It is saved with this workspace but can’t receive real calls.
       </p>
     </TelephonyDialog>
   );

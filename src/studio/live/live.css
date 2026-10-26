@@ -1,0 +1,376 @@
+/* The Live board: calls going on now, as cards that update as they are said. Quiet surfaces; colour only for what needs a look. */
+
+.lvPage {
+  display: grid;
+  gap: 18px;
+}
+.lvControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.lvControls .quietButton {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.lvStatus {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.lvStatus.paused .lvDot {
+  background: var(--dim);
+  animation: none;
+}
+
+/* the pulsing dot of a call going on */
+.lvDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--good-text);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--good-text) 45%, transparent);
+  animation: lvPulse 2s ease-out infinite;
+}
+@keyframes lvPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--good-text) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lvDot,
+  .lvDots i {
+    animation: none !important;
+  }
+}
+
+/* the three numbers at the top */
+.lvStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.lvStat {
+  display: grid;
+  gap: 2px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+button.lvStat,
+a.lvStat {
+  cursor: pointer;
+}
+button.lvStat:hover,
+a.lvStat:hover {
+  border-color: var(--line2);
+}
+.lvStat strong {
+  color: var(--textStrong);
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.lvStat.bad strong {
+  color: var(--danger-text);
+}
+.lvStat.on {
+  border-color: var(--textStrong);
+  box-shadow: 0 0 0 1px var(--textStrong);
+}
+
+.lvFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: center;
+}
+.lvFilters select {
+  width: auto;
+  min-width: 170px;
+}
+.lvCheck {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* the cards */
+.lvGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+.lvCard {
+  --tone: var(--line2);
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--tone);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.lvCard.bad {
+  --tone: var(--danger-text);
+}
+.lvCard.warn {
+  --tone: var(--warn-text);
+}
+.lvCardHead {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+.lvAgent {
+  overflow: hidden;
+  color: var(--textStrong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lvChannel {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.lvTime {
+  flex: none;
+  margin-left: auto;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.lvWho {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.lvWho b {
+  color: var(--text);
+  font-weight: 600;
+}
+.lvFlags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lvFlags li {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.lvFlags li.bad {
+  background: color-mix(in srgb, var(--danger-text) 14%, transparent);
+  color: var(--danger-text);
+}
+.lvFlags li.warn {
+  background: color-mix(in srgb, var(--warn-text) 14%, transparent);
+  color: var(--warn-text);
+}
+.lvFlags li.more {
+  color: var(--muted);
+}
+
+/* the last lines, as they are said */
+.lvLines {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 96px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--panel2);
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.lvLine {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  line-height: 1.45;
+}
+.lvSpeaker {
+  overflow: hidden;
+  color: var(--dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.7;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lvLine.caller .lvSpeaker {
+  color: var(--muted);
+}
+.lvText {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.lvLine.caller .lvText {
+  color: var(--textStrong);
+}
+.lvLine i {
+  color: var(--muted);
+}
+.lvNote {
+  color: var(--muted);
+}
+.lvDots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 20px;
+}
+.lvDots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: lvBlink 1.2s ease-in-out infinite;
+}
+.lvDots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.lvDots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes lvBlink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.lvCardFoot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.lvEmpty {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 26px 22px;
+  border: 1px dashed var(--line2);
+  border-radius: 12px;
+}
+.lvEmpty > span {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--muted);
+}
+.lvEmpty strong {
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+}
+.lvEmpty p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+/* ended in the last minutes */
+.lvEnded h2 {
+  margin: 8px 0 10px;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.lvEnded ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  list-style: none;
+}
+.lvEnded li {
+  display: grid;
+  grid-template-columns: 76px minmax(120px, auto) minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-sm);
+}
+.lvEnded li:first-child {
+  border-top: 0;
+}
+.lvEnded strong {
+  color: var(--textStrong);
+}
+.lvOutcome {
+  justify-self: start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.lvOutcome.good {
+  background: color-mix(in srgb, var(--good-text) 13%, transparent);
+  color: var(--good-text);
+}
+.lvOutcome.bad {
+  background: color-mix(in srgb, var(--danger-text) 13%, transparent);
+  color: var(--danger-text);
+}
+.lvMore {
+  margin-top: 8px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.lvMore:hover {
+  color: var(--textStrong);
+}

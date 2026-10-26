@@ -24,12 +24,14 @@ test('unsaved edits come first', () => {
   assert.equal(by(r, 'save').state, 'todo');
   assert.equal(r.next.id, 'save');
   assert.equal(r.ready, false);
+  assert.deepEqual(r.next.action, { label: 'Save', save: true }, 'its button saves, here');
 });
 
 test('an unreadable configuration blocks, and blocked outranks to-do', () => {
   const r = shipSteps({ ...ok, parseError: 'bad', dirty: true, published: null });
   assert.equal(r.next.id, 'save');
   assert.equal(by(r, 'save').state, 'blocked');
+  assert.deepEqual(by(r, 'save').action, { label: 'Edit as JSON', tab: 'settings', params: { show: 'json' } }, 'the JSON is where it is fixed');
 });
 
 test('validation errors block with a count', () => {

@@ -101,36 +101,38 @@ export default function TraceView({
       {rows.length === 0 ? (
         <p className="trEmpty">{emptyText}</p>
       ) : (
-        <ol className="trList" aria-live={live ? 'polite' : undefined}>
-          {shown.map((row) => (
-            <li key={`${row.id}-${row.kind}`} className={`trRow ${row.tone} ${row.problem ? 'problem' : ''}`} data-kind={row.kind}>
-              <span className="trAt">{row.at}</span>
-              <span className={`trLabel ${row.tone}`}>{row.label}</span>
-              <div className="trBody">
-                {row.text && <p className="trText">{row.text}</p>}
-                {(row.facts.length > 0 || row.ms !== undefined) && (
-                  <p className="trFacts">
-                    {row.facts.map(([k, v]) => (
-                      <span key={k + v}>
-                        <em>{k}</em> {v}
-                      </span>
-                    ))}
-                    {row.ms !== undefined && (
-                      <span>
-                        <em>took</em> {row.ms} ms
-                      </span>
-                    )}
-                  </p>
-                )}
-                <details className="trRaw">
-                  <summary>Raw record</summary>
-                  <pre>{JSON.stringify(row.raw, null, 2)}</pre>
-                </details>
-              </div>
-            </li>
-          ))}
-          <li ref={endRef} aria-hidden="true" className="trEnd" />
-        </ol>
+        <div className="trListBox">
+          <ol className="trList" aria-live={live ? 'polite' : undefined}>
+            {shown.map((row) => (
+              <li key={`${row.id}-${row.kind}`} className={`trRow ${row.tone} ${row.problem ? 'problem' : ''}`} data-kind={row.kind}>
+                <span className="trAt">{row.at}</span>
+                <span className={`trLabel ${row.tone}`}>{row.label}</span>
+                <div className="trBody">
+                  {row.text && <p className="trText">{row.text}</p>}
+                  {(row.facts.length > 0 || row.ms !== undefined) && (
+                    <p className="trFacts">
+                      {row.facts.map(([k, v]) => (
+                        <span key={k + v}>
+                          <em>{k}</em> {v}
+                        </span>
+                      ))}
+                      {row.ms !== undefined && (
+                        <span>
+                          <em>took</em> {row.ms} ms
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  <details className="trRaw">
+                    <summary>Raw record</summary>
+                    <pre>{JSON.stringify(row.raw, null, 2)}</pre>
+                  </details>
+                </div>
+              </li>
+            ))}
+            <li ref={endRef} aria-hidden="true" className="trEnd" />
+          </ol>
+        </div>
       )}
       {rows.length > 0 && shown.length === 0 && <p className="trEmpty">Nothing of that kind happened.</p>}
     </section>

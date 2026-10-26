@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
+import Icon from '../../ui/Icon.jsx';
+import { channelLabel } from '../newlayout/rowNames.js';
 import {
   EXPECT_KINDS,
   GUARDRAIL_ACTION_CHOICES,
@@ -107,7 +109,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
           <code className="scUnknownCode">{JSON.stringify(value)}</code>
         </span>
         <button type="button" className="stIconBtn danger" aria-label={`Delete expectation ${index + 1}`} onClick={onRemove}>
-          ×
+          <Icon name="close" size={14} />
         </button>
       </li>
     );
@@ -352,7 +354,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
         />
       )}
       <button type="button" className="stIconBtn danger" aria-label={`Delete expectation ${index + 1}`} onClick={onRemove}>
-        ×
+        <Icon name="close" size={14} />
       </button>
     </li>
   );
@@ -506,7 +508,7 @@ function MocksEditor({ mocks, onChange, connections, reportBox }) {
         </fieldset>
       ))}
       <button type="button" className="stAddBtn" onClick={() => onChange([...list, { method: 'GET', path: '', status: 200, json: {} }])}>
-        ＋ Add a mock
+        <Icon name="plus" size={14} /> Add a mock
       </button>
     </div>
   );
@@ -577,7 +579,7 @@ function ScriptEditor({ script, onChange, tools, reportBox }) {
                 aria-label={`Delete model reply ${i + 1}`}
                 onClick={() => onChange(list.filter((_, k) => k !== i))}
               >
-                ×
+                <Icon name="close" size={14} />
               </button>
             </li>
           );
@@ -585,7 +587,7 @@ function ScriptEditor({ script, onChange, tools, reportBox }) {
       </ol>
       <div className="scActions">
         <button type="button" className="stAddBtn" onClick={() => onChange([...list, ''])}>
-          ＋ Add a reply
+          <Icon name="plus" size={14} /> Add a reply
         </button>
         {list.length > 0 && (
           <button type="button" className="stLink" onClick={() => onChange(undefined)}>
@@ -598,6 +600,17 @@ function ScriptEditor({ script, onChange, tools, reportBox }) {
 }
 
 export default function ScenarioForm({ initial, config, others, onSave, onCancel, isNew }) {
+  const formRef = useRef(null);
+  // the keyboard goes to the form's first field when it opens, and back to what opened it when it closes (else it is lost with the form)
+  const [opener] = useState(() => (typeof document === 'undefined' ? null : document.activeElement));
+  useEffect(() => {
+    formRef.current?.querySelector('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])')?.focus();
+    return () => {
+      const lost = !document.activeElement || document.activeElement === document.body;
+      if (lost && opener && document.contains(opener)) opener.focus({ preventScroll: true });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the form opens and closes
+  }, []);
   const [scenario, setScenario] = useState(initial);
   const [tried, setTried] = useState(false);
   const [jsonMode, setJsonMode] = useState(false);
@@ -671,7 +684,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
   };
 
   return (
-    <form className="scForm" noValidate aria-label={isNew ? 'New scenario' : `Edit ${initial.id}`} onSubmit={submit}>
+    <form ref={formRef} className="scForm" noValidate aria-label={isNew ? 'New scenario' : `Edit ${initial.id}`} onSubmit={submit}>
       <div className="scFormTop">
         <span
           className={`scChip ${scripted ? 'good' : 'warn'}`}
@@ -725,7 +738,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
                 invalid={!!show('channel')}
                 onChange={(chosen) => set({ channel: chosen })}
                 options={[
-                  ...channels,
+                  ...channels.map((id) => ({ value: id, label: channelLabel(config, id) })),
                   ...(scenario.channel && !channels.includes(scenario.channel)
                     ? [{ value: scenario.channel, label: `${scenario.channel} (not in this agent)` }]
                     : []),
@@ -789,14 +802,14 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
                     aria-label={`Delete turn ${i + 1}`}
                     onClick={() => set({ turns: (scenario.turns || []).filter((_, k) => k !== i) })}
                   >
-                    ×
+                    <Icon name="close" size={14} />
                   </button>
                 </li>
               ))}
             </ol>
             {show('turns') && <small className="stFErr">{problems.turns}</small>}
             <button type="button" className="stAddBtn" onClick={() => set({ turns: [...(scenario.turns || []), { say: '' }] })}>
-              ＋ Add a turn
+              <Icon name="plus" size={14} /> Add a turn
             </button>
           </fieldset>
 
@@ -825,7 +838,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
               </ul>
             )}
             <button type="button" className="stAddBtn" onClick={() => set({ expect: [...(scenario.expect || []), newExpectation('said_matches', config)] })}>
-              ＋ Add an expectation
+              <Icon name="plus" size={14} /> Add an expectation
             </button>
           </fieldset>
 

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import Icon from '../ui/Icon.jsx';
+import FocusBox from '../ui/FocusBox.jsx';
 
 const INTEGRATION_LIBRARY = [
   {
     id: 'webhook',
     name: 'Webhooks',
     category: 'Developer tools',
-    icon: '↗',
+    icon: 'swap',
     description: 'Send agent events and receive data from your own services.',
     fields: ['Endpoint URL', 'Secret'],
   },
@@ -13,7 +15,7 @@ const INTEGRATION_LIBRARY = [
     id: 'crm',
     name: 'CRM',
     category: 'Customer systems',
-    icon: '◎',
+    icon: 'team',
     description: 'Connect customer records and account context to your agents.',
     fields: ['Base URL', 'API key'],
   },
@@ -21,7 +23,7 @@ const INTEGRATION_LIBRARY = [
     id: 'ticketing',
     name: 'Ticketing',
     category: 'Customer systems',
-    icon: '▤',
+    icon: 'flag',
     description: 'Let agents create, read and update support tickets.',
     fields: ['Workspace URL', 'API key'],
   },
@@ -29,7 +31,7 @@ const INTEGRATION_LIBRARY = [
     id: 'knowledge',
     name: 'Knowledge source',
     category: 'Knowledge',
-    icon: '◇',
+    icon: 'records',
     description: 'Connect a searchable knowledge endpoint for grounded answers.',
     fields: ['Source URL', 'Access token'],
   },
@@ -37,7 +39,7 @@ const INTEGRATION_LIBRARY = [
     id: 'analytics',
     name: 'Analytics',
     category: 'Operations',
-    icon: '⌁',
+    icon: 'monitor',
     description: 'Send conversation events to your analytics destination.',
     fields: ['Collector URL', 'Write key'],
   },
@@ -45,7 +47,7 @@ const INTEGRATION_LIBRARY = [
     id: 'custom',
     name: 'Custom integration',
     category: 'Developer tools',
-    icon: '+',
+    icon: 'tools',
     description: 'Define a connection for an internal API or service.',
     fields: ['Endpoint URL', 'API key'],
   },
@@ -56,7 +58,9 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
   const [category, setCategory] = useState('All');
   const [connections, setConnections] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('weave_integrations') || '{}');
+      // connection details by integration id; anything else saved under this name starts it empty
+      const saved = JSON.parse(localStorage.getItem('weave_integrations') || '{}');
+      return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
     } catch {
       return {};
     }
@@ -107,21 +111,21 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
     <div className="workspaceFeaturePage">
       <section className="welcomeBlock pageHeaderBlock featureHero">
         <div>
-          <div className="eyebrow cyan">WORKSPACE CONNECTIONS</div>
           <h1>Integrations</h1>
           <p>Connect the systems your agents rely on and keep connection details in one place.</p>
         </div>
         <div className="featureHealth">
-          <span className="healthSignal" />
+          {/* green only when something is connected; none yet is not a problem, so it is grey, not red */}
+          <span className={`healthSignal ${Object.keys(connections).length ? '' : 'idle'}`} aria-hidden="true" />
           <div>
             <small>Workspace connections</small>
-            <strong>{Object.keys(connections).length} connected</strong>
+            <strong>{Object.keys(connections).length ? `${Object.keys(connections).length} connected` : 'None connected yet'}</strong>
           </div>
         </div>
       </section>
       <section className="featureToolbar">
         <label className="featureSearch">
-          <span>⌕</span>
+          <Icon name="search" size={15} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search integrations" aria-label="Search integrations" />
         </label>
         <div className="filterPills" role="group" aria-label="Filter integrations">
@@ -144,7 +148,9 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
           return (
             <article className={`integrationCard ${connection ? 'connected' : ''}`} key={item.id}>
               <div className="integrationTop">
-                <div className="integrationIcon">{item.icon}</div>
+                <div className="integrationIcon">
+                  <Icon name={item.icon} size={18} />
+                </div>
                 <span className={`statusPill ${connection ? 'connected' : ''}`}>{connection ? 'Connected' : 'Not connected'}</span>
               </div>
               <div className="integrationCopy">
@@ -186,15 +192,15 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
             if (event.target === event.currentTarget) setSelected(null);
           }}
         >
-          <section className="featureModal" role="dialog" aria-modal="true" aria-labelledby="integration-dialog-title">
+          <FocusBox className="featureModal" role="dialog" aria-modal="true" aria-labelledby="integration-dialog-title">
             <div className="featureModalHeader">
               <div>
-                <div className="eyebrow cyan">CONNECTION SETUP</div>
+                <div className="eyebrow cyan">Connection setup</div>
                 <h2 id="integration-dialog-title">{selected.name}</h2>
                 <p>{selected.description}</p>
               </div>
               <button type="button" className="iconButton" aria-label="Close" onClick={() => setSelected(null)}>
-                ×
+                <Icon name="close" size={14} />
               </button>
             </div>
             <label className="modalField">
@@ -226,7 +232,7 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
                 Save connection
               </button>
             </div>
-          </section>
+          </FocusBox>
         </div>
       )}
     </div>

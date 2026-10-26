@@ -302,7 +302,9 @@ export function deleteItem(config, collection, id) {
 
 // ---- new ids -----------------------------------------------------------------------------------------------------
 
-// "phone", then "phone_2", "phone_3": a base, then a counter only when the base is taken.
+// "phone", then "phone_2", "phone_3": a base, then a counter only when the base is taken. An id is at most 64 characters (ID_PATTERN), so a long
+// base (a SIP address, a copy of an agent whose id is already long) is cut short, leaving room for the counter.
+const ID_MAX = 64;
 export function freshId(taken, base) {
   const clean =
     String(base || 'item')
@@ -310,11 +312,12 @@ export function freshId(taken, base) {
       .replace(/[^a-z0-9_]+/g, '_')
       .replace(/^[^a-z]+/, '')
       .replace(/_+$/, '') || 'item';
+  const fit = (tail = '') => `${clean.slice(0, ID_MAX - tail.length).replace(/_+$/, '')}${tail}`;
   const set = new Set(taken);
-  if (!set.has(clean)) return clean;
+  if (!set.has(fit())) return fit();
   let n = 2;
-  while (set.has(`${clean}_${n}`)) n += 1;
-  return `${clean}_${n}`;
+  while (set.has(fit(`_${n}`))) n += 1;
+  return fit(`_${n}`);
 }
 
 // If this path is the `id` of an item in one of the lists above (channels[2].id, agents.items[0].id, ...), that list's

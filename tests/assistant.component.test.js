@@ -130,7 +130,7 @@ test('a request is sent with the draft, the answer is checked and shown as a pro
   assert.match(done, /Settings\s*Personality/, 'it says which parts of the settings changed');
   assert.match(done, /Workflow\s*1 agent, 0 hand-overs/, 'and what the Workflow now shows');
   assert.ok(
-    byText($(app.container, '.asWhere'), 'button', 'Open in All settings') &&
+    byText($(app.container, '.asWhere'), 'button', 'Show me') &&
       byText($(app.container, '.asWhere'), 'button', 'Open in JSON') &&
       byText($(app.container, '.asWhere'), 'button', 'See the workflow'),
   );

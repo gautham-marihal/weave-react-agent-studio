@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal } from './ui.jsx';
 import { navigate, routeHref } from './route.js';
+import Icon from '../ui/Icon.jsx';
 
 // "Which agent?" for actions that start on another page (use this voice, add this connection).
 export default function AgentPicker({ title, subtitle, agents, onPick, onClose }) {
@@ -40,7 +41,7 @@ export default function AgentPicker({ title, subtitle, agents, onPick, onClose }
         <>
           {agents.length > 6 && (
             <label className="inlineSearch stPickSearch">
-              <span aria-hidden="true">⌕</span>
+              <Icon name="search" size={16} />
               <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter agents" aria-label="Filter agents" />
             </label>
           )}

@@ -84,12 +84,13 @@ test('a kind the schema gains later is still offered, by the schema’s own name
   assert.equal(added.make().type, 'fax');
 });
 
-test('channels are offered as ways to be reached, grouped by voice and text', () => {
+test('channels are offered as ways to be reached, grouped by voice and text, in the words of the Channels page’s switches', () => {
   const channels = pickerFor('channels', { engine, takenIds: ['phone'], botId: 'acme' });
   assert.deepEqual(
     channels.map((o) => o.label),
-    ['Phone line', 'Web voice', 'Web chat', 'WhatsApp', 'SMS', 'Email'],
+    ['Phone calls', 'Talk on your website', 'Chat on your website', 'WhatsApp', 'SMS', 'Email'],
   );
+  assert.equal(channels[2].help, 'A chat box on your website that visitors type into.');
   assert.deepEqual(
     groupOptions(channels).map((g) => g.name),
     ['Voice', 'Text'],
@@ -156,4 +157,15 @@ test('a pronunciation rule kind the schema adds later is still offered, by the s
   const more = pickerFor('pronunciation', { engine, branches: [...ruleBranches, extra] });
   assert.equal(more.length, ruleBranches.length + 1);
   assert.equal(more[more.length - 1].group, 'More');
+});
+
+test('Add on the agent’s side does not offer a check the runtime does not run there (a prompt-injection check reads the caller’s words)', () => {
+  const output = pickerFor('guardrails.output', { engine, branches: outputBranches });
+  assert.equal(
+    output.some((o) => o.label === 'Prompt-injection detector' || /prompt.injection/i.test(o.id)),
+    false,
+    output.map((o) => o.label).join(' | '),
+  );
+  const input = pickerFor('guardrails.input', { engine, branches: inputBranches });
+  assert.ok(input.some((o) => o.label === 'Refuse tricks to change its instructions'));
 });

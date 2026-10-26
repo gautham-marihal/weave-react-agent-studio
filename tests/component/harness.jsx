@@ -4,7 +4,6 @@
 import React, { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import FormEditor from '../../src/studio/form/FormEditor.jsx';
-import SimpleConfig from '../../src/studio/simple/SimpleConfig.jsx';
 import ScenariosTab from '../../src/studio/scenarios/ScenariosTab.jsx';
 import ChatPreview from '../../src/studio/preview/ChatPreview.jsx';
 import KnowledgeTab from '../../src/studio/knowledge/KnowledgeTab.jsx';
@@ -13,7 +12,7 @@ import AssistantTab from '../../src/studio/assistant/AssistantTab.jsx';
 import CallsView from '../../src/studio/calls/CallsView.jsx';
 import MonitoringPage from '../../src/studio/monitoring/MonitoringPage.jsx';
 import TraceView from '../../src/studio/trace/TraceView.jsx';
-import { ValidationPanel } from '../../src/studio/ConfigTab.jsx';
+import { ValidationPanel } from '../../src/studio/ValidationPanel.jsx';
 import AgentPage from '../../src/studio/newlayout/pages/AgentPage.jsx';
 import ListPage from '../../src/studio/newlayout/pages/ListPage.jsx';
 import HomePage from '../../src/studio/newlayout/pages/HomePage.jsx';
@@ -28,11 +27,13 @@ import FixCallDrawer from '../../src/studio/fixcall/FixCallDrawer.jsx';
 import CallersPanel from '../../src/studio/callers/CallersPanel.jsx';
 import GateStrip from '../../src/studio/release/GateStrip.jsx';
 import AgentNav from '../../src/studio/newlayout/AgentNav.jsx';
+import AgentTopBar from '../../src/studio/newlayout/AgentTopBar.jsx';
+import AgentSwitcher from '../../src/studio/newlayout/AgentSwitcher.jsx';
 import SmartSelect from '../../src/studio/SmartSelect.jsx';
 import { useSimulatedSession } from '../../src/studio/test/useSimulatedSession.js';
-import JourneyNav, { NextBar } from '../../src/studio/JourneyNav.jsx';
 import StatePill from '../../src/studio/StatePill.jsx';
 import { agentState } from '../../src/studio/status.js';
+import { StyleCards } from '../../src/ui/StylePicker.jsx';
 
 function PreviewScreen({ editor, mode, locked }) {
   const session = useSimulatedSession({ getConfig: async () => editor.parsed.value });
@@ -41,7 +42,6 @@ function PreviewScreen({ editor, mode, locked }) {
 
 const SCREENS = {
   form: (editor) => <FormEditor editor={editor} onShowJson={() => {}} onShowModels={() => {}} />,
-  simple: (editor) => <SimpleConfig editor={editor} onShowJson={() => {}} onOpenAll={() => {}} />,
   scenarios: (editor, props) => <ScenariosTab botId="x" name="X" editor={editor} pollMs={props.pollMs} />,
   knowledge: (editor, props) => <KnowledgeTab botId="x" name="X" editor={editor} pollMs={props.pollMs} />,
   calls: (editor, props) => (
@@ -71,14 +71,8 @@ const SCREENS = {
     />
   ),
   trace: (editor, props) => <TraceView records={props.records || []} live={!!props.live} />,
-  journey: (editor, props) => (
-    <>
-      <JourneyNav botId="acme" tab={props.tab || 'config'} live={!!props.live} />
-      <NextBar botId="acme" tab={props.tab || 'config'} />
-      <StatePill state={agentState(props.state || {})} />
-    </>
-  ),
-  workflow: (editor) => <WorkflowTab editor={editor} botId="x" />,
+  statepill: (editor, props) => <StatePill state={agentState(props.state || {})} />,
+  workflow: (editor, props) => <WorkflowTab editor={editor} botId="x" onShowSetting={props.onShowSetting || null} />,
   agentpage: (editor) => <AgentPage editor={editor} onShowJson={() => {}} onOpenJson={() => {}} />,
   listpage: (editor, props) => (
     <ListPage title={props.title || 'Tools'} editor={editor} lists={props.lists} extras={props.extras || []} onShowJson={() => {}} onOpenJson={() => {}} />
@@ -114,7 +108,29 @@ const SCREENS = {
   ),
   callers: (editor) => <CallersPanel botId="x" name="Acme" editor={editor} />,
   gatestrip: (editor) => <GateStrip botId="x" editor={editor} />,
-  agentnav: (editor, props) => <AgentNav botId="x" page={props.page || 'home'} counts={props.counts || {}} dots={props.dots || {}} />,
+  stylecards: () => <StyleCards />,
+  agentnav: (editor, props) => (
+    <AgentNav botId="x" page={props.page || 'home'} counts={props.counts || {}} dots={props.dots || {}} plan={props.plan || null} onStep={props.onStep} />
+  ),
+  topbar: (editor, props) => (
+    <AgentTopBar
+      botId="x"
+      name="Acme"
+      summary={{ deployed: {} }}
+      editor={{ ...editor, dirty: props.dirty ?? editor.dirty }}
+      manageMenu={props.manageMenu || []}
+      problems={props.problems || 0}
+      changes={props.changes ?? null}
+      live={false}
+      testOpen={!!props.testOpen}
+      onDescribe={() => {}}
+      onProblems={props.onProblems || (() => {})}
+      onChanges={props.onChanges || (() => {})}
+      onTest={props.onTest || (() => {})}
+      onShare={() => {}}
+    />
+  ),
+  agentswitch: (editor, props) => <AgentSwitcher botId="a" bots={props.bots || []} tab={props.tab || 'tools'} />,
   assistant: (editor) => <AssistantTab editor={editor} botId="x" name="X" />,
   preview: (editor, props) => <PreviewScreen editor={editor} mode={props.mode || 'simulated'} locked={!!props.locked} />,
 };

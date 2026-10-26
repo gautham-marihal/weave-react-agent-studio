@@ -28,10 +28,18 @@ export const ENTRY_LABELS = {
 };
 
 export const CHANNEL_TYPES = ['sip_voice', 'web_voice', 'web_chat', 'whatsapp', 'sms', 'email', 'custom'];
+// The three ways people reach an agent, in the words the Channels page uses for them everywhere: its switches, its rows, "Add a channel" and the kind of a
+// channel in its panel (one name each, so ticking a switch is plainly what made the row under it).
+export const REACH_WORDS = {
+  web_chat: { label: 'Chat on your website', text: 'A chat box on your website that visitors type into.' },
+  web_voice: { label: 'Talk on your website', text: 'Visitors talk to it from the browser, with their microphone.' },
+  sip_voice: { label: 'Phone calls', text: 'People ring a phone number. You add the number when it goes live.' },
+};
+
 export const TYPE_LABELS = {
-  sip_voice: 'Phone line',
-  web_voice: 'Web voice',
-  web_chat: 'Web chat',
+  sip_voice: REACH_WORDS.sip_voice.label,
+  web_voice: REACH_WORDS.web_voice.label,
+  web_chat: REACH_WORDS.web_chat.label,
   whatsapp: 'WhatsApp',
   sms: 'SMS',
   email: 'Email',
@@ -42,9 +50,9 @@ const GREETING_VOICE = 'Hello, thanks for calling. How can I help you today?';
 const GREETING_CHAT = 'Hi! How can I help you today?';
 
 export const CHANNEL_PRESETS = [
-  { id: 'phone', type: 'sip_voice', label: 'Phone line', note: 'Callers dial a number', base: 'phone' },
-  { id: 'web_voice', type: 'web_voice', label: 'Web voice', note: 'Talk to the agent in the browser', base: 'web_voice' },
-  { id: 'web_chat', type: 'web_chat', label: 'Web chat', note: 'A chat widget on a website', base: 'web_chat' },
+  { id: 'phone', type: 'sip_voice', label: REACH_WORDS.sip_voice.label, note: 'Callers dial a number', base: 'phone' },
+  { id: 'web_voice', type: 'web_voice', label: REACH_WORDS.web_voice.label, note: 'Talk to the agent in the browser', base: 'web_voice' },
+  { id: 'web_chat', type: 'web_chat', label: REACH_WORDS.web_chat.label, note: 'A chat widget on a website', base: 'web_chat' },
   { id: 'whatsapp', type: 'whatsapp', label: 'WhatsApp', note: 'Messages on WhatsApp', base: 'whatsapp' },
   { id: 'sms', type: 'sms', label: 'SMS', note: 'Text messages', base: 'sms' },
   { id: 'email', type: 'email', label: 'Email', note: 'Email conversations', base: 'email' },
@@ -89,7 +97,9 @@ export function defaultsForType(type, botId) {
 export function buildChannel(presetId, { taken = [], botId = '' } = {}) {
   const preset = CHANNEL_PRESETS.find((item) => item.id === presetId) || CHANNEL_PRESETS[0];
   const start = defaultsForType(preset.type, botId);
-  const channel = { id: freshId(taken, preset.base), type: preset.type, enabled: true, ...start };
+  // an id that differs from one already taken only by a hyphen ("web-chat", "web_chat") counts as taken: the two would read the same
+  const lookalikes = taken.map((id) => String(id).replace(/-/g, '_'));
+  const channel = { id: freshId([...taken, ...lookalikes], preset.base), type: preset.type, enabled: true, ...start };
   return channel;
 }
 

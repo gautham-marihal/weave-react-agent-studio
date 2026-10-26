@@ -1,4 +1,4 @@
-// Can it be read? In a real browser, on the demo (no backend needed), in both themes and both layouts: no text a person reads is smaller than 12 px, and none
+// Can it be read? In a real browser, on the demo (no backend needed), in both themes: no text a person reads is smaller than 12 px, and none
 // is below the contrast of 4.5:1 against what is behind it. It looks at computed styles, which a test of the stylesheets cannot see (a size set in `em`, a
 // colour set by a theme). Text over a gradient (the primary buttons, the avatars) cannot be measured this way and is skipped; check those by eye.
 //
@@ -95,98 +95,108 @@ const browser = await launch();
 const problems = [];
 let screens = 0;
 
-for (const layout of ['classic', 'new']) {
-  for (const theme of ['light', 'dark']) {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-    await context.addInitScript(
-      ([t, l]) => {
-        if (sessionStorage.getItem('legibility')) return;
-        sessionStorage.setItem('legibility', '1');
-        localStorage.setItem('weave_theme', t);
-        localStorage.setItem('weave_layout', l);
-        localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e2e@example.test', workspaceName: 'Test', role: 'dev' }));
-        localStorage.removeItem('weave_demo_state');
-      },
-      [theme, layout],
-    );
-    const page = await context.newPage();
-    await page.route(
-      (url) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/llm'),
-      (route) => route.abort(),
-    );
-    const open = async (hash, selector) => {
-      await page.evaluate((h) => {
-        window.location.hash = h;
-      }, hash);
-      await page.waitForSelector(selector, { timeout: 15000 });
-      await page.waitForTimeout(500);
-    };
-    const look = async (name) => {
-      const found = await page.evaluate(measure, { minSize: MIN_SIZE, minContrast: MIN_CONTRAST });
-      screens += 1;
-      found.forEach((item) => problems.push(`${layout}/${theme}/${name}: ${item.kind} ${item.detail}  “${item.text}”  (${item.where})`));
-    };
+for (const theme of ['light', 'dark']) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await context.addInitScript((t) => {
+    if (sessionStorage.getItem('legibility')) return;
+    sessionStorage.setItem('legibility', '1');
+    localStorage.setItem('weave_theme', t);
+    localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e2e@example.test', workspaceName: 'Test', role: 'dev' }));
+    localStorage.removeItem('weave_demo_state');
+  }, theme);
+  const page = await context.newPage();
+  await page.route(
+    (url) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/llm'),
+    (route) => route.abort(),
+  );
+  const open = async (hash, selector) => {
+    await page.evaluate((h) => {
+      window.location.hash = h;
+    }, hash);
+    await page.waitForSelector(selector, { timeout: 15000 });
+    await page.waitForTimeout(500);
+  };
+  const look = async (name) => {
+    const found = await page.evaluate(measure, { minSize: MIN_SIZE, minContrast: MIN_CONTRAST });
+    screens += 1;
+    found.forEach((item) => problems.push(`${theme}/${name}: ${item.kind} ${item.detail}  “${item.text}”  (${item.where})`));
+  };
 
-    await page.goto(BASE);
-    await page
-      .getByRole('button', { name: /sign in|get started|start/i })
-      .first()
-      .click();
-    await page.getByPlaceholder('you@company.com').fill('e2e@example.test');
-    await page.getByPlaceholder('Enter your password').fill('x12345678');
-    await page.getByRole('button', { name: /continue to workspace/i }).click();
-    await page.waitForSelector('.dashMain');
+  await page.goto(BASE);
+  await page
+    .getByRole('button', { name: /sign in|get started|start/i })
+    .first()
+    .click();
+  await page.getByPlaceholder('you@company.com').fill('e2e@example.test');
+  await page.getByPlaceholder('Enter your password').fill('x12345678');
+  await page.getByRole('button', { name: /continue to workspace/i }).click();
+  await page.waitForSelector('.dashMain');
 
-    // set-up, in the new layout (it has a JSON editor on one page): a scripted and a live scenario, a published version, and a run, so that the pills have words in them
-    await page.evaluate(() => {
-      localStorage.setItem('weave_layout', 'new');
-      window.location.reload();
-    });
-    await page.waitForTimeout(1500);
-    await open('#/bots/acme-support/settings', '.nlWorkspace');
-    await page.locator('.nlParts button', { hasText: 'JSON' }).click();
-    const box = page.locator('.nlPage textarea').first();
-    const config = JSON.parse(await box.inputValue());
-    const channel = (config.channels.find((c) => c.enabled !== false) || config.channels[0]).id;
-    config.tests = [
-      { id: 'scripted_one', channel, turns: [{ say: 'Hello' }], model_script: ['Hi there.'], expect: [{ said_matches: '.' }] },
-      { id: 'live_one', channel, turns: [{ say: 'Hello' }], expect: [{ said_matches: '.' }] },
-    ];
-    await box.fill(JSON.stringify(config, null, 2));
-    await page.waitForTimeout(600);
-    await page
-      .locator('.nlBar')
-      .getByRole('button', { name: /^Save draft/ })
-      .click();
-    await page.waitForTimeout(900);
-    await open('#/bots/acme-support/versions?publish=1', '.stPublishPanel .modalCreate');
-    await page.locator('.stPublishPanel .modalCreate').first().click();
-    await page.waitForTimeout(1200);
-    await open('#/bots/acme-support/scenarios', '.scTab');
-    await page.getByRole('button', { name: /^Run all/ }).click();
-    await page.waitForTimeout(3500);
-    await page.evaluate((l) => {
-      localStorage.setItem('weave_layout', l);
-      window.location.reload();
-    }, layout);
-    await page.waitForTimeout(1800);
+  // set-up, through the JSON editor of the Settings page: a scripted and a live scenario, a published version, and a run, so that the pills have words in them
+  await open('#/bots/acme-support/settings', '.nlWorkspace');
+  await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
+  const box = page.locator('.nlPage textarea').first();
+  const config = JSON.parse(await box.inputValue());
+  const channel = (config.channels.find((c) => c.enabled !== false) || config.channels[0]).id;
+  config.tests = [
+    { id: 'scripted_one', channel, turns: [{ say: 'Hello' }], model_script: ['Hi there.'], expect: [{ said_matches: '.' }] },
+    { id: 'live_one', channel, turns: [{ say: 'Hello' }], expect: [{ said_matches: '.' }] },
+  ];
+  await box.fill(JSON.stringify(config, null, 2));
+  await page.waitForTimeout(600);
+  await page
+    .locator('.nlBar')
+    .getByRole('button', { name: /^Save$/ })
+    .click();
+  await page.waitForTimeout(900);
+  await open('#/bots/acme-support/versions?publish=1', '.stPublishPanel .modalCreate');
+  await page.locator('.stPublishPanel .modalCreate').first().click();
+  await page.waitForTimeout(1200);
+  await open('#/bots/acme-support/scenarios', '.scTab');
+  await page.getByRole('button', { name: /^Run all/ }).click();
+  await page.waitForTimeout(3500);
 
-    await open('#/bots', '.dashMain');
-    await look('agents');
-    await open('#/bots/acme-support/home', '.dashMain');
-    await look('agent home');
-    await open('#/bots/acme-support/scenarios', '.scTab');
-    await look('scenarios');
-    await open('#/bots/acme-support/versions', '.dashMain');
-    await look('versions');
-    await open('#/bots/acme-support/deploy', '.dashMain');
-    await look('deploy');
-    await context.close();
+  await open('#/bots', '.dashMain');
+  await look('agents');
+  await open('#/bots/acme-support/home', '.dashMain');
+  await look('agent home');
+  await open('#/bots/acme-support/scenarios', '.scTab');
+  await look('scenarios');
+  await open('#/bots/acme-support/versions', '.dashMain');
+  await look('versions');
+  await open('#/bots/acme-support/deploy', '.dashMain');
+  await look('deploy');
+  await open('#/bots/acme-support/questions', '.inQ');
+  await page.locator('.inQ .inMore').first().click();
+  await look('questions');
+  await page.locator('.inBell').click();
+  await page.waitForSelector('.inAlert', { timeout: 15000 });
+  await look('alerts');
+  await page.locator('.sideLink', { hasText: 'Live' }).click();
+  await page.waitForSelector('.lvCard', { timeout: 20000 });
+  await page.waitForTimeout(800);
+  await look('live');
+  await page.locator('.sideLink', { hasText: 'Speed' }).click();
+  await page.waitForSelector('.csStats', { timeout: 30000 });
+  await look('speed');
+  await open('#/bots/front-desk/speed', '.csStats');
+  await look('agent speed');
+  // the agent's Build pages
+  for (const part of ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall']) {
+    await open(`#/bots/front-desk/${part}`, '.nlPage');
+    await page.waitForTimeout(700);
+    await look(`build: ${part}`);
   }
+  // the guided setup: its fullest steps
+  for (const step of ['purpose', 'voice', 'actions', 'live']) {
+    await open(`#/bots/front-desk/setup?step=${step}`, '.suPage');
+    await look(`setup: ${step}`);
+  }
+  await context.close();
 }
 await browser.close();
 
-console.log(`${screens} screens looked at (2 themes, 2 layouts)`);
+console.log(`${screens} screens looked at (2 themes)`);
 if (problems.length) {
   console.log(`FAIL  ${problems.length} things too small or too faint to read well:`);
   [...new Set(problems)].forEach((line) => console.log(`      ${line}`));

@@ -9,7 +9,9 @@ import {
   askProblem,
   checkedWords,
   foundWords,
+  guardrailActions,
   guardrailsVerdict,
+  limitsSentence,
   markHits,
   normalizeGuardrails,
   normalizeRedaction,
@@ -436,6 +438,25 @@ export function TryGuardrailsView({ config }) {
             )}
             {view.rules.length === 0 && view.matched.length === 0 && (
               <p className="stMuted">There are no checks on what the caller says yet, so nothing can match.</p>
+            )}
+            {limitsSentence(view.limits) && (
+              <p className="stFHelp" data-block="limits">
+                {limitsSentence(view.limits)}
+              </p>
+            )}
+            {guardrailActions(view).length > 0 && (
+              <details className="stTryMore" data-block="how-actions">
+                <summary>How each action works</summary>
+                <ul className="stTryEffects">
+                  {guardrailActions(view).map((a) => (
+                    <li key={a.action}>
+                      <strong>{a.label}</strong>
+                      {a.text ? `: ${a.text}` : ''}
+                      {a.line ? ` Unless the rule has its own line, it says “${a.line}”${/[.!?]$/.test(a.line) ? '' : '.'}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
           </>
         )

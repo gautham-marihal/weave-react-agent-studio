@@ -3,12 +3,29 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AGENT_LIFECYCLE, agentLifecycle } from './helpers.js';
 import Icon, { ICON_NAMES } from '../ui/Icon.jsx';
+import FocusBox from '../ui/FocusBox.jsx';
+import { sentenceCase } from '../ui/text.js';
+import { whenLeaveConfirmed } from '../studio/route.js';
+import { menuKeyDown, useMenuFocus } from '../ui/menuKeys.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
 export const SHORTCUT_LABEL = IS_MAC ? '⌘ K' : 'Ctrl K';
+const MOD = IS_MAC ? '⌘' : 'Ctrl';
+export const SAVE_LABEL = `${MOD} S`;
+
+// "?" opens the list of shortcuts, unless the keyboard is busy typing somewhere
+export function isTyping(target) {
+  const el = target instanceof Element ? target : null;
+  return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+}
 
 const HELP_COPY = {
+  // Home's "Your test conversations": the ones had in the studio's test panel, not the agents' calls
+  Conversations: 'Conversations you had with your agents in the studio’s test panel, in the selected time range. Real calls are counted at the top of Home.',
+  'Average length': 'How long a test conversation lasted on average, from start to end.',
+  Minutes: 'The time spent in test conversations, added up.',
+  Messages: 'What you said or typed to your agents in test conversations.',
   SESSIONS: 'Total number of conversation sessions recorded for the current workspace and time range.',
   'UNIQUE PARTICIPANTS': 'Number of distinct participants seen in the selected time range.',
   'TOTAL ROOMS': 'Number of rooms created or used during the selected time range.',
@@ -80,15 +97,15 @@ export function InfoDialogHost() {
         if (event.target === event.currentTarget) close();
       }}
     >
-      <section className="createModal infoDialog">
+      <FocusBox className="createModal infoDialog">
         <div className="createModalHeader">
           <div>
-            <span className="createEyebrow">{isHelp ? 'HELP' : info.eyebrow || 'NOT AVAILABLE YET'}</span>
+            <span className="createEyebrow">{isHelp ? 'Help' : sentenceCase(info.eyebrow || 'Not available yet')}</span>
             <h2 id="info-dialog-title">{isHelp ? 'Help & shortcuts' : info.title}</h2>
             {!isHelp && info.body && <p>{info.body}</p>}
           </div>
           <button type="button" className="modalClose" aria-label="Close" onClick={close}>
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
         {isHelp ? (
@@ -100,13 +117,19 @@ export function InfoDialogHost() {
                   <dt>
                     <kbd>{SHORTCUT_LABEL}</kbd>
                   </dt>
-                  <dd>Search agents, workspaces and pages</dd>
+                  <dd>Search agents, pages and settings</dd>
+                </div>
+                <div>
+                  <dt>
+                    <kbd>{SAVE_LABEL}</kbd>
+                  </dt>
+                  <dd>Save the agent’s draft, from any of its pages</dd>
                 </div>
                 <div>
                   <dt>
                     <kbd>Esc</kbd>
                   </dt>
-                  <dd>Close a dialog, menu or search</dd>
+                  <dd>Close a panel, a dialog, a menu or the search</dd>
                 </div>
                 <div>
                   <dt>
@@ -120,7 +143,20 @@ export function InfoDialogHost() {
                   <dt>
                     <kbd>Enter</kbd>
                   </dt>
-                  <dd>Send a message in an agent’s Test tab</dd>
+                  <dd>Send a message in the Test panel (Shift Enter for a new line)</dd>
+                </div>
+                <div>
+                  <dt>
+                    <kbd>{MOD} Z</kbd>
+                    <kbd>{MOD} Y</kbd>
+                  </dt>
+                  <dd>Undo and redo on the Workflow canvas</dd>
+                </div>
+                <div>
+                  <dt>
+                    <kbd>?</kbd>
+                  </dt>
+                  <dd>This list, from anywhere</dd>
                 </div>
               </dl>
             </div>
@@ -128,21 +164,24 @@ export function InfoDialogHost() {
               <h3>Where things live</h3>
               <ul className="infoGuide">
                 <li>
-                  <strong>Config</strong>
-                  <span>Edit an agent as a form or as JSON. Errors are flagged as you type. Save keeps your draft.</span>
-                </li>
-                <li>
-                  <strong>Versions and Deploy</strong>
-                  <span>Publish freezes the draft as a version. Deploy puts a version in Development, Staging or Production.</span>
+                  <strong>An agent’s menu</strong>
+                  <span>
+                    Overview, then Build (what it says and does), Test and launch, Monitor, and Settings. The card at the top says how far it is from ready and
+                    opens the next step.
+                  </span>
                 </li>
                 <li>
                   <strong>Test</strong>
-                  <span>Talk or type to an agent for real, in your browser.</span>
+                  <span>In the bar at the top of every page of an agent: talk or type to it while you change it.</span>
+                </li>
+                <li>
+                  <strong>Publish and Releases</strong>
+                  <span>Publish freezes the draft as a version. Releases puts a version in Development, Staging or Production, or rolls one back.</span>
                 </li>
                 <li>
                   <strong>Help icons</strong>
                   <span>
-                    Hover, focus or click any <b className="infoHelpDot">?</b> for a short explanation.
+                    Hover, focus or click any <b className="infoHelpDot">?</b> or <b className="infoHelpDot">i</b> for a short explanation.
                   </span>
                 </li>
               </ul>
@@ -160,7 +199,7 @@ export function InfoDialogHost() {
             {isHelp ? 'Done' : 'Got it'}
           </button>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -168,16 +207,6 @@ export function InfoDialogHost() {
 
 export function helpText(label) {
   return HELP_COPY[label] || `More information about ${label.toLowerCase()}.`;
-}
-
-export function ThemeToggle({ theme, onToggle }) {
-  const isDark = theme === 'dark';
-  return (
-    <button className="themeToggle" onClick={onToggle} type="button" aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}>
-      <span className="themeIcon">{isDark ? '☼' : '☾'}</span>
-      <span>{isDark ? 'Light' : 'Dark'}</span>
-    </button>
-  );
 }
 
 export function Logo({ compact = false }) {
@@ -231,12 +260,14 @@ function placeDropdown(anchorRect, { width = 220, height = 180, avoidRect = null
   return { left, top };
 }
 
-export function ProfileMenu({ profile, initials, compact = false, onAccountOpen }) {
+export function ProfileMenu({ profile, initials, compact = false, onAccountOpen, onSignOut }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const ref = useRef(null);
   const triggerRef = useRef(null);
   const portalRef = useRef(null);
+  const menuRef = useRef(null); // the menu, either way it is drawn: its first item gets the keyboard when it opens
+  useMenuFocus(menuRef, open);
   const displayName = profile?.fullName || 'Workspace user';
   const role = profile?.role || 'Workspace admin';
 
@@ -247,12 +278,14 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
       if (!insideTrigger && !insidePortal) setOpen(false);
     };
     const handleEscape = (event) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key !== 'Escape' || !open) return;
+      setOpen(false);
+      triggerRef.current?.focus({ preventScroll: true });
     };
     const reposition = () => {
       if (!open || !compact || !triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
-      setPosition(placeDropdown(rect, { width: 232, height: 106 }));
+      setPosition(placeDropdown(rect, { width: 232, height: 152 }));
     };
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleEscape);
@@ -267,10 +300,27 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
     };
   }, [compact, open]);
 
+  // the menu item goes with the menu, so the keyboard is put back on the menu's button first: closing the account dialog returns it there
   const handleAccount = () => {
     setOpen(false);
+    triggerRef.current?.focus({ preventScroll: true });
     onAccountOpen?.();
   };
+  // signing out leaves an open agent too, so unsaved edits are asked about first
+  const handleSignOut = () => {
+    setOpen(false);
+    whenLeaveConfirmed(() => onSignOut?.());
+  };
+  const signOutItem = onSignOut ? (
+    <button className="profilePopoverItem" type="button" role="menuitem" onClick={handleSignOut}>
+      <span className="profilePopoverIcon" aria-hidden="true">
+        <Icon name="signOut" size={15} />
+      </span>
+      <span>
+        <strong>Sign out</strong>
+      </span>
+    </button>
+  ) : null;
 
   return (
     <div className={`profileMenuRoot ${compact ? 'compact' : ''}`} ref={ref}>
@@ -282,7 +332,7 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
             const next = !value;
             if (next && compact && triggerRef.current) {
               const rect = triggerRef.current.getBoundingClientRect();
-              setPosition(placeDropdown(rect, { width: 232, height: 106 }));
+              setPosition(placeDropdown(rect, { width: 232, height: 152 }));
             }
             return next;
           });
@@ -305,7 +355,17 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
       {open &&
         (compact ? (
           createPortal(
-            <div ref={portalRef} className="profilePopover compactPopover profilePopoverPortal" role="menu" style={{ left: position.left, top: position.top }}>
+            <div
+              ref={(el) => {
+                portalRef.current = el;
+                menuRef.current = el;
+              }}
+              className="profilePopover compactPopover profilePopoverPortal"
+              role="menu"
+              aria-label={displayName}
+              style={{ left: position.left, top: position.top }}
+              onKeyDown={(event) => menuKeyDown(event, menuRef.current, () => setOpen(false))}
+            >
               <div className="profilePopoverIdentity">
                 <span className="profilePopoverAvatar">{initials}</span>
                 <div>
@@ -314,18 +374,27 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
                 </div>
               </div>
               <div className="profilePopoverRule" />
-              <button className="profilePopoverItem" type="button" onClick={handleAccount}>
-                <span className="profilePopoverIcon">◉</span>
-                <span>
-                  <strong>ACCOUNT</strong>
+              <button className="profilePopoverItem" type="button" role="menuitem" onClick={handleAccount}>
+                <span className="profilePopoverIcon" aria-hidden="true">
+                  <Icon name="user" size={15} />
                 </span>
-                <b>›</b>
+                <span>
+                  <strong>Account</strong>
+                </span>
+                <Icon name="chevronRight" size={16} />
               </button>
+              {signOutItem}
             </div>,
             document.body,
           )
         ) : (
-          <div className="profilePopover" role="menu">
+          <div
+            ref={menuRef}
+            className="profilePopover"
+            role="menu"
+            aria-label={displayName}
+            onKeyDown={(event) => menuKeyDown(event, menuRef.current, () => setOpen(false))}
+          >
             <div className="profilePopoverIdentity">
               <span className="profilePopoverAvatar">{initials}</span>
               <div>
@@ -334,14 +403,17 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen 
               </div>
             </div>
             <div className="profilePopoverRule" />
-            <button className="profilePopoverItem" type="button" onClick={handleAccount}>
-              <span className="profilePopoverIcon">◉</span>
+            <button className="profilePopoverItem" type="button" role="menuitem" onClick={handleAccount}>
+              <span className="profilePopoverIcon" aria-hidden="true">
+                <Icon name="user" size={15} />
+              </span>
               <span>
-                <strong>ACCOUNT</strong>
+                <strong>Account</strong>
                 <small>Profile and workspace details</small>
               </span>
-              <b>›</b>
+              <Icon name="chevronRight" size={16} />
             </button>
+            {signOutItem}
           </div>
         ))}
     </div>
@@ -383,15 +455,15 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
-      <section className="accountPanel" onMouseDown={(event) => event.stopPropagation()}>
+      <FocusBox className="accountPanel" onMouseDown={(event) => event.stopPropagation()}>
         <div className="accountPanelHeader">
           <div>
-            <span className="eyebrow cyan">ACCOUNT</span>
+            <span className="eyebrow cyan">Account</span>
             <h2 id="accountTitle">Your account</h2>
             <p>Profile and workspace details for your Weave account.</p>
           </div>
           <button className="modalClose" type="button" onClick={onClose} aria-label="Close account">
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
 
@@ -405,33 +477,33 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
 
         <div className="accountDetails">
           <div className="accountDetail">
-            <small>FULL NAME</small>
+            <small>Full name</small>
             <strong>{fullName}</strong>
           </div>
           <div className="accountDetail">
-            <small>EMAIL</small>
+            <small>Email</small>
             <strong>{profile?.email || '—'}</strong>
           </div>
           <div className="accountDetail">
-            <small>WORKSPACE</small>
+            <small>Workspace</small>
             <strong>{workspace}</strong>
           </div>
           <div className="accountDetail">
-            <small>ROLE</small>
+            <small>Role</small>
             <strong>{role}</strong>
           </div>
         </div>
 
         <div className="accountPanelFooter accountActionsFooter">
           <div>
-            <span className="accountFooterLabel">ACCOUNT ACTIONS</span>
+            <span className="accountFooterLabel">Account actions</span>
             <p>Sign out of this Weave workspace.</p>
           </div>
           <button className="accountSignout" type="button" onClick={onSignOut}>
-            Sign out <span className="buttonArrow">→</span>
+            Sign out <Icon name="arrowRight" size={15} />
           </button>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -442,10 +514,6 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
   const listRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const flat = useMemo(() => groups.flatMap((group) => group.items), [groups]);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -482,10 +550,10 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
-      <section className="searchPanel" onMouseDown={(event) => event.stopPropagation()}>
+      <FocusBox className="searchPanel" initial={() => inputRef.current} onMouseDown={(event) => event.stopPropagation()}>
         <div className="searchHeader">
           <div className="searchFieldWrap">
-            <span aria-hidden="true">⌕</span>
+            <Icon name="search" size={18} />
             <input
               ref={inputRef}
               value={query}
@@ -507,7 +575,7 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
           {groups.length === 0 ? (
             <div className="searchNoResults">
               <div className="searchNoIcon" aria-hidden="true">
-                ⌕
+                <Icon name="search" size={22} />
               </div>
               <strong>No matches for “{query.trim()}”</strong>
               <p>Search by agent name, workspace name, or a page such as Calls.</p>
@@ -565,7 +633,7 @@ export function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose 
             <kbd>Esc</kbd> Close
           </span>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -590,15 +658,15 @@ export function WorkspaceCreateModal({ value, onChange, onClose, onCreate }) {
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
-      <section className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
+      <FocusBox className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="workspaceModalHeader">
           <div>
-            <span className="createEyebrow">NEW WORKSPACE</span>
+            <span className="createEyebrow">New workspace</span>
             <h2 id="workspaceCreateTitle">Create a workspace</h2>
             <p>A workspace groups agents in this browser. It doesn’t control who can see them.</p>
           </div>
           <button className="modalClose" type="button" onClick={onClose} aria-label="Close">
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
 
@@ -624,7 +692,7 @@ export function WorkspaceCreateModal({ value, onChange, onClose, onCreate }) {
             Create workspace
           </button>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -649,15 +717,15 @@ export function WorkspaceRenameModal({ value, onChange, onClose, onRename }) {
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
-      <section className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
+      <FocusBox className="workspaceModal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="workspaceModalHeader">
           <div>
-            <span className="createEyebrow">WORKSPACE</span>
+            <span className="createEyebrow">Workspace</span>
             <h2 id="workspaceRenameTitle">Rename workspace</h2>
             <p>Choose a name that your team will recognize.</p>
           </div>
           <button className="modalClose" type="button" onClick={onClose} aria-label="Close">
-            ×
+            <Icon name="close" size={18} />
           </button>
         </div>
         <label className="workspaceField">
@@ -681,7 +749,7 @@ export function WorkspaceRenameModal({ value, onChange, onClose, onRename }) {
             Save changes
           </button>
         </div>
-      </section>
+      </FocusBox>
     </div>,
     document.body,
   );
@@ -702,8 +770,11 @@ export function StatusBadge({ agent, status, size = 'md', title }) {
 }
 
 // An icon given by name is drawn from the studio's icon set; any other text (an old saved glyph, an initial) is shown as it is.
+// the text symbols older activity entries were saved with (they stay in the browser's log), drawn as the icon each stood for
+const OLD_SYMBOLS = { '⇢': 'arrowRight', '#': 'dial', '⇄': 'plug', '☎': 'phone' };
 export function Glyph({ icon, size = 18 }) {
-  return ICON_NAMES.includes(icon) ? <Icon name={icon} size={size} /> : <>{icon}</>;
+  const name = OLD_SYMBOLS[icon] || icon;
+  return ICON_NAMES.includes(name) ? <Icon name={name} size={size} /> : <>{icon}</>;
 }
 
 export function NavItem({ item, active, onClick }) {
@@ -713,7 +784,7 @@ export function NavItem({ item, active, onClick }) {
         <Glyph icon={item.icon} />
       </i>
       <span>{item.label}</span>
-      {item.badge && <em>{item.badge}</em>}
+      {item.badge ? <em className={item.badgeTone || undefined}>{item.badge}</em> : null}
     </button>
   );
 }
@@ -743,7 +814,7 @@ export function QuickAction({ icon, title, subtitle, onClick }) {
         <strong>{title}</strong>
         <small>{subtitle}</small>
       </span>
-      <b className="buttonArrow">→</b>
+      <Icon name="arrowRight" size={16} />
     </button>
   );
 }
@@ -752,7 +823,7 @@ export function Metric({ title, value, note }) {
   return (
     <div className="metricCard">
       <div className="metricTop">
-        <span>{title}</span>
+        <span>{sentenceCase(title)}</span>
         <HelpTip className="metricHelp" text={helpText(title)} />
       </div>
       <strong>{value}</strong>

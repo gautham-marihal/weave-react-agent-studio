@@ -1,50 +1,4 @@
-/* "Models" (src/studio/models). The cards, provider and model pickers come from the Builder's own styles; this only
-   fits them into the Config tab and the Test tab. Theme variables only. */
-
-.stModels {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-.stModels .builderCard {
-  max-width: none;
-  margin: 0;
-}
-.stModels .stNotice {
-  margin: 12px 0 0;
-}
-.stModels > .stNotice:first-child {
-  margin: 0;
-}
-.stModels .builderModelPicker {
-  margin-top: 14px;
-}
-.stModels .stModelsFields {
-  margin-top: 14px;
-}
-.stModels .builderCard > .stModelsFields {
-  margin-bottom: 0;
-}
-.stModels .builderSuggestedVoices {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.stModelsNote {
-  margin: 10px 0 0;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  line-height: 1.55;
-}
-
-@media (max-width: 720px) {
-  .stModels .builderGrid.two,
-  .stModels .builderProviderGrid,
-  .stModels .builderModelGrid {
-    grid-template-columns: 1fr;
-  }
-}
+/* "Models" (src/studio/models): the models panel on the Test tab. Theme variables only. */
 
 /* The models panel on the Test tab. */
 .stTModels {
@@ -94,42 +48,4 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-}
-
-/* A provider the server can't run (plugin not installed) is shown but can't be chosen. */
-.stModels .builderProviderCard.unavailable,
-.stModels .builderProviderCard:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
-}
-.stModels .builderProviderCard.unavailable:hover {
-  border-color: var(--line2);
-}
-
-.builderModelTags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-.builderModelTags em {
-  font-style: normal;
-  font-size: var(--fs-xs);
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid var(--line2, rgba(127, 127, 127, 0.35));
-  color: var(--muted);
-}
-
-.vgToggle {
-  margin: 2px 0 8px;
-}
-.vgToggle small {
-  opacity: 0.7;
-  font-weight: 500;
-}
-.vgToggle button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }

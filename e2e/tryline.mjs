@@ -34,7 +34,6 @@ await context.addInitScript(() => {
   if (sessionStorage.getItem('tryline')) return;
   sessionStorage.setItem('tryline', '1');
   localStorage.setItem('weave_theme', 'light');
-  localStorage.setItem('weave_layout', 'new');
   localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E', email: 'e2e@example.test', workspaceName: 'Test', role: 'dev' }));
   localStorage.removeItem('weave_demo_state');
 });
@@ -72,7 +71,7 @@ await page.evaluate(() => {
   location.hash = '#/bots/acme-support/settings';
 });
 await page.waitForSelector('.nlWorkspace');
-await page.locator('.nlParts button', { hasText: 'JSON' }).click();
+await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
 const box = page.locator('.nlPage textarea').first();
 await page.waitForFunction(() => (document.querySelector('.nlPage textarea')?.value || '').length > 20);
 const config = JSON.parse(await box.inputValue());
@@ -121,26 +120,25 @@ await box.fill(JSON.stringify(config, null, 2));
 await page.waitForTimeout(600);
 await page
   .locator('.nlBar')
-  .getByRole('button', { name: /^Save draft/ })
+  .getByRole('button', { name: /^Save$/ })
   .click();
 await page.waitForTimeout(1000);
 
-// the old layout has every setting on one page
-await page.evaluate(() => {
-  localStorage.setItem('weave_layout', 'classic');
-  location.hash = '#/bots/acme-support';
-  location.reload();
-});
-await page.waitForSelector('button:has-text("All settings")');
-await page.getByRole('button', { name: 'All settings' }).click();
-const openSection = async (group, section) => {
-  await page.locator('.stFNavGroups [role=tab]', { hasText: group }).click();
-  await page.locator(`.stFChipBtn[data-section="${section}"]`).click();
-  await page.waitForTimeout(400);
+// each box is on the page that holds its settings
+const goTo = async (hash) => {
+  await page.evaluate((h) => (location.hash = h), hash);
+  await page.waitForSelector('.nlPage');
+  await page.waitForTimeout(1200);
 };
 
-// ---- how a line is said
-await openSection('How it talks', 'defaults.conversation');
+// ---- how a line is said: Settings › Conversation flow
+await goTo('#/bots/acme-support/settings');
+// the configuration was written as JSON above: back to the settings themselves
+const back = page.getByRole('button', { name: 'Back to the settings' });
+if (await back.count()) await back.click();
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: 'Conversation flow' }).first().click();
+await page.waitForTimeout(400);
 await page.getByText('How the voice reads things', { exact: true }).first().click();
 await page.waitForTimeout(300);
 let panel = page.locator('section[aria-label="Try how a line is said"]');
@@ -166,8 +164,12 @@ await page.waitForSelector('section[aria-label="Try how a line is said"] [data-b
 check('pronunciation: the pieces are shown as they arrive', (await panel.locator('[data-block="streaming"] li').count()) >= 2);
 await shot('speech');
 
-// ---- what redaction hides
-await openSection('After the call', 'post_call');
+// ---- what redaction hides: After the call, in the settings below the cards
+await goTo('#/bots/acme-support/aftercall');
+// opened when it is folded (an agent that hides details has it open already)
+const redaction = page.locator('.stForm .stFGroup[data-path="post_call.redaction"]');
+if (!(await redaction.getAttribute('class')).includes('open')) await redaction.locator('> header .stFGroupToggle').click();
+await page.waitForTimeout(500);
 panel = page.locator('section[aria-label="Try what redaction hides"]');
 check('redaction: the panel is under the redaction settings', (await panel.count()) === 1);
 await panel.getByLabel('A line a caller might say').fill('My card is 4111 1111 1111 1111 and my email is sam@example.com');
@@ -189,22 +191,18 @@ await page.waitForSelector('[data-stale]');
 check('redaction: once the agent changes, the answer says it may be out of date', /has changed since this was tried/.test(await panel.innerText()));
 await shot('redaction');
 
-// ---- the safety rules
-await openSection('How it behaves', 'guardrails');
-panel = page.locator('section[aria-label="Try the safety rules"]');
-check('safety rules: the panel is under the safety rules', (await panel.count()) === 1);
-await panel.getByRole('button', { name: 'Try it' }).click();
-await page.waitForSelector('section[aria-label="Try the safety rules"] [data-block="rule"]');
-check('safety rules: the trick is caught by name', /“no_injection” caught this line/.test(await panel.innerText()));
-check('safety rules: it says the agent is not asked', /the agent is asked\s*no/i.test(await panel.innerText()));
-await panel.getByLabel('A line a caller might say').fill('What time do you open?');
-await panel.getByRole('button', { name: 'Try it' }).click();
+// ---- a task: Tools › Multi-step tasks
+await goTo('#/bots/acme-support/tools');
+await page.locator('.nlRow', { hasText: 'Multi-step tasks' }).click();
+await page.waitForSelector('.nlDrawer');
+await page.waitForTimeout(800);
+// each task is a card of the panel: the folded ones are opened (only the tasks themselves, not their parts)
+await page.evaluate(() =>
+  document.querySelectorAll('.nlDrawer .stFGroup:not(.open):not(.drill)').forEach((g) => {
+    if (/^tasks\[\d+\]$/.test(g.dataset.path || '')) g.querySelector(':scope > header .stFGroupToggle')?.click();
+  }),
+);
 await page.waitForTimeout(500);
-check('safety rules: an ordinary question is not caught', /No safety rule caught this line/.test(await panel.innerText()));
-await shot('guardrails');
-
-// ---- a task
-await openSection('What it can do', 'tasks');
 panel = page.locator('section[aria-label="Try this task"]');
 check('task: the panel is under the task', (await panel.count()) >= 1);
 await panel.first().getByRole('button', { name: 'Show the steps' }).click();
@@ -221,15 +219,19 @@ await page.waitForTimeout(500);
 check('task: with the caller already verified, the whole task is skipped', /already satisfied/.test(await panel.first().innerText()));
 await shot('task');
 
-// the default layout has its own Guardrails page, and the same box
+// ---- the safety rules: the Guardrails page has its own box
+await page.locator('.nlDrawer .nlDrawerFoot').getByRole('button', { name: 'Cancel' }).click();
 await page.evaluate(() => {
-  localStorage.setItem('weave_layout', 'new');
   location.hash = '#/bots/acme-support/guardrails';
-  location.reload();
 });
 await page.waitForSelector('.nlPage');
 panel = page.locator('section[aria-label="Try the safety rules"]');
-check('safety rules: the Guardrails page of the default layout has the box too', (await panel.count()) === 1);
+// the page's frame is drawn before the agent's draft is read, and the box with it
+await panel
+  .first()
+  .waitFor({ timeout: 10000 })
+  .catch(() => {});
+check('safety rules: the Guardrails page has the box', (await panel.count()) === 1);
 await panel.getByRole('button', { name: 'Try it' }).click();
 await page.waitForSelector('section[aria-label="Try the safety rules"] [data-block="rule"]');
 check('safety rules: and it answers there', /caught this line/.test(await panel.innerText()));

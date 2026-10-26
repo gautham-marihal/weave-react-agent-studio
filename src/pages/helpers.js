@@ -1,10 +1,14 @@
+import { formatWhen } from '../studio/format.js';
 // The sidebar holds workspace-level things only: Home, Agents and the Calls of every agent; then the Library (what agents share: voices, integrations,
 // telephony) and Settings. Everything about ONE agent (building, testing, releasing, watching it) is inside that agent.
 export const NAV = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'agents', label: 'Agents', icon: 'agent' },
   { id: 'sessions', label: 'Calls', icon: 'phone' },
+  { id: 'live', label: 'Live', icon: 'live' },
   { id: 'monitoring', label: 'Monitoring', icon: 'monitor' },
+  { id: 'speed', label: 'Speed', icon: 'gauge' },
+  { id: 'alerts', label: 'Alerts', icon: 'bell' },
 ];
 export const LIBRARY_NAV = [
   { id: 'voices', label: 'Voices', icon: 'voice' },
@@ -33,13 +37,14 @@ export function normalizeTelephony(value) {
   return { numbers: list(value?.numbers), rules: list(value?.rules), trunks: list(value?.trunks), calls: list(value?.calls) };
 }
 
+// How long, the same way on every page: "10 s", "1 min 8 s", "1 h 5 min".
 export function formatDuration(seconds = 0) {
   const total = Math.max(0, Math.round(seconds));
-  if (total < 60) return `${total} sec`;
+  if (total < 60) return `${total} s`;
   const minutes = Math.floor(total / 60);
   const rest = total % 60;
-  if (minutes < 60) return rest ? `${minutes} min ${rest} sec` : `${minutes} min`;
-  return `${Math.floor(minutes / 60)} hr ${minutes % 60} min`;
+  if (minutes < 60) return rest ? `${minutes} min ${rest} s` : `${minutes} min`;
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
 export function sessionsInRange(list = [], range = 'Past 7 days') {
@@ -72,6 +77,45 @@ export const TELEPHONY_SECTIONS = [
   { id: 'trunks', label: 'SIP trunks', icon: 'plug' },
 ];
 
+// The address of each workspace page, so a refresh, a bookmark and Back keep you on it: #/home, #/calls, #/live, #/telephony/numbers... (an agent has its
+// own, #/bots/...). `id` is the page's id in NAV / LIBRARY_NAV / SETTINGS_NAV; Calls is `sessions` inside, "calls" in the address.
+const PAGE_SLUGS = {
+  home: 'home',
+  sessions: 'calls',
+  live: 'live',
+  monitoring: 'monitoring',
+  speed: 'speed',
+  alerts: 'alerts',
+  voices: 'voices',
+  integrations: 'integrations',
+  telephony: 'telephony',
+  team: 'team',
+  settings: 'settings',
+};
+export function workspaceHref(id, section) {
+  const slug = PAGE_SLUGS[id] || 'home';
+  return id === 'telephony' && TELEPHONY_SECTIONS.some((item) => item.id === section) ? `#/${slug}/${section}` : `#/${slug}`;
+}
+// Addresses a page used to have, so an old link or bookmark still opens it (Cost and speed became Speed when the costs were taken out).
+const OLD_SLUGS = { cost: 'speed' };
+// { id, section? } for a workspace page's address, else null (an agent's address, or none)
+export function parseWorkspaceHash(hash) {
+  const parts = String(hash || '')
+    .replace(/^#\/?/, '')
+    .split('?')[0]
+    .split('/')
+    .filter(Boolean);
+  const slug = OLD_SLUGS[parts[0]] || parts[0];
+  const id = Object.keys(PAGE_SLUGS).find((key) => PAGE_SLUGS[key] === slug);
+  if (!id) return null;
+  if (id !== 'telephony') return { id };
+  return { id, section: TELEPHONY_SECTIONS.some((item) => item.id === parts[1]) ? parts[1] : 'calls' };
+}
+
+// An address that names no page (a mistyped or old link), so the workspace says "Page not found" instead of showing another page. No address
+// at all is Home; an agent's address (#/bots/...) is the Agents area's to judge.
+export const isUnknownAddress = (hash) => !!hash && !['#', '#/'].includes(hash) && !/^#\/bots/.test(hash) && !parseWorkspaceHash(hash);
+
 export function compactDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
@@ -83,19 +127,11 @@ export function agentLifecycle(agent) {
   return AGENT_LIFECYCLE.find((item) => item.status === (agent?.status || 'draft')) || AGENT_LIFECYCLE[0];
 }
 
+// The same words as formatWhen (studio/format.js), at the start of a line: "Just now", "3 hours ago", "4 days ago", then the date after a week.
 export function formatRelative(value) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  const seconds = Math.round((Date.now() - date.getTime()) / 1000);
-  if (seconds < 45) return 'Just now';
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} hr ago`;
-  const days = Math.round(hours / 24);
-  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  if (!value || Number.isNaN(new Date(value).getTime())) return '—';
+  const text = formatWhen(value, { days: 7 });
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export const RANGE_MS = { 'Past 24 hours': 86400000, 'Past 7 days': 7 * 86400000, 'Past 30 days': 30 * 86400000, 'Past 90 days': 90 * 86400000 };

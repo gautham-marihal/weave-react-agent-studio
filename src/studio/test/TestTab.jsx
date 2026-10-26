@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, getApiUser } from '../../api/client.js';
 import Icon from '../../ui/Icon.jsx';
 import { pictureProblem } from '../preview/useDictation.js';
+import AiOrb, { orbState } from '../preview/AiOrb.jsx';
 import PlainIssues from '../validation/PlainIssues.jsx';
 import { envLabel, Notice } from '../ui.jsx';
 import { navigate, routeHref } from '../route.js';
@@ -272,15 +273,14 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
       {noWebChannel && (
         <Notice kind="info" title="This agent can’t be tried in the browser">
-          The Test tab talks to the agent over the web, so it needs a web chat or web voice channel
+          Trying it here talks to the agent over the web, so it needs a web chat or web voice channel
           {reach.phone.length ? `. This one only has a phone line (${reach.phone.join(', ')}), and a phone line is tried by calling its number` : ''}. Add a web
-          channel under Config → Channels to test here. Phone numbers aren’t connected from the studio yet: for now they are set up with the platform’s SIP
-          tool.
+          channel on the Channels page to try it here. Phone numbers aren’t connected from the studio yet: for now they are set up with the platform’s SIP tool.
         </Notice>
       )}
       {reach.state === 'off' && !running && (
         <Notice kind="warn" title="The web channels of this agent are switched off">
-          Switch one on under Config → Channels, or the server may refuse to start a conversation.
+          Switch one on on the Channels page, or the server may refuse to start a conversation.
         </Notice>
       )}
       {simulated && <DemoNote kind="test">Replies in this conversation are made up in your browser. Nothing here is the real agent or its models.</DemoNote>}
@@ -312,7 +312,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
       )}
       {unsupported.length > 0 && ref === 'draft' && !running && (
         <Notice kind="warn" title={`${unsupported.length} part${unsupported.length === 1 ? '' : 's'} of this agent aren’t available in the runtime yet`}>
-          The conversation may behave differently from what the config describes. The Config tab lists them under “Not available yet”.
+          The conversation may behave differently from what the configuration describes:{' '}
+          {[...new Set(unsupported.map((item) => item?.feature).filter(Boolean))].join(', ') || 'see the list of problems'}.
         </Notice>
       )}
       {error && (
@@ -352,12 +353,13 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
       <div className="stTGrid">
         <section className="stCard stTChat" aria-label="Conversation">
-          {status !== 'idle' && (
+          {/* above the conversation once it has lines; before that, the orb in the middle says the same */}
+          {status !== 'idle' && messages.length > 0 && (
             <div
               className={`pvHud stTHud ${status === 'live' ? 'live' : status === 'ended' || status === 'error' ? 'ended' : 'reconnecting'}`}
               aria-hidden="true"
             >
-              <span className="pvMiniOrb" />
+              <AiOrb size={26} state={orbState(status)} />
               <span className="pvBars">
                 <i />
                 <i />
@@ -367,21 +369,15 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                 <i />
                 <i />
               </span>
-              <small>{status === 'live' ? 'Linked' : status === 'ended' ? 'Signal closed' : status === 'error' ? 'No signal' : 'Linking…'}</small>
+              <small>{status === 'live' ? 'Connected' : status === 'ended' ? 'Ended' : status === 'error' ? 'Didn’t connect' : 'Connecting…'}</small>
             </div>
           )}
           <div className="stTMessages" ref={listRef} onScroll={onScroll} role="log" aria-live="polite" aria-label="Messages">
             {messages.length === 0 && (
               <div className="stTEmpty">
-                {['idle', 'ended', 'error'].includes(status) && (
-                  <div className="pvStage stTStage" aria-hidden="true">
-                    <i className="pvRing r1" />
-                    <i className="pvRing r2" />
-                    <i className="pvRing r3" />
-                    <i className="pvSat" />
-                    <span className="pvOrb" />
-                  </div>
-                )}
+                <div className="pvStage stTStage" aria-hidden="true">
+                  <AiOrb size={116} state={orbState(status)} />
+                </div>
                 {status === 'idle' && (
                   <>
                     <strong>No conversation yet</strong>

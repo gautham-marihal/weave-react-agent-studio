@@ -3,6 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { loadConfigs } from '../studio/configCache.js';
 import { voiceUsage } from '../studio/voiceUsage.js';
 import { useVoicePreview } from './voicePreview.js';
+import Icon from '../ui/Icon.jsx';
+
+// "English (US)" for "English (United States)": the table's language column fits on one line, the whole name is its tooltip
+const SHORT_COUNTRIES = { 'United States': 'US', 'United Kingdom': 'UK', 'United Arab Emirates': 'UAE' };
+const shortLanguage = (name) =>
+  String(name || '').replace(/\(([^)]+)\)$/, (whole, country) => (SHORT_COUNTRIES[country] ? `(${SHORT_COUNTRIES[country]})` : whole));
 
 const VOICE_LIBRARY = VOICE_CATALOG.map((voice) => ({
   ...voice,
@@ -14,7 +20,10 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
   const [configs, setConfigs] = useState({});
   useEffect(() => {
     let off = false;
-    loadConfigs(agents.map((item) => item.id)).then((list) => {
+    loadConfigs(
+      agents.map((item) => item.id),
+      agents.map((item) => item.draftRevision),
+    ).then((list) => {
       if (!off) setConfigs(Object.fromEntries(agents.map((item, index) => [item.id, list[index]])));
     });
     return () => {
@@ -31,7 +40,9 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
   const [copied, setCopied] = useState('');
   const [favorites, setFavorites] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('weave_voice_favorites') || '[]');
+      // a list of voice ids; anything else saved under this name (an older shape, an edit by hand) starts it empty
+      const saved = JSON.parse(localStorage.getItem('weave_voice_favorites') || '[]');
+      return Array.isArray(saved) ? saved.filter((id) => typeof id === 'string') : [];
     } catch {
       return [];
     }
@@ -86,24 +97,27 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
     <div className="workspaceFeaturePage">
       <section className="welcomeBlock pageHeaderBlock featureHero">
         <div>
-          <div className="eyebrow cyan">VOICE LIBRARY</div>
           <h1>Voices</h1>
           <p>Explore provider voices, compare language and style, and choose the right voice for your agent.</p>
         </div>
         <button className="primaryCta createButton" type="button" onClick={onAgents}>
-          Open agents <span className="buttonArrow">→</span>
+          Open agents <Icon name="arrowRight" size={15} />
         </button>
       </section>
       <div className="voiceWorkspaceTabs" role="tablist" aria-label="Voice library sections">
         <button role="tab" aria-selected={mode === 'default'} className={mode === 'default' ? 'active' : ''} onClick={() => setMode('default')}>
-          <span>◫</span>
+          <span aria-hidden="true">
+            <Icon name="voice" size={16} />
+          </span>
           <span>
             <strong>Default voices</strong>
             <small>Browse provider voice libraries</small>
           </span>
         </button>
         <button role="tab" aria-selected={mode === 'custom'} className={mode === 'custom' ? 'active' : ''} onClick={() => setMode('custom')}>
-          <span>◌</span>
+          <span aria-hidden="true">
+            <Icon name="mic" size={16} />
+          </span>
           <span>
             <strong>Custom voices</strong>
             <small>Your own voice IDs and voice clones</small>
@@ -113,22 +127,24 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
       </div>
       {mode === 'custom' ? (
         <section className="customVoiceComing">
-          <div className="customVoiceOrb">◌</div>
-          <div className="eyebrow cyan">IN DEVELOPMENT</div>
+          <div className="customVoiceOrb" aria-hidden="true">
+            <Icon name="mic" size={30} />
+          </div>
+          <div className="eyebrow cyan">In development</div>
           <h2>Custom voices are on the way</h2>
           <p>
             Voice cloning and workspace-managed custom voice uploads are not available yet. You can already use your provider's own voice ID: set it in an
             agent’s Config, under Models.
           </p>
           <button className="primaryCta" onClick={onAgents}>
-            Open agents →
+            Open agents <Icon name="arrowRight" size={15} />
           </button>
         </section>
       ) : (
         <>
           <section className="featureToolbar voiceLibraryToolbar">
             <label className="featureSearch">
-              <span>⌕</span>
+              <Icon name="search" size={15} />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -186,7 +202,7 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                         <div className="voiceNameStack">
                           <strong>{voice.name}</strong>
                           <span className="voiceIdCell">
-                            <code title="The provider's id for this voice: this is what goes in the agent's configuration">{voice.voiceId}</code>
+                            <code title={`${voice.voiceId}: the provider's id for this voice, what goes in the agent's configuration`}>{voice.voiceId}</code>
                             <button
                               type="button"
                               className="iconButton"
@@ -194,14 +210,14 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                               title={copied === `failed:${voice.id}` ? 'Could not copy: select the ID and copy it' : 'Copy the voice ID'}
                               onClick={() => copyId(voice)}
                             >
-                              {copied === voice.id ? '✓' : copied === `failed:${voice.id}` ? '!' : '⧉'}
+                              <Icon name={copied === voice.id ? 'check' : copied === `failed:${voice.id}` ? 'alert' : 'copy'} size={14} />
                             </button>
                           </span>
                         </div>
                       </div>
                     </td>
-                    <td>
-                      {voice.language} <small>{voice.locale}</small>
+                    <td title={voice.language}>
+                      {shortLanguage(voice.language)} <small>{voice.locale}</small>
                     </td>
                     <td>{voice.gender}</td>
                     <td>
@@ -231,7 +247,7 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                           aria-label={sample.playing === voice.id ? `Stop ${voice.name}` : `Listen to ${voice.name}`}
                           onClick={() => sample.play(voice)}
                         >
-                          {sample.playing === voice.id ? 'Ⅱ' : '▶'}
+                          <Icon name={sample.playing === voice.id ? 'pause' : 'play'} size={14} />
                         </button>
                         <button
                           type="button"
@@ -239,7 +255,7 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                           title="Favorite"
                           onClick={() => toggleFavorite(voice.id)}
                         >
-                          {favorites.includes(voice.id) ? '★' : '☆'}
+                          <Icon name="star" size={15} className={favorites.includes(voice.id) ? 'filled' : ''} />
                         </button>
                         <button
                           type="button"
@@ -265,7 +281,9 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
           </div>
           {!filtered.length && (
             <section className="emptyPanel featureEmpty">
-              <div className="emptyPanelIcon">⌕</div>
+              <div className="emptyPanelIcon">
+                <Icon name="search" size={22} />
+              </div>
               <h2>No voices found</h2>
               <p>Try changing your search or filters.</p>
             </section>

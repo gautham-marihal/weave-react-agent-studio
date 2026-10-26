@@ -25,8 +25,14 @@ export function shipSteps({
 
   // 1. saved
   if (parseError)
-    add({ id: 'save', label: 'Saved', state: 'blocked', text: 'The configuration cannot be read yet.', action: { label: 'Fix it in Config', tab: 'config' } });
-  else if (dirty) add({ id: 'save', label: 'Saved', state: 'todo', text: 'You have unsaved edits.', action: { label: 'Go to Config to save', tab: 'config' } });
+    add({
+      id: 'save',
+      label: 'Saved',
+      state: 'blocked',
+      text: 'The configuration cannot be read yet.',
+      action: { label: 'Edit as JSON', tab: 'settings', params: { show: 'json' } },
+    });
+  else if (dirty) add({ id: 'save', label: 'Saved', state: 'todo', text: 'You have unsaved edits.', action: { label: 'Save', save: true } });
   else add({ id: 'save', label: 'Saved', state: 'done', text: 'The draft is saved.' });
 
   // 2. valid
@@ -38,7 +44,7 @@ export function shipSteps({
       label: 'Valid',
       state: 'blocked',
       text: `${errors} ${errors === 1 ? 'error' : 'errors'} to fix first.`,
-      action: { label: 'Open Config', tab: 'config' },
+      action: { label: 'See what to fix', tab: 'agent', params: { show: 'problems' } },
     });
   else add({ id: 'valid', label: 'Valid', state: 'done', text: 'The draft passes the checks.' });
 

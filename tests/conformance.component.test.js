@@ -26,7 +26,7 @@ const describeMark = (el) => {
 
 async function expandAll(app) {
   for (let pass = 0; pass < 5; pass += 1) {
-    const closed = $$(app.container, '.stFGroupToggle[aria-expanded=false]');
+    const closed = $$(app.container.ownerDocument.body, '.stFGroupToggle[aria-expanded=false]');
     if (!closed.length) return;
     for (const toggle of closed) await a.click(toggle);
   }
@@ -58,7 +58,7 @@ for (const entry of entries) {
       const app = await mountForm(entry.config);
       const marks = [];
       const seen = await walk(app, (name) => {
-        if (entry.valid) $$(app.container, RED).forEach((el) => marks.push(`${name} › ${describeMark(el)}`));
+        if (entry.valid) $$(document.body, RED).forEach((el) => marks.push(`${name} › ${describeMark(el)}`));
       });
       assert.ok(seen.length >= 20, `the sections were walked (${seen.length})`);
       assert.deepEqual(marks, [], `a red mark on a config the server calls valid is a false alarm:\n  ${marks.slice(0, 8).join('\n  ')}`);

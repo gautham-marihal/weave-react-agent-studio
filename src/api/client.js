@@ -10,15 +10,23 @@ import { isDemoMode } from '../demo/demoMode.js';
 // import.meta.env only exists under Vite; the unit tests import this file in plain Node.
 const BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || '/api';
 
-// The name typed on the demo sign-in. It labels things on screen (a test conversation's participant); it is NOT sent as
-// the user: who saved, published or deployed is decided by the proxy in front of the API from the verified sign-in,
-// never by the browser (anyone can set a header). For development only, VITE_SEND_USER_HEADER=true sends it anyway.
+// The signed-in person. The API guide asks for it on every request as `X-User`, so saves, publishes, deploys and phone-number changes say who made them.
+// It is only a claim (a browser can send any header): in production the proxy in front of the API replaces it with the verified sign-in
+// (docs/PRODUCTION.md). VITE_SEND_USER_HEADER=false stops the browser sending it, where the proxy is the only source.
 let currentUser = '';
-export const setApiUser = (name) => {
-  currentUser = String(name || '').trim();
+export const setApiUser = (name, fallback = '') => {
+  currentUser = headerSafe(name) || headerSafe(fallback);
 };
 export const getApiUser = () => currentUser;
-const SEND_USER_HEADER = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SEND_USER_HEADER) === 'true';
+const SEND_USER_HEADER = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SEND_USER_HEADER) !== 'false';
+
+// A header carries printable Latin-1 only: a name in another script (or with a line break) can't be sent as it is, so the email is used instead, or nothing.
+export function headerSafe(value) {
+  const text = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return /^[\x20-\x7e\xa0-\xff]{1,200}$/.test(text) ? text : '';
+}
 
 // `kind` tells the UI what to do with a failure:
 //   network     the request never got an answer, or a proxy/gateway answered because the API is down
@@ -45,7 +53,7 @@ export function classify(status, body) {
   // A 5xx with no JSON `detail` did not come from the API itself: the dev proxy or a gateway answered
   // because the API is down or restarting.
   if (status >= 500 && detail === undefined) {
-    return { kind: 'network', message: 'The Agent Builder API isn’t responding.', errors: [] };
+    return { kind: 'network', message: 'The server isn’t responding.', errors: [] };
   }
   if (status === 422 && Array.isArray(detail)) {
     const where = detail.map((item) => `${(item.loc || []).join('.')}: ${item.msg}`).join('; ');
@@ -97,7 +105,7 @@ async function send(method, path, { body, signal, raw } = {}) {
     });
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
-    throw new ApiError({ status: 0, kind: 'network', message: 'Could not reach the Agent Builder API.' });
+    throw new ApiError({ status: 0, kind: 'network', message: 'Couldn’t reach the server.' });
   }
   const text = await response.text();
   let data = null;
@@ -311,7 +319,7 @@ export function followCall(id, callId, { onOpen, onRecord, onEnd, onError, after
     let stop = () => {};
     let stopped = false;
     import('../demo/demoApi.js').then(({ getDemoApi }) => {
-      if (!stopped) stop = getDemoApi().follow(id, callId, { onOpen, onRecord, onEnd });
+      if (!stopped) stop = getDemoApi().follow(id, callId, { onOpen, onRecord, onEnd, after });
     });
     return () => {
       stopped = true;

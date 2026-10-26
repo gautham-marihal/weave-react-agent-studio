@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Icon from '../ui/Icon.jsx';
 import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.js';
 import { formatDiffPath, formatWhen, truncate } from './format.js';
@@ -8,10 +9,12 @@ import { useAsync } from './useAsync.js';
 import { isFinished, normalizeHeadline, testStatusOf } from './scenarios/runResults.js';
 import ShipFlow from './release/ShipFlow.jsx';
 import { shipSteps } from './release/shipFlow.js';
+import { readinessSteps, stepRoute } from './newlayout/readiness.js';
 import { useGate } from './release/gate.js';
 import { useLatestPublished } from './changes/useLatestPublished.js';
 import { changesSince } from './changes/sinceRelease.js';
 import PlainDiff from './compare/PlainDiff.jsx';
+import Menu from './manage/Menu.jsx';
 import { plainChanges } from './compare/plainCompare.js';
 
 const OP_LABEL = { add: 'Added', remove: 'Removed', change: 'Changed' };
@@ -39,6 +42,7 @@ const BOOKKEEPING = new Set(['version', 'status', 'created_at', 'updated_at']);
 const isBookkeeping = (change) => change.path?.[0] === 'meta' && change.path.length === 2 && BOOKKEEPING.has(change.path[1]);
 
 const sideName = (v) => (String(v) === 'draft' ? 'the draft' : `version ${v}`);
+const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 function DiffView({ diff }) {
   const [showMeta, setShowMeta] = useState(false);
@@ -69,7 +73,8 @@ function DiffView({ diff }) {
       return (
         <div className="stDiff">
           <p className="stMuted">
-            {sideName(diff.from)} and {sideName(diff.to)} are the same{hiddenCount ? ', apart from details the server sets when a version is published' : ''}.
+            {capital(sideName(diff.from))} and {sideName(diff.to)} are the same
+            {hiddenCount ? ', apart from details the server sets when a version is published' : ''}.
           </p>
         </div>
       );
@@ -193,7 +198,9 @@ function RestoreDialog({ botId, version, dirty, onClose, onDone }) {
   );
 }
 
-export default function VersionsTab({ botId, editor, refreshKey, summary }) {
+// quietSteps: the progress card's button is a quiet one (the new layout passes it: its bar above the page has the one strong button)
+//   knowledgeRead: what the server has read of its documents (so the steps still to do match the menu's)
+export default function VersionsTab({ botId, editor, refreshKey, summary, knowledgeRead = null, quietSteps = false }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const list = useMemo(() => versions.data || [], [versions.data]);
   // test runs say which exact configuration they tested, so a version can show whether IT passed (a read; nothing is run)
@@ -202,6 +209,16 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('draft');
   const [restoreTarget, setRestoreTarget] = useState(null);
+  const compareRef = useRef(null);
+  // where each version runs now: { '0.1.0': ['Staging'], ... }
+  const runsIn = useMemo(() => {
+    const out = {};
+    ['development', 'staging', 'production'].forEach((env) => {
+      const version = summary?.deployed?.[env];
+      if (version) out[version] = [...(out[version] || []), env];
+    });
+    return out;
+  }, [summary]);
 
   // Default comparison: the newest published version against the draft.
   useEffect(() => {
@@ -212,6 +229,7 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
   // where the draft stands on the way to callers: saved, valid, tested, published, deployed
   const latest = useLatestPublished(botId, refreshKey);
   const [gateOn] = useGate(botId);
+  const latestRun = useMemo(() => (Array.isArray(runs.data) ? headlines.find((run) => isFinished(run.status)) || null : undefined), [runs.data, headlines]);
   const flow = useMemo(() => {
     const draft = editor.parsed.value;
     const pub = latest.published;
@@ -220,13 +238,38 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
       parseError: editor.parsed.error || '',
       report: editor.report,
       scenarioCount: Array.isArray(draft?.tests) ? draft.tests.length : 0,
-      latestRun: Array.isArray(runs.data) ? runs.data.find((run) => isFinished(run.status)) || null : null,
+      latestRun: latestRun || null,
       published: pub?.config ? { version: pub.version, changes: draft ? changesSince(pub.config, draft).total : 0 } : null,
       deployed: summary?.deployed || {},
       gate: { enabled: gateOn, savedAt: editor.meta?.savedAt || '' },
     });
-  }, [editor.dirty, editor.parsed, editor.report, editor.meta?.savedAt, runs.data, latest.published, summary, gateOn]);
-  const goTo = (action) => navigate(action.publish ? routeHref(botId, 'versions', { publish: '1' }) : routeHref(botId, action.tab), { guard: false });
+  }, [editor.dirty, editor.parsed, editor.report, editor.meta?.savedAt, latestRun, latest.published, summary, gateOn]);
+  // the steps of building it that are still to do (the same list as the menu's progress card and the Overview), so this page never calls it ready alone
+  const buildLeft = useMemo(() => {
+    const draft = editor.parsed.value;
+    const plan = readinessSteps({
+      config: draft,
+      summary,
+      report: editor.report,
+      scenarioCount: Array.isArray(draft?.tests) ? draft.tests.length : 0,
+      latestRun,
+      gate: gateOn ? { enabled: true, savedAt: editor.meta?.savedAt || '', dirty: editor.dirty } : null,
+      knowledgeRead,
+    });
+    return plan.steps.filter((step) => (step.state === 'todo' || step.state === 'blocked') && !['checks', 'tests', 'releases'].includes(step.page));
+  }, [editor.parsed, editor.report, editor.meta?.savedAt, editor.dirty, summary, latestRun, gateOn, knowledgeRead]);
+  // a step's button: saving is done here (the draft's edits are this page's too), anything else is a page to go to
+  const goTo = (action) => {
+    if (action.save) {
+      editor.save();
+      return;
+    }
+    navigate(action.publish ? routeHref(botId, 'versions', { publish: '1' }) : routeHref(botId, action.tab, action.params), { guard: false });
+  };
+  const openStep = (step) => {
+    const { tab, params } = stepRoute(step);
+    navigate(routeHref(botId, tab, params), { guard: false });
+  };
 
   const canDiff = !!from && !!to && from !== to;
   const diff = useAsync(
@@ -244,11 +287,11 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
 
   return (
     <div className="stVersions">
-      {!latest.loading && <ShipFlow flow={flow} onAction={goTo} />}
+      {!latest.loading && <ShipFlow flow={flow} onAction={goTo} buildLeft={buildLeft} onStep={openStep} quiet={quietSteps} />}
       {list.length === 0 ? (
         <section className="emptyPanel">
           <div className="emptyPanelIcon" aria-hidden="true">
-            ◫
+            <Icon name="release" size={22} />
           </div>
           <h2>Nothing published yet</h2>
           <p>Publishing freezes the draft as an immutable version you can compare, restore and deploy.</p>
@@ -268,9 +311,14 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
               </div>
               {list.map((item, index) => (
                 <div className="stRow" role="row" key={item.version}>
-                  <span>
+                  <span className="stVersionCell">
                     <strong>{item.version}</strong>
                     {index === 0 && <em className="stTag">latest</em>}
+                    {(runsIn[item.version] || []).map((env) => (
+                      <em key={env} className={`stEnvTag ${env}`} title={`This version runs in ${env}`}>
+                        {env === 'development' ? 'Dev' : env === 'staging' ? 'Staging' : 'Production'}
+                      </em>
+                    ))}
                   </span>
                   <span title={item.published_at}>{formatWhen(item.published_at)}</span>
                   <span>{item.published_by || '—'}</span>
@@ -296,41 +344,45 @@ export default function VersionsTab({ botId, editor, refreshKey, summary }) {
                       );
                     })()}
                   </span>
+                  {/* one thing to do with a version, the rest in its menu */}
                   <span className="stRowActions">
-                    <button
-                      type="button"
-                      className="quietButton"
-                      onClick={() => {
-                        setFrom(item.version);
-                        setTo('draft');
-                      }}
-                    >
-                      Compare
-                    </button>
                     <button
                       type="button"
                       className="quietButton"
                       onClick={() => navigate(routeHref(botId, 'deploy', { version: item.version }), { guard: false })}
                     >
-                      Deploy
+                      Deploy…
                     </button>
-                    <button type="button" className="quietButton" onClick={() => setRestoreTarget(item.version)}>
-                      Restore
-                    </button>
+                    <Menu
+                      label={`More for version ${item.version}`}
+                      items={[
+                        {
+                          label: 'Compare with the draft',
+                          onClick: () => {
+                            setFrom(item.version);
+                            setTo('draft');
+                            compareRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          },
+                        },
+                        { label: 'Restore as the draft…', onClick: () => setRestoreTarget(item.version) },
+                      ]}
+                    />
                   </span>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="stCard">
+          <section className="stCard" ref={compareRef}>
             <h3>Compare</h3>
             <div className="stCompare">
               <label>
                 <span>From</span>
                 <SmartSelect className="" value={from} ariaLabel="From" options={options} onChange={setFrom} />
               </label>
-              <b aria-hidden="true">→</b>
+              <b aria-hidden="true">
+                <Icon name="arrowRight" size={16} />
+              </b>
               <label>
                 <span>To</span>
                 <SmartSelect className="" value={to} ariaLabel="To" options={options} onChange={setTo} />
