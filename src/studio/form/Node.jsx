@@ -1,5 +1,7 @@
 import React, { useContext, useEffect, useId, useMemo, useState } from 'react';
+import Fold from '../../ui/Fold.jsx';
 import Icon from '../../ui/Icon.jsx';
+import { DragHandle, SortableList, useSortableItem } from '../../ui/Sortable.jsx';
 import Sheet, { DepthCtx } from './Sheet.jsx';
 import { cardsThatMayOpen } from './cardSize.js';
 import { humanize, isObj } from './engine.js';
@@ -15,6 +17,7 @@ import {
   uniqueId,
   useConfigSelect,
   useForm,
+  useItemKeys,
   useKeyedHandlers,
   useOwner,
   useStableCallback,
@@ -47,11 +50,11 @@ import { IdChip } from './IdTools.jsx';
 import { collectionAt, COLLECTIONS, lockedIdCollection } from './references.js';
 import { arrayStyle, carryOver, isActionList, isComplex, isRuleList, matchesDiscriminator, summarize } from './cardLogic.js';
 import EffectsEditor, { ActionSteps } from './EffectsEditor.jsx';
-import { isPromptPath, isTemplateString, scopeAt, scopeSignature } from './templates.js';
-import { languageHint } from './messages.js';
+import { isPromptPath, isTemplateString, scopeAt, scopeSignature } from './templates.ts';
+import { languageHint } from './messages.ts';
 import { describeSetting } from './plainLanguage.js';
 import { TechName } from './TechName.jsx';
-import { groupKeys, looksLikePhone, looksLikeUrl, orderKeys, readXui, splitAdvanced } from './xui.js';
+import { groupKeys, looksLikePhone, looksLikeUrl, orderKeys, readXui, splitAdvanced } from './xui.ts';
 
 // What "this collection lives in" for the hint under an empty reference list, and where Go there leads.
 const REF_TARGET = {
@@ -114,8 +117,8 @@ const lastWord = (text) => {
   return i < 0 ? ['', t] : [t.slice(0, i + 1), t.slice(i + 1)];
 };
 
-// The "i" that shows a setting's technical detail. Drawn with CSS, not an SVG: there is one beside nearly every setting, and hundreds of SVGs slow typing
-// on a long screen.
+// The "i" that shows a setting's technical detail. Drawn with CSS, not an SVG: there is one beside nearly every
+// setting, and hundreds of SVGs slow typing on a long screen.
 function InfoButton({ shown, onToggle, moreLabel = 'Technical detail' }) {
   return (
     <button
@@ -138,7 +141,7 @@ const moreOf = (words) => (words.full && words.full.trim() && words.full.trim() 
 //   shown: when given, the row draws the "i" beside the setting's name and says here whether the detail is open; else the "i" ends the help line.
 function Help({ lead, example, full, moreLabel = 'Technical detail', open: startOpen = false, shown: shownFromRow }) {
   const [open, setOpen] = useState(false);
-  const more = full && full.trim() && full.trim() !== lead ? full.trim() : '';
+  const more = moreOf({ full, lead });
   const inline = shownFromRow === undefined;
   const shown = inline ? open || (startOpen && !!more) : shownFromRow;
   if (!lead && !example && !(more && (inline || shown))) return null;
@@ -242,12 +245,15 @@ function DeleteButton({ what, onClick, disabled, small = false }) {
   );
 }
 
-// A focus request opens what holds it only while it is fresh: a sheet that was closed by hand does not open again when its screen is drawn again later.
+// A focus request opens what holds it only while it is fresh: a sheet that was closed by hand does not open again when
+// its screen is drawn again later.
 const FRESH_FOCUS_MS = 2500;
 
-// A group of settings. On the screen itself (depth 0) it is a section that folds; inside one (depth 1 and deeper) it is a row that opens a sheet, so boxes are
-// never drawn inside boxes. `sub` is the line under a row's title when it has no hint of its own.
-function Group({ pathKey, title, hint, sub, tooltip, count, onRemove, defaultOpen = true, actions, children, flat = false }) {
+// A group of settings. On the screen itself (depth 0) it is a section that folds; inside one (depth 1 and deeper) it is
+// a row that opens a sheet, so boxes are never drawn inside boxes. `sub` is the line under a row's title when it has no
+// hint of its own.
+// sortable: when the group is an item of a list that can be dragged into another order, where the drag puts it (useSortableItem)
+function Group({ pathKey, title, hint, sub, tooltip, count, onRemove, defaultOpen = true, actions, children, flat = false, sortable = null }) {
   const { focus, countUnder } = useForm();
   const depth = useContext(DepthCtx);
   const drill = !flat && depth >= 1;
@@ -278,7 +284,12 @@ function Group({ pathKey, title, hint, sub, tooltip, count, onRemove, defaultOpe
   if (drill) {
     const line = hint || sub;
     return (
-      <section className={`stFGroup drill ${c.errors ? 'hasErr' : ''}`} data-path={pathKey}>
+      <section
+        ref={sortable?.ref}
+        style={sortable?.style}
+        className={`stFGroup drill ${c.errors ? 'hasErr' : ''} ${sortable?.dragging ? 'isDragging' : ''}`}
+        data-path={pathKey}
+      >
         <header>
           <button
             type="button"
@@ -313,7 +324,12 @@ function Group({ pathKey, title, hint, sub, tooltip, count, onRemove, defaultOpe
     );
   }
   return (
-    <section className={`stFGroup ${c.errors ? 'hasErr' : ''} ${flat ? 'flat' : ''} ${open ? 'open' : ''}`} data-path={pathKey}>
+    <section
+      ref={sortable?.ref}
+      style={sortable?.style}
+      className={`stFGroup ${c.errors ? 'hasErr' : ''} ${flat ? 'flat' : ''} ${open ? 'open' : ''} ${sortable?.dragging ? 'isDragging' : ''}`}
+      data-path={pathKey}
+    >
       <header>
         <button type="button" className="stFGroupToggle" aria-expanded={open} title={tooltip || undefined} onClick={() => setOpen((v) => !v)}>
           <Icon name="chevronRight" size={16} className="stFChev" />
@@ -390,7 +406,8 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
       );
     }
     case 'enum': {
-      // The choices are drawn in words (plainEnums.js); the stored value is unchanged. A tool kind the runtime can't run says so, and the schema's default is marked.
+      // The choices are drawn in words (plainEnums.js); the stored value is unchanged. A tool kind the runtime can't
+      // run says so, and the schema's default is marked.
       const leaf = String(path[path.length - 1]);
       const values = shape.enum.map(String);
       const suffix =
@@ -632,11 +649,7 @@ function ContactInput({ kind, id, value, onChange, placeholder, disabled, invali
 }
 
 function ShieldIcon() {
-  return (
-    <svg className="stShieldIcon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-    </svg>
-  );
+  return <Icon name="sensitive" size={14} className="stShieldIcon" />;
 }
 
 // A note under a field that needs more than the schema's description says.
@@ -670,7 +683,7 @@ function SecretInput({ value, onChange, disabled, id }) {
   const name = isObj(value) && typeof value.secret === 'string' ? value.secret : '';
   return (
     <div className="stFSecret">
-      <span aria-hidden="true">🔑</span>
+      <Icon name="key" size={15} className="stFSecretIcon" />
       <input
         id={id}
         className="stFInput mono"
@@ -698,6 +711,7 @@ function SecretInput({ value, onChange, disabled, id }) {
 export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKeys, onlyKeys, showUnknown = true }) {
   const { engine, markDelete, issuesUnder, expertHome, hidden, store, channelTypes } = useForm();
   const owner = useOwner();
+  const ownId = useId(); // for the boxes of keys the schema doesn't have, which are labelled by their key
   const obj = isObj(value) ? value : {};
   const order = Object.keys(shape.properties);
   const flatOf = (k) => engine.flatten(shape.properties[k]);
@@ -712,8 +726,9 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
   };
   // a channel with no voice is not offered the settings only a voice channel has (what is already set stays, and the channel says so)
   const notOffered = channelTypes ? keysNotOffered(store.get(), channelTypes, path) : [];
-  // Every setting is on the screen, the ones not set too: those show the value the agent uses anyway (the default), and changing it sets it. Nothing is
-  // hidden behind an "add" menu. A deprecated one, or one this kind of channel can't use, is shown only while it is set.
+  // Every setting is on the screen, the ones not set too: those show the value the agent uses anyway (the default), and
+  // changing it sets it. Nothing is hidden behind an "add" menu. A deprecated one, or one this kind of channel can't
+  // use, is shown only while it is set.
   const unsetShown = (k) => !(k in obj) && !required.includes(k) && !flatOf(k).deprecated && !notOffered.includes(k);
   const rows = orderKeys(
     visible.filter((k) => k in obj || required.includes(k) || unsetShown(k)),
@@ -726,8 +741,8 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
   const openExtra = shape.additionalProperties === undefined && shape.unevaluatedProperties === undefined;
 
   const setProp = (key, v) => onChange(v === undefined ? omit(obj, key) : orderedSet(obj, key, v, order));
-  // Deleting a row takes out what the row shows. The parts the page asks for elsewhere (a card above the form: After the call's switches and ticks) stay,
-  // and a row holding nothing but those has no Delete.
+  // Deleting a row takes out what the row shows. The parts the page asks for elsewhere (a card above the form: After
+  // the call's switches and ticks) stay, and a row holding nothing but those has no Delete.
   const keptOf = (key) => hiddenParts(obj[key], [...path, key].join('.'), hidden);
   const onlyHidden = (key) => {
     const kept = keptOf(key);
@@ -766,12 +781,12 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
         </div>
       ))}
       {advanced.length > 0 && (
-        <details className="stFAdvanced" open={advanced.some((key) => issuesUnder(keyOf([...path, key])).length > 0) || undefined}>
+        <Fold className="stFAdvanced" open={advanced.some((key) => issuesUnder(keyOf([...path, key])).length > 0)}>
           <summary>
             Advanced settings <span className="stFCount">{advanced.length}</span>
           </summary>
           <div className="stFGrid">{advanced.map(renderRow)}</div>
-        </details>
+        </Fold>
       )}
       {unknown.map((key) =>
         extra ? (
@@ -788,11 +803,11 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
         ) : (
           <div className="stFRow wide" key={key} data-path={keyOf([...path, key])}>
             <div className="stFLabel">
-              <label>{key}</label>
+              <label htmlFor={`${ownId}-${key}`}>{key}</label>
               <span className={`stFTag ${openExtra ? '' : 'bad'}`}>{openExtra ? 'custom field' : 'not in the schema'}</span>
               <DeleteButton small what={key} disabled={disabled} onClick={() => del(key, key)} />
             </div>
-            <FreeValue value={obj[key]} onChange={(v) => setProp(key, v)} disabled={disabled} />
+            <FreeValue id={`${ownId}-${key}`} value={obj[key]} onChange={(v) => setProp(key, v)} disabled={disabled} />
             <Issues pathKey={keyOf([...path, key])} />
           </div>
         ),
@@ -852,10 +867,23 @@ export function FieldRow({
           : kindUnset === 'array'
             ? []
             : undefined;
-  const value = shownDefault;
+  // a text box showing its default that is emptied stays empty while it has the keyboard (so a new text can be typed from scratch), and shows the
+  // default again when left empty, as the setting is still not set
+  const [emptied, setEmptied] = useState(false);
+  const value = unset && emptied && kindUnset === 'string' ? '' : shownDefault;
   // an unset setting is set by a real change only: clearing an empty box leaves it unset
   // (a choice of kinds is a real change even when the chosen kind starts empty)
-  const onChange = unset && kindUnset !== 'union' ? (v) => (v === '' || v === undefined || v === null ? undefined : change(v)) : change;
+  const onChange =
+    unset && kindUnset !== 'union'
+      ? (v) => {
+          if (v === '' || v === undefined || v === null) {
+            if (v === '' && kindUnset === 'string') setEmptied(true);
+            return undefined;
+          }
+          setEmptied(false);
+          return change(v);
+        }
+      : change;
   const onRemove = unset ? null : remove;
   const shape = unset ? engine.resolveShape(schema, value) : declared;
   const kind = engine.kindOf(shape);
@@ -981,7 +1009,12 @@ export function FieldRow({
         )}
       </div>
       {rowHelp}
-      <div className="stFRowCtl" role={takesId ? undefined : 'group'} aria-labelledby={takesId ? undefined : labelId}>
+      <div
+        className="stFRowCtl"
+        role={takesId ? undefined : 'group'}
+        aria-labelledby={takesId ? undefined : labelId}
+        onBlur={emptied ? () => setEmptied(false) : undefined}
+      >
         <OwnerCtx.Provider value={name}>
           <Node
             schema={schema}
@@ -1115,7 +1148,8 @@ function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
       <StringList values={list} onChange={onChange} disabled={disabled} placeholder={Array.isArray(items.examples) ? String(items.examples[0]) : undefined} />
     );
   if (style === 'checks') {
-    // what a channel carries is limited by its kind: only what the kind can carry is offered, and a ticked value it cannot carry stays, marked, so it can be removed
+    // what a channel carries is limited by its kind: only what the kind can carry is offered, and a ticked value it
+    // cannot carry stays, marked, so it can be removed
     const limit = channelTypes ? modalityChoices(store.get(), channelTypes, path, list) : null;
     const options = items.enum.map(String).filter((o) => !limit || limit.allowed.includes(o) || limit.extra.includes(o));
     const labels = enumLabels(String(path[path.length - 1]), items.enum.map(String), { technical });
@@ -1162,8 +1196,11 @@ const CardItem = React.memo(function CardItem({
   onItemChange,
   onRemoveItem,
   onMoveItem,
+  sortKey,
 }) {
   const { title, hint: summary } = summarize(item, index);
+  // dragged by its handle to another place in the list, as the arrows move it one place
+  const sortable = useSortableItem(sortKey);
   const wantsLanguages = collection === 'messages' && isObj(item) && isObj(item.text);
   const languages = useConfigSelect((c) => (wantsLanguages ? languageHint(item, c) : ''));
   const baseHint = wantsLanguages ? languages : summary;
@@ -1178,9 +1215,11 @@ const CardItem = React.memo(function CardItem({
       hint={hint}
       defaultOpen={fresh || (roomy && (basePath.length > 1 ? index === 0 && count <= 3 : count <= 3))}
       onRemove={disabled ? null : () => onRemoveItem(index)}
+      sortable={sortable}
       actions={
         !disabled && count > 1 ? (
           <>
+            <DragHandle handle={sortable.handle} label={`Drag ${title}`} />
             <button type="button" className="stIconBtn" aria-label={`Move ${title} up`} disabled={index === 0} onClick={() => onMoveItem(index, index - 1)}>
               <Icon name="chevronUp" size={14} />
             </button>
@@ -1262,6 +1301,7 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
     if (isObj(made) && 'id' in made && made.id === '') made.id = uniqueId(takenIds, base);
     return made;
   };
+  const keys = useItemKeys(list);
   const add = (branch) => {
     onChange([...list, make(branch)]);
     setFresh(list.length);
@@ -1338,24 +1378,32 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
           )}
         </div>
       )}
-      {shown.map((index) => (
-        <CardItem
-          key={index}
-          item={list[index]}
-          index={index}
-          count={list.length}
-          basePath={path}
-          itemSchema={shape.items}
-          disabled={disabled}
-          named={named}
-          collection={collection}
-          fresh={index === fresh}
-          roomy={roomyCards[index]}
-          onItemChange={itemChange(index)}
-          onRemoveItem={removeItem}
-          onMoveItem={moveItem}
-        />
-      ))}
+      <SortableList
+        ids={shown.map((index) => keys[index])}
+        label="this list"
+        nameOf={(id) => summarize(list[keys.indexOf(id)], keys.indexOf(id)).title}
+        onMove={(from, to) => move(shown[from], shown[to])}
+      >
+        {shown.map((index) => (
+          <CardItem
+            key={keys[index]}
+            sortKey={keys[index]}
+            item={list[index]}
+            index={index}
+            count={list.length}
+            basePath={path}
+            itemSchema={shape.items}
+            disabled={disabled}
+            named={named}
+            collection={collection}
+            fresh={index === fresh}
+            roomy={roomyCards[index]}
+            onItemChange={itemChange(index)}
+            onRemoveItem={removeItem}
+            onMoveItem={moveItem}
+          />
+        ))}
+      </SortableList>
       {/* an empty list is just its "Add" (a line saying it is empty would only repeat that) */}
       {list.length === 0 && (collection === 'tools' || disabled) && (
         <p className="stFEmpty">
@@ -1502,7 +1550,7 @@ function KeyInput({ value, taken, pattern, onRename, disabled }) {
         spellCheck={false}
         value={text}
         disabled={disabled}
-        aria-label="Name"
+        aria-label={value ? `Name of “${value}”` : 'Name'}
         aria-invalid={!!error || undefined}
         onChange={(event) => setText(event.target.value)}
         onBlur={commit}
@@ -1520,6 +1568,7 @@ function KeyInput({ value, taken, pattern, onRename, disabled }) {
 
 function MapBody({ shape, value, path, onChange, disabled }) {
   const { engine, refOptions, markDelete, requestDelete, renameDirect } = useForm();
+  const mapId = useId(); // each entry's value box is named after its key ("Value of “verified”")
   const collectionName = collectionAt(path);
   const named = collectionName && COLLECTIONS[collectionName].kind === 'map' ? collectionName : null;
   const obj = isObj(value) ? value : {};
@@ -1558,13 +1607,14 @@ function MapBody({ shape, value, path, onChange, disabled }) {
 
   return (
     <div className="stFMap">
-      {keys.map((key) => {
+      {keys.map((key, i) => {
         const entryPath = [...path, key];
         const pk = keyOf(entryPath);
+        const valueId = `${mapId}-${i}`;
         const control = valueSchema ? (
-          <Node schema={valueSchema} value={obj[key]} path={entryPath} onChange={(v) => setEntry(key, v)} disabled={disabled} />
+          <Node schema={valueSchema} value={obj[key]} path={entryPath} onChange={(v) => setEntry(key, v)} disabled={disabled} id={valueId} />
         ) : (
-          <FreeValue value={obj[key]} onChange={(v) => setEntry(key, v)} disabled={disabled} />
+          <FreeValue id={valueId} value={obj[key]} onChange={(v) => setEntry(key, v)} disabled={disabled} />
         );
         if (complex) {
           return (
@@ -1603,6 +1653,9 @@ function MapBody({ shape, value, path, onChange, disabled }) {
               <KeyInput value={key} taken={keys.filter((k) => k !== key)} pattern={pattern} onRename={(to) => rename(key, to)} disabled={disabled} />
             )}
             <div className="stFMapValue">
+              <label htmlFor={valueId} className="srOnly">
+                Value of “{key}”
+              </label>
               {control}
               <Issues pathKey={pk} deep />
             </div>

@@ -165,7 +165,7 @@ html[data-style="premium"][data-theme] body .sidebar {
   --text-faint: #ab9b7e;
   --field-text: #fff5df;
 }
-html[data-style="premium"][data-theme] body .sidebar :is(.sideBottom, .userMenuWrap) {
+html[data-style="premium"][data-theme] body .sidebar .sideBottom {
   border-top-color: color-mix(in srgb, var(--metal) 20%, transparent);
 }
 html[data-style="premium"][data-theme] body .sidebar :is(.sideUtility, .userMenu) {
@@ -485,7 +485,6 @@ html:not([data-style="simple"])[data-theme]
     .progressCard,
     .quickCard,
     .metricCard,
-    .healthStrip,
     .stAgentSummary,
     .stCard,
     .nlRows,
@@ -541,11 +540,11 @@ html:not([data-style="simple"])[data-theme] body :is(.quickCard, .integrationCar
 html:not([data-style="simple"])[data-theme] body :is(h1, h2, h3) {
   font-family: var(--font-display);
 }
-html:not([data-style="simple"])[data-theme] body :is(.sideLink.selected, .nlNav button.on, .telephonyNavItem.active) {
+html:not([data-style="simple"])[data-theme] body :is(.sideLink.selected, .nlNav button.on) {
   background: var(--accent-soft);
   color: var(--accent-text);
 }
-html:not([data-style="simple"])[data-theme] body :is(.sideLink.selected i, .nlNav button.on .nlNavIcon, .telephonyNavItem.active span) {
+html:not([data-style="simple"])[data-theme] body :is(.sideLink.selected i, .nlNav button.on .nlNavIcon) {
   color: var(--accent-text);
 }
 html:not([data-style="simple"])[data-theme] body :is(.linkButton, .stLink:not(.stFHelp .stLink)) {
@@ -620,7 +619,6 @@ html[data-style="premium"][data-theme]
     .progressCard,
     .quickCard,
     .metricCard,
-    .healthStrip,
     .stCard,
     .nlRows,
     .nlSteps,
@@ -741,7 +739,7 @@ html[data-style="premium"][data-theme] body :is(.nlParts, .inTabs) button.on {
   box-shadow: inset 0 -2px 0 var(--gold);
 }
 /* chips: hairline, small capitals */
-html[data-style="premium"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
+html[data-style="premium"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag) {
   border-radius: 2px;
   letter-spacing: 0.06em;
 }
@@ -826,7 +824,7 @@ html[data-style="futuristic"][data-theme] body h3 {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-html[data-style="futuristic"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1, .heroCopy h1, .loginIntro h1, .featureHeader h1, .telephonyHeader h1) {
+html[data-style="futuristic"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1, .heroCopy h1, .loginIntro h1, .featureHeader h1) {
   background: var(--h1-fill);
   -webkit-background-clip: text;
   background-clip: text;
@@ -857,7 +855,7 @@ html[data-style="futuristic"][data-theme] body :is(.navLabel, .nlNavHead)::befor
 /* numbers glow */
 html[data-style="futuristic"][data-theme]
   body
-  :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong, .stAgentSummary strong, .lvTime, .inQCount, .csHistN) {
+  :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong, .stAgentSummary strong, .lvTime, .inQCount) {
   color: var(--readout);
   font-family: var(--font-mono);
   font-weight: 600;
@@ -874,7 +872,6 @@ html[data-style="futuristic"][data-theme]
     .progressCard,
     .quickCard,
     .metricCard,
-    .healthStrip,
     .stAgentSummary,
     .stCard,
     .nlRows,
@@ -1020,7 +1017,7 @@ html[data-style="futuristic"][data-theme] body :is(.nlParts, .inTabs) button.on 
   box-shadow: inset 0 -2px 0 var(--hud);
 }
 /* chips: readouts */
-html[data-style="futuristic"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
+html[data-style="futuristic"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag) {
   border-radius: 2px;
   font-family: var(--font-mono);
   letter-spacing: 0.06em;
@@ -1030,7 +1027,7 @@ html[data-style="futuristic"][data-theme] body :is(.stPill, .nlPill, .lvFlags li
 html[data-style="futuristic"][data-theme] body :is(.sideLink, .nlNav button) {
   border-radius: 2px;
 }
-html[data-style="futuristic"][data-theme] body :is(.sideLink.selected, .nlNav button.on, .telephonyNavItem.active) {
+html[data-style="futuristic"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 20%, transparent), transparent 85%);
   box-shadow: inset 2px 0 0 var(--hud);
 }
@@ -1057,10 +1054,6 @@ html[data-style="futuristic"][data-theme] body .stSwitch.on i {
 }
 html[data-style="futuristic"][data-theme] body :is(.lvDot, .inBell b) {
   box-shadow: 0 0 10px var(--glow);
-}
-html[data-style="futuristic"][data-theme] body .csHistBar i {
-  background: linear-gradient(90deg, var(--ink), var(--ink2));
-  box-shadow: 0 0 12px -2px var(--glow);
 }
 /* a scanning light that crosses the page head now and then */
 @media (prefers-reduced-motion: no-preference) {
@@ -1110,7 +1103,7 @@ html[data-style="vibrant"][data-theme] body :is(h1, h2) {
 html[data-style="vibrant"][data-theme] body h3 {
   font-weight: 750;
 }
-html[data-style="vibrant"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1, .heroCopy h1, .loginIntro h1, .featureHeader h1, .telephonyHeader h1) {
+html[data-style="vibrant"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1, .heroCopy h1, .loginIntro h1, .featureHeader h1) {
   background: var(--h1-fill);
   -webkit-background-clip: text;
   background-clip: text;
@@ -1132,7 +1125,6 @@ html[data-style="vibrant"][data-theme]
     .progressCard,
     .quickCard,
     .metricCard,
-    .healthStrip,
     .stAgentSummary,
     .stCard,
     .nlRows,
@@ -1202,21 +1194,19 @@ html[data-style="vibrant"][data-theme]
   }
 }
 /* number cards: each a colour of its own */
-html[data-style="vibrant"][data-theme]
-  body
-  :is(.lvStats > *, .csStats > *, .metricGrid > *, .metricCard, .telephonyStats > *, .mnKpis > *):is(:nth-child(7n + 1)) {
+html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricCard, .mnKpis > *):is(:nth-child(7n + 1)) {
   --hue: var(--hue-1);
 }
-html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricGrid > *, .metricCard, .telephonyStats > *, .mnKpis > *):nth-child(7n + 2) {
+html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricCard, .mnKpis > *):nth-child(7n + 2) {
   --hue: var(--hue-2);
 }
-html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricGrid > *, .metricCard, .telephonyStats > *, .mnKpis > *):nth-child(7n + 3) {
+html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricCard, .mnKpis > *):nth-child(7n + 3) {
   --hue: var(--hue-4);
 }
-html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricGrid > *, .metricCard, .telephonyStats > *, .mnKpis > *):nth-child(7n + 4) {
+html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricCard, .mnKpis > *):nth-child(7n + 4) {
   --hue: var(--hue-3);
 }
-html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricGrid > *, .metricCard, .telephonyStats > *, .mnKpis > *):nth-child(7n + 5) {
+html[data-style="vibrant"][data-theme] body :is(.lvStats > *, .csStats > *, .metricCard, .mnKpis > *):nth-child(7n + 5) {
   --hue: var(--hue-5);
 }
 html[data-style="vibrant"][data-theme] body :is(.lvStat, .csStat, .metricCard, .telephonyStatCard) {
@@ -1274,11 +1264,11 @@ html[data-style="vibrant"][data-theme] body :is(.nlParts, .inTabs) button.on {
   color: #ffffff;
   box-shadow: 0 6px 14px -8px var(--glow);
 }
-html[data-style="vibrant"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
+html[data-style="vibrant"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag) {
   border-radius: 999px;
 }
 /* the menu: every place has its own colour, and the open one is candy */
-html[data-style="vibrant"][data-theme] body :is(.sideLink, .nlNav button, .telephonyNavItem) {
+html[data-style="vibrant"][data-theme] body :is(.sideLink, .nlNav button) {
   border-radius: 14px;
 }
 html[data-style="vibrant"][data-theme] body .sideLink i,
@@ -1312,7 +1302,7 @@ html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav butto
 html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav button):nth-of-type(7n) {
   --hue: var(--hue-7);
 }
-html[data-style="vibrant"][data-theme] body :is(.sideLink.selected, .nlNav button.on, .telephonyNavItem.active) {
+html[data-style="vibrant"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
   background: var(--candy);
   color: #ffffff;
   box-shadow: 0 8px 18px -10px var(--glow);
@@ -1321,7 +1311,7 @@ html[data-style="vibrant"][data-theme] body :is(.sideLink.selected i, .nlNav but
   background: rgba(255, 255, 255, 0.22);
   color: #ffffff;
 }
-html[data-style="vibrant"][data-theme] body :is(.sideLink.selected em) {
+html[data-style="vibrant"][data-theme] body .sideLink.selected em {
   background: rgba(255, 255, 255, 0.24);
   color: #ffffff;
 }
@@ -1338,9 +1328,6 @@ html[data-style="vibrant"][data-theme] body :is(.nlRowIcon, .nlDrawerIcon) {
   color: var(--accent-text);
 }
 html[data-style="vibrant"][data-theme] body .stSwitch.on i {
-  background: var(--candy);
-}
-html[data-style="vibrant"][data-theme] body .csHistBar i {
   background: var(--candy);
 }
 html[data-style="vibrant"][data-theme] body :is(.dashboard .dashTopbar.dashTopbar, .nlBar) {
@@ -1643,7 +1630,7 @@ html[data-style="vibrant"][data-theme] body .sidebar {
   font-size: var(--fs-sm);
   font-weight: 500;
 }
-.styleMenuModes button[aria-pressed="true"] {
+.styleMenuModes button:is([aria-pressed="true"], [aria-checked="true"]) {
   background: var(--panel);
   color: var(--textStrong);
   box-shadow: var(--raise);
@@ -1952,7 +1939,6 @@ html[data-style="professional"][data-theme]
     .progressCard,
     .quickCard,
     .metricCard,
-    .healthStrip,
     .stAgentSummary,
     .stCard,
     .nlRows,
@@ -2006,7 +1992,7 @@ html[data-style="professional"][data-theme] body :is(.lvStat, .csStat, .metricCa
     inset 0 2px 0 var(--accent),
     var(--card-shadow);
 }
-html[data-style="professional"][data-theme] body :is(.lvStat.bad) {
+html[data-style="professional"][data-theme] body .lvStat.bad {
   box-shadow:
     inset 0 2px 0 var(--danger-text),
     var(--card-shadow);
@@ -2025,7 +2011,7 @@ html[data-style="professional"][data-theme] body :is(.primaryCta, .topStart):hov
   opacity: 1;
   filter: brightness(0.92);
 }
-html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta, .nlBtn, .themeToggle, .profileDot) {
+html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta, .nlBtn, .profileDot) {
   border-radius: 4px;
 }
 html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta):hover:not(:disabled) {
@@ -2060,14 +2046,14 @@ html[data-style="professional"][data-theme] body :is(.nlParts, .inTabs) button.o
   color: var(--accent-text);
   box-shadow: inset 0 -2px 0 var(--accent);
 }
-html[data-style="professional"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
+html[data-style="professional"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag) {
   border-radius: 4px;
 }
 /* the menu: a blue edge on the open page */
-html[data-style="professional"][data-theme] body :is(.sideLink, .nlNav button, .telephonyNavItem) {
+html[data-style="professional"][data-theme] body :is(.sideLink, .nlNav button) {
   border-radius: 4px;
 }
-html[data-style="professional"][data-theme] body :is(.sideLink.selected, .nlNav button.on, .telephonyNavItem.active) {
+html[data-style="professional"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
   box-shadow: inset 3px 0 0 var(--accent);
   font-weight: 600;
 }
@@ -2077,9 +2063,6 @@ html[data-style="professional"][data-theme] body :is(.agentRowAvatar, .workspace
 html[data-style="professional"][data-theme] body .workspaceAvatar {
   background: var(--ink);
   color: var(--on-ink);
-}
-html[data-style="professional"][data-theme] body .csHistBar i {
-  background: var(--accent);
 }
 html[data-style="professional"][data-theme] body .assistantFace {
   background: radial-gradient(circle at 45% 35%, #cfe0ff, #3b82f6 30%, #0f1f3d 74%);
@@ -2234,7 +2217,6 @@ html[data-style="calm"][data-theme]
     .progressCard,
     .quickCard,
     .metricCard,
-    .healthStrip,
     .stAgentSummary,
     .stCard,
     .nlRows,
@@ -2297,7 +2279,7 @@ html[data-style="calm"][data-theme] body :is(.primaryCta, .topStart):hover:not(:
   filter: brightness(1.07);
   box-shadow: 0 10px 24px -14px rgba(40, 70, 45, 0.7);
 }
-html[data-style="calm"][data-theme] body :is(.quietButton, .secondaryCta, .nlBtn, .themeToggle, .stAddBtn) {
+html[data-style="calm"][data-theme] body :is(.quietButton, .secondaryCta, .nlBtn, .stAddBtn) {
   border-radius: 12px;
 }
 html[data-style="calm"][data-theme] body :is(.quietButton, .secondaryCta):hover:not(:disabled) {
@@ -2321,14 +2303,14 @@ html[data-style="calm"][data-theme] body :is(.nlParts, .inTabs, .segmented, .stF
 html[data-style="calm"][data-theme] body :is(.nlParts, .inTabs) button.on {
   color: var(--accent-text);
 }
-html[data-style="calm"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag, .versionTag) {
+html[data-style="calm"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inChip, .lvChannel, .lvOutcome, .inStatus, .cardTag) {
   border-radius: 999px;
 }
 /* the menu: a soft green pill for the open page */
-html[data-style="calm"][data-theme] body :is(.sideLink, .nlNav button, .telephonyNavItem) {
+html[data-style="calm"][data-theme] body :is(.sideLink, .nlNav button) {
   border-radius: 12px;
 }
-html[data-style="calm"][data-theme] body :is(.sideLink.selected, .nlNav button.on, .telephonyNavItem.active) {
+html[data-style="calm"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
   font-weight: 600;
 }
 html[data-style="calm"][data-theme] body :is(.agentRowAvatar, .workspaceAvatar, .nlRowIcon, .nlDrawerIcon) {
@@ -2338,9 +2320,6 @@ html[data-style="calm"][data-theme] body :is(.agentRowAvatar, .workspaceAvatar, 
   color: var(--accent-text);
 }
 html[data-style="calm"][data-theme] body .stSwitch.on i {
-  background: var(--accent);
-}
-html[data-style="calm"][data-theme] body .csHistBar i {
   background: var(--accent);
 }
 html[data-style="calm"][data-theme] body :is(.dashboard .dashTopbar.dashTopbar, .nlBar) {

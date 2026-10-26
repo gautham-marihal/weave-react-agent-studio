@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import Drawer from '../newlayout/Drawer.jsx';
+import Drawer from '../agent/Drawer.jsx';
 import AccessPicker from './AccessPicker.jsx';
 import { useTeam } from './useTeam.js';
 import { addMembers, agentsScope, checkInvite, grantAgent, hueOf, initialsOf, makeMember, peopleWithAccess, revokeAgent, roleOf } from './teamModel.js';
+import Select from '../../ui/Select.tsx';
 import './team.css';
 
 const VIA = { workspace: 'Whole workspace', agent: 'This agent only' };
 
-// "Who can open this agent?" from inside the agent: the people who can (some because they have the whole workspace, some because this agent was shared with
-// them), and a way to share just this one agent with someone, by their address or from the people already on the team. The rest of the workspace stays
-// closed to them; that is chosen from the Team page.
+// "Who can open this agent?" from inside the agent: the people who can (some because they have the whole workspace,
+// some because this agent was shared with them), and a way to share just this one agent with someone, by their address
+// or from the people already on the team. The rest of the workspace stays closed to them; that is chosen from the Team
+// page.
 export default function ShareAgentDrawer({ botId, name, onClose, onOpenTeam }) {
   const { members, update } = useTeam();
   const agent = useMemo(() => ({ id: botId, name }), [botId, name]);
@@ -149,7 +151,7 @@ export default function ShareAgentDrawer({ botId, name, onClose, onOpenTeam }) {
             <div className="tmField">
               <label htmlFor="tm-existing">Or someone already on the team</label>
               <div className="tmExisting">
-                <select
+                <Select
                   id="tm-existing"
                   className="stFInput"
                   aria-label="Someone already on the team"
@@ -169,7 +171,7 @@ export default function ShareAgentDrawer({ botId, name, onClose, onOpenTeam }) {
                       {m.scope.agents ? `${m.scope.agents.length} agent${m.scope.agents.length === 1 ? '' : 's'}` : 'no agents'})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <small>They keep their role and the agents they already have; this adds {name}.</small>
             </div>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { isDemoMode } from '../../demo/demoMode.js';
 import { ASSISTANT, MIN_DESCRIPTION, generateDraft } from '../../demo/draftAssistant.js';
 import { minimalConfig } from '../../demo/minimalConfig.js';
@@ -13,14 +13,17 @@ import { usePref } from '../usePref.js';
 import { buildWorkflow, describeWorkflow } from '../workflow/workflowModel.js';
 import { countChanges, diffConfigs, groupChanges } from './diffConfig.js';
 import { askAssistant, loadStatus, postToModel } from './engine.js';
+import Select from '../../ui/Select.tsx';
 import './assistant.css';
 import { askConfirm } from '../../ui/dialogs.js';
 
-// "Describe it": a place to say, in plain English, what the agent should be and do, and have the AI make the settings. Nothing is changed behind anyone's back:
-// the answer arrives as a proposal (what it built, what it assumed, what it still needs to know, what would change, how a call would move), is checked by the
-// same validator as a hand-made draft, and only goes into the draft when "Apply" is pressed. Once applied, the answer turns into a summary of exactly what
-// changed, and a running list of everything changed here sits beside the conversation, next to what the agent is now. It edits the same draft as Config,
-// Workflow and the JSON, so whatever it makes is there to read and change by hand.
+// "Describe it": a place to say, in plain English, what the agent should be and do, and have the AI make the settings.
+// Nothing is changed behind anyone's back: the answer arrives as a proposal (what it built, what it assumed, what it
+// still needs to know, what would change, how a call would move), is checked by the same validator as a hand-made
+// draft, and only goes into the draft when "Apply" is pressed. Once applied, the answer turns into a summary of exactly
+// what changed, and a running list of everything changed here sits beside the conversation, next to what the agent is
+// now. It edits the same draft as Config, Workflow and the JSON, so whatever it makes is there to read and change by
+// hand.
 const EXAMPLES = [
   {
     title: 'A clinic receptionist',
@@ -248,13 +251,13 @@ export default function AssistantTab({ editor, botId, name, onShowSetting = null
             <span className="asBadge ai">
               <Icon name="sparkle" size={14} /> AI ·{' '}
               {models.length > 1 ? (
-                <select aria-label="Which AI model" value={model} onChange={(event) => setModelPref(event.target.value)} disabled={busy}>
+                <Select aria-label="Which AI model" value={model} onChange={(event) => setModelPref(event.target.value)} disabled={busy}>
                   {models.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : (
                 model
               )}

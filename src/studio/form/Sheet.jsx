@@ -2,16 +2,19 @@ import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
 
-// How deep a group sits on its screen. A group on the screen itself (depth 0) is drawn in place; a group inside it opens in a sheet from the right instead of
-// as another box inside the box, so a screen is never more than one level deep. Inside a sheet the count starts again.
+// How deep a group sits on its screen. A group on the screen itself (depth 0) is drawn in place; a group inside it
+// opens in a sheet from the right instead of as another box inside the box, so a screen is never more than one level
+// deep. Inside a sheet the count starts again.
 export const DepthCtx = createContext(0);
-// The titles of the sheets open around this one, outermost first: a sheet says where it is ("Conversation flow › When the caller goes quiet") and goes back.
+// The titles of the sheets open around this one, outermost first: a sheet says where it is ("Conversation flow › When
+// the caller goes quiet") and goes back.
 export const TrailCtx = createContext([]);
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]';
 
-// A panel that slides in from the right over the screen, with the settings of one group. Edits in it are part of the form like any other (Undo works the same);
-// Done, Escape and the shade close it, and closing puts the keyboard back on the row that opened it. Tab stays inside it.
+// A panel that slides in from the right over the screen, with the settings of one group. Edits in it are part of the
+// form like any other (Undo works the same); Done, Escape and the shade close it, and closing puts the keyboard back on
+// the row that opened it. Tab stays inside it.
 export default function Sheet({ title, onClose, actions = null, children, pathKey }) {
   const trail = useContext(TrailCtx);
   const ref = useRef(null);

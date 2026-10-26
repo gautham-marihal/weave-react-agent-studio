@@ -6,8 +6,9 @@ import { isObj } from './form/engine.js';
 import { describeSetting } from './form/plainLanguage.js';
 import { SKIPPED_SECTIONS, layoutFor, viewForPath } from './form/layout.js';
 
-// What the platform sets up for you and the studio never asks for: a phone channel's number, trunk and routing rule (they are made when a phone number is
-// added under Releases › Deploy). Offering them as settings would lead to a field that isn't there.
+// What the platform sets up for you and the studio never asks for: a phone channel's number, trunk and routing rule
+// (they are made when a phone number is added under Releases › Deploy). Offering them as settings would lead to a field
+// that isn't there.
 const PLATFORM_SET = new Set(['channels.[].entry.dnis', 'channels.[].entry.sip_trunk', 'channels.[].entry.dispatch_rule']);
 
 // The everyday words for a part of the configuration that its own name does not use ("opening hours" for business hours), by its path. They find the

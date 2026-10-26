@@ -9,11 +9,11 @@ import { COLLECTIONS, ID_PATTERN, describeUsage, findUsage } from './references.
 
 const wordOf = (collection) => COLLECTIONS[collection]?.word || 'item';
 
-export function IdChip({ id, onRename, disabled, label = 'Id' }) {
+export function IdChip({ id, onRename, disabled }) {
   return (
     <div className="stFRow wide stFIdRow">
       <div className="stFLabel">
-        <label>{label}</label>
+        <label>Id</label>
         <span className="stFTag" title="Other parts of the agent point at this key, so it isn’t edited in place. Rename… changes it everywhere.">
           permanent key
         </span>

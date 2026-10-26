@@ -25,7 +25,6 @@ function readProperty(name, schema, required) {
   const extra = Object.fromEntries(keys.filter((key) => !SIMPLE_KEYS.includes(key)).map((key) => [key, raw[key]]));
   const hasChoices = Array.isArray(raw.enum) && raw.enum.length > 0 && raw.enum.every((item) => typeof item === 'string');
   const known = ['string', 'number', 'integer', 'boolean'].includes(raw.type) && (raw.enum === undefined || (raw.type === 'string' && hasChoices));
-  const advanced = !known || Object.keys(extra).length > 0;
   return {
     name,
     kind: !known ? 'advanced' : hasChoices ? 'choice' : raw.type,
@@ -33,7 +32,7 @@ function readProperty(name, schema, required) {
     choices: hasChoices ? raw.enum : [],
     required: required.includes(name),
     extra, // other keywords of this property, written back untouched
-    raw: advanced && !known ? raw : undefined,
+    raw: !known ? raw : undefined,
   };
 }
 

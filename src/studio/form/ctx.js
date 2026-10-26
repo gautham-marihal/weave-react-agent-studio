@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useSyncExternalStore } from 'react';
+import { createContext, useCallback, useContext, useRef, useState, useSyncExternalStore } from 'react';
 import { formatPath } from '../format.js';
 
 // Shared by every node of the form: the schema engine, the ids that references may point at, the
@@ -76,6 +76,35 @@ export function useKeyedHandlers(call) {
     }
     return handler;
   }, []);
+}
+
+// React keys for the items of a list that go with the items, not with their places: so what belongs to an item (its
+// card open or shut, its sheet, the keyboard on its Move button) goes with it when it is moved, and goes away with it
+// when it is deleted, from here or from anywhere else. An item keeps its key when it is the same object, or else has
+// the same content, as an item before (a moved item is parsed again as a new object); what is left is paired up in
+// order, so the item being typed in, whose content changes with every letter, keeps its key too.
+let keySeq = 0;
+const newKey = () => {
+  keySeq += 1;
+  return `item-${keySeq}`;
+};
+export function useItemKeys(list) {
+  const [state, setState] = useState(() => ({ items: list, keys: list.map(newKey) }));
+  if (state.items === list || (state.items.length === list.length && state.items.every((item, i) => item === list[i]))) return state.keys;
+  const used = new Set();
+  const take = (same) => (item) => {
+    const at = state.items.findIndex((old, i) => !used.has(i) && same(old, item));
+    if (at === -1) return null;
+    used.add(at);
+    return state.keys[at];
+  };
+  const byObject = list.map((item) => (item !== null && typeof item === 'object' ? take((old, x) => old === x)(item) : null));
+  const json = (v) => JSON.stringify(v);
+  const byContent = byObject.map((key, i) => key ?? take((old, x) => json(old) === json(x))(list[i]));
+  const left = state.keys.filter((_, i) => !used.has(i));
+  const keys = byContent.map((key) => key ?? left.shift() ?? newKey());
+  setState({ items: list, keys });
+  return keys;
 }
 
 // Returns the previous value when the new one is the same JSON, so something rebuilt on every change (the lists of ids) keeps one identity

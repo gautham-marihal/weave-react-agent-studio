@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 
 // One list of agents for the whole app: the Agents page, the Overview, search, Settings, Telephony and
 // Readiness checks all read it, so they can never disagree. It is the Agent Builder API's list (GET /bots) plus two
@@ -78,6 +78,12 @@ const set = (patch) => {
   state = { ...state, ...patch };
   listeners.forEach((listener) => listener());
 };
+// which workspace each agent is in, changed in another tab: followed here, so this tab's next change doesn't put back what it had before
+if (browser && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === OWNERS_KEY || event.key === null) set({ owners: readOwners() });
+  });
+}
 const subscribe = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -125,7 +131,8 @@ export const switchWorkspace = (workspaceId) => {
 };
 
 export function assignBot(botId, workspaceId) {
-  const owners = { ...state.owners, [botId]: workspaceId };
+  // from what is stored now (another tab may have moved an agent since this one last read it)
+  const owners = { ...state.owners, ...readOwners(), [botId]: workspaceId };
   writeOwners(owners);
   set({ owners });
 }
@@ -148,7 +155,8 @@ export function restoreBot(id) {
   set({ hidden });
 }
 
-// Delete from the removed list: the agent stays on the server and is only forgotten here. Undone together by `undoDismissed`, which puts them back in the removed list.
+// Delete from the removed list: the agent stays on the server and is only forgotten here. Undone together by
+// `undoDismissed`, which puts them back in the removed list.
 export function dismissBot(id) {
   if (state.dismissed.includes(id)) return;
   const dismissed = [...state.dismissed, id];

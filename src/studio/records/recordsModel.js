@@ -1,6 +1,6 @@
 // The decisions that sit behind defaults and that a customer should be told about in plain words: where conversations are processed, what is
 // kept about each call and for how long, whether callers are told they may be recorded, and whether sensitive details are hidden. Each is
-// read from the configuration and written back as an ordinary field, so the Simple view, the form, the JSON and the release page agree.
+// read from the configuration and written back as an ordinary field, so the agent's pages, the form, the JSON and the release page agree.
 // The wording follows what the schema says the runtime does; where the schema says something is not applied yet, so does this.
 // Pure: no network, no DOM.
 
@@ -99,10 +99,11 @@ export function readRecords(config) {
   };
 }
 
-// What the server says the runtime cannot do yet (`unsupported` in the validator's answer: [{ feature, where, severity? }]), narrowed to one part of the
-// config. What is said about records has to follow it: a setting the runtime does not apply must never be described as done. It is matched by what the
-// item NAMES, never by its severity, because other, unrelated items can be "security" too (guardrails on a speech-to-speech model, say). A server that
-// enforces the part does not list it, and then nothing here changes.
+// What the server says the runtime cannot do yet (`unsupported` in the validator's answer: [{ feature, where, severity?
+// }]), narrowed to one part of the config. What is said about records has to follow it: a setting the runtime does not
+// apply must never be described as done. It is matched by what the item NAMES, never by its severity, because other,
+// unrelated items can be "security" too (guardrails on a speech-to-speech model, say). A server that enforces the part
+// does not list it, and then nothing here changes.
 export const notApplied = (unsupported, pattern) =>
   list(unsupported).filter((item) => isObj(item) && pattern.test(`${item.where || ''} ${item.feature || ''}`));
 const REDACTION = /post_call\.redaction|redaction/i;
@@ -200,7 +201,7 @@ export const setLogEnabled = (config, on) =>
 export function setLogDays(config, days) {
   return edit(config, (next) => {
     const log = sessionLog(next);
-    if (days === null || days === undefined || days === '' || !(Number(days) >= 1)) delete log.retention_days;
+    if (days === null || days === undefined || days === '' || Number.isNaN(Number(days)) || Number(days) < 1) delete log.retention_days;
     else log.retention_days = Math.floor(Number(days));
   });
 }
@@ -215,13 +216,13 @@ export const setKeepTranscript = (config, on) =>
 export function setRecordingDays(config, days) {
   return edit(config, (next) => {
     const rec = recording(next);
-    if (days === null || days === undefined || days === '' || !(Number(days) >= 1)) delete rec.retention_days;
+    if (days === null || days === undefined || days === '' || Number.isNaN(Number(days)) || Number(days) < 1) delete rec.retention_days;
     else rec.retention_days = Math.floor(Number(days));
   });
 }
 
-// What the agent already handles that is worth hiding: card numbers, what its Guardrails' personal-details checks look for, and PINs when a value it keeps
-// sensitive is named like one.
+// What the agent already handles that is worth hiding: card numbers, what its Guardrails' personal-details checks look
+// for, and PINs when a value it keeps sensitive is named like one.
 export function sensitiveEntities(config) {
   const entities = new Set(['card_number']);
   ['input', 'output'].forEach((side) =>

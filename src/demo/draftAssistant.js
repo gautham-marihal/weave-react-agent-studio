@@ -6,10 +6,10 @@
 // `generate` with the same inputs and outputs: { config, summary, assumptions, questions, source }, behind `ASSISTANT`.
 // Pure: no network, no DOM, no randomness.
 
-import { STARTERS, addPersonHandoff, applyStarter } from '../studio/starters.js';
+import { STARTERS, addPersonHandoff, applyStarter } from '../studio/starters.ts';
 import { buildChannel } from '../studio/form/presets.js';
 import { setProvider } from '../studio/models/config.js';
-import { baseOf } from '../studio/form/messages.js';
+import { baseOf } from '../studio/form/messages.ts';
 import { languageName } from '../studio/simple/simpleModel.js';
 
 export const ASSISTANT = {
@@ -157,11 +157,8 @@ export function generateDraft(description, base, { name } = {}) {
   // 3. channels
   const voiceWords = ['voice', 'phone', 'call', 'calls', 'calling', 'dial', 'ring'];
   const chatWords = ['chat', 'website', 'widget', 'web chat', 'text'];
-  const voice =
-    has(
-      text,
-      voiceWords.map((w) => ` ${w}`),
-    ) || has(text, ['phone', 'voice', 'calls']);
+  // whole words: "called Maya" names it, it doesn't mean phone calls
+  const voice = voiceWords.some((w) => new RegExp(String.raw`\b${w}\b`, 'i').test(text));
   const chat = has(text, chatWords);
   const wanted = [];
   if (voice) wanted.push('phone');

@@ -23,6 +23,7 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
   const agentRef = useRef(null);
   const timersRef = useRef(new Set());
   const aliveRef = useRef(true);
+  const attemptRef = useRef(0); // which start is the current one (see startFor)
   const startedRef = useRef(null);
   const infoRef = useRef(null);
   const messagesRef = useRef([]);
@@ -112,6 +113,9 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
   const startFor = useCallback(
     async (botId, options = {}) => {
       if (['starting', 'connecting', 'waiting', 'live'].includes(status)) return;
+      // which start is the current one: End moves it on, so a start still reading the configuration stops where it is
+      attemptRef.current += 1;
+      const attempt = attemptRef.current;
       clearTimers();
       setError(null);
       setMessages([]);
@@ -127,12 +131,12 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
         config = await getConfigRef.current?.(ref);
         if (!config || typeof config !== 'object') throw new Error('There is no configuration to simulate yet.');
       } catch (err) {
-        if (!aliveRef.current) return;
+        if (!aliveRef.current || attempt !== attemptRef.current) return;
         setError({ title: 'Couldn’t start the simulation', body: err.message || 'The configuration could not be read.' });
         setStatus('error');
         return;
       }
-      if (!aliveRef.current) return;
+      if (!aliveRef.current || attempt !== attemptRef.current) return;
       const played = chooseSimulatedChannel(config, options.channelId);
       const agent = createSimulatedAgent(config, { ...options, channelId: played?.id || options.channelId });
       agentRef.current = agent;
@@ -161,6 +165,11 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
             ? `Simulated as the voice channel “${played.id}”, written out as text: a simulation has no microphone.`
             : `This agent has no text channel, so it is simulated on its voice channel “${played.id}”, written out as text.`,
         );
+      // the agent's first lines, one at a time, and then the conversation is live
+      const greet = () => {
+        agent.greeting().forEach((message, index) => later(() => push({ ...message, role: 'bot' }), index * THINK_MS));
+        later(() => setStatus('live'), 0);
+      };
       later(() => {
         startedRef.current = Date.now();
         recordedRef.current = false;
@@ -174,16 +183,14 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
         });
         addRecord('agent_entered', { agent: agent.currentAgent, first: true });
         setStatus('waiting');
-        later(() => {
-          agent.greeting().forEach((message, index) => later(() => push({ ...message, role: 'bot' }), index * THINK_MS));
-          later(() => setStatus('live'), 0);
-        }, 250);
+        later(greet, 250);
       }, 250);
     },
     [addRecord, clearTimers, later, log, push, status],
   );
 
   const stop = useCallback(() => {
+    attemptRef.current += 1;
     finish('user');
     clearTimers();
     setStatus('idle');

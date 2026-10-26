@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { isObj } from './engine.js';
 import { useConfigSelect, useForm } from './ctx.js';
 import TemplateField from './TemplateField.jsx';
-import { scopeAt } from './templates.js';
-import { LANGUAGE_PATTERN, hasLanguage, languageProblem, languageStatus, primaryOf, toLanguages, toPlain, wantedLanguages } from './messages.js';
+import { scopeAt } from './templates.ts';
+import { LANGUAGE_PATTERN, hasLanguage, languageProblem, languageStatus, primaryOf, toLanguages, toPlain, wantedLanguages } from './messages.ts';
 import Icon from '../../ui/Icon.jsx';
 
 // The text of a message: one line for everyone, or the same line per language. In per-language mode every language the agent speaks

@@ -417,7 +417,7 @@ textarea.stFInput {
 }
 .stFCards > .stAddBtn,
 .stFCards > .stPicker > .stAddBtn,
-.stFCards > select.stFInput.small,
+.stFCards > :is(select, button:where(.rxSelect)).stFInput.small,
 .stFCards > .stCombo .stComboInput {
   width: 100%;
   min-height: 48px;
@@ -442,7 +442,7 @@ textarea.stFInput {
 }
 .stFCards > .stAddBtn:hover:not(:disabled),
 .stFCards > .stPicker > .stAddBtn:hover:not(:disabled),
-.stFCards > select.stFInput.small:hover,
+.stFCards > :is(select, button:where(.rxSelect)).stFInput.small:hover,
 .stFCards > .stCombo .stComboInput:hover {
   background: var(--surface2);
   color: var(--textStrong);
@@ -509,15 +509,15 @@ textarea.stFInput {
 }
 .stActions ~ .stCombo,
 .stActions ~ .stCombo .stComboInput,
-.stActions ~ select.stFInput.small {
+.stActions ~ :is(select, button:where(.rxSelect)).stFInput.small {
   width: 100%;
 }
 .stActions ~ .stCombo,
-.stActions ~ select.stFInput.small {
+.stActions ~ :is(select, button:where(.rxSelect)).stFInput.small {
   margin-top: 10px;
 }
 .stActions ~ .stCombo .stComboInput,
-.stActions ~ select.stFInput.small {
+.stActions ~ :is(select, button:where(.rxSelect)).stFInput.small {
   min-height: 44px;
   border-style: dashed;
   background: transparent;
@@ -581,9 +581,9 @@ textarea.stFInput {
   padding: 0;
   border: 0;
 }
-.stFAddRow select.stFInput.small,
+.stFAddRow :is(select, button:where(.rxSelect)).stFInput.small,
 .stFAddRow .stCombo,
-.stFGroupBody .stFAddRow select.stFInput.small,
+.stFGroupBody .stFAddRow :is(select, button:where(.rxSelect)).stFInput.small,
 .stFGroupBody .stFAddRow .stCombo {
   width: auto;
   min-width: 0;
@@ -597,8 +597,8 @@ textarea.stFInput {
   font-size: var(--fs-md);
   font-weight: 500;
 }
-.stFAddRow select.stFInput.small:hover,
-.stFGroupBody .stFAddRow select.stFInput.small:hover,
+.stFAddRow :is(select, button:where(.rxSelect)).stFInput.small:hover,
+.stFGroupBody .stFAddRow :is(select, button:where(.rxSelect)).stFInput.small:hover,
 .stFGroupBody .stFAddRow .stCombo:hover,
 .stFGroupBody .stFAddRow .stCombo:focus-within {
   border: 1px solid var(--line2);
@@ -1057,7 +1057,7 @@ body .stTpl > .stTplInsert > summary {
 }
 
 /* a value the server sets: shown, not editable, and it looks it */
-html[data-theme] body .stFRow.ro .stFRowCtl :is(input, textarea, select):disabled {
+html[data-theme] body .stFRow.ro .stFRowCtl :is(input, textarea, :is(select, button:where(.rxSelect))):disabled {
   border-style: dashed;
   background: color-mix(in srgb, var(--surface2) 70%, transparent);
   color: var(--text);

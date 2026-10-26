@@ -17,8 +17,8 @@ export const STATES = {
   draft: { id: 'draft', label: 'Draft', tone: 'draft', hint: 'Still being built.' },
 };
 
-// `deployed`: { development: '0.1.0', production: null… } as the API gives it. `tests`: 'passed' | 'failed' | 'none' | 'unknown'. `problems`: the number
-// of things wrong (errors, failing tests counted separately by `tests`).
+// `deployed`: { development: '0.1.0', production: null… } as the API gives it. `tests`: 'passed' | 'failed' | 'none' |
+// 'unknown'. `problems`: the number of things wrong (errors, failing tests counted separately by `tests`).
 export function agentState({ deployed = {}, tests = 'unknown', problems = 0 } = {}) {
   const live = (env) => !!(deployed && deployed[env]);
   if (problems > 0 || tests === 'failed') return STATES.attention;
@@ -29,10 +29,10 @@ export function agentState({ deployed = {}, tests = 'unknown', problems = 0 } = 
   return STATES.draft;
 }
 
-// The line under an agent's name: the parts worth saying, each with a tone. A part with nothing to say is left out (the number of calls is unknown
-// until it has been read, and nothing is claimed about it before then).
-// What is said about the tests, from how the scenarios stand (see summariseScenarios in scenarios/runResults.js): every scenario counted by its own latest
-// result, so "4 of 7 passing" can never hide that three have not been run.
+// The line under an agent's name: the parts worth saying, each with a tone. A part with nothing to say is left out (the
+// number of calls is unknown until it has been read, and nothing is claimed about it before then). What is said about
+// the tests, from how the scenarios stand (see summariseScenarios in scenarios/runResults.js): every scenario counted
+// by its own latest result, so "4 of 7 passing" can never hide that three have not been run.
 export function testsPart(s) {
   if (!s || !s.total) return { id: 'tests', text: 'No tests written', tone: 'idle' };
   const said = (n, what) => (n ? `${n} ${what}` : '');

@@ -50,8 +50,9 @@ export function playSimulated(config, original) {
   return facts;
 }
 
-// What a run of the scenario runner answers for one scenario (a result of GET /tests/runs/{id}), read as facts. The records of the run are used when it
-// has them (they carry the waiting times and the hand-offs); otherwise its transcript and tool list.
+// What a run of the scenario runner answers for one scenario (a result of GET /tests/runs/{id}), read as facts. The
+// records of the run are used when it has them (they carry the waiting times and the hand-offs); otherwise its
+// transcript and tool list.
 export function factsFromResult(result, { channelId = '' } = {}) {
   if (!result) return null;
   const events = list(result.events);

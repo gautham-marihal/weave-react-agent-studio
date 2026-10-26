@@ -1,8 +1,9 @@
-// Keeps the Live board up to date, and only reads. Every few seconds it asks each agent for its calls in progress (a few agents at a time); a call it has not
-// seen is read once (its records so far) and then followed record by record through the call stream; past `maxFollowed` calls, the rest are read again
-// on each round instead, so a busy workspace does not open a stream per call. A call that leaves the list is read once more to learn how it ended. Calls
-// that ended in the last minutes are listed too, and kept for RECENT_MS. Nothing here knows React: the page subscribes to `onChange`; the tests drive it
-// with a fake api, a fake stream and a fake clock.
+// Keeps the Live board up to date, and only reads. Every few seconds it asks each agent for its calls in progress (a
+// few agents at a time); a call it has not seen is read once (its records so far) and then followed record by record
+// through the call stream; past `maxFollowed` calls, the rest are read again on each round instead, so a busy workspace
+// does not open a stream per call. A call that leaves the list is read once more to learn how it ended. Calls that
+// ended in the last minutes are listed too, and kept for RECENT_MS. Nothing here knows React: the page subscribes to
+// `onChange`; the tests drive it with a fake api, a fake stream and a fake clock.
 
 import { RECENT_MS } from './liveModel.js';
 

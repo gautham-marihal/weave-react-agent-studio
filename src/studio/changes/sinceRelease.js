@@ -1,9 +1,11 @@
-// What the draft changes compared with the newest published version, by part of the agent, in plain words; and a way to put one part back as it was published.
+// What the draft changes compared with the newest published version, by part of the agent, in plain words; and a way to
+// put one part back as it was published.
 // Pure: no React, no DOM.
 
 import { diffConfigs, describeChange, sectionOf } from '../assistant/diffConfig.js';
 
-// set by the server when a version is published, and the studio's own notes (where blocks sit in the Workflow): real, but not what anyone came to review
+// set by the server when a version is published, and the studio's own notes (where blocks sit in the Workflow): real,
+// but not what anyone came to review
 const BOOKKEEPING = new Set(['version', 'status', 'created_at', 'updated_at']);
 const quiet = (change) => change.path[0] === 'builder' || (change.path[0] === 'meta' && change.path.length === 2 && BOOKKEEPING.has(change.path[1]));
 

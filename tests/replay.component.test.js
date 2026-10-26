@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { $, $$, actions, byText, setupDom, teardownDom, textOf } from './component/dom.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { createDemoApi, minimalConfig } from '../src/demo/demoApi.js';
 
 // A call replayed against the draft and kept as a test, and the monitoring page over the same calls. Demo mode: the answers come from the imitation API.

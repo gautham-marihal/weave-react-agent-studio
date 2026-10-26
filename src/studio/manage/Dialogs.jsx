@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { assignBot, patchBot, refreshBots, switchWorkspace, useWorkspaces } from '../agents.js';
 import { envLabel, Modal, Notice, Spinner } from '../ui.jsx';
 import { useAsync } from '../useAsync.js';

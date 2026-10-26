@@ -31,7 +31,7 @@ const SOURCE = {
   approximate: { text: 'approximate', title: 'The server could not be asked, so this was built in your browser and its wording and order may differ' },
 };
 
-// `config` is given by a screen that has the whole config in hand (the Simple view); inside the form it is read from the form's store.
+// `config` is given by a screen that has the whole config in hand (the Agent page); inside the form it is read from the form's store.
 export function PromptPreviewFromForm({ agentId }) {
   const config = useConfigSelect((c) => c, Object.is);
   return <PromptPreview agentId={agentId} config={config} />;
@@ -40,6 +40,7 @@ export function PromptPreviewFromForm({ agentId }) {
 export default function PromptPreview({ agentId, config }) {
   const [open, setOpen] = useState(false);
   const [exactOpen, setExactOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const what = useWhatIf(config);
   const preview = usePromptPreview({
     config,
@@ -176,15 +177,18 @@ export default function PromptPreview({ agentId, config }) {
                 <button
                   type="button"
                   className="quietButton"
-                  onClick={() => {
+                  onClick={async () => {
+                    // writeText answers later: a blocked clipboard rejects then, so it is awaited (as the Alerts page's Copy does)
                     try {
-                      navigator.clipboard.writeText(prompt.instructions);
+                      await navigator.clipboard.writeText(prompt.instructions);
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 1800);
                     } catch {
-                      /* clipboard blocked */
+                      setCopied(false);
                     }
                   }}
                 >
-                  Copy
+                  {copied ? 'Copied' : 'Copy'}
                 </button>
               </details>
             </>

@@ -78,6 +78,11 @@ test('a base is read tolerantly, and its state says what to do', () => {
   assert.equal(baseState({ ...base, problems: [] }), 'ready');
   assert.equal(baseState({ ...base, index: null, problems: [] }), 'not_built');
   assert.equal(baseState({ ...base, index: null, build: normalizeBuild({ status: 'failed', error: 'x' }), problems: [] }), 'failed');
+  assert.equal(
+    baseState({ ...base, build: normalizeBuild({ status: 'failed', error: 'x' }), problems: [] }),
+    'failed',
+    'a failed build is said even with an older index',
+  );
   assert.equal(baseState({ ...base, build: normalizeBuild({ status: 'running' }) }), 'building');
   assert.equal(baseState(normalizeBase({ id: 'api', type: 'rag_api' })), 'external');
   assert.ok(

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 import { askConfirm } from '../ui/dialogs.js';
 import { DialogField, TelephonyDialog, TelephonyTablePanel } from './telephonyParts.jsx';
 import Icon from '../ui/Icon.jsx';
@@ -259,6 +259,7 @@ export function AgentNumbers({ live, botId, botName, current }) {
   const [notice, setNotice] = useState(null);
   if (live.mode !== 'live') return null;
   const agents = [{ id: botId, name: botName }];
+  // eslint-disable-next-line sonarjs/no-identical-functions -- the page's three steps, on this card's own dialog and note
   const done = async (text) => {
     setDialog(null);
     await live.reload();

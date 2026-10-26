@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { applyStarter, STARTERS, INACTIVITY, usesVoice } from '../src/studio/starters.js';
+import { applyStarter, STARTERS, INACTIVITY, usesVoice } from '../src/studio/starters.ts';
 import { runScenarioChecks } from '../src/studio/scenarios.js';
 import { ownerOfIn } from '../src/studio/agents.js';
 import { applyChange } from '../src/studio/pendingChange.js';

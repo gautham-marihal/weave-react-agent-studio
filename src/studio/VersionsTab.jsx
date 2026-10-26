@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Fold from '../ui/Fold.jsx';
 import Icon from '../ui/Icon.jsx';
 import SmartSelect from './SmartSelect.jsx';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 import { formatDiffPath, formatWhen, truncate } from './format.js';
 import { navigate, routeHref } from './route.js';
 import { ErrorState, Modal, Notice, Spinner } from './ui.jsx';
@@ -9,13 +10,16 @@ import { useAsync } from './useAsync.js';
 import { isFinished, normalizeHeadline, testStatusOf } from './scenarios/runResults.js';
 import ShipFlow from './release/ShipFlow.jsx';
 import { shipSteps } from './release/shipFlow.js';
-import { readinessSteps, stepRoute } from './newlayout/readiness.js';
+import { readinessSteps, stepRoute } from './agent/readiness.js';
 import { useGate } from './release/gate.js';
 import { useLatestPublished } from './changes/useLatestPublished.js';
 import { changesSince } from './changes/sinceRelease.js';
 import PlainDiff from './compare/PlainDiff.jsx';
-import Menu from './manage/Menu.jsx';
-import { plainChanges } from './compare/plainCompare.js';
+import Menu from './manage/Menu.tsx';
+import { isBookkeeping, plainChanges } from './compare/plainCompare.js';
+
+// The Versions page: the published versions, what changed between the draft and a version, putting a version back into
+// the draft, publishing (the panel AgentWorkspace hands in) and the way from the draft to callers (ShipFlow).
 
 const OP_LABEL = { add: 'Added', remove: 'Removed', change: 'Changed' };
 const OP_MARK = { add: '+', remove: '−', change: '~' };
@@ -36,10 +40,8 @@ function Value({ value }) {
   );
 }
 
-// meta.version / status / created_at / updated_at are set by the server when a version is published,
+// meta.version / status / created_at / updated_at (isBookkeeping) are set by the server when a version is published,
 // so they differ in every comparison with the draft. They are real but rarely what you came to see.
-const BOOKKEEPING = new Set(['version', 'status', 'created_at', 'updated_at']);
-const isBookkeeping = (change) => change.path?.[0] === 'meta' && change.path.length === 2 && BOOKKEEPING.has(change.path[1]);
 
 const sideName = (v) => (String(v) === 'draft' ? 'the draft' : `version ${v}`);
 const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -112,7 +114,7 @@ function DiffView({ diff }) {
         {toggle}
       </p>
       {groups.map(([section, changes]) => (
-        <details key={section} className="stDiffGroup" open={groups.length <= 3}>
+        <Fold key={section} className="stDiffGroup" open={groups.length <= 3}>
           <summary>
             <strong>{section}</strong>
             <span>{changes.length}</span>
@@ -139,7 +141,7 @@ function DiffView({ diff }) {
               </div>
             </div>
           ))}
-        </details>
+        </Fold>
       ))}
     </div>
   );
@@ -198,9 +200,8 @@ function RestoreDialog({ botId, version, dirty, onClose, onDone }) {
   );
 }
 
-// quietSteps: the progress card's button is a quiet one (the new layout passes it: its bar above the page has the one strong button)
 //   knowledgeRead: what the server has read of its documents (so the steps still to do match the menu's)
-export default function VersionsTab({ botId, editor, refreshKey, summary, knowledgeRead = null, quietSteps = false }) {
+export default function VersionsTab({ botId, editor, refreshKey, summary, knowledgeRead = null }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const list = useMemo(() => versions.data || [], [versions.data]);
   // test runs say which exact configuration they tested, so a version can show whether IT passed (a read; nothing is run)
@@ -244,7 +245,8 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
       gate: { enabled: gateOn, savedAt: editor.meta?.savedAt || '' },
     });
   }, [editor.dirty, editor.parsed, editor.report, editor.meta?.savedAt, latestRun, latest.published, summary, gateOn]);
-  // the steps of building it that are still to do (the same list as the menu's progress card and the Overview), so this page never calls it ready alone
+  // the steps of building it that are still to do (the same list as the menu's progress card and the Overview), so this
+  // page never calls it ready alone
   const buildLeft = useMemo(() => {
     const draft = editor.parsed.value;
     const plan = readinessSteps({
@@ -287,7 +289,7 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
 
   return (
     <div className="stVersions">
-      {!latest.loading && <ShipFlow flow={flow} onAction={goTo} buildLeft={buildLeft} onStep={openStep} quiet={quietSteps} />}
+      {!latest.loading && <ShipFlow flow={flow} onAction={goTo} buildLeft={buildLeft} onStep={openStep} />}
       {list.length === 0 ? (
         <section className="emptyPanel">
           <div className="emptyPanelIcon" aria-hidden="true">
@@ -302,16 +304,18 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
             <h3>Published versions</h3>
             <div className="stTable" role="table">
               <div className="stRow head" role="row">
-                <span>Version</span>
-                <span>Published</span>
-                <span>By</span>
-                <span>Checksum</span>
-                <span>Tests</span>
-                <span />
+                <span role="columnheader">Version</span>
+                <span role="columnheader">Published</span>
+                <span role="columnheader">By</span>
+                <span role="columnheader">Checksum</span>
+                <span role="columnheader">Tests</span>
+                <span role="columnheader">
+                  <span className="srOnly">Actions</span>
+                </span>
               </div>
               {list.map((item, index) => (
                 <div className="stRow" role="row" key={item.version}>
-                  <span className="stVersionCell">
+                  <span role="cell" className="stVersionCell">
                     <strong>{item.version}</strong>
                     {index === 0 && <em className="stTag">latest</em>}
                     {(runsIn[item.version] || []).map((env) => (
@@ -320,14 +324,19 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
                       </em>
                     ))}
                   </span>
-                  <span title={item.published_at}>{formatWhen(item.published_at)}</span>
-                  <span>{item.published_by || '—'}</span>
-                  <span>
+                  <span role="cell" title={item.published_at}>
+                    {formatWhen(item.published_at)}
+                  </span>
+                  <span role="cell">{item.published_by || '—'}</span>
+                  <span role="cell">
                     <code>{String(item.checksum || '').slice(0, 10)}</code>
                   </span>
-                  <span>
+                  <span role="cell">
                     {(() => {
-                      const t = testStatusOf(item, headlines);
+                      // the newest version's scenarios are known (its configuration is read for the steps above), so a
+                      // run that covered only some of them says so
+                      const own = latest.published?.version === item.version ? latest.published.config?.tests : null;
+                      const t = testStatusOf(item, headlines, { scenarioCount: Array.isArray(own) ? own.length : 0 });
                       return (
                         <span
                           className={`stTestChip ${t.state}`}
@@ -345,7 +354,7 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
                     })()}
                   </span>
                   {/* one thing to do with a version, the rest in its menu */}
-                  <span className="stRowActions">
+                  <span role="cell" className="stRowActions">
                     <button
                       type="button"
                       className="quietButton"

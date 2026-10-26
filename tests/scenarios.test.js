@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createEngine } from '../src/studio/form/engine.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { createDemoApi, memoryStorage, minimalConfig } from '../src/demo/demoApi.js';
 import { checksumOf, runScenarioDemo } from '../src/demo/demoTests.js';
 import { statusLine, testsPart } from '../src/studio/status.js';
@@ -121,6 +121,8 @@ test('what is wrong with a scenario is said where it is', () => {
   assert.match(p.expect[4], /no agent “nobody”/);
   assert.match(scenarioProblems({ ...newScenario(config), turns: [] }, config).turns, /at least one/);
   assert.match(scenarioProblems({ ...newScenario(config), expect: [] }, config).expect[0], /at least one/);
+  assert.match(scenarioProblems({ ...newScenario(config), model_script: [] }, config).script[0], /model script is empty/, 'the schema wants one reply or more');
+  assert.match(scenarioProblems({ ...newScenario(config), model_script: 'hi' }, config).script[0], /must be a list/);
   assert.match(
     scenarioProblems({ id: 'a', channel: 'web-chat', turns: [{ say: 'x' }], expect: [{ said_matches: '.' }] }, config, [{ id: 'a' }, { id: 'a' }]).id,
     /Another scenario/,
@@ -400,8 +402,7 @@ test('results appear one by one, only one run at a time, and a published version
   const published = (await api.handle('POST', '/bots/nimbus/publish', {})).body;
   const again = (await api.handle('POST', '/bots/nimbus/tests/run', { ref: published.version })).body;
   assert.equal(again.config_checksum, published.checksum, 'testing a version tests that exact version');
-  const draftRun = (await api.handle('POST', '/bots/nimbus/tests/run', { ref: 'draft' }).catch?.(() => null)) || null;
-  void draftRun;
+  await api.handle('POST', '/bots/nimbus/tests/run', { ref: 'draft' }).catch?.(() => null);
 });
 
 // ---------------------------------------------------------------- reading what the API answers
@@ -534,6 +535,14 @@ test('pasted scenarios are checked, clashing ids renamed, and bad ones reported'
   );
   assert.equal(problems.length, 2);
   assert.match(problems[0], /broken: .*no channel “nope”/);
+  // what was not added is handed back, and a scenario the draft already has as pasted is not added again
+  const again = parseImport(text, { ...config, tests: [...config.tests, ...scenarios] });
+  assert.deepEqual(
+    parseImport(text, config).rejected.map((r) => r?.id ?? r),
+    ['broken', 'x'],
+  );
+  assert.deepEqual(parseImport(JSON.stringify(config.tests), config), { scenarios: [], problems: [], rejected: [], already: ['one'] });
+  assert.deepEqual([again.scenarios.length, again.already], [0, ['one']], 'the "one" an earlier paste added as one_2 is not added a second time');
   assert.match(parseImport('not json', config).problems[0], /isn’t valid JSON/);
   assert.equal(parseImport(JSON.stringify({ tests: [newScenario(support(), 'fresh')] }), support()).scenarios.length, 1);
   assert.match(parseImport('42', config).problems[0], /Paste a list/);

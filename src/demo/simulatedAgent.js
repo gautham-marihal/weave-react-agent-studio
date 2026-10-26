@@ -8,7 +8,7 @@
 
 import { isObj } from '../studio/form/engine.js';
 import { renderTemplate } from '../studio/form/promptPreview.js';
-import { baseOf, primaryOf } from '../studio/form/messages.js';
+import { baseOf, primaryOf } from '../studio/form/messages.ts';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const STOP = new Set([

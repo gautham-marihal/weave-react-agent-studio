@@ -1,9 +1,11 @@
 import { VOICE_CATALOG } from '../voiceCatalog.js';
 import { useEffect, useMemo, useState } from 'react';
 import { loadConfigs } from '../studio/configCache.js';
-import { voiceUsage } from '../studio/voiceUsage.js';
+import { voiceUsage } from '../studio/voiceUsage.ts';
 import { useVoicePreview } from './voicePreview.js';
 import Icon from '../ui/Icon.jsx';
+import { PartPanel, PartRow, Parts } from '../ui/Parts.tsx';
+import Select from '../ui/Select.tsx';
 
 // "English (US)" for "English (United States)": the table's language column fits on one line, the whole name is its tooltip
 const SHORT_COUNTRIES = { 'United States': 'US', 'United Kingdom': 'UK', 'United Arab Emirates': 'UAE' };
@@ -104,192 +106,202 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
           Open agents <Icon name="arrowRight" size={15} />
         </button>
       </section>
-      <div className="voiceWorkspaceTabs" role="tablist" aria-label="Voice library sections">
-        <button role="tab" aria-selected={mode === 'default'} className={mode === 'default' ? 'active' : ''} onClick={() => setMode('default')}>
-          <span aria-hidden="true">
-            <Icon name="voice" size={16} />
-          </span>
-          <span>
-            <strong>Default voices</strong>
-            <small>Browse provider voice libraries</small>
-          </span>
-        </button>
-        <button role="tab" aria-selected={mode === 'custom'} className={mode === 'custom' ? 'active' : ''} onClick={() => setMode('custom')}>
-          <span aria-hidden="true">
-            <Icon name="mic" size={16} />
-          </span>
-          <span>
-            <strong>Custom voices</strong>
-            <small>Your own voice IDs and voice clones</small>
-          </span>
-          <em>Under development</em>
-        </button>
-      </div>
-      {mode === 'custom' ? (
-        <section className="customVoiceComing">
-          <div className="customVoiceOrb" aria-hidden="true">
-            <Icon name="mic" size={30} />
-          </div>
-          <div className="eyebrow cyan">In development</div>
-          <h2>Custom voices are on the way</h2>
-          <p>
-            Voice cloning and workspace-managed custom voice uploads are not available yet. You can already use your provider's own voice ID: set it in an
-            agent’s Config, under Models.
-          </p>
-          <button className="primaryCta" onClick={onAgents}>
-            Open agents <Icon name="arrowRight" size={15} />
-          </button>
-        </section>
-      ) : (
-        <>
-          <section className="featureToolbar voiceLibraryToolbar">
-            <label className="featureSearch">
-              <Icon name="search" size={15} />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search voices by name, language or style"
-                aria-label="Search voices"
-              />
-            </label>
-            <select value={provider} onChange={(event) => setProvider(event.target.value)} aria-label="Filter by provider">
-              <option>All providers</option>
-              <option>Cartesia</option>
-              <option>ElevenLabs</option>
-            </select>
-            <select value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="Filter by language">
-              {languages.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-            <select value={gender} onChange={(event) => setGender(event.target.value)} aria-label="Filter by voice gender">
-              <option>All genders</option>
-              <option>Female</option>
-              <option>Male</option>
-            </select>
-          </section>
-          <div className="featureSummary">
-            <span>
-              <b>{filtered.length}</b> curated voices · {VOICE_CATALOG.filter((voice) => provider === 'All providers' || voice.provider === provider).length}{' '}
-              for selected provider
-            </span>
-            <span>The library’s voices play a recording of that voice. Cartesia’s recordings come from a public voice directory, not from Cartesia.</span>
-          </div>
-          {sample.note && (
-            <p className="voicePreviewNote" role="status">
-              {sample.note}
-            </p>
-          )}
-          <div className="voiceTableWrap">
-            <table className="voiceLibraryTable">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Language</th>
-                  <th>Gender</th>
-                  <th>Provider</th>
-                  <th>Style</th>
-                  <th>Used by</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((voice) => (
-                  <tr key={voice.id}>
-                    <td>
-                      <div className="voiceTableName">
-                        <span>{voice.name.slice(0, 1)}</span>
-                        <div className="voiceNameStack">
-                          <strong>{voice.name}</strong>
-                          <span className="voiceIdCell">
-                            <code title={`${voice.voiceId}: the provider's id for this voice, what goes in the agent's configuration`}>{voice.voiceId}</code>
+      <Parts value={mode} onChange={setMode}>
+        <PartRow
+          className="voiceWorkspaceTabs"
+          label="Voice library sections"
+          value={mode}
+          activeClass="active"
+          items={[
+            {
+              id: 'default',
+              label: (
+                <>
+                  <span aria-hidden="true">
+                    <Icon name="voice" size={16} />
+                  </span>
+                  <span>
+                    <strong>Default voices</strong>
+                    <small>Browse provider voice libraries</small>
+                  </span>
+                </>
+              ),
+            },
+            {
+              id: 'custom',
+              label: (
+                <>
+                  <span aria-hidden="true">
+                    <Icon name="mic" size={16} />
+                  </span>
+                  <span>
+                    <strong>Custom voices</strong>
+                    <small>Your own voice IDs and voice clones</small>
+                  </span>
+                  <em>Under development</em>
+                </>
+              ),
+            },
+          ]}
+        />
+        <PartPanel value={mode} className="flow">
+          {mode === 'custom' ? (
+            <section className="customVoiceComing">
+              <div className="customVoiceOrb" aria-hidden="true">
+                <Icon name="mic" size={30} />
+              </div>
+              <div className="eyebrow cyan">In development</div>
+              <h2>Custom voices are on the way</h2>
+              <p>
+                Voice cloning and workspace-managed custom voice uploads are not available yet. You can already use your provider's own voice ID: set it in an
+                agent’s Config, under Models.
+              </p>
+              <button className="primaryCta" onClick={onAgents}>
+                Open agents <Icon name="arrowRight" size={15} />
+              </button>
+            </section>
+          ) : (
+            <>
+              <section className="featureToolbar voiceLibraryToolbar">
+                <label className="featureSearch">
+                  <Icon name="search" size={15} />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search voices by name, language or style"
+                    aria-label="Search voices"
+                  />
+                </label>
+                <Select value={provider} onChange={(event) => setProvider(event.target.value)} aria-label="Filter by provider">
+                  <option>All providers</option>
+                  <option>Cartesia</option>
+                  <option>ElevenLabs</option>
+                </Select>
+                <Select value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="Filter by language">
+                  {languages.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </Select>
+                <Select value={gender} onChange={(event) => setGender(event.target.value)} aria-label="Filter by voice gender">
+                  <option>All genders</option>
+                  <option>Female</option>
+                  <option>Male</option>
+                </Select>
+              </section>
+              <div className="featureSummary">
+                <span>
+                  <b>{filtered.length}</b> curated voices ·{' '}
+                  {VOICE_CATALOG.filter((voice) => provider === 'All providers' || voice.provider === provider).length} for selected provider
+                </span>
+                <span>The library’s voices play a recording of that voice. Cartesia’s recordings come from a public voice directory, not from Cartesia.</span>
+              </div>
+              {sample.note && (
+                <p className="voicePreviewNote" role="status">
+                  {sample.note}
+                </p>
+              )}
+              <div className="voiceTableWrap">
+                <table className="voiceLibraryTable">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Language</th>
+                      <th>Gender</th>
+                      <th>Provider</th>
+                      <th>Style</th>
+                      <th>Used by</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((voice) => (
+                      <tr key={voice.id}>
+                        <td>
+                          <div className="voiceTableName">
+                            <span>{voice.name.slice(0, 1)}</span>
+                            <div className="voiceNameStack">
+                              <strong>{voice.name}</strong>
+                              <span className="voiceIdCell">
+                                <code title={`${voice.voiceId}: the provider's id for this voice, what goes in the agent's configuration`}>
+                                  {voice.voiceId}
+                                </code>
+                                <button
+                                  type="button"
+                                  className="iconButton"
+                                  aria-label={`Copy the voice ID of ${voice.name}`}
+                                  title={copied === `failed:${voice.id}` ? 'Could not copy: select the ID and copy it' : 'Copy the voice ID'}
+                                  onClick={() => copyId(voice)}
+                                >
+                                  <Icon name={copied === voice.id ? 'check' : copied === `failed:${voice.id}` ? 'alert' : 'copy'} size={14} />
+                                </button>
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td title={voice.language}>
+                          {shortLanguage(voice.language)} <small>{voice.locale}</small>
+                        </td>
+                        <td>{voice.gender}</td>
+                        <td>
+                          <span className="voiceProviderTag">{voice.provider || 'Provider varies'}</span>
+                        </td>
+                        <td>{voice.style}</td>
+                        <td>
+                          {usage[voice.id]?.length ? (
+                            <span className="voiceUsedBy" title={usage[voice.id].map((item) => item.name).join(', ')}>
+                              {usage[voice.id].slice(0, 2).map((item) => (
+                                <span key={item.id} className="voiceUsedChip">
+                                  {item.name}
+                                </span>
+                              ))}
+                              {usage[voice.id].length > 2 && <span className="voiceUsedMore">+{usage[voice.id].length - 2}</span>}
+                            </span>
+                          ) : (
+                            <span className="voiceUnused">Not in use</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="voiceTableActions">
                             <button
                               type="button"
                               className="iconButton"
-                              aria-label={`Copy the voice ID of ${voice.name}`}
-                              title={copied === `failed:${voice.id}` ? 'Could not copy: select the ID and copy it' : 'Copy the voice ID'}
-                              onClick={() => copyId(voice)}
+                              title={sample.playing === voice.id ? 'Stop' : voice.previewUrl ? 'Hear the recorded sample' : 'Hear an approximation'}
+                              aria-label={sample.playing === voice.id ? `Stop ${voice.name}` : `Listen to ${voice.name}`}
+                              onClick={() => sample.play(voice)}
                             >
-                              <Icon name={copied === voice.id ? 'check' : copied === `failed:${voice.id}` ? 'alert' : 'copy'} size={14} />
+                              <Icon name={sample.playing === voice.id ? 'stop' : 'play'} size={14} />
                             </button>
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td title={voice.language}>
-                      {shortLanguage(voice.language)} <small>{voice.locale}</small>
-                    </td>
-                    <td>{voice.gender}</td>
-                    <td>
-                      <span className="voiceProviderTag">{voice.provider || 'Provider varies'}</span>
-                    </td>
-                    <td>{voice.style}</td>
-                    <td>
-                      {usage[voice.id]?.length ? (
-                        <span className="voiceUsedBy" title={usage[voice.id].map((item) => item.name).join(', ')}>
-                          {usage[voice.id].slice(0, 2).map((item) => (
-                            <span key={item.id} className="voiceUsedChip">
-                              {item.name}
-                            </span>
-                          ))}
-                          {usage[voice.id].length > 2 && <span className="voiceUsedMore">+{usage[voice.id].length - 2}</span>}
-                        </span>
-                      ) : (
-                        <span className="voiceUnused">Not in use</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="voiceTableActions">
-                        <button
-                          type="button"
-                          className="iconButton"
-                          title={sample.playing === voice.id ? 'Stop' : voice.previewUrl ? 'Hear the recorded sample' : 'Hear an approximation'}
-                          aria-label={sample.playing === voice.id ? `Stop ${voice.name}` : `Listen to ${voice.name}`}
-                          onClick={() => sample.play(voice)}
-                        >
-                          <Icon name={sample.playing === voice.id ? 'pause' : 'play'} size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className={`iconButton ${favorites.includes(voice.id) ? 'active' : ''}`}
-                          title="Favorite"
-                          onClick={() => toggleFavorite(voice.id)}
-                        >
-                          <Icon name="star" size={15} className={favorites.includes(voice.id) ? 'filled' : ''} />
-                        </button>
-                        <button
-                          type="button"
-                          className="secondaryCta"
-                          onClick={() => {
-                            try {
-                              localStorage.setItem(
-                                'weave_pending_voice',
-                                JSON.stringify({ provider: voice.provider.toLowerCase(), name: voice.name, voiceId: voice.voiceId || '' }),
-                              );
-                            } catch {}
-                            (onUseVoice || onAgents)(voice);
-                          }}
-                        >
-                          Use in an agent
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!filtered.length && (
-            <section className="emptyPanel featureEmpty">
-              <div className="emptyPanelIcon">
-                <Icon name="search" size={22} />
+                            <button
+                              type="button"
+                              className={`iconButton ${favorites.includes(voice.id) ? 'active' : ''}`}
+                              title="Favorite"
+                              onClick={() => toggleFavorite(voice.id)}
+                            >
+                              <Icon name="star" size={15} className={favorites.includes(voice.id) ? 'filled' : ''} />
+                            </button>
+                            <button type="button" className="secondaryCta" onClick={() => onUseVoice(voice)}>
+                              Use in an agent
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <h2>No voices found</h2>
-              <p>Try changing your search or filters.</p>
-            </section>
+              {!filtered.length && (
+                <section className="emptyPanel featureEmpty">
+                  <div className="emptyPanelIcon">
+                    <Icon name="search" size={22} />
+                  </div>
+                  <h2>No voices found</h2>
+                  <p>Try changing your search or filters.</p>
+                </section>
+              )}
+            </>
           )}
-        </>
-      )}
+        </PartPanel>
+      </Parts>
     </div>
   );
 }

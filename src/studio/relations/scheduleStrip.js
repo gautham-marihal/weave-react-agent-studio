@@ -1,5 +1,6 @@
-// A schedule (business hours) as a week you can see: seven rows, one bar per day, shaded where the line is open; plus the same thing in words, and the days
-// that are closed or different on purpose (holidays, one-off exceptions). Pure: no React, no DOM.
+// A schedule (business hours) as a week you can see: seven rows, one bar per day, shaded where the line is open; plus
+// the same thing in words, and the days that are closed or different on purpose (holidays, one-off exceptions). Pure:
+// no React, no DOM.
 
 import { isObj } from '../form/engine.js';
 

@@ -88,7 +88,7 @@ export function settle(bot, nowMs) {
     const base = job.baseDef; // the base as it was when the build started
     const documents = [];
     const passages = [];
-    const log = [...STEPS.map((s) => `${s}…`)];
+    const log = STEPS.map((s) => `${s}…`);
     list(base?.sources).forEach((source) => {
       if (source?.type === 'url') {
         log.push(`Skipped ${source.url}: demo mode can’t fetch web pages.`);
@@ -129,7 +129,7 @@ export function settle(bot, nowMs) {
   return changed;
 }
 
-function problemsOf(bot, config, base, nowMs) {
+function problemsOf(bot, config, base) {
   const k = state(bot);
   const problems = [];
   if (base.type !== 'vector_store') return problems;
@@ -142,7 +142,6 @@ function problemsOf(bot, config, base, nowMs) {
     else if (index && index.stamps?.[file.name] !== file.modified)
       problems.push({ problem: `The file ${file.name} changed after the index was built.`, fix: 'Rebuild the index.' });
   });
-  void nowMs;
   return problems;
 }
 
@@ -178,7 +177,7 @@ function describeBase(bot, config, base, nowMs) {
           build: buildView(k.builds[base.id], nowMs),
         }
       : { connection: base.connection }),
-    problems: problemsOf(bot, config, base, nowMs),
+    problems: problemsOf(bot, config, base),
     embedding_key_available: true,
   };
 }
@@ -221,12 +220,19 @@ export function upload(bot, name, content, size, nowIso) {
   return { name, size, modified: nowIso, used_by: [] };
 }
 
-export function removeFile(bot, config, name, force) {
+// configs: the draft's, and those of the versions deployed (a file a running version reads is asked about too, not only one the draft reads)
+export function removeFile(bot, configs, name, force) {
   const k = state(bot);
   if (!k.files.some((f) => f.name === name)) return { status: 404, detail: `There is no file '${name}'.` };
-  const readers = list(config?.knowledge)
-    .filter((b) => list(b?.sources).some((s) => s?.type === 'file' && s.file_id === name))
-    .map((b) => b.id);
+  const readers = [
+    ...new Set(
+      (Array.isArray(configs) ? configs : [configs]).flatMap((config) =>
+        list(config?.knowledge)
+          .filter((b) => list(b?.sources).some((s) => s?.type === 'file' && s.file_id === name))
+          .map((b) => b.id),
+      ),
+    ),
+  ];
   if (readers.length && !force)
     return {
       status: 409,
@@ -286,9 +292,9 @@ export function searchBase(bot, config, baseId, body) {
 }
 
 // `preflight.knowledge` of a deploy: the problems of every base the deployed version uses, as [{ base, problems }].
-export function preflightKnowledge(bot, config, nowMs) {
+export function preflightKnowledge(bot, config) {
   return list(config?.knowledge)
     .filter(isObj)
-    .map((base) => ({ base: base.id, problems: problemsOf(bot, config, base, nowMs) }))
+    .map((base) => ({ base: base.id, problems: problemsOf(bot, config, base) }))
     .filter((row) => row.problems.length);
 }

@@ -328,6 +328,18 @@ em.stTag {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
+/* the code editor (json/CodeJsonEditor.tsx) fills the same frame; its colours are the style's own, in light and in dark */
+.stEditor {
+  --json-key: var(--accent-text);
+  --json-string: var(--good-text);
+  --json-number: var(--warn-text);
+  --json-literal: color-mix(in srgb, var(--violet) 70%, var(--textStrong));
+  --json-punct: var(--muted);
+}
+.stCodeEditor > .cm-editor {
+  flex: 1;
+  min-width: 0;
+}
 
 .stValidation {
   border: 1px solid var(--line2);
@@ -561,8 +573,8 @@ em.stTag {
   font-size: var(--fs-xs);
   color: var(--muted);
 }
-.stCompare select,
-.stDeployForm select,
+.stCompare :is(select, button:where(.rxSelect)),
+.stDeployForm :is(select, button:where(.rxSelect)),
 .stDeployForm input {
   min-height: 42px;
   border-radius: 10px;
@@ -1240,7 +1252,7 @@ em.stTag {
   font-size: var(--fs-sm);
   color: var(--muted);
 }
-.stSort select {
+.stSort :is(select, button:where(.rxSelect)) {
   height: 36px;
   padding: 0 10px;
   border: 1px solid var(--line2);

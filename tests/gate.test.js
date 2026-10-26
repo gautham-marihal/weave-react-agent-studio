@@ -40,6 +40,16 @@ test('a passing run lets it through, until the draft changes after it', () => {
   );
 });
 
+test('a passing run of only some of the scenarios does not let it through, nor count as tested', () => {
+  const one = { status: 'passed', passed: 1, total: 1, startedAt: '2026-10-16T10:00:00Z' };
+  const held = gateCheck({ enabled: true, scenarioCount: 4, latestRun: one, savedAt: '2026-10-16T09:00:00Z' });
+  assert.deepEqual([held.ok, held.why, held.action], [false, 'The latest run covered only 1 of the 4 scenarios. Run them all.', 'scenarios']);
+  const step = shipSteps({ dirty: false, report: { errors: [] }, scenarioCount: 4, latestRun: one, published: null }).steps.find((s) => s.id === 'tested');
+  assert.deepEqual([step.state, step.text], ['todo', 'The latest run covered only 1 of the 4 scenarios.']);
+  // a run that does not say how many it covered is taken as it says
+  assert.equal(gateCheck({ enabled: true, scenarioCount: 4, latestRun: { status: 'passed', total: 0 } }).ok, true);
+});
+
 test('on the way to live, the tested step is blocked by the gate, and is as before when the gate is off', () => {
   const base = { dirty: false, report: { errors: [] }, scenarioCount: 0, latestRun: null, published: null };
   const off = shipSteps(base).steps.find((s) => s.id === 'tested');

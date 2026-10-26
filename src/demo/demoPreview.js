@@ -165,7 +165,8 @@ export function previewResultDemo(config, body = {}) {
   return { status: 200, body: out };
 }
 
-// What the agent searches: the bases it reads before every reply, and the knowledge tools it can call (the server's own answer has the same two parts).
+// What the agent searches: the bases it reads before every reply, and the knowledge tools it can call (the server's own
+// answer has the same two parts).
 function knowledgeUse(config, agent, toolsById) {
   const bases = Object.fromEntries(list(config?.knowledge).map((b) => [b?.id, b]));
   const before = list(agent?.knowledge)

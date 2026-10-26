@@ -12,6 +12,7 @@ export const SCROLL_AREAS = [
   '.stModalBody',
   '.infoDialogBody',
   '.styleMenuScroll',
+  '[data-radix-menu-content]',
   '.stFSheetBody',
   '.nlDrawerBody',
   '.nlTestDockBody',

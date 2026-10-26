@@ -10,7 +10,7 @@
 // red mark on it: every red mark on a valid config is a false alarm. Pure apart from reading files.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { applyStarter, STARTERS } from '../../src/studio/starters.js';
+import { applyStarter, STARTERS } from '../../src/studio/starters.ts';
 import { minimalConfig } from '../../src/demo/demoApi.js';
 import { CHANNEL_PRESETS, buildChannel } from '../../src/studio/form/presets.js';
 

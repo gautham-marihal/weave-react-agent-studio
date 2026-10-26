@@ -9,8 +9,8 @@ const port = (n, side) =>
 const CLEAR = 8;
 const AROUND = 30;
 
-// Which side of each block the arrow uses. What goes with an agent (what it does as it takes over, what it can do) sits beside it, so those arrows run
-// sideways as long as the block is still on that side.
+// Which side of each block the arrow uses. What goes with an agent (what it does as it takes over, what it can do) sits
+// beside it, so those arrows run sideways as long as the block is still on that side.
 export function sidesFor(a, b, kind) {
   if ((kind === 'exit' || kind === 'uses') && b.x >= a.x + a.w - 20) return ['right', 'left'];
   if (kind === 'enter' && a.x + a.w <= b.x + 20) return ['right', 'left'];
@@ -55,9 +55,11 @@ function blocking(pts, obstacles, ends) {
 }
 const lengthOf = (pts) => pts.reduce((sum, p, i) => (i ? sum + dist(pts[i - 1], p) : 0), 0);
 
-// `lane` and `lanes` spread arrows that join the same two blocks side by side so they do not lie on top of each other. `obstacles` are the other blocks
-// ({ x, y, w, h }): a route that would run through one is replaced by the shortest one that does not, out of other sides or bent around it.
-export function routeEdge(a, b, { lane = 0, lanes = 1, kind, obstacles = [] } = {}) {
+// `lane` and `lanes` spread arrows that join the same two blocks side by side so they do not lie on top of each other.
+// `fromShift` moves where the arrow leaves its first block along that side (each way out of a subagent leaves from its
+// own point). `obstacles` are the other blocks ({ x, y, w, h }): a route that would run through one is replaced by the
+// shortest one that does not, out of other sides or bent around it.
+export function routeEdge(a, b, { lane = 0, lanes = 1, kind, obstacles = [], fromShift } = {}) {
   if (a.id === b.id) {
     const x = a.x + a.w;
     const y = a.y + a.h / 2;
@@ -67,8 +69,9 @@ export function routeEdge(a, b, { lane = 0, lanes = 1, kind, obstacles = [] } = 
   const ends = (sa, sb) => {
     const p1 = port(a, sa);
     const p2 = port(b, sb);
-    if (sa === 'bottom' || sa === 'top') p1[0] += shift;
-    else p1[1] += shift;
+    const out = fromShift ?? shift;
+    if (sa === 'bottom' || sa === 'top') p1[0] += out;
+    else p1[1] += out;
     if (sb === 'bottom' || sb === 'top') p2[0] += shift;
     else p2[1] += shift;
     return [p1, p2];

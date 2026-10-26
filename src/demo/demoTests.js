@@ -53,10 +53,10 @@ export const fillArgs = (value, args) =>
       : isObj(value)
         ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fillArgs(v, args)]))
         : value;
-const subset = (needle, haystack) =>
-  isObj(needle) &&
-  isObj(haystack) &&
-  Object.entries(needle).every(([k, v]) => JSON.stringify(haystack[k]) === JSON.stringify(v) || String(haystack[k]) === String(v));
+// the same value; a number and the text of it count as the same (a query string's "2" is 2), an object or a list only as the same contents
+const sameValue = (a, b) =>
+  JSON.stringify(a) === JSON.stringify(b) || (a !== null && b !== null && typeof a !== 'object' && typeof b !== 'object' && String(a) === String(b));
+const subset = (needle, haystack) => isObj(needle) && isObj(haystack) && Object.entries(needle).every(([k, v]) => sameValue(haystack[k], v));
 
 // the first mock that matches a request, counting `times`
 function matchMock(mocks, used, request) {
@@ -112,7 +112,7 @@ function evaluateChecks(scenario, ctx, { judge, scripted }) {
     if ('state_equals' in expect) {
       const { state, value } = expect.state_equals || {};
       const actual = ctx.state[state];
-      const ok = JSON.stringify(actual) === JSON.stringify(value) || String(actual) === String(value);
+      const ok = sameValue(actual, value);
       return check(
         'state_equals',
         ok,
@@ -198,7 +198,8 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
     };
 
   const agents = list(config?.agents?.items);
-  // a tool is found by the name the model calls it: two tools may share one (a voice and a chat variant), and the one of this scenario's channel answers
+  // a tool is found by the name the model calls it: two tools may share one (a voice and a chat variant), and the one
+  // of this scenario's channel answers
   const toolNamed = (name) => {
     const same = list(config?.tools).filter((t) => modelNameOf(t) === name);
     return (
@@ -208,6 +209,9 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
   const sim = createSimulatedAgent(config, { channelId: scenario?.channel, state: isObj(scenario?.state) ? scenario.state : undefined });
   let agent = agents.find((a) => a?.id === config?.agents?.entry)?.id || agents[0]?.id || '';
   const state = { ...sim.state, ...(isObj(scenario?.state) ? scenario.state : {}) };
+  // what the simulated agent starts with: at the end only what it changed is laid over what the API answers wrote (its
+  // untouched defaults would undo them)
+  const simStart = JSON.stringify(sim.state);
   const transcript = [];
   const tools = [];
   const http = [];
@@ -303,7 +307,10 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
   }
   event('session_closed', { reason: 'scenario_finished', error: null });
   const finalAgent = scripted ? agent : sim.currentAgent || agent;
-  const checks = evaluateChecks(scenario, { tools, state: scripted ? state : { ...state, ...sim.state }, said, http, agent: finalAgent }, { judge, scripted });
+  const started = JSON.parse(simStart);
+  const simChanged = Object.fromEntries(Object.entries(sim.state).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(started[k])));
+  const finalState = scripted ? state : { ...state, ...simChanged };
+  const checks = evaluateChecks(scenario, { tools, state: finalState, said, http, agent: finalAgent }, { judge, scripted });
   return {
     ...base,
     status: checks.some((c) => c.passed === false) ? 'failed' : 'passed',
@@ -313,7 +320,7 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
     http,
     unmocked,
     final_agent: finalAgent,
-    final_state: scripted ? state : { ...state, ...sim.state },
+    final_state: finalState,
     events,
     notes: scripted ? [DEMO_RUN_NOTE] : [DEMO_RUN_NOTE, 'This live scenario was played by the simulated agent: no real model was called.'],
   };

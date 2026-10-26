@@ -18,13 +18,26 @@ const fromEnv = () => {
 // Can the user switch it? Not when the build itself is a demo build.
 export const demoIsForced = () => fromEnv();
 
-export function isDemoMode() {
-  if (fromEnv()) return true;
+const stored = () => {
   try {
     return typeof localStorage !== 'undefined' && localStorage.getItem(KEY) === '1';
   } catch {
     return false;
   }
+};
+// Decided at the page's first ask and kept for as long as it is open, so one tab never sends a request to the demo and the next to the real API
+// (a save or a deploy meant for demo data going to the real server). Switching it here reloads this tab (setDemoMode); switching it in another tab
+// reloads this one too (the storage event below), so every open tab follows.
+let decided = null;
+export function isDemoMode() {
+  if (fromEnv()) return true;
+  if (decided === null) decided = stored();
+  return decided;
+}
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (event) => {
+    if ((event.key === KEY || event.key === null) && decided !== null && !fromEnv() && stored() !== decided) window.location.reload();
+  });
 }
 
 // Switches the choice and reloads, so every screen starts again from the right data source.
@@ -35,6 +48,7 @@ export function setDemoMode(on, { reload = true } = {}) {
   } catch {
     /* storage unavailable */
   }
+  decided = !!on;
   if (reload && typeof window !== 'undefined') window.location.reload();
 }
 

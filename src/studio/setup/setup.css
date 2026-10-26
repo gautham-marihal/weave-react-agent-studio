@@ -428,9 +428,8 @@
 .suList li > span {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* a long file name or address wraps rather than being cut off (nothing is cut off, ever) */
+  overflow-wrap: anywhere;
 }
 .suList li .wIcon {
   flex: none;

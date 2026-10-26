@@ -266,6 +266,47 @@ test('slow answers and recorded errors are alerts', () => {
   const alerts = evaluateAlerts({ calls, facts, nowMs });
   assert.match(alerts.find((a) => a.rule === 'slow').detail, /One answer in ten took 12\.0 s or more in the last hour \(over 3 answers\)/);
   assert.match(alerts.find((a) => a.rule === 'errors').detail, /3 calls recorded an error in the last 30 minutes, for example: The model timed out/);
+  // a voice call's wait as Speed measures it (with making sure the caller finished) is the one that counts, not the bare gap between the words
+  const voice = { turns: [{ say: 'x', said: ['y'], tools: [], waitMs: 7000 }], errors: [], waits: [{ ms: 9500, say: 'x' }] };
+  const heard = evaluateAlerts({ calls, facts: Object.fromEntries(calls.map((c) => [`a/${c.id}`, voice])), nowMs }).find((a) => a.rule === 'slow');
+  assert.match(heard.detail, /took 9\.5 s or more/);
+});
+
+test('an alert still open stays in the record however old it is and however many others came and went, so it never fires again as new', () => {
+  const long = { key: 'tool_failing|a|x', rule: 'tool_failing', severity: 'critical', bot: 'a', botName: 'A', title: 'T', detail: 'D', count: 3 };
+  let { state } = reconcile({ history: [], acks: {} }, [long], nowMs);
+  let fired;
+  state = { ...state, acks: { [long.key]: { at: NOW, by: 'Sam' } } };
+  // 250 short alerts fire and clear while it stays open, over more than the 30 days the record keeps
+  for (let i = 0; i < 250; i += 1) {
+    const t = nowMs + (i + 1) * 4 * 3600e3;
+    const flap = { ...long, key: `flap|${i}`, rule: 'slow' };
+    ({ state } = reconcile(state, [long, flap], t));
+    ({ state, fired } = reconcile(state, [long], t + 60e3));
+    assert.equal(fired.length, 0, 'the long one never fires again');
+  }
+  assert.ok(
+    state.history.some((h) => h.key === long.key && !h.clearedAt),
+    'still open in the record',
+  );
+  assert.ok(state.acks[long.key], 'and still acknowledged');
+  assert.ok(state.history.length <= 200);
+});
+
+test('a check of one workspace leaves the alerts of another workspace’s agents as they were (not cleared, still acknowledged)', () => {
+  const theirs = { key: 'tool_failing|a|find_order', rule: 'tool_failing', severity: 'critical', bot: 'a', botName: 'Acme', title: 'T', detail: 'D', count: 3 };
+  let { state } = reconcile({ history: [], acks: {} }, [theirs], nowMs, new Set(['a']));
+  state = { ...state, acks: { [theirs.key]: { at: NOW, by: 'Sam' } } };
+  // the other workspace has one agent, "b", with nothing wrong
+  ({ state } = reconcile(state, [], nowMs + 60e3, new Set(['b'])));
+  assert.equal(state.history[0].clearedAt, null, 'still open');
+  assert.ok(state.acks[theirs.key], 'still acknowledged');
+  // an empty workspace checks no agent at all
+  ({ state } = reconcile(state, [], nowMs + 120e3, new Set()));
+  assert.equal(state.history[0].clearedAt, null);
+  // back in its own workspace, with the problem gone, it clears as before
+  ({ state } = reconcile(state, [], nowMs + 180e3, new Set(['a'])));
+  assert.ok(state.history[0].clearedAt);
 });
 
 test('the record of alerts: a new alert fires once, an acknowledgement holds until it clears, and a snooze runs out', () => {

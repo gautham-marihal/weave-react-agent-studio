@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { KNOWLEDGE_ID, addKnowledgeFile, addKnowledgePage, cleanUrl, knowledgeOf, removeKnowledge, whoReadsKnowledge } from '../src/studio/setup/setupModel.js';
 
 // The Knowledge page's simple "What it knows" (and the setup's step of the same name): what it may and may not do to the rest of the configuration.

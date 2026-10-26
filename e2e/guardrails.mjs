@@ -1,7 +1,8 @@
 // Guardrails and After the call in plain words, in a real browser, on the demo (no backend): topics, the moments it hands over or ends by itself, limits;
-// a summary, questions about each call, what is recorded and what callers hear first, the sensitive details hidden; what each writes into the draft. And
+// a summary, questions about each call, what is recorded and the recording notice, the sensitive details hidden; what each writes into the draft. And
 // each input asked in one place only: the personality panel no longer asks tone, style rules or the recording notice, a channel's panel no longer asks
-// its first line, phone transfers sit on Tools beside the hand-over, and the Workflow shows the first agent's instructions rather than asking them.
+// its first line, and phone transfers sit on Tools beside the hand-over. The Workflow's panel changes the first agent's instructions in place: the same
+// ones as on the Agent page.
 // Nothing is written anywhere but the demo.
 //
 //   npm run dev:demo      (in one terminal)
@@ -131,11 +132,7 @@ await page.getByRole('button', { name: 'Why did they get in touch?' }).click();
 await wait(300);
 await page.locator('.suAction', { hasText: 'Recording' }).getByLabel('Keep the transcript').check();
 await page.locator('.suAction', { hasText: 'Recording' }).getByLabel('Delete audio and transcripts after, in days').fill('30');
-await page
-  .locator('.suAction', { hasText: 'Recording' })
-  .locator('.suField', { hasText: 'What callers hear first' })
-  .locator('input')
-  .fill('This call is recorded.');
+await page.locator('.suAction', { hasText: 'Recording' }).locator('.suField', { hasText: 'Recording notice' }).locator('input').fill('This call is recorded.');
 // hiding is off until it is switched on (an agent that never set it doesn't hide anything, as the release checklist says)
 const hiding = page.locator('.suAction', { hasText: 'Hide sensitive details' }).getByRole('switch');
 check('hiding sensitive details shows off until it is switched on', (await hiding.getAttribute('aria-checked')) === 'false');
@@ -185,7 +182,7 @@ await page.keyboard.press('Escape');
 await wait(400);
 await go('#/bots/acme-support/channels');
 check('Channels has no phone transfers now', (await page.locator('.nlRow', { hasText: 'Phone transfers' }).count()) === 0);
-check('Channels no longer asks what callers hear first', (await page.locator('.suField', { hasText: 'What callers hear first' }).count()) === 0);
+check('Channels no longer asks for the recording notice', (await page.locator('.suField', { hasText: 'Recording notice' }).count()) === 0);
 await page.locator('.nlRow', { hasText: 'Chat on your website' }).first().click();
 await wait(1500);
 const channel = await page.locator('.nlDrawer').innerText();
@@ -206,34 +203,27 @@ await page
   .click()
   .catch(() => {});
 await wait(800);
-const inspector = await page
-  .locator('.wfInspector, aside')
-  .last()
-  .innerText()
-  .catch(() => '');
-check(
-  'Workflow shows the first agent’s instructions and sends you to the Agent page for them',
-  /Change them on the Agent page/.test(inspector),
-  inspector.slice(0, 200),
-);
+// the first agent's instructions, changed in the Workflow's panel: they are the Agent page's too
+const roleBox = page.locator('.wfInspector textarea[id$="-role"]');
+check('Workflow lets you change the first agent’s instructions where its block is', (await roleBox.count()) === 1 && (await roleBox.isEditable()));
 if (OUT) await page.screenshot({ path: `${OUT}/workflow-role.png` });
-const clicked = page.getByRole('button', { name: 'Change them on the Agent page' });
-if (await clicked.count()) {
-  await clicked.click();
-  await wait(1200);
-  check(
-    'which opens the Agent page with the cursor in them',
-    /\/agent/.test(page.url()) && (await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))) === 'What the agent should do (its role)',
-  );
+const newRole = 'You help Acme customers with orders, returns and repairs. Ask one question at a time.';
+if (await roleBox.count()) {
+  await roleBox.fill(newRole);
+  await wait(500);
+  await go('#/bots/acme-support/agent');
+  await wait(900);
+  const agentRole = page.getByRole('textbox', { name: 'What the agent should do (its role)' });
+  check('and the Agent page shows the same instructions', (await agentRole.count()) > 0 && (await agentRole.first().inputValue()) === newRole);
 }
 // ---- the paths that were broken once: a setting shown on a page with parts, a rule of one's own, numbers and lists typed as people type them
 await go('#/bots/acme-support/workflow');
 await page.locator('.wfNode.agent').filter({ hasText: 'Acme Support' }).first().click();
 await wait(700);
-await page.getByRole('button', { name: 'All settings for this agent' }).click();
+await page.getByRole('button', { name: 'All settings for this subagent' }).click();
 await wait(1600);
 check(
-  '“All settings for this agent” opens the Workflow’s settings with the agent shown',
+  '“All settings for this subagent” opens the Workflow’s settings with the subagent shown',
   /^agents/.test(await page.evaluate(() => document.activeElement?.closest('[data-path]')?.dataset.path || '')),
 );
 await go('#/bots/acme-support/guardrails');

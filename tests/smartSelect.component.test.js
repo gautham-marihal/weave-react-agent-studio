@@ -23,11 +23,12 @@ const mount = (props, picked) => mountScreen('smartselect', { picked }, { ready:
 const input = (app) => $(app.container, '[aria-label="Pick one"][role=combobox]');
 const optionTexts = () => $$(document, '[role=option]').map((o) => textOf(o).replace(/ ✓$/, ''));
 
-test('SmartSelect: eight or fewer choices are a plain select, more are a searchable combobox', async () => {
+test('SmartSelect: eight or fewer choices are a plain choice box, more are a searchable combobox', async () => {
   const few = await mount({ options: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }, 'b');
-  assert.equal($(few.container, 'select[aria-label="Pick one"]').value, 'b');
-  assert.equal($(few.container, '[role=combobox]'), null);
-  await a.choose($(few.container, 'select'), 'd');
+  // the choice box (ui/Select.tsx) is a button with a list; it has no box to type in
+  assert.equal($(few.container, '.rxSelect[aria-label="Pick one"]').value, 'b');
+  assert.equal($(few.container, 'input[role=combobox]'), null);
+  await a.choose($(few.container, '.rxSelect'), 'd');
   assert.equal(few.config.picked, 'd');
   await few.unmount();
   const lots = await mount({ options: many }, 'tool_3');

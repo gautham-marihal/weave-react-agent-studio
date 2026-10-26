@@ -2,7 +2,7 @@
 // to an agent"). It is queued for the agent, applied when its Config tab opens, and left unsaved so the person
 // reviews it first.
 
-import { applyStarter, starterById } from './starters.js';
+import { applyStarter, starterById } from './starters.ts';
 
 const KEY = 'weave_pending_change';
 

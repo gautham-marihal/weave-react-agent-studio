@@ -7,6 +7,7 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge), E2E_HEADED=1 to watch, E2E_SHOTS=folder to save pictures.
 import { chromium } from 'playwright-core';
+import { pick } from './pick.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const SHOTS = process.env.E2E_SHOTS || '';
@@ -117,7 +118,7 @@ check(
   environments.every((o) => /· (runs v|nothing deployed)/.test(o)),
   environments.join(' | '),
 );
-await dialog.getByLabel('Environment').selectOption('development');
+await pick(page, dialog.getByLabel('Environment'), 'development');
 await dialog.locator('summary', { hasText: 'Advanced' }).click();
 check(
   'recording is on by default and says it is a recording of callers',
@@ -150,7 +151,7 @@ await shot('list');
 await row.getByRole('button', { name: 'Edit' }).click();
 const edit = page.locator('[role=dialog]');
 check('the number itself cannot be edited, only its settings', (await edit.getByLabel('Number', { exact: true }).count()) === 0);
-await edit.getByLabel('Environment').selectOption('staging');
+await pick(page, edit.getByLabel('Environment'), 'staging');
 await edit.locator('summary', { hasText: 'Advanced' }).click();
 await edit.getByLabel('Filter background noise').check();
 await edit.getByRole('button', { name: 'Save changes' }).click();

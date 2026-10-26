@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { api, apiUrl, followCall } from '../../api/client.js';
+import { api, apiUrl, followCall } from '../../api/client.ts';
 import { Notice } from '../ui.jsx';
+import { Choice, OneOf } from '../../ui/OneOf.tsx';
 import { formatWhen } from '../format.js';
 import TraceView from '../trace/TraceView.jsx';
 import TranscriptView from './TranscriptView.jsx';
@@ -209,19 +210,11 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
       )}
 
       {countsLine(meta.counts) && <p className="clCounts">{countsLine(meta.counts)}</p>}
-      <div className="clViews" role="group" aria-label="How to read this call">
-        <button type="button" className={view === 'trace' ? 'on' : ''} aria-pressed={view === 'trace'} onClick={() => setView('trace')}>
-          What happened
-        </button>
-        <button type="button" className={view === 'conversation' ? 'on' : ''} aria-pressed={view === 'conversation'} onClick={() => setView('conversation')}>
-          Conversation only
-        </button>
-        {!live && (
-          <button type="button" className={view === 'replay' ? 'on' : ''} aria-pressed={view === 'replay'} onClick={() => setView('replay')}>
-            Replay
-          </button>
-        )}
-      </div>
+      <OneOf className="clViews" label="How to read this call" value={view} onChange={setView}>
+        <Choice value="trace">What happened</Choice>
+        <Choice value="conversation">Conversation only</Choice>
+        {!live && <Choice value="replay">Replay</Choice>}
+      </OneOf>
 
       {state.loading && (
         <p className="stMuted" role="status">

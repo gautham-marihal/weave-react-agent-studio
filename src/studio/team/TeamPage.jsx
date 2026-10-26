@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import { Notice } from '../ui.jsx';
-import '../newlayout/newlayout.css';
+import Select from '../../ui/Select.tsx';
+import '../agent/agent.css';
 import MemberDrawer from './MemberDrawer.jsx';
 import { useTeam } from './useTeam.js';
 import {
@@ -23,8 +24,9 @@ import './team.css';
 
 const STATUS = { active: { text: 'Active', tone: 'good' }, invited: { text: 'Invited', tone: 'wait' } };
 
-// Who works in this workspace and on which agents. Someone is given a role and either the whole workspace or only some agents; the same choice can be made
-// from inside one agent ("Share"). `agents` is [{ id, name }]; `agentsLoaded` is false while the list is still being read (so nobody is dropped from it).
+// Who works in this workspace and on which agents. Someone is given a role and either the whole workspace or only some
+// agents; the same choice can be made from inside one agent ("Share"). `agents` is [{ id, name }]; `agentsLoaded` is
+// false while the list is still being read (so nobody is dropped from it).
 export default function TeamPage({ agents, agentsLoaded = true, workspaceName }) {
   const { members, update } = useTeam();
   const [panel, setPanel] = useState(null); // { mode: 'invite' } | { mode: 'edit', id }
@@ -144,14 +146,14 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
         />
         <label className="tmFilter">
           <span>Who can open</span>
-          <select className="stFInput" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} aria-label="Who can open">
+          <Select className="stFInput" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} aria-label="Who can open">
             <option value="">Any agent</option>
             {agents.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <span className="tmCount">
           {members.length} {members.length === 1 ? 'person' : 'people'}

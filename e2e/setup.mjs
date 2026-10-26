@@ -1,4 +1,4 @@
-// The guided setup of the New layout in a real browser, on the demo (no backend): an agent is created and set up step by step (what it does, where people
+// The guided setup in a real browser, on the demo (no backend): an agent is created and set up step by step (what it does, where people
 // reach it, its language and voice, what it knows, what it can do), tried, and put live, and the draft is checked to hold what each step chose. Then: leaving
 // half way and coming back opens the step where it was left; an agent that is already published is not offered the setup, and its "Getting it ready" steps
 // open its own pages; a new agent has no calls until it is live. Nothing is written anywhere but the demo.
@@ -8,6 +8,7 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge), E2E_HEADED=1 to watch, E2E_SHOTS=folder to save pictures.
 import { chromium } from 'playwright-core';
+import { valueOf } from './pick.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const SHOTS = process.env.E2E_SHOTS || '';
@@ -154,7 +155,7 @@ await page.waitForTimeout(300);
 check(
   'phone calls switch on, with the recording notice offered',
   (await page.locator('.suChoice', { hasText: 'Phone calls' }).getAttribute('aria-checked')) === 'true' &&
-    (await page.locator('.suField', { hasText: 'What callers hear first' }).count()) === 1,
+    (await page.locator('.suField', { hasText: 'Recording notice' }).count()) === 1,
 );
 await page.locator('.suChoice', { hasText: 'Chat on your website' }).click();
 await page.locator('.suChoice', { hasText: 'Phone calls' }).click();
@@ -181,7 +182,7 @@ check(
   'the voices listed are the ones that speak it',
   voiceLanguages.length === 1 &&
     voiceLanguages[0] === 'English (United Kingdom)' &&
-    (await page.getByLabel('Language of the voice').inputValue()) === 'English (United Kingdom)',
+    (await valueOf(page.getByLabel('Language of the voice'))) === 'English (United Kingdom)',
   voiceLanguages.join(' | '),
 );
 await page.locator('.suBlock', { hasText: 'Voice' }).getByRole('button', { name: /^Use / }).first().click();

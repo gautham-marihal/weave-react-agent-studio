@@ -1,18 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 import Icon from '../ui/Icon.jsx';
 import { useAgentHealth } from '../studio/health/useAgentHealth.js';
 import { useKnowledge } from '../studio/knowledge/useKnowledge.js';
-import { readinessSteps, stepRoute } from '../studio/newlayout/readiness.js';
+import { readinessSteps, stepRoute } from '../studio/agent/readiness.js';
 import { useGate } from '../studio/release/gate.js';
 import { isFinished, normalizeHeadline } from '../studio/scenarios/runResults.js';
 import StatePill from '../studio/StatePill.jsx';
 import { agentState } from '../studio/status.js';
 import { useAsync } from '../studio/useAsync.js';
+import Select from '../ui/Select.tsx';
 
-// Home's answer to "what now?": the agent you were last working on, how far it is from ready, and the one thing to do next. The steps are the same ones its
-// menu and its Overview show (readiness.js), worked out from the same things (the draft, its check, its tests' latest run, what is published and deployed),
-// so Home, the agent and Releases always agree.
+// Home's answer to "what now?": the agent you were last working on, how far it is from ready, and the one thing to do
+// next. The steps are the same ones its menu and its Overview show (readiness.js), worked out from the same things (the
+// draft, its check, its tests' latest run, what is published and deployed), so Home, the agent and Releases always
+// agree.
 const LAST_KEY = 'weave_last_agent';
 export const rememberAgent = (botId) => {
   try {
@@ -48,10 +50,12 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
   const visible = useMemo(() => (bot ? [bot] : []), [bot]);
   const { meta } = useAgentHealth(visible);
   const answer = bot ? meta[bot.id] || null : null;
-  const runs = useAsync((signal) => (bot ? api.listTestRuns(bot.id, 20, { signal }) : Promise.resolve(null)), [bot?.id]);
+  // the runs of the agent shown now: the answer kept while another agent's loads (or after it failed) is not used for this one
+  const runs = useAsync(async (signal) => (bot ? { bot: bot.id, list: await api.listTestRuns(bot.id, 20, { signal }) } : null), [bot?.id]);
+  const runsHere = runs.data && runs.data.bot === bot?.id && !runs.loading ? runs.data.list : undefined;
   const latestRun = useMemo(
-    () => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : undefined),
-    [runs.data],
+    () => (Array.isArray(runsHere) ? runsHere.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : undefined),
+    [runsHere],
   );
   const [gateOn] = useGate(bot?.id || '');
   const config = answer?.config || null;
@@ -120,13 +124,13 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
       <div className="hjHead">
         <span>{ready ? 'Ready' : 'Your next step'}</span>
         {list.length > 1 && (
-          <select className="stFInput small" aria-label="Which agent" value={bot.id} onChange={(event) => setChosen(event.target.value)}>
+          <Select className="stFInput small" aria-label="Which agent" value={bot.id} onChange={(event) => setChosen(event.target.value)}>
             {list.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name || b.id}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
       <h3>

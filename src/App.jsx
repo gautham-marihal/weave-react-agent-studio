@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import MobileNav from './studio/MobileNav.jsx';
 import { Landing } from './pages/Landing.jsx';
 import { Login, ProfileSetup } from './pages/Login.jsx';
-import { Dashboard } from './pages/Dashboard.jsx';
+import { Dashboard, openWorkspaceNamed } from './pages/Dashboard.jsx';
 import { AccountDialog, InfoDialogHost } from './pages/shared.jsx';
 import { DemoBadge } from './demo/DemoBadge.jsx';
 import { useAccent, useDensity, useStyle } from './studio/usePref.js';
 import DialogHost from './ui/DialogHost.jsx';
 import { PageErrorBoundary } from './ui/ErrorBoundary.jsx';
 import { forgetHealth } from './studio/health/useAgentHealth.js';
+import { queryClient } from './api/queryClient.ts';
+import { whenLeaveConfirmed } from './studio/route.js';
 
 // the last line of defence: a break outside any page (each page has its own, in the Dashboard) shows a calm screen with a reload
 export function AppErrorBoundary({ children }) {
@@ -35,13 +37,15 @@ function rememberSignIn(keep) {
   } catch {}
 }
 
-// signing out also drops what was read about the agents (their tags, owners and health), so the next person to sign in reads it afresh
+// signing out also drops what was read (the agents' tags, owners and health, and every call and number in the data
+// cache), so the next person to sign in reads it afresh
 function forgetSignIn() {
   try {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
   } catch {}
   forgetHealth();
+  queryClient.clear();
 }
 
 export function App() {
@@ -113,6 +117,7 @@ export function App() {
     try {
       localStorage.setItem('weave_profile', JSON.stringify(nextProfile));
     } catch {}
+    openWorkspaceNamed(nextProfile?.workspaceName);
     setProfile(nextProfile);
     rememberSignIn(keepSignedIn);
     setScreen('dashboard');
@@ -162,11 +167,14 @@ export function App() {
           profile={profile}
           workspaceName={accountWorkspace || profile?.workspaceName}
           onClose={() => setAccountOpen(false)}
-          onSignOut={() => {
-            setAccountOpen(false);
-            forgetSignIn();
-            setScreen('landing');
-          }}
+          // asks first when an open agent has unsaved edits, as the profile menu's Sign out does
+          onSignOut={() =>
+            whenLeaveConfirmed(() => {
+              setAccountOpen(false);
+              forgetSignIn();
+              setScreen('landing');
+            })
+          }
         />
       )}
     </>

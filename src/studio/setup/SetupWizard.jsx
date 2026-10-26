@@ -1,17 +1,16 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { api, groupIssues } from '../../api/client.js';
+import { api, groupIssues } from '../../api/client.ts';
 import Icon from '../../ui/Icon.jsx';
 import { askConfirm } from '../../ui/dialogs.js';
 import { AgentNumbers, useLiveNumbers } from '../../pages/LiveNumbers.jsx';
-import { refreshBots } from '../agents.js';
-import LanguagePicker from '../newlayout/pickers/LanguagePicker.jsx';
-import VoicePicker from '../newlayout/pickers/VoicePicker.jsx';
+import LanguagePicker from '../agent/pickers/LanguagePicker.jsx';
+import VoicePicker from '../agent/pickers/VoicePicker.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
 import { useGateStatus } from '../release/gate.js';
-import { navigate, routeHref } from '../route.js';
-import { readSimple, setAgentName, setGreeting, setRole } from '../simple/simpleModel.js';
-import { starterById } from '../starters.js';
+import { navigate, replaceRoute, routeHref } from '../route.js';
+import { greetingOf, greetingTarget, readSimple, setAgentName, setGreeting, setRole } from '../simple/simpleModel.js';
+import { starterById } from '../starters.ts';
 import { Notice } from '../ui.jsx';
 import { describeIssue } from '../validation/issues.js';
 import {
@@ -31,8 +30,9 @@ import { useSetupProgress } from './setupProgress.js';
 import { ActionSwitches, KnowledgeBlock, ReachChoices } from './SimpleBlocks.jsx';
 import './setup.css';
 
-// The guided setup: one step at a time, everything for that step on one screen, Next to move on. The draft is saved at every move, so leaving keeps the
-// work and "Continue setup" comes back to the same step. The steps are in the menu at the side; any can be opened at any time.
+// The guided setup: one step at a time, everything for that step on one screen, Next to move on. The draft is saved at
+// every move, so leaving keeps the work and "Continue setup" comes back to the same step. The steps are in the menu at
+// the side; any can be opened at any time.
 
 const ENVIRONMENTS = [
   ['development', 'Development', 'for you and your team to try it for real'],
@@ -96,9 +96,14 @@ function StepList({ step, states, onStep, busy }) {
   return slot ? createPortal(list, slot) : list;
 }
 
-// ---- 2. what it does ---------------------------------------------------------------------------------------------------------------------------------
+// ---- 2. what it does
+// ---------------------------------------------------------------------------------------------------------------------------------
 function PurposeStep({ config, set }) {
   const simple = readSimple(config);
+  // the channels the greeting is written to, kept from its first change (as on the Agent page): those that say the same line; a channel that says
+  // something else (or waits for the caller) is left as it is, and a line that is one of the agent's messages stays that message
+  const [greetingFor, setGreetingFor] = useState(null);
+  const greeting = greetingOf(config, greetingFor);
   const example = starterById('support').role;
   return (
     <div className="suFields">
@@ -134,17 +139,23 @@ function PurposeStep({ config, set }) {
         <small>When someone opens the chat or the call is answered.</small>
         <input
           className="stFInput"
-          value={simple.greeting}
+          value={greeting.text}
           placeholder="Hello! How can I help you today?"
-          onChange={(event) => set(setGreeting(config, event.target.value))}
+          onChange={(event) => {
+            const target = greetingFor || greetingTarget(config);
+            if (!greetingFor) setGreetingFor(target);
+            set(setGreeting(config, event.target.value, target));
+          }}
         />
       </label>
     </div>
   );
 }
 
-// ---- 3. where people reach it --------------------------------------------------------------------------------------------------------------------
-// ---- 4. language and voice -------------------------------------------------------------------------------------------------------------------------
+// ---- 3. where people reach it
+// --------------------------------------------------------------------------------------------------------------------
+// ---- 4. language and voice
+// -------------------------------------------------------------------------------------------------------------------------
 function VoiceStep({ config, set }) {
   const voice = usesVoice(config);
   const main = readSimple(config).primaryLanguage;
@@ -172,8 +183,10 @@ function VoiceStep({ config, set }) {
   );
 }
 
-// ---- 6. what it can do -----------------------------------------------------------------------------------------------------------------------------
-// ---- 7. try it ------------------------------------------------------------------------------------------------------------------------------------
+// ---- 6. what it can do
+// -----------------------------------------------------------------------------------------------------------------------------
+// ---- 7. try it
+// ------------------------------------------------------------------------------------------------------------------------------------
 function TryStep({ botId, editor, session, sessionMode, modeLocked, setSessionMode, onTried }) {
   const spoke = (session?.messages || []).some((m) => m.role === 'user');
   useEffect(() => {
@@ -200,7 +213,8 @@ function TryStep({ botId, editor, session, sessionMode, modeLocked, setSessionMo
 }
 
 // ---- 8. go live -----------------------------------------------------------------------------------------------------------------------------------
-//   done: what was put live, { version, environment, status, current } (kept by the setup: the agent is read again after it goes live, which redraws this step)
+//   done: what was put live, { version, environment, status, current } (kept by the
+//   setup: the agent is read again after it goes live, which redraws this step)
 function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, bump }) {
   const config = editor.parsed.value;
   const [environment, setEnvironment] = useState('development');
@@ -241,7 +255,6 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
       // read again: publishing moved the draft on to the next version number
       editor.reload();
       bump?.();
-      refreshBots();
     } catch (e) {
       setError(e);
     } finally {
@@ -373,8 +386,22 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
   );
 }
 
-// ---- the setup ---------------------------------------------------------------------------------------------------------------------------------------
-export default function SetupWizard({ botId, name, editor, summary, session, sessionMode, modeLocked, setSessionMode, bump, initialStep = '' }) {
+// ---- the setup
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// notices: what the agent's pages say about a save that was refused or failed (shown under the step's heading)
+export default function SetupWizard({
+  botId,
+  name,
+  editor,
+  summary,
+  session,
+  sessionMode,
+  modeLocked,
+  setSessionMode,
+  bump,
+  initialStep = '',
+  notices = null,
+}) {
   const [progress, update] = useSetupProgress(botId);
   const [step, setStep] = useState(() => (STEP_IDS.includes(initialStep) && initialStep !== 'start' ? initialStep : progress.step || 'purpose'));
   const [moving, setMoving] = useState(false);
@@ -407,8 +434,17 @@ export default function SetupWizard({ botId, name, editor, summary, session, ses
     if (step && progress.step !== step) update({ step });
   }, [step, progress.step, update]);
 
-  // Every move saves the draft first, so nothing is lost and the next step (Try it, Go live) works on what was just set. Leaving What it knows also
-  // starts reading the documents, once each time they change.
+  // Leaving What it knows (to another step, or to finish later) starts reading the documents, once each time they change.
+  const readWhatItKnows = () => {
+    if (step !== 'knowledge') return;
+    const k = knowledgeOf(latest.current);
+    const sources = JSON.stringify([k.files, k.pages]);
+    if ((k.files.length || k.pages.length) && sources !== builtFor.current) {
+      builtFor.current = sources;
+      api.buildKnowledge(botId, KNOWLEDGE_ID).catch(() => {});
+    }
+  };
+  // Every move saves the draft first, so nothing is lost and the next step (Try it, Go live) works on what was just set.
   const goTo = async (target) => {
     if (target === step) return;
     setMoving(true);
@@ -417,28 +453,33 @@ export default function SetupWizard({ botId, name, editor, summary, session, ses
       const saved = await editor.save();
       if (!saved) {
         setMoving(false);
-        setMoveError(
-          editor.conflict ? 'Someone else saved this agent meanwhile. Reload it from the agent’s pages.' : 'Your changes couldn’t be saved. Try again.',
-        );
+        // (what went wrong, and the choice after a conflict, is in the note under the heading: `editor` here is from
+        // before the save, so it can't say)
+        setMoveError('Your changes couldn’t be saved, so it stayed on this step. The note above says why.');
         return;
       }
     }
-    if (step === 'knowledge') {
-      const k = knowledgeOf(latest.current);
-      const sources = JSON.stringify([k.files, k.pages]);
-      if ((k.files.length || k.pages.length) && sources !== builtFor.current) {
-        builtFor.current = sources;
-        api.buildKnowledge(botId, KNOWLEDGE_ID).catch(() => {});
-      }
-    }
+    readWhatItKnows();
     setMoving(false);
     // coming back to the last step after changing something offers to put it live again
     if (step === 'live') setWentLive(null);
     setStep(target);
+    // the address names the step, so a reload (or a link copied now) opens this step and not the one the setup was opened at
+    replaceRoute(routeHref(botId, 'setup', { step: target }));
     mainRef.current?.scrollIntoView?.({ block: 'start' });
   };
   const leave = async () => {
-    if (editor.dirty && !editor.parsed.error) await editor.save();
+    if (editor.dirty && !editor.parsed.error) {
+      setMoving(true);
+      const saved = await editor.save();
+      setMoving(false);
+      // not saved (the note above says why): it stays, so the edits are not left behind unsaved
+      if (!saved) {
+        setMoveError('Your changes couldn’t be saved, so it stayed here. The note above says why.');
+        return;
+      }
+    }
+    readWhatItKnows();
     navigate(routeHref(botId, 'home'), { guard: false });
   };
 
@@ -506,6 +547,7 @@ export default function SetupWizard({ botId, name, editor, summary, session, ses
           {editor.saving || moving ? 'Saving…' : editor.dirty ? 'Changes not saved yet' : 'Saved'}
         </span>
       </header>
+      {notices}
       <div className="suBody">{body}</div>
       {moveError && (
         <p className="suNote warn" role="alert">

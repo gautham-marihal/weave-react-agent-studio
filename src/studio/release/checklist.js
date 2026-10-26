@@ -9,7 +9,7 @@
 // Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
-import { splitUnsupported } from '../preflight.js';
+import { splitUnsupported } from '../preflight.ts';
 import { isFinished, testStatusOf } from '../scenarios/runResults.js';
 import { baseState, knowledgeSummary } from '../knowledge/model.js';
 import { describeRecords, readDataFlow, recordingNoticeState } from '../records/recordsModel.js';

@@ -6,6 +6,8 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge), E2E_HEADED=1 to watch, E2E_SHOTS=folder to save pictures.
 import { chromium } from 'playwright-core';
+import { pick } from './pick.mjs';
+import { readJson, writeJson } from './json.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const SHOTS = process.env.E2E_SHOTS || '';
@@ -66,15 +68,13 @@ await page.getByPlaceholder('Enter your password').fill('x12345678');
 await page.getByRole('button', { name: /continue to workspace/i }).click();
 await page.waitForSelector('.dashMain');
 
-// set-up: an agent with pronunciation rules, redaction, safety rules, a sensitive value and a task (through the JSON editor of the new layout)
+// set-up: an agent with pronunciation rules, redaction, safety rules, a sensitive value and a task (through the JSON editor of the agent's pages)
 await page.evaluate(() => {
   location.hash = '#/bots/acme-support/settings';
 });
 await page.waitForSelector('.nlWorkspace');
 await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
-const box = page.locator('.nlPage textarea').first();
-await page.waitForFunction(() => (document.querySelector('.nlPage textarea')?.value || '').length > 20);
-const config = JSON.parse(await box.inputValue());
+const config = JSON.parse(await readJson(page));
 config.schema_version = '1.2';
 config.defaults = config.defaults || {};
 config.defaults.conversation = {
@@ -116,7 +116,7 @@ config.tasks = [
     on_success: { outcome: 'ok', tell_model: 'The caller is verified.' },
   },
 ];
-await box.fill(JSON.stringify(config, null, 2));
+await writeJson(page, JSON.stringify(config, null, 2));
 await page.waitForTimeout(600);
 await page
   .locator('.nlBar')
@@ -144,7 +144,7 @@ await page.waitForTimeout(300);
 let panel = page.locator('section[aria-label="Try how a line is said"]');
 await panel.scrollIntoViewIfNeeded().catch(() => {});
 check('pronunciation: the “Try a line” panel is under the voice settings', (await panel.count()) === 1);
-await panel.getByLabel('On which channel').selectOption('phone');
+await pick(page, panel.getByLabel('On which channel'), 'phone');
 await panel.getByLabel('A line the agent might say').fill('Nimbus says it costs $12.50 at 4:30 PM.');
 await panel.getByRole('button', { name: 'Try it' }).click();
 await page.waitForSelector('section[aria-label="Try how a line is said"] [data-block="spoken"]');
@@ -152,11 +152,11 @@ const spoken = await panel.locator('pre[aria-label="What the voice is given"]').
 check('pronunciation: the voice is given the rewritten line', spoken === 'Nim-bus says it costs 12 dollars and 50 cents at 4 30 P M.', spoken);
 check('pronunciation: each change names its rule', (await panel.locator('[aria-label="What was changed"] li').count()) === 3);
 check('pronunciation: the demo says it is an imitation', /demo imitation/.test(await panel.innerText()));
-await panel.getByLabel('Whose words').selectOption('fixed');
+await pick(page, panel.getByLabel('Whose words'), 'fixed');
 await panel.getByRole('button', { name: 'Try it' }).click();
 await page.waitForTimeout(500);
 check('pronunciation: a fixed line is not changed, and it says why', /Fixed lines you wrote yourself are not changed/.test(await panel.innerText()));
-await panel.getByLabel('Whose words').selectOption('model');
+await pick(page, panel.getByLabel('Whose words'), 'model');
 await panel.locator('summary', { hasText: 'Type it as it streams' }).click();
 await panel.getByLabel('Pieces, separated by |').fill('at 4|:30 P|M');
 await panel.getByRole('button', { name: 'Try it' }).click();

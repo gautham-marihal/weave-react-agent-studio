@@ -84,15 +84,15 @@ test('settings that sit in the engine group say so, so nobody mistakes them for 
   assert.match(worker.where, /Engine and operator settings/);
 });
 
-// ---- the new layout: where a setting is shown, in its own words, and the agent's pages and actions
+// ---- the agent's pages: where a setting is shown, in its own words, and the agent's pages and actions
 test('everyday words find a part by what people call it: opening hours, documents, hand over', async () => {
   assert.equal(find('opening hours')[0]?.trail.join('.'), 'schedules');
   assert.ok(find('documents').some((e) => e.trail.join('.') === 'knowledge'));
   assert.ok(find('hand over').some((e) => e.trail.join('.').startsWith('telephony.transfers') || e.label === 'Hand over to a person'));
 });
 
-test('new layout: a setting opens on the page and panel that hold it, and says so in the page’s words', async () => {
-  const { searchTarget, settingWhere } = await import('../src/studio/newlayout/pages.js');
+test('agent pages: a setting opens on the page and panel that hold it, and says so in the page’s words', async () => {
+  const { searchTarget, settingWhere } = await import('../src/studio/agent/pages.js');
   const entry = (trail) => index.find((e) => e.trail.join('.') === trail);
   const hours = entry('schedules');
   assert.deepEqual(searchTarget(hours), { page: 'channels', path: ['schedules'] });
@@ -108,8 +108,8 @@ test('new layout: a setting opens on the page and panel that hold it, and says s
   const recording = entry('post_call.recording');
   assert.equal(searchTarget(recording).page, 'aftercall');
   assert.match(settingWhere(recording), /^After the call › /);
-  // nothing found by the search is placed on a page the new layout does not have
-  const { PAGE_IDS } = await import('../src/studio/newlayout/pages.js');
+  // nothing found by the search is placed on a page the agent does not have
+  const { PAGE_IDS } = await import('../src/studio/agent/pages.js');
   const lost = index.filter((e) => !PAGE_IDS.includes(searchTarget(e).page)).map((e) => e.trail.join('.'));
   assert.deepEqual(lost, []);
   assert.ok(
@@ -118,8 +118,8 @@ test('new layout: a setting opens on the page and panel that hold it, and says s
   );
 });
 
-test('new layout: a setting found under one name in many places is listed twice at most, so other settings still fit', async () => {
-  const { capSameLabel } = await import('../src/studio/newlayout/pages.js');
+test('agent pages: a setting found under one name in many places is listed twice at most, so other settings still fit', async () => {
+  const { capSameLabel } = await import('../src/studio/agent/pages.js');
   const found = find('hours', 24);
   const count = (list) => list.filter((e) => e.label === 'Business hours').length;
   assert.ok(count(found) > 2, 'the search finds business hours in many places');
@@ -130,8 +130,8 @@ test('new layout: a setting found under one name in many places is listed twice 
   assert.deepEqual(capSameLabel(found, Infinity), found);
 });
 
-test('new layout: the agent’s pages and the things people come to do are found by the words they use, the best match first', async () => {
-  const { searchAgent } = await import('../src/studio/newlayout/pages.js');
+test('agent pages: the agent’s pages and the things people come to do are found by the words they use, the best match first', async () => {
+  const { searchAgent } = await import('../src/studio/agent/pages.js');
   const ids = (q) => searchAgent(q).map((i) => i.id);
   assert.equal(searchAgent('').length, 15, 'with nothing typed, the pages');
   assert.equal(ids('deploy')[0], 'deploy');
@@ -145,8 +145,8 @@ test('new layout: the agent’s pages and the things people come to do are found
   assert.deepEqual(ids('zzz'), []);
 });
 
-test('new layout: an agent’s own instructions open on the Agent page only when there is one agent to have them', async () => {
-  const { searchTarget } = await import('../src/studio/newlayout/pages.js');
+test('agent pages: an agent’s own instructions open on the Agent page only when there is one agent to have them', async () => {
+  const { searchTarget } = await import('../src/studio/agent/pages.js');
   const role = index.find((e) => e.trail[0] === 'agents' && e.trail.at(-1) === 'role');
   assert.ok(role, 'the instructions are in the index');
   const one = { agents: { items: [{ id: 'assistant' }] } };

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PRODUCTION_WORD, isSecurity, mayDeploy, secretsStatus, splitUnsupported } from '../src/studio/preflight.js';
+import { PRODUCTION_WORD, isSecurity, mayDeploy, secretsStatus, splitUnsupported } from '../src/studio/preflight.ts';
 
 const items = [
   { feature: 'MCP server tools', where: 'tools[3]' },
@@ -54,7 +54,7 @@ test('secrets: a key the server says is not set is marked, one it can’t know a
 });
 
 test('rollback target: the version this environment ran before, if any', async () => {
-  const { rollbackTarget } = await import('../src/studio/preflight.js');
+  const { rollbackTarget } = await import('../src/studio/preflight.ts');
   const data = {
     current: { production: { id: 'd3', version: '1.2.0' }, staging: { id: 'd1', version: '1.0.0' } },
     history: [

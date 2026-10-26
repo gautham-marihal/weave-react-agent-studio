@@ -1,5 +1,6 @@
-// What each kind of channel may carry and offer, so a screen never offers what `/validate` would refuse (FRONTEND_GUIDE 5, "Options that depend on the channel").
-// The truth is `GET /channel-types`; `FALLBACK_TYPES` is a copy of that answer (read from the real server on 2026-10-17) for when it cannot be asked.
+// What each kind of channel may carry and offer, so a screen never offers what `/validate` would refuse (FRONTEND_GUIDE
+// 5, "Options that depend on the channel"). The truth is `GET /channel-types`; `FALLBACK_TYPES` is a copy of that
+// answer (read from the real server on 2026-10-17) for when it cannot be asked.
 // Pure: no network, no DOM.
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -128,8 +129,9 @@ export const FALLBACK = normalizeChannelTypes(FALLBACK_TYPES);
 
 export const infoOf = (types, type) => list(types).find((t) => t.type === type) || null;
 
-// A channel that carries audio: its kind is a voice one, or its own modalities list audio.
-// (the guide: "`voice` is true for the type, or its modalities list audio"). A kind the studio does not know carries audio only if its modalities say so.
+// A channel that carries audio: its kind is a voice one, or its own modalities list audio. (the guide: "`voice` is true
+// for the type, or its modalities list audio"). A kind the studio does not know carries audio only if its modalities
+// say so.
 export function isVoiceChannel(channel, types) {
   const info = infoOf(types, channel?.type);
   const m = channel?.modalities;
@@ -153,7 +155,8 @@ export function entryFieldsFor(types, type) {
 export const canKeypad = (types, type) => infoOf(types, type)?.canKeypad ?? true;
 export const canForms = (types, type) => infoOf(types, type)?.canForms ?? true;
 
-// ---- the settings only a voice channel has, on a channel's `overrides` (the same shape as at every level) ---------------------------------------------
+// ---- the settings only a voice channel has, on a channel's `overrides` (the same shape as at every level)
+// ---------------------------------------------
 export const VOICE_ONLY = {
   conversation: ['sounds', 'speech', 'noise_cancellation', 'ivr_detection'],
   models: ['stt', 'tts', 'realtime', 'vad', 'turn_detector'],
@@ -216,8 +219,10 @@ export function mislabelledChat(channel) {
 export const NOT_RUNNING = 'Not available yet';
 export const notRunningYet = (types, type) => infoOf(types, type)?.runsToday === false;
 
-// ---- the browser channels of a bot (what the Test tab offers) -------------------------------------------------------------------------------------------
-// From the config: its enabled web chat and web voice channels, in order. A session response's `channels` list is the server's version of the same thing.
+// ---- the browser channels of a bot (what the Test tab offers)
+// ------------------------------------------------------------------------------------------- From the config: its
+// enabled web chat and web voice channels, in order. A session response's `channels` list is the server's version of
+// the same thing.
 export function browserChannels(config) {
   return list(config?.channels)
     .filter((c) => isObj(c) && c.id && (c.type === 'web_chat' || c.type === 'web_voice') && c.enabled !== false)

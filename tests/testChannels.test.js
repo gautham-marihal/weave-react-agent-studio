@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { testability } from '../src/studio/test/channels.js';
+import { testability } from '../src/studio/test/channels.ts';
 
 test('a browser can try web chat and web voice, not a phone line', () => {
   assert.deepEqual(testability(null), { state: 'unknown', phone: [] });

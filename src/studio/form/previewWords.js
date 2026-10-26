@@ -1,7 +1,8 @@
-// The parts of the server's prompt preview that the guide describes in a sentence rather than a shape: what runs when an agent takes over (`on_enter`),
-// what is searched (`knowledge`), which models and which secret NAMES would be used (`models`) and the state the preview was built from (`state`, with
-// sensitive values masked). The server's answer is read tolerantly: whatever its shape, every part of it is shown, in words where the studio knows
-// the part and as written where it does not. Nothing is guessed and nothing is dropped. Pure: no DOM.
+// The parts of the server's prompt preview that the guide describes in a sentence rather than a shape: what runs when
+// an agent takes over (`on_enter`), what is searched (`knowledge`), which models and which secret NAMES would be used
+// (`models`) and the state the preview was built from (`state`, with sensitive values masked). The server's answer is
+// read tolerantly: whatever its shape, every part of it is shown, in words where the studio knows the part and as
+// written where it does not. Nothing is guessed and nothing is dropped. Pure: no DOM.
 
 import { describeAction } from './effects.js';
 
@@ -118,7 +119,8 @@ export function modelLines(models) {
     .map(([stage, v]) => ({ label: STAGE_WORDS[stage] || humanize(stage), text: describeModel(v) }));
 }
 
-// ---- the state the preview was built from -----------------------------------------------------------------------------------------------------------
+// ---- the state the preview was built from
+// -----------------------------------------------------------------------------------------------------------
 const MASK = /^[•*●·]{2,}$|^<?(masked|sensitive|hidden|redacted)>?$/i;
 // [{ name, text, masked }]
 export function stateLines(state) {

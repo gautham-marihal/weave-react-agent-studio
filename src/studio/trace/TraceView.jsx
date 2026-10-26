@@ -6,16 +6,8 @@ import './trace.css';
 // failed scenario (what the runner did) all show the same records, so they all use this. It lists them in order, lets you narrow to the
 // kinds you care about (the conversation, the tools, the API requests, the errors…), marks what went wrong, and shows any record's raw
 // fields on request. `live` follows a call in progress.
-export default function TraceView({
-  records,
-  live = false,
-  compact = false,
-  title = 'What happened',
-  emptyText = 'Nothing has been recorded yet.',
-  initialGroups = [],
-  note,
-}) {
-  const [active, setActive] = useState(initialGroups);
+export default function TraceView({ records, live = false, compact = false, title = 'What happened', emptyText = 'Nothing has been recorded yet.', note }) {
+  const [active, setActive] = useState([]);
   const [copied, setCopied] = useState(false);
   const endRef = useRef(null);
   const rows = useMemo(() => describeRecords(records), [records]);

@@ -1,7 +1,8 @@
-// From a call to a test: the caller's words become the turns of a scenario, and what the agent did in the call becomes checks to start from. A scenario
-// is part of the agent's draft (`tests`), so it is saved and versioned with it, and from then on every run checks that the same conversation still goes
-// the same way. The person chooses which checks to keep, can say what should have happened instead, and can edit what the caller said before it is kept:
-// a call holds real words, and a test is published with the agent.
+// From a call to a test: the caller's words become the turns of a scenario, and what the agent did in the call becomes
+// checks to start from. A scenario is part of the agent's draft (`tests`), so it is saved and versioned with it, and
+// from then on every run checks that the same conversation still goes the same way. The person chooses which checks to
+// keep, can say what should have happened instead, and can edit what the caller said before it is kept: a call holds
+// real words, and a test is published with the agent.
 // Pure: no network, no DOM.
 
 import { describeExpectation, freshScenarioId, slugId } from '../scenarios/model.js';
@@ -13,7 +14,8 @@ const ID = /^[a-z][a-z0-9_-]{0,63}$/;
 const escapeRegex = (text) => String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-// Phone numbers, e-mail addresses and other long runs of digits (card, account and order numbers) hidden behind a word, so a test does not carry them.
+// Phone numbers, e-mail addresses and other long runs of digits (card, account and order numbers) hidden behind a word,
+// so a test does not carry them.
 export function redact(text) {
   return String(text || '')
     .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[email]')
@@ -28,8 +30,9 @@ const defaultsOf = (config) =>
     Object.entries(isObj(config?.state?.variables) ? config.state.variables : {}).map(([name, v]) => [name, isObj(v) ? (v.default ?? null) : null]),
   );
 
-// The checks worth offering for this call, each with why it is offered. `checked` says which start ticked: what the agent plainly did (a tool that worked,
-// a hand-over, a value it ended up remembering) is ticked; its exact wording is offered but not ticked, because the same meaning can be said in other words.
+// The checks worth offering for this call, each with why it is offered. `checked` says which start ticked: what the
+// agent plainly did (a tool that worked, a hand-over, a value it ended up remembering) is ticked; its exact wording is
+// offered but not ticked, because the same meaning can be said in other words.
 export function suggestChecks(facts, config) {
   const checks = [];
   const tools = [];
@@ -107,7 +110,8 @@ export function suggestChecks(facts, config) {
   return checks;
 }
 
-// What to start the dialog with: a name, a description, the channel, the caller's turns, the checks, and warnings about anything that will not carry over.
+// What to start the dialog with: a name, a description, the channel, the caller's turns, the checks, and warnings about
+// anything that will not carry over.
 export function suggestTest(facts, config, { callId = '', startedAt = '' } = {}) {
   const warnings = [];
   const channels = list(config?.channels).filter((c) => isObj(c) && c.id);
@@ -143,7 +147,8 @@ export function suggestTest(facts, config, { callId = '', startedAt = '' } = {})
   };
 }
 
-// What is wrong with a test about to be kept: [] when nothing. Only what is known to be wrong is said; the form never refuses over something it does not know.
+// What is wrong with a test about to be kept: [] when nothing. Only what is known to be wrong is said; the form never
+// refuses over something it does not know.
 export function testProblems({ id, channel, turns, checks, expectedText }, config) {
   const problems = [];
   if (!ID.test(String(id || ''))) problems.push('The name must start with a letter and use only lower-case letters, digits, “_” or “-”.');
@@ -155,7 +160,8 @@ export function testProblems({ id, channel, turns, checks, expectedText }, confi
   return problems;
 }
 
-// The scenario to keep. `expectedText` is what a reviewer should agree happened (a `judge`, which needs a live model: a scenario with one is not free).
+// The scenario to keep. `expectedText` is what a reviewer should agree happened (a `judge`, which needs a live model: a
+// scenario with one is not free).
 export function buildScenario({ id, description, channel, turns, checks, expectedText = '', toolsNeverCalled = [] }) {
   const expect = list(checks)
     .filter((c) => c.checked)

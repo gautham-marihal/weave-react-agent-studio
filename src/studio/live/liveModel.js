@@ -1,6 +1,7 @@
-// What one call that is going on right now looks like on the Live board, worked out from its records: who is talking, what was said last, which agent has
-// it, how long it has run, and what in it needs a look (a caller left waiting, a tool that failed, a caller who asked for a person...). Pure: no React, no
-// network, no clock of its own (the time is passed in), so the board can redraw it every second and the tests can play a call through.
+// What one call that is going on right now looks like on the Live board, worked out from its records: who is talking,
+// what was said last, which agent has it, how long it has run, and what in it needs a look (a caller left waiting, a
+// tool that failed, a caller who asked for a person...). Pure: no React, no network, no clock of its own (the time is
+// passed in), so the board can redraw it every second and the tests can play a call through.
 
 import { HANDOFF_TOOL, WANTS_A_PERSON, closeness } from '../insights/questionsModel.js';
 import { fixMojibake } from '../trace/records.js';

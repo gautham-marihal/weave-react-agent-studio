@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { followCall } from '../../api/client.js';
+import { followCall } from '../../api/client.ts';
 
 // The records of the conversation a Test tab (or preview) is having. A simulated conversation makes its own records; a real one is
 // followed through the API's live stream of the call, which the runtime writes as it goes. Reading the stream never changes anything.

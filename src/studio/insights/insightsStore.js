@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
 
-// What a person decided about alerts and unanswered questions, kept in this browser (like workspaces and the team preview): the rules' thresholds, which
-// alerts are acknowledged or snoozed, what fired and when, where to send alerts, and for each agent the questions answered or dismissed. Plus the latest
-// result of the alert check (not kept: it is worked out again from the calls). Every part of the page reading it sees a change at once, as does another
-// tab. When storage is blocked it still works until the page is closed.
+// What a person decided about alerts and unanswered questions, kept in this browser (like workspaces and the team
+// preview): the rules' thresholds, which alerts are acknowledged or snoozed, what fired and when, where to send alerts,
+// and for each agent the questions answered or dismissed. Plus the latest result of the alert check (not kept: it is
+// worked out again from the calls). Every part of the page reading it sees a change at once, as does another tab. When
+// storage is blocked it still works until the page is closed.
 
 const KEY = 'weave_insights_v1';
 const EMPTY = { rules: {}, acks: {}, history: [], notify: { browser: false, email: '', slack: '' }, questions: {} };
@@ -59,7 +60,8 @@ const subscribe = (listener) => {
 export const useInsights = () => useSyncExternalStore(subscribe, read, () => EMPTY);
 export const useLiveAlerts = () => useSyncExternalStore(subscribe, getLive, () => live);
 
-// ---- small edits ------------------------------------------------------------------------------------------------------------------------------------
+// ---- small edits
+// ------------------------------------------------------------------------------------------------------------------------------------
 
 export const setRule = (id, patch) =>
   setInsights((s) => ({
@@ -88,10 +90,4 @@ export function decideQuestion(botId, decision) {
 }
 export function undoQuestion(botId, text) {
   setInsights((s) => ({ ...s, questions: { ...s.questions, [botId]: questionDecisions(s, botId).filter((d) => d.text !== text) } }));
-}
-
-// for tests: forget what is held in memory
-export function resetInsightsForTests() {
-  saved = null;
-  live = { alerts: [], checkedAt: null, checking: false, errors: [], watching: 0 };
 }

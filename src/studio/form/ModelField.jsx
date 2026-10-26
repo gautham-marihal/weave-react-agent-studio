@@ -5,8 +5,9 @@ import { useConfigSelect } from './ctx.js';
 import { TextInput } from './fields.jsx';
 import SuggestInput from './SuggestInput.jsx';
 
-// The Provider and Model boxes of the speech, language and voice settings: a list of what the studio knows (the providers the server can run, the models
-// the catalogue lists for the chosen provider), and any other value can be typed. Nothing here limits what is saved: the server does not check model ids.
+// The Provider and Model boxes of the speech, language and voice settings: a list of what the studio knows (the
+// providers the server can run, the models the catalogue lists for the chosen provider), and any other value can be
+// typed. Nothing here limits what is saved: the server does not check model ids.
 export default function ModelField({ stage, leaf, path, value, onChange, disabled, invalid, id, placeholder }) {
   const { providers, turnDetectors } = useProviders();
   const parent = path.slice(0, -1);

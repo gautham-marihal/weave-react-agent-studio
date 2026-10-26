@@ -116,6 +116,28 @@ test('the diff addresses id lists by id, like the API', () => {
   assert.deepEqual(diffConfigs(a, a), []);
 });
 
+test('the demo validator counts a tool as used when a task step checks with it or a guardrail calls it, as its warning says', () => {
+  const config = minimalConfig('a', 'A');
+  const http = (id) => ({
+    id,
+    type: 'http',
+    description: id,
+    connection: 'api',
+    request: { method: 'GET', path: '/x' },
+    parameters: { type: 'object', properties: {} },
+  });
+  config.tools = [...(config.tools || []), http('check_pin'), http('page_the_team'), http('off_topic_help'), http('spare')];
+  config.tasks = [{ id: 'verify', kind: 'verification', steps: [{ id: 'pin', ask: 'Ask for it.', validate: { type: 'tool', tool: 'check_pin' } }] }];
+  config.guardrails = {
+    escalation: [{ id: 'asks', when: { intent: 'asks_for_human' }, action: 'tool', tool: 'page_the_team' }],
+    topics: { blocked: ['x'], on_off_topic: { say: 'No.', max_strikes: 2, then: 'off_topic_help' } },
+  };
+  const unused = validateDemo(config, 'a')
+    .warnings.map((w) => /tool '(.+)' is not used/.exec(w.message)?.[1])
+    .filter(Boolean);
+  assert.deepEqual(unused, ['spare']);
+});
+
 test('the demo validator says it is a demo, and catches the cheap mistakes the real one would', () => {
   const ok = validateDemo(minimalConfig('a', 'A'), 'a');
   assert.equal(ok.valid, true);

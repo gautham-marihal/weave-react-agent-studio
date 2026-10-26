@@ -1,6 +1,7 @@
-// A comparison of two versions (what the server's diff answers with: [{ op: 'add' | 'remove' | 'change', path, before?, after? }]) put in words a person would
-// use: "Changed the language model from GPT-4.1 Mini to GPT-5.4", not "defaults.models.llm.model". The settings that people change most (the models, the
-// voice, the language) have their own sentences; the rest use the plain-language names the settings form already has. Pure: no React, no DOM.
+// A comparison of two versions (what the server's diff answers with: [{ op: 'add' | 'remove' | 'change', path, before?,
+// after? }]) put in words a person would use: "Changed the language model from GPT-4.1 Mini to GPT-5.4", not
+// "defaults.models.llm.model". The settings that people change most (the models, the voice, the language) have their
+// own sentences; the rest use the plain-language names the settings form already has. Pure: no React, no DOM.
 
 import { describeChange, sectionOf } from '../assistant/diffConfig.js';
 import { MODEL_OPTIONS, providerLabel } from '../models/catalog.js';

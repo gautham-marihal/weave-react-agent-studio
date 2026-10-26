@@ -1,6 +1,7 @@
-// The Voices page previews a voice with the browser's own speech engine (it is not a sample from the provider). Browsers don't say whether
-// an installed voice is a woman's or a man's, and when no voice is set they use their default, which is often a man's (Microsoft David on
-// Windows). So to preview a female voice as female and a male voice as male, the voice is picked by the gender its name is known for.
+// A voice with no recorded sample of its own, or whose recording can't be played, is read with the browser's own speech
+// engine (voicePreview.js). Browsers don't say whether an installed voice is a woman's or a man's, and when no voice is
+// set they use their default, which is often a man's (Microsoft David on Windows). So to preview a female voice as
+// female and a male voice as male, the voice is picked by the gender its name is known for.
 // Pure: no DOM, so the tests run it in Node.
 
 const FEMALE = [
@@ -105,7 +106,6 @@ const MALE = [
   'hemant',
   'prabhat',
   'madhur',
-  'ravi',
   'liam',
   'connor',
   'neil',

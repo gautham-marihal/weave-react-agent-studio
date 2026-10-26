@@ -1,9 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import Icon from './Icon.jsx';
-import { FOCUSABLE, useDialogFocus } from './useDialogFocus.js';
+import { Popover } from 'radix-ui';
+import { keepEscape } from './layer.ts';
+import Tip from './Tip.tsx';
+import { Choice, OneOf } from './OneOf.tsx';
 import { ACCENTS, STYLES, useAccent, useStyle } from '../studio/usePref.js';
 
-// The design styles as cards, each with a small picture of how it looks in the mode in use (light or dark). Picking one changes the whole site at once.
+// The design styles as cards, each with a small picture of how it looks in the mode in use (light or dark). Picking one
+// changes the whole site at once.
 export function StyleCards({ onPicked }) {
   const [style, setStyle] = useStyle();
   return (
@@ -81,67 +85,53 @@ function ColourOptions({ style }) {
   );
 }
 
-// The "Theme" button of the top bar, the one place for how the studio looks: light or dark, the design style and its colour, in one small panel.
+// The "Theme" button of the top bar, the one place for how the studio looks: light or dark, the design style and its
+// colour, in one small panel (a Radix pop-over). It opens under the button on the side with room, with the keyboard on
+// the light/dark choice in use; Escape or a click elsewhere closes it and gives the keyboard back to the button.
 export function StyleMenu({ theme, onToggleTheme }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const buttonRef = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    const outside = (event) => {
-      if (ref.current && !ref.current.contains(event.target)) setOpen(false);
-    };
-    const key = (event) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-        buttonRef.current?.focus();
-      }
-    };
-    document.addEventListener('mousedown', outside);
-    document.addEventListener('keydown', key);
-    return () => {
-      document.removeEventListener('mousedown', outside);
-      document.removeEventListener('keydown', key);
-    };
-  }, [open]);
   return (
-    <div className="styleMenu" ref={ref}>
-      <button
-        type="button"
-        ref={buttonRef}
-        className="quietButton"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        title="Change how the studio looks"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <Icon name="sparkle" size={15} /> Theme
-      </button>
-      {open && <StyleMenuPanel theme={theme} onToggleTheme={onToggleTheme} />}
-    </div>
-  );
-}
-
-// The panel itself: the keyboard goes into it when it opens (the light/dark switch in use), Tab goes round it, and it gives the focus back when it closes.
-function StyleMenuPanel({ theme, onToggleTheme }) {
-  const box = useRef(null);
-  useDialogFocus(box, () => box.current?.querySelector('[aria-pressed="true"]') || box.current?.querySelector(FOCUSABLE));
-  return (
-    <section className="styleMenuPanel" role="dialog" aria-label="Theme" ref={box}>
-      <header>
-        <strong>Theme</strong>
-        <div className="styleMenuModes" role="group" aria-label="Light or dark">
-          {['light', 'dark'].map((mode) => (
-            <button key={mode} type="button" aria-pressed={theme === mode} onClick={() => mode !== theme && onToggleTheme()}>
-              {mode === 'light' ? 'Light' : 'Dark'}
+    <div className="styleMenu">
+      <Popover.Root>
+        <Tip label="Change how the studio looks" hoverOnly>
+          <Popover.Trigger asChild>
+            <button type="button" className="quietButton">
+              <Icon name="sparkle" size={15} /> Theme
             </button>
-          ))}
-        </div>
-      </header>
-      {/* the light/dark switch stays put; the styles and colours scroll under it when the window is short */}
-      <div className="styleMenuScroll">
-        <StyleCards />
-      </div>
-    </section>
+          </Popover.Trigger>
+        </Tip>
+        <Popover.Portal>
+          <Popover.Content
+            className="styleMenuPanel rxLayer"
+            aria-label="Theme"
+            align="end"
+            sideOffset={8}
+            collisionPadding={12}
+            onEscapeKeyDown={keepEscape}
+            onOpenAutoFocus={(event) => {
+              const pressed = event.currentTarget instanceof HTMLElement ? event.currentTarget.querySelector('.styleMenuModes [aria-checked="true"]') : null;
+              if (pressed) {
+                event.preventDefault();
+                pressed.focus({ preventScroll: true });
+              }
+            }}
+          >
+            <header>
+              <strong>Theme</strong>
+              <OneOf className="styleMenuModes" label="Light or dark" value={theme} onChange={(mode) => mode !== theme && onToggleTheme()}>
+                {['light', 'dark'].map((mode) => (
+                  <Choice key={mode} value={mode}>
+                    {mode === 'light' ? 'Light' : 'Dark'}
+                  </Choice>
+                ))}
+              </OneOf>
+            </header>
+            {/* the light/dark switch stays put; the styles and colours scroll under it when the window is short */}
+            <div className="styleMenuScroll">
+              <StyleCards />
+            </div>
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
   );
 }

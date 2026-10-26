@@ -82,7 +82,6 @@ export const GROUPS = [
   { id: 'lifecycle', label: 'Call', kinds: ['call_started', 'agent_entered', 'session_closed', 'call_ended'] },
   { id: 'errors', label: 'Errors', kinds: ['error'] },
 ];
-const KNOWN = new Set(GROUPS.flatMap((g) => g.kinds));
 export const groupOf = (event) => (GROUPS.find((g) => g.kinds.includes(event)) || { id: 'other' }).id;
 
 export const humanize = (name) =>
@@ -302,9 +301,8 @@ export function describeRecord(record, index = 0) {
       };
     default: {
       // a record this file doesn't know: its name made readable, and whatever else it carries
-      const { t, seq, elapsed_s: _elapsed, event, kind: _kind, ...rest } = r;
-      void t;
-      void seq;
+      // (what it leaves out of `rest`: the time and order, said elsewhere, and the bookkeeping)
+      const { t: _t, seq: _seq, elapsed_s: _elapsed, event, kind: _kind, ...rest } = r;
       return {
         ...base,
         label: humanize(kind),
@@ -364,8 +362,6 @@ export const traceAsText = (records) =>
   describeRecords(records)
     .map((r) => `${r.at.padStart(7)}  ${r.label.padEnd(9)} ${r.text}${r.facts.length ? `  [${r.facts.map(([k, v]) => `${k}: ${v}`).join('; ')}]` : ''}`)
     .join('\n');
-
-export const isKnownKind = (kind) => KNOWN.has(kind);
 
 // The state at the end of a call: what `call_ended` carries, else the last value each `state_changed` set.
 export function finalStateOf(records) {

@@ -33,7 +33,9 @@ async function open(config, screen) {
   if (screen) await a.section(app.container, screen);
   return app;
 }
-const optionValue = (select, text) => [...select.options].find((o) => o.text === text)?.value;
+// the value of the choice with these words, and the words of the choice made (the choice box shows them)
+const optionValue = async (box, text) => (await a.choices(box)).find((o) => o.text === text)?.value;
+const chosenText = (box) => textOf(box);
 
 // A group inside a group (an agent in the list of agents, the steps of an event) opens in a sheet drawn over the page, outside the form's own box: this
 // opens every one, and what is in them is then looked up in the whole page.
@@ -50,15 +52,15 @@ async function openSheets() {
 test('choosing another kind of tool keeps its id and description, and drops what only the old kind has', async () => {
   const app = await open(base({ tools: [complete()], connections }), 'tools');
   const kind = byLabel(app.container, 'Kind');
-  assert.equal(kind.options[kind.selectedIndex].text, 'HTTP');
-  await a.choose(kind, optionValue(kind, 'Built-in'));
+  assert.equal(chosenText(kind), 'HTTP');
+  await a.choose(kind, await optionValue(kind, 'Built-in'));
   let tool = app.config.tools[0];
   assert.equal(tool.type, 'builtin');
   assert.equal(tool.id, 't1');
   assert.equal(tool.description, 'Gets the bill when asked');
   assert.ok(!('request' in tool) && !('connection' in tool));
-  assert.equal(byLabel(app.container, 'Kind').options[byLabel(app.container, 'Kind').selectedIndex].text, 'Built-in');
-  await a.choose(byLabel(app.container, 'Kind'), optionValue(byLabel(app.container, 'Kind'), 'HTTP'));
+  assert.equal(chosenText(byLabel(app.container, 'Kind')), 'Built-in');
+  await a.choose(byLabel(app.container, 'Kind'), await optionValue(byLabel(app.container, 'Kind'), 'HTTP'));
   tool = app.config.tools[0];
   assert.equal(tool.type, 'http');
   assert.equal(tool.id, 't1');
@@ -73,7 +75,7 @@ test('an HTTP tool that lacks a required field still gets the tool editor, not r
   assert.ok($(app.container, '.stTool[data-tool-kind="http"]'), 'the HTTP tool editor is drawn');
   assert.doesNotMatch(textOf(app.container), /doesn’t match any known kind/);
   const kind = byLabel(app.container, 'Kind');
-  assert.equal(kind.options[kind.selectedIndex].text, 'HTTP');
+  assert.equal(chosenText(kind), 'HTTP');
   assert.deepEqual(app.config.tools[0], incomplete, 'drawing it changed nothing');
   await app.unmount();
 });
@@ -194,7 +196,7 @@ test('a value that matches no kind says so, and picking a kind recovers it witho
   const app = await open(base({ tools: [{ id: 'odd', type: 'wobble', note: 1 }] }), 'tools');
   assert.match(textOf(app.container), /doesn’t match any known kind/);
   const kind = byLabel(app.container, 'Kind');
-  await a.choose(kind, optionValue(kind, 'Built-in'));
+  await a.choose(kind, await optionValue(kind, 'Built-in'));
   assert.equal(app.config.tools[0].type, 'builtin');
   assert.equal(app.config.tools[0].id, 'odd');
   assert.doesNotMatch(textOf(app.container), /doesn’t match any known kind/);
@@ -256,12 +258,12 @@ test('a list of ids picked from another list: add and remove, never a duplicate'
   });
   const app = await open(config, 'agents');
   await openSheets();
-  const add = $$(document.body, 'select').find((el) => el.getAttribute('aria-label') === 'Add' && [...el.options].some((o) => o.text === 't2'));
-  assert.deepEqual(
-    [...add.options].map((o) => o.text),
-    ['Add…', 't2'],
-    'what is already chosen is not offered again',
-  );
+  // the Add box of the agent's tools: the one that offers t2
+  let add = null;
+  for (const box of $$(document.body, '.rxSelect[aria-label="Add"]')) {
+    if ((await a.options(box)).includes('t2')) add = box;
+  }
+  assert.deepEqual(await a.options(add), ['Add…', 't2'], 'what is already chosen is not offered again');
   await a.choose(add, 't2');
   assert.deepEqual(app.config.agents.items[0].tools, ['t1', 't2']);
   await a.click(byLabel(document.body, 'Delete t1'));
@@ -401,7 +403,7 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
   try {
     const app = await open(promptConfig(), 'agents');
     await openSheets();
-    const details = await openPrompt(app);
+    const details = await openPrompt();
     await app.wait(700);
     assert.match(textOf($(details, 'summary')), /exact/);
     assert.deepEqual(
@@ -447,7 +449,7 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
 test('when the server can’t be asked, the prompt preview is built here, labelled approximate, and still follows the fields', async () => {
   const app = await open(promptConfig(), 'agents');
   await openSheets();
-  const details = await openPrompt(app);
+  const details = await openPrompt();
   await app.wait(700);
   assert.match(textOf($(details, 'summary')), /approximate/);
   assert.match(textOf(details), /couldn’t be asked/);
@@ -670,7 +672,7 @@ test('the prompt preview also shows what runs on taking over, what is searched, 
   try {
     const app = await open(promptConfig(), 'agents');
     await openSheets();
-    const details = await openPrompt(app);
+    const details = await openPrompt();
     await app.wait(700);
     assert.match(textOf($(details, '[data-extra="on_enter"]')), /What runs when it takes over \(1\).*Welcome back/);
     const knowledge = textOf($(details, '[data-extra="knowledge"]'));
@@ -756,4 +758,78 @@ test('a tool’s Try it takes the same what-ifs (channel, time, state), sends th
   } finally {
     globalThis.fetch = real;
   }
+});
+
+test('a card goes with its item when it moves: the keyboard stays on its Move button and an open card stays open', async () => {
+  const messages = [
+    { id: 'm1', text: 'One' },
+    { id: 'm2', text: 'Two' },
+    { id: 'm3', text: 'Three' },
+  ];
+  const app = await open(base({ messages }), 'messages');
+  const groupOf = (id) => byLabel(app.container, `Move ${id} up`).closest('section.stFGroup');
+  const toggleOf = (id) => groupOf(id).querySelector(':scope > header .stFGroupToggle');
+  if (toggleOf('m3').getAttribute('aria-expanded') !== 'true') await a.click(toggleOf('m3'));
+  if (toggleOf('m2').getAttribute('aria-expanded') === 'true') await a.click(toggleOf('m2'));
+  const up = byLabel(app.container, 'Move m3 up');
+  up.focus();
+  await a.click(up);
+  assert.deepEqual(
+    app.config.messages.map((m) => m.id),
+    ['m1', 'm3', 'm2'],
+  );
+  assert.equal(document.activeElement?.getAttribute('aria-label'), 'Move m3 up', 'the keyboard went with it');
+  assert.equal(toggleOf('m3').getAttribute('aria-expanded'), 'true', 'still open');
+  assert.equal(toggleOf('m2').getAttribute('aria-expanded'), 'false', 'the one it passed is still shut');
+  // a second press moves the same one again, rather than the two bouncing
+  await a.click(document.activeElement);
+  assert.deepEqual(
+    app.config.messages.map((m) => m.id),
+    ['m3', 'm1', 'm2'],
+  );
+  await app.unmount();
+});
+
+test('a condition keeps “not null” (is set) when its comparison changes, “at least” always gets a number, and a number in quotes stays text', async () => {
+  const config = base({
+    state: { variables: { pending: { type: 'string' } } },
+    agents: {
+      entry: 'a',
+      items: [{ id: 'a', name: 'A', instructions: { role: 'Helps.', conditional: [{ when: { state: 'pending', not_equals: null }, append: 'Hand over.' }] } }],
+    },
+  });
+  const app = await open(config, 'agents');
+  for (let pass = 0; pass < 6; pass += 1) {
+    const closed = $$(document.body, '.stFGroupToggle[aria-expanded=false]');
+    if (!closed.length) break;
+    for (const toggle of closed) await a.click(toggle);
+  }
+  const comparison = () => byLabel(document.body, 'Comparison');
+  assert.ok(comparison(), 'the condition is drawn');
+  await a.choose(comparison(), 'equals');
+  assert.deepEqual(app.config.agents.items[0].instructions.conditional[0].when, { state: 'pending', equals: null }, 'null stays null');
+  await a.choose(comparison(), 'gte');
+  assert.deepEqual(app.config.agents.items[0].instructions.conditional[0].when, { state: 'pending', gte: 0 }, 'a number, shown in the box');
+  // keypad digits are text: "1" in quotes stays the text 1, and is shown in quotes; 1 on its own is the number
+  await a.choose(comparison(), 'equals');
+  const valueBox = () => byLabel(document.body, 'Value');
+  await a.type(valueBox(), '"1"');
+  assert.equal(app.config.agents.items[0].instructions.conditional[0].when.equals, '1');
+  await a.type(valueBox(), '1');
+  assert.equal(app.config.agents.items[0].instructions.conditional[0].when.equals, 1);
+  await app.unmount();
+});
+
+test('“Use a different name…” opens the name box on a name the model can use, and the request’s time limit can be cleared again', async () => {
+  const app = await open(base({ tools: [complete({ id: 'get-bill', timeout_s: 5 })], connections }), 'tools');
+  await a.click(byText(app.container, 'button', 'Use a different name…'));
+  assert.equal(app.config.tools[0].name, 'get_bill', 'the id in the form a name takes');
+  assert.ok(byLabel(app.container, 'Delete') || $(app.container, 'input[placeholder="snake_case"]'), 'the name box is there');
+  await a.type($(app.container, 'input[placeholder="snake_case"]'), 'get-bill');
+  assert.ok($(app.container, 'input[placeholder="snake_case"]'), 'and stays while what is typed equals the id');
+  const limit = $(app.container, 'label[for$="-timeout_s"]');
+  assert.ok(limit && document.getElementById(limit.getAttribute('for')), 'the time limit’s label names its box');
+  await a.click(byLabel(app.container, 'Clear give up after (seconds)'));
+  assert.equal('timeout_s' in app.config.tools[0], false);
+  await app.unmount();
 });

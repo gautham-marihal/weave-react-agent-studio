@@ -1,4 +1,5 @@
 import React from 'react';
+import Fold from '../../ui/Fold.jsx';
 import { isObj } from './engine.js';
 import { keyOf, useConfigSelect, useForm } from './ctx.js';
 import { StringList, Switch, TextInput } from './fields.jsx';
@@ -11,18 +12,21 @@ import { CHANNEL_TYPES, ENTRY_FIELDS, ENTRY_LABELS, TYPE_LABELS, changeChannelTy
 import { TechKey } from './TechName.jsx';
 import { askConfirm } from '../../ui/dialogs.js';
 import { canForms, canKeypad, entryFieldsFor, findVoiceOnly, infoOf, isVoiceChannel, mislabelledChat, plainSetting, stripVoiceOnly } from './channelTypes.js';
+import Select from '../../ui/Select.tsx';
 
 // One channel, drawn for what it is: the type decides which fields are shown, so a phone line never offers a widget id
-// and a web chat never offers a phone number. The id is a permanent key (Rename… rewrites everything that points at it).
-// What a person changes comes first (on or off, what it can do, extra instructions); the rest (its id, its kind, how it is reached, what it can hear and
-// say, exceptions and advanced settings) is folded under "Technical details", with a line that says what is in it. What it says first is asked on the
-// Agent page; a voice channel keeps only whether the caller may talk over it.
+// and a web chat never offers a phone number. The id is a permanent key (Rename… rewrites everything that points at
+// it). What a person changes comes first (on or off, what it can do, extra instructions); the rest (its id, its kind,
+// how it is reached, what it can hear and say, exceptions and advanced settings) is folded under "Technical details",
+// with a line that says what is in it. What it says first is asked on the Agent page; a voice channel keeps only
+// whether the caller may talk over it.
 
 const HANDLED = ['id', 'type', 'enabled', 'entry', 'capabilities'];
 const REQUIRES_ENTRY = ['sip_voice', 'web_chat'];
-// How a phone call reaches the agent is the platform's job (FRONTEND_GUIDE 8 and 10.5): adding a phone number for the agent and an environment sets up the
-// trunk and the dispatch rule, so the number, the trunk and the rule are never asked for here. The runtime reads none of them. Values an older configuration
-// noted are shown, and can be removed: they route nothing.
+// How a phone call reaches the agent is the platform's job (FRONTEND_GUIDE 8 and 10.5): adding a phone number for the
+// agent and an environment sets up the trunk and the dispatch rule, so the number, the trunk and the rule are never
+// asked for here. The runtime reads none of them. Values an older configuration noted are shown, and can be removed:
+// they route nothing.
 const PLATFORM_ROUTE = ['dnis', 'sip_trunk', 'dispatch_rule'];
 const COLLAPSED = new Set(['match', 'inputs', 'overrides']);
 // asked above the fold; what it says first is the Agent page's (and the switch for talking over it is drawn here)
@@ -102,7 +106,8 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   };
   const set = (patch) => onChange(sortByOrder({ ...obj, ...patch }, order));
 
-  // the settings only a voice channel has, on a channel that has no voice: removed on request (never behind the author's back), and the Undo bar takes it back
+  // the settings only a voice channel has, on a channel that has no voice: removed on request (never behind the
+  // author's back), and the Undo bar takes it back
   const removeVoiceOnly = () => {
     const { overrides, removed } = stripVoiceOnly(obj.overrides);
     if (!removed.length) return;
@@ -239,7 +244,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
               *
             </abbr>
           </div>
-          <select
+          <Select
             id={`${path.join('-')}-type`}
             className="stFInput"
             value={type ?? ''}
@@ -253,7 +258,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
                 {infoOf(types, item)?.runsToday === false ? ' (not available yet)' : ''}
               </option>
             ))}
-          </select>
+          </Select>
           <p className="stFHelp">Changing it clears the fields that only belong to the old kind (you are asked first).</p>
           {kind?.note && (
             <p className="stFHelp" data-note="kind">
@@ -391,13 +396,13 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
         onChange={(nextRest) => onChange(sortByOrder({ ...handled, ...nextRest }, order))}
       />
 
-      <details className="stFFold stChannelTech" open={techProblems || undefined}>
+      <Fold className="stFFold stChannelTech" open={techProblems}>
         <summary>
           Technical details
           {techSummary && <small>{techSummary}</small>}
         </summary>
         {technical}
-      </details>
+      </Fold>
 
       {(mislabelled || voiceOnlySet.length > 0) && (
         <ul className="stChannelNotes" aria-label="What does not fit this channel">

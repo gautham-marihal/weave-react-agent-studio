@@ -326,7 +326,11 @@ export function collectRefOptions(config) {
     Object.entries(isObj(c.connections) ? c.connections : {})
       .filter(([, v]) => v?.type === type)
       .map(([k]) => k);
-  const handoffTools = (c.agents?.items || []).flatMap((agent) => (agent?.handoffs || []).map((h) => h?.tool)).filter((t) => typeof t === 'string');
+  // read whatever shape the JSON view left (agents.items or handoffs that aren't lists yet): the form must still open, to show what is wrong
+  const asList = (v) => (Array.isArray(v) ? v : []);
+  const handoffTools = asList(c.agents?.items)
+    .flatMap((agent) => asList(agent?.handoffs).map((h) => h?.tool))
+    .filter((t) => typeof t === 'string');
   return {
     agents: ids(c.agents?.items),
     tools: ids(c.tools),

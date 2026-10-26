@@ -1,16 +1,17 @@
 import React from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { Notice } from '../ui.jsx';
 import { formatWhen } from '../format.js';
 import { useAsync } from '../useAsync.js';
 
-// A call as a conversation and nothing else: who said what, in order (`GET /bots/{id}/calls/{call}/transcript`). The trace beside it shows everything that
-// happened (tools, requests, state); this is for reading the call the way the caller and the agent lived it. It holds what the caller said.
+// A call as a conversation and nothing else: who said what, in order (`GET /bots/{id}/calls/{call}/transcript`). The
+// trace beside it shows everything that happened (tools, requests, state); this is for reading the call the way the
+// caller and the agent lived it. It holds what the caller said.
 const SPEAKER = { user: 'Caller', caller: 'Caller', agent: 'Agent', assistant: 'Agent', system: 'System', tool: 'Tool' };
 const speakerOf = (role) => SPEAKER[String(role || '').toLowerCase()] || (role ? String(role) : 'Someone');
 
-export default function TranscriptView({ botId, callId, active = true }) {
-  const transcript = useAsync((signal) => (active ? api.getTranscript(botId, callId, { signal }) : Promise.resolve(null)), [botId, callId, active]);
+export default function TranscriptView({ botId, callId }) {
+  const transcript = useAsync((signal) => api.getTranscript(botId, callId, { signal }), [botId, callId]);
   const turns = Array.isArray(transcript.data?.turns) ? transcript.data.turns : [];
   if (transcript.loading && !transcript.data)
     return (

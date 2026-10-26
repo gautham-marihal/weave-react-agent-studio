@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../../api/client.js';
-import { drawsVoice } from './channels.js';
+import { api } from '../../api/client.ts';
+import { drawsVoice } from './channels.ts';
 
 // One conversation with an agent over LiveKit: ask the API for a join token (POST /sessions), connect, and
 // turn what arrives into messages. The bot's text replies come as text streams on `lk.transcription`, the
@@ -77,6 +77,9 @@ export function useLiveSession({ onFinished } = {}) {
   const lkRef = useRef(null);
   const aliveRef = useRef(true);
   const stoppingRef = useRef(false);
+  // which start is the current one: End (or another start) moves it on, so a start still on its way stops where it is
+  // (no room joined, no microphone on)
+  const attemptRef = useRef(0);
   const formViaRef = useRef('data');
   const hintTimerRef = useRef(null);
   const audioHostRef = useRef(null);
@@ -202,8 +205,9 @@ export function useLiveSession({ onFinished } = {}) {
     [form],
   );
 
-  // Closing the form is an answer too: the bot is told the visitor cancelled it (FORM_PROTOCOL: `{request_id, cancelled: true}`), so it can run what the
-  // form's `otherwise` says instead of waiting for values that will never come.
+  // Closing the form is an answer too: the bot is told the visitor cancelled it (FORM_PROTOCOL: `{request_id,
+  // cancelled: true}`), so it can run what the form's `otherwise` says instead of waiting for values that will never
+  // come.
   const dismissForm = useCallback(async () => {
     const room = roomRef.current;
     const current = form;
@@ -228,6 +232,8 @@ export function useLiveSession({ onFinished } = {}) {
   const startFor = useCallback(
     async (botId, options = {}) => {
       if (roomRef.current || status === 'starting' || status === 'connecting') return;
+      attemptRef.current += 1;
+      const attempt = attemptRef.current;
       stoppingRef.current = false;
       setError(null);
       setMessages([]);
@@ -240,18 +246,19 @@ export function useLiveSession({ onFinished } = {}) {
       try {
         session = await api.startSession(botId, { ref: options.ref || 'draft', identity: options.identity, channel: options.channel });
       } catch (err) {
-        if (!aliveRef.current) return;
+        if (!aliveRef.current || attempt !== attemptRef.current) return;
         setError(describeStartError(err, options.ref || 'draft'));
         setStatus('error');
         return;
       }
-      if (!aliveRef.current) return;
-      await connectRef.current(session, options.ref || 'draft');
+      if (!aliveRef.current || attempt !== attemptRef.current) return;
+      await connectRef.current(session, options.ref || 'draft', attempt);
     },
     [status],
   );
 
-  async function connect(session, ref) {
+  async function connect(session, ref, attempt) {
+    const current = () => aliveRef.current && attempt === attemptRef.current;
     const sessionInfo = {
       room: session.room,
       ref: session.ref || ref,
@@ -266,6 +273,7 @@ export function useLiveSession({ onFinished } = {}) {
     log(`Joining room ${session.room} (${session.version || ref})`);
     try {
       if (!lkRef.current) lkRef.current = await import('livekit-client');
+      if (!current()) return;
       const { Room, RoomEvent, Track } = lkRef.current;
       const room = new Room();
       roomRef.current = room;
@@ -345,20 +353,31 @@ export function useLiveSession({ onFinished } = {}) {
       });
 
       await room.connect(session.livekit_url, session.token);
-      if (!aliveRef.current) return;
+      if (!current()) {
+        // ended while it was joining: leave the room it has just joined
+        room.removeAllListeners();
+        room.disconnect().catch(() => {});
+        return;
+      }
       startedRef.current = Date.now();
       recordedRef.current = false;
       log('Connected. Waiting for the agent');
       setStatus((s) => (s === 'connecting' ? 'waiting' : s));
       hintTimerRef.current = window.setTimeout(() => setAgentHint(true), AGENT_JOIN_HINT_MS);
       await room.startAudio().catch(() => {});
+      if (!current()) return;
 
       if (drawsVoice(session.channel)) {
         try {
           await room.localParticipant.setMicrophoneEnabled(true);
+          if (!current()) {
+            room.localParticipant.setMicrophoneEnabled(false).catch(() => {});
+            return;
+          }
           setMedia((m) => ({ ...m, mic: true }));
           log('Microphone on');
         } catch (err) {
+          if (!current()) return;
           log(`Microphone: ${err.message}`, 'error');
           setError({
             title: 'The microphone isn’t available',
@@ -367,7 +386,7 @@ export function useLiveSession({ onFinished } = {}) {
         }
       }
     } catch (err) {
-      if (!aliveRef.current) return;
+      if (!current()) return;
       log(`Connection failed: ${err.message}`, 'error');
       setError({ title: 'Couldn’t join the conversation', body: err.message });
       setStatus('error');
@@ -387,6 +406,7 @@ export function useLiveSession({ onFinished } = {}) {
   }, []);
 
   const stop = useCallback(() => {
+    attemptRef.current += 1;
     stoppingRef.current = true;
     finish('user');
     cleanup();

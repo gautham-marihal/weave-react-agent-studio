@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { $, $$, actions, byLabel, byText, setupDom, teardownDom, textOf } from './component/dom.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { createDemoApi, minimalConfig } from '../src/demo/demoApi.js';
 
 // Component tests of the screens that show what happened and what the agent knows: the trace, the call list and the knowledge screen.
@@ -93,10 +93,10 @@ test('Calls: the calls of an agent, newest first, filters that narrow them, and 
     'an outcome per call',
   );
   // an outcome filter with nothing in it says so
-  await a.choose($$(app.container, '.clFilters select')[1], 'cutoff');
+  await a.choose($$(app.container, '.clFilters .rxSelect')[1], 'cutoff');
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 0 && !!$(app.container, '.clEmpty strong')), true);
   assert.match(textOf($(app.container, '.clEmpty')), /No calls match these filters/);
-  await a.choose($$(app.container, '.clFilters select')[1], '');
+  await a.choose($$(app.container, '.clFilters .rxSelect')[1], '');
   assert.equal(await until(app, () => $$(app.container, '.clRow').length === 3), true);
   await a.click(byText(app.container, '.clPrivacy button', 'Got it'));
   assert.equal($(app.container, '.clPrivacy'), null, 'the notice is gone once it is read');
@@ -111,7 +111,7 @@ test('Calls: the calls of an agent, newest first, filters that narrow them, and 
   assert.equal(textOf(byText(detail, 'button', 'Download the log')), 'Download the log');
   // what the records were, and the call read as a conversation only (GET .../transcript)
   assert.match(textOf($(detail, '.clCounts')), /^\d+ records?: \d+ from the caller, \d+ from the agent/);
-  assert.equal(byText(detail, '.clViews button', 'What happened').getAttribute('aria-pressed'), 'true');
+  assert.equal(byText(detail, '.clViews button', 'What happened').getAttribute('aria-checked'), 'true');
   await a.click(byText(detail, '.clViews button', 'Conversation only'));
   assert.equal(await until(app, () => $$(detail, '.clTurn').length > 0), true, 'the turns arrive');
   assert.equal($(detail, '.trView'), null, 'the trace gives way to the conversation');

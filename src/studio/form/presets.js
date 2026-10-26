@@ -28,8 +28,9 @@ export const ENTRY_LABELS = {
 };
 
 export const CHANNEL_TYPES = ['sip_voice', 'web_voice', 'web_chat', 'whatsapp', 'sms', 'email', 'custom'];
-// The three ways people reach an agent, in the words the Channels page uses for them everywhere: its switches, its rows, "Add a channel" and the kind of a
-// channel in its panel (one name each, so ticking a switch is plainly what made the row under it).
+// The three ways people reach an agent, in the words the Channels page uses for them everywhere: its switches, its
+// rows, "Add a channel" and the kind of a channel in its panel (one name each, so ticking a switch is plainly what made
+// the row under it).
 export const REACH_WORDS = {
   web_chat: { label: 'Chat on your website', text: 'A chat box on your website that visitors type into.' },
   web_voice: { label: 'Talk on your website', text: 'Visitors talk to it from the browser, with their microphone.' },

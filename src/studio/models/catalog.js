@@ -49,10 +49,6 @@ export const FALLBACK_PROVIDERS = [
   { name: 'silero', stages: ['vad'], installed: true, default_secret: null, key_available: null },
 ];
 
-const names = (stage) => FALLBACK_PROVIDERS.filter((provider) => provider.stages.includes(stage)).map((provider) => provider.name);
-// The shape the old Builder reads. The Studio itself uses the server's list.
-export const PROVIDERS = { stt: names('stt'), llm: names('llm'), tts: names('tts'), vad: names('vad') };
-
 export const MODEL_OPTIONS = {
   stt: {
     openai: [

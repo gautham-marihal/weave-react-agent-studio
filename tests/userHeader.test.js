@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { api, headerSafe, setApiUser } from '../src/api/client.js';
+import { api, headerSafe, setApiUser } from '../src/api/client.ts';
 
 // FRONTEND_GUIDE 4 (section 10.5): "Always send the signed-in person in the X-User header", so saves, publishes, deploys and phone-number changes say who
 // made them. A header carries printable Latin-1 only, so a name it can't carry falls back to the email, or to nothing.

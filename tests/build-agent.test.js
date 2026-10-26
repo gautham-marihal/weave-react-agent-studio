@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { greetingOf, greetingTarget, readSimple, setAgentName, setGreeting, shareGreeting } from '../src/studio/simple/simpleModel.js';
-import { locate } from '../src/studio/newlayout/pages.js';
+import { locate } from '../src/studio/agent/pages.js';
 
-// The Agent page of the new layout: what it says first (one field for several channels), the name, and where its settings are found from elsewhere.
+// An agent's Agent page: what it says first (one field for several channels), the name, and where its settings are found from elsewhere.
 const twoChannels = () => {
   const config = applyStarter(minimalConfig('acme', 'Acme'), 'support');
   config.channels = [

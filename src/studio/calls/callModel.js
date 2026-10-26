@@ -13,8 +13,9 @@ export const CALL_STATUS = {
 };
 export const statusOf = (status) => CALL_STATUS[status] || { label: status || 'Unknown', tone: 'idle', hint: '' };
 
-// How a call went, in a word for the lists: still going, cut off, passed to a person, or handled by the agent itself. `status` is what the API filters on
-// (handled and passed to a person are both "ended" to it; the list tells them apart by the hand-overs).
+// How a call went, in a word for the lists: still going, cut off, passed to a person, or handled by the agent itself.
+// `status` is what the API filters on (handled and passed to a person are both "ended" to it; the list tells them apart
+// by the hand-overs).
 export const OUTCOMES = {
   handled: { label: 'Handled', tone: 'good', status: 'ended', hint: 'The agent finished the call itself.' },
   handoff: { label: 'Passed to a person', tone: 'info', status: 'ended', hint: 'The agent handed the caller over to a person.' },
@@ -53,9 +54,11 @@ export function queryFor({ range = '7d', caller = '', channel = '', status = '' 
 
 export function formatSeconds(seconds) {
   if (typeof seconds !== 'number' || Number.isNaN(seconds)) return '';
-  if (seconds < 60) return `${Math.round(seconds)} s`;
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
+  // rounded first, so 119.6 s is 2 min (not "1 min 60 s")
+  const total = Math.round(seconds);
+  if (total < 60) return `${total} s`;
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min${s ? ` ${s} s` : ''}`;
 }
 
@@ -133,7 +136,8 @@ export const ndjson = (events) =>
     .map((e) => JSON.stringify(e))
     .join('\n')}\n`;
 
-// What a call's records were, in words: "12 records: 3 from the caller, 3 from the agent, 2 tool calls". `counts` is the server's tally per kind of record.
+// What a call's records were, in words: "12 records: 3 from the caller, 3 from the agent, 2 tool calls". `counts` is
+// the server's tally per kind of record.
 const COUNT_WORDS = {
   user_said: ['from the caller', 'from the caller'],
   agent_said: ['from the agent', 'from the agent'],
@@ -155,4 +159,23 @@ export function countsLine(counts) {
       return `${n} ${n === 1 ? one : many}`;
     });
   return `${total} record${total === 1 ? '' : 's'}${known.length ? `: ${known.join(', ')}` : ''}`;
+}
+
+// Several agents' calls, newest first, with no gap: an agent with more to send has sent only its newest calls, so below
+// the oldest one it sent, another agent's calls of that time could be shown while its own are still to come. The list
+// stops at the newest such point; older calls come with "Load more" (and with one agent, or none with more to send,
+// every call is shown).
+//   pages: every page so far ({ id, calls }); more: the ids of the agents with more to send
+export function callsWithoutGaps(pages, more) {
+  const all = mergeCalls(pages);
+  let cutoff = -Infinity;
+  list(more).forEach((id) => {
+    const times = list(pages)
+      .filter((p) => p?.id === id)
+      .flatMap((p) => list(p.calls))
+      .map((c) => Date.parse(c?.started_at || ''))
+      .filter(Number.isFinite);
+    if (times.length) cutoff = Math.max(cutoff, Math.min(...times));
+  });
+  return cutoff === -Infinity ? all : all.filter((c) => Date.parse(c?.started_at || 0) >= cutoff);
 }

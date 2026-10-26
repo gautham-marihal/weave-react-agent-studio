@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 import { isDemoMode } from '../demo/demoMode.js';
 
 // Whether the Agent Builder API answers. That is ALL it tells: nothing here says the worker, LiveKit or a provider's key is fine (the API

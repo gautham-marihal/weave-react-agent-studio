@@ -1,10 +1,10 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { $$, actions, setupDom, teardownDom, textOf } from './component/dom.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/demoApi.js';
 
-// The Settings page of an agent in the new layout asks for what only it has: what the Agent page and the Tests page already ask is not asked again.
+// The Settings page of an agent asks for what only it has: what the Agent page and the Tests page already ask is not asked again.
 const { mountScreen, act } = await setupDom();
 const a = actions(act);
 after(() => teardownDom());

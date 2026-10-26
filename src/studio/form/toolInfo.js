@@ -93,6 +93,8 @@ export function describeAdvice(description) {
 }
 
 // The advice for each field of the tool error message: it goes to the model, not the caller.
+export const ON_ERROR_SEARCH_HELP =
+  'This text is given to the model when the search fails (the search service is down, it timed out, or no index was built yet). It is not read to the caller. Write it as an instruction: “Say you can’t look that up right now and offer to take a message.”';
 export const ON_ERROR_HELP =
   'This text is given to the model when the call fails (a timeout, a server error, even a 404 “no such account”). It is not read to the caller. Write it as an instruction: “Tell the caller you could not fetch the bill and offer a callback.” One message covers every kind of failure.';
 

@@ -8,7 +8,8 @@
 // An entry is [label, purpose, level?, example?]:
 //   label    what the setting is called, in words a customer would use
 //   purpose  one sentence: what it does, and when you would change it
-//   level    'guided' (a decision most people make), 'detailed' (for a more complex agent), 'expert' (a technical or operator setting). Default detailed.
+//   level    'guided' (a decision most people make), 'detailed' (for a more
+//   complex agent), 'expert' (a technical or operator setting). Default detailed.
 //   example  a value that makes it clear
 // A name that means different things in different places is overridden by "parent.name" (the nearest named container above it).
 // A name with no entry here gets a label made by rule (see ruleLabel) and its schema description (if any) as its purpose; the tests check

@@ -20,7 +20,7 @@ import {
   normalizeChannelTypes,
   notRunningYet,
 } from '../src/studio/form/channelTypes.js';
-import { drawsVoice } from '../src/studio/test/channels.js';
+import { drawsVoice } from '../src/studio/test/channels.ts';
 import { createDemoApi, memoryStorage } from '../src/demo/demoApi.js';
 
 // FRONTEND_GUIDE 3.md, "Options that depend on the channel": a screen offers only what a kind of channel can have. The table is GET /channel-types; the fallback is a copy

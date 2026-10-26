@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { api } from '../src/api/client.js';
+import { api } from '../src/api/client.ts';
 
 // A read whose connection was dropped on the way (the dev proxy's ECONNRESET, a server closing an idle connection) is asked once more; a write never is.
 const answer = (status, body) => ({ ok: status < 400, status, text: async () => JSON.stringify(body) });
@@ -20,9 +20,12 @@ const withFetch = async (script, run) => {
   }
 };
 
+// an agent as GET /bots lists it (the client checks the answer's shape)
+const bot = { id: 'a', name: 'A', draft_revision: 1, draft_saved_at: '2026-10-20T10:00:00Z', latest_version: null, deployed: {} };
+
 test('a read that lost its connection is asked once more, and then answers', async () => {
-  await withFetch([new TypeError('fetch failed'), answer(200, [{ id: 'a' }])], async (calls) => {
-    assert.deepEqual(await api.listBots(), [{ id: 'a' }]);
+  await withFetch([new TypeError('fetch failed'), answer(200, [bot])], async (calls) => {
+    assert.deepEqual(await api.listBots(), [bot]);
     assert.equal(calls.length, 2);
   });
 });

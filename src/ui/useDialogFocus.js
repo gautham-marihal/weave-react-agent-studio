@@ -26,7 +26,8 @@ export function trapTab(event, box) {
 }
 
 export function useDialogFocus(ref, initial) {
-  // what had the keyboard before the dialog opened, read as it is first drawn: a field in it with autoFocus has taken the focus by the time effects run
+  // what had the keyboard before the dialog opened, read as it is first drawn: a field in it with autoFocus has taken
+  // the focus by the time effects run
   const [opener] = useState(() => (typeof document === 'undefined' ? null : document.activeElement));
   useEffect(() => {
     const box = ref.current;

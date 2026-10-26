@@ -6,6 +6,7 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge), E2E_HEADED=1 to watch.
 import { chromium } from 'playwright-core';
+import { pick } from './pick.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 let failed = 0;
@@ -77,9 +78,9 @@ if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOT
 check('each voice shows its provider id under its name', (await page.locator('.voiceNameStack .voiceIdCell code').count()) > 0);
 const sarah = rows.filter({ hasText: 'Sarah' }).first();
 check('each voice shows its real provider id (Sarah: EXAVITQu4vr4xnSDxMaL)', (await sarah.innerText()).includes('EXAVITQu4vr4xnSDxMaL'));
-await page.getByLabel('Filter by provider').selectOption('Cartesia');
+await pick(page, page.getByLabel('Filter by provider'), 'Cartesia');
 check('a Cartesia voice shows its UUID', /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.test(await rows.first().innerText()));
-await page.getByLabel('Filter by provider').selectOption('All providers');
+await pick(page, page.getByLabel('Filter by provider'), 'All providers');
 const every = await rows.count();
 const ids = await page.locator('.voiceIdCell code').allInnerTexts();
 check('every voice has a different id', ids.length === every && new Set(ids).size === every, `${ids.length} ids for ${every} rows`);
@@ -111,7 +112,7 @@ check(
 );
 
 // Cartesia voices have a recording of their own too: a woman and a man ask for two different ones, and the browser's voice is not used
-await page.getByLabel('Filter by provider').selectOption('Cartesia');
+await pick(page, page.getByLabel('Filter by provider'), 'Cartesia');
 const before = samples.length;
 await rows
   .filter({ hasText: 'Skylar' })

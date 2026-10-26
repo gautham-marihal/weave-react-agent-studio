@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { assemblePrompt } from './promptPreview.js';
 import { fromApproximate, normalizePrompt, normalizeResultPreview, promptRequest, withLocalOffset } from './serverPreview.js';
 

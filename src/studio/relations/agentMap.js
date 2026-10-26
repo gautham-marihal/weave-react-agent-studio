@@ -6,7 +6,8 @@
 import { humanize, isObj } from '../form/engine.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-export const NODE = { width: 176, height: 60, gapX: 96, gapY: 26, pad: 16 };
+// gapX: room between two columns for the words of an arrow (up to 22 characters) beside the box it points to
+export const NODE = { width: 176, height: 60, gapX: 150, gapY: 26, pad: 16 };
 
 // Every `{ type: 'handoff', to }` step anywhere inside a value.
 function handoffSteps(value, out = []) {

@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { STAGES, seconds } from './speedModel.js';
+import { STAGES, seconds } from './speedModel.ts';
 
 // The two pictures of the Speed page: the typical wait day by day against the target, and where a wait goes, part by part.
 // Every value they show is also in a table (a button switches the line to one; the parts sit in their own table under the bars).
@@ -33,9 +33,9 @@ function scaleOf(top) {
 
 const tickText = (ms) => (ms === 0 ? '0' : ms < 1000 ? `${ms} ms` : `${ms / 1000} s`);
 
-// The typical wait (half the answers came sooner) of each day of the period: a dot on each day with answers, a line through them (dashed across days
-// without any, so it runs on from the first day with answers to the last) and the target across it. Pointing at the chart (or the arrow keys, once it has
-// the keyboard) shows that day's numbers.
+// The typical wait (half the answers came sooner) of each day of the period: a dot on each day with answers, a line
+// through them (dashed across days without any, so it runs on from the first day with answers to the last) and the
+// target across it. Pointing at the chart (or the arrow keys, once it has the keyboard) shows that day's numbers.
 //   days: [{ day, n, p50, p90 }]; targetMs
 export function DayChart({ days, targetMs }) {
   const box = useRef(null);

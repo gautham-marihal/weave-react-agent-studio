@@ -1,9 +1,13 @@
-import React, { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import React, { Suspense, forwardRef, lazy, useImperativeHandle, useMemo, useRef } from 'react';
 import { lineOf, locatePath, syntaxErrorLine } from './jsonPath.js';
-import { groupIssues } from '../api/client.js';
+import { errorLinesOf, jsonProblems, offsetOfLine } from './json/jsonProblems.ts';
 
-// The agent's configuration as JSON text, with line numbers and a way to jump to a place in it (a problem's path, a character offset). Ctrl/Cmd+S is
-// the workspace's, as on every page.
+// The code editor (CodeMirror: colours, folds, find, what is wrong marked where it is) is loaded only when the JSON is opened.
+const CodeJsonEditor = lazy(() => import('./json/CodeJsonEditor.tsx'));
+
+// The agent's configuration as plain JSON text, with line numbers and a way to jump to a place in it (a problem's path,
+// a character offset). It is drawn while the code editor loads, and stays if that can't load (offline, say). Ctrl/Cmd+S
+// is the workspace's, as on every page.
 const LINE_HEIGHT = 20;
 
 export const JsonEditor = forwardRef(function JsonEditor({ text, onChange, errorLines }, ref) {
@@ -47,7 +51,13 @@ export const JsonEditor = forwardRef(function JsonEditor({ text, onChange, error
   };
 
   return (
-    <div className="stEditor">
+    <div
+      className="stEditor"
+      ref={(el) => {
+        // what the browser tests read the whole text through, as they do the code editor's
+        if (el) el.weaveJsonText = () => areaRef.current?.value ?? '';
+      }}
+    >
       <div className="stGutter" ref={gutterRef} aria-hidden="true">
         {Array.from({ length: lineCount }, (_, index) => (
           <span key={index} className={errorLines.has(index + 1) ? 'bad' : ''}>
@@ -72,34 +82,32 @@ export const JsonEditor = forwardRef(function JsonEditor({ text, onChange, error
   );
 });
 
-// The whole configuration as JSON, with what is wrong with it said above it and marked beside it: a syntax error (with its line and a way to it), a key
-// written twice (both lines), and, while the JSON reads, the settings the checks reject.
+// if the code editor can't be loaded, the plain one stays
+class OrPlain extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    return this.state.failed ? this.props.plain : this.props.children;
+  }
+}
+
+// The whole configuration as JSON, with what is wrong with it said above it and marked in it: a syntax error (with its line and a way to it), a key
+// written twice (both places), and, while the JSON reads, what the checks say about a setting.
 export function JsonPart({ editor }) {
   const { text, parsed, report } = editor;
   const area = useRef(null);
   const line = parsed.error && !parsed.duplicates?.length ? syntaxErrorLine(parsed.error, text) : null;
-  const errorLines = useMemo(() => {
-    const lines = new Set();
-    (parsed.duplicates || []).forEach((item) => {
-      lines.add(lineOf(text, item.offset));
-      lines.add(lineOf(text, item.firstOffset));
-    });
-    if (line) lines.add(line);
-    if (parsed.error) return lines;
-    groupIssues(report)
-      .filter((issue) => issue.severity === 'error' && issue.path)
-      .forEach((issue) => {
-        const span = locatePath(text, issue.path);
-        if (span) lines.add(lineOf(text, span[0]));
-      });
-    return lines;
-  }, [text, report, parsed.error, parsed.duplicates, line]);
-  const offsetOfLine = (n) =>
-    text
-      .split('\n')
-      .slice(0, n - 1)
-      .reduce((sum, l) => sum + l.length + 1, 0);
+  const problems = useMemo(() => jsonProblems(text, parsed, report), [text, parsed, report]);
+  const errorLines = useMemo(() => errorLinesOf(text, problems), [text, problems]);
   const first = parsed.duplicates?.[0];
+  const plain = <JsonEditor ref={area} text={text} onChange={editor.setText} errorLines={errorLines} />;
   return (
     <div className="stJsonPart">
       {parsed.error && (
@@ -109,13 +117,17 @@ export function JsonPart({ editor }) {
             {parsed.error}
           </span>
           {(line || first) && (
-            <button type="button" className="linkButton" onClick={() => area.current?.jumpToOffset(first ? first.offset : offsetOfLine(line))}>
+            <button type="button" className="linkButton" onClick={() => area.current?.jumpToOffset(first ? first.offset : offsetOfLine(text, line))}>
               Go to {first ? 'the repeated key' : `line ${line}`}
             </button>
           )}
         </div>
       )}
-      <JsonEditor ref={area} text={text} onChange={editor.setText} errorLines={errorLines} />
+      <OrPlain plain={plain}>
+        <Suspense fallback={plain}>
+          <CodeJsonEditor ref={area} text={text} onChange={editor.setText} problems={problems} />
+        </Suspense>
+      </OrPlain>
     </div>
   );
 }

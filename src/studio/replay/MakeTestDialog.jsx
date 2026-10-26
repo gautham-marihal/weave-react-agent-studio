@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal } from '../ui.jsx';
 import { toolNamesOf } from '../scenarios/model.js';
 import { addScenario, buildScenario, hasPersonalData, suggestTest, testProblems } from './callToTest.js';
+import Select from '../../ui/Select.tsx';
 import './replay.css';
 
 // "Keep this call as a test": the caller's words (edited if you like), the checks to keep, and what should have happened. The test is added to the
@@ -59,14 +60,14 @@ export default function MakeTestDialog({ facts, config, call, onAdd, onClose, ex
           </label>
           <label>
             <span>Channel</span>
-            <select className="stFInput" value={channel} onChange={(event) => setChannel(event.target.value)} aria-label="Channel">
+            <Select className="stFInput" value={channel} onChange={(event) => setChannel(event.target.value)} aria-label="Channel">
               {!channels.some((c) => c.id === channel) && <option value={channel}>{channel || 'Choose…'}</option>}
               {channels.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.id}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         </div>
         <label className="rpWide">

@@ -1,5 +1,8 @@
-// "Tests must pass before publishing": when the gate is on, publishing is held until the newest run of the tests passed and nothing changed after it. It can still
-// be done on purpose ("publish anyway"), because the studio informs and a person decides. Pure: no React, no network.
+import { coveredOnlySome, coveredOnlyText } from '../scenarios/runResults.js';
+
+// "Tests must pass before publishing": when the gate is on, publishing is held until the newest run of the tests passed
+// and nothing changed after it. It can still be done on purpose ("publish anyway"), because the studio informs and a
+// person decides. Pure: no React, no network.
 
 // enabled: the gate is on. scenarioCount: the draft's tests. latestRun: the newest finished run ({ status, passed, total, startedAt }) or null.
 // savedAt: when the draft was last saved (ISO text, or ''); dirty: unsaved edits.
@@ -15,6 +18,7 @@ export function gateCheck({ enabled = false, scenarioCount = 0, latestRun = null
       why: `The latest run ${latestRun.status === 'error' ? 'broke' : latestRun.status === 'skipped' ? 'skipped everything' : 'failed'}${latestRun.total ? ` (${latestRun.passed ?? 0} of ${latestRun.total} passed)` : ''}.`,
       action: 'scenarios',
     };
+  if (coveredOnlySome(latestRun, scenarioCount)) return { ok: false, why: `${coveredOnlyText(latestRun, scenarioCount)} Run them all.`, action: 'scenarios' };
   const ran = Date.parse(latestRun.startedAt || '');
   const saved = Date.parse(savedAt || '');
   if (dirty) return { ok: false, why: 'The draft has changes the last run did not see. Run the tests again.', action: 'scenarios' };

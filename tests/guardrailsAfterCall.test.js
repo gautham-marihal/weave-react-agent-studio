@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import {
   LIMITS,
   checkWords,
@@ -15,7 +15,7 @@ import {
   setOffTopic,
   setTopics,
   topicsOf,
-} from '../src/studio/newlayout/simple/guardrailModel.js';
+} from '../src/studio/agent/blocks/guardrailModel.js';
 import {
   ASKED_ABOVE,
   addQuestion,
@@ -26,11 +26,11 @@ import {
   setRecording,
   setRedaction,
   setSummary,
-} from '../src/studio/newlayout/simple/afterCallModel.js';
-import { PAGE_SECTIONS, locate } from '../src/studio/newlayout/pages.js';
-import { rowName } from '../src/studio/newlayout/rowNames.js';
+} from '../src/studio/agent/blocks/afterCallModel.js';
+import { PAGE_SECTIONS, locate } from '../src/studio/agent/pages.js';
+import { rowName } from '../src/studio/agent/rowNames.js';
 
-// The plain-words blocks of the Guardrails and After the call pages (src/studio/newlayout/simple): what they read and write, and that what is left empty
+// The plain-words blocks of the Guardrails and After the call pages (src/studio/agent/blocks): what they read and write, and that what is left empty
 // is taken out again, so nothing is written that was not chosen.
 const bare = () => minimalConfig('acme', 'Acme');
 const care = () => applyStarter(bare(), 'support');
@@ -84,9 +84,10 @@ test('guardrails: limits as asked (minutes for a call), within what the schema a
 
 test('guardrails: handing over and ending by itself, as switches, and each rule in words', () => {
   const noTransfer = momentsOf(bare());
-  assert.equal(noTransfer.frustrated_to_person.possible, false, 'passing to a person needs the hand-over switched on');
-  assert.match(noTransfer.frustrated_to_person.why, /Tools page/);
-  assert.equal(setMoment(bare(), 'frustrated_to_person', true).guardrails, undefined, 'and is not written without it');
+  assert.equal(noTransfer.frustrated_to_person.possible, true, 'it can be switched on');
+  assert.equal(noTransfer.frustrated_to_person.needsHandOver, true, 'and says it needs the hand-over, which the page switches on with it');
+  assert.equal(noTransfer.abusive_end.needsHandOver, false);
+  assert.equal(setMoment(bare(), 'frustrated_to_person', true).guardrails, undefined, 'the rule alone is not written without the hand-over');
 
   let c = setMoment(care(), 'frustrated_to_person', true);
   c = setMoment(c, 'asks_for_person', true, { keywords: ['manager', 'refund', 'manager'] });
@@ -147,7 +148,7 @@ test('after the call: questions with ids made once from their words, and kinds o
   assert.equal(c.post_call, undefined);
 });
 
-test('after the call: what is recorded, for how long, and what callers hear first, which is asked here once', () => {
+test('after the call: what is recorded, for how long, and the recording notice, which is asked here once', () => {
   let c = setRecording(bare(), { transcript: true, days: '30' });
   assert.deepEqual(c.post_call.recording, { transcript: true, retention_days: 30 });
   assert.equal(afterCallOf(c).recording.audio, null);

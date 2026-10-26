@@ -38,6 +38,9 @@ export function validateDemo(config, botId) {
   });
   if (isObj(config.meta) && botId && config.meta.id !== botId) err(['meta', 'id'], `meta.id must be '${botId}' (it is '${config.meta.id}')`);
   if (isObj(config.meta) && !config.meta.name) err(['meta', 'name'], 'meta.name is required');
+  // published as it is: one that isn't x.y.z would be a version the studio can't list or count on from
+  if (isObj(config.meta) && !/^\d+\.\d+\.\d+$/.test(String(config.meta.version ?? '')))
+    err(['meta', 'version'], `meta.version must be three numbers, like 1.0.0 (it is ${JSON.stringify(config.meta.version ?? null)})`);
 
   // duplicate ids inside the lists that have them
   const ids = (items) => list(items).map((item) => (isObj(item) ? item.id : undefined));
@@ -65,7 +68,13 @@ export function validateDemo(config, botId) {
         err(['agents', 'items', index, 'tools', t], `'${tool}' is not a declared tools id (declared: ${toolIds.join(', ') || 'none'})`);
     });
   });
-  const used = new Set(list(config.agents?.items).flatMap((agent) => list(agent?.tools)));
+  // used: offered by an agent, checked with by a task step, or called by a guardrail (an escalation rule, the off-topic rule)
+  const used = new Set([
+    ...list(config.agents?.items).flatMap((agent) => list(agent?.tools)),
+    ...list(config.tasks).flatMap((task) => list(task?.steps).map((step) => step?.validate?.tool)),
+    ...list(config.guardrails?.escalation).map((rule) => rule?.tool),
+    config.guardrails?.topics?.on_off_topic?.then,
+  ]);
   list(config.tools).forEach((tool, index) => {
     if (isObj(tool) && tool.id && !used.has(tool.id))
       warnings.push({ path: ['tools', index], message: `tool '${tool.id}' is not used by any agent, task or guardrail` });
@@ -106,8 +115,9 @@ export function validateDemo(config, botId) {
     const kind = isObj(tool) ? tool.type : undefined;
     if (UNSUPPORTED_TOOL_KINDS[kind]) unsupported.push({ feature: UNSUPPORTED_TOOL_KINDS[kind], where: `tools[${index}]` });
   });
-  // Since 2026-10-16 the server enforces sensitive variables and redaction, so neither is reported any more. A protection that is declared but not enforced
-  // would come back as an item with `severity: "security"`, which the studio still shows in red (the tests send one).
+  // Since 2026-10-16 the server enforces sensitive variables and redaction, so neither is reported any more. A
+  // protection that is declared but not enforced would come back as an item with `severity: "security"`, which the
+  // studio still shows in red (the tests send one).
 
   const valid = errors.length === 0;
   return { valid, errors, warnings, unsupported: valid ? unsupported : [], secrets_required: [...secretsIn(config)].sort() };

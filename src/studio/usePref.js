@@ -57,8 +57,9 @@ export function useTechnicalNames() {
   return [value === '1', setOn];
 }
 
-// Density: "comfortable" (the default) or "compact", for people who live in the tool all day. It is a preference of the person, kept in this browser, and
-// applied as an attribute of the page so one set of tokens (tokens.css) changes the spacing everywhere.
+// Density: "comfortable" (the default) or "compact", for people who live in the tool all day. It is a preference of the
+// person, kept in this browser, and applied as an attribute of the page so one set of tokens (tokens.css) changes the
+// spacing everywhere.
 export const DENSITY_KEY = 'weave_density';
 export const DENSITIES = ['comfortable', 'compact'];
 export function useDensity() {
@@ -67,8 +68,9 @@ export function useDensity() {
   return [density, set];
 }
 
-// The design style, on top of light or dark: the colours, the accent, the corners and the headings of the whole site. A preference of the person, kept in
-// this browser, applied as `data-style` on the page (see src/themes.css); index.html applies it before the first paint so nothing flashes.
+// The design style, on top of light or dark: the colours, the accent, the corners and the headings of the whole site. A
+// preference of the person, kept in this browser, applied as `data-style` on the page (see src/themes.css); index.html
+// applies it before the first paint so nothing flashes.
 export const STYLE_KEY = 'weave_style';
 export const STYLES = [
   { id: 'simple', label: 'Simple', description: 'Quiet and neutral: black and white, nothing in the way.' },
@@ -84,9 +86,10 @@ export function useStyle() {
   return [style, set];
 }
 
-// The colour options of each style (src/accents.css): only colours that keep the style's character (Simple's are quiet and deep, Premium's are metals
-// and jewels, Futuristic's are screen neons, Vibrant's are bright gradients). The first is the style's own palette. `swatch` is what the picker shows: one colour, or two
-// for a pair or a gradient. The choice is kept per style, so going back to a style finds its colour as it was left.
+// The colour options of each style (src/accents.css): only colours that keep the style's character (Simple's are quiet
+// and deep, Premium's are metals and jewels, Futuristic's are screen neons, Vibrant's are bright gradients). The first
+// is the style's own palette. `swatch` is what the picker shows: one colour, or two for a pair or a gradient. The
+// choice is kept per style, so going back to a style finds its colour as it was left.
 export const ACCENTS = {
   simple: [
     { id: 'mono', label: 'Black and white', swatch: ['#0b0b0d', '#ffffff'] },

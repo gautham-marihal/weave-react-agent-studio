@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { loadCalls, loadFacts, newestFirst } from './callData.js';
+import { loadCalls, loadFacts, newestFirst } from './callData.ts';
 import { collectQuestions, groupQuestions } from './questionsModel.js';
 
-// The questions one agent's callers asked that it did not answer, from its calls of the last few days. Only reads: the list of calls, then the record of
-// each finished one (the newest MAX_CALLS of them). A finished call does not change, so its record is read once per page load.
+// The questions one agent's callers asked that it did not answer, from its calls of the last few days. Only reads: the
+// list of calls, then the record of each finished one (the newest MAX_CALLS of them). A finished call does not change,
+// so its record is read once per page load.
 
 export const MAX_CALLS = 150;
 const factsCache = {};

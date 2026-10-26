@@ -5,9 +5,13 @@ import { Notice, Spinner } from '../ui.jsx';
 import { formatWhen } from '../format.js';
 import { formatSeconds } from '../calls/callModel.js';
 import { analyse, changeWords, pct } from './monitorModel.js';
-import { seconds } from '../speed/speedModel.js'; // a wait is written as Speed writes it, so the two show the same number
-import { useMonitoring } from './useMonitoring.js';
+import { seconds } from '../speed/speedModel.ts'; // a wait is written as Speed writes it, so the two show the same number
+import { useMonitoring } from './useMonitoring.ts';
+import Select from '../../ui/Select.tsx';
 import './monitoring.css';
+
+// The Monitoring page: how the agents' calls went over a period, calls per day, what needs attention, what goes wrong
+// most, and each agent and version. On an agent's own page (agentOnly) it is that agent alone. It only reads.
 
 const PERIODS = [
   { days: 7, label: 'Past 7 days' },
@@ -99,7 +103,8 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
   const samplesPending = !data.loading && data.calls.length > 0 && Object.keys(data.samples).length === 0;
 
   return (
-    <div className="mnPage">
+    // while a new reading comes in (another period, or Refresh) the last one stays, dimmed, rather than the page going blank
+    <div className={`mnPage ${data.refreshing ? 'reading' : ''}`} aria-busy={data.loading || data.refreshing || undefined}>
       <section className="welcomeBlock">
         <div>
           <h1>Monitoring</h1>
@@ -113,16 +118,16 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
         <div className="mnControls">
           <label>
             <span className="srOnly">Period</span>
-            <select className="stFInput small" value={days} onChange={(event) => setDays(Number(event.target.value))} aria-label="Period">
+            <Select className="stFInput small" value={days} onChange={(event) => setDays(Number(event.target.value))} aria-label="Period">
               {PERIODS.map((p) => (
                 <option key={p.days} value={p.days}>
                   {p.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
-          <button type="button" className="quietButton" onClick={data.reload} disabled={data.loading}>
-            {data.loading ? 'Reading…' : 'Refresh'}
+          <button type="button" className="quietButton" onClick={data.reload} disabled={data.loading || data.refreshing}>
+            {data.loading || data.refreshing ? 'Reading…' : 'Refresh'}
           </button>
         </div>
       </section>

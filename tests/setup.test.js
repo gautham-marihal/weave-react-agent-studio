@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
 import { createDemoApi, memoryStorage } from '../src/demo/demoApi.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { readSimple, setRole } from '../src/studio/simple/simpleModel.js';
 import {
   KNOWLEDGE_ID,
@@ -26,7 +26,7 @@ import {
 } from '../src/studio/setup/setupModel.js';
 import { inSetup } from '../src/studio/setup/setupProgress.js';
 
-// The guided setup of the New layout (src/studio/setup): what each step reads from an agent and writes into it. Each change must be complete on its own, so a
+// The guided setup (src/studio/setup): what each step reads from an agent and writes into it. Each change must be complete on its own, so a
 // person never has to go to a second place to make the first one work.
 const fresh = () => minimalConfig('smile-dental', 'Smile Dental');
 const care = () => applyStarter(fresh(), 'support');

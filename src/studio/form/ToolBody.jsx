@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { isObj } from './engine.js';
 import { useConfigSelect, useForm } from './ctx.js';
 import { NumberInput, TextInput } from './fields.jsx';
@@ -7,8 +7,8 @@ import { FieldRow, ObjectBody } from './Node.jsx';
 import EffectsEditor from './EffectsEditor.jsx';
 import ParamsEditor from './ParamsEditor.jsx';
 import { RequestEditor, ResponsePanel } from './RequestResponse.jsx';
-import { argNamesOf, templateScope } from './templates.js';
-import { BUILTIN_HELP, ON_ERROR_HELP, REPLY_CHOICES, agentsUsingTool, describeAdvice, notAvailable, timeoutAdvice } from './toolInfo.js';
+import { argNamesOf, templateScope } from './templates.ts';
+import { BUILTIN_HELP, ON_ERROR_HELP, ON_ERROR_SEARCH_HELP, REPLY_CHOICES, agentsUsingTool, describeAdvice, notAvailable, timeoutAdvice } from './toolInfo.js';
 import { readParams } from './paramSchema.js';
 import { TechKey } from './TechName.jsx';
 
@@ -54,7 +54,9 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
   // asked above the form by the panel around it (a tool's panel on the Tools page asks when it is used in words)
   const descriptionHere = has('description') && !ctx.hidden?.has([...path, 'description'].join('.'));
   const paramRows = has('parameters') ? readParams(obj.parameters).rows : [];
-  const showName = has('name') && obj.name !== undefined && obj.name !== obj.id;
+  // the name box stays open once asked for, also while what is typed in it happens to equal the id
+  const [naming, setNaming] = useState(false);
+  const showName = has('name') && obj.name !== undefined && (obj.name !== obj.id || naming);
   const timeoutNotes = has('timeout_s') ? timeoutAdvice(obj) : [];
   const isHttp = obj.type === 'http';
   const resultShape = isHttp && has('result') ? ctx.engine.resolveShape(shape.properties.result, obj.result) : null;
@@ -80,7 +82,10 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
                     type="button"
                     className="stFDel small"
                     disabled={disabled}
-                    onClick={() => set({ name: undefined }, { deleted: 'the model-facing name' })}
+                    onClick={() => {
+                      setNaming(false);
+                      set({ name: undefined }, { deleted: 'the model-facing name' });
+                    }}
                   >
                     Delete
                   </button>
@@ -99,7 +104,20 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
               <p className="stFHelp">
                 The model sees this tool as <code>{obj.id || 'its id'}</code>.{' '}
                 {!disabled && (
-                  <button type="button" className="stLink" onClick={() => set({ name: obj.id })}>
+                  <button
+                    type="button"
+                    className="stLink"
+                    onClick={() => {
+                      // starts from the id in the form a model-facing name takes (an id may have "-", a name may not), and the box opens on it
+                      setNaming(true);
+                      set({
+                        name: String(obj.id || 'tool')
+                          .toLowerCase()
+                          .replace(/[^a-z0-9_]+/g, '_'),
+                      });
+                      window.requestAnimationFrame(() => document.getElementById(`${path.join('-')}-name`)?.focus());
+                    }}
+                  >
                     Use a different name…
                   </button>
                 )}
@@ -115,7 +133,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
         <div className="stFRow wide stDescRow" data-path={`${path.join('.')}.description`}>
           <div className="stFLabel">
             <label htmlFor={`${path.join('-')}-desc`}>Description</label>
-            {has('description') && (shape.required || []).includes('description') && (
+            {(shape.required || []).includes('description') && (
               <abbr title="Required" className="stFReq">
                 *
               </abbr>
@@ -259,7 +277,8 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
         </fieldset>
       )}
 
-      {isHttp && (has('on_error') || has('timeout_s') || has('retries')) && (
+      {/* a request (timeout, retries, a message for the model) and a knowledge search (a message for the model) can each go wrong */}
+      {(has('on_error') || has('timeout_s') || has('retries')) && (
         <fieldset className="stToolBlock">
           <legend>When it goes wrong</legend>
           {has('on_error') && (
@@ -273,31 +292,53 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
                 value={obj.on_error?.tool_error ?? ''}
                 multiline
                 disabled={disabled}
-                placeholder="Tell the caller you could not fetch the bill and offer a callback."
+                placeholder={
+                  isHttp
+                    ? 'Tell the caller you could not fetch the bill and offer a callback.'
+                    : 'Say you can’t look that up right now and offer to take a message.'
+                }
                 onChange={(v) => set({ on_error: v === '' ? undefined : { ...(obj.on_error || {}), tool_error: v } })}
               />
-              <p className="stFHelp">{ON_ERROR_HELP}</p>
+              <p className="stFHelp">{isHttp ? ON_ERROR_HELP : ON_ERROR_SEARCH_HELP}</p>
             </div>
           )}
           <div className="stFGrid">
-            {has('timeout_s') && (
-              <div className="stFRow">
-                <div className="stFLabel">
-                  <label>Give up after (seconds)</label>
-                  <TechKey name="timeout_s" path={[...path, 'timeout_s']} />
-                </div>
-                <NumberInput value={obj.timeout_s} onChange={(v) => set({ timeout_s: v })} min={0.1} disabled={disabled} />
-              </div>
-            )}
-            {has('retries') && (
-              <div className="stFRow">
-                <div className="stFLabel">
-                  <label>Retries</label>
-                  <TechKey name="retries" path={[...path, 'retries']} />
-                </div>
-                <NumberInput value={obj.retries} onChange={(v) => set({ retries: v })} min={0} integer disabled={disabled} />
-              </div>
-            )}
+            {[
+              ['timeout_s', 'Give up after (seconds)', { min: 0.1 }, 'the time limit'],
+              ['retries', 'Retries', { min: 0, integer: true }, 'the retries'],
+            ]
+              .filter(([key]) => has(key))
+              .map(([key, label, limits, what]) => {
+                const fieldId = `${path.join('-')}-${key}`;
+                const fallback = shape.properties[key]?.default;
+                return (
+                  <div className="stFRow" key={key} data-path={`${path.join('.')}.${key}`}>
+                    <div className="stFLabel">
+                      <label htmlFor={fieldId}>{label}</label>
+                      <TechKey name={key} path={[...path, key]} />
+                      {/* set, it can be taken out again (the runtime's own default applies), as any other optional setting can */}
+                      {obj[key] !== undefined && !disabled && (
+                        <button
+                          type="button"
+                          className="stFDel small"
+                          aria-label={`Clear ${label.toLowerCase()}`}
+                          onClick={() => set({ [key]: undefined }, { deleted: what })}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <NumberInput
+                      id={fieldId}
+                      value={obj[key]}
+                      onChange={(v) => set({ [key]: v })}
+                      {...limits}
+                      placeholder={fallback !== undefined ? `${fallback} if left empty` : undefined}
+                      disabled={disabled}
+                    />
+                  </div>
+                );
+              })}
           </div>
           {timeoutNotes.map((note, index) => (
             <p key={index} className="stFHint">

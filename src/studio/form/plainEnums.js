@@ -1,6 +1,7 @@
-// The choices of a setting, in words. A setting's NAME has a plain label in plainLanguage.js; its choices ("standalone", "web_voice", "redact_in_logs")
-// are the machine's words too. This catalogue gives each choice a label a customer can read. The stored value never changes: only what is drawn. With
-// "Technical names" on, the value is shown beside the label.
+// The choices of a setting, in words. A setting's NAME has a plain label in plainLanguage.js; its choices
+// ("standalone", "web_voice", "redact_in_logs") are the machine's words too. This catalogue gives each choice a label a
+// customer can read. The stored value never changes: only what is drawn. With "Technical names" on, the value is shown
+// beside the label.
 //
 // Keyed by the setting's name, then the choice. A choice that means the same wherever it appears is also found without its name (lookup()).
 // Pure data and two helpers: no DOM.

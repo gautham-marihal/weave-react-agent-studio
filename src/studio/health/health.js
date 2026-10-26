@@ -4,7 +4,7 @@
 // checks it looked at, never "healthy". Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
-import { splitUnsupported } from '../preflight.js';
+import { splitUnsupported } from '../preflight.ts';
 import { knowledgeSummary, normalizeKnowledge } from '../knowledge/model.js';
 import { normalizeScenarioList } from '../scenarios/runResults.js';
 

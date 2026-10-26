@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useConfigSelect, useForm } from './ctx.js';
 import { CREATABLE, createAndPoint, createProblems } from './inlineCreate.js';
+import Select from '../../ui/Select.tsx';
 
 // "＋ New message / state variable / HTTP connection" under a field that points at one: asks the few things needed, makes
 // it, and points the field at it, all as one change (with Undo).
@@ -27,13 +28,13 @@ export default function InlineCreate({ collection, target, defaultKind, onClose 
         <label key={field.key} className="stICField">
           <span>{field.label}</span>
           {field.options ? (
-            <select className="stFInput small" value={answers[field.key] ?? ''} onChange={(event) => set(field.key, event.target.value)}>
+            <Select className="stFInput small" value={answers[field.key] ?? ''} onChange={(event) => set(field.key, event.target.value)}>
               {field.options.map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : field.multiline ? (
             <textarea className="stFInput" rows={3} value={answers[field.key] ?? ''} onChange={(event) => set(field.key, event.target.value)} autoFocus />
           ) : (

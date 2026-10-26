@@ -1,5 +1,6 @@
-// The four "try a line" previews and the redaction kinds, IMITATED for demo mode (and for the tests). The real API runs the runtime's own code, so its
-// answers are exact; here there is no runtime, so this follows the same shapes with simple stand-ins and says so in `note`. Pure.
+// The four "try a line" previews and the redaction kinds, IMITATED for demo mode (and for the tests). The real API runs
+// the runtime's own code, so its answers are exact; here there is no runtime, so this follows the same shapes with
+// simple stand-ins and says so in `note`. Pure.
 
 import { isObj } from '../studio/form/engine.js';
 import { DEMO_PREVIEW_NOTE } from './demoPreview.js';

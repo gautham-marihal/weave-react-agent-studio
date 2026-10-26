@@ -7,12 +7,14 @@ import { formatWhen } from '../format.js';
 import CallDetail from './CallDetail.jsx';
 import { ALL_AGENTS_LIMIT, OUTCOMES, RANGES, channelsIn, rowOf } from './callModel.js';
 import { usePref } from '../usePref.js';
-import { useCalls } from './useCalls.js';
+import { useCalls } from './useCalls.ts';
+import Select from '../../ui/Select.tsx';
 import './calls.css';
 
-// The calls an agent (or every agent) has had: who called, when, for how long, how it went (handled, passed to a person, cut off). Selecting one opens the
-// trace of what happened in it. The API serves these per agent, so "All agents" asks each agent and merges the answers. These records hold what callers
-// said, and the API cannot yet limit who reads them, so the screen says so, once, until "Got it".
+// The calls an agent (or every agent) has had: who called, when, for how long, how it went (handled, passed to a
+// person, cut off). Selecting one opens the trace of what happened in it. The API serves these per agent, so "All
+// agents" asks each agent and merges the answers. These records hold what callers said, and the API cannot yet limit
+// who reads them, so the screen says so, once, until "Got it".
 export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, initialCall = null, editor = null }) {
   const [botId, setBotId] = useState(fixedBotId);
   const [range, setRange] = useState('7d');
@@ -24,7 +26,7 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
   const effectiveBot = fixedBotId || botId;
   const filters = useMemo(() => ({ range, caller, channel, status: OUTCOMES[outcome]?.status || '' }), [range, caller, channel, outcome]);
   const [noticeSeen, setNoticeSeen] = usePref('weave_calls_notice_seen', '');
-  const { calls, loading, loadingMore, errors, hasMore, loadMore, reload, skipped } = useCalls({
+  const { calls, loading, refreshing, busy, loadingMore, errors, hasMore, loadMore, reload, skipped } = useCalls({
     bots,
     botId: effectiveBot,
     filters,
@@ -73,28 +75,28 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
         )}
         <label>
           <span>When</span>
-          <select className="stFInput small" value={range} onChange={(event) => setRange(event.target.value)}>
+          <Select className="stFInput small" value={range} onChange={(event) => setRange(event.target.value)}>
             {RANGES.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           <span>Outcome</span>
-          <select className="stFInput small" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
+          <Select className="stFInput small" value={outcome} onChange={(event) => setOutcome(event.target.value)}>
             <option value="">Any</option>
             {Object.entries(OUTCOMES).map(([id, o]) => (
               <option key={id} value={id}>
                 {o.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           <span>Channel</span>
-          <select className="stFInput small" value={channel} onChange={(event) => setChannel(event.target.value)}>
+          <Select className="stFInput small" value={channel} onChange={(event) => setChannel(event.target.value)}>
             <option value="">Any</option>
             {channels.map((c) => (
               <option key={c.id} value={c.id}>
@@ -102,14 +104,14 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
               </option>
             ))}
             {channel && !channels.some((c) => c.id === channel) && <option value={channel}>{channel}</option>}
-          </select>
+          </Select>
         </label>
         <label>
           <span>Caller</span>
           <input className="stFInput small" type="search" value={caller} placeholder="part of a number" onChange={(event) => setCaller(event.target.value)} />
         </label>
         <span className="clFilterActions">
-          <button type="button" className="quietButton" onClick={reload} disabled={loading}>
+          <button type="button" className="quietButton" onClick={reload} disabled={busy}>
             Refresh
           </button>
           <label className="clAuto">
@@ -142,7 +144,8 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
         />
       )}
 
-      <div className="clTableWrap">
+      {/* while another list is read (a filter changed) the last one stays, dimmed */}
+      <div className={`clTableWrap ${refreshing ? 'reading' : ''}`} aria-busy={loading || refreshing || undefined}>
         <table className="clTable">
           <thead>
             <tr>

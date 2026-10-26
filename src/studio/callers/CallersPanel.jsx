@@ -17,9 +17,10 @@ const STATE = {
   skipped: { mark: '', word: 'Not run', tone: 'idle' },
 };
 
-// Simulated callers: scripted people who phone the draft and say what a real caller might, and the checks made from what the agent has. Pick some, run them on the
-// draft (nothing is saved), see which ones the agent handled, and keep the good ones as tests so they run every time. The callers are scripted, not played by a model:
-// what they say does not change with the agent's answers. The reviewer checks (is it calm? did it stay on topic?) need the live model.
+// Simulated callers: scripted people who phone the draft and say what a real caller might, and the checks made from
+// what the agent has. Pick some, run them on the draft (nothing is saved), see which ones the agent handled, and keep
+// the good ones as tests so they run every time. The callers are scripted, not played by a model: what they say does
+// not change with the agent's answers. The reviewer checks (is it calm? did it stay on topic?) need the live model.
 export default function CallersPanel({ botId, name, editor }) {
   const config = editor.parsed.value;
   const ready = editor.status === 'ready' && editor.isObject && !editor.parsed.error;
@@ -139,18 +140,14 @@ export default function CallersPanel({ botId, name, editor }) {
                   )}
                 </span>
                 <span className="cpActions">
-                  <button
-                    type="button"
-                    className="quietButton small"
-                    aria-expanded={open === s.key}
-                    onClick={() => setOpen(open === s.key ? '' : s.key)}
-                    aria-label={`${open === s.key ? 'Hide' : 'Show'} what ${s.name} says and checks`}
-                  >
+                  <button type="button" className="quietButton small" aria-expanded={open === s.key} onClick={() => setOpen(open === s.key ? '' : s.key)}>
+                    {/* what is seen, then whose: "What it says: Frustrated" (open or shut is said by aria-expanded) */}
                     {result ? 'Details' : 'What it says'}
+                    <span className="srOnly">: {s.name}</span>
                   </button>
                   {!isKept(s) && (
-                    <button type="button" className="quietButton small" onClick={() => keep([s])} aria-label={`Keep ${s.name} as a test`}>
-                      Keep as a test
+                    <button type="button" className="quietButton small" onClick={() => keep([s])}>
+                      Keep as a test<span className="srOnly">: {s.name}</span>
                     </button>
                   )}
                 </span>

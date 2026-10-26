@@ -1,5 +1,5 @@
 // Starting points an author makes themselves: "save this agent as a template", then pick it in the Create dialog next to the built-in ones.
-// The built-in seven (starters.js) are a default set written for customer-care style agents; an organisation has its own, so these are data,
+// The built-in seven (starters.ts) are a default set written for customer-care style agents; an organisation has its own, so these are data,
 // not code. They are kept in THIS browser (the API has no templates endpoint yet: see "what the backend side can provide next") and can be
 // exported to a file and imported, which is how they are shared today. Pure apart from `storage` (localStorage, or anything with
 // getItem/setItem in tests).

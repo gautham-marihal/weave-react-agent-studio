@@ -4,7 +4,7 @@ import { formatWhen } from './format.js';
 import { healthTitle } from './health/health.js';
 import { useAgentActivity } from './health/useAgentActivity.js';
 import { useAlertsByAgent } from './insights/AlertBell.jsx';
-import Menu from './manage/Menu.jsx';
+import Menu from './manage/Menu.tsx';
 import { navigate, routeHref } from './route.js';
 import StatePill from './StatePill.jsx';
 import { stateFromHealth } from './status.js';
@@ -12,9 +12,10 @@ import { EnvSlots } from './ui.jsx';
 
 // The agents as one table: the Agents page lists every agent with it (BotRow, with filters and a menu per row), and Home shows a few (AgentTable).
 
-// One agent in a list, as a row that opens it: name and id, where it runs (one slot per environment), its calls of the last days (`activity`: { total,
-// series } from useAgentActivity) with the alerts that hold for it (`alerts`: { count, critical }), and its latest published version and when the draft was
-// last saved. `menuItems` adds the "⋯" menu (Rename, Export, Remove). Also used on Home.
+// One agent in a list, as a row that opens it: name and id, where it runs (one slot per environment), its calls of the
+// last days (`activity`: { total, series } from useAgentActivity) with the alerts that hold for it (`alerts`: { count,
+// critical }), and its latest published version and when the draft was last saved. `menuItems` adds the "⋯" menu
+// (Rename, Export, Remove). Also used on Home.
 //   compact: Home's short table, without the technical id and tags under the name
 export function BotRow({ bot, menuItems, onOpen, health, tags, activity, alerts, compact = false }) {
   const state = stateFromHealth(bot, health);
@@ -24,7 +25,8 @@ export function BotRow({ bot, menuItems, onOpen, health, tags, activity, alerts,
   const max = Math.max(1, ...(activity?.series || []).map((d) => d.calls));
   return (
     <div className={`agentRow stAgentRow ${menuItems ? 'withMenu' : ''} ${compact ? 'compact' : ''}`}>
-      <button type="button" className="agentRowMain" onClick={open} aria-label={`Open ${name}`}>
+      {/* named by what it shows (the name first), so what is said and what is seen are the same */}
+      <button type="button" className="agentRowMain" onClick={open}>
         <span className="agentRowAvatar" aria-hidden="true">
           {name.slice(0, 1).toUpperCase()}
         </span>

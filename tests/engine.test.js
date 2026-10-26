@@ -129,3 +129,8 @@ test('reference options and secrets come from the config being edited', () => {
   assert.equal(collectSecretNames(example).length, 12);
   assert.deepEqual(collectRefOptions(undefined).agents, []);
 });
+
+test('the lists the pickers offer are read from any shape the JSON view leaves, so the form still opens', () => {
+  assert.deepEqual(collectRefOptions({ agents: { items: {} } }).agents, []);
+  assert.deepEqual(collectRefOptions({ agents: { items: [{ id: 'a', handoffs: {} }, { handoffs: 'x' }, null] } }).tool_names, []);
+});

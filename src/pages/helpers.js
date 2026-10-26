@@ -1,6 +1,7 @@
-import { formatWhen } from '../studio/format.js';
-// The sidebar holds workspace-level things only: Home, Agents and the Calls of every agent; then the Library (what agents share: voices, integrations,
-// telephony) and Settings. Everything about ONE agent (building, testing, releasing, watching it) is inside that agent.
+import { formatWhen, randomTag } from '../studio/format.js';
+// The sidebar holds workspace-level things only: Home, Agents and the Calls of every agent; then the Library (what
+// agents share: voices, integrations, telephony) and Settings. Everything about ONE agent (building, testing,
+// releasing, watching it) is inside that agent.
 export const NAV = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'agents', label: 'Agents', icon: 'agent' },
@@ -54,21 +55,17 @@ export function sessionsInRange(list = [], range = 'Past 7 days') {
 
 export function sessionStats(list = []) {
   const totalSec = list.reduce((sum, item) => sum + (Number(item.durationSec) || 0), 0);
-  const agentsSeen = new Set(list.map((item) => item.agentId)).size;
   return {
     count: list.length,
     avgSec: list.length ? totalSec / list.length : 0,
     minutes: totalSec / 60,
-    participants: list.length ? agentsSeen + 1 : 0, // you plus each agent you tested
     messages: list.reduce((sum, item) => sum + (Number(item.userMessages) || 0), 0),
   };
 }
 
 export function makeRecordId(prefix) {
-  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  return `${prefix}_${Date.now().toString(36)}${randomTag()}`;
 }
-
-export const WORKSPACE_NAV = [...LIBRARY_NAV, ...SETTINGS_NAV];
 
 export const TELEPHONY_SECTIONS = [
   { id: 'calls', label: 'Simulated calls', icon: 'phone' },
@@ -77,8 +74,9 @@ export const TELEPHONY_SECTIONS = [
   { id: 'trunks', label: 'SIP trunks', icon: 'plug' },
 ];
 
-// The address of each workspace page, so a refresh, a bookmark and Back keep you on it: #/home, #/calls, #/live, #/telephony/numbers... (an agent has its
-// own, #/bots/...). `id` is the page's id in NAV / LIBRARY_NAV / SETTINGS_NAV; Calls is `sessions` inside, "calls" in the address.
+// The address of each workspace page, so a refresh, a bookmark and Back keep you on it: #/home, #/calls, #/live,
+// #/telephony/numbers... (an agent has its own, #/bots/...). `id` is the page's id in NAV / LIBRARY_NAV / SETTINGS_NAV;
+// Calls is `sessions` inside, "calls" in the address.
 const PAGE_SLUGS = {
   home: 'home',
   sessions: 'calls',

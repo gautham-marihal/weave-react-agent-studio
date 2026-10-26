@@ -3,6 +3,9 @@
 React + Vite frontend for Weave Agent Studio. It is frontend only: agents, drafts, versions, deployments and
 test sessions live on the **Agent Builder API**, which this app calls.
 
+New to the code? Start with [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md): how the app is put together, where things live,
+and how to check a change.
+
 ## Run locally
 
 Needs **Node 22.15 or newer** (`engines` in `package.json`: the component tests use `jsdom@30`, whose dependency `undici` needs the zstd support that arrived in Node 22.15; on 22.14 those ten test suites fail to load).
@@ -34,7 +37,7 @@ a proxy that adds the key and the identity: see [docs/PRODUCTION.md](docs/PRODUC
 
 The **Agents** area (`src/studio`) covers the four jobs of the front-end guide:
 
-An agent's pages follow the order of the work (`src/studio/newlayout/pages.js`): build it, test and launch it, watch it. Every old link
+An agent's pages follow the order of the work (`src/studio/agent/pages.js`): build it, test and launch it, watch it. Every old link
 (`#/bots/{id}/deploy`) still works: it opens the page that now holds it.
 
 | Group               | Page                                                                                               | What you can do                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -69,7 +72,7 @@ under it and its main action on the right; each page's code arrives when it is f
 
 ### Inside an agent
 
-An agent (`src/studio/newlayout/`) has its own menu in the sidebar, in the order the work is done:
+An agent (`src/studio/agent/`) has its own menu in the sidebar, in the order the work is done:
 
 - **Overview**; **Build**: Agent, Knowledge, Tools, Workflow, Channels, Guardrails, After the call; **Test and launch**: Tests, Releases; **Monitor**: Calls,
   Monitoring, Questions, Speed; then **Settings** below a line. The whole menu fits on a 900 px high screen in every style.
@@ -79,7 +82,7 @@ An agent (`src/studio/newlayout/`) has its own menu in the sidebar, in the order
 - While the agent is not ready, a **Getting it ready** card under the name shows how many of the steps are done (what it should do, what it says
   first, its language and voice, its model, tools or knowledge, the checks, its tests and their latest run, a published version, live) and opens the next
   one. A ring beside a page says a step is still to do there; a number says the checks found problems there. These steps are the one answer to "is it
-  ready?" (`src/studio/newlayout/readiness.js`): the menu, the Overview, Home and Releases all read them, so they always agree. Releases keeps its five
+  ready?" (`src/studio/agent/readiness.js`): the menu, the Overview, Home and Releases all read them, so they always agree. Releases keeps its five
   steps of shipping the draft, and calls the agent ready only when nothing else is left.
 - **The bar across the top** of every page: the name, where it stands, whether the draft is saved, and how many changes are not published yet (a click
   shows them). On the right only what is reached for from any page: what the checks found (when they found something), **Describe**, **Test**, **Save**
@@ -118,7 +121,7 @@ An agent (`src/studio/newlayout/`) has its own menu in the sidebar, in the order
 - **Keyboard**: Ctrl+S (⌘S) saves the draft from any page of the agent; **?** anywhere (but in a text box) lists the shortcuts and where things are.
 - Pages with settings beyond their main job list them under a heading that says what they are ("Transfers, connections, forms, messages and tasks"
   under Tools, "Hours and callers" under Channels).
-- **Guardrails** starts in plain words (`src/studio/newlayout/simple/`): **Topics** (what it talks about, what it must not, and after how many tries off
+- **Guardrails** starts in plain words (`src/studio/agent/blocks/`): **Topics** (what it talks about, what it must not, and after how many tries off
   topic it ends the conversation or passes them on, saying what first), **When it hands over or ends the call** (switches: a frustrated caller to a
   person, people who ask for a manager or to complain, ending when someone is abusive), then the checks on what the caller and the agent say, **All
   its hand-over and ending rules** (each in words: "When the caller sounds frustrated (2 turns in a row): pass them to a person"), **Limits** (longest
@@ -255,7 +258,7 @@ last 7, 14 or 30 days how fast the agent answers: half the answers, 1 in 10, the
 - **By agent** (on the workspace page): each agent's calls, answer time, slowest tenth and share within the target, slowest first, each one click from its
   own page.
 
-The studio shows no costs or prices (they were taken out on 2026-10-22); an old `#/cost` link opens Speed. The logic is in `src/studio/speed/speedModel.js`
+The studio shows no costs or prices (they were taken out on 2026-10-22); an old `#/cost` link opens Speed. The logic is in `src/studio/speed/speedModel.ts`
 (pure, `tests/speed.test.js`). It only reads the calls and their records.
 
 ### The preview beside the editor
@@ -360,7 +363,7 @@ aren't saved yet. The model lists in `src/studio/models/catalog.js` are a **cata
 - **Starting points.** The Create dialog offers starters (Customer care, Front desk, Knowledge guide, Lead concierge, Booking
   concierge, Feedback collector, Blank). The chosen one is written into the new draft: persona, greeting, instructions, goodbye
   and `end_call`, a nudge-then-goodbye for a silent caller, a recording notice when voice is used, and for the starters that may
-  need a person a callback tool with a transfer to fill in. They live in `src/studio/starters.js` and each passes `POST /validate`.
+  need a person a callback tool with a transfer to fill in. They live in `src/studio/starters.ts` and each passes `POST /validate`.
 - **Describe it.** The Create dialog can also take a description of the agent instead of a template: write who it talks to, what it
   helps with and what it must never do, and get a draft to review (what it picked and assumed, an editable role and greeting, and
   what is left for you to decide). **The assistant is rule-based, not an AI model**: it reads keywords to choose a starter, channels,
@@ -550,11 +553,11 @@ src/ui/                     the icon set (Icon.jsx, iconPaths.js), the style pic
 src/pages/                  one file per page: Landing, Login, Dashboard (the one shell, and Home), Calls (Sessions.jsx), Telephony, Voices,
                             Integrations; HomeJourney.jsx (the next step), WorkspacePulse.jsx (Home's numbers); shared.jsx (sidebar pieces, dialogs),
                             helpers.js (the navigation and every page's address)
-src/api/client.js           one function per API endpoint, error classification (JSDoc-typed)
-src/api/types.js            JSDoc types of the API's answers; agentConfig.d.ts is generated from the schema
+src/api/client.ts           one function per API endpoint, error classification
+src/api/types.ts            types of the API's answers; agentConfig.d.ts is generated from the schema
 src/studio/                 the Agents area (list, workspace, Versions, Deploy, Test, the JSON editor and the checks panel); AgentTable.jsx (the agents as a
                             table); journey.js (the old page addresses an agent still answers to), status.js (one name for each state)
-src/studio/newlayout/       an agent in the default layout: its menu (AgentNav), the agent switcher, the top bar, the pages and the steps to get ready (readiness.js)
+src/studio/agent/           one agent's screens: its menu (AgentNav), the agent switcher, the top bar, the pages and the steps to get ready (readiness.js)
 src/studio/form/            schema engine, the form, layout.js (the groups), plainLanguage.js (the labels), the pickers, and the tool / channel / message / template editors
 src/studio/simple/          the helpers that read and write the everyday settings (simpleModel.js), and the technical-name chip (SimpleKey.jsx)
 src/studio/relations/       the agent map, tool grid, schedule strip, task steps and "used by"
@@ -582,7 +585,7 @@ docs/PRODUCTION.md          how to run it for real: sign-in, proxy, identity
 docs/USABILITY_STUDY.md     the study to run with real people: tasks, measures, what good looks like
 ```
 
-`jsconfig.json` gives editors type hints; a few pure modules opt in to checking with `// @ts-check`.
+`tsconfig.json` checks the .ts/.tsx files strictly; the .js/.jsx files are checked only where they opt in with `// @ts-check`.
 
 ## Test and build
 

@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { FALLBACK_PROVIDERS, FALLBACK_TURN_DETECTORS } from './catalog.js';
 
 // The model providers the runtime can run (GET /providers), fetched once and shared by every screen that offers a

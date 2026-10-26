@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/demoApi.js';
 import {
   BASE_LANGUAGES,
+  entryAgentIndex,
   languageName,
   readSimple,
   setAgentName,
@@ -97,4 +98,10 @@ test('the primary language also makes its base language spoken, first; the prima
   assert.equal(languageName('pt-BR'), 'Portuguese (Brazil)');
   assert.equal(languageName('es-CO'), 'Spanish');
   assert.ok(BASE_LANGUAGES.some((l) => l.code === 'en') && BASE_LANGUAGES.filter((l) => l.code === 'en').length === 1);
+});
+
+test('the agent that answers first is a real agent: a null or half-typed item is never chosen', () => {
+  assert.equal(entryAgentIndex({ agents: { items: [null, { id: 'a' }] } }), 1);
+  assert.equal(entryAgentIndex({ agents: { entry: 'b', items: [null, { id: 'a' }, { id: 'b' }] } }), 2);
+  assert.equal(entryAgentIndex({ agents: { items: [null] } }), -1, 'no agent to write into');
 });

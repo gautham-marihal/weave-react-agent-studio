@@ -1,6 +1,6 @@
-// A call's records read as a conversation: what the caller said turn by turn, what the agent answered to each, which tools ran, who took over, how it ended.
-// The same reading is used for a real call, a Test conversation and a scenario run (they all write the same records), so a replay of one can be laid
-// beside another. Pure: no network, no DOM.
+// A call's records read as a conversation: what the caller said turn by turn, what the agent answered to each, which
+// tools ran, who took over, how it ended. The same reading is used for a real call, a Test conversation and a scenario
+// run (they all write the same records), so a replay of one can be laid beside another. Pure: no network, no DOM.
 
 import { fixMojibake } from '../trace/records.js';
 

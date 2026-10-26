@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ASSISTANT, MIN_DESCRIPTION, generateDraft } from '../demo/draftAssistant.js';
 import { minimalConfig } from '../demo/minimalConfig.js';
-import { entryAgent, readSimple } from './simple/simpleModel.js';
+import { readSimple } from './simple/simpleModel.js';
 
 // "Describe the agent" in the Create dialog: write what it should do, get a draft to review. The assistant is the rule-based demo one
 // (demo/draftAssistant.js) and every part of this panel says so: what it is, what it assumed, and what it left for you to decide.
@@ -123,5 +123,3 @@ export default function AssistantPanel({ description, onDescription, name, id, g
     </div>
   );
 }
-
-export { entryAgent };

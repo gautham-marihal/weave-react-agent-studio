@@ -3,8 +3,9 @@ import { isObj } from './engine.js';
 import { FreeValue, Select, StringList } from './fields.jsx';
 import InlineCreate from './InlineCreate.jsx';
 import { useConfigSelect, useForm } from './ctx.js';
-import { argNamesOf } from './templates.js';
+import { argNamesOf } from './templates.ts';
 import Icon from '../../ui/Icon.jsx';
+import ChoiceBox from '../../ui/Select.tsx';
 
 // A condition ("when the caller is verified", "when the argument is at least 3") as one readable row instead of a
 // choice between nine kinds of object. Combining conditions (all / any / not), channels and business hours still use the
@@ -35,6 +36,34 @@ export function isSimpleCondition(value) {
   return sources.length === 1 && operators.length <= 1 && keys.length === sources.length + operators.length;
 }
 
+// The number "at least" / "at most" compare with: the box keeps what is typed (an empty box, a minus sign on its way to
+// -3), and the condition only ever gets a number; leaving the box with something that isn't one puts the number back.
+function NumberValue({ value, onChange, disabled }) {
+  const shown = typeof value === 'number' ? String(value) : '';
+  const [text, setText] = useState(shown);
+  const [was, setWas] = useState(value);
+  if (value !== was) {
+    setWas(value);
+    if (Number(text) !== value || text.trim() === '') setText(shown);
+  }
+  return (
+    <input
+      className="stFInput"
+      type="number"
+      step="any"
+      value={text}
+      disabled={disabled}
+      aria-label="Value"
+      onChange={(event) => {
+        setText(event.target.value);
+        const n = Number(event.target.value);
+        if (event.target.value.trim() !== '' && Number.isFinite(n)) onChange(n);
+      }}
+      onBlur={() => setText(shown)}
+    />
+  );
+}
+
 export default function ConditionBuilder({ value, onChange, path, disabled, fallback }) {
   const ctx = useForm();
   const [creating, setCreating] = useState(false);
@@ -63,15 +92,22 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
   const operand = obj[operator];
   const stateVars = ctx.refOptions.state_vars || [];
 
-  const write = (next) => onChange(next);
-  const setSource = (nextSource) => write({ [nextSource]: '', [operator]: operand ?? '' });
-  const setSubject = (v) => write({ [source]: v, [operator]: operand ?? '' });
-  const setOperator = (nextOperator) =>
-    write({
+  // the value compared with is kept as it is, null included ("is not null" means "is set": an empty text in its place would flip the meaning)
+  const kept = operand === undefined ? '' : operand;
+  const setSource = (nextSource) => onChange({ [nextSource]: '', [operator]: kept });
+  const setSubject = (v) => onChange({ [source]: v, [operator]: kept });
+  // "at least" and "at most" compare numbers: a number stays, text that is one becomes it, anything else starts at 0
+  // (shown in the box, never a hidden "")
+  const asNumber = (v) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : 0);
+  const setOperator = (nextOperator) => {
+    const single = Array.isArray(operand) ? (operand[0] ?? '') : kept;
+    onChange({
       [source]: subject,
-      [nextOperator]: nextOperator === 'in' ? (Array.isArray(operand) ? operand : []) : Array.isArray(operand) ? (operand[0] ?? '') : (operand ?? ''),
+      [nextOperator]:
+        nextOperator === 'in' ? (Array.isArray(operand) ? operand : []) : nextOperator === 'gte' || nextOperator === 'lte' ? asNumber(single) : single,
     });
-  const setOperand = (v) => write({ [source]: subject, [operator]: v });
+  };
+  const setOperand = (v) => onChange({ [source]: subject, [operator]: v });
 
   const subjectControl = () => {
     if (source === 'state') {
@@ -105,36 +141,34 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
   return (
     <div className="stCondition" data-condition>
       <div className="stCondRow">
-        <select className="stFInput small" value={source} disabled={disabled} aria-label="What to test" onChange={(event) => setSource(event.target.value)}>
+        <ChoiceBox className="stFInput small" value={source} disabled={disabled} aria-label="What to test" onChange={(event) => setSource(event.target.value)}>
           {SOURCES.map(([key, label]) => (
             <option key={key} value={key}>
               {label}
             </option>
           ))}
-        </select>
+        </ChoiceBox>
         <div className="stCondSubject">{subjectControl()}</div>
-        <select className="stFInput small" value={operator} disabled={disabled} aria-label="Comparison" onChange={(event) => setOperator(event.target.value)}>
+        <ChoiceBox
+          className="stFInput small"
+          value={operator}
+          disabled={disabled}
+          aria-label="Comparison"
+          onChange={(event) => setOperator(event.target.value)}
+        >
           {OPERATORS.map(([key, label]) => (
             <option key={key} value={key}>
               {label}
             </option>
           ))}
-        </select>
+        </ChoiceBox>
         <div className="stCondValue">
           {operator === 'in' ? (
             <StringList values={Array.isArray(operand) ? operand : []} onChange={setOperand} disabled={disabled} placeholder="a value" addLabel="Add a value" />
           ) : operator === 'gte' || operator === 'lte' ? (
-            <input
-              className="stFInput"
-              type="number"
-              step="any"
-              value={typeof operand === 'number' ? operand : ''}
-              disabled={disabled}
-              aria-label="Value"
-              onChange={(event) => setOperand(event.target.value === '' ? '' : Number(event.target.value))}
-            />
+            <NumberValue value={operand} onChange={setOperand} disabled={disabled} />
           ) : (
-            <FreeValue value={operand ?? ''} onChange={setOperand} disabled={disabled} />
+            <FreeValue value={operand} onChange={setOperand} disabled={disabled} aria-label="Value" />
           )}
         </div>
       </div>

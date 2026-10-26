@@ -1,19 +1,19 @@
-// What the calls say about how the agents are doing: how many, how long, how often they were handed over or cut off, how fast the agent answers, which
-// tools fail, where callers had to repeat themselves, and whether a newer version does worse than the one before. Built only from what the studio reads
-// (the list of calls, and the records of the newest few calls of each agent); nothing is written. Rates over a handful of calls are NOT trusted: below a
-// minimum, a number is shown but never raised as an alert, and the screen says how many calls it rests on.
+// What the calls say about how the agents are doing: how many, how long, how often they were handed over or cut off,
+// how fast the agent answers, which tools fail, where callers had to repeat themselves, and whether a newer version
+// does worse than the one before. Built only from what the studio reads (the list of calls, and the records of the
+// newest few calls of each agent); nothing is written. Rates over a handful of calls are NOT trusted: below a minimum,
+// a number is shown but never raised as an alert, and the screen says how many calls it rests on.
 // Pure: no network, no DOM, no clock of its own.
 
 import { similarity } from '../replay/compareReplay.js';
+import { localDay, periodOf } from '../format.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-const DAY = 24 * 3600 * 1000;
 
 export const MIN_FOR_ALERT = 5; // calls of a version (and of the one before it) before it can be called worse
 export const SLOW_MS = 8000; // an answer slower than this is slow
 export const REGRESSION = { cutOff: 0.15, handoff: 0.2, toolFail: 0.15 }; // how much higher (as a share of calls) a rate must be to raise an alert
 
-const dayKey = (ms) => new Date(ms).toISOString().slice(0, 10);
 const rate = (n, of) => (of > 0 ? n / of : null);
 const sum = (xs) => xs.reduce((a, b) => a + b, 0);
 const avg = (xs) => (xs.length ? sum(xs) / xs.length : null);
@@ -53,19 +53,29 @@ export function issuesOf(summary, facts) {
         break;
       }
     }
-    const slow = list(facts.turns).find((t) => typeof t.waitMs === 'number' && t.waitMs > SLOW_MS);
-    if (slow) out.push({ kind: 'slow', text: `The agent took ${(slow.waitMs / 1000).toFixed(1)} s to answer “${slow.say.slice(0, 50)}”.` });
+    const slow = waitsOf(facts).find((w) => w.ms > SLOW_MS);
+    if (slow) out.push({ kind: 'slow', text: `The agent took ${(slow.ms / 1000).toFixed(1)} s to answer “${String(slow.say || '').slice(0, 50)}”.` });
   }
   return out.map((i) => ({ ...i, severity: ISSUE_KINDS[i.kind].severity }));
 }
 
 const keyOf = (c) => `${c.bot}/${c.id}`;
 
+// What the caller waited for each answer of a call: [{ ms, say }], measured as the Speed page measures it (the delay a
+// voice call records, or from the caller's words to the answer plus making sure they finished) when the call's records
+// were read for that (`waits`), else from the turns' gaps.
+export function waitsOf(facts) {
+  if (Array.isArray(facts?.waits)) return facts.waits.filter((w) => typeof w?.ms === 'number');
+  return list(facts?.turns)
+    .filter((t) => typeof t.waitMs === 'number')
+    .map((t) => ({ ms: t.waitMs, say: t.say }));
+}
+
 // The numbers of a group of calls.
 function totalsOf(calls, samples) {
   const facts = calls.map((c) => samples[keyOf(c)]).filter(Boolean);
-  // each answer's wait as the Speed page measures it, when the sample has it
-  const waits = facts.flatMap((f) => (Array.isArray(f.answerMs) ? f.answerMs : list(f.turns).map((t) => t.waitMs))).filter((w) => typeof w === 'number');
+  // each answer's wait as the Speed page measures it
+  const waits = facts.flatMap((f) => waitsOf(f).map((w) => w.ms));
   const toolCalls = facts.flatMap((f) => list(f.turns).flatMap((t) => t.tools)).filter((t) => !t.handoff);
   return {
     calls: calls.length,
@@ -84,11 +94,14 @@ function totalsOf(calls, samples) {
   };
 }
 
-// calls: every call summary read (`bot`, `id`, `started_at`, `status`, `duration_s`, `caller_turns`, `handoffs`, `version`, `ref`); samples: { 'bot/id': facts };
-// bots: [{ id, name, deployed }]. `days` is the period; the same length before it is read for comparison.
+// calls: every call summary read (`bot`, `id`, `started_at`, `status`, `duration_s`, `caller_turns`, `handoffs`,
+// `version`, `ref`); samples: { 'bot/id': facts };
+// bots: [{ id, name, deployed }]. `days` is the period (today and the days before it, see periodOf); the same length of
+// time before it is read for comparison.
 export function analyse({ calls = [], samples = {}, bots = [], nowMs = 0, days = 7 } = {}) {
-  const start = nowMs - days * DAY;
-  const priorStart = nowMs - 2 * days * DAY;
+  const period = periodOf(nowMs, days);
+  const start = period.startMs;
+  const priorStart = start - (nowMs - start);
   const at = (c) => Date.parse(c.started_at);
   const current = list(calls).filter((c) => at(c) >= start && at(c) <= nowMs);
   const prior = list(calls).filter((c) => at(c) >= priorStart && at(c) < start);
@@ -97,9 +110,9 @@ export function analyse({ calls = [], samples = {}, bots = [], nowMs = 0, days =
 
   // a bar for every day of the period, including days with nothing
   const byDay = new Map();
-  for (let i = days - 1; i >= 0; i -= 1) byDay.set(dayKey(nowMs - i * DAY), { day: dayKey(nowMs - i * DAY), calls: 0, cutOff: 0, handoffs: 0 });
+  period.days.forEach((day) => byDay.set(day, { day, calls: 0, cutOff: 0, handoffs: 0 }));
   current.forEach((c) => {
-    const row = byDay.get(dayKey(at(c)));
+    const row = byDay.get(localDay(at(c)));
     if (row) {
       row.calls += 1;
       if (c.status === 'unfinished') row.cutOff += 1;

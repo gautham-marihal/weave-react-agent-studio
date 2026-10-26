@@ -9,6 +9,7 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge), E2E_HEADED=1 to watch, E2E_SHOTS=folder to save pictures.
 import { chromium } from 'playwright-core';
+import { pick } from './pick.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const SHOTS = process.env.E2E_SHOTS || '';
@@ -87,7 +88,7 @@ check('the card opens Speed at #/speed', /#\/speed$/.test(page.url()), page.url(
 const settled = () => page.waitForSelector('.csBody:not(.reading)', { timeout: 60000 }).then(() => page.waitForTimeout(300));
 await settled();
 const speedFortnight = [await statText(0), await statText(1)];
-await page.getByLabel('Period').selectOption('7');
+await pick(page, page.getByLabel('Period'), '7');
 await settled();
 const speedWeek = [await statText(0), await statText(1)];
 check(
@@ -150,10 +151,10 @@ await page.getByRole('button', { name: 'Show as a chart' }).click();
 // the target
 const within = async () => Number((await meterText()).replace('%', ''));
 const at2 = await within();
-await page.getByLabel('Target answer time, in seconds').selectOption('4');
+await pick(page, page.getByLabel('Target answer time, in seconds'), '4');
 await page.waitForTimeout(200);
 check('a longer target, more answers within it', (await within()) > at2, `${at2} → ${await within()}`);
-await page.getByLabel('Target answer time, in seconds').selectOption('2');
+await pick(page, page.getByLabel('Target answer time, in seconds'), '2');
 await page.waitForTimeout(200);
 
 // a suggestion opens the setting it is about, in that agent
@@ -188,7 +189,7 @@ await shot('agent');
 
 // the agent's Home gives its week's answer time as its Speed page does for the week
 await page.waitForSelector('.nlWorkspace .csBody:not(.reading)', { timeout: 60000 });
-await page.getByLabel('Period').selectOption('7');
+await pick(page, page.getByLabel('Period'), '7');
 await page.waitForSelector('.nlWorkspace .csBody:not(.reading)', { timeout: 60000 });
 await page.waitForTimeout(300);
 const agentWeek = [await statText(0), await statText(1)];

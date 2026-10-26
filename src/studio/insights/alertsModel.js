@@ -1,9 +1,10 @@
-// Alerts: what is going wrong with an agent right now, found in its recent calls, compared with what is usual for it. A tool that keeps failing, calls
-// being cut off or passed on far more than usual, no calls arriving when there usually are, slow answers, errors, a new version doing worse than the one
-// before. Each rule has thresholds a person can change; a spike is only raised on enough calls to mean something and well above the agent's usual.
+// Alerts: what is going wrong with an agent right now, found in its recent calls, compared with what is usual for it. A
+// tool that keeps failing, calls being cut off or passed on far more than usual, no calls arriving when there usually
+// are, slow answers, errors, a new version doing worse than the one before. Each rule has thresholds a person can
+// change; a spike is only raised on enough calls to mean something and well above the agent's usual.
 // Pure: no network, no DOM, no clock of its own (the caller passes `nowMs`).
 
-import { analyse, percentile } from '../monitoring/monitorModel.js';
+import { analyse, percentile, waitsOf } from '../monitoring/monitorModel.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const MIN = 60 * 1000;
@@ -106,7 +107,8 @@ const keyOf = (c) => `${c.bot}/${c.id}`;
 
 // calls: summaries of every agent (`bot`, `id`, `started_at`, `status`, `handoffs`, `version`) for at least the baseline and the longest window;
 // facts: { 'bot/id': facts } for the recent ones (failed tools, errors, answer times need them); bots: [{ id, name }].
-// Returns the alerts that hold now, most serious first: [{ key, rule, severity, bot, botName, title, detail, why, count, since, callIds, subject, action }]
+// Returns the alerts that hold now, most serious first: [{ key, rule, severity, bot, botName, title, detail, why,
+// count, since, callIds, subject, action }]
 export function evaluateAlerts({ calls = [], facts = {}, bots = [], nowMs = 0, rules = effectiveRules() } = {}) {
   const enabled = Object.fromEntries(rules.filter((r) => r.enabled).map((r) => [r.id, r]));
   const names = Object.fromEntries(list(bots).map((b) => [b.id, b.name || b.id]));
@@ -207,7 +209,7 @@ export function evaluateAlerts({ calls = [], facts = {}, bots = [], nowMs = 0, r
     if (enabled.slow) {
       const { seconds, minutes, minTurns } = enabled.slow.params;
       const recent = within(minutes);
-      const waits = recent.flatMap((c) => list(facts[keyOf(c)]?.turns).map((t) => ({ ms: t.waitMs, call: c }))).filter((w) => typeof w.ms === 'number');
+      const waits = recent.flatMap((c) => waitsOf(facts[keyOf(c)]).map((w) => ({ ms: w.ms, call: c })));
       const p90 = percentile(
         waits.map((w) => w.ms),
         90,
@@ -274,14 +276,18 @@ export const HISTORY_MAX = 200;
 
 // Brings the record up to date with the alerts that hold now: a new one is logged as fired, one that no longer holds is logged as cleared (and its
 // acknowledgement forgotten, so if it comes back it is new again), and a snooze that ran out ends. Returns { state, fired: [alerts new this time] }.
-export function reconcile(state, alerts, nowMs) {
-  const history = list(state?.history).filter((h) => Date.parse(h.firedAt) > nowMs - HISTORY_DAYS * DAY);
+//   checked: the ids of the agents this check looked at (the workspace's), when
+//            it is not all of them: an alert of an agent it did not look at (another
+//            workspace's) is left as it is, not cleared
+export function reconcile(state, alerts, nowMs, checked = null) {
+  // an alert still open is kept however old it is (dropped, it would fire again as new); one that cleared is kept for HISTORY_DAYS
+  const history = list(state?.history).filter((h) => !h.clearedAt || Date.parse(h.firedAt) > nowMs - HISTORY_DAYS * DAY);
   const acks = { ...(state?.acks || {}) };
   const active = new Map(list(alerts).map((a) => [a.key, a]));
   const open = new Map(history.filter((h) => !h.clearedAt).map((h) => [h.key, h]));
   const fired = [];
   const nextHistory = history.map((h) => {
-    if (h.clearedAt || active.has(h.key)) {
+    if (h.clearedAt || active.has(h.key) || (checked && !checked.has(h.bot))) {
       const now = active.get(h.key);
       return now && !h.clearedAt ? { ...h, title: now.title, detail: now.detail, count: now.count } : h;
     }
@@ -307,7 +313,11 @@ export function reconcile(state, alerts, nowMs) {
   Object.entries(acks).forEach(([key, ack]) => {
     if (ack?.until && Date.parse(ack.until) <= nowMs) delete acks[key];
   });
-  return { state: { ...state, history: nextHistory.slice(0, HISTORY_MAX), acks }, fired };
+  // at most HISTORY_MAX: every open alert, then the newest of those that cleared
+  const room = Math.max(0, HISTORY_MAX - nextHistory.filter((h) => !h.clearedAt).length);
+  let cleared = 0;
+  const kept = nextHistory.filter((h) => !h.clearedAt || (cleared += 1) <= room);
+  return { state: { ...state, history: kept, acks }, fired };
 }
 
 // Each alert with what the person did about it: 'new', 'seen' (acknowledged) or 'snoozed' (until a time).

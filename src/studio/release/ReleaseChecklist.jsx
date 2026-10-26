@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { navigate, routeHref } from '../route.js';
 import { useAsync } from '../useAsync.js';
 import { useProviders } from '../models/useProviders.js';

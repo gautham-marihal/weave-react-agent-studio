@@ -33,6 +33,29 @@ export function formatWhen(iso, { days = 30, nowMs = Date.now() } = {}) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
 
+// A day as the reader's own calendar has it, not UTC's ("2026-10-25"): a call at 9 pm is on that day's bar, and today's bar is the reader's today.
+export function localDay(ms) {
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// "The last 7 days" as the day charts draw them: today and the days before it, from the first one's midnight, so what a
+// page counts and what its chart shows are the same calls. Stepped by the calendar, so a clock change can't skip or
+// repeat a day. { startMs, days: ['2026-10-19', ... today] }
+export function periodOf(nowMs, days) {
+  const now = new Date(nowMs);
+  const dayAt = (back) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+  const count = Math.max(1, days);
+  return { startMs: dayAt(count - 1).getTime(), days: Array.from({ length: count }, (_, i) => localDay(dayAt(count - 1 - i).getTime())) };
+}
+
+// A few random letters and digits to tell apart ids made in the same moment ("k3x9"), from the browser's cryptographic random numbers (which, unlike
+// crypto.randomUUID, also work on a plain-http address).
+export function randomTag(length = 4) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(length)), (byte) => (byte % 36).toString(36)).join('');
+}
+
 export const slugify = (value) =>
   String(value || '')
     .toLowerCase()

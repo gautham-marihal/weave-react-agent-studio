@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSimulatedAgent } from '../src/demo/simulatedAgent.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/demoApi.js';
 
 const support = () => applyStarter(minimalConfig('a', 'Sam'), 'support');

@@ -6,7 +6,7 @@
 // Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
-import { wordCount } from './templates.js';
+import { wordCount } from './templates.ts';
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '');
 const list = (value) => (Array.isArray(value) ? value : []);
@@ -34,8 +34,8 @@ export function describeCondition(condition) {
   return 'a condition holds';
 }
 
-// The `when` of a block in the server's preview, in words. The server sends the condition as written (an object, or its JSON as text); anything that is
-// neither is plain text already and is shown as it is.
+// The `when` of a block in the server's preview, in words. The server sends the condition as written (an object, or its
+// JSON as text); anything that is neither is plain text already and is shown as it is.
 export function describeWhen(when) {
   if (isObj(when)) return describeCondition(when);
   if (typeof when === 'string') {

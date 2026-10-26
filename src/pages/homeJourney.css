@@ -15,7 +15,7 @@
   color: var(--dim);
   font-weight: 700;
 }
-.hjHead select {
+.hjHead :is(select, button:where(.rxSelect)) {
   max-width: 180px;
   text-transform: none;
   letter-spacing: 0;

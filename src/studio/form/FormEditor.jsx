@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { groupIssues } from '../../api/client.js';
+import Fold from '../../ui/Fold.jsx';
+import { groupIssues } from '../../api/client.ts';
 import { ErrorState, Notice, Spinner } from '../ui.jsx';
 import { FormCtx, OwnerCtx, createConfigStore, isUnder, keyOf, omit, orderedSet, useStableCallback, useStableValue } from './ctx.js';
 import { collectRefOptions, collectSecretNames, createEngine, humanize, isObj } from './engine.js';
 import { DeleteDialog, RenameDialog } from './IdTools.jsx';
 import { COLLECTIONS, collectionAt, deleteItem, findUsage, removePointers, renameEverywhere } from './references.js';
-import { getAtPath as getAtItemPath, removeAtPath, schemaAtPath, setAtPath } from '../newlayout/schemaPath.js';
+import { getAtPath, removeAtPath, schemaAtPath, setAtPath } from '../agent/schemaPath.js';
 import Node, { ObjectBody } from './Node.jsx';
 import { FIRST_GROUP, SKIPPED_SECTIONS, VIEW_NOTES, layoutFor, viewById, viewForPath } from './layout.js';
 import { SETTINGS, describeSetting } from './plainLanguage.js';
@@ -33,12 +34,11 @@ export const SECTION_NOTES = {
   wrapups:
     'Said when a task is done and the caller goes quiet. A closing message does nothing until a tool starts it: choose it on the Tools page, in what the tool does when it finishes.',
 };
-const getAtPath = (root, path) => path.reduce((node, part) => (node == null ? node : node[part]), root);
 // The server owns these: the id is permanent and the rest are set when a version is published.
 const READ_ONLY = new Set(['meta.id', 'meta.status', 'meta.created_at', 'meta.updated_at']);
 
 // `only` (a list of top-level keys) limits the form to those sections and `embedded` draws it without the group tabs, for a place that
-// shows a part of the configuration (the Simple view's "More settings"). Without them it is the whole form.
+// shows a part of the configuration (the agent's own pages: Agent, Settings and the section pages). Without them it is the whole form.
 // What a panel shows when the item it was opened for has been deleted (also by "delete everywhere"): it says so, and tells the panel to close.
 function ItemGone({ word, onGone }) {
   useEffect(() => {
@@ -47,9 +47,10 @@ function ItemGone({ word, onGone }) {
   return <p className="stFEmpty">This {word} is no longer here.</p>;
 }
 
-// `itemPath` (['tools', 2]) shows just that one item of a list, without the screens around it: the panel of a page that lists the items. `itemWord` names it
-// ("tool") for its Delete button, and `onItemGone` is called when it has been deleted. `fold` ({ label, open }) folds the item's settings under that label
-// (the panel asks the few that matter above them in words); its Delete button stays outside the fold.
+// `itemPath` (['tools', 2]) shows just that one item of a list, without the screens around it: the panel of a page that
+// lists the items. `itemWord` names it ("tool") for its Delete button, and `onItemGone` is called when it has been
+// deleted. `fold` ({ label, open }) folds the item's settings under that label (the panel asks the few that matter
+// above them in words); its Delete button stays outside the fold.
 export default function FormEditor({
   editor,
   focusRequest,
@@ -163,7 +164,8 @@ export default function FormEditor({
     useMemo(() => [...new Set([...collectSecretNames(config), ...(editor.report?.secrets_required || [])])].sort(), [config, editor.report]),
   );
   const issues = useMemo(() => groupIssues(editor.report), [editor.report]);
-  // problems about the whole configuration; on an agent's page the demo's "these are simple checks" line is left to the problems panel and the DEMO tag
+  // problems about the whole configuration; on an agent's page the demo's "these are simple checks" line is left to the
+  // problems panel and the DEMO tag
   const general = useMemo(() => issues.filter((issue) => !issue.path && !(embedded && issue.message === DEMO_VALIDATOR_NOTE)), [issues, embedded]);
 
   const exact = useMemo(() => {
@@ -244,7 +246,7 @@ export default function FormEditor({
     },
     [sectionKeys, goTo],
   );
-  // "Show me" from the validation panel, or a setting found by the search. A request that is cleared at once (the new layout clears it when the page
+  // "Show me" from the validation panel, or a setting found by the search. A request that is cleared at once (an agent's page clears it when the page
   // changes, which is the moment this form appears) still finishes; only a newer request, or leaving, stops it.
   // A request that comes before the schema is read waits for it.
   const revealing = useRef(null);
@@ -414,9 +416,10 @@ export default function FormEditor({
   const sectionSchema = schema.properties[section];
   const shape = sectionSchema ? engine.resolveShape(sectionSchema, config[section]) : null;
   const present = section in config;
-  // A section the agent doesn't have yet is drawn like one it has, with its defaults (an empty list, a group's default values): the first change puts it in
-  // the draft. So there is no "Add this section" step before the real "Add". Only a section with no plain shape to draw keeps a button.
-  const sectionKind = sectionSchema ? engine.kindOf(engine.resolveShape(sectionSchema, config[section])) : null;
+  // A section the agent doesn't have yet is drawn like one it has, with its defaults (an empty list, a group's default
+  // values): the first change puts it in the draft. So there is no "Add this section" step before the real "Add". Only
+  // a section with no plain shape to draw keeps a button.
+  const sectionKind = shape ? engine.kindOf(shape) : null;
   const drawable = present || ['object', 'array', 'map'].includes(sectionKind);
   const sectionValue = present ? config[section] : drawable && sectionSchema ? engine.defaultFor(sectionSchema) : undefined;
   const required = (schema.required || []).includes(section);
@@ -533,7 +536,7 @@ export default function FormEditor({
         {itemMode &&
           (() => {
             const itemSchema = schemaAtPath(engine, schema, itemPath);
-            const value = getAtItemPath(config, itemPath);
+            const value = getAtPath(config, itemPath);
             const gone = value === undefined || !itemSchema;
             const remove = () => {
               const proceed = () => {
@@ -570,10 +573,10 @@ export default function FormEditor({
                         />
                       );
                       return fold ? (
-                        <details className="stFFold" open={fold.open || undefined}>
+                        <Fold className="stFFold" open={fold.open}>
                           <summary>{fold.label}</summary>
                           {node}
-                        </details>
+                        </Fold>
                       ) : (
                         node
                       );
@@ -614,7 +617,8 @@ export default function FormEditor({
                   title={sectionKind === 'object' ? 'Take these settings out: the agent uses the defaults again' : 'Take every item of this list out'}
                   onClick={() => {
                     markDelete(`the ${view.label} section`);
-                    // what the page asks for elsewhere (hidden here: After the call's cards) stays; only what this form shows goes back to the defaults
+                    // what the page asks for elsewhere (hidden here: After the call's cards) stays; only what this form
+                    // shows goes back to the defaults
                     const kept = hiddenParts(config[section], section, hidden);
                     commit(section, kept);
                   }}
@@ -674,7 +678,10 @@ export default function FormEditor({
             id={dialog.id}
             takenIds={
               COLLECTIONS[dialog.collection].kind === 'list'
-                ? (getAtPath(config, COLLECTIONS[dialog.collection].path) || []).map((item) => item?.id).filter((x) => typeof x === 'string' && x !== dialog.id)
+                ? [getAtPath(config, COLLECTIONS[dialog.collection].path)]
+                    .flat()
+                    .map((item) => item?.id)
+                    .filter((x) => typeof x === 'string' && x !== dialog.id)
                 : Object.keys(getAtPath(config, COLLECTIONS[dialog.collection].path) || {}).filter((x) => x !== dialog.id)
             }
             onClose={() => setDialog(null)}

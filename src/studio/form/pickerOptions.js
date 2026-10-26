@@ -226,8 +226,9 @@ const GUARDRAILS = {
 // lists a prompt-injection check on the agent's own words as unsupported: it looks for tricks in what the caller says.
 const NOT_RUN_THERE = { 'guardrails.output': ['prompt_injection'] };
 
-// The ids a new item of the list at `path` must not take: those of the list itself, and for a list of guardrails those of all three (the checks on
-// what the caller says, on what the agent says, and the hand-over rules), which the server takes as one set: "personal_details" on both lists is refused.
+// The ids a new item of the list at `path` must not take: those of the list itself, and for a list of guardrails those
+// of all three (the checks on what the caller says, on what the agent says, and the hand-over rules), which the server
+// takes as one set: "personal_details" on both lists is refused.
 export function takenIdsAt(config, path) {
   const at = (p) => p.reduce((v, key) => (v && typeof v === 'object' ? v[key] : undefined), config);
   const idsAt = (p) => {
@@ -303,7 +304,8 @@ const PRONUNCIATION = [
   },
 ];
 
-// The picture on each choice's card, so a long list can be scanned at a glance. One table: a choice has the same id (and picture) wherever it is offered.
+// The picture on each choice's card, so a long list can be scanned at a glance. One table: a choice has the same id
+// (and picture) wherever it is offered.
 const OPTION_ICONS = {
   hand_over: 'phoneTransfer',
   back_to_start: 'undo',

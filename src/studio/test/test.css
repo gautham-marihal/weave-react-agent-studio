@@ -36,7 +36,7 @@
   font-size: var(--fs-xs);
   color: var(--muted);
 }
-.stTControls select {
+.stTControls :is(select, button:where(.rxSelect)) {
   min-height: 42px;
   border-radius: 10px;
   border: 1px solid var(--line2);
@@ -425,7 +425,7 @@
   .stTMsg {
     max-width: 94%;
   }
-  .stTControls select {
+  .stTControls :is(select, button:where(.rxSelect)) {
     min-width: 0;
     width: 100%;
   }
@@ -440,12 +440,12 @@
 }
 
 /* the controls */
-.stTControls select {
+.stTControls :is(select, button:where(.rxSelect)) {
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
 }
-.stTControls select:focus {
+.stTControls :is(select, button:where(.rxSelect)):focus {
   outline: 0;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);

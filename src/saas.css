@@ -312,7 +312,9 @@ html[data-theme] body .linkButton {
 }
 
 /* ---- fields ----------------------------------------------------------------------------------------------------------------------------------------- */
-html[data-theme] body :is(.stFInput, .workspaceField input, .loginCard input:not([type="checkbox"]), .profileCard input, .profileCard select) {
+html[data-theme]
+  body
+  :is(.stFInput, .workspaceField input, .loginCard input:not([type="checkbox"]), .profileCard input, .profileCard :is(select, button:where(.rxSelect))) {
   border-radius: var(--r-control);
 }
 html[data-theme] body :is(.stFInput, .workspaceField input):focus {
@@ -501,7 +503,7 @@ html[data-theme] body .stEnvSlot.on.staging b {
 }
 
 /* ---- tables ----------------------------------------------------------------------------------------------------------------------------------- */
-html[data-theme] body :is(.clTable, .voiceLibraryTable, .sessionsTable, .telephonyTable) thead th,
+html[data-theme] body :is(.clTable, .voiceLibraryTable, .telephonyTable) thead th,
 html[data-theme] body .agentTable .stAgentHead,
 html[data-theme] body .stRow.head {
   color: var(--muted);
@@ -597,7 +599,7 @@ html[data-theme] body .ovStat > .ovSpark {
 html[data-theme] body .ovStat:has(.ovSpark) > strong {
   padding-right: 96px;
 }
-html[data-theme] body .clFilters select.stFInput,
+html[data-theme] body .clFilters :is(select, button:where(.rxSelect)).stFInput,
 html[data-theme] body .clFilters .stFInput {
   min-width: 0;
 }
@@ -976,9 +978,6 @@ html[data-theme] body .mnGrid i {
 html[data-theme] body .mnNum {
   color: var(--muted);
   font-weight: 500;
-}
-html[data-theme] body .csHistBar i {
-  background: var(--chart-1);
 }
 html[data-theme] body :is(.ovSpark, .stRowSpark) i.today {
   background: var(--chart-1);
@@ -1513,7 +1512,7 @@ html[data-theme] body [data-edges~="bottom"] {
     margin-top: 6px;
     margin-bottom: 3px;
   }
-  /* .sidebar: above newlayout.css, which loads after this file (Vibrant keeps its own, for its bigger tiles) */
+  /* .sidebar: above agent.css (studio/agent), which loads after this file (Vibrant keeps its own, for its bigger tiles) */
   html[data-theme] body .sidebar .nlNav {
     gap: 6px;
   }
@@ -1549,6 +1548,20 @@ html[data-theme="dark"] body {
   --ds-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.22);
 }
 
+/* ---- icons (Lucide's, src/ui/icons.js): one asked to be filled (a favourite's star) is drawn solid ---- */
+html[data-theme] body .wIcon.filled {
+  fill: currentColor;
+}
+/* icons that stand in a line of text or a row: centred on it */
+html[data-theme] body :is(.userMenu .dots, .searchResultArrow) {
+  display: inline-flex;
+  align-items: center;
+}
+html[data-theme] body .stFSecretIcon {
+  flex: none;
+  color: var(--muted);
+}
+
 /* ---- page titles: the same on a workspace page, an agent's page and a setup step ---- */
 html[data-theme] body .dashboard :is(.welcomeBlock, .pageHeaderBlock, .featureHero, .nlPageHead, .suHead) h1 {
   margin: 0;
@@ -1582,9 +1595,12 @@ html[data-theme] body .integrationCard h2 {
 
 /* ---- one control height: a button, a field and a list beside them line up (40 px; 34 px for the compact ones in table rows) ---- */
 html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal, .loginCard) .stFInput:not(textarea):not(.csTarget),
-html[data-theme] body :is(.stCompare, .stDeployForm, .stSort, .voiceLibraryToolbar, .stTControls) :is(select, input:not([type="checkbox"]):not([type="radio"])),
+html[data-theme]
+  body
+  :is(.stCompare, .stDeployForm, .stSort, .voiceLibraryToolbar, .stTControls)
+  :is(:is(select, button:where(.rxSelect)), input:not([type="checkbox"]):not([type="radio"])),
 html[data-theme] body .settingsRow input,
-html[data-theme] body .settingsField :is(input, select) {
+html[data-theme] body .settingsField :is(input, :is(select, button:where(.rxSelect))) {
   box-sizing: border-box;
   height: 40px;
   min-height: 40px;
@@ -1621,8 +1637,15 @@ html[data-theme] body :is(.inlineSearch, .featureSearch) {
   background: var(--field, var(--panel));
   box-shadow: none;
 }
-html[data-theme] body :is(.inlineSearch, .featureSearch) input {
+/* the box to type in is the frame's inside: no line or fill of its own, whatever toolbar it sits in (the Voices toolbar draws its fields) */
+html[data-theme] body :is(.inlineSearch, .featureSearch) input:not([type="checkbox"]):not([type="radio"]) {
   height: 100%;
+  min-height: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: var(--fs-md);
 }
 html[data-theme] body :is(.inlineSearch, .featureSearch):focus-within {
@@ -1866,4 +1889,265 @@ html[data-theme] body .dashboard .agentRowMenu.stMenuBtn {
 /* a line to try and its button: bottoms level */
 html[data-theme] body .stTryRow > .stAddBtn {
   align-self: flex-end;
+}
+
+/* ---- the parts of a page (ui/Parts.tsx, Radix Tabs): the row and the open part sit in the page's own layout, as before; the part is a grid with the
+   page's gap (or plain flow, `.flow`, on a page that isn't a grid), and when the keyboard lands on it (Tab after the row) the ring sits a little out ---- */
+.rxParts {
+  display: contents;
+  gap: inherit;
+}
+.rxPartPanel {
+  display: grid;
+  gap: inherit;
+  min-width: 0;
+  align-content: start;
+}
+.rxPartPanel.flow {
+  display: block;
+}
+html[data-theme] body .rxPartPanel:focus-visible {
+  outline-offset: 6px;
+  border-radius: 10px;
+}
+
+/* ---- Radix layers (menus, pop-overs, tooltips, selects): Radix places them beside what opened them, on the side with room; the look stays the
+   studio's own classes. Inside Radix's placing wrapper a layer is not fixed in place itself; the item the keyboard is on looks like the one pointed at;
+   a layer opens with a short fade and a 4 px move away from its button (none for people who ask for less motion). ---- */
+html[data-theme] body .rxLayer {
+  position: relative;
+  inset: auto;
+  transform-origin: var(--radix-popper-transform-origin, top);
+}
+html[data-theme] body .stMenu button[data-highlighted] {
+  background: var(--surface-hover);
+  color: var(--textStrong);
+  outline: 0;
+}
+html[data-theme] body .rxLayer[data-state="open"] {
+  animation: rxIn 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+html[data-theme] body .rxLayer[data-side="top"] {
+  --rx-from: 4px;
+}
+@keyframes rxIn {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rx-from, -4px)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] body .rxLayer[data-state] {
+    animation: none;
+  }
+}
+
+/* the person's menu, placed by Radix: its old fixed and below-the-name placements give way (the compact one's sizes stay) */
+html[data-theme] body .profilePopover.rxLayer,
+html[data-theme] body .profilePopover.rxLayer.profilePopoverPortal {
+  position: relative !important;
+  inset: auto !important;
+}
+html[data-theme] body .profilePopover.rxLayer.profilePopoverWide {
+  width: 294px;
+}
+html[data-theme] body .profilePopoverItem[data-highlighted] {
+  background: var(--surface-hover);
+  color: var(--textStrong);
+  outline: 0;
+}
+
+/* the agent switcher's list, placed by Radix: as wide as the agent's card, as tall as the room below it allows; the agent the keyboard is on looks pointed at */
+html[data-theme] body .agentSwitchMenu.rxLayer {
+  width: var(--radix-dropdown-menu-trigger-width);
+  max-height: min(60vh, var(--radix-dropdown-menu-content-available-height, 60vh));
+}
+html[data-theme] body .agentSwitchMenu button[data-highlighted] {
+  background: var(--surface2);
+  color: var(--textStrong);
+  outline: 0;
+}
+
+/* a short list of choices under a button (Snooze, Dismiss), placed by Radix; the choice the keyboard is on looks pointed at */
+html[data-theme] body .inSnoozeMenu.rxLayer {
+}
+html[data-theme] body .inSnoozeMenu button[data-highlighted] {
+  background: var(--surface2);
+  color: var(--textStrong);
+  outline: 0;
+}
+
+/* the landing page's menus, placed by Radix under their word; the item the keyboard is on looks pointed at */
+html[data-theme] body .landingMenu.rxLayer {
+}
+html[data-theme] body .landingMenuItem[data-highlighted] {
+  background: var(--surface2);
+  outline: 0;
+}
+
+/* the Theme panel, placed by Radix under its button: never past the bottom of the window (its styles scroll inside) */
+html[data-theme] body .styleMenuPanel.rxLayer {
+  max-height: min(calc(100dvh - 128px), var(--radix-popover-content-available-height, 100dvh));
+}
+
+/* the workspace switcher, placed by Radix under the switch and as wide as it (no longer pinned 123 px down the sidebar), never past the window */
+html[data-theme] body .workspaceMenu.rxLayer {
+  width: var(--radix-popover-trigger-width);
+  min-width: 240px;
+  max-height: min(430px, var(--radix-popover-content-available-height, 430px));
+}
+html[data-theme] body .workspaceRowMenu.rxLayer {
+}
+html[data-theme] body .workspaceRowMenu button[data-highlighted] {
+  background: var(--surface-hover);
+  color: var(--textStrong);
+  outline: 0;
+}
+
+/* a menu taller than the room beside its button stops at the window's edge and scrolls inside (the agent bar's More menu, in a short window) */
+html[data-theme] body [data-radix-menu-content].rxLayer {
+  max-height: var(--radix-dropdown-menu-content-available-height, 80vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* a tip beside a button (Radix Tooltip): small, the strongest ink on the page's background, rounded like the controls; above everything, never wider than
+   a short sentence */
+html[data-theme] body .rxTip {
+  max-width: 260px;
+  padding: 6px 9px;
+  border-radius: var(--r-control, 8px);
+  background: var(--textStrong);
+  color: var(--bg, #fff);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.35;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---- a choice box (Radix Select, ui/Select.tsx): the box is the field it replaces (its classes: stFInput…, and every rule that drew a <select> by its
+   tag draws it too: `:is(select, button:where(.rxSelect))`), laid out as a button with the chosen words and a chevron, never the browser's own button;
+   the list is the studio's, as wide as the box at least, as tall as the room allows, the chosen one ticked ---- */
+html[data-theme] body .rxSelect {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+html[data-theme] body .rxSelect > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-theme] body .rxSelect[data-placeholder] > span:first-child {
+  color: var(--muted);
+}
+html[data-theme] body .rxSelect:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+html[data-theme] body .rxSelectIcon {
+  display: inline-flex;
+  flex: none;
+  color: var(--muted);
+}
+html[data-theme] body .rxSelectList {
+  min-width: var(--radix-select-trigger-width);
+  max-width: min(440px, calc(100vw - 24px));
+  max-height: var(--radix-select-content-available-height, 60vh);
+  overflow: hidden;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-control, 8px);
+  background: var(--panel);
+  box-shadow: var(--shadow-md);
+}
+html[data-theme] body .rxSelectViewport {
+  padding: 4px;
+}
+html[data-theme] body .rxSelectItem {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  padding: 7px 30px 7px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+  cursor: pointer;
+  outline: 0;
+  user-select: none;
+}
+html[data-theme] body .rxSelectItem small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+html[data-theme] body .rxSelectItem[data-highlighted] {
+  background: var(--surface-hover);
+  color: var(--textStrong);
+}
+html[data-theme] body .rxSelectItem[data-state="checked"] {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+html[data-theme] body .rxSelectItem[data-disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+html[data-theme] body .rxSelectCheck {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  display: inline-flex;
+}
+html[data-theme] body .rxSelectGroup {
+  padding: 8px 10px 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+/* a menu, a list of choices, a pop-over or a tip is the top thing on the screen while it is open: above every dialog, panel and sheet of the studio (the
+   search sits at 9000), so one opened from inside them is never drawn behind; a tip above the menu it may sit beside */
+html[data-theme] body .rxLayer {
+  z-index: 9500 !important;
+}
+html[data-theme] body .rxTip {
+  z-index: 9600 !important;
+}
+
+/* dialogs open the way the side panels and sheets do: the dimmed page fades in, the dialog rises 6 px into place from 98 % (none for people who ask for
+   less motion). The studio's own dialogs and the Radix ones (a decision, help) alike. */
+html[data-theme] body .createOverlay {
+  animation: dlgFade 140ms ease-out;
+}
+html[data-theme] body .createOverlay > .createModal {
+  animation: dlgRise 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes dlgFade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes dlgRise {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] body .createOverlay,
+  html[data-theme] body .createOverlay > .createModal {
+    animation: none;
+  }
 }

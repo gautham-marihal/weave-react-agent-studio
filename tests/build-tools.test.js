@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { actionsOf, numberProblem, setDetails, setEndCall, setHandOver, setLookup, switchOf } from '../src/studio/setup/setupModel.js';
-import { setMoment } from '../src/studio/newlayout/simple/guardrailModel.js';
+import { setMoment } from '../src/studio/agent/blocks/guardrailModel.js';
 import { unusedTools } from '../src/studio/form/toolInfo.js';
 
 // The Tools page's switches (the setup's "What it can do"): what they keep that something else uses, what they leave alone that was made by hand, and that

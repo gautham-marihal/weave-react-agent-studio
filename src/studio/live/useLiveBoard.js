@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api, followCall } from '../../api/client.js';
+import { api, followCall } from '../../api/client.ts';
 import { createLiveBoard } from './liveBoard.js';
 import { boardOrder, liveCall } from './liveModel.js';
 
-// The Live board's data for the page: the calls going on now and the ones that just ended (each a liveCall(), see liveModel.js), redrawn every second so
-// durations and waits count up. Watching stops while the page is paused or the tab is hidden, and starts again (from where it was) when it comes back.
+// The Live board's data for the page: the calls going on now and the ones that just ended (each a liveCall(), see
+// liveModel.js), redrawn every second so durations and waits count up. Watching stops while the page is paused or the
+// tab is hidden, and starts again (from where it was) when it comes back.
 export function useLiveBoard(bots, { paused = false } = {}) {
   const [snap, setSnap] = useState({ calls: [], errors: [], checkedAt: null, checking: false, running: false, following: 0 });
   const [nowMs, setNowMs] = useState(() => Date.now());

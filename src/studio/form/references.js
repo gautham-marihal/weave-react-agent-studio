@@ -98,8 +98,7 @@ function walk(engine, schema, value, path, parent, visit, depth = 0) {
 
 export function allReferences(engine, config) {
   const hits = [];
-  if (!isObj(config)) return hits;
-  Object.keys(config).forEach((key) => {
+  Object.keys(isObj(config) ? config : {}).forEach((key) => {
     const sub = engine.root.properties?.[key];
     if (sub) walk(engine, sub, config[key], [key], { path: [], kind: 'object', key, required: false }, (hit) => hits.push(hit));
   });

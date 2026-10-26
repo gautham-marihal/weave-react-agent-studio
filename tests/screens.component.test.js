@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { $, $$, actions, byLabel, byText, setupDom, teardownDom, textOf } from './component/dom.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { createDemoApi, minimalConfig } from '../src/demo/demoApi.js';
 
 // Component tests of the screens built on top of the form: the Simple view, the Scenarios tab and the preview beside the editor. Each
@@ -184,7 +184,7 @@ test('Scenarios: a scenario with the newer fields opens in the form, every part 
   const form = $(app.container, '.scForm');
   assert.doesNotMatch(textOf(form), /Choose what to check/, 'no expectation is “unknown”');
   assert.match(textOf(form), /Scripted/);
-  const kinds = $$(form, '.scExpect select[aria-label$="what to check"]').map((s) => s.value);
+  const kinds = $$(form, '.scExpect .rxSelect[aria-label$="what to check"]').map((s) => s.value);
   assert.deepEqual(kinds, ['tool_called_with', 'agent_is', 'http_called', 'http_not_called'], 'the kinds the form knows are editable');
   assert.match(textOf($(form, '.scExpect.unknown')), /kept exactly as it is/, 'the one it does not know is kept, not an error');
   assert.equal(byLabel(form, 'Pretend it is').value, '2026-10-14T03:00:00+08:00');

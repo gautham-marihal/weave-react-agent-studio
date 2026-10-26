@@ -11,7 +11,7 @@
 // NO error at runtime: the value is simply empty. So the form checks the grammar and tries paths on a sample response.
 // Pure: no network, no DOM.
 
-const WORD = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const WORD = /^[A-Za-z_]\w*$/;
 
 // `found` and `a.b[0]` mean `$.found` and `$.a.b[0]`: the runtime reads a path with no leading `$` as if it had one.
 const rooted = (source) => (source[0] === '$' ? source : source[0] === '[' ? `$${source}` : `$.${source}`);

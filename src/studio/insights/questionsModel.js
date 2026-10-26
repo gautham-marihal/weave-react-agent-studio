@@ -1,6 +1,7 @@
-// "Questions it couldn't answer": what callers asked that the agent dodged, did not know, or passed to a person, found in the records of real calls, with
-// the different wordings of one question grouped together and counted, so the answers worth adding first are at the top. Answering one writes a line into
-// the agent's instructions (and, if asked, a test) in the draft; nothing is sent anywhere. Pure: no network, no DOM, no clock of its own.
+// "Questions it couldn't answer": what callers asked that the agent dodged, did not know, or passed to a person, found
+// in the records of real calls, with the different wordings of one question grouped together and counted, so the
+// answers worth adding first are at the top. Answering one writes a line into the agent's instructions (and, if asked,
+// a test) in the draft; nothing is sent anywhere. Pure: no network, no DOM, no clock of its own.
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -26,10 +27,13 @@ const DID_NOT_KNOW = new RegExp(
 const PASSED_ON =
   /\b(?:pass(?:ing)? you|transfer(?:ring)? you|put(?:ting)? you through|connect(?:ing)? you|hand(?:ing)? you (?:over|to)|someone (?:who|that) can help|a colleague)\b/i;
 // A caller asking for a person outright is not a gap in what the agent knows.
+// (a list of the ways people ask for a person, one alternative each, easier to read as one list)
 export const WANTS_A_PERSON =
+  // eslint-disable-next-line sonarjs/regex-complexity -- one list of ways to say it
   /\b(?:speak|talk|chat)\s+(?:to|with)\s+(?:a|an|the|someone|somebody|real|actual|human|person|agent|representative|operator|manager|staff)\b|\b(?:real|actual|live) (?:person|human|agent)\b|\b(?:human|operator|representative)\b|\btransfer me\b|\bput me through\b/i;
 // Small talk and endings are not questions.
 const SMALL_TALK =
+  // eslint-disable-next-line sonarjs/regex-complexity -- one list of words
   /^(?:hi|hello|hey|thanks?|thank you|ok(?:ay)?|yes|no|yeah|nope|bye|goodbye|good ?bye|that'?s all|nothing else|cheers|great|perfect|sure)[\s.!?,]*$/i;
 export const HANDOFF_TOOL = /transfer|handoff|hand_off|escalat|human|callback/i;
 const LOOKUP_TOOL = /search|knowledge|faq|kb|retriev|lookup|find/i;
@@ -133,8 +137,9 @@ export function closeness(a, b) {
 export const SAME_QUESTION = 0.67;
 const sameQuestion = (a, b) => closeness(a, b) >= 0.85;
 
-// questions: [{ text, reason, bot, callId, startedAt, agent }] → groups, the most asked first:
-// [{ key, words, text (the wording most used), wordings: [{ text, count }], count, reasons: { reason: n }, calls: [{ callId, bot, startedAt, text, reason }],
+// questions: [{ text, reason, bot, callId, startedAt, agent }] → groups, the most asked first: [{ key, words, text (the
+// wording most used), wordings: [{ text, count }], count, reasons: { reason: n }, calls: [{ callId, bot, startedAt,
+// text, reason }],
 //    firstAt, lastAt, agents }]
 export function groupQuestions(questions) {
   const groups = [];
@@ -227,7 +232,8 @@ export function decisionFor(group, decisions) {
 // After an answer was added: the times the question was still not answered (the change may not be live yet, or the answer did not help).
 export const askedSince = (group, at) => (at ? group.calls.filter((c) => Date.parse(c.startedAt) > Date.parse(at)) : []);
 
-// ---- answering: what goes into the draft ------------------------------------------------------------------------------------------------------------
+// ---- answering: what goes into the draft
+// ------------------------------------------------------------------------------------------------------------
 
 export const ruleFor = (question, answer) => `If a caller asks “${question.replace(/[“”"]/g, '').trim()}” (or something like it), answer: ${answer.trim()}`;
 
@@ -248,7 +254,8 @@ export function addAnswer(config, { agentId, question, answer }) {
   return { ...config, agents: { ...config.agents, items: nextItems } };
 }
 
-// The two or three words of an answer a test can look for: the longest ones that are not small words, as a pattern that needs all of them (in any order).
+// The two or three words of an answer a test can look for: the longest ones that are not small words, as a pattern that
+// needs all of them (in any order).
 export function answerPattern(answer) {
   const words = [
     ...new Set(

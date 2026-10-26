@@ -2,8 +2,9 @@ import React, { useId, useMemo, useState } from 'react';
 import { ASSIGNABLE_ROLES, WHOLE_WORKSPACE, agentsScope, describeGrant, isWhole, roleOf, scopeAgents, scopeProblem } from './teamModel.js';
 import './team.css';
 
-// The two decisions of giving someone access, each as a choice of cards: WHAT they may do (the role) and WHERE (the whole workspace, or only the agents
-// ticked). A line under them says what the choice gives, in a sentence, before anyone confirms it.
+// The two decisions of giving someone access, each as a choice of cards: WHAT they may do (the role) and WHERE (the
+// whole workspace, or only the agents ticked). A line under them says what the choice gives, in a sentence, before
+// anyone confirms it.
 //   fixedAgent: the one agent a panel is about (then "where" is not asked: the access is to that agent)
 export default function AccessPicker({ role, scope, agents, onChange, fixedAgent = null, roles = ASSIGNABLE_ROLES }) {
   const name = useId();

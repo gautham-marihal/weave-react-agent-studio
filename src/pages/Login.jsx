@@ -4,6 +4,10 @@ import { isDemoMode } from '../demo/demoMode.js';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
+import Select from '../ui/Select.tsx';
+
+// Signing in (Login) and, the first time, saying who you are (ProfileSetup). There is no real sign-in in the studio:
+// who is signed in is kept in this browser (docs/PRODUCTION.md says what goes in front of it for real).
 
 export function Login({ theme, onToggleTheme, onLogin, onBack }) {
   const [keep, setKeep] = useState(true);
@@ -227,7 +231,7 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
 
           <label>
             <span>What’s your role?</span>
-            <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <Select value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="">Select your role</option>
               <option>Founder / Owner</option>
               <option>Product</option>
@@ -236,7 +240,7 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
               <option>Customer Support</option>
               <option>Sales</option>
               <option>Other</option>
-            </select>
+            </Select>
           </label>
 
           <div className="profileEmail">

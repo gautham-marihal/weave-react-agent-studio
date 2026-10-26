@@ -1,17 +1,19 @@
 import React, { useMemo, useState } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { SCENARIOS, runScenarioChecks } from '../scenarios.js';
-import { formatWhen } from '../format.js';
+import { formatWhen, randomTag } from '../format.js';
 import { Notice } from '../ui.jsx';
 import { useAsync } from '../useAsync.js';
+import Select from '../../ui/Select.tsx';
 import './checks.css';
 import Icon from '../../ui/Icon.jsx';
-import { EmptyState } from '../newlayout/PageShell.jsx';
+import { EmptyState } from '../agent/PageShell.jsx';
 
-// "Checks": this agent's configuration read against everyday situations (a greeting, a way to end the call, reaching a person, a caller who goes quiet)
-// before it is made live. They only read what is configured: no conversation is run and no call is placed. (To talk to the agent use Test; to run
-// the conversations it must always get right use Scenarios.) The runs are kept in this browser, with the workspace, because the API has nowhere to keep them.
-const makeId = () => `SIM_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+// "Checks": this agent's configuration read against everyday situations (a greeting, a way to end the call, reaching a
+// person, a caller who goes quiet) before it is made live. They only read what is configured: no conversation is run
+// and no call is placed. (To talk to the agent use Test; to run the conversations it must always get right use
+// Scenarios.) The runs are kept in this browser, with the workspace, because the API has nowhere to keep them.
+const makeId = () => `SIM_${Date.now().toString(36)}${randomTag()}`;
 
 export default function ChecksTab({ botId, name, runs = [], onRun }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId]);
@@ -35,7 +37,7 @@ export default function ChecksTab({ botId, name, runs = [], onRun }) {
     setError('');
     try {
       const config = option.key === 'draft' ? (await api.getDraft(botId)).config : (await api.getVersion(botId, option.key)).config;
-      const results = runScenarioChecks(config, SCENARIOS.length);
+      const results = runScenarioChecks(config);
       const record = {
         id: makeId(),
         agentId: botId,
@@ -70,13 +72,13 @@ export default function ChecksTab({ botId, name, runs = [], onRun }) {
         <div className="ckRunner">
           <label>
             <span>Check</span>
-            <select className="stFInput small" value={picked} onChange={(event) => setPicked(event.target.value)} aria-label="Which version to check">
+            <Select className="stFInput small" value={picked} onChange={(event) => setPicked(event.target.value)} aria-label="Which version to check">
               {options.map((o) => (
                 <option key={o.key} value={o.key}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <button type="button" className="primaryCta compactCta" onClick={run} disabled={running}>
             {running ? 'Checking…' : `Run ${SCENARIOS.length} checks`}

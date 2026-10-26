@@ -1,15 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import SmartSelect from './SmartSelect.jsx';
 import Icon from '../ui/Icon.jsx';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 import { formatWhen } from './format.js';
 import { DemoNote } from '../demo/DemoBadge.jsx';
-import { PRODUCTION_WORD, mayDeploy, rollbackTarget, splitUnsupported } from './preflight.js';
+import { PRODUCTION_WORD, mayDeploy, rollbackTarget, splitUnsupported } from './preflight.ts';
 import { envLabel, ErrorState, Notice, Spinner } from './ui.jsx';
 import { useAsync } from './useAsync.js';
 import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { normalizePreflightKnowledge } from './release/checklist.js';
 import { AgentNumbers, useLiveNumbers } from '../pages/LiveNumbers.jsx';
+import Select from '../ui/Select.tsx';
+
+// The Deploy page: which version runs in Development, Staging and Production, putting a version live in one of them,
+// what the runtime can't run yet (UnsupportedNotices, also shown when publishing), and the deployment history.
 
 const STATUS_TEXT = { active: 'Active', pending: 'Deploying…', failed: 'Failed', replaced: 'Replaced' };
 
@@ -116,10 +120,13 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
       if (!version) return null;
       const record = await api.getVersion(botId, version, { signal });
       const report = await api.validate(record.config, { signal });
-      return { ...report, __record: record };
+      return { ...report, __record: record, __for: version };
     },
     [botId, version],
   );
+  // The check of the version chosen now. useAsync keeps the last answer while the next loads (and after a failed check), but that answer is another
+  // version's: it is neither shown nor used to decide what a production deploy asks for.
+  const report = check.data && check.data.__for === version && !check.loading ? check.data : null;
 
   const versionList = useMemo(() => versions.data || [], [versions.data]);
   useEffect(() => {
@@ -171,8 +178,9 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
     }
   };
 
-  const security = splitUnsupported(check.data?.unsupported).security;
-  const allowed = mayDeploy({ environment, security, typed });
+  // production with a check that could not be made: its protections are not known, so the word is asked for as when one stands
+  const security = report ? splitUnsupported(report.unsupported).security : environment === 'production' && check.error ? ['unchecked'] : [];
+  const allowed = mayDeploy({ environment, security, typed }) && (!!report || !!check.error);
   const onDeployClick = () => {
     if (!allowed) return;
     if (environment === 'production' && !confirming) {
@@ -297,7 +305,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
             </label>
             <label>
               <span>Environment</span>
-              <select
+              <Select
                 value={environment}
                 onChange={(event) => {
                   setEnvironment(event.target.value);
@@ -311,7 +319,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
                     {envLabel(env)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="wide">
               <span>
@@ -327,19 +335,19 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
             </label>
           </div>
 
-          {check.loading && !check.data && <p className="stMuted">Checking this version…</p>}
-          {check.error && <p className="stMuted">Couldn’t check this version before deploying ({check.error.message}). You can still deploy it.</p>}
-          {check.data && (
+          {!report && !check.error && <p className="stMuted">Checking this version…</p>}
+          {!report && check.error && <p className="stMuted">Couldn’t check this version before deploying ({check.error.message}). You can still deploy it.</p>}
+          {report && (
             <ReleaseChecklist
               botId={botId}
-              config={check.data.__record?.config}
-              report={check.data}
-              version={{ version, checksum: check.data.__record?.checksum }}
+              config={report.__record?.config}
+              report={report}
+              version={{ version, checksum: report.__record?.checksum }}
               environment={environment}
               refreshKey={refreshKey}
             />
           )}
-          {check.data && environment === 'production' && security.length > 0 && (
+          {report && environment === 'production' && security.length > 0 && (
             <p className="stMuted">Because of the protections above, deploying to production asks you to type “{PRODUCTION_WORD}” first.</p>
           )}
           {environment === 'production' && security.length > 0 && (
@@ -430,27 +438,29 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
         ) : (
           <div className="stTable" role="table">
             <div className="stRow head hist" role="row">
-              <span>Version</span>
-              <span>Environment</span>
-              <span>Status</span>
-              <span>When</span>
-              <span>Note</span>
+              <span role="columnheader">Version</span>
+              <span role="columnheader">Environment</span>
+              <span role="columnheader">Status</span>
+              <span role="columnheader">When</span>
+              <span role="columnheader">Note</span>
             </div>
             {history.map((item) => (
               <div className="stRow hist" role="row" key={item.id}>
-                <span>
+                <span role="cell">
                   <strong>{item.version}</strong>
                   {item.previous_version && <small className="stMuted"> from {item.previous_version}</small>}
                 </span>
-                <span>{envLabel(item.environment)}</span>
-                <span>
+                <span role="cell">{envLabel(item.environment)}</span>
+                <span role="cell">
                   <StatusPill status={item.status} />
                 </span>
-                <span title={item.deployed_at}>
+                <span role="cell" title={item.deployed_at}>
                   {formatWhen(item.deployed_at)}
                   {item.deployed_by ? ` · ${item.deployed_by}` : ''}
                 </span>
-                <span className="stNoteCell">{item.note || '—'}</span>
+                <span role="cell" className="stNoteCell">
+                  {item.note || '—'}
+                </span>
               </div>
             ))}
           </div>

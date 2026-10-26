@@ -468,7 +468,7 @@ test('following a call replays its records one at a time, then says it ended, an
   stop2();
   while (queue2.length) queue2.shift()();
   assert.deepEqual(seen2, [1]);
-  void stop;
+  stop();
   // a call still in progress doesn't announce an end
   let endedEarly = false;
   const q3 = [];
@@ -514,4 +514,16 @@ test('a task, a safety rule and a call limit are told in plain words, and a reco
   assert.equal(limit.problem, true);
   assert.equal(limit.text, 'A call limit ended the call: max tool calls per call');
   assert.equal(describeRecord({ event: 'something_new', x: 1 }).label, 'Something new', 'an unknown kind is still a row');
+});
+
+test('several agents’ calls show with no gap: the list stops where an agent with more to send has sent nothing older yet', async () => {
+  const { callsWithoutGaps, formatSeconds } = await import('../src/studio/calls/callModel.js');
+  const at = (h) => new Date(Date.UTC(2026, 9, 25, 12) - h * 3600e3).toISOString();
+  // A: busy today, its first page reaches back 6 hours and it has more; B: a few calls over the last days, all sent
+  const a = { id: 'a', calls: [0, 2, 4, 6].map((h) => ({ bot: 'a', id: `a${h}`, started_at: at(h) })), next: 'more' };
+  const b = { id: 'b', calls: [1, 10, 30, 70].map((h) => ({ bot: 'b', id: `b${h}`, started_at: at(h) })), next: null };
+  const shown = callsWithoutGaps([a, b], ['a']).map((c) => c.id);
+  assert.deepEqual(shown, ['a0', 'b1', 'a2', 'a4', 'a6'], 'B’s calls older than A’s oldest wait for "Load more"');
+  assert.equal(callsWithoutGaps([a, b], []).length, 8, 'with nothing more to send, every call');
+  assert.deepEqual([59.7, 119.6, 3599.7].map(formatSeconds), ['1 min', '2 min', '1 h 0 min'], 'rounded before it is split (never "1 min 60 s")');
 });

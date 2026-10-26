@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useRef, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import '../smartSelect.css';
 import Icon from '../../ui/Icon.jsx';
 
@@ -28,7 +28,6 @@ export default function SuggestInput({
     if (!typed || !needle) return options;
     return options.filter((o) => `${o.value} ${o.label || ''} ${o.description || ''}`.toLowerCase().includes(needle));
   }, [options, text, typed]);
-  const wrapRef = useRef(null);
 
   const close = () => {
     setOpen(false);
@@ -70,7 +69,6 @@ export default function SuggestInput({
 
   return (
     <div
-      ref={wrapRef}
       className={`stCombo ${disabled ? 'disabled' : ''}`}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) close();

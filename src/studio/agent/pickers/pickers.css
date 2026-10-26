@@ -1,0 +1,568 @@
+/* The language, voice and model pickers in the panels of the Agent page. */
+.pkPicker {
+  display: grid;
+  gap: 20px;
+}
+.pkBlock {
+  display: grid;
+  gap: 10px;
+}
+.pkBlock header h3 {
+  margin: 0 0 2px;
+  font-size: var(--fs-md);
+  color: var(--textStrong);
+}
+.pkBlock header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pkNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pkWarn {
+  margin: 0;
+  color: var(--warn-text);
+  font-size: var(--fs-sm);
+}
+.pkStatus {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pkNone {
+  padding: 14px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  list-style: none;
+}
+
+/* a button that opens a list */
+.pkPop {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+.pkPop.pkWide {
+  display: block;
+}
+.pkTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+}
+.pkTrigger:hover {
+  border-color: var(--accent);
+}
+.pkTrigger[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.pkPop.pkAdd .pkTrigger {
+  width: auto;
+  min-height: 36px;
+  border-style: dashed;
+}
+.pkAddLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.pkValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.pkValue.empty {
+  color: var(--muted);
+}
+.pkValueText {
+  display: grid;
+  min-width: 0;
+}
+.pkValueText small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.pkBadge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--textStrong);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.pkMenu {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  top: calc(100% + 6px);
+  /* a search box over a list that takes what is left; no taller than the room on its side (--dropRoom, PickerPopover.jsx: 336 is MENU_MAX there) */
+  display: flex;
+  flex-direction: column;
+  max-height: min(336px, var(--dropRoom, 336px));
+  width: max(100%, 320px);
+  max-width: min(440px, 80vw);
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+.pkSearch {
+  flex: none;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  outline: none;
+}
+.pkSearch.big {
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.pkSearch.big:focus {
+  border-color: var(--accent);
+}
+.pkMenu.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+.pkList {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+}
+.pkList li[role="option"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.pkList li.active {
+  background: var(--surface2);
+}
+.pkOptText {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+.pkOptText strong {
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.pkOptText small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+/* chips of the languages spoken */
+.pkChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pkChips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: var(--fs-sm);
+  color: var(--textStrong);
+}
+.pkChips li.main {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.pkChips li.none {
+  border: 0;
+  background: none;
+  color: var(--muted);
+}
+.pkChips li em {
+  padding-right: 6px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-style: normal;
+}
+.pkChips li button {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pkChips li button:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+
+/* the voice now, and the list of voices */
+.pkNow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.pkNowText {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.pkNowText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pkAvatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: hsl(var(--hue, 190) 55% 38%);
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--fs-md);
+}
+.pkTools {
+  display: grid;
+  gap: 10px;
+}
+.pkFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+.pkFilters label {
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.pkFilters :is(select, button:where(.rxSelect)) {
+  min-width: 130px;
+  padding: 6px 8px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.pkVoices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pkVoices > li:not(.pkNone) {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.pkVoices > li.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.pkVoices > li:hover {
+  border-color: var(--accent);
+}
+.pkVoiceMain {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pkVoiceText {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.pkVoiceText strong {
+  font-size: var(--fs-md);
+  color: var(--textStrong);
+}
+.pkVoiceText small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.pkEngine {
+  flex: none;
+  max-width: 110px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-align: right;
+}
+.pkEngine em {
+  font-style: normal;
+  color: var(--warn-text);
+}
+.pkTick {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  color: var(--accent);
+}
+.pkPlay {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  align-self: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 8px;
+  border: 1px solid var(--line2);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--textStrong);
+  cursor: pointer;
+}
+.pkNow .pkPlay {
+  margin-right: 0;
+}
+.pkPlay:hover {
+  border-color: var(--accent);
+}
+.pkOwn {
+  padding: 10px 14px;
+  border: 1px dashed var(--line2);
+  border-radius: 12px;
+}
+.pkOwn summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.pkOwnBody {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.pkOwnBody label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.pkOwnBody small {
+  color: var(--muted);
+}
+
+/* the parts of a call and their models */
+.pkPart {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.pkPart.open {
+  border-color: var(--accent);
+}
+.pkPart > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pkPartText {
+  display: grid;
+}
+.pkPartText strong {
+  font-size: var(--fs-md);
+  color: var(--textStrong);
+}
+.pkPartText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pkChosen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface2);
+}
+.pkChosenText {
+  display: grid;
+  min-width: 0;
+}
+.pkChosenText strong {
+  color: var(--textStrong);
+}
+.pkChosenText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pkPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pkPills button {
+  padding: 4px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.pkPills button.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.pkModelList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  list-style: none;
+}
+.pkModelList li:not(.pkNone) button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--panel);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pkModelList li:not(.pkNone) button:hover {
+  border-color: var(--accent);
+}
+.pkModelList li.on button {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
+}
+.pkModelText {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.pkModelText strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.pkModelText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pkTag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 600;
+}
+.pkTag.good {
+  background: color-mix(in srgb, var(--good-text) 16%, transparent);
+  color: var(--good-text);
+}
+.pkOther {
+  display: grid;
+  gap: 6px;
+}
+.pkOther label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.pkOther > div {
+  display: flex;
+  gap: 8px;
+}
+.pkOther > div input {
+  flex: 1;
+}
+.pkOther small {
+  color: var(--muted);
+}
+.pkSwitch {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--fs-md);
+  color: var(--textStrong);
+  cursor: pointer;
+}
+.pkSwitch input {
+  margin-top: 4px;
+}
+.pkSwitch small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}

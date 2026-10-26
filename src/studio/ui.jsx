@@ -4,6 +4,9 @@ import { sentenceCase } from '../ui/text.js';
 import Icon from '../ui/Icon.jsx';
 import { trapTab, useDialogFocus } from '../ui/useDialogFocus.js';
 
+// The agents area's small shared parts: Notice (a note in a colour), Modal (a dialog), Spinner, ErrorState (what went
+// wrong, with Try again), and where an agent runs (envLabel, EnvSlots).
+
 const NOTICE_ICON = { error: 'alert', warn: 'alert', good: 'check', info: 'info' };
 
 export function Notice({ kind = 'info', title, children, actions }) {
@@ -41,7 +44,8 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
       document.removeEventListener('keydown', onKey);
     };
   }, [onClose, busy]);
-  // the keys pressed in the dialog stay in it: Escape closes it, and not the side panel or sheet it was opened from too; Tab goes round its own buttons
+  // the keys pressed in the dialog stay in it: Escape closes it, and not the side panel or sheet it was opened from
+  // too; Tab goes round its own buttons
   const keys = (event) => {
     if (event.key === 'Escape') {
       if (!busy && !event.defaultPrevented) {
@@ -88,61 +92,17 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
 const ENV_LABELS = { development: 'Development', staging: 'Staging', production: 'Production' };
 export const envLabel = (env) => ENV_LABELS[env] || env;
 
-export function EnvChip({ env, version }) {
-  return (
-    <span className={`envTag ${env} sm`} title={`${envLabel(env)}: version ${version}`}>
-      <span className="envTagPrefix" aria-hidden="true">
-        {env === 'production' ? 'PROD' : env === 'staging' ? 'STG' : 'DEV'}
-      </span>
-      v{version}
-    </span>
-  );
-}
-
-// One chip with the stage an agent is in: the furthest environment it runs in, otherwise Published or Draft.
-export function StageChip({ stage }) {
-  if (stage.kind === 'env') {
-    const also = stage.also.length ? ` Also deployed to ${stage.also.map(envLabel).join(' and ')}.` : '';
-    return (
-      <span className={`envTag ${stage.env} sm`} title={`${envLabel(stage.env)}: version ${stage.version}.${also}`}>
-        <span className="envTagPrefix" aria-hidden="true">
-          {stage.env === 'production' ? 'PROD' : stage.env === 'staging' ? 'STG' : 'DEV'}
-        </span>
-        v{stage.version}
-      </span>
-    );
-  }
-  if (stage.kind === 'published')
-    return (
-      <span className="stTag solid" title="Published, not deployed anywhere yet">
-        Published v{stage.version}
-      </span>
-    );
-  return (
-    <span className="stTag" title="Not published yet">
-      Draft
-    </span>
-  );
-}
-
 const SHORT_ENV = { development: 'Dev', staging: 'Staging', production: 'Prod' };
 
-// What runs where, one slot per environment, so nothing is hidden in a tooltip. `onPick(env)` makes slots clickable. `compact` (a list of agents) shows
-// only the environments something runs in, or "Not deployed" when there are none.
+// What runs where, one slot per environment, so nothing is hidden in a tooltip. `onPick(env)` makes slots clickable.
+// `compact` (a list of agents) shows only the environments something runs in, or "Not deployed" when there are none.
 export function EnvSlots({ deployed = {}, compact = false, onPick }) {
   const all = ['development', 'staging', 'production'];
   const running = all.filter((env) => deployed?.[env]);
   if (compact && !running.length) {
-    const none = <span className="stEnvNone">Not deployed</span>;
     return (
       <span className="stEnvSlots compact" aria-label="Deployments">
-        {onPick ? (
-          <button type="button" className="stEnvSlot none" title="Not deployed anywhere. Open Deploy." onClick={() => onPick('development')}>
-            {none}
-          </button>
-        ) : (
-          none
-        )}
+        <span className="stEnvNone">Not deployed</span>
       </span>
     );
   }
@@ -211,7 +171,9 @@ export function ErrorState({ error, onRetry, what = 'this' }) {
           ? 'It may have been deleted.'
           : kind === 'client_bug'
             ? 'This looks like a problem in the studio, not something you did.'
-            : 'Try again in a moment.';
+            : kind === 'unexpected'
+              ? 'The server sent an answer this version of the studio can’t read. It isn’t something you did.'
+              : 'Try again in a moment.';
   const forOperator = [error?.message, kind === 'auth' ? 'Check AGENT_BUILDER_API_KEY in the studio’s environment, then restart it.' : '']
     .filter(Boolean)
     .join(' ');

@@ -11,7 +11,7 @@ import {
   templateToFile,
   toTemplateConfig,
 } from '../src/studio/savedTemplates.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
 
 const memory = () => {

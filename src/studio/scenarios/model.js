@@ -78,7 +78,6 @@ export const EXPECT_KINDS = [
   },
 ];
 export const kindOfExpectation = (expectation) => (isObj(expectation) ? EXPECT_KINDS.find((kind) => kind.key in expectation)?.key || '' : '');
-export const kindInfo = (key) => EXPECT_KINDS.find((kind) => kind.key === key) || null;
 // An expectation this file doesn't know: kept as it is, never an error.
 export const isUnknownExpectation = (expectation) => isObj(expectation) && !kindOfExpectation(expectation);
 
@@ -234,8 +233,9 @@ export function newExpectation(kind, config) {
   }
 }
 
-// What the model calls a tool: its `name`, which defaults to its id. A check says "the tool X is called" by THIS name, because it is what the runner records
-// (a voice variant and a chat variant of one tool may share a name while their ids differ).
+// What the model calls a tool: its `name`, which defaults to its id. A check says "the tool X is called" by THIS name,
+// because it is what the runner records (a voice variant and a chat variant of one tool may share a name while their
+// ids differ).
 export const modelNameOf = (tool) => (isObj(tool) ? String(tool.name || tool.id || '') : '');
 
 // The names a `tool_called` can use: each tool's model-facing name, and the handoff tools of the agents (the schema's `tool_names`).
@@ -370,7 +370,8 @@ export function scriptProblem(item, index) {
   return `${where}it must be a message or a tool call.`;
 }
 
-// What is wrong with a scenario, by where: { id, channel, turns, expect: ['…'], now, state, mocks: ['…'], script: ['…'] } (an empty object when fine).
+// What is wrong with a scenario, by where: { id, channel, turns, expect: ['…'], now, state, mocks: ['…'], script: ['…']
+// } (an empty object when fine).
 export function scenarioProblems(scenario, config, others = []) {
   const out = {};
   if (!isObj(scenario)) return { id: 'A scenario is an object.' };
@@ -400,29 +401,52 @@ export function scenarioProblems(scenario, config, others = []) {
   if (scenario.state !== undefined && !isObj(scenario.state)) out.state = 'The starting state must be an object, like {"verified": true}.';
   const mocks = list(scenario.http_mocks).map(mockProblem).filter(Boolean);
   if (mocks.length) out.mocks = mocks;
-  const script = list(scenario.model_script).map(scriptProblem).filter(Boolean);
+  // a script is a list of one reply or more (the schema's minItems): an empty one would be refused, so it is said here rather than by the server
+  const script =
+    scenario.model_script === undefined
+      ? []
+      : !Array.isArray(scenario.model_script)
+        ? ['The model script must be a list of replies.']
+        : !scenario.model_script.length
+          ? ['The model script is empty: add what the model says, or remove the script to run it with a real model.']
+          : scenario.model_script.map(scriptProblem).filter(Boolean);
   if (script.length) out.script = script;
   return out;
 }
 
 export const hasProblems = (problems) => Object.keys(problems).length > 0;
 
-// Pasted JSON -> { scenarios, problems: [string] }. Accepts a list, or an object with a `tests` list. Ids that clash are renamed.
+// Pasted JSON -> { scenarios, problems: [string], rejected: [the pasted items that were not added], already: [ids] }.
+// Accepts a list, or an object with a `tests` list. Ids that clash are renamed; a scenario the draft already has as
+// pasted (under its id, or the new id an earlier paste gave it) is not added again (`already`), so pasting the same
+// text twice adds nothing twice.
 export function parseImport(text, config) {
   let value;
   try {
     value = JSON.parse(text);
   } catch (error) {
-    return { scenarios: [], problems: [`That isn’t valid JSON (${error.message}).`] };
+    return { scenarios: [], problems: [`That isn’t valid JSON (${error.message}).`], rejected: null, already: [] };
   }
   const items = Array.isArray(value) ? value : isObj(value) && Array.isArray(value.tests) ? value.tests : isObj(value) ? [value] : null;
-  if (!items) return { scenarios: [], problems: ['Paste a list of scenarios, or one scenario.'] };
+  if (!items) return { scenarios: [], problems: ['Paste a list of scenarios, or one scenario.'], rejected: null, already: [] };
   const taken = [...list(config?.tests)];
   const scenarios = [];
   const problems = [];
+  const rejected = [];
+  const already = [];
   items.forEach((item, index) => {
     if (!isObj(item)) {
       problems.push(`Item ${index + 1} isn’t a scenario.`);
+      rejected.push(item);
+      return;
+    }
+    // the same scenario, or the copy an earlier paste added under a new id ("billing_2" for a pasted "billing")
+    const sameAs = (s) =>
+      isObj(s) &&
+      (JSON.stringify(s) === JSON.stringify(item) ||
+        (String(s.id).startsWith(`${item.id}_`) && JSON.stringify({ ...s, id: item.id }) === JSON.stringify(item)));
+    if (taken.some(sameAs)) {
+      already.push(item.id);
       return;
     }
     const scenario = {
@@ -433,12 +457,13 @@ export function parseImport(text, config) {
     const flat = Object.values(found).flat();
     if (flat.length) {
       problems.push(`${scenario.id}: ${flat.join(' ')}`);
+      rejected.push(item);
       return;
     }
     taken.push(scenario);
     scenarios.push(scenario);
   });
-  return { scenarios, problems };
+  return { scenarios, problems, rejected, already };
 }
 
 // Turns a typed value into the JSON it means (true, 3, null, "text") for a state value.

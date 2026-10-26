@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
+import { PartPanel, PartRow, Parts } from '../../ui/Parts.tsx';
+import ChoiceMenu from '../../ui/ChoiceMenu.tsx';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { formatWhen } from '../format.js';
 import { navigate, routeHref } from '../route.js';
@@ -7,6 +9,7 @@ import { Notice } from '../ui.jsx';
 import { decideQuestion, questionDecisions, undoQuestion, useInsights } from './insightsStore.js';
 import { REASONS, addAnswer, addTest, answerInDraft, askedSince, closeness, removeAnswer, ruleFor, testFor, SAME_QUESTION } from './questionsModel.js';
 import { useQuestions } from './useQuestions.js';
+import Select from '../../ui/Select.tsx';
 import './insights.css';
 
 const PERIODS = [
@@ -137,13 +140,13 @@ function AnswerForm({ group, agents, defaultAgent, initial = '', onCancel, onSav
         {agents.length > 1 && (
           <label>
             Who answers it
-            <select className="stFInput" value={agentId} onChange={(event) => setAgentId(event.target.value)}>
+            <Select className="stFInput" value={agentId} onChange={(event) => setAgentId(event.target.value)}>
               {agents.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {!changing && (
@@ -171,31 +174,7 @@ function AnswerForm({ group, agents, defaultAgent, initial = '', onCancel, onSav
 }
 
 function DismissMenu({ onPick }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="inSnooze">
-      <button type="button" className="quietButton" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        Dismiss
-      </button>
-      {open && (
-        <div className="inSnoozeMenu right" role="menu" aria-label="Why dismiss it">
-          {DISMISS.map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onPick(id);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return <ChoiceMenu label="Dismiss" menuLabel="Why dismiss it" align="end" choices={DISMISS.map(([id, label]) => [label, () => onPick(id)])} />;
 }
 
 // "Questions it couldn't answer": what callers asked this agent that it did not know, passed on, or found nothing for, grouped however it was worded;
@@ -337,13 +316,13 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
           )}
         </p>
         <div className="inActions" style={{ margin: 0 }}>
-          <select className="stFInput" value={days} onChange={(event) => setDays(Number(event.target.value))} aria-label="Period">
+          <Select className="stFInput" value={days} onChange={(event) => setDays(Number(event.target.value))} aria-label="Period">
             {PERIODS.map(([d, label]) => (
               <option key={d} value={d}>
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
           <button type="button" className="quietButton" onClick={refresh} disabled={loading}>
             Refresh
           </button>
@@ -386,145 +365,151 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
         </Notice>
       )}
 
-      <div className="inTabs" role="tablist" aria-label="Questions">
-        {[
-          ['open', 'To answer', open.length],
-          ['answered', 'Answered', answered.length],
-          ['dismissed', 'Dismissed', dismissed.length],
-        ].map(([id, label, n]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>
-            {label}
-            {n ? ` (${n})` : ''}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'open' &&
-        (loading && !at ? (
-          <p className="stMuted">Finding the questions callers asked that it didn’t answer…</p>
-        ) : open.length === 0 ? (
-          <div className="inEmpty">
-            <strong>{groups.length ? 'All caught up' : read ? 'Every question was answered' : 'No calls yet'}</strong>
-            <p>
-              {groups.length
-                ? 'Every question callers asked that it couldn’t answer has been answered or dismissed.'
-                : read
-                  ? `In ${read} call${read === 1 ? '' : 's'}, the agent didn’t say it didn’t know, pass anyone on, or come up empty. Try a longer period to look further back.`
-                  : 'When people call this agent, the questions it can’t answer show up here, grouped however they were worded.'}
-            </p>
-          </div>
-        ) : (
-          <>
-            <ul className="inQList">{(repeated.length ? repeated : once).map(openRow)}</ul>
-            {repeated.length > 0 && once.length > 0 && (
+      <Parts value={tab} onChange={setTab}>
+        <PartRow
+          className="inTabs"
+          label="Questions"
+          value={tab}
+          items={[
+            ['open', 'To answer', open.length],
+            ['answered', 'Answered', answered.length],
+            ['dismissed', 'Dismissed', dismissed.length],
+          ].map(([id, label, n]) => ({ id, label: `${label}${n ? ` (${n})` : ''}` }))}
+        />
+        <PartPanel value={tab}>
+          {tab === 'open' &&
+            (loading && !at ? (
+              <p className="stMuted">Finding the questions callers asked that it didn’t answer…</p>
+            ) : open.length === 0 ? (
+              <div className="inEmpty">
+                <strong>{groups.length ? 'All caught up' : read ? 'Every question was answered' : 'No calls yet'}</strong>
+                <p>
+                  {groups.length
+                    ? 'Every question callers asked that it couldn’t answer has been answered or dismissed.'
+                    : read
+                      ? `In ${read} call${read === 1 ? '' : 's'}, the agent didn’t say it didn’t know, pass anyone on, or come up empty. Try a longer period to look further back.`
+                      : 'When people call this agent, the questions it can’t answer show up here, grouped however they were worded.'}
+                </p>
+              </div>
+            ) : (
               <>
-                <button type="button" className="inMore" aria-expanded={showOnce} onClick={() => setShowOnce((v) => !v)}>
-                  <Icon name="chevronRight" size={14} />
-                  {showOnce ? 'Hide the questions asked once' : `Asked once: ${once.length} more question${once.length === 1 ? '' : 's'}`}
-                </button>
-                {showOnce && <ul className="inQList">{once.map(openRow)}</ul>}
+                <ul className="inQList">{(repeated.length ? repeated : once).map(openRow)}</ul>
+                {repeated.length > 0 && once.length > 0 && (
+                  <>
+                    <button type="button" className="inMore" aria-expanded={showOnce} onClick={() => setShowOnce((v) => !v)}>
+                      <Icon name="chevronRight" size={14} />
+                      {showOnce ? 'Hide the questions asked once' : `Asked once: ${once.length} more question${once.length === 1 ? '' : 's'}`}
+                    </button>
+                    {showOnce && <ul className="inQList">{once.map(openRow)}</ul>}
+                  </>
+                )}
               </>
-            )}
-          </>
-        ))}
+            ))}
 
-      {tab === 'answered' &&
-        (answered.length === 0 ? (
-          <div className="inEmpty">
-            <strong>Nothing answered yet</strong>
-            <p>A question you answer here moves to this list, with whether callers still ask it unanswered.</p>
-          </div>
-        ) : (
-          <ul className="inQList">
-            {answered.map(({ group, decision }) => {
-              const since = group ? askedSince(group, decision.at) : [];
-              const inDraft = config ? answerInDraft(config, decision) : true;
-              const key = group?.key || decision.text;
-              return (
-                <li key={key} className="inQ">
-                  <div className="inQHead">
-                    <span className="inQCount" aria-hidden="true">
-                      <Icon name="check" size={18} />
-                    </span>
-                    <div className="inQMain">
-                      <h3>{decision.text}</h3>
-                      <p>
-                        Answered {formatWhen(decision.at)}
-                        {decision.agentId && agents.length > 1 ? ` by ${agentName(decision.agentId)}` : ''}: “{decision.answer}”
-                      </p>
-                    </div>
-                    {answering !== key && (
-                      <div className="inActions">
-                        {group && canEdit && (
-                          <button type="button" className="quietButton" onClick={() => setAnswering(key)} data-answer-for={key}>
-                            Change the answer
-                          </button>
+          {tab === 'answered' &&
+            (answered.length === 0 ? (
+              <div className="inEmpty">
+                <strong>Nothing answered yet</strong>
+                <p>A question you answer here moves to this list, with whether callers still ask it unanswered.</p>
+              </div>
+            ) : (
+              <ul className="inQList">
+                {answered.map(({ group, decision }) => {
+                  const since = group ? askedSince(group, decision.at) : [];
+                  const inDraft = config ? answerInDraft(config, decision) : true;
+                  const key = group?.key || decision.text;
+                  return (
+                    <li key={key} className="inQ">
+                      <div className="inQHead">
+                        <span className="inQCount" aria-hidden="true">
+                          <Icon name="check" size={18} />
+                        </span>
+                        <div className="inQMain">
+                          <h3>{decision.text}</h3>
+                          <p>
+                            Answered {formatWhen(decision.at)}
+                            {decision.agentId && agents.length > 1 ? ` by ${agentName(decision.agentId)}` : ''}: “{decision.answer}”
+                          </p>
+                        </div>
+                        {answering !== key && (
+                          <div className="inActions">
+                            {group && canEdit && (
+                              <button type="button" className="quietButton" onClick={() => setAnswering(key)} data-answer-for={key}>
+                                Change the answer
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="quietButton"
+                              onClick={() => undo(decision)}
+                              title="Take the answer (and its test) out of the draft"
+                            >
+                              Undo
+                            </button>
+                          </div>
                         )}
-                        <button type="button" className="quietButton" onClick={() => undo(decision)} title="Take the answer (and its test) out of the draft">
-                          Undo
+                      </div>
+                      {!group && loading ? (
+                        <p className="stMuted">Checking the calls…</p>
+                      ) : !inDraft ? (
+                        <p className="inDone again">The answer isn’t in the draft any more. Undo to put the question back on the list.</p>
+                      ) : since.length ? (
+                        <p className="inDone again">
+                          Asked {times(since.length)} since, still unanswered. Publish the draft if you haven’t, or make the answer clearer.
+                        </p>
+                      ) : (
+                        <p className="inDone">
+                          {group ? 'Not asked unanswered since.' : `Not asked unanswered in the ${PERIODS.find((p) => p[0] === days)?.[1].toLowerCase()}.`}
+                        </p>
+                      )}
+                      {group && since.length > 0 && <Evidence open group={{ ...group, calls: since, wordings: [] }} onOpenCall={openCall} />}
+                      {group && answering === key && (
+                        <AnswerForm
+                          group={group}
+                          agents={agents}
+                          defaultAgent={decision.agentId || defaultAgentFor(group)}
+                          initial={decision.answer}
+                          changing
+                          onCancel={() => cancelAnswer(key)}
+                          onSave={(a) => save(group, a, decision)}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ))}
+
+          {tab === 'dismissed' &&
+            (dismissed.length === 0 ? (
+              <div className="inEmpty">
+                <strong>Nothing dismissed</strong>
+                <p>Questions it shouldn’t answer, or that are taken care of, go here so they stop coming back.</p>
+              </div>
+            ) : (
+              <ul className="inQList">
+                {dismissed.map(({ group, decision }) => (
+                  <li key={group?.key || decision.text} className="inQ">
+                    <div className="inQHead">
+                      <span className="inQCount">{group ? group.count : '–'}</span>
+                      <div className="inQMain">
+                        <h3>{decision.text}</h3>
+                        <p>
+                          {DISMISS_LABEL[decision.reason] || 'Dismissed'} · {formatWhen(decision.at)}
+                        </p>
+                      </div>
+                      <div className="inActions">
+                        <button type="button" className="quietButton" onClick={() => undoQuestion(botId, decision.text)}>
+                          Bring it back
                         </button>
                       </div>
-                    )}
-                  </div>
-                  {!group && loading ? (
-                    <p className="stMuted">Checking the calls…</p>
-                  ) : !inDraft ? (
-                    <p className="inDone again">The answer isn’t in the draft any more. Undo to put the question back on the list.</p>
-                  ) : since.length ? (
-                    <p className="inDone again">
-                      Asked {times(since.length)} since, still unanswered. Publish the draft if you haven’t, or make the answer clearer.
-                    </p>
-                  ) : (
-                    <p className="inDone">
-                      {group ? 'Not asked unanswered since.' : `Not asked unanswered in the ${PERIODS.find((p) => p[0] === days)?.[1].toLowerCase()}.`}
-                    </p>
-                  )}
-                  {group && since.length > 0 && <Evidence open group={{ ...group, calls: since, wordings: [] }} onOpenCall={openCall} />}
-                  {group && answering === key && (
-                    <AnswerForm
-                      group={group}
-                      agents={agents}
-                      defaultAgent={decision.agentId || defaultAgentFor(group)}
-                      initial={decision.answer}
-                      changing
-                      onCancel={() => cancelAnswer(key)}
-                      onSave={(a) => save(group, a, decision)}
-                    />
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        ))}
-
-      {tab === 'dismissed' &&
-        (dismissed.length === 0 ? (
-          <div className="inEmpty">
-            <strong>Nothing dismissed</strong>
-            <p>Questions it shouldn’t answer, or that are taken care of, go here so they stop coming back.</p>
-          </div>
-        ) : (
-          <ul className="inQList">
-            {dismissed.map(({ group, decision }) => (
-              <li key={group?.key || decision.text} className="inQ">
-                <div className="inQHead">
-                  <span className="inQCount">{group ? group.count : '–'}</span>
-                  <div className="inQMain">
-                    <h3>{decision.text}</h3>
-                    <p>
-                      {DISMISS_LABEL[decision.reason] || 'Dismissed'} · {formatWhen(decision.at)}
-                    </p>
-                  </div>
-                  <div className="inActions">
-                    <button type="button" className="quietButton" onClick={() => undoQuestion(botId, decision.text)}>
-                      Bring it back
-                    </button>
-                  </div>
-                </div>
-              </li>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             ))}
-          </ul>
-        ))}
+        </PartPanel>
+      </Parts>
     </div>
   );
 }

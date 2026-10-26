@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import Icon from '../../ui/Icon.jsx';
+import Select from '../../ui/Select.tsx';
 import { Skeleton } from '../../ui/Skeleton.jsx';
 import { Notice } from '../ui.jsx';
 import { usePref } from '../usePref.js';
-import { STAGES, seconds, summarize } from './speedModel.js';
-import { PER_AGENT, useSpeedData } from './useSpeedData.js';
+import { STAGES, seconds, summarize } from './speedModel.ts';
+import { PER_AGENT, useSpeedData } from './useSpeedData.ts';
 import { DayChart, StageBars } from './SpeedCharts.jsx';
-import { humanize } from '../newlayout/rowNames.js';
+import { humanize } from '../agent/rowNames.js';
 import './speed.css';
 
 const PERIODS = [
@@ -51,8 +52,9 @@ function mainPart(stages) {
   return STAGES.find((s) => s.id === id) || null;
 }
 
-// "Speed": how fast an agent answers, where the time goes and what would make it quicker, from its calls. On the workspace it compares the agents; on an
-// agent's own page (agentOnly) it is that agent alone. It only reads; its suggestions open the setting they are about.
+// "Speed": how fast an agent answers, where the time goes and what would make it quicker, from its calls. On the
+// workspace it compares the agents; on an agent's own page (agentOnly) it is that agent alone. It only reads; its
+// suggestions open the setting they are about.
 //   onOpenAgent(botId, tab, params): an agent's page; onShowSetting(path): on an agent's own page, the place of one of its settings
 export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, onOpenAgent, onShowSetting }) {
   const [days, setDays] = useState(14);
@@ -122,23 +124,23 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
       <div className="csControls" role="group" aria-label="What to show">
         <label>
           <span>Period</span>
-          <select className="stFInput small" value={days} onChange={(event) => setDays(Number(event.target.value))} aria-label="Period">
+          <Select className="stFInput small" value={days} onChange={(event) => setDays(Number(event.target.value))} aria-label="Period">
             {PERIODS.map(([d, label]) => (
               <option key={d} value={d}>
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label title="An answer within this many seconds counts as quick. Kept in this browser.">
           <span>Target</span>
-          <select className="stFInput small" value={target} onChange={(event) => setTargetPref(event.target.value)} aria-label="Target answer time, in seconds">
+          <Select className="stFInput small" value={target} onChange={(event) => setTargetPref(event.target.value)} aria-label="Target answer time, in seconds">
             {TARGETS.map((t) => (
               <option key={t} value={t}>
                 Within {t} s
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <button type="button" className="quietButton" onClick={data.refresh} disabled={data.loading}>
           {data.loading ? 'Reading…' : 'Refresh'}
@@ -282,13 +284,9 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
                           <div className="csAdviceAgents">
                             <span>{a.action}:</span>
                             {a.agents.map((g) => (
-                              <button
-                                key={g.bot}
-                                type="button"
-                                className="quietButton"
-                                aria-label={`${a.action} for ${names[g.bot] || g.bot}`}
-                                onClick={() => openSetting(g.bot, g.path)}
-                              >
+                              <button key={g.bot} type="button" className="quietButton" onClick={() => openSetting(g.bot, g.path)}>
+                                {/* named "Choose a faster model for Front Desk 2.4 s": what to do, then what is seen */}
+                                <span className="srOnly">{a.action} for </span>
                                 {names[g.bot] || g.bot}
                                 <small>{seconds(g.ms)}</small>
                                 <Icon name="arrowRight" size={13} />

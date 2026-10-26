@@ -12,3 +12,5 @@ src/api/agentConfig.d.ts
 
 # a cache folder that Vite sometimes makes in the project root
 .vite
+# written by mock-bank/agents/build.mjs
+mock-bank/agents/out

@@ -1,7 +1,9 @@
-// "Try a line": the four previews that answer for a setting by running the runtime's own code on a sample (FRONTEND_GUIDE 10.1): how a line would be said
-// (`POST /preview/speech`), what the safety rules do with a line a caller might say (`/preview/guardrails`), what redaction would hide (`/preview/redaction`)
-// and a task step by step (`/preview/task`). They call nothing, spend nothing and read no secrets, and they read the config as it is in the editor.
-// This module reads each answer TOLERANTLY (a missing part is left out, never an error) and turns it into the plain words the panels show. Pure: no DOM.
+// "Try a line": the four previews that answer for a setting by running the runtime's own code on a sample
+// (FRONTEND_GUIDE 10.1): how a line would be said (`POST /preview/speech`), what the safety rules do with a line a
+// caller might say (`/preview/guardrails`), what redaction would hide (`/preview/redaction`) and a task step by step
+// (`/preview/task`). They call nothing, spend nothing and read no secrets, and they read the config as it is in the
+// editor. This module reads each answer TOLERANTLY (a missing part is left out, never an error) and turns it into the
+// plain words the panels show. Pure: no DOM.
 
 import { isObj } from './engine.js';
 import { enumLabel } from './plainEnums.js';
@@ -82,9 +84,8 @@ export function normalizeRedaction(raw) {
 // The sample line cut into pieces: { text, hit } so a hit can be drawn marked. Hits that overlap or lie outside the line are ignored.
 export function markHits(sample, found) {
   const chars = Array.from(text(sample)); // the server counts characters, not UTF-16 units
-  const line = { length: chars.length };
   const spans = list(found)
-    .filter((f) => Number.isInteger(f.start) && Number.isInteger(f.end) && f.start >= 0 && f.end > f.start && f.end <= line.length)
+    .filter((f) => Number.isInteger(f.start) && Number.isInteger(f.end) && f.start >= 0 && f.end > f.start && f.end <= chars.length)
     .sort((a, b) => a.start - b.start);
   const pieces = [];
   let at = 0;
@@ -158,8 +159,8 @@ function sayText(v) {
   return first || '';
 }
 
-// How each action works, with the line it says by default (FRONTEND_GUIDE 10.1: `how_actions_work` and `default_lines` are the form's help text), in the
-// order of how strongly they act. [{ action, label, text, line }]
+// How each action works, with the line it says by default (FRONTEND_GUIDE 10.1: `how_actions_work` and `default_lines`
+// are the form's help text), in the order of how strongly they act. [{ action, label, text, line }]
 export function guardrailActions(view) {
   const lines = Object.fromEntries((view?.defaultLines || []).map((l) => [l.action, l.line]));
   const how = Object.fromEntries((view?.howActionsWork || []).filter((a) => isObj(a)).map((a) => [a.action, a.text]));

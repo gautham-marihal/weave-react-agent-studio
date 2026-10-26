@@ -2,8 +2,6 @@
 // shapes the real API uses (`GET /bots/{id}/calls`, `.../calls/{id}`, `.../transcript`). They are labelled as demo data on the screens.
 // Pure: no network, no DOM, no clock of its own.
 
-import { isObj } from '../studio/form/engine.js';
-
 const list = (v) => (Array.isArray(v) ? v : []);
 const stamp = (iso) => iso.replace(/[-:]/g, '').replace(/\.\d+/, '').replace(/Z?$/, 'Z');
 // the number a phone caller rang, as the runtime records it on a call (FRONTEND_GUIDE 10.3: `dialled`); a web visitor rings nothing
@@ -299,8 +297,9 @@ export function seedCalls(botId, config, nowIso, { history = true } = {}) {
   ].sort((x, y) => Date.parse(y.summary.started_at) - Date.parse(x.summary.started_at));
 }
 
-// Something going wrong right now, so Alerts has something to show: on an agent whose id says "support" its lookup tool has failed on the last few calls
-// (an API that is down); on one whose id says "front" the answers of the last hour are slow. The others are fine. Deterministic, relative to `nowIso`.
+// Something going wrong right now, so Alerts has something to show: on an agent whose id says "support" its lookup tool
+// has failed on the last few calls (an API that is down); on one whose id says "front" the answers of the last hour are
+// slow. The others are fine. Deterministic, relative to `nowIso`.
 export function seedIncident(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
@@ -365,8 +364,9 @@ export function seedIncident(botId, config, nowIso) {
   return [];
 }
 
-// Two weeks of questions the agent could not answer, worded different ways, so "Questions it couldn't answer" has something to group: Sunday delivery
-// (passed to a person), paying with PayPal and a student discount (it did not know), shipping abroad (found nothing), and one the caller had to ask twice.
+// Two weeks of questions the agent could not answer, worded different ways, so "Questions it couldn't answer" has
+// something to group: Sunday delivery (passed to a person), paying with PayPal and a student discount (it did not
+// know), shipping abroad (found nothing), and one the caller had to ask twice.
 export function seedQuestions(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
@@ -436,9 +436,10 @@ export function seedQuestions(botId, config, nowIso) {
   return calls;
 }
 
-// Two weeks of earlier calls, so Monitoring has something to show: version 0.1.0 early on and doing well, version 0.1.1 since. Agents whose id says
-// "support" have a rough 0.1.1 (calls cut off, a tool failing, people handed over), so the comparison between versions has something to find; the others
-// have a few ordinary hiccups. Deterministic: the same agent always gets the same history.
+// Two weeks of earlier calls, so Monitoring has something to show: version 0.1.0 early on and doing well, version 0.1.1
+// since. Agents whose id says "support" have a rough 0.1.1 (calls cut off, a tool failing, people handed over), so the
+// comparison between versions has something to find; the others have a few ordinary hiccups. Deterministic: the same
+// agent always gets the same history.
 export function seedHistory(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
@@ -529,7 +530,7 @@ export function callFromConversation(botId, { startedAt, channel, messages, tool
 }
 
 // ---- the endpoints --------------------------------------------------------------------------------------------------------------------
-export function listCallsOf(calls, params, nowMs) {
+export function listCallsOf(calls, params) {
   const limit = Math.min(200, Math.max(1, Number(params.get('limit')) || 25));
   const since = params.get('since') ? Date.parse(params.get('since')) : -Infinity;
   const until = params.get('until') ? Date.parse(params.get('until')) : Infinity;
@@ -550,7 +551,6 @@ export function listCallsOf(calls, params, nowMs) {
     .filter((s) => !status || s.status === status)
     .sort((x, y) => Date.parse(y.started_at) - Date.parse(x.started_at));
   const offset = Number(params.get('cursor')) || 0;
-  void nowMs;
   const page = rows.slice(offset, offset + limit);
   return { calls: page, next: offset + limit < rows.length ? String(offset + limit) : null };
 }
@@ -606,5 +606,3 @@ export function followCallOf(call, { onOpen, onRecord, onEnd }, { delayMs = 350,
     cancel(timer);
   };
 }
-
-export const isCallObject = (v) => isObj(v) && isObj(v.summary);

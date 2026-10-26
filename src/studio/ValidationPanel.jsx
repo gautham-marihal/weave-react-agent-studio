@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useMemo } from 'react';
-import { groupIssues } from '../api/client.js';
+import { groupIssues } from '../api/client.ts';
 import { formatPath } from './format.js';
-import { splitUnsupported } from './preflight.js';
+import { splitUnsupported } from './preflight.ts';
 import { Spinner } from './ui.jsx';
 import Icon from '../ui/Icon.jsx';
 
@@ -103,14 +103,7 @@ export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, 
           )}
           {!parsed.error && (errors.length > 0 || warnings.length > 0) && (
             <Suspense fallback={<Spinner label="Reading the checks" />}>
-              <IssueRows
-                issues={[...errors, ...warnings]}
-                config={editor.parsed.value}
-                onJump={onJump}
-                onApply={onApply}
-                onOpenModels={onOpenModels}
-                foldAdvice
-              />
+              <IssueRows issues={[...errors, ...warnings]} config={editor.parsed.value} onJump={onJump} onApply={onApply} onOpenModels={onOpenModels} />
             </Suspense>
           )}
 

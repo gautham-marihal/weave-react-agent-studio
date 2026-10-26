@@ -1,15 +1,16 @@
-// The guided setup: what each step reads from the agent's configuration and how each choice changes it. Every change here is complete on its own: a tool is
-// switched on for the agent that answers, a knowledge base is attached to it, a voice channel gets speech models, a form gets the tool that shows it. So a
-// person never has to visit a second place to make the first one work. Pure: no network, no DOM.
+// The guided setup: what each step reads from the agent's configuration and how each choice changes it. Every change
+// here is complete on its own: a tool is switched on for the agent that answers, a knowledge base is attached to it, a
+// voice channel gets speech models, a form gets the tool that shows it. So a person never has to visit a second place
+// to make the first one work. Pure: no network, no DOM.
 
 import { REACH_WORDS, buildChannel } from '../form/presets.js';
 import { FALLBACK as CHANNEL_KINDS, infoOf } from '../form/channelTypes.js';
-import { CALLBACK_MESSAGE, STARTERS, addPersonHandoff } from '../starters.js';
+import { CALLBACK_MESSAGE, STARTERS, addPersonHandoff } from '../starters.ts';
 import { freshId } from '../form/references.js';
 import { addDefaultSpeechModels } from '../models/config.js';
 import { LANGUAGES, channelName, entryAgentIndex, readSimple, setPrimaryLanguage } from '../simple/simpleModel.js';
-import { baseOf } from '../form/messages.js';
-import { agentLabel, humanize } from '../newlayout/rowNames.js';
+import { baseOf } from '../form/messages.ts';
+import { agentLabel, humanize } from '../agent/rowNames.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -57,7 +58,8 @@ function withEntry(config, change) {
   return next;
 }
 
-// ---- where people reach it -------------------------------------------------------------------------------------------------------------------------
+// ---- where people reach it
+// -------------------------------------------------------------------------------------------------------------------------
 export const REACH = [
   { type: 'web_chat', preset: 'web_chat', icon: 'chat', ...REACH_WORDS.web_chat },
   { type: 'web_voice', preset: 'web_voice', icon: 'mic', ...REACH_WORDS.web_voice },
@@ -75,9 +77,10 @@ export function reachOf(config) {
   return on;
 }
 
-// Switches one way of reaching it on or off. A new channel is added as `addChannel` adds one (below). The last way that is on can't be switched off (an agent
-// needs one): `{ config, refused }` says so. Every other channel that is on counts, of any kind, as long as conversations can arrive on it: `types` is the
-// server's list of kinds (GET /channel-types), which says which kinds run today (WhatsApp, SMS and email don't yet).
+// Switches one way of reaching it on or off. A new channel is added as `addChannel` adds one (below). The last way that
+// is on can't be switched off (an agent needs one): `{ config, refused }` says so. Every other channel that is on
+// counts, of any kind, as long as conversations can arrive on it: `types` is the server's list of kinds (GET
+// /channel-types), which says which kinds run today (WhatsApp, SMS and email don't yet).
 export function setReach(config, type, on, { providers, botId, types = CHANNEL_KINDS } = {}) {
   if (!on && reachOf(config)[type]) {
     const others = list(config?.channels).filter((c) => isObj(c) && c.enabled !== false && c.type !== type);
@@ -106,8 +109,9 @@ export function setReach(config, type, on, { providers, botId, types = CHANNEL_K
   return { config: next, refused: '' };
 }
 
-// A channel added to the others, ready to work: it says the first line the agent already says (as text, or the same fixed line, so its translations come
-// too), and one people talk to brings what a voice needs. The reach choices add theirs this way, and so does Add on the Channels page, so both give the same.
+// A channel added to the others, ready to work: it says the first line the agent already says (as text, or the same
+// fixed line, so its translations come too), and one people talk to brings what a voice needs. The reach choices add
+// theirs this way, and so does Add on the Channels page, so both give the same.
 export function addChannel(config, channel, { providers } = {}) {
   const next = clone(config);
   const added = clone(channel);
@@ -118,11 +122,12 @@ export function addChannel(config, channel, { providers } = {}) {
   return audio ? readyForVoice(next, providers) : next;
 }
 
-// The first line the agent already says, as the configuration has it (text, or a fixed line), from the first channel that says one; undefined when none does.
+// The first line the agent already says, as the configuration has it (text, or a fixed line), from the first channel
+// that says one; undefined when none does.
 export const firstLineOf = (config) => list(config?.channels).find((c) => isObj(c) && isObj(c.greeting) && saysSomething(c.greeting.say))?.greeting.say;
 
-// Gives the channel at `index` the first line the agent already says: a channel left waiting for the person to start can say it too. Unchanged when there
-// is no first line to give.
+// Gives the channel at `index` the first line the agent already says: a channel left waiting for the person to start
+// can say it too. Unchanged when there is no first line to give.
 export function shareFirstLine(config, index) {
   const say = firstLineOf(config);
   const channel = list(config?.channels)[index];
@@ -132,7 +137,7 @@ export function shareFirstLine(config, index) {
   return next;
 }
 
-// What a channel people talk to needs: speech models (when none are set) and the recording notice callers hear first (when there is none).
+// What a channel people talk to needs: speech models (when none are set) and the recording notice said before the greeting (when there is none).
 function readyForVoice(config, providers) {
   const next = addDefaultSpeechModels(config, providers).config;
   if (next.persona?.disclosures?.recording_notice) return next;
@@ -162,12 +167,15 @@ export function defaultLanguage(preferred = []) {
 // An agent with no main language is given that one; an agent that has one keeps it.
 export const withMainLanguage = (config, preferred) => (readSimple(config).primaryLanguage ? config : setPrimaryLanguage(config, defaultLanguage(preferred)));
 
-// ---- what it knows ----------------------------------------------------------------------------------------------------------------------------------
-// The setup's knowledge base: searched on every turn ("inject") by the agent that answers, so nothing else has to be set for it to be used.
+// ---- what it knows
+// ----------------------------------------------------------------------------------------------------------------------------------
+// The setup's knowledge base: searched on every turn ("inject") by the agent that answers, so nothing else has to be
+// set for it to be used.
 export const KNOWLEDGE_ID = 'knowledge';
 
-// The base under that id, and whether it is the setup's: only one of documents and web pages ("vector_store") is. One of another kind under the same id
-// (your own search service) has nothing to list, and the simple controls leave it as it is.
+// The base under that id, and whether it is the setup's: only one of documents and web pages ("vector_store") is. One
+// of another kind under the same id (your own search service) has nothing to list, and the simple controls leave it as
+// it is.
 const knowledgeBase = (config) => list(config?.knowledge).find((b) => isObj(b) && b.id === KNOWLEDGE_ID) || null;
 const ownBase = (config) => {
   const base = knowledgeBase(config);
@@ -241,9 +249,9 @@ export function readersInWords(config, baseId) {
     .join(' ');
 }
 
-// "Let <agent> use it": a base nothing reads is given to the agent that answers. One read on every turn ("inject") goes in its knowledge; one searched
-// when needed ("tool") gets a knowledge tool (a tool that already searches it is reused) and the agent is given that tool. Unchanged when it already
-// reads it, or when there is no agent.
+// "Let <agent> use it": a base nothing reads is given to the agent that answers. One read on every turn ("inject") goes
+// in its knowledge; one searched when needed ("tool") gets a knowledge tool (a tool that already searches it is reused)
+// and the agent is given that tool. Unchanged when it already reads it, or when there is no agent.
 export function attachBase(config, baseId) {
   const base = list(config?.knowledge).find((b) => isObj(b) && b.id === baseId);
   const index = entryAgentIndex(config);
@@ -281,8 +289,9 @@ export function whoReadsKnowledge(config) {
   return `${words.charAt(0).toUpperCase()}${words.slice(1)} ${agents.length === 1 ? 'reads' : 'read'} them in every conversation.`;
 }
 
-// Why the last document or page has to stay, or '' when it can go. A base needs one, so with none left the base goes: not while another agent reads it
-// or a tool searches it (they would point at nothing), nor when it has settings someone chose for it (they would be lost with it).
+// Why the last document or page has to stay, or '' when it can go. A base needs one, so with none left the base goes:
+// not while another agent reads it or a tool searches it (they would point at nothing), nor when it has settings
+// someone chose for it (they would be lost with it).
 const SETUP_KEYS = ['id', 'type', 'mode', 'sources'];
 function whyLastStays(config) {
   const entryId = entryOf(config)?.id;
@@ -329,7 +338,8 @@ function setSources(config, change) {
 
 export const addKnowledgeFile = (config, name) =>
   setSources(config, (sources) => (sources.some(sameSource('file', name)) ? sources : [...sources, { type: 'file', file_id: name }]));
-//   linked: also read the pages it links to (one step away, on any site it links to); added again (however it is typed), the page takes the new choice
+//   linked: also read the pages it links to (one step away, on any site it
+//   links to); added again (however it is typed), the page takes the new choice
 export const addKnowledgePage = (config, url, { linked = false } = {}) =>
   setSources(config, (sources) => [...sources.filter((s) => !sameSource('url', url)(s)), { type: 'url', url, crawl_depth: linked ? 1 : 0 }]);
 // Takes a document or page out: `{ config, refused }`. With none left the base goes too, unless something else needs it: then the last one stays, and
@@ -341,9 +351,9 @@ export function removeKnowledge(config, kind, value) {
   return { config: setSources(config, (sources) => sources.filter((s) => !match(s))), refused: '' };
 }
 
-// A web address a person typed, made whole ("example.com/help" → "https://example.com/help"), or '' when it isn't one: a name with a dot, made of
-// letters, digits and hyphens and ending in a word ("example.com", not "example..com" or "-.com"), or a numeric address typed in full ("10.0.0.5", not
-// "1.2", which the browser reads as 1.0.0.2).
+// A web address a person typed, made whole ("example.com/help" → "https://example.com/help"), or '' when it isn't one:
+// a name with a dot, made of letters, digits and hyphens and ending in a word ("example.com", not "example..com" or
+// "-.com"), or a numeric address typed in full ("10.0.0.5", not "1.2", which the browser reads as 1.0.0.2).
 export function cleanUrl(value) {
   const typed = String(value || '').trim();
   if (!typed) return '';
@@ -360,7 +370,8 @@ export function cleanUrl(value) {
   }
 }
 
-// ---- what it can do ---------------------------------------------------------------------------------------------------------------------------------
+// ---- what it can do
+// ---------------------------------------------------------------------------------------------------------------------------------
 export const ACTIONS = [
   {
     id: 'end_call',
@@ -421,9 +432,10 @@ export function switchOf(config, toolId) {
   return action ? { id: action.id, label: action.label, on: offered(config, toolId) } : null;
 }
 
-// The parts of the configuration that point at an id, by the field that holds it: a tool in an agent's list or a rule's `tool` (a guardrail, a task step, a
-// test), a transfer, a form or a connection by its own field (a tool's, or an action's anywhere), a fixed line by `{ message }`. Returns the top-level
-// sections they are in ('agents', 'guardrails'...). A switch never deletes what one of them still uses.
+// The parts of the configuration that point at an id, by the field that holds it: a tool in an agent's list or a rule's
+// `tool` (a guardrail, a task step, a test), a transfer, a form or a connection by its own field (a tool's, or an
+// action's anywhere), a fixed line by `{ message }`. Returns the top-level sections they are in ('agents',
+// 'guardrails'...). A switch never deletes what one of them still uses.
 const POINTERS = {
   tools: ['tool', 'then', 'tool_called', 'tool_not_called'],
   transfers: ['transfer'],
@@ -451,8 +463,9 @@ function usedIn(config, kind, id) {
 const PLACES = { agents: 'another agent', guardrails: 'a rule under Guardrails', tasks: 'a multi-step task', tests: 'a test' };
 const placesOf = (sections) => [...new Set(sections.map((s) => PLACES[s] || 'another part of the agent'))];
 
-// What is switched on, and the details each one has. An action counts as on when the agent that answers is given its tool. Switched off, `kept` says why its
-// tool is still there (something else uses it); it is only there when it says something.
+// What is switched on, and the details each one has. An action counts as on when the agent that answers is given its
+// tool. Switched off, `kept` says why its tool is still there (something else uses it); it is only there when it says
+// something.
 export function actionsOf(config) {
   const [end, hand, form, lookup] = ['end_call', 'hand_over', 'details', 'lookup'].map((a) => toolsFor(config, a)[0] || null);
   const transfer = list(config?.telephony?.transfers).find((t) => isObj(t) && t.id === hand?.params?.transfer);
@@ -481,9 +494,9 @@ export function actionsOf(config) {
   };
 }
 
-// Takes the switch's tools away from the agent that answers. One the switch made also goes out of the configuration once nothing uses it any more (no other
-// agent, guardrail rule, task step or test), with what only it used (`extra`, and the fixed lines it said); one made by hand stays in the list of tools, for
-// the person to delete there.
+// Takes the switch's tools away from the agent that answers. One the switch made also goes out of the configuration
+// once nothing uses it any more (no other agent, guardrail rule, task step or test), with what only it used (`extra`,
+// and the fixed lines it said); one made by hand stays in the list of tools, for the person to delete there.
 function dropTools(config, action, extra = () => {}) {
   const ids = toolsFor(config, action).map((t) => t.id);
   if (!ids.length) return config;
@@ -504,8 +517,9 @@ const giveTool = (config, id) =>
     if (!list(agent.tools).includes(id)) agent.tools = [...list(agent.tools), id];
   });
 
-// The fixed lines a removed tool said (its goodbye, its callback line) go with it while nothing else says them and they still read as the studio wrote
-// them. A line the person reworded or translated stays, and is said again when the switch is turned back on.
+// The fixed lines a removed tool said (its goodbye, its callback line) go with it while nothing else says them and they
+// still read as the studio wrote them. A line the person reworded or translated stays, and is said again when the
+// switch is turned back on.
 const STUDIO_LINES = [GOODBYE.text, CALLBACK_MESSAGE.text, ...STARTERS.map((s) => s.goodbye).filter(Boolean)];
 const untouched = (line) => Object.keys(line).every((k) => k === 'id' || k === 'text') && STUDIO_LINES.includes(line.text);
 export function dropLines(next, tool) {
@@ -592,8 +606,9 @@ export function numberProblem(typed) {
     : 'Write it with the country code, for example +65 6123 4567, or calls can’t be passed on.';
 }
 
-// The contact details: a form, and the tool that shows it. `fields` are the details it asks for (names from DETAIL_FIELDS). When the form is already there,
-// only a detail ticked or unticked changes: its other fields, its wording and what happens when it is sent stay as they are.
+// The contact details: a form, and the tool that shows it. `fields` are the details it asks for (names from
+// DETAIL_FIELDS). When the form is already there, only a detail ticked or unticked changes: its other fields, its
+// wording and what happens when it is sent stay as they are.
 export function setDetails(config, on, { fields } = {}) {
   if (!on)
     return dropTools(config, 'details', (next, tool) => {
@@ -652,8 +667,9 @@ const paramName = (words) =>
     .replace(/^[^a-z]+/, '')
     .slice(0, 40) || 'value';
 
-// The lookup as the setup asks for it: the web address (with the person's answer in {curly brackets}), what it finds, and what it needs from the person.
-// Read back from the tool and its connection, the query included, so the step shows what was set and saving it unchanged writes the same request.
+// The lookup as the setup asks for it: the web address (with the person's answer in {curly brackets}), what it finds,
+// and what it needs from the person. Read back from the tool and its connection, the query included, so the step shows
+// what was set and saving it unchanged writes the same request.
 //   param: the name the answer is sent under
 function readLookup(config, tool) {
   if (!tool) return { url: '', finds: '', needs: '', param: '' };
@@ -693,10 +709,11 @@ function pathUnder(base, address) {
   return address.startsWith(`${start}/`) ? address.slice(start.length) : null;
 }
 
-// "https://shop.example.com/orders/{order number}" → connection base https://shop.example.com, path /orders/{{args.order_number}}. No curly brackets: the answer
-// is sent as a query value. `{ config, problem }`: problem is set (and the configuration unchanged) when the address isn't usable.
-// A lookup that is there is changed only where the answers changed: its connection keeps its sign-in and headers, its request its method, body and
-// headers; an address on a connection it already has keeps that connection, and one that other tools share is never moved.
+// "https://shop.example.com/orders/{order number}" → connection base https://shop.example.com, path
+// /orders/{{args.order_number}}. No curly brackets: the answer is sent as a query value. `{ config, problem }`: problem
+// is set (and the configuration unchanged) when the address isn't usable. A lookup that is there is changed only where
+// the answers changed: its connection keeps its sign-in and headers, its request its method, body and headers; an
+// address on a connection it already has keeps that connection, and one that other tools share is never moved.
 export function setLookup(config, on, { url, finds, needs } = {}) {
   if (!on)
     return {
@@ -797,7 +814,8 @@ export function setLookup(config, on, { url, finds, needs } = {}) {
   return { config: giveTool(next, tool.id), problem: '' };
 }
 
-// ---- where each step stands --------------------------------------------------------------------------------------------------------------------------
+// ---- where each step stands
+// --------------------------------------------------------------------------------------------------------------------------
 const DEFAULT_ROLE = /^You are a helpful assistant\. Answer briefly and politely\.$/;
 const norm = (text) =>
   String(text || '')

@@ -1,7 +1,9 @@
-// The changes the studio can suggest for what it found in a call. They are a checklist of well-known remedies, not the answer of a language model: the usual
-// cure for a spoken answer that is too long is a rule that keeps it short, for a failing tool a rule about what to say when it fails, for a slow answer a
-// faster model. Each one is a small, visible change to the draft (a style rule, or the model), shown as a sentence before it is applied, and each says
-// whether the browser's simulation can show its effect (a change of wording cannot be seen without the real agent). Pure: no network, no DOM.
+// The changes the studio can suggest for what it found in a call. They are a checklist of well-known remedies, not the
+// answer of a language model: the usual cure for a spoken answer that is too long is a rule that keeps it short, for a
+// failing tool a rule about what to say when it fails, for a slow answer a faster model. Each one is a small, visible
+// change to the draft (a style rule, or the model), shown as a sentence before it is applied, and each says whether the
+// browser's simulation can show its effect (a change of wording cannot be seen without the real agent). Pure: no
+// network, no DOM.
 
 import { readSimple, setStyleRules } from '../simple/simpleModel.js';
 import { modelsFor, modelLabel, providerLabel } from '../models/catalog.js';

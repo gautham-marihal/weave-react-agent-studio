@@ -1,5 +1,6 @@
-// Who can work in a workspace, and on which agents. A person is given a ROLE (what they may do) and a SCOPE (where): the whole workspace, which includes the
-// agents made later, or only the agents someone chose. The rules live here, in words a person can read, so the same ones can later be enforced by the server.
+// Who can work in a workspace, and on which agents. A person is given a ROLE (what they may do) and a SCOPE (where):
+// the whole workspace, which includes the agents made later, or only the agents someone chose. The rules live here, in
+// words a person can read, so the same ones can later be enforced by the server.
 // Pure: no React, no DOM, no network.
 
 // What each role may do. `workspaceOnly`: a role that runs the workspace (the people in it), so it cannot be limited to some agents.
@@ -105,7 +106,8 @@ export function makeMember({ email, name = '', role = 'viewer', scope = WHOLE_WO
   };
 }
 
-// What stops these people being invited: someone who is already in, or an address that is not one. -> { ok, problems: [string], add: [email], already: [email] }
+// What stops these people being invited: someone who is already in, or an address that is not one. -> { ok, problems:
+// [string], add: [email], already: [email] }
 export function checkInvite({ text, members }) {
   const { emails, invalid } = parseEmails(text);
   const have = new Set((members || []).map((m) => m.email));
@@ -198,7 +200,8 @@ export function removeMember(members, id) {
   return withProblem(next, '');
 }
 
-// Takes one agent out of what a person can open. Someone who had only that agent has nothing left, so they leave the team. -> { members, removed: bool }
+// Takes one agent out of what a person can open. Someone who had only that agent has nothing left, so they leave the
+// team. -> { members, removed: bool }
 export function revokeAgent(members, id, agentId) {
   const m = members.find((x) => x.id === id);
   if (!m || isWhole(m.scope)) return { members, removed: false };

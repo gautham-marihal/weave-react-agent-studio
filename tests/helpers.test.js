@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { lineOf, locatePath } from '../src/studio/jsonPath.js';
 import { formatDiffPath, formatPath, freeBotId, nextVersion, slugify } from '../src/studio/format.js';
 import { parseRoute, routeHref } from '../src/studio/route.js';
-import { classify, groupIssues } from '../src/api/client.js';
+import { classify, groupIssues } from '../src/api/client.ts';
 
 const example = JSON.parse(readFileSync(new URL('./fixtures/agent-config.example.json', import.meta.url), 'utf8'));
 const text = JSON.stringify(example, null, 2);

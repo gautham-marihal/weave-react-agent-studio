@@ -29,7 +29,7 @@
   font-size: var(--fs-sm);
   color: var(--muted);
 }
-.rpControls select {
+.rpControls :is(select, button:where(.rxSelect)) {
   min-width: 240px;
 }
 .rpPaid {

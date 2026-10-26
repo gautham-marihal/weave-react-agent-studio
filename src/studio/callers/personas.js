@@ -1,8 +1,10 @@
-// Scripted callers, and tests made from what the agent has. A "caller" is a kind of person who phones in: someone who wants the main thing, someone who rambles,
-// someone cross, someone who asks for a person. Each is a short list of things to say, written from this agent's own tools, with what should hold afterwards. They
-// are scenarios in the same shape as the ones a person writes, so they run on the same runner (the real runtime or, in demo mode, its imitation), and a good one can
-// be kept as a test. The callers are scripted, not played by a model: what they say does not change with the agent's answers. A check that needs judgement is a
-// `judge` (a reviewer, which needs the live model); the rest are plain and free to check.
+// Scripted callers, and tests made from what the agent has. A "caller" is a kind of person who phones in: someone who
+// wants the main thing, someone who rambles, someone cross, someone who asks for a person. Each is a short list of
+// things to say, written from this agent's own tools, with what should hold afterwards. They are scenarios in the same
+// shape as the ones a person writes, so they run on the same runner (the real runtime or, in demo mode, its imitation),
+// and a good one can be kept as a test. The callers are scripted, not played by a model: what they say does not change
+// with the agent's answers. A check that needs judgement is a `judge` (a reviewer, which needs the live model); the
+// rest are plain and free to check.
 // Pure: no network, no DOM.
 
 import { describeExpectation, freshScenarioId, modelNameOf } from '../scenarios/model.js';
@@ -77,7 +79,8 @@ const FOREIGN = {
   ar: 'مرحبا، أحتاج إلى مساعدة.',
 };
 
-// The callers. `turns(ctx)` is what they say; `expect(ctx)` is what should hold; `judge` is the one thing a reviewer should agree with (it needs the live model).
+// The callers. `turns(ctx)` is what they say; `expect(ctx)` is what should hold; `judge` is the one thing a reviewer
+// should agree with (it needs the live model).
 export const CALLERS = [
   {
     id: 'direct',
@@ -205,8 +208,8 @@ export function autoChecks(config) {
   return out;
 }
 
-// Everything on offer, as scenarios ready to run: [{ key, group: 'caller' | 'check', name, blurb, scenario, needsJudge, kept }]. `kept`: a scenario with this id is
-// already one of the agent's tests.
+// Everything on offer, as scenarios ready to run: [{ key, group: 'caller' | 'check', name, blurb, scenario, needsJudge,
+// kept }]. `kept`: a scenario with this id is already one of the agent's tests.
 export function suggestions(config) {
   const c = contextOf(config);
   const tests = list(config?.tests).filter(isObj);

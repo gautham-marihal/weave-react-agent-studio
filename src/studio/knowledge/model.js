@@ -83,7 +83,9 @@ export function normalizeBase(raw, keyAvailable = true) {
 export function baseState(base) {
   if (!base.buildable) return 'external';
   if (isBuilding(base.build)) return 'building';
-  if (!base.index) return base.build?.status === 'failed' ? 'failed' : 'not_built';
+  // the last build failed: said even when an older index is still there (it keeps answering, as the hint says), never "Ready"
+  if (base.build?.status === 'failed') return 'failed';
+  if (!base.index) return 'not_built';
   if (base.problems.some((p) => /changed after|stale|out of date|not uploaded/i.test(p.problem))) return 'stale';
   return 'ready';
 }
@@ -97,8 +99,10 @@ export const STATE_TEXT = {
   ready: { label: 'Ready', tone: 'good', hint: 'The index is built and current.' },
 };
 
-// The server's `fix` is sometimes a command line for an operator (`python -m …`), which means nothing in a browser (UI review 3a). Such text is not shown;
-// the problem stays, and the screen's own button (Build now, Upload a file) says what to do.
+// The server's `fix` is sometimes a command line for an operator (`python -m …`), which means nothing in a browser (UI
+// review 3a). Such text is not shown; the problem stays, and the screen's own button (Build now, Upload a file) says
+// what to do.
+// eslint-disable-next-line sonarjs/regex-complexity -- the shapes of a command line, one alternative each
 const COMMAND_LINE = /(^|[\s`'"(])(python3?|pip3?|npm|npx|curl|docker|\.\/\S+)\s+\S|^\s*\$\s|\s-m\s+[\w.]+/i;
 export function readableFix(problem) {
   const fix = text(problem?.fix).trim();
@@ -115,7 +119,7 @@ export function fixActionFor(problem) {
 
 // ---- the whole answer ----------------------------------------------------------------------------------------------------------------------
 export function normalizeKnowledge(raw) {
-  const keyAvailable = raw?.embedding_key_available === false ? false : true;
+  const keyAvailable = raw?.embedding_key_available !== false;
   const bases = list(raw?.bases).map((b) => normalizeBase(b, keyAvailable));
   const files = list(raw?.files)
     .map((f) => ({
@@ -128,7 +132,7 @@ export function normalizeKnowledge(raw) {
   return { ref: text(raw?.ref), bases, files, keyAvailable: keyAvailable && bases.every((b) => b.keyAvailable !== false) };
 }
 
-// How many bases need attention, for a one-line summary elsewhere (the Simple view, the release checklist).
+// How many bases need attention, for a one-line summary elsewhere (the Knowledge page, the agent's health, the release checklist).
 export function knowledgeSummary(knowledge) {
   const bases = list(knowledge?.bases);
   const states = bases.map(baseState);

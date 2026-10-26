@@ -1,4 +1,5 @@
 import React from 'react';
+import Fold from '../../ui/Fold.jsx';
 import { Notice } from '../ui.jsx';
 import TraceView from '../trace/TraceView.jsx';
 import { describeExpectation } from './model.js';
@@ -152,10 +153,10 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
       )}
 
       {result.events.length > 0 ? (
-        <details className="scDetail" open={result.status === 'failed' || result.status === 'error' || undefined}>
+        <Fold className="scDetail" open={result.status === 'failed' || result.status === 'error'}>
           <summary>The trace ({result.events.length} records)</summary>
           <TraceView records={result.events} compact title="What the runner did" />
-        </details>
+        </Fold>
       ) : (
         result.transcript.length > 0 && (
           <details className="scDetail">

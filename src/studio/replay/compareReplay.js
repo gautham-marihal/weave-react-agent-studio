@@ -1,6 +1,7 @@
-// An original call and a replay of it, turn against turn: did the agent say the same thing, use the same tools, hand over to the same agent, end the
-// same way? The wording of a language model is never identical twice, so "the same" for words means "close enough that nothing changed in meaning
-// a person would care about": most of the same words. What matters more, and is compared exactly, is what the agent DID: its tools, its hand-overs, its end.
+// An original call and a replay of it, turn against turn: did the agent say the same thing, use the same tools, hand
+// over to the same agent, end the same way? The wording of a language model is never identical twice, so "the same" for
+// words means "close enough that nothing changed in meaning a person would care about": most of the same words. What
+// matters more, and is compared exactly, is what the agent DID: its tools, its hand-overs, its end.
 // Pure: no network, no DOM.
 
 const list = (v) => (Array.isArray(v) ? v : []);

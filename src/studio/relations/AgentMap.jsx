@@ -15,9 +15,21 @@ function edgePath(from, to) {
     const x2 = to.x;
     const y2 = to.y + NODE.height / 2;
     const dx = Math.max(36, (x2 - x1) / 2);
-    return { d: `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2 - 2} ${y2}`, lx: (x1 + x2) / 2, ly: (y1 + y2) / 2 - 5 };
+    // its words just above its own arrowhead, beside the box it points to: the arrows of one box fanning out each end
+    // at a different box, so their words never sit on each other, and the column gap is wide enough that they never
+    // reach the box they come from
+    return { d: `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2 - 2} ${y2}`, lx: x2 - 10, ly: y2 - 7, anchor: 'end' };
   }
-  // back to an earlier column, or down the same one: out of the bottom of one box and into the bottom of the other
+  // to the box right above or below in the same column: straight across the gap between the two, with its words beside the arrow (a curve out of the
+  // bottom of one box and into the bottom of the other would run through the lower box, and its words would sit under the box below that)
+  if (to.column === from.column && Math.abs(to.row - from.row) === 1) {
+    const down = to.row > from.row;
+    const x = from.x + NODE.width / 2;
+    const y1 = down ? from.y + NODE.height : from.y;
+    const y2 = down ? to.y : to.y + NODE.height;
+    return { d: `M ${x} ${y1} L ${x} ${down ? y2 - 2 : y2 + 2}`, lx: x + 8, ly: (y1 + y2) / 2 + 4, anchor: 'start' };
+  }
+  // back to an earlier column, or further down the same one: out of the bottom of one box and into the bottom of the other
   const x1 = from.x + NODE.width / 2;
   const y1 = from.y + NODE.height;
   const x2 = to.x + NODE.width / 2;
@@ -32,6 +44,20 @@ export default function AgentMap({ onOpenAgent }) {
   if (map.nodes.length < 2) return null;
   const nodeOf = (id) => map.nodes.find((n) => n.id === id);
   const sentences = describeEdges(map);
+  // each arrow with where it runs: a loop back to its own box, or between two boxes
+  const drawn = map.edges.flatMap((edge) => {
+    const from = nodeOf(edge.from);
+    const to = nodeOf(edge.to);
+    if (!from || !to) return [];
+    const geometry = edge.self
+      ? {
+          d: `M ${from.x + NODE.width - 16} ${from.y} C ${from.x + NODE.width + 28} ${from.y - 26}, ${from.x + NODE.width + 28} ${from.y + 20}, ${from.x + NODE.width - 2} ${from.y + 14}`,
+          lx: from.x + NODE.width + 6,
+          ly: from.y - 16,
+        }
+      : edgePath(from, to);
+    return [{ edge, from, to, geometry }];
+  });
   return (
     <section className="rlMap" aria-label="How callers move between agents">
       <header>
@@ -46,29 +72,22 @@ export default function AgentMap({ onOpenAgent }) {
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
               </marker>
             </defs>
-            {map.edges.map((edge, i) => {
-              const from = nodeOf(edge.from);
-              const to = nodeOf(edge.to);
-              if (!from || !to) return null;
-              const geometry = edge.self
-                ? {
-                    d: `M ${from.x + NODE.width - 16} ${from.y} C ${from.x + NODE.width + 28} ${from.y - 26}, ${from.x + NODE.width + 28} ${from.y + 20}, ${from.x + NODE.width - 2} ${from.y + 14}`,
-                    lx: from.x + NODE.width + 6,
-                    ly: from.y - 16,
-                  }
-                : edgePath(from, to);
-              return (
+            {drawn.map(({ edge, from, to, geometry }, i) => (
+              <g key={i} className={`rlEdge ${edge.kind}`}>
+                <path d={geometry.d} fill="none" strokeWidth="1.6" markerEnd={`url(#${markerId}-a)`} />
+                <title>{`${KIND_WORDS[edge.kind]}: ${from.name} to ${to.name}${edge.words.length ? ` (${edge.words.join(', ')})` : ''}`}</title>
+              </g>
+            ))}
+            {/* the words after every arrow, so no arrow is drawn over another's words */}
+            {drawn.map(({ edge, geometry }, i) =>
+              edge.words.length === 1 && edge.words[0].length <= 22 ? (
                 <g key={i} className={`rlEdge ${edge.kind}`}>
-                  <path d={geometry.d} fill="none" strokeWidth="1.6" markerEnd={`url(#${markerId}-a)`} />
-                  {edge.words.length === 1 && edge.words[0].length <= 22 && (
-                    <text x={geometry.lx} y={geometry.ly} textAnchor="middle">
-                      {edge.words[0]}
-                    </text>
-                  )}
-                  <title>{`${KIND_WORDS[edge.kind]}: ${from.name} to ${to.name}${edge.words.length ? ` (${edge.words.join(', ')})` : ''}`}</title>
+                  <text x={geometry.lx} y={geometry.ly} textAnchor={geometry.anchor || 'middle'}>
+                    {edge.words[0]}
+                  </text>
                 </g>
-              );
-            })}
+              ) : null,
+            )}
           </svg>
           {map.nodes.map((n) => (
             <button

@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { $, actions, byLabel, byText, setupDom, teardownDom, textOf } from './component/dom.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { createDemoApi, minimalConfig } from '../src/demo/demoApi.js';
 
 // UI review 2.2 in the form itself: a scenario whose check names a tool by what the model calls it (a name that is not any tool's id) opens, validates and saves

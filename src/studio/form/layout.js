@@ -79,7 +79,7 @@ export const VIEW_NOTES = {
 };
 
 // The groups for a given schema: LAYOUT with the views that exist in it, a view for each part of a split section the layout didn't claim,
-// and a last view for each top-level section the layout has never heard of. `sections` is the schema's top-level properties (name -> schema),
+// and a last view for each top-level section the layout has never heard of. `sectionKeys` is the names of the schema's top-level sections,
 // `subkeys(key)` the property names inside a section's object.
 export function layoutFor(sectionKeys, subkeys = () => []) {
   const present = new Set(sectionKeys);

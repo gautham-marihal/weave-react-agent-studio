@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { usePref } from '../usePref.js';
 import { useAsync } from '../useAsync.js';
 import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
@@ -14,9 +14,9 @@ export function useGate(botId) {
 }
 
 // Where the gate stands for an agent's draft: { enabled, check: { ok, why, action }, loading, reload }.
-export function useGateStatus(botId, editor, refreshKey = 0) {
+export function useGateStatus(botId, editor) {
   const [enabled] = useGate(botId);
-  const runs = useAsync((signal) => (enabled ? api.listTestRuns(botId, 20, { signal }) : Promise.resolve([])), [botId, enabled, refreshKey]);
+  const runs = useAsync((signal) => (enabled ? api.listTestRuns(botId, 20, { signal }) : Promise.resolve([])), [botId, enabled]);
   const latest = Array.isArray(runs.data) ? runs.data.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : null;
   const scenarioCount = Array.isArray(editor?.parsed?.value?.tests) ? editor.parsed.value.tests.length : 0;
   const check = gateCheck({ enabled, scenarioCount, latestRun: latest, savedAt: editor?.meta?.savedAt || '', dirty: !!editor?.dirty });

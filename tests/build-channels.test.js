@@ -4,9 +4,9 @@ import { minimalConfig } from '../src/demo/minimalConfig.js';
 import { buildChannel } from '../src/studio/form/presets.js';
 import { FALLBACK, normalizeChannelTypes, FALLBACK_TYPES } from '../src/studio/form/channelTypes.js';
 import { RECORDING_NOTICE, addChannel, firstLineOf, reachOf, setReach, shareFirstLine } from '../src/studio/setup/setupModel.js';
-import { channelLabel, rowName } from '../src/studio/newlayout/rowNames.js';
+import { channelLabel, rowName } from '../src/studio/agent/rowNames.js';
 
-// The Channels page of the New layout: the three reach choices at the top, Add a channel, and the rows of "All channels".
+// An agent's Channels page: the three reach choices at the top, Add a channel, and the rows of "All channels".
 const fresh = () => minimalConfig('smile-dental', 'Smile Dental');
 const PROVIDERS = [
   { name: 'deepgram', stages: ['stt'], installed: true, key_available: true },

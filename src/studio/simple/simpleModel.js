@@ -1,11 +1,11 @@
-// The Simple view reads and writes a handful of everyday settings out of the full agent configuration: who the agent is and what it does
+// The agent's own pages read and write a handful of everyday settings out of the full agent configuration: who the agent is and what it does
 // (Instructions), the language it speaks and its voice (Voice & Language), and what it is made with and connected to (AI Model,
-// Connections). Everything it writes is an ordinary field of the configuration, so the full form, the JSON and the Simple view always
+// Connections). Everything it writes is an ordinary field of the configuration, so the full form, the JSON and the agent's pages always
 // agree. Each setter returns the same object when nothing would change, and never touches a field it doesn't own.
 // Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
-import { baseOf, primaryOf } from '../form/messages.js';
+import { baseOf, primaryOf } from '../form/messages.ts';
 import { speechText } from '../../demo/simulatedAgent.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -24,8 +24,9 @@ const greets = (channel) => isObj(channel) && isObj(channel.greeting) && channel
 
 export const entryAgentIndex = (config) => {
   const items = list(config?.agents?.items);
-  const index = items.findIndex((agent) => agent?.id === config?.agents?.entry);
-  return index >= 0 ? index : items.length ? 0 : -1;
+  const index = items.findIndex((agent) => isObj(agent) && typeof agent.id === 'string' && agent.id === config?.agents?.entry);
+  // no entry named (or a name that isn't there): the first agent that is one, never a null or half-typed item, which nothing can be written into
+  return index >= 0 ? index : items.findIndex(isObj);
 };
 export const entryAgent = (config) => list(config?.agents?.items)[entryAgentIndex(config)] || null;
 
@@ -127,6 +128,14 @@ export function greetingTarget(config) {
   const channels = list(config?.channels);
   const first = channels.find(greets);
   return channels.flatMap((c, index) => (isObj(c) && (!first || (greets(c) && same(c.greeting.say, first.greeting.say))) ? [placeOf(c, index)] : []));
+}
+// the channels one channel's own greeting field writes to (the Workflow's channel panel): it, and every other channel
+// that says the same line, so a line several channels share stays one line; just it while it says nothing
+export function channelGreetingTarget(config, index) {
+  const channels = list(config?.channels);
+  const mine = channels[index];
+  if (!isObj(mine)) return [];
+  return channels.flatMap((c, i) => (i === index || (greets(mine) && greets(c) && same(c.greeting.say, mine.greeting.say)) ? [placeOf(c, i)] : []));
 }
 // every channel with a greeting, or every channel while none has one: what is written to when no channels are given
 function everyGreeting(config) {

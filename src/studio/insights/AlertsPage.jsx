@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
+import { PartPanel, PartRow, Parts } from '../../ui/Parts.tsx';
+import ChoiceMenu from '../../ui/ChoiceMenu.tsx';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { formatWhen } from '../format.js';
 import { routeHref } from '../route.js';
@@ -7,7 +9,7 @@ import { Notice } from '../ui.jsx';
 import { alertAsText, effectiveRules, withStatus } from './alertsModel.js';
 import { acknowledge, clearHistory, reopen, resetRules, setNotify, setRule, snooze, useInsights, useLiveAlerts } from './insightsStore.js';
 import { CHECK_EVERY_MS, checkAlertsNow } from './useAlertWatcher.js';
-import { EmptyState } from '../newlayout/PageShell.jsx';
+import { EmptyState } from '../agent/PageShell.jsx';
 import './insights.css';
 
 const ACTION_LABEL = {
@@ -31,9 +33,8 @@ function tomorrowMorning() {
 }
 
 // One alert: what is wrong, on which agent, since when; the one thing to do about it; the calls it rests on; and "I'm on it", snooze, copy.
-export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '', compact = false }) {
+export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '' }) {
   const [showCalls, setShowCalls] = useState(false);
-  const [snoozeOpen, setSnoozeOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const act = () => {
     const { action } = alert;
@@ -67,7 +68,7 @@ export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '', compa
         <small className="inMeta">
           {alert.severity === 'critical' ? 'Critical' : 'Warning'}
           {alert.since ? ` · started ${formatWhen(alert.since)}` : ''}
-          {!compact && ` · ${alert.why}`}
+          {` · ${alert.why}`}
         </small>
         <div className="inActions">
           <button type="button" className="primaryCta compactCta" onClick={act}>
@@ -89,37 +90,18 @@ export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '', compa
                 Mark as new
               </button>
             )}
-            <div className="inSnooze">
-              <button type="button" className="quietButton" aria-expanded={snoozeOpen} onClick={() => setSnoozeOpen((v) => !v)}>
-                Snooze
-              </button>
-              {snoozeOpen && (
-                <div className="inSnoozeMenu" role="menu" aria-label="Snooze until">
-                  {[
-                    ['For an hour', () => inHours(1)],
-                    ['For 4 hours', () => inHours(4)],
-                    ['Until tomorrow, 9:00', tomorrowMorning],
-                  ].map(([label, until]) => (
-                    <button
-                      key={label}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        snooze(alert.key, until());
-                        setSnoozeOpen(false);
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {!compact && (
-              <button type="button" className="quietButton" onClick={copy} title="Copy it to paste into a chat or an email">
-                <Icon name={copied ? 'check' : 'copy'} size={15} /> {copied ? 'Copied' : 'Copy'}
-              </button>
-            )}
+            <ChoiceMenu
+              label="Snooze"
+              menuLabel="Snooze until"
+              choices={[
+                ['For an hour', () => snooze(alert.key, inHours(1))],
+                ['For 4 hours', () => snooze(alert.key, inHours(4))],
+                ['Until tomorrow, 9:00', () => snooze(alert.key, tomorrowMorning())],
+              ]}
+            />
+            <button type="button" className="quietButton" onClick={copy} title="Copy it to paste into a chat or an email">
+              <Icon name={copied ? 'check' : 'copy'} size={15} /> {copied ? 'Copied' : 'Copy'}
+            </button>
           </span>
         </div>
         {showCalls && (
@@ -136,6 +118,43 @@ export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '', compa
         )}
       </div>
     </article>
+  );
+}
+
+// A number of a rule: what is typed is kept as typed. A whole number within the rule's limits is taken at once;
+// anything else is taken (brought within the limits) when the box is left or Enter is pressed. Bringing it within the
+// limits at every key would make 30 (where the least is 10) 10 at the "3", then 100.
+function RuleNumber({ rule, name, field }) {
+  const value = rule.params[name];
+  const [typed, setTyped] = useState(String(value));
+  useEffect(() => setTyped(String(value)), [value]);
+  const take = () => {
+    const v = Number(typed);
+    if (typed.trim() !== '' && Number.isFinite(v)) setRule(rule.id, { params: { [name]: v } });
+    setTyped(String(value));
+  };
+  return (
+    <input
+      type="number"
+      className="stFInput small"
+      min={field.min}
+      max={field.max}
+      value={typed}
+      disabled={!rule.enabled}
+      aria-label={`${rule.label}: ${field.unit}`}
+      onChange={(event) => {
+        const text = event.target.value;
+        setTyped(text);
+        // a whole number in range is taken at once; one that isn't yet (a 3 on its way to 30 minutes) waits for Enter or leaving the box, and is then
+        // brought into range, so it is never changed under the typing
+        const v = Number(text);
+        if (text.trim() !== '' && Number.isInteger(v) && v >= field.min && v <= field.max) setRule(rule.id, { params: { [name]: v } });
+      }}
+      onBlur={take}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') take();
+      }}
+    />
   );
 }
 
@@ -156,20 +175,7 @@ function RuleRow({ rule }) {
           const field = rule.fields[key];
           return (
             <span key={i} className="inNum">
-              <input
-                type="number"
-                className="stFInput small"
-                min={field.min}
-                max={field.max}
-                value={rule.params[key]}
-                disabled={!rule.enabled}
-                aria-label={`${rule.label}: ${field.unit}`}
-                onChange={(event) => {
-                  const v = Number(event.target.value);
-                  if (event.target.value !== '' && Number.isFinite(v)) setRule(rule.id, { params: { [key]: v } });
-                }}
-              />{' '}
-              {field.unit === '%' ? '%' : field.unit}
+              <RuleNumber rule={rule} name={key} field={field} /> {field.unit === '%' ? '%' : field.unit}
             </span>
           );
         })}
@@ -245,11 +251,16 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
   const live = useLiveAlerts();
   const [tab, setTab] = useState('now');
   const rules = useMemo(() => effectiveRules(insights.rules), [insights.rules]);
-  const alerts = withStatus(live.alerts, insights.acks, Date.now());
+  // only this workspace's agents: another workspace's alerts and their history stay with it
+  const names = Object.fromEntries(bots.map((b) => [b.id, b.name || b.id]));
+  const alerts = withStatus(
+    live.alerts.filter((a) => a.bot in names),
+    insights.acks,
+    Date.now(),
+  );
   const fresh = alerts.filter((a) => a.status === 'new');
   const handled = alerts.filter((a) => a.status !== 'new');
-  const history = insights.history.filter((h) => h.clearedAt);
-  const names = Object.fromEntries(bots.map((b) => [b.id, b.name || b.id]));
+  const history = insights.history.filter((h) => h.clearedAt && h.bot in names);
   const changedRules = Object.keys(insights.rules || {}).length > 0;
 
   return (
@@ -283,121 +294,123 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
         </Notice>
       ))}
 
-      <div className="inTabs" role="tablist" aria-label="Alerts">
-        {[
-          ['now', `Right now${alerts.length ? ` (${alerts.length})` : ''}`],
-          ['history', 'Earlier'],
-          ['rules', 'What to watch for'],
-          ['send', 'Where to send'],
-        ].map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <Parts value={tab} onChange={setTab}>
+        <PartRow
+          className="inTabs"
+          label="Alerts"
+          value={tab}
+          items={[
+            { id: 'now', label: `Right now${alerts.length ? ` (${alerts.length})` : ''}` },
+            { id: 'history', label: 'Earlier' },
+            { id: 'rules', label: 'What to watch for' },
+            { id: 'send', label: 'Where to send' },
+          ]}
+        />
+        <PartPanel value={tab}>
+          {tab === 'now' && (
+            <section className="inList" aria-label="Alerts right now">
+              {bots.length === 0 && (
+                <EmptyState
+                  icon="bell"
+                  title="No agents to watch yet"
+                  text="Once you have an agent, Weave reads its calls and tells you here when something breaks: a tool failing, calls cut off, nobody calling, slow answers."
+                />
+              )}
+              {bots.length > 0 && !live.checkedAt && !live.checking && (
+                <EmptyState
+                  icon="bell"
+                  title="Not checked yet"
+                  text="Weave checks your agents’ recent calls every few minutes while the studio is open."
+                  action={
+                    <button type="button" className="secondaryCta" onClick={() => checkAlertsNow()}>
+                      Check now
+                    </button>
+                  }
+                />
+              )}
+              {!live.checkedAt && live.checking && <p className="stMuted">Reading the recent calls of your agents…</p>}
+              {live.checkedAt && alerts.length === 0 && (
+                <div className="inAllClear">
+                  <span aria-hidden="true">
+                    <Icon name="check" size={22} />
+                  </span>
+                  <div>
+                    <strong>All clear</strong>
+                    <p>
+                      Nothing needs a look right now. Weave checks every {Math.round(CHECK_EVERY_MS / 60000)} minutes while the studio is open, and when you
+                      come back to it.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {fresh.map((a) => (
+                <AlertCard key={a.key} alert={a} onOpenAgent={onOpenAgent} onOpenCall={onOpenCall} userName={userName} />
+              ))}
+              {handled.length > 0 && <h2 className="inSubhead">Being looked at, or snoozed</h2>}
+              {handled.map((a) => (
+                <AlertCard key={a.key} alert={a} onOpenAgent={onOpenAgent} onOpenCall={onOpenCall} userName={userName} />
+              ))}
+            </section>
+          )}
 
-      {tab === 'now' && (
-        <section className="inList" aria-label="Alerts right now">
-          {bots.length === 0 && (
-            <EmptyState
-              icon="bell"
-              title="No agents to watch yet"
-              text="Once you have an agent, Weave reads its calls and tells you here when something breaks: a tool failing, calls cut off, nobody calling, slow answers."
-            />
+          {tab === 'history' && (
+            <section className="inList" aria-label="Earlier alerts">
+              {history.length === 0 ? (
+                <p className="stMuted">Nothing has gone wrong and cleared up again in the last 30 days.</p>
+              ) : (
+                <>
+                  <ul className="inHistory">
+                    {history.map((h) => (
+                      <li key={`${h.key}@${h.firedAt}`}>
+                        <span className={`inDot ${h.severity}`} aria-hidden="true" />
+                        <div>
+                          <strong>{h.title}</strong>
+                          <span className="stMuted"> · {h.botName || names[h.bot] || h.bot}</span>
+                          <small>
+                            {h.detail} Started {formatWhen(h.firedAt)}, cleared {formatWhen(h.clearedAt)}.
+                          </small>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <p>
+                    <button type="button" className="quietButton" onClick={clearHistory}>
+                      Clear this list
+                    </button>
+                  </p>
+                </>
+              )}
+            </section>
           )}
-          {bots.length > 0 && !live.checkedAt && !live.checking && (
-            <EmptyState
-              icon="bell"
-              title="Not checked yet"
-              text="Weave checks your agents’ recent calls every few minutes while the studio is open."
-              action={
-                <button type="button" className="secondaryCta" onClick={() => checkAlertsNow()}>
-                  Check now
-                </button>
-              }
-            />
-          )}
-          {!live.checkedAt && live.checking && <p className="stMuted">Reading the recent calls of your agents…</p>}
-          {live.checkedAt && alerts.length === 0 && (
-            <div className="inAllClear">
-              <span aria-hidden="true">
-                <Icon name="check" size={22} />
-              </span>
-              <div>
-                <strong>All clear</strong>
-                <p>
-                  Nothing needs a look right now. Weave checks every {Math.round(CHECK_EVERY_MS / 60000)} minutes while the studio is open, and when you come
-                  back to it.
-                </p>
-              </div>
-            </div>
-          )}
-          {fresh.map((a) => (
-            <AlertCard key={a.key} alert={a} onOpenAgent={onOpenAgent} onOpenCall={onOpenCall} userName={userName} />
-          ))}
-          {handled.length > 0 && <h2 className="inSubhead">Being looked at, or snoozed</h2>}
-          {handled.map((a) => (
-            <AlertCard key={a.key} alert={a} onOpenAgent={onOpenAgent} onOpenCall={onOpenCall} userName={userName} />
-          ))}
-        </section>
-      )}
 
-      {tab === 'history' && (
-        <section className="inList" aria-label="Earlier alerts">
-          {history.length === 0 ? (
-            <p className="stMuted">Nothing has gone wrong and cleared up again in the last 30 days.</p>
-          ) : (
-            <>
-              <ul className="inHistory">
-                {history.map((h) => (
-                  <li key={`${h.key}@${h.firedAt}`}>
-                    <span className={`inDot ${h.severity}`} aria-hidden="true" />
-                    <div>
-                      <strong>{h.title}</strong>
-                      <span className="stMuted"> · {h.botName || names[h.bot] || h.bot}</span>
-                      <small>
-                        {h.detail} Started {formatWhen(h.firedAt)}, cleared {formatWhen(h.clearedAt)}.
-                      </small>
-                    </div>
-                  </li>
+          {tab === 'rules' && (
+            <section className="inList" aria-label="What to watch for">
+              <p className="stMuted">
+                A spike is only raised over enough calls, and only when it is well above what is usual for that agent, so a quiet hour or an agent that always
+                passes calls on does not cry wolf. These are your settings, kept in this browser.
+              </p>
+              <ul className="inRules">
+                {rules.map((r) => (
+                  <RuleRow key={r.id} rule={r} />
                 ))}
               </ul>
-              <p>
-                <button type="button" className="quietButton" onClick={clearHistory}>
-                  Clear this list
-                </button>
-              </p>
-            </>
+              {changedRules && (
+                <p>
+                  <button type="button" className="quietButton" onClick={resetRules}>
+                    Back to the recommended settings
+                  </button>
+                </p>
+              )}
+            </section>
           )}
-        </section>
-      )}
 
-      {tab === 'rules' && (
-        <section className="inList" aria-label="What to watch for">
-          <p className="stMuted">
-            A spike is only raised over enough calls, and only when it is well above what is usual for that agent, so a quiet hour or an agent that always
-            passes calls on does not cry wolf. These are your settings, kept in this browser.
-          </p>
-          <ul className="inRules">
-            {rules.map((r) => (
-              <RuleRow key={r.id} rule={r} />
-            ))}
-          </ul>
-          {changedRules && (
-            <p>
-              <button type="button" className="quietButton" onClick={resetRules}>
-                Back to the recommended settings
-              </button>
-            </p>
+          {tab === 'send' && (
+            <section className="inList" aria-label="Where to send alerts">
+              <Notifications />
+            </section>
           )}
-        </section>
-      )}
-
-      {tab === 'send' && (
-        <section className="inList" aria-label="Where to send alerts">
-          <Notifications />
-        </section>
-      )}
+        </PartPanel>
+      </Parts>
     </div>
   );
 }

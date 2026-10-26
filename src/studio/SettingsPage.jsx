@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { api } from '../api/client.js';
+import Fold from '../ui/Fold.jsx';
+import { api } from '../api/client.ts';
 import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from '../demo/demoMode.js';
 import { navigate, routeHref } from './route.js';
 import { envLabel } from './ui.jsx';
 import { useAsync } from './useAsync.js';
 import { DENSITIES, useDensity, useTechnicalNames } from './usePref.js';
 import { StyleCards } from '../ui/StylePicker.jsx';
+import { Choice, OneOf } from '../ui/OneOf.tsx';
 
 // Workspace settings. A workspace here is a label kept in this browser, and so is which workspace an agent is in;
 // the agents themselves live on the Agent Builder API. This page says what is on the server and what is only local.
@@ -149,7 +151,7 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
           </section>
           {/* Where the data comes from is for people who work with the studio's plumbing: shown with technical names, and whenever the API cannot be reached (so nobody is left wondering why nothing loads). */}
           {(technical || (!online && !health.loading)) && (
-            <details className="settingsCard settingsDev" open={isDemoMode() || (!online && !health.loading) || undefined} aria-labelledby="settings-dev">
+            <Fold className="settingsCard settingsDev" open={isDemoMode() || (!online && !health.loading)} aria-labelledby="settings-dev">
               <summary id="settings-dev">
                 <strong>For developers</strong> <span className="stMuted">Data source and the connection to the Agent Builder API</span>
               </summary>
@@ -198,7 +200,7 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
                   Check again
                 </button>
               </div>
-            </details>
+            </Fold>
           )}
         </div>
         <div className="settingsColumn">
@@ -212,19 +214,13 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
             </fieldset>
             <fieldset className="settingsChoice">
               <legend>Spacing</legend>
-              <div className="settingsSeg" role="group" aria-label="Spacing">
+              <OneOf className="settingsSeg" label="Spacing" value={density} onChange={setDensity}>
                 {DENSITIES.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={density === option ? 'on' : ''}
-                    aria-pressed={density === option}
-                    onClick={() => setDensity(option)}
-                  >
+                  <Choice key={option} value={option}>
                     {option === 'compact' ? 'Compact' : 'Comfortable'}
-                  </button>
+                  </Choice>
                 ))}
-              </div>
+              </OneOf>
               <small className="stMuted">Compact fits more on a screen, for people who use the studio all day.</small>
             </fieldset>
             <label className="settingsCheck">

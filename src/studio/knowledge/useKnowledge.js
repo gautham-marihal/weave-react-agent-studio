@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { useAsync } from '../useAsync.js';
 import { isBuilding, normalizeBuild, normalizeKnowledge } from './model.js';
 

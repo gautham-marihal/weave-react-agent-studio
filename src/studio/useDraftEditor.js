@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 import { prettyJson } from './format.js';
 import { describeDuplicates, findDuplicateKeys } from './jsonDuplicates.js';
 import { lineOf } from './jsonPath.js';

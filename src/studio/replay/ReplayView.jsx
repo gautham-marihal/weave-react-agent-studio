@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { isDemoMode } from '../../demo/demoMode.js';
 import { Notice, Spinner } from '../ui.jsx';
 import { useAsync } from '../useAsync.js';
@@ -8,6 +8,7 @@ import { useTestRun } from '../scenarios/useTestRun.js';
 import { readCall } from './callFacts.js';
 import { compareReplay } from './compareReplay.js';
 import { configWithScenario, factsFromResult, playSimulated, scenarioForReplay } from './replayRun.js';
+import Select from '../../ui/Select.tsx';
 import './replay.css';
 
 const toolNames = (tools) => tools.map((t) => t.tool).filter(Boolean);
@@ -134,7 +135,8 @@ export function ReplayCompare({ cmp, sourceLabel, targetLabel }) {
   );
 }
 
-// "What if it ran again?": the caller's words of this call played to the draft (or to a published version), and laid beside what happened. Changes nothing.
+// "What if it ran again?": the caller's words of this call played to the draft (or to a published version), and laid
+// beside what happened. Changes nothing.
 export default function ReplayView({ botId, events, editor, onMakeTest, draftLabel = '' }) {
   const original = useMemo(() => readCall(events), [events]);
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId]);
@@ -245,7 +247,7 @@ export default function ReplayView({ botId, events, editor, onMakeTest, draftLab
           <div className="rpControls">
             <label>
               <span>Play it to</span>
-              <select
+              <Select
                 className="stFInput small"
                 value={target}
                 onChange={(event) => {
@@ -259,7 +261,7 @@ export default function ReplayView({ botId, events, editor, onMakeTest, draftLab
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <button type="button" className="primaryCta compactCta" onClick={replayHere} disabled={busy || !editor}>
               Replay in the browser
