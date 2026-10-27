@@ -12,8 +12,8 @@ import { normalizePreflightKnowledge } from './release/checklist.js';
 import { AgentNumbers, useLiveNumbers } from '../pages/LiveNumbers.jsx';
 import Select from '../ui/Select.tsx';
 
-// The Deploy page: which version runs in Development, Staging and Production, putting a version live in one of them,
-// what the runtime can't run yet (UnsupportedNotices, also shown when publishing), and the deployment history.
+// The Deploy page: which version runs in each environment, putting a version live, what the runtime can't run yet
+// (UnsupportedNotices, also shown when publishing), and the deployment history.
 
 const STATUS_TEXT = { active: 'Active', pending: 'Deploying…', failed: 'Failed', replaced: 'Replaced' };
 
@@ -26,8 +26,8 @@ function StatusPill({ status }) {
   );
 }
 
-// Parts of the agent the runtime can't run yet. A security item (a protection that is declared but not enforced) comes
-// first, in red: the agent looks protected and isn't.
+// Parts of the agent the runtime can't run yet. A security item (a protection declared but not enforced) comes first,
+// in red: the agent looks protected and isn't.
 export function UnsupportedNotices({ items }) {
   const { security, advice } = splitUnsupported(items);
   if (!security.length && !advice.length) return null;
@@ -99,7 +99,7 @@ function Preflight({ preflight }) {
 
 export default function DeployTab({ botId, name = '', initialVersion, refreshKey, onDeployed }) {
   const envs = useAsync((signal) => api.environments({ signal }), []);
-  // the agent's phone numbers (when this server has them): each environment card names its own, and they are listed and added below
+  // the agent's phone numbers, if this server has them: each environment card names its own; listed and added below
   const numbers = useLiveNumbers(true, { botId });
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const deployments = useAsync((signal) => api.listDeployments(botId, { signal }), [botId, refreshKey]);
@@ -111,8 +111,8 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
   const [deploying, setDeploying] = useState(false);
   const [error, setError] = useState(null);
   const [last, setLast] = useState(null); // { deployment, preflight }
-  const [typed, setTyped] = useState(''); // the word that confirms a production deploy while a security item stands
-  const [notFound, setNotFound] = useState({}); // environment -> secrets the server couldn't find when something was last deployed there
+  const [typed, setTyped] = useState(''); // the word that confirms a production deploy despite a security item
+  const [notFound, setNotFound] = useState({}); // env -> secrets missing at the last deploy there
   const formRef = useRef(null);
   // The validator's view of the chosen version, before anything is deployed.
   const check = useAsync(
@@ -124,8 +124,8 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
     },
     [botId, version],
   );
-  // The check of the version chosen now. useAsync keeps the last answer while the next loads (and after a failed check), but that answer is another
-  // version's: it is neither shown nor used to decide what a production deploy asks for.
+  // Only the chosen version's check counts. useAsync keeps the previous answer while loading (and after a failure),
+  // but that is another version's, so it is neither shown nor used to decide what a production deploy asks for.
   const report = check.data && check.data.__for === version && !check.loading ? check.data : null;
 
   const versionList = useMemo(() => versions.data || [], [versions.data]);
@@ -178,7 +178,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
     }
   };
 
-  // production with a check that could not be made: its protections are not known, so the word is asked for as when one stands
+  // Production with a failed check: its protections are unknown, so the confirming word is asked for anyway.
   const security = report ? splitUnsupported(report.unsupported).security : environment === 'production' && check.error ? ['unchecked'] : [];
   const allowed = mayDeploy({ environment, security, typed }) && (!!report || !!check.error);
   const onDeployClick = () => {
@@ -190,7 +190,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
     deploy();
   };
 
-  // "Roll back" only fills in the form (the version before this one, in this environment); the button still has to be pressed.
+  // "Roll back" only fills in the form with the previous version; the button still has to be pressed.
   const prepareRollback = (env, to) => {
     setVersion(to);
     setEnvironment(env);
@@ -206,7 +206,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
 
   const current = deployments.data?.current || {};
   // The API lists deployments oldest first; show the latest at the top.
-  // newest first; a deployment that went through but has a newer one to the same environment after it is not what runs there any more: "Replaced"
+  // A deployment followed by a newer one to the same environment no longer runs there: "Replaced".
   const history = (() => {
     const seen = new Set();
     return [...(deployments.data?.history || [])].reverse().map((item) => {

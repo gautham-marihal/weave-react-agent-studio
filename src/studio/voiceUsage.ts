@@ -1,4 +1,4 @@
-// Which agents speak with each voice of the library, from their saved configurations (defaults.models.tts: provider + voice_id).
+// Which agents speak with each library voice, from their saved configs (defaults.models.tts: provider + voice_id).
 // Pure: no network, no DOM.
 
 type Voice = { id: string; provider?: string; voiceId?: string };
@@ -7,7 +7,9 @@ type ConfigWithTts = { defaults?: { models?: { tts?: { provider?: string; voice_
 
 const same = (a: unknown, b: unknown) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
 
-// voices: the catalog ({ id, provider, voiceId }); configs: { agentId: config | null | undefined }; agents: [{ id, name }].
+//   voices: the catalog ({ id, provider, voiceId })
+//   configs: { agentId: config | null | undefined }
+//   agents: [{ id, name }]
 // -> { voiceId (the catalog id): [agent, ...] }
 export function voiceUsage<A extends Agent>(
   voices: Voice[] | null | undefined,

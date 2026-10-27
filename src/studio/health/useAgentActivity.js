@@ -22,8 +22,8 @@ export function dailyCalls(calls, botIds, { nowMs = Date.now(), days = 7 } = {})
   return out;
 }
 
-// For a list of agents: how many calls each had in the last `days` days, day by day. It only lists calls (no records), a few agents at a time, and
-// reads again when the agents shown change. { byBot: { id: { total, series } }, loading }
+// Each agent's calls per day over the last `days` days. Lists calls only (no records), a few agents at a time, and
+// reads again when the agents shown change. -> { byBot: { id: { total, series } }, loading }
 export function useAgentActivity(bots, { days = 7 } = {}) {
   const [state, setState] = useState({ byBot: {}, loading: true });
   const key = (bots || []).map((b) => b.id).join(',');

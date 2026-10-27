@@ -1,5 +1,5 @@
-// "Readiness checks": does an agent's configuration cover everyday situations? Each check looks at one saved configuration
-// (a draft or a published version); no conversation is run, no call is placed and nothing is sent to the runtime.
+// "Readiness checks": does a saved configuration (draft or version) cover everyday situations? Nothing is run or sent
+// to the runtime.
 
 const list = (value) => (Array.isArray(value) ? value : []);
 const text = (value) => (typeof value === 'string' ? value.trim() : '');

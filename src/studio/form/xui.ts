@@ -1,13 +1,12 @@
-// The `x-ui` hints a schema may carry to steer the form without a UI release. The vocabulary (what the backend may write, what the form
-// understands):
-//   widget    textarea | template | jsonpath | phone | url | duration | secret-picker   how to draw the field (an unknown one is ignored)
+// The `x-ui` hints a schema may carry to steer the form without a UI release:
+//   widget    textarea | template | jsonpath | phone | url | duration | secret-picker (an unknown one is ignored)
 //   label     a human name, instead of the key made readable
-//   help      one line saying what the setting is for, in plain words (it leads the help text, ahead of the catalogue's own)
+//   help      one plain line on what the setting is for (ahead of the catalogue's own)
 //   example   a value that makes it clear
 //   audience  guided | detailed | expert: how often someone needs it (expert ones sit under "Advanced")
 //   group     a heading the field is listed under, with the others of the same group
 //   order     a number: lower first (fields without one follow, in schema order)
-//   advanced  true: kept under an "Advanced" fold, out of the way until needed
+//   advanced  true: kept under an "Advanced" fold
 // Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
@@ -46,7 +45,8 @@ export function readXui(shape: unknown): Xui {
   };
 }
 
-// Keys in the order the hints ask for: those with an `order` first (lowest first, ties in schema order), then the rest as they were.
+// Keys in the order the hints ask for: those with an `order` first
+// (lowest first, ties in schema order), then the rest as they were.
 export function orderKeys(keys: string[], hintsOf: HintsOf): string[] {
   const indexed = keys.map((key, index) => ({ key, index, order: hintsOf(key).order }));
   const ranked = indexed
@@ -55,8 +55,8 @@ export function orderKeys(keys: string[], hintsOf: HintsOf): string[] {
   return [...ranked, ...indexed.filter((item) => item.order === undefined)].map((item) => item.key);
 }
 
-// Keys cut into runs under their group heading. The first run has no heading when its keys have no group; a group's keys are kept
-// together at the place the group first appears.
+// Keys cut into runs under their group heading. The first run has no heading when its keys have no group; a group's
+// keys are kept together at the place the group first appears.
 export function groupKeys(keys: string[], hintsOf: HintsOf): { group: string; keys: string[] }[] {
   const sections: { group: string; keys: string[] }[] = [];
   keys.forEach((key) => {

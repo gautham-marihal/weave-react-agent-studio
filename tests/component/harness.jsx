@@ -29,7 +29,9 @@ import ShareAgentDrawer from '../../src/studio/team/ShareAgentDrawer.jsx';
 import FixCallDrawer from '../../src/studio/fixcall/FixCallDrawer.jsx';
 import CallersPanel from '../../src/studio/callers/CallersPanel.jsx';
 import GateStrip from '../../src/studio/release/GateStrip.jsx';
-import AgentNav from '../../src/studio/agent/AgentNav.jsx';
+import StageTabs from '../../src/studio/agent/workspace/StageTabs.jsx';
+import BuildStage from '../../src/studio/agent/workspace/BuildStage.jsx';
+import GuidedBuild from '../../src/studio/agent/workspace/GuidedBuild.jsx';
 import AgentTopBar from '../../src/studio/agent/AgentTopBar.jsx';
 import AgentSwitcher from '../../src/studio/agent/AgentSwitcher.jsx';
 import SmartSelect from '../../src/studio/SmartSelect.jsx';
@@ -124,6 +126,7 @@ const SCREENS = {
       summary={props.summary || {}}
       editor={editor}
       scenarioCount={props.scenarioCount || 0}
+      sections={props.sections || []}
       onProblems={props.onProblems || (() => {})}
       onDescribe={() => {}}
       onTest={() => {}}
@@ -149,8 +152,23 @@ const SCREENS = {
   callers: (editor) => <CallersPanel botId="x" name="Acme" editor={editor} />,
   gatestrip: (editor) => <GateStrip botId="x" editor={editor} />,
   stylecards: () => <StyleCards />,
-  agentnav: (editor, props) => (
-    <AgentNav botId="x" page={props.page || 'home'} counts={props.counts || {}} dots={props.dots || {}} plan={props.plan || null} onStep={props.onStep} />
+  stagetabs: (editor, props) => (
+    <StageTabs botId="x" page={props.page || 'home'} plan={props.plan || null} problems={props.problems || {}} onStep={props.onStep} />
+  ),
+  guidedbuild: (editor, props) => (
+    <GuidedBuild
+      botId="x"
+      config={editor.parsed.value}
+      set={editor.setValue}
+      latest={() => editor.parsed.value}
+      sections={props.sections || []}
+      onOpen={props.onOpen || (() => {})}
+    />
+  ),
+  buildstage: (editor, props) => (
+    <BuildStage botId="x" page={props.page || 'agent'} sections={props.sections || []} problems={props.problems || {}} onJson={() => {}}>
+      <p className="theOpenPage">the open page</p>
+    </BuildStage>
   ),
   topbar: (editor, props) => (
     <AgentTopBar
@@ -178,8 +196,8 @@ const SCREENS = {
     <PageShell
       title="Knowledge"
       parts={[
-        { id: 'files', label: 'Files and index' },
-        { id: 'settings', label: 'Settings' },
+        { id: 'files', label: 'Documents' },
+        { id: 'settings', label: 'How it searches' },
       ]}
       part={editor.parsed.value.part}
       onPart={(part) => editor.setValue({ part })}

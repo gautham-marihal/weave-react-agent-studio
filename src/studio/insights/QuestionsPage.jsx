@@ -62,7 +62,7 @@ function ReasonChips({ reasons }) {
   );
 }
 
-// The wordings callers used, and the calls it was asked in: folded into one line until asked for (`open` shows them at once).
+// The wordings callers used and the calls behind them, folded into one line until opened (`open` shows them at once).
 function Evidence({ group, onOpenCall, open: startOpen = false }) {
   const [open, setOpen] = useState(startOpen);
   const ways = group.wordings.length;
@@ -177,13 +177,13 @@ function DismissMenu({ onPick }) {
   return <ChoiceMenu label="Dismiss" menuLabel="Why dismiss it" align="end" choices={DISMISS.map(([id, label]) => [label, () => onPick(id)])} />;
 }
 
-// "Questions it couldn't answer": what callers asked this agent that it did not know, passed on, or found nothing for, grouped however it was worded;
-// each one answered in a sentence (added to the agent's instructions in the draft, with a test that asks it) or dismissed.
+// "Questions it couldn't answer": what callers asked this agent that it didn't know, passed on or found nothing for,
+// grouped across wordings; each is answered in a sentence (added to the draft's instructions, with a test) or dropped.
 export default function QuestionsPage({ botId, editor, onOpenCall }) {
   const [days, setDays] = useState(14);
   const [tab, setTab] = useState('open');
   const [answering, setAnswering] = useState(null); // group key
-  // an answer's form closed without saving: the keyboard goes back to the button that opened it (gone while the form was open, so it is found again)
+  // closing an answer's form unsaved returns focus to the button that opened it (unmounted while open, so found again)
   const [refocus, setRefocus] = useState(null);
   useEffect(() => {
     if (refocus === null) return;
@@ -239,7 +239,7 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
     setAnswering(null);
     setDone({ text: group.text, agentName: agentName(agentId), testId, decision, changed: !!previous, before: config, after: next });
   };
-  // right after answering, with nothing else changed since, the draft goes back exactly as it was; later, the rule and its test are taken out of it
+  // just after answering (nothing else changed) the draft is restored exactly; later only the rule and test are removed
   const undo = (decision) => {
     if (done?.decision === decision && JSON.stringify(config) === JSON.stringify(done.after)) editor.setValue(done.before);
     else if (config) editor.setValue(removeAnswer(config, decision));
@@ -248,7 +248,7 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
   };
 
   const canEdit = !!config && agents.length > 0;
-  // asked more than once first; the ones asked once wait behind a line, so a stray question doesn't bury the ones that keep coming
+  // questions asked more than once come first; one-offs wait behind a line so a stray one doesn't bury repeated ones
   const repeated = open.filter((g) => g.count > 1);
   const once = open.filter((g) => g.count <= 1);
   const openRow = (group) => (

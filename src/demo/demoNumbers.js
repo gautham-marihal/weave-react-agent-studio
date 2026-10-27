@@ -1,9 +1,5 @@
-// Phone numbers, IMITATED for demo mode and for the tests (FRONTEND_GUIDE 10.5). The real API creates a LiveKit SIP
-// inbound trunk and dispatch rule for a number and reads the numbers other people set up by hand; here there is no
-// phone system, so the numbers are kept in the demo's own state and nothing is connected. The shapes are the live
-// server's (read with GET on 2026-10-22): a check, the settings, a row with a status and a routing note; a dispatch
-// rule of ours sends calls to the builder's runtime with the bot and environment as metadata. Pure apart from the state
-// it is given.
+// Phone numbers IMITATED for demo mode and the tests (FRONTEND_GUIDE 10.5). The real API creates LiveKit SIP trunks;
+// here numbers live in the demo state and nothing is connected. Shapes match the live server (read on 2026-10-22).
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const ENVIRONMENTS = ['development', 'staging', 'production'];
@@ -11,7 +7,7 @@ const PATTERN = '^\\+?[0-9]{3,15}$';
 const ok = (body, status = 200) => ({ status, body });
 const fail = (status, detail) => ({ status, body: { detail } });
 
-// The numbers "set up by hand" on the imaginary phone system: they are listed, and cannot be changed from here.
+// Numbers "set up by hand" on the imaginary phone system: listed, but not changeable from here.
 export const HAND_MADE = [
   {
     number: '+6563001000',
@@ -123,7 +119,7 @@ function validOptions(body) {
   return { out };
 }
 
-// Answers a numbers request, or null when the path is not one. `ctx` has `id` (a new id) and `commit` (saves the state).
+// Answers a numbers request, or null for another path. `ctx` has `id` (a new id) and `commit` (saves the state).
 export function routeNumbers(method, path, body, state, ctx) {
   state.numbers = list(state.numbers);
   const all = () => [...state.numbers.map((r) => rowOf(state, r)), ...HAND_MADE.map(handRow)];

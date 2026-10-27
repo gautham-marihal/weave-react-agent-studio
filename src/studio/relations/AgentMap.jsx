@@ -2,9 +2,8 @@ import React, { useId } from 'react';
 import { useConfigSelect } from '../form/ctx.js';
 import { NODE, buildAgentMap, describeEdges } from './agentMap.js';
 
-// The agents of an assistant as a picture: a box for each, an arrow for each hand-over, the one that answers first marked. Clicking a box opens that
-// agent in the form. It reads the configuration through a selector, so typing in a text box elsewhere doesn't redraw it; only a change to who hands
-// over to whom does. The same information is available as sentences under "As a list", for anyone who can't use the picture.
+// An assistant's agents as a picture (see agentMap.js); clicking a box opens that agent. It reads the config through a
+// selector so typing elsewhere doesn't redraw it. "As a list" says the same in sentences for anyone who can't use it.
 const KIND_WORDS = { handoff: 'Hands over', tool: 'Through a tool', rule: 'Under a safety rule' };
 
 function edgePath(from, to) {
@@ -15,13 +14,12 @@ function edgePath(from, to) {
     const x2 = to.x;
     const y2 = to.y + NODE.height / 2;
     const dx = Math.max(36, (x2 - x1) / 2);
-    // its words just above its own arrowhead, beside the box it points to: the arrows of one box fanning out each end
-    // at a different box, so their words never sit on each other, and the column gap is wide enough that they never
-    // reach the box they come from
+    // words just above the arrowhead: one box's arrows each end at a different box, so their words never overlap,
+    // and the column gap is wide enough that they never reach the box they come from
     return { d: `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2 - 2} ${y2}`, lx: x2 - 10, ly: y2 - 7, anchor: 'end' };
   }
-  // to the box right above or below in the same column: straight across the gap between the two, with its words beside the arrow (a curve out of the
-  // bottom of one box and into the bottom of the other would run through the lower box, and its words would sit under the box below that)
+  // to the box right above or below: straight across the gap, words beside the arrow (a curve via the bottoms would
+  // run through the lower box and put its words under the box below that)
   if (to.column === from.column && Math.abs(to.row - from.row) === 1) {
     const down = to.row > from.row;
     const x = from.x + NODE.width / 2;
@@ -29,7 +27,7 @@ function edgePath(from, to) {
     const y2 = down ? to.y : to.y + NODE.height;
     return { d: `M ${x} ${y1} L ${x} ${down ? y2 - 2 : y2 + 2}`, lx: x + 8, ly: (y1 + y2) / 2 + 4, anchor: 'start' };
   }
-  // back to an earlier column, or further down the same one: out of the bottom of one box and into the bottom of the other
+  // back to an earlier column, or further down the same one: out of one box's bottom and into the other's bottom
   const x1 = from.x + NODE.width / 2;
   const y1 = from.y + NODE.height;
   const x2 = to.x + NODE.width / 2;

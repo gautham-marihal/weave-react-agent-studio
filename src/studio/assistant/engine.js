@@ -1,16 +1,14 @@
-// Asking the AI to build or change a draft, and checking what comes back: the request goes out with the schema and the
-// current draft, the answer is run through the same validator as a hand-made draft, and whatever it finds is handed
-// back to the model to fix (a couple of times at most). Pure apart from the two functions it is given (`post`, to reach
-// the model, and `validate`), so it is tested with stand-ins for both.
+// Asks the AI to build or change a draft: the request carries the schema and current draft, the answer runs through the
+// same validator as a hand-made draft, and problems go back to the model to fix (a couple of times at most).
+// Pure apart from `post` (to reach the model) and `validate`, so tests use stand-ins for both.
 
 import { isObj } from '../form/engine.js';
 import { TOOL, readAnswer, repairMessage, requestMessage, systemPrompt } from './prompt.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
-// The model may drop what it was told to keep; the studio's own notes (where blocks are drawn) are never the AI's to
-// lose. And a place saved for a block that no longer exists (an agent the AI removed or renamed, a tool it took away)
-// is dropped, so the Workflow is drawn from what the agent is now.
+// The model may drop what it was told to keep; the studio's own notes (where blocks are drawn) are never its to lose.
+// A place saved for a block that no longer exists is dropped, so the Workflow is drawn from what the agent is now.
 export function keepStudioNotes(before, after) {
   const notes = isObj(after?.builder) ? after : isObj(before?.builder) ? { ...after, builder: clone(before.builder) } : after;
   return pruneStalePlaces(notes);

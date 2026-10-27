@@ -56,31 +56,57 @@ html[data-theme] body :is(.ovStat, .metricCard, .telephonyStatCard) strong {
 
 /* ---- the mark ------------------------------------------------------------------------------------------------------------------------------------- */
 html[data-theme] body .logoWord {
-  font-size: var(--fs-xl);
-  font-weight: 650;
-  letter-spacing: -0.03em;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 html[data-theme] body .logoMark {
-  width: 26px;
-  height: 26px;
-  border: 0;
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+html[data-theme] body .logoMark img {
+  display: block;
+  width: 100%;
+  height: 100%;
   border-radius: 7px;
-  background: var(--ink);
-  box-shadow: none;
+  object-fit: cover;
 }
-html[data-theme] body .logoMark::before,
-html[data-theme] body .logoMark::after,
-html[data-theme] body .logoMark span {
-  height: 3px;
-  background: var(--on-ink);
+/* the API's light on the mark's corner, ringed in the sidebar's colour so it reads on the picture */
+html[data-theme] body .logoLight {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--sidebar, var(--panel));
+  border-radius: 50%;
+  background: var(--muted);
 }
-html[data-theme] body .logoMark span {
-  width: 3px;
-  height: 12px;
+html[data-theme] body .logoLight.good {
+  background: var(--good-text);
 }
-html[data-theme] body .logoMark::before,
-html[data-theme] body .logoMark::after {
-  width: 13px;
+html[data-theme] body .logoLight.warn {
+  background: var(--warn-text);
+}
+html[data-theme] body .logoLight.bad {
+  background: var(--danger-text);
+}
+html[data-theme] body .logoLight.checking {
+  animation: logoLightPulse 1.2s ease-in-out infinite;
+}
+@keyframes logoLightPulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] body .logoLight.checking {
+    animation: none;
+  }
 }
 
 /* ---- the bar across the top: where you are, a search field, and quiet icon buttons ------------------------------------------------------------------ */
@@ -209,17 +235,14 @@ html[data-theme] body .buttonChevron {
   place-items: center;
   color: var(--dim);
 }
-html[data-theme] body .sideNav .sideLink,
-html[data-theme] body .nlNav .nlNavGroup button {
+html[data-theme] body .sideNav .sideLink {
   font-size: var(--fs-md);
   font-weight: 450;
 }
-html[data-theme] body .sideLink.selected,
-html[data-theme] body .nlNav button.on {
+html[data-theme] body .sideLink.selected {
   font-weight: 550;
 }
-html[data-theme] body .sideLink i .wIcon,
-html[data-theme] body .nlNavIcon .wIcon {
+html[data-theme] body .sideLink i .wIcon {
   width: 16px;
   height: 16px;
 }
@@ -1167,6 +1190,18 @@ html[data-theme] body .stPromptPreview > .stPromptBody {
   margin: 0;
   padding: 14px 16px 16px;
 }
+/* in its own panel (the agent's "Preview prompt"): just what it shows, under the panel's own title; nothing to open or close */
+html[data-theme] body .stPromptPreview.standalone {
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+html[data-theme] body .stPromptPreview.standalone > summary {
+  display: none;
+}
+html[data-theme] body .stPromptPreview.standalone > .stPromptBody {
+  padding: 0;
+}
 
 /* the smaller ones: the same chevron after the words */
 html[data-theme] body :is(.stTplInsert, .stPromptTools, .stPromptExact, .stPromptExtra) > summary {
@@ -1513,17 +1548,6 @@ html[data-theme] body [data-edges~="bottom"] {
     margin-bottom: 3px;
   }
   /* .sidebar: above agent.css (studio/agent), which loads after this file (Vibrant keeps its own, for its bigger tiles) */
-  html[data-theme] body .sidebar .nlNav {
-    gap: 6px;
-  }
-  html[data-theme] body .dashboard.inAgent .sidebar .nlNavGroup button {
-    min-height: 28px;
-    padding-top: 3px;
-    padding-bottom: 3px;
-  }
-  html[data-theme] body .sidebar .nlNavHead {
-    padding: 6px 10px 1px;
-  }
 }
 
 /* ================================================================================================================================================

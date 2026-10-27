@@ -147,7 +147,12 @@ check('the agent’s Home says what is wrong with it', /escalate_to_human/.test(
 await shot('home');
 
 // ---- Questions ---------------------------------------------------------------------------------------------------------------------------------------
-await page.locator('.nlNav button', { hasText: 'Questions' }).click();
+// the agent's Questions page: the Monitor tab, then its Questions
+async function openQuestions() {
+  await page.locator('nav[aria-label="Agent stages"] button[data-stage="monitor"]').click();
+  await page.locator('nav[aria-label="Monitor"] button[data-page="questions"]').click();
+}
+await openQuestions();
 await page.waitForSelector('.inQ');
 const questions = await page.locator('.inQ h3').allTextContents();
 const counts = (await page.locator('.inQ .inQCount').allTextContents()).map((t) => parseInt(t, 10));
@@ -178,7 +183,7 @@ await page.getByRole('button', { name: 'See the test' }).click();
 await page.waitForSelector('.nlPage');
 await page.waitForTimeout(400);
 check('the test that asks it is on the Scenarios', /answers_deliver_sunday/.test(await page.locator('.nlPage').textContent()));
-await page.locator('.nlNav button', { hasText: 'Questions' }).click();
+await openQuestions();
 await page.getByRole('tab', { name: /Answered/ }).click();
 await page.waitForSelector('.inQ .inDone');
 check('an answered question says it hasn’t been asked unanswered since', /Not asked unanswered since/.test(await page.locator('.inQ').first().textContent()));

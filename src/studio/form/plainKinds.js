@@ -1,7 +1,5 @@
-// The words for the KIND of a thing, for the grey hint on a card and the chips of the agent's pages: "Looks something
-// up", not "http"; "Phone line", not "sip_voice". An id is the author's own word and is shown as written; a kind is the
-// schema's, and a customer shouldn't have to read it. A kind nobody has written a phrase for is shown as it is (so
-// nothing is hidden), and the test checks every kind the schema has is covered.
+// Plain words for the kind of a thing ("Looks something up", not "http"), for card hints and chips. Ids are the
+// author's and shown as written. A kind with no phrase shows as it is, and a test checks every schema kind is covered.
 // Pure: no React, no DOM.
 
 export const PLAIN_KIND = {
@@ -50,9 +48,8 @@ export const BUILTIN_WORDS = {
 
 export const plainKind = (kind) => PLAIN_KIND[kind] || String(kind || '');
 
-// A web-request tool either reads (GET) or changes something in your systems (POST, PUT, PATCH, DELETE: report a
-// hazard, book a visit, start a return). "Looks something up" is wrong for the second kind, so it is read from the
-// request's method. A tool with no method is the reading kind, as before.
+// A web-request tool either reads (GET) or changes something (POST, PUT, PATCH, DELETE), and "Looks something up" is
+// wrong for the second, so the method decides. No method means a read, as before.
 const CHANGES_THINGS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 export const HTTP_WRITES = 'Sends something to your systems';
 export const changesSomething = (tool) => CHANGES_THINGS.has(String(tool?.request?.method || '').toUpperCase());

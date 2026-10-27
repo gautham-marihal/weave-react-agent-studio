@@ -1,7 +1,5 @@
-// After the call in plain words, for the top of the After the call page: a summary of each call, questions answered
-// about each call, what is recorded (and what callers are told about it), and the sensitive details hidden in what is
-// kept. Each reads its part and writes it back complete; a part left empty is taken out, so nothing is written that was
-// not chosen. Pure: no React, no DOM.
+// Model for the top of the After the call page (summary, questions, recording, hidden details). Each part is written
+// back complete, and an empty part is removed so nothing unchosen is written. Pure: no React, no DOM.
 
 import { notApplied, sensitiveEntities } from '../../records/recordsModel.js';
 
@@ -23,9 +21,8 @@ function edit(config, change) {
   return next;
 }
 
-// What is set. A switch the configuration does not set is `null` ("the server decides"), not off: nothing here pretends to know the server's default.
-// Each question keeps `index`, its place in `post_call.analysis`, which is what the setters take: an item that is not a question is skipped here but
-// still counts there. A kind of answer that is missing or unknown is '' (none chosen yet), never one the configuration does not say.
+// What is set. An unset switch is `null` ("the server decides"), never assumed off. Each question keeps `index`, its
+// place in `post_call.analysis` (non-questions are skipped but still count). A missing or unknown answer kind is ''.
 export function afterCallOf(config) {
   const pc = isObj(config?.post_call) ? config.post_call : {};
   const bool = (v) => (v === true ? true : v === false ? false : null);
@@ -48,8 +45,8 @@ export function afterCallOf(config) {
       days: Number.isFinite(Number(pc.recording?.retention_days)) && pc.recording?.retention_days ? Number(pc.recording.retention_days) : null,
     },
     notice: str(config?.persona?.disclosures?.recording_notice),
-    // hiding sensitive details is on once `post_call.redaction` is there and not switched off (`enabled` defaults to true inside it); with no
-    // `post_call.redaction` nothing is hidden but the values marked sensitive, so it is off, as the release checklist reads it (readRecords)
+    // on when `post_call.redaction` exists and isn't switched off (`enabled` defaults to true); without it only values
+    // marked sensitive are hidden, so it reads as off, as the release checklist does (readRecords)
     redaction: {
       on: isObj(pc.redaction) && pc.redaction.enabled !== false,
       entities: list(pc.redaction?.entities).filter((e) => typeof e === 'string'),
@@ -57,7 +54,7 @@ export function afterCallOf(config) {
   };
 }
 
-// ---- the summary --------------------------------------------------------------------------------------------------------------------------------
+// ---- the summary ----------------------------------------------------------------------------------------------------
 export function setSummary(config, { on, prompt } = {}) {
   return edit(config, (pc) => {
     const summary = isObj(pc.summary) ? { ...pc.summary } : {};
@@ -71,7 +68,7 @@ export function setSummary(config, { on, prompt } = {}) {
   });
 }
 
-// ---- questions about each call ------------------------------------------------------------------------------------------------------------------
+// ---- questions about each call --------------------------------------------------------------------------------------
 // The kinds of answer, in words.
 export const ANSWER_KINDS = [
   ['boolean', 'Yes or no'],
@@ -103,7 +100,7 @@ const idFrom = (text, taken) => {
   return id;
 };
 
-// A question's id is made once, from its words, when it is added, and stays the same when the words change (other places may point at it).
+// A question's id is made from its words once, when added, and never changes (other places may point at it).
 export function addQuestion(config, { question = '', type = 'boolean', values = [] } = {}) {
   return edit(config, (pc) => {
     const analysis = list(pc.analysis);
@@ -138,7 +135,7 @@ export function removeQuestion(config, index) {
   });
 }
 
-// ---- recording ----------------------------------------------------------------------------------------------------------------------------------
+// ---- recording ------------------------------------------------------------------------------------------------------
 // change: { audio?, transcript?, days? ('' or null keeps them until someone deletes them) }
 // Days are whole days, one at least: part of a day is one day, never "no limit".
 export function setRecording(config, change) {
@@ -155,8 +152,8 @@ export function setRecording(config, change) {
   });
 }
 
-// The recording notice, said at the start of a call before the greeting: `persona.disclosures.recording_notice`. It is
-// asked here, beside what is recorded, and nowhere else on the agent's pages.
+// The recording notice said before the greeting (`persona.disclosures.recording_notice`), asked only here, beside what
+// is recorded.
 export function setNotice(config, text) {
   const next = clone(config || {});
   const value = String(text || '');
@@ -171,7 +168,7 @@ export function setNotice(config, text) {
   return next;
 }
 
-// ---- hiding sensitive details -------------------------------------------------------------------------------------------------------------------
+// ---- hiding sensitive details ---------------------------------------------------------------------------------------
 export const SENSITIVE = [
   ['card_number', 'Card numbers'],
   ['bank_account', 'Bank account numbers'],
@@ -183,12 +180,8 @@ export const SENSITIVE = [
   ['pin', 'PINs'],
 ];
 
-// change: { on?, entities? } Switched on from nothing, it starts with what the agent already handles: card numbers, the
-// kinds its Guardrails' personal-details checks look for, and PINs when a value it keeps sensitive looks like one (so
-// it never starts on with nothing ticked, which hides nothing more). On is written as `enabled: true`, because with no
-// `post_call.redaction` nothing is hidden; switched off with nothing else in it, the part is taken out (which is off
-// too). It is a schema 1.2 setting: a configuration that keeps it is raised to 1.2 when it says less, as
-// enableRedaction does on the release page (every 1.1 configuration is a valid 1.2 one once it says so).
+// change: { on?, entities? }. Switched on from nothing, it starts ticked with the kinds the agent already treats as
+// sensitive, and is written as `enabled: true`. A 1.2 setting: raises schema_version as enableRedaction does.
 export function setRedaction(config, change) {
   return edit(config, (pc, next) => {
     const was = isObj(pc.redaction) ? pc.redaction : null;
@@ -206,9 +199,9 @@ export function setRedaction(config, change) {
       if (entities.length) redaction.entities = entities;
       else delete redaction.entities;
     }
-    // still on with nothing ticked: it stays, said
+    // still on with nothing ticked: keep it, written as enabled
     if (on && Object.keys(redaction).length === 0) redaction.enabled = true;
-    // switched off with only the ticks it started with (nobody chose them): nothing was chosen, so nothing is kept
+    // switched off with only the starting ticks (nobody chose them): nothing was chosen, so nothing is kept
     if (change.on === false && Object.keys(redaction).every((key) => key === 'enabled' || key === 'entities')) {
       const known = SENSITIVE.map(([id]) => id);
       const first = known.filter((id) => sensitiveEntities(next).includes(id));
@@ -225,7 +218,7 @@ export function setRedaction(config, change) {
   });
 }
 
-// What the settings form below still shows of After the call: everything but what the blocks above ask (so nothing is asked twice).
+// What the settings form below leaves out because the blocks above ask it (so nothing is asked twice).
 export const ASKED_ABOVE = [
   ['post_call', 'summary', 'enabled'],
   ['post_call', 'summary', 'prompt'],
@@ -237,9 +230,8 @@ export const ASKED_ABOVE = [
   ['observability', 'session_log', 'retention_days'],
 ];
 
-// Which parts the server says it doesn't do yet (the validator's `unsupported`, matched by what each item names), so a
-// card that is on can say so rather than promise what will not happen. Today's server lists none of them; a server that
-// does is believed.
+// Which parts the server says it can't do yet (the validator's `unsupported`), so a card that is on doesn't promise
+// what won't happen. Today's server lists none; one that does is believed.
 export function notDoneYet(unsupported) {
   const says = (pattern) => notApplied(unsupported, pattern).length > 0;
   return {
@@ -249,9 +241,8 @@ export function notDoneYet(unsupported) {
     redaction: says(/post_call\.redaction|redaction/i),
   };
 }
-// The same for one configuration. All that is left of the summary below is the model that writes it, and it is shown once summaries are on (or a
-// model is already chosen for them): drawn for a summary that is not set, the form would fill in the summary's required switch as off, and the first
-// change to its model would turn summaries off without a word.
+// The same for one config. The summary's model shows only once summaries are on (or a model is set): for an unset
+// summary the form would fill its required switch as off, and the first model change would silently turn summaries off.
 const ASKED_ABOVE_NO_SUMMARY = [...ASKED_ABOVE, ['post_call', 'summary']];
 export function askedAbove(config) {
   const summary = config?.post_call?.summary;

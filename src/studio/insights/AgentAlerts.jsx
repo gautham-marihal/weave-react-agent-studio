@@ -13,8 +13,8 @@ const ACTION = {
   calls: (a) => ['Open its calls', routeHref(a.bot, 'calls')],
 };
 
-// On an agent's own pages: what is wrong with THIS agent right now (alerts not snoozed), with the one thing to do about it. Without `botId` (the
-// workspace's Monitoring page) it sums up the alerts of every agent, and leads to the Alerts page.
+// On an agent's own pages: what is wrong with this agent now (alerts not snoozed) and the one thing to do. Without
+// `botId` (the workspace's Monitoring page) it sums up every agent's alerts and leads to the Alerts page.
 export default function AgentAlerts({ botId = '' }) {
   const { acks } = useInsights();
   const { alerts } = useLiveAlerts();

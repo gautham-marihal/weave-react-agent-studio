@@ -109,3 +109,35 @@ test('every draft it makes is a valid configuration, and the same description gi
   generateDraft(descriptions[0], base);
   assert.equal(JSON.stringify(base), before, 'the draft it was given is not changed');
 });
+
+test('the greeting speaks for the company when one is known: named in the description, else the workspace’s name', () => {
+  const greetings = (out) => Object.fromEntries(out.config.channels.map((c) => [c.type, c.greeting?.say]));
+  const dental = make('A friendly phone receptionist for Smile Dental clinic. It books appointments and answers questions on our website chat.');
+  assert.equal(dental.config.persona.company, 'Smile Dental');
+  assert.equal(greetings(dental).sip_voice, 'Hello, thank you for calling Smile Dental. Would you like to book an appointment?');
+  assert.equal(greetings(dental).web_chat, 'Hello, welcome to Smile Dental. Would you like to book an appointment?');
+  const fallback = make('Answers customer questions about orders, kindly.', { company: 'Bright Shoes' });
+  assert.equal(fallback.config.persona.company, 'Bright Shoes');
+  assert.ok(fallback.assumptions.some((a) => /Bright Shoes, your workspace’s name/.test(a)));
+  assert.match(greetings(fallback).web_chat, /^Hello, welcome to Bright Shoes\./);
+  assert.equal(
+    make('A friendly agent for Acme Telecom that helps with bills.', { company: 'Other' }).config.persona.company,
+    'Acme Telecom',
+    'the description wins',
+  );
+  assert.match(greetings(make('Answers customer questions about orders.')).web_chat, /Acme bot/, 'with no company, the agent’s name as before');
+});
+
+test('a description about bookings, orders or call-backs takes requests; "in order to" does not', () => {
+  const booked = make('A friendly receptionist that books appointments for our clinic.');
+  const tool = booked.config.tools.find((t) => t.builtin === 'send_form');
+  assert.ok(tool, 'the request form is on');
+  assert.deepEqual(
+    booked.config.forms.find((f) => f.id === tool.params.form).fields.map((f) => f.name),
+    ['name', 'phone', 'need', 'when'],
+  );
+  assert.ok(booked.assumptions.some((a) => /takes requests/.test(a)));
+  assert.equal(validateDemo(booked.config).errors.length, 0, JSON.stringify(validateDemo(booked.config).errors));
+  const plain = make('Answers questions about our products in order to help customers choose.');
+  assert.ok(!plain.config.tools.some((t) => t.builtin === 'send_form'));
+});

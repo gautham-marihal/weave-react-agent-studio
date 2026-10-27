@@ -5,7 +5,7 @@ import { useAsync } from '../useAsync.js';
 import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
 import { gateCheck } from './gateCheck.js';
 
-// "Tests must pass before publishing" is a choice one person makes for one agent, kept in this browser (see gateCheck.js for what it means).
+// "Tests must pass before publishing" is a per-agent choice kept in this browser (gateCheck.js says what it means).
 const keyOf = (botId) => `weave_gate_${botId}`;
 export function useGate(botId) {
   const [value, set] = usePref(keyOf(botId), '0');

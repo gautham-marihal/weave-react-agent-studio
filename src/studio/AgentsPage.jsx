@@ -8,16 +8,22 @@ import AssistantPanel from './AssistantPanel.jsx';
 import Select from '../ui/Select.tsx';
 import './preview/preview.css';
 import { rememberNotes } from './assistantNotes.js';
-import { generateDraft } from '../demo/draftAssistant.js';
+import { MIN_DESCRIPTION, generateDraft } from '../demo/draftAssistant.js';
+import { minimalConfig } from '../demo/minimalConfig.js';
+import { readSimple } from './simple/simpleModel.js';
 import { setGreeting, setRole } from './simple/simpleModel.js';
 import { applyStarter, STARTERS } from './starters.ts';
 import { botIdProblem, formatWhen, freeBotId } from './format.js';
 import { applyTemplate, deleteTemplate, loadTemplates, parseTemplateFile, saveTemplate } from './savedTemplates.js';
-import { PAGE_SIZE, SORTS, collectFacets, filterBots, paginate, sortBots } from './agentList.js';
+import { PAGE_SIZE, SORTS, STATUSES, collectFacets, filterBots, paginate } from './agentList.js';
+import { OWN_ORDER, arrange, moveInOrder, useAgentOrder } from './agentOrder.js';
+import { SortableItem, SortableList } from '../ui/Sortable.jsx';
+import { usePref } from './usePref.js';
 import { knownMeta, useAgentHealth } from './health/useAgentHealth.js';
 import { useAgentActivity } from './health/useAgentActivity.js';
 import { useAlertsByAgent } from './insights/AlertBell.jsx';
 import { BotRow } from './AgentTable.jsx';
+import AgentCards from './AgentCards.jsx';
 import { useManage } from './manage/useManage.jsx';
 import { navigate, replaceRoute, routeHref } from './route.js';
 import { startSetup } from './setup/setupProgress.js';
@@ -30,6 +36,18 @@ import { askConfirm } from '../ui/dialogs.js';
 // a picture for each starting point in the create dialog
 const STARTER_ICONS = { support: 'agent', receptionist: 'home', knowledge: 'records', lead: 'team', appointment: 'flag', feedback: 'quote', blank: 'plus' };
 
+// A new agent's business by default: the workspace name typed at first sign-in (e.g. Acme Inc.), if the agent is made
+// in that workspace. The greeting then says "thank you for calling Acme Inc.".
+function workspaceCompany(workspaceName) {
+  try {
+    const typed = JSON.parse(window.localStorage.getItem('weave_profile') || 'null')?.workspaceName?.trim();
+    return typed && typed === workspaceName ? typed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+const withCompany = (config, company) => (company && !config.persona?.company ? { ...config, persona: { ...config.persona, company } } : config);
+
 function CreateBotDialog({ existingIds, onClose }) {
   const [name, setName] = useState('');
   const [id, setId] = useState('');
@@ -41,32 +59,49 @@ function CreateBotDialog({ existingIds, onClose }) {
   const [description, setDescription] = useState('');
   const [generated, setGenerated] = useState(null); // { result, for }
   const [edits, setEdits] = useState({ role: '', greeting: '' });
+  const [tried, setTried] = useState(false);
+  const [describeFocus, setDescribeFocus] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const { current: workspaceId, spaces } = useWorkspaces();
   const workspaceName = spaces.find((space) => space.id === workspaceId)?.name;
+  const company = workspaceCompany(workspaceName);
 
-  // made from the name, and free: a name another agent has gets "-2" (the id is a technical key, tucked away under Advanced)
+  // made from the name; a name already taken gets "-2" (the id is a technical key, tucked away under Advanced)
   const effectiveId = idTouched ? id : name.trim() ? freeBotId(name, existingIds) : '';
   const idProblem = botIdProblem(effectiveId, existingIds);
   const described = how === 'describe';
-  const canCreate = !!name.trim() && !!effectiveId && !idProblem && !busy && (!described || (generated?.result?.ok && generated.for === description));
+  const tooShort = description.trim().length < MIN_DESCRIPTION;
+  const draftReady = !!(generated?.result?.ok && generated.for === description);
+  const canCreate = !!name.trim() && !!effectiveId && !idProblem && !busy && (!described || draftReady);
+  // When described, the main button first writes the draft to review (again if the description changed), then creates
+  const writes = described && !draftReady;
+  const canWrite = !!name.trim() && !tooShort && !busy;
+  const hint = !name.trim() ? 'Give it a name first.' : writes && tooShort ? 'Describe it in a sentence or two first.' : '';
+
+  const generate = () => {
+    setTried(true);
+    if (!canWrite) return;
+    const result = generateDraft(description, minimalConfig(effectiveId || 'new-agent', name.trim()), { name: name.trim(), company });
+    setGenerated({ result, for: description });
+    setEdits({ role: result.ok ? readSimple(result.config).role : '', greeting: result.ok ? readSimple(result.config).greeting : '' });
+  };
 
   const create = async () => {
+    if (writes) return generate();
     if (!canCreate) return;
     setBusy(true);
     setError(null);
     try {
       const draft = await api.createBot({ id: effectiveId, name: name.trim() });
-      // The agent belongs to the workspace it is created in.
       if (workspaceId) assignBot(effectiveId, workspaceId);
-      // It also starts with a main language, the person's own (the browser's), whichever step of the setup they open
-      // first; the language step shows it to change. A template or a description that names one keeps it.
+      // Every new agent starts with the browser's language as its main language, whichever setup step opens first.
+      // A template or description that names a language keeps its own.
       const languages = typeof navigator === 'undefined' ? [] : navigator.languages || [navigator.language];
       const withLanguage = (config) => withMainLanguage(config, languages);
       if (described) {
-        // The draft is made from the real new draft (so its id and version are right), with what was changed in the review applied.
-        const made = generateDraft(description, draft.config, { name: name.trim() });
+        // Built on the real new draft (so its id and version are right), with the review's edits applied.
+        const made = generateDraft(description, draft.config, { name: name.trim(), company });
         let config = made.config;
         config = setRole(config, edits.role);
         config = withLanguage(setGreeting(config, edits.greeting));
@@ -87,15 +122,15 @@ function CreateBotDialog({ existingIds, onClose }) {
           }
         }
       } else if (starter !== 'blank') {
-        // Every new agent starts from the same minimal draft; the starter is what makes it its own. If saving it
-        // fails the agent still exists, and the starter is put into its draft unsaved for the person to review.
+        // Every new agent starts from the same minimal draft. If saving the starter fails, the agent still exists and
+        // the starter is queued into its draft, unsaved, for the person to review.
         try {
-          await api.saveDraft(effectiveId, withLanguage(applyStarter(draft.config, starter)), draft.revision);
+          await api.saveDraft(effectiveId, withLanguage(applyStarter(withCompany(draft.config, company), starter)), draft.revision);
         } catch {
           queueChange(effectiveId, { kind: 'starter', starter });
         }
       } else {
-        // blank: nothing but the language, which the setup would otherwise ask for first
+        // blank: only the language, which the setup would otherwise ask for first
         await api.saveDraft(effectiveId, withLanguage(draft.config), draft.revision).catch(() => {});
       }
       refreshBots();
@@ -123,11 +158,12 @@ function CreateBotDialog({ existingIds, onClose }) {
       busy={busy}
       footer={
         <>
+          {hint && <small className="stCreateHint">{hint}</small>}
           <button type="button" className="modalCancel" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button type="button" className="modalCreate" onClick={create} disabled={!canCreate}>
-            {busy ? 'Creating…' : described ? 'Create the draft' : 'Create agent'}
+          <button type="button" className="modalCreate" onClick={create} disabled={writes ? !canWrite : !canCreate}>
+            {busy ? 'Creating…' : writes ? (generated ? 'Update the draft' : 'Write my draft') : described ? 'Create the draft' : 'Create agent'}
           </button>
         </>
       }
@@ -147,7 +183,7 @@ function CreateBotDialog({ existingIds, onClose }) {
             maxLength={80}
           />
         </label>
-        {/* The id is a technical key (it is permanent and used in links), so it is made from the name and tucked away; it opens by itself when there is a problem with it */}
+        {/* the id is permanent and used in links, so it is made from the name and tucked away; opens on a problem */}
         <Fold className="stIdAdvanced" open={!!idProblem || idTouched}>
           <summary>
             Advanced: the id <code>{effectiveId || '…'}</code> <span className="stMuted">{idTouched ? '(set by you)' : '(made from the name)'}</span>
@@ -171,10 +207,11 @@ function CreateBotDialog({ existingIds, onClose }) {
             {idProblem && <small className="stFieldError">{idProblem}</small>}
           </label>
         </Fold>
-        {/* one choice of how it starts: describe it in words (a draft is made to review), or a template; the name above is all else that is asked */}
+        {/* describe it (a draft is made to review) or pick a template; nothing else is asked besides the name */}
         <fieldset className="stStartGrid" disabled={busy}>
           <legend>How it starts</legend>
-          <label className={described ? 'on ai' : 'ai'}>
+          {/* a click moves the cursor to the description box; arrowing through the choices keeps focus here */}
+          <label className={described ? 'on ai' : 'ai'} onClick={(event) => event.detail > 0 && setDescribeFocus(true)}>
             <input type="radio" name="start" value="describe" checked={described} onChange={() => setHow('describe')} />
             <span className="stStartIcon" aria-hidden="true">
               <Icon name="sparkle" size={18} />
@@ -289,13 +326,13 @@ function CreateBotDialog({ existingIds, onClose }) {
           <AssistantPanel
             description={description}
             onDescription={setDescription}
-            name={name}
-            id={effectiveId}
+            tried={tried}
+            tooShort={tooShort}
             generated={generated}
-            onGenerated={setGenerated}
             edits={edits}
             onEdits={setEdits}
             disabled={busy}
+            focusOnOpen={describeFocus}
           />
         )}
         {error && (
@@ -308,9 +345,8 @@ function CreateBotDialog({ existingIds, onClose }) {
   );
 }
 
-// One agent in “Removed from your list”: bring it back, or delete it from the list for good. The API cannot delete an
-// agent, so this only forgets it here (it stays on the server), and says so before it does; “Bring them back” undoes
-// it.
+// One agent in “Removed from your list”: bring it back, or delete it for good. The API cannot delete an agent, so this
+// only forgets it here (it stays on the server) and says so first; “Bring them back” undoes it.
 function RemovedRow({ bot }) {
   const [asking, setAsking] = useState(false);
   const label = bot.name || bot.id;
@@ -347,10 +383,15 @@ export default function AgentsPage({ route }) {
   const { bots, removed, dismissedCount, dismissedIds, all, error, loading, refresh } = useBots();
   const manage = useManage();
   const [filter, setFilter] = useState('');
-  const [sort, setSort] = useState('recent');
+  // kept in this browser, so "Your order" stays the person's view of the list
+  const [savedSort, setSort] = usePref('weave_agents_sort', 'recent');
+  const sort = SORTS[savedSort] ? savedSort : 'recent';
   const [tag, setTag] = useState('');
   const [owner, setOwner] = useState('');
-  const [attention, setAttention] = useState(false);
+  const [status, setStatus] = useState('all');
+  // cards or table, kept in this browser
+  const [savedView, setView] = usePref('weave_agents_view', 'cards');
+  const view = savedView === 'table' ? 'table' : 'cards';
   const [page, setPage] = useState(1);
   const wantsNew = route.params?.new === '1';
   const [creating, setCreating] = useState(wantsNew);
@@ -364,15 +405,45 @@ export default function AgentsPage({ route }) {
   }, [refresh]);
 
   const list = useMemo(() => bots || [], [bots]);
-  // What is known beyond the list (tags, owner, health) is read for the agents on the page; with few agents, for all of them.
+  // Tags, owner and health are read for the agents on the page; with few agents, for all of them.
   const everything = list.length <= 40;
   const [wantAll, setWantAll] = useState(false);
   const known = knownMeta(list);
-  const filters = { query: list.length > 1 ? filter : '', tag, owner, attention };
-  const { matched, unknown } = useMemo(() => filterBots(list, filters, known), [list, filter, tag, owner, attention, known]); // eslint-disable-line react-hooks/exhaustive-deps
-  const sorted = useMemo(() => sortBots(matched, sort), [matched, sort]);
+  const filters = { query: list.length > 1 ? filter : '', tag, owner, status };
+  const { matched, unknown } = useMemo(() => filterBots(list, filters, known), [list, filter, tag, owner, status, known]); // eslint-disable-line react-hooks/exhaustive-deps
+  // pinned first, then the chosen sort; "Your order" is the person's own, moved by dragging or from a row's menu
+  const { pinned, order, togglePin, setOrder } = useAgentOrder();
+  const sorted = useMemo(() => arrange(matched, { sort, pinned, order }), [matched, sort, pinned, order]);
   const paged = paginate(sorted, page, PAGE_SIZE);
   const visible = paged.rows;
+  const ownOrder = sort === OWN_ORDER;
+  const inOwnOrder = useMemo(() => arrange(list, { sort: OWN_ORDER, pinned, order }), [list, pinned, order]);
+  const move = (id, to) => {
+    const next = to && moveInOrder(inOwnOrder, pinned, id, to);
+    if (next) setOrder(next);
+  };
+  // a drop makes the list as shown the person's own order, with that one move made
+  const dropOnto = (id, to) => {
+    const next = moveInOrder(ownOrder ? inOwnOrder : arrange(list, { sort, pinned, order }), pinned, id, to);
+    if (!next) return;
+    setOrder(next);
+    if (!ownOrder) setSort(OWN_ORDER);
+  };
+  // the agent just above (-1) or below (1), only within the same group (pinned or not)
+  const neighbour = (id, step) => {
+    const other = visible[visible.findIndex((bot) => bot.id === id) + step];
+    return other && pinned.includes(other.id) === pinned.includes(id) ? other.id : null;
+  };
+  const rowMenu = (bot) => [
+    ...(ownOrder
+      ? [
+          { label: 'Move up', disabled: !neighbour(bot.id, -1), onClick: () => move(bot.id, neighbour(bot.id, -1)) },
+          { label: 'Move down', disabled: !neighbour(bot.id, 1), onClick: () => move(bot.id, neighbour(bot.id, 1)) },
+          { divider: true },
+        ]
+      : []),
+    ...manage.menuItems(bot),
+  ];
   const health = useAgentHealth(everything || wantAll ? list : visible);
   const activity = useAgentActivity(visible);
   const alertsByAgent = useAlertsByAgent();
@@ -381,7 +452,7 @@ export default function AgentsPage({ route }) {
   // a new search, filter or sort starts again from the first page
   useEffect(() => {
     setPage(1);
-  }, [filter, tag, owner, attention, sort]);
+  }, [filter, tag, owner, status, sort]);
   const counts = useMemo(
     () => ({
       total: list.length,
@@ -391,8 +462,27 @@ export default function AgentsPage({ route }) {
     }),
     [list],
   );
+  // the count beside each status filter (needs attention: of the agents checked so far)
+  const statusCounts = useMemo(
+    () => Object.fromEntries(Object.keys(STATUSES).map((key) => [key, filterBots(list, { status: key }, known).matched.length])),
+    [list, known],
+  );
 
-  // the dialog's address (#/bots?new=1) is replaced by the list's, not added after it: Back then goes to the page before, not into the dialog again
+  const row = (bot, movable) => (
+    <BotRow
+      bot={bot}
+      menuItems={rowMenu}
+      health={known[bot.id]?.health}
+      tags={known[bot.id]?.tags}
+      activity={activity.byBot[bot.id]}
+      alerts={alertsByAgent[bot.id]}
+      pinned={pinned.includes(bot.id)}
+      onPin={togglePin}
+      movable={movable}
+    />
+  );
+
+  // Replace #/bots?new=1 rather than push, so Back goes to the previous page, not into the dialog again.
   const closeCreate = () => {
     setCreating(false);
     if (!wantsNew) return;
@@ -459,6 +549,25 @@ export default function AgentsPage({ route }) {
             </div>
           </section>
           {list.length > 1 && (
+            <div className="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
+              <div className="segmented" role="group" aria-label="Show agents">
+                {Object.entries(STATUSES).map(([key, label]) => (
+                  <button key={key} type="button" aria-pressed={status === key} onClick={() => setStatus(key)}>
+                    {label} <span className="tw-ml-1 tw-text-muted">{statusCounts[key]}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="segmented" role="group" aria-label="View">
+                <button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>
+                  <Icon name="list" size={14} /> Cards
+                </button>
+                <button type="button" aria-pressed={view === 'table'} onClick={() => setView('table')}>
+                  <Icon name="table" size={14} /> Table
+                </button>
+              </div>
+            </div>
+          )}
+          {list.length > 1 && (
             <div className="stListTools">
               <label className="inlineSearch">
                 <Icon name="search" size={15} />
@@ -500,9 +609,6 @@ export default function AgentsPage({ route }) {
                   />
                 </label>
               )}
-              <label className="stAttention">
-                <input type="checkbox" checked={attention} onChange={(event) => setAttention(event.target.checked)} /> Needs attention
-              </label>
             </div>
           )}
           {(unknown > 0 || (!everything && !wantAll && unread > 0) || health.pending > 0) && (
@@ -525,28 +631,43 @@ export default function AgentsPage({ route }) {
               {health.pending > 0 && <>Checking… {health.pending} left.</>}
             </p>
           )}
-          <div className="agentRowList agentTable">
-            <div className="stAgentHead" aria-hidden="true">
-              <span>Agent</span>
-              <span>Where it runs</span>
-              <span>Calls · 7 days</span>
-              <span>Latest version</span>
+          {view === 'cards' && (
+            <>
+              <AgentCards bots={visible} known={known} pinned={pinned} onPin={togglePin} menuItems={rowMenu} onMove={dropOnto} />
+              {visible.length === 0 && (
+                <div className="agentRowEmpty">{filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.'}</div>
+              )}
+            </>
+          )}
+          {view === 'table' && (
+            <div className="agentRowList agentTable">
+              <div className="stAgentHead" aria-hidden="true">
+                <span>Agent</span>
+                <span>Where it runs</span>
+                <span>Calls · 7 days</span>
+                <span>Latest version</span>
+              </div>
+              {ownOrder ? (
+                <SortableList
+                  ids={visible.map((bot) => bot.id)}
+                  nameOf={(id) => visible.find((bot) => bot.id === id)?.name || id}
+                  label="the agents"
+                  onMove={(from, to) => move(visible[from].id, visible[to].id)}
+                >
+                  {visible.map((bot) => (
+                    <SortableItem key={bot.id} id={bot.id}>
+                      {row(bot, true)}
+                    </SortableItem>
+                  ))}
+                </SortableList>
+              ) : (
+                visible.map((bot) => <React.Fragment key={bot.id}>{row(bot, false)}</React.Fragment>)
+              )}
+              {visible.length === 0 && (
+                <div className="agentRowEmpty">{filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.'}</div>
+              )}
             </div>
-            {visible.map((bot) => (
-              <BotRow
-                key={bot.id}
-                bot={bot}
-                menuItems={manage.menuItems}
-                health={known[bot.id]?.health}
-                tags={known[bot.id]?.tags}
-                activity={activity.byBot[bot.id]}
-                alerts={alertsByAgent[bot.id]}
-              />
-            ))}
-            {visible.length === 0 && (
-              <div className="agentRowEmpty">{filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.'}</div>
-            )}
-          </div>
+          )}
           {paged.pages > 1 && (
             <nav className="stPager" aria-label="Pages of agents">
               <button type="button" className="quietButton" disabled={paged.page <= 1} onClick={() => setPage(paged.page - 1)}>

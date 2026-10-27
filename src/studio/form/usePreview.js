@@ -3,10 +3,9 @@ import { api } from '../../api/client.ts';
 import { assemblePrompt } from './promptPreview.js';
 import { fromApproximate, normalizePrompt, normalizeResultPreview, promptRequest, withLocalOffset } from './serverPreview.js';
 
-// The server's previews: what the model would be told (`POST /preview/prompt`) and what one tool would send and show the model
-// (`POST /preview/result`). They call nothing and spend nothing, and read what is in the editor, saved or not. A change is sent after a
-// short pause (400 ms) so typing doesn't ask on every key. If the server can't be asked, the prompt falls back to the studio's own
-// APPROXIMATE copy and says so (`source`): the answer is never presented as exact when it is not.
+// The server's previews (`POST /preview/prompt`, `POST /preview/result`): they call and spend nothing and read the
+// editor's config, saved or not. Changes are sent after a 400 ms pause, not on every key. Without the server, the
+// prompt falls back to the studio's APPROXIMATE copy and `source` says so.
 const PAUSE_MS = 400;
 
 // source: 'server' (exact) | 'demo' (an imitation) | 'approximate' (built here, the server could not be asked)
@@ -45,8 +44,8 @@ export function usePromptPreview({ config, agentId, channel = '', state, nowLoca
   return result;
 }
 
-// What one tool would send and what the model would be shown of an answer. `response` is the sample answer (any JSON, even null);
-// leave it `undefined` to ask only about the request.
+// What one tool would send and what the model would be shown of an answer. `response` is the sample answer (any JSON,
+// even null); leave it `undefined` to ask only about the request.
 export function useResultPreview({ config, tool, args, response, state, channel = '', nowLocal = '', enabled = true }) {
   const [result, setResult] = useState({ data: null, loading: false, error: null, source: '', note: '' });
   const stateKey = JSON.stringify(state ?? null);

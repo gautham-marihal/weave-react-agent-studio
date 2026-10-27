@@ -18,8 +18,8 @@ import PlainDiff from './compare/PlainDiff.jsx';
 import Menu from './manage/Menu.tsx';
 import { isBookkeeping, plainChanges } from './compare/plainCompare.js';
 
-// The Versions page: the published versions, what changed between the draft and a version, putting a version back into
-// the draft, publishing (the panel AgentWorkspace hands in) and the way from the draft to callers (ShipFlow).
+// The Versions page: published versions, comparing a version with the draft, restoring one into the draft, publishing
+// (the panel AgentWorkspace hands in) and the way from draft to callers (ShipFlow).
 
 const OP_LABEL = { add: 'Added', remove: 'Removed', change: 'Changed' };
 const OP_MARK = { add: '+', remove: '−', change: '~' };
@@ -40,8 +40,8 @@ function Value({ value }) {
   );
 }
 
-// meta.version / status / created_at / updated_at (isBookkeeping) are set by the server when a version is published,
-// so they differ in every comparison with the draft. They are real but rarely what you came to see.
+// meta.version / status / created_at / updated_at (isBookkeeping) are set by the server on publish, so they differ in
+// every comparison with the draft. They are real but rarely what you came to see.
 
 const sideName = (v) => (String(v) === 'draft' ? 'the draft' : `version ${v}`);
 const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -200,11 +200,11 @@ function RestoreDialog({ botId, version, dirty, onClose, onDone }) {
   );
 }
 
-//   knowledgeRead: what the server has read of its documents (so the steps still to do match the menu's)
+//   knowledgeRead: what the server has read of the documents (so the steps left match the menu's)
 export default function VersionsTab({ botId, editor, refreshKey, summary, knowledgeRead = null }) {
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const list = useMemo(() => versions.data || [], [versions.data]);
-  // test runs say which exact configuration they tested, so a version can show whether IT passed (a read; nothing is run)
+  // test runs name the exact configuration they tested, so a version can show whether it passed (nothing is run)
   const runs = useAsync((signal) => api.listTestRuns(botId, 50, { signal }), [botId, refreshKey]);
   const headlines = useMemo(() => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline) : []), [runs.data]);
   const [from, setFrom] = useState('');
@@ -245,8 +245,8 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
       gate: { enabled: gateOn, savedAt: editor.meta?.savedAt || '' },
     });
   }, [editor.dirty, editor.parsed, editor.report, editor.meta?.savedAt, latestRun, latest.published, summary, gateOn]);
-  // the steps of building it that are still to do (the same list as the menu's progress card and the Overview), so this
-  // page never calls it ready alone
+  // the build steps still to do (the same list as the menu's progress card and Overview), so this page never alone
+  // calls it ready
   const buildLeft = useMemo(() => {
     const draft = editor.parsed.value;
     const plan = readinessSteps({
@@ -260,7 +260,7 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
     });
     return plan.steps.filter((step) => (step.state === 'todo' || step.state === 'blocked') && !['checks', 'tests', 'releases'].includes(step.page));
   }, [editor.parsed, editor.report, editor.meta?.savedAt, editor.dirty, summary, latestRun, gateOn, knowledgeRead]);
-  // a step's button: saving is done here (the draft's edits are this page's too), anything else is a page to go to
+  // a step's button: saving happens here (the draft's edits are this page's too); anything else opens a page
   const goTo = (action) => {
     if (action.save) {
       editor.save();
@@ -333,8 +333,8 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
                   </span>
                   <span role="cell">
                     {(() => {
-                      // the newest version's scenarios are known (its configuration is read for the steps above), so a
-                      // run that covered only some of them says so
+                      // the newest version's scenarios are known (read for the steps above), so a run that covered only
+                      // some of them says so
                       const own = latest.published?.version === item.version ? latest.published.config?.tests : null;
                       const t = testStatusOf(item, headlines, { scenarioCount: Array.isArray(own) ? own.length : 0 });
                       return (

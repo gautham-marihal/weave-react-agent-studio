@@ -5,10 +5,9 @@ import { sampleOf, spreadPick } from './speedModel.ts';
 import type { Sample } from './speedModel.ts';
 import { periodOf } from '../format.js';
 
-// The calls the Speed page rests on, and only reads: each agent's calls in the period (to count them) and the records
-// of PER_AGENT of its finished ones, spread over the days of the period (their timings). Monitoring and Home read the
-// same ones (useMonitoring), so the pages say the same. Read through the shared cache: the page opened again shows its
-// last reading at once and refreshes it; a call's records are read once for every page.
+// The calls the Speed page rests on, read-only: each agent's calls in the period (to count them) and the records of
+// PER_AGENT finished ones spread over the period (for timings). Monitoring and Home read the same, so the pages agree.
+// Shared cache: reopening shows the last reading at once while refreshing, and a call's records are read once.
 
 export const PER_AGENT = 40;
 export const MAX_PAGES = 5; // up to 500 calls of each agent in the period: past that, the numbers rest on the newest
@@ -49,9 +48,9 @@ async function readSpeed(ids: string[], days: number, perAgent: number, signal: 
   return { errors, samples, totals, failed, at: new Date().toISOString() };
 }
 
-// perAgent: how many of each agent's calls are read for their timings.
-//   { loading (reading, the first time or again), refreshing (reading again, with
-//   the last reading still shown), errors, samples, totals, failed, at, refresh }
+// The Speed data for some agents: { loading (any read), refreshing (a re-read, old reading still shown), errors,
+// samples, totals, failed, at, refresh }.
+//   perAgent: how many of each agent's calls are read for their timings
 export function useSpeedData(bots: { id: string }[], { days = 14, perAgent = PER_AGENT }: { days?: number; perAgent?: number } = {}) {
   const key = bots.map((b) => b.id).join(',');
   const query = useQuery({

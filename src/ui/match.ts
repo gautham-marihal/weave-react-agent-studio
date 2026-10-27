@@ -1,7 +1,5 @@
-// How well what was typed in the search matches a result, from 0 (not at all) to 1, forgiving the way people type: the
-// words in any order, the start of a word ("dep" finds Deploy), letters left out ("spd" finds Speed), and a slip in a
-// longer word ("scnearios" finds Scenarios). Every word typed has to be found somewhere; the title counts more than the
-// other words (a description, the words people use for it).
+// How well a search query matches a result, 0 to 1, forgiving how people type: any word order, word starts ("dep"),
+// dropped letters ("spd" finds Speed) and slips ("scnearios"). Every typed word must be found; the title counts most.
 
 const plain = (text: string) =>
   text
@@ -13,7 +11,7 @@ const plain = (text: string) =>
 
 const wordsOf = (text: string) => plain(text).split(' ').filter(Boolean);
 
-// the fewest single-letter changes (a letter added, left out, changed, or two swapped) between two words, stopping once it is over `most`
+// the fewest single-letter edits (add, drop, change, swap) between two words, stopping once over `most`
 function slips(a: string, b: string, most: number): number {
   if (Math.abs(a.length - b.length) > most) return most + 1;
   let before = Array.from({ length: b.length + 1 }, (_, j) => j);

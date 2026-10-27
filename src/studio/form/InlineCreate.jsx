@@ -3,8 +3,8 @@ import { useConfigSelect, useForm } from './ctx.js';
 import { CREATABLE, createAndPoint, createProblems } from './inlineCreate.js';
 import Select from '../../ui/Select.tsx';
 
-// "＋ New message / state variable / HTTP connection" under a field that points at one: asks the few things needed, makes
-// it, and points the field at it, all as one change (with Undo).
+// "＋ New message / state variable / HTTP connection" under a field that points at one: asks the few things needed,
+// makes it, and points the field at it, all as one change (with Undo).
 export default function InlineCreate({ collection, target, defaultKind, onClose }) {
   const ctx = useForm();
   const spec = CREATABLE[collection];

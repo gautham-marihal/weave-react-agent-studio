@@ -4,9 +4,8 @@ import { keys } from '../../api/queryClient.ts';
 
 const AT_A_TIME = 4;
 
-// How many calls are going on now across the agents, for a number on Home (the Live page follows each call; this only
-// counts). It asks each agent for its calls in progress, a few agents at a time, again every `everyMs` while the tab is
-// on screen, and at once when the tab comes back. It only reads.
+// How many calls are in progress across the agents, for Home (read-only; the Live page follows each call).
+// Re-asks every `everyMs` while the tab is on screen, and at once when it comes back.
 //   { count, loading, errors }
 async function countLive(ids: string[], signal: AbortSignal): Promise<{ count: number; errors: number }> {
   let count = 0;

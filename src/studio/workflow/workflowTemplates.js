@@ -3,9 +3,8 @@ import { setAt } from '../form/inlineCreate.js';
 import { addAgentTransfer, addEnd, addSubagent, isBuiltin } from './workflowOps.js';
 import { buildWorkflow } from './workflowModel.js';
 
-// Ready-made pieces of a workflow, added to the draft in one go (and taken away again with Undo): each is made of the
-// same edits the ＋ menu makes, so the result is an ordinary draft. A template that would add nothing says why it can't
-// be used.
+// Ready-made workflow pieces, added in one go (and undone with Undo). Each uses the same edits as the ＋ menu, so the
+// result is an ordinary draft; a template that would add nothing says why.
 //   { id, title, description, unavailable(config) -> '' | why, apply(config) -> { config, select, note } }
 const list = (v) => (Array.isArray(v) ? v : []);
 const agentsOf = (config) => list(config?.agents?.items).filter((a) => isObj(a) && typeof a.id === 'string' && a.id);
@@ -17,15 +16,14 @@ const canEnd = (config, agent) =>
       'end_call',
     ),
   );
-// any way an agent already has to pass the caller back: a hand-over, the built-in "back to the start" tool, a step as
-// it takes over, a tool's own rules
+// whether an agent can already pass the caller back (a hand-over, the "back to the start" tool, a step, a tool's rules)
 const goesBack = (config, from, to) =>
   buildWorkflow(config).edges.some((e) => e.from === from && e.to === to && ['handoff', 'return', 'tool'].includes(e.kind));
 
 // a subagent the first agent passes callers to, told what it does
 function specialist(config, from, { name, when, role }) {
   const made = addSubagent(config, from, { name, when });
-  // its place in the list as it is (an item that isn't an agent still counts)
+  // its index in the raw list (an item that isn't an agent still counts)
   const i = list(made.config.agents.items).findIndex((a) => isObj(a) && a.id === made.id);
   return { config: setAt(made.config, ['agents', 'items', i, 'instructions', 'role'], role), id: made.id };
 }

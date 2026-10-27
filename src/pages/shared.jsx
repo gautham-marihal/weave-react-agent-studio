@@ -11,9 +11,8 @@ import { afterMenu, backTo, keepEscape } from '../ui/layer.ts';
 import Tip from '../ui/Tip.tsx';
 import { SidebarFolded } from '../ui/sidebarFolded.ts';
 
-// What the workspace pages share: the logo, the profile menu and account dialog, the help and shortcuts dialog,
-// the "?" help tips, the sidebar's links, Home's cards (Metric, Activity, QuickAction), and the dialogs that
-// create and rename a workspace.
+// What the workspace pages share: the logo, profile menu and account dialog, help and shortcuts, "?" tips,
+// sidebar links, Home's cards (Metric, Activity, QuickAction), and the create/rename workspace dialogs.
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
@@ -51,12 +50,11 @@ export function openInfoDialog(detail) {
 
 export const openHelpDialog = () => openInfoDialog({ kind: 'help' });
 
-// The help (and "not available yet") dialog, a Radix Dialog: the keyboard goes into it and stays there, Escape or a
-// click outside closes it (and nothing under it: a panel it was opened from stays open), and closing it gives the
-// keyboard back to what opened it.
+// The help (and "not available yet") Radix Dialog: it traps focus, Escape or an outside click closes only it (a panel
+// it was opened from stays open), and closing gives focus back to what opened it.
 export function InfoDialogHost() {
   const [info, setInfo] = useState(null);
-  // what had the keyboard when it was opened, to give it back to
+  // what had focus when it opened, to give it back to
   const opener = useRef(null);
   useEffect(() => {
     const onInfo = (event) => {
@@ -78,7 +76,7 @@ export function InfoDialogHost() {
             aria-modal="true"
             {...(!isHelp && info.body ? {} : { 'aria-describedby': undefined })}
             onKeyDown={(event) => {
-              // its keys stay in it: a dialog or panel under it listens to the page, and must not act on them
+              // Tab and Escape stay here: a dialog or panel under it listens to the page and must not act on them
               if (event.key === 'Tab' || event.key === 'Escape') event.stopPropagation();
             }}
             onEscapeKeyDown={(event) => event.stopPropagation()}
@@ -204,29 +202,33 @@ export function helpText(label) {
   return HELP_COPY[label] || `More information about ${label.toLowerCase()}.`;
 }
 
-export function Logo() {
+// The mark (public/weave-studio.png) and name. In the workspace a light on the mark shows whether the API answers
+// (`health`: describeHealth's { tone, title, note }): green, amber if slow, red if down, grey while asking or in demo.
+export function Logo({ health = null }) {
   return (
-    <div className="logo" aria-label="Weave">
+    <div className="logo">
       <span className="logoMark">
-        <span />
+        <img src={`${import.meta.env.BASE_URL}weave-studio.png`} alt="" />
+        {health && (
+          <Tip label={health.note ? `${health.title}. ${health.note}` : health.title} side="right">
+            <span className={`logoLight ${health.tone}`} role="img" aria-label={`API: ${health.title}`} />
+          </Tip>
+        )}
       </span>
-      <span className="logoWord">weave</span>
+      <span className="logoWord">Weave Studio</span>
     </div>
   );
 }
 
-// The person's menu (Radix DropdownMenu): who is signed in, their account, signing out. In the sidebar it opens upward
-// from the name; as the small avatar (the top bar, a narrow sidebar) it opens below it. Radix places it on the side
-// with room and gives it the keyboard: the arrows move between the items, Escape closes it and puts the keyboard back
-// on the button. An item opens its dialog once the menu has given the keyboard back, so closing the dialog returns it
-// there.
+// The person's menu (Radix DropdownMenu): who is signed in, their account, sign out. Opens up from the sidebar name,
+// down from the small avatar. An item opens its dialog after the menu returns focus, so the dialog returns it there.
 export function ProfileMenu({ profile, initials, compact = false, onAccountOpen, onSignOut }) {
   const displayName = profile?.fullName || 'Workspace user';
   const role = profile?.role || 'Workspace admin';
   return (
     <div className={`profileMenuRoot ${compact ? 'compact' : ''}`}>
       <DropdownMenu.Root modal={false}>
-        {/* the small avatar shows only initials: its tip names the person (the sidebar's button shows the name itself) */}
+        {/* the small avatar shows only initials, so its tip names the person */}
         <Tip label={compact ? displayName : null} hoverOnly>
           <DropdownMenu.Trigger asChild>
             <button className={compact ? 'profileDot profileTrigger' : 'userMenu'} type="button">
@@ -497,8 +499,8 @@ export function WorkspaceRenameModal({ value, onChange, onClose, onRename }) {
   );
 }
 
-// One status for the agent. Each status implies where the agent runs, so the saved
-// status and environment always agree. Archived keeps whatever environment it had.
+// Each status implies where the agent runs, so saved status and environment always agree.
+// Archived keeps whatever environment it had.
 
 // Lifecycle status: a tinted pill with the status name, so it never relies on colour alone.
 export function StatusBadge({ agent, size = 'md' }) {
@@ -511,8 +513,8 @@ export function StatusBadge({ agent, size = 'md' }) {
   );
 }
 
-// An icon given by name is drawn from the studio's icon set; any other text (an old saved glyph, an initial) is shown as it is.
-// the text symbols older activity entries were saved with (they stay in the browser's log), drawn as the icon each stood for
+// An icon name is drawn from the studio's icon set; any other text (an old saved glyph, an initial) is shown as it is.
+// Symbols older activity entries were saved with (still in the browser's log), drawn as the icon each stood for.
 const OLD_SYMBOLS = { '⇢': 'arrowRight', '#': 'dial', '⇄': 'plug', '☎': 'phone' };
 export function Glyph({ icon, size = 18 }) {
   const name = OLD_SYMBOLS[icon] || icon;
@@ -523,7 +525,13 @@ export function NavItem({ item, active, onClick }) {
   const folded = useContext(SidebarFolded);
   return (
     <Tip label={folded ? item.label : null} side="right">
-      <button type="button" className={`sideLink ${active ? 'selected' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
+      <button
+        type="button"
+        className={`sideLink ${active ? 'selected' : ''}`}
+        onClick={onClick}
+        aria-current={active ? 'page' : undefined}
+        aria-label={folded ? item.label : undefined}
+      >
         <i>
           <Glyph icon={item.icon} />
         </i>

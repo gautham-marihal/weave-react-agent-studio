@@ -21,13 +21,12 @@ import { useDraftEditor } from './useDraftEditor.js';
 import AgentLayout from './agent/AgentLayout.jsx';
 import Icon from '../ui/Icon.jsx';
 
-// One agent, open: reads the agent and its draft (useDraftEditor), holds what lives across its pages (the test
-// conversation, the publish panel, changes another page asked for, the agent's menu actions) and hands it all to
-// AgentLayout.jsx, which draws the pages.
+// One agent, open: loads the agent and its draft, and holds what lives across its pages (test conversation, publish
+// panel, changes asked for by other pages, menu actions). AgentLayout.jsx draws the pages.
 
-const PlainIssues = lazy(() => import('./validation/PlainIssues.jsx')); // problems named by their labels, not their paths
+const PlainIssues = lazy(() => import('./validation/PlainIssues.jsx')); // problems named by label, not path
 
-// Publishing is a step of the Release stage, so it is drawn on the Versions page, in place, with the release checklist beside the choice of version.
+// Publishing belongs to the Release stage, so this panel sits on the Versions page beside the release checklist.
 function PublishFrame({ eyebrow, title, subtitle, footer, children }) {
   return (
     <section className="stCard stPublishPanel" aria-label={title}>
@@ -42,8 +41,8 @@ function PublishFrame({ eyebrow, title, subtitle, footer, children }) {
   );
 }
 
-//   done: what was just published, when the owner keeps it (the agent is read again after a publish, which draws this panel anew)
-//   once published it offers to put the version live in Development from here, beside choosing where; onDeployed() after it is
+//   done: what was just published; the owner keeps it because a publish re-reads the agent and redraws this panel
+//   onDeployed(): after the new version is put live in Development from this panel
 function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, done = null, onDeployed }) {
   const gate = useGateStatus(botId, editor);
   const [anyway, setAnyway] = useState(false);
@@ -57,7 +56,7 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, don
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [allWarnings, setAllWarnings] = useState(false);
-  const [deploy, setDeploy] = useState({ phase: 'idle', error: null }); // putting it live from here: idle | working | done
+  const [deploy, setDeploy] = useState({ phase: 'idle', error: null }); // deploying from here: idle | working | done
   const blocked = !!editor.parsed.error || !editor.isObject || !editor.report || !editor.report.valid;
   const picked =
     options.find((option) => option.value === choice && !option.disabled) || options.find((option) => option.value === defaultChoice) || options[0];
@@ -305,7 +304,7 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
   // A finished test conversation is handed to the page that keeps the Sessions list.
   const nameRef = useRef(botId);
   const handleFinished = ({ info, messages, startedAt, endedAt, tools, state, agent }) => {
-    // In demo mode a simulated conversation is kept as a call, so the Calls page and the trace have it (a real one is recorded by the runtime).
+    // Demo mode keeps a simulated conversation as a call for the Calls page and trace (the runtime records real ones).
     if (isDemoMode() && info?.simulated) {
       import('../demo/demoApi.js').then(({ getDemoApi }) =>
         getDemoApi().recordConversation(botId, {
@@ -338,7 +337,7 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
     });
   };
   const realSession = useLiveSession({ onFinished: handleFinished });
-  // What the simulation runs on: the editor's current contents for the draft (unsaved edits included), else that version's own configuration.
+  // The simulation runs on the draft's current contents (unsaved edits included), else that version's config.
   const configFor = async (ref) => {
     if (ref === 'draft') return editorRef.current.parsed.value;
     const version = ref === 'latest' ? bot.data?.latest_version : bot.data?.deployed?.[ref] || ref;
@@ -347,7 +346,7 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
   const configForRef = useRef(configFor);
   configForRef.current = configFor;
   const simSession = useSimulatedSession({ onFinished: handleFinished, getConfig: (ref) => configForRef.current(ref) });
-  // A conversation is with the real agent or a simulated one; demo mode has no real agent. The choice can't change mid-conversation.
+  // Real or simulated agent (demo mode has no real one); the choice can't change mid-conversation.
   const modeLocked = isDemoMode();
   const [sessionMode, setSessionModeState] = useState(modeLocked ? 'simulated' : 'real');
   const setSessionMode = (next) => {
@@ -357,8 +356,7 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
   const live = [realSession.status, simSession.status].some((status) => ['starting', 'connecting', 'waiting', 'live'].includes(status));
   const publishOpen = tab === 'versions' && params?.publish === '1';
   const closePublish = () => navigate(routeHref(botId, 'versions'), { guard: false });
-  // the publish panel (on the Versions page): what was just published, kept here while the agent is read again (which
-  // draws the panel anew); gone once it closes
+  // What was just published, kept here while the agent is re-read (which redraws the publish panel); cleared on close.
   const [justPublished, setJustPublished] = useState(null);
   useEffect(() => {
     if (!publishOpen) setJustPublished(null);
@@ -381,7 +379,7 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
       setLeaveGuard(null);
       return undefined;
     }
-    // what leaving would lose, in a sentence (the router asks in a dialog)
+    // what leaving would lose; the router shows this in its leave dialog
     setLeaveGuard(() =>
       editor.dirty && live
         ? 'Your unsaved edits will be lost, and the test conversation that is still running will end.'
@@ -401,7 +399,7 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
     if (editor.savedTick) refreshBots();
   }, [editor.savedTick]);
 
-  // the agent as the list of agents already knows it, until its own details arrive (so the bar doesn't show its id, or "Draft", while they load)
+  // The list's copy of the agent until its details load, so the bar doesn't flash its id or "Draft".
   const listed = (useBots().all || []).find((b) => b.id === botId) || null;
   const summary = bot.data || listed;
   const name = editor.savedName || summary?.name || botId;

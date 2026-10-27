@@ -1,6 +1,6 @@
-// A call's records read as a conversation: what the caller said turn by turn, what the agent answered to each, which
-// tools ran, who took over, how it ended. The same reading is used for a real call, a Test conversation and a scenario
-// run (they all write the same records), so a replay of one can be laid beside another. Pure: no network, no DOM.
+// A call's records read as a conversation: the caller's turns, the agent's answers, tools, hand-overs, how it ended.
+// Real calls, Test conversations and scenario runs write the same records, so a replay can sit beside any of them.
+// Pure: no network, no DOM.
 
 import { fixMojibake } from '../trace/records.js';
 
@@ -83,7 +83,7 @@ export function readCall(records) {
   return facts;
 }
 
-// A conversation the runner or the simulation already gives as { role, text } lines and tool records (no raw records): the same facts.
+// The same facts from { role, text } lines and tool records, as the runner or simulation gives them (no raw records).
 export function readTranscript({ transcript = [], tools = [], finalAgent = '', finalState = {}, ended = false, channelId = '' } = {}) {
   const facts = {
     channelId,

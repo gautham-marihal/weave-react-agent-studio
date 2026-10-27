@@ -172,3 +172,8 @@
 .dashContent .wsPulse {
   margin: 4px 0 30px;
 }
+
+/* Home's note about the demo's sample agents, spaced like the sections around it */
+.homeSamples {
+  margin-bottom: 16px;
+}

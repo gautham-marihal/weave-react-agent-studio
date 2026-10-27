@@ -5,17 +5,17 @@ import { matchScore, SHOWN } from '../../ui/match.ts';
 import { isBuiltin } from './workflowOps.js';
 import { toolName, toolTitle } from './workflowModel.js';
 
-// "Add a step after <subagent>", in the side panel: every step there is, in groups (subagents, your other agents, a
-// person's number, what it does as it takes over, tools, ending the call), with a search over all of them. Most are
-// added at once; a new subagent and a phone number ask one small thing first, in the same panel, with a way back.
+// The "Add a step after <subagent>" side panel: every step, grouped (subagents, other agents, a person's number, steps
+// as it takes over, tools, ending), with a search. Most add at once; a new subagent or a number asks one thing first.
 export const PHONE_PATTERN = /^(\+?\d[\d\s().-]{2,}|sips?:\S+)$/i;
 
-// workspace: the other agents of the workspace and their numbers (useWorkspaceAgents); botId: this agent, which is not offered
+//   workspace: the workspace's other agents and their numbers (useWorkspaceAgents)
+//   botId: this agent, which is not offered
 export default function AddMenu({ agentId, flow, config, onPick, onClose, workspace = null, botId = '' }) {
   const [view, setView] = useState('menu');
   const [query, setQuery] = useState('');
   const [number, setNumber] = useState('');
-  // a new subagent's name and when it takes over, asked as it is added (rather than a "New subagent" with stand-in words to find and change later)
+  // a new subagent's name and trigger are asked up front, so there are no stand-in words to find and change later
   const [helper, setHelper] = useState({ name: '', when: '' });
   const [tried, setTried] = useState(false);
   const root = useRef(null);
@@ -29,11 +29,11 @@ export default function AddMenu({ agentId, flow, config, onPick, onClose, worksp
   );
   const canEnd = !flow.nodes.some((n) => n.agent === agentId && n.role === 'exit' && n.type === 'end');
   const goesBack = (config?.tools || []).some((t) => isBuiltin(t, 'return_to_entry') && offered.has(t.id));
-  // the other agents of the workspace (not this one); one with no number can't be reached yet
+  // the workspace's other agents; one with no number can't be reached yet
   const agents = (workspace?.agents || []).filter((a) => a.id !== botId);
   const reaches = new Set(flow.nodes.filter((n) => n.agent === agentId && n.type === 'agentTransfer').map((n) => n.bot));
 
-  // every step, in its group: { id, icon, label, hint, off (why it can't be added), go () }
+  // every step, by group: { id, icon, label, hint, off (can't be added), go() }
   const groups = [
     {
       title: 'Subagents',

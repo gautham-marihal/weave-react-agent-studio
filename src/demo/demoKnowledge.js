@@ -1,7 +1,6 @@
-// Knowledge, IMITATED for demo mode: uploaded files kept in this browser, an index "built" over a few steps by cutting the files into
-// passages, and a search that scores passages by the words they share with the question. The real API embeds the passages with a model and
-// searches by meaning; this has no model, so its scores are made up from word overlap and say so (`note`). Same shapes as the real API.
-// Pure: no network, no DOM, no clock of its own.
+// Knowledge IMITATED for demo mode: files kept in this browser, an index "built" in steps, and a word-overlap search.
+// The real API searches by meaning with a model; with none here, the scores are made up and `note` says so.
+// Same shapes as the real API. Pure: no network, DOM or clock of its own.
 
 import { isObj } from '../studio/form/engine.js';
 
@@ -78,7 +77,7 @@ function usedBy(config, baseId) {
   return { agents, tools };
 }
 
-// Brings finished builds up to date: when a build's time is up, the index is made from the files and the job is marked done (or failed).
+// Finishes builds whose time is up: makes the index from the files and marks the job done (or failed).
 // Returns true when something changed, so the caller saves.
 export function settle(bot, nowMs) {
   const k = state(bot);
@@ -220,7 +219,7 @@ export function upload(bot, name, content, size, nowIso) {
   return { name, size, modified: nowIso, used_by: [] };
 }
 
-// configs: the draft's, and those of the versions deployed (a file a running version reads is asked about too, not only one the draft reads)
+// configs: the draft's and the deployed versions' (a file a running version reads counts too, not only the draft's)
 export function removeFile(bot, configs, name, force) {
   const k = state(bot);
   if (!k.files.some((f) => f.name === name)) return { status: 404, detail: `There is no file '${name}'.` };

@@ -84,7 +84,7 @@ function Bubble({ message, botName }) {
 
 export default function TestTab({ botId, name, summary, editor, session, mode = 'real', modeLocked = false, onMode }) {
   const [ref, setRef] = useState('draft');
-  const [channelPick, setChannelPick] = useState(''); // which web channel to try, when the agent offers chat and voice side by side
+  const [channelPick, setChannelPick] = useState(''); // web channel to try when the agent offers both chat and voice
   const [draftText, setDraftText] = useState('');
   const [logOpen, setLogOpen] = useState(false);
   const [used, setUsed] = useState(null); // the models this conversation started with
@@ -94,11 +94,10 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const fileRef = useRef(null);
   const { status, info, messages, events, error, form, media, agentHint } = session;
   const trace = useTrace({ botId, session });
-  // the scenario just made from a conversation: { id, first: that conversation's first line }, so it belongs to that
-  // conversation and not the next one
+  // the scenario just made from a conversation: { id, first: its first line }, so it belongs to that conversation only
   const [madeFrom, setMadeFrom] = useState(null);
   const saved = madeFrom && messages.length > 0 && madeFrom.first === messages[0].id ? madeFrom.id : null;
-  const [pictureNote, setPictureNote] = useState(''); // why a picture was not sent, in words, next to where it was chosen
+  const [pictureNote, setPictureNote] = useState(''); // why a picture wasn't sent, shown where it was chosen
 
   const running = ['starting', 'connecting', 'waiting', 'live'].includes(status);
   const connected = status === 'waiting' || status === 'live';
@@ -122,13 +121,13 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const imageCfg = ref === 'draft' ? channelCfg?.inputs?.image : null;
   const unsupported = editor.report?.unsupported || [];
 
-  // The models a test runs with. A draft test runs the saved draft (edits not saved yet are not part of it); a test of
-  // a published version or an environment runs that version, whatever the draft says now.
+  // The models a test runs with: a draft test runs the saved draft (not unsaved edits); a published version or an
+  // environment runs that version, whatever the draft says now.
   const version = ref === 'draft' ? null : ref === 'latest' ? summary?.latest_version : summary?.deployed?.[ref];
   const versionLoad = useAsync((signal) => (version ? api.getVersion(botId, version, { signal }) : Promise.resolve(null)), [botId, version]);
   const testConfig = ref === 'draft' ? editor.savedConfig || config : versionLoad.data?.config;
   const reach = testability(testConfig);
-  // every enabled web channel of what is being tried: a button for each (the server's own list comes back with the session)
+  // every enabled web channel being tried gets a button (the server's own list comes back with the session)
   const webChannels = useMemo(() => browserChannels(testConfig), [testConfig]);
   const channelId = webChannels.some((c) => c.id === channelPick) ? channelPick : webChannels[0]?.id || '';
   const simulated = mode === 'simulated';
@@ -149,8 +148,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     if (media.camera) attachPreview();
   }, [media.camera, attachPreview]);
 
-  // Keep the newest message in view, unless you scrolled up to read.
-  // (the list is scrolled itself: scrollIntoView would also scroll the whole page to the end of an empty chat)
+  // Keep the newest message in view, unless you scrolled up to read. The list scrolls itself: scrollIntoView would
+  // also scroll the whole page to the end of an empty chat.
   useEffect(() => {
     const el = listRef.current;
     if (stickRef.current && el) el.scrollTop = el.scrollHeight;
@@ -183,7 +182,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     await session.sendImage(file, imageCfg.topic || 'image-upload');
   };
 
-  // A finished conversation becomes a starting scenario (the caller's turns, the tools used, the final state) for the author to edit.
+  // A finished conversation becomes a starting scenario to edit (the caller's turns, the tools used, the final state).
   const canSave = messages.some((m) => m.role === 'user') && !running && !!config && editor.isObject && !editor.parsed.error;
   const saveAsScenario = () => {
     const made = scenarioFromConversation(config, {

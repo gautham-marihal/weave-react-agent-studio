@@ -1,9 +1,8 @@
-// Reads what the API answers about test runs (`GET /tests`, `POST /tests/run`, `GET /tests/runs/{id}`) into the shapes the screens use, and
-// answers the questions the screens ask of them: how is a run going, what failed and why, what to do about a request nothing answered,
-// and "did this exact version pass?".
+// Reads the API's test-run answers (`GET /tests`, `POST /tests/run`, `GET /tests/runs/{id}`) into screen shapes, and
+// answers what the screens ask: how a run is going, what failed and why, what to do, and "did this version pass?".
 //
-// The reading is deliberately tolerant. The API describes a run (FRONTEND_GUIDE 10.4) but its answers have more in them than the guide
-// lists and may gain more, so a missing or unfamiliar field is left out, never an error. Pure: no network, no DOM.
+// Deliberately tolerant: answers may hold more than FRONTEND_GUIDE 10.4 lists, so missing or unfamiliar fields are left
+// out, never an error. Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
 
@@ -15,14 +14,14 @@ export const isFinished = (status) => status !== 'running' && status !== undefin
 
 const text = (value) => (typeof value === 'string' ? value : value === undefined || value === null ? '' : JSON.stringify(value));
 
-// One check of a scenario: { kind, expect, passed: true | false | null, detail }. `passed: null` means "could not be checked here".
+// One check: { kind, expect, passed: true | false | null, detail }; `passed: null` means "couldn't be checked here".
 export function normalizeCheck(raw) {
   const check = isObj(raw) ? raw : {};
   const passed = check.passed === true ? true : check.passed === false ? false : null;
   return { kind: text(check.kind), expect: check.expect, passed, detail: text(check.detail) };
 }
 
-// The request the bot made that no mock answered: { method, path, ... } (the API may send a string such as "GET /orders/1").
+// A request no mock answered: { method, path, ... } (the API may send a string such as "GET /orders/1").
 export function normalizeRequest(raw) {
   if (typeof raw === 'string') {
     const m = /^([A-Z]+)\s+(.*)$/.exec(raw.trim());
@@ -37,9 +36,8 @@ export function normalizeResult(raw, scenario) {
   const r = isObj(raw) ? raw : {};
   const checks = list(r.checks).map(normalizeCheck);
   const status = STATUSES.includes(r.status) ? r.status : checks.some((c) => c.passed === false) ? 'failed' : checks.length ? 'passed' : 'skipped';
-  // Scripted or live. In order: what the result says; what the scenario's row in the server's list says (that row has
-  // `mode` but not the script itself); the script, when the scenario is the one from the draft; else live, which is the
-  // cautious reading because it is the one that costs money.
+  // Scripted or live, in order: the result's own word; the server's list row (it has `mode` but not the script); the
+  // draft's script; else live, the cautious reading because it costs money.
   const known = (value) => (value === 'live' || value === 'scripted' ? value : '');
   const scripted = Array.isArray(scenario?.model_script) && scenario.model_script.length > 0;
   const mode = known(r.mode) || known(scenario?.mode) || (scripted ? 'scripted' : scenario ? 'live' : r.live === true ? 'live' : 'scripted');
@@ -116,7 +114,7 @@ export function normalizeHeadline(raw) {
   };
 }
 
-// `GET /tests`: each scenario with how it did the last time it was run. The result may sit under `last`, `last_result` or `result`.
+// `GET /tests`: each scenario with its last result, which may sit under `last`, `last_result` or `result`.
 export function normalizeScenarioList(raw) {
   const items = list(raw?.scenarios);
   return {
@@ -135,13 +133,12 @@ export function normalizeScenarioList(raw) {
   };
 }
 
-// ---- what the screens ask ------------------------------------------------------------------------------------------------------------
+// ---- what the screens ask
 export const failedChecks = (result) => list(result?.checks).filter((c) => c.passed === false);
 export const unverifiedChecks = (result) => list(result?.checks).filter((c) => c.passed === null);
 
-// What a run cost in model use, when the server says: the tokens of the entries of a result's `usage`, or of the
-// `call_ended` record in its events (the same records a call log holds). Null when nothing was reported, so a scripted
-// run, which uses no model, shows nothing. Never guessed.
+// What a run cost in model use, when the server says: tokens from a result's `usage` or its `call_ended` record. Null
+// when nothing was reported (so a scripted run, which uses no model, shows nothing). Never guessed.
 export function tokensOf(result) {
   const entries = [
     ...list(result?.usage),
@@ -198,15 +195,14 @@ export function nextSteps(result, scenario) {
   return steps;
 }
 
-// A run that covered only some of the scenarios (one was picked, or more were written since): it can't say that all of them pass. A run that does not
-// say how many it covered is not called partial.
+// A run that covered only some scenarios (one was picked, or more were written since) can't say all of them pass. A
+// run that doesn't say how many it covered is not called partial.
 export const coveredOnlySome = (run, scenarioCount) => scenarioCount > 0 && run?.total > 0 && run.total < scenarioCount;
 // "The latest run covered only 1 of the 4 scenarios."
 export const coveredOnlyText = (run, scenarioCount) => `The latest run covered only ${run.total} of the ${scenarioCount} scenarios.`;
 
-// ---- "this exact version passed" ----------------------------------------------------------------------------------------------------
-// A run carries the checksum of the config it tested; a published version carries the checksum of its own config. When they are equal
-// the run tested that exact version.
+// ---- "this exact version passed"
+// A run carries the checksum of the config it tested, and a published version its own: equal means that exact version.
 export function testStatusOf(version, runs, { scenarioCount = 0 } = {}) {
   const checksum = version?.checksum;
   if (!checksum) return { state: 'none', text: 'Not run' };
@@ -214,9 +210,8 @@ export function testStatusOf(version, runs, { scenarioCount = 0 } = {}) {
   if (!matching.length) return { state: 'none', text: 'Not run' };
   const latest = matching[0]; // newest first
   if (latest.status === 'passed') {
-    // A run that passed may have covered only some of the scenarios (one was picked, or the live ones were left out).
-    // "Passed" says all of them ran, so a run that left scripted ones out is partial. Live scenarios that were not
-    // included are the usual, cost-saving case and are said, not hidden.
+    // A passing run may have covered only some scenarios: leaving scripted ones out makes it partial. Leaving live
+    // ones out is the usual cost-saving case, and is said, not hidden.
     const ran = latest.passed + latest.failed + latest.errors;
     if (coveredOnlySome(latest, scenarioCount)) return { state: 'partial', text: `${latest.passed} of ${scenarioCount} ran`, run: latest };
     if (latest.skipped > 0) return { state: 'passed', text: `Passed, ${latest.skipped} not run`, run: latest, ran };
@@ -226,9 +221,8 @@ export function testStatusOf(version, runs, { scenarioCount = 0 } = {}) {
   return { state: 'failed', text: latest.status === 'error' ? 'Broke' : 'Failed', run: latest };
 }
 
-// How the scenarios stand, from each one's own latest result (the rows of GET /tests), not from the headline of the
-// newest run, which may have covered only some of them. `notRun`: no result yet, or skipped; split into live ones (they
-// cost money, so they are left out unless asked for) and scripted ones.
+// How the scenarios stand from each one's latest result (GET /tests rows), not the newest run's headline, which may
+// cover only some. `notRun` (no result, or skipped) splits into live (costly, left out unless asked) and scripted.
 export function summariseScenarios(items) {
   const out = { total: 0, passed: 0, failed: 0, notRun: 0, liveNotRun: 0, scriptedNotRun: 0 };
   list(items).forEach((item) => {

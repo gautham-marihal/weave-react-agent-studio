@@ -1,9 +1,8 @@
-// Who can work in a workspace, and on which agents. A person is given a ROLE (what they may do) and a SCOPE (where):
-// the whole workspace, which includes the agents made later, or only the agents someone chose. The rules live here, in
-// words a person can read, so the same ones can later be enforced by the server.
+// Who can work in a workspace, and on which agents: a ROLE (what they may do) and a SCOPE (the whole workspace, agents
+// made later included, or chosen agents). The rules stay readable so the server can enforce the same ones later.
 // Pure: no React, no DOM, no network.
 
-// What each role may do. `workspaceOnly`: a role that runs the workspace (the people in it), so it cannot be limited to some agents.
+// What each role may do. `workspaceOnly`: runs the workspace (its people), so it can't be limited to some agents.
 export const ROLES = [
   {
     id: 'owner',
@@ -106,8 +105,8 @@ export function makeMember({ email, name = '', role = 'viewer', scope = WHOLE_WO
   };
 }
 
-// What stops these people being invited: someone who is already in, or an address that is not one. -> { ok, problems:
-// [string], add: [email], already: [email] }
+// What stops these people being invited: someone already in, or a bad address.
+// -> { ok, problems: [string], add: [email], already: [email] }
 export function checkInvite({ text, members }) {
   const { emails, invalid } = parseEmails(text);
   const have = new Set((members || []).map((m) => m.email));
@@ -239,7 +238,7 @@ export function ownerFrom(profile, now = Date.now()) {
     at: now,
   };
 }
-// A few people for the demo, so the page can be tried: one editor on the whole workspace, one viewer on one agent, one invite waiting.
+// Demo people to try the page with: an editor on the whole workspace, a viewer on one agent, one invite waiting.
 export function demoTeam(profile, agentIds, now = Date.now()) {
   const owner = ownerFrom(profile, now);
   const first = agentIds[0] || 'acme-support'; // the agent list may not be read yet; the sample agent of the demo is the usual one

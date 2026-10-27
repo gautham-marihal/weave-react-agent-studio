@@ -96,7 +96,7 @@ const REF_WORD = {
   notifiers: 'SMS/email connections',
 };
 
-// What "Add …" calls one item of a list or map, where its key's own word would read oddly ("Add notification" for the messages it sends).
+// What "Add …" calls one item where its key's own word would read oddly ("Add notification" for the messages it sends).
 const ADD_WORDS = {
   notifications: 'message',
   wrapups: 'closing message',
@@ -108,9 +108,7 @@ const ADD_WORDS = {
   notifiers: 'SMS or email connection',
 };
 
-// What a setting is for, in plain words, with an example when there is one. The schema's own description (the technical wording) is one click
-// away, or open already when technical names are on. When there is no hand-written purpose the lead is the schema's first sentence.
-// the last word of a text and the rest, so the "i" can be kept on the line of the last word
+// The last word of a text and the rest, so the "i" can stay on the line of the last word.
 const lastWord = (text) => {
   const t = String(text).trimEnd();
   const i = t.lastIndexOf(' ');
@@ -138,7 +136,10 @@ function InfoButton({ shown, onToggle, moreLabel = 'Technical detail' }) {
 // the technical description of a setting, when it says more than the plain words
 const moreOf = (words) => (words.full && words.full.trim() && words.full.trim() !== words.lead ? words.full.trim() : '');
 
-//   shown: when given, the row draws the "i" beside the setting's name and says here whether the detail is open; else the "i" ends the help line.
+// What a setting is for, in plain words with an example; the schema's technical description is one click away (open
+// with technical names on).
+//   shown: when given, the row draws the "i" beside the name and says here whether the detail is open; else the "i"
+//   ends the help line
 function Help({ lead, example, full, moreLabel = 'Technical detail', open: startOpen = false, shown: shownFromRow }) {
   const [open, setOpen] = useState(false);
   const more = moreOf({ full, lead });
@@ -188,7 +189,8 @@ function Help({ lead, example, full, moreLabel = 'Technical detail', open: start
   );
 }
 
-// The words a setting is drawn with: the server's own hint when it sends one, else the catalogue, else a label made by rule.
+// The words a setting is drawn with: the server's own hint when
+// it sends one, else the catalogue, else a label made by rule.
 function useSettingWords(name, shape, label) {
   const owner = useOwner();
   const hints = readXui(shape);
@@ -203,8 +205,8 @@ function useSettingWords(name, shape, label) {
   };
 }
 
-// What is wrong with a field, in plain words, with a button to fix it where one is certain. The server's own sentence is in the tooltip, and shown
-// when technical names are on.
+// What is wrong with a field, in plain words, with a fix button where one is certain. The server's own sentence is in
+// the tooltip, and shown with technical names on.
 function Issues({ pathKey, deep = false }) {
   const { exact, issuesUnder, describe, applyFix, technical } = useForm();
   const list = deep ? issuesUnder(pathKey) : exact.get(pathKey);
@@ -249,10 +251,9 @@ function DeleteButton({ what, onClick, disabled, small = false }) {
 // its screen is drawn again later.
 const FRESH_FOCUS_MS = 2500;
 
-// A group of settings. On the screen itself (depth 0) it is a section that folds; inside one (depth 1 and deeper) it is
-// a row that opens a sheet, so boxes are never drawn inside boxes. `sub` is the line under a row's title when it has no
-// hint of its own.
-// sortable: when the group is an item of a list that can be dragged into another order, where the drag puts it (useSortableItem)
+// A group of settings: a folding section on the screen itself (depth 0), deeper a row opening a sheet (no nested boxes).
+//   sub: the line under a row's title when it has no hint of its own
+//   sortable: where a drag puts it, when the group is a list item that can be reordered (useSortableItem)
 function Group({ pathKey, title, hint, sub, tooltip, count, onRemove, defaultOpen = true, actions, children, flat = false, sortable = null }) {
   const { focus, countUnder } = useForm();
   const depth = useContext(DepthCtx);
@@ -488,7 +489,8 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
             {isObj(value) && typeof value.id === 'string' && value.id && <TryTask taskId={value.id} />}
           </>
         );
-      // "Try a line" under the settings it answers for: how a line is said, what redaction hides, what the safety rules do
+      // "Try a line" under the settings it answers for: how a line
+      // is said, what redaction hides, what the safety rules do
       if (path[path.length - 1] === 'speech' && shape.properties?.pronunciation)
         return (
           <>
@@ -527,20 +529,21 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
   }
 }
 
-// A template box whose scope (the names a template may use here) comes from the config in the form's store, so it only re-renders when
-// those names change, not on every keystroke elsewhere.
+// A template box whose scope (the names a template may use here) comes from the config in the form's store, so it only
+// re-renders when those names change, not on every keystroke elsewhere.
 function ScopedTemplateField({ path, ...props }) {
   const { store } = useForm();
   const signature = useConfigSelect((c) => scopeSignature(c, path), Object.is);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope changes exactly when its signature does
   const scope = useMemo(() => scopeAt(store.get(), path), [signature, keyOf(path), store]);
-  // text written to the agent about a channel (its extra instructions) gets the plain menu, as the Agent page's instructions do
+  // text written to the agent about a channel (its extra instructions)
+  // gets the plain menu, as the Agent page's instructions do
   const plain = path[0] === 'channels' && path[path.length - 1] === 'instructions_append';
   return <TemplateField {...props} scope={scope} plain={plain} />;
 }
 
-// What a field points at, by name: an agent by its own name, anything else by its id in words ("escalate_to_human" → "Escalate to human"); two that
-// would read the same keep their ids beside them. With technical names on, the ids.
+// What a field points at, by name: an agent by its name, anything else by its id in words ("escalate_to_human" →
+// "Escalate to human"). Two that read the same keep their ids beside them; technical names show the ids.
 function refLabels(name, options, config) {
   const agents = Array.isArray(config?.agents?.items) ? config.agents.items.filter(isObj) : [];
   const words = (id) => {
@@ -619,7 +622,8 @@ function RefSelect({ shape, value, onChange, disabled, id, invalid, path }) {
   );
 }
 
-// A phone number or a web address: an ordinary box that says so when what is typed doesn't look like one (it isn't refused).
+// A phone number or a web address: an ordinary box that says so
+// when what is typed doesn't look like one (it isn't refused).
 function ContactInput({ kind, id, value, onChange, placeholder, disabled, invalid }) {
   const text = typeof value === 'string' ? value : '';
   const ok = !text || (kind === 'phone' ? looksLikePhone(text) : looksLikeUrl(text));
@@ -706,8 +710,8 @@ function SecretInput({ value, onChange, disabled, id }) {
 
 // ---- objects ---------------------------------------------------------------------------------
 
-// `onlyKeys` shows just those properties (a screen that is part of a section, see layout.js), and `showUnknown: false` leaves the keys the schema
-// doesn't know to another part of the same section.
+// `onlyKeys` shows just those properties (a screen that is part of a section, see layout.js); `showUnknown: false`
+// leaves unknown keys to another part of the section.
 export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKeys, onlyKeys, showUnknown = true }) {
   const { engine, markDelete, issuesUnder, expertHome, hidden, store, channelTypes } = useForm();
   const owner = useOwner();
@@ -717,18 +721,18 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
   const flatOf = (k) => engine.flatten(shape.properties[k]);
   const visible = order.filter((k) => flatOf(k).const === undefined && (!onlyKeys || onlyKeys.includes(k)) && !(hidden && hidden.has([...path, k].join('.'))));
   const required = shape.required || [];
-  // A setting meant for experts or operators sits under "Advanced" (the server's `advanced`/`audience` hints, else the catalogue's level), unless
-  // this whole screen is the place for them.
+  // Expert or operator settings sit under "Advanced" (the server's `advanced`/`audience` hints, else the catalogue's
+  // level), unless this whole screen is for them.
   const wordsOf = (k) => describeSetting(k, { owner, description: flatOf(k).description });
   const hintsOf = (k) => {
     const h = readXui(flatOf(k));
     return { ...h, advanced: h.advanced || (!expertHome && (h.audience || wordsOf(k).level) === 'expert') };
   };
-  // a channel with no voice is not offered the settings only a voice channel has (what is already set stays, and the channel says so)
+  // a channel with no voice is not offered the settings only a voice
+  // channel has (what is already set stays, and the channel says so)
   const notOffered = channelTypes ? keysNotOffered(store.get(), channelTypes, path) : [];
-  // Every setting is on the screen, the ones not set too: those show the value the agent uses anyway (the default), and
-  // changing it sets it. Nothing is hidden behind an "add" menu. A deprecated one, or one this kind of channel can't
-  // use, is shown only while it is set.
+  // Every setting is on the screen, unset ones too, showing the default the agent uses; changing one sets it. A
+  // deprecated one, or one this channel kind can't use, shows only while set.
   const unsetShown = (k) => !(k in obj) && !required.includes(k) && !flatOf(k).deprecated && !notOffered.includes(k);
   const rows = orderKeys(
     visible.filter((k) => k in obj || required.includes(k) || unsetShown(k)),
@@ -741,8 +745,8 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
   const openExtra = shape.additionalProperties === undefined && shape.unevaluatedProperties === undefined;
 
   const setProp = (key, v) => onChange(v === undefined ? omit(obj, key) : orderedSet(obj, key, v, order));
-  // Deleting a row takes out what the row shows. The parts the page asks for elsewhere (a card above the form: After
-  // the call's switches and ticks) stay, and a row holding nothing but those has no Delete.
+  // Deleting a row takes out what it shows; parts asked for elsewhere (After the call's cards above the form) stay, and
+  // a row holding only those has no Delete.
   const keptOf = (key) => hiddenParts(obj[key], [...path, key].join('.'), hidden);
   const onlyHidden = (key) => {
     const kept = keptOf(key);
@@ -824,8 +828,8 @@ export function ObjectBody({ shape, value, path, onChange, disabled, collapsedKe
 
 // ---- one labelled property of an object ------------------------------------------------------
 
-// `unset`: an optional setting that is not in the configuration. It is drawn like any other, with the value the agent uses anyway (the schema's
-// default) and "Default" beside its name; the first change sets it. It is the same markup as a set row, so typing into it keeps the cursor.
+// `unset`: an optional setting not in the config, drawn like any other with its default and "Default" beside its name;
+// the first change sets it. Same markup as a set row, so typing keeps the cursor.
 export function FieldRow({
   name,
   schema,
@@ -842,8 +846,8 @@ export function FieldRow({
   collapsed,
   sole,
 }) {
-  // a setting that isn't in the configuration, optional or required: it is drawn with its control (and its default) all the same, so filling it in is
-  // one step; a required one is also marked as needing a value
+  // a setting not in the config, optional or required, is drawn with its control and default so filling it in is one
+  // step; a required one is also marked as needing a value
   const unset = unsetOptional || !!missing;
   missing = !!missing && !!required; // an optional part a caller marks as absent is just not set
   const ctx = useForm();
@@ -855,7 +859,8 @@ export function FieldRow({
   const kindUnset = engine.kindOf(declared);
   const styleUnset = kindUnset === 'array' ? arrayStyle(engine, declared) : null;
   const groupedUnset = kindUnset === 'object' || kindUnset === 'map' || (kindUnset === 'array' && styleUnset === 'cards');
-  // what an unset setting shows: its default (a group shows the defaults of its parts); a yes/no with no default is "no"
+  // what an unset setting shows: its default (a group shows the
+  // defaults of its parts); a yes/no with no default is "no"
   const shownDefault = !unset
     ? given
     : groupedUnset
@@ -867,12 +872,12 @@ export function FieldRow({
           : kindUnset === 'array'
             ? []
             : undefined;
-  // a text box showing its default that is emptied stays empty while it has the keyboard (so a new text can be typed from scratch), and shows the
-  // default again when left empty, as the setting is still not set
+  // an emptied text box showing its default stays empty while focused (so new text can be typed from scratch), and
+  // shows the default again when left empty, as the setting is still unset
   const [emptied, setEmptied] = useState(false);
   const value = unset && emptied && kindUnset === 'string' ? '' : shownDefault;
-  // an unset setting is set by a real change only: clearing an empty box leaves it unset
-  // (a choice of kinds is a real change even when the chosen kind starts empty)
+  // an unset setting is set by a real change only: clearing an empty box leaves it unset (choosing a kind is a real
+  // change even if the kind starts empty)
   const onChange =
     unset && kindUnset !== 'union'
       ? (v) => {
@@ -982,7 +987,8 @@ export function FieldRow({
     (kind === 'string' && (shape['x-ui']?.widget === 'textarea' || String(value ?? '').length > 60)) ||
     kind === 'secret';
   const deepIssues = kind === 'array' || kind === 'json';
-  // a single control takes the label (clicking the name focuses it); a list, a choice of kinds or a fixed value is a group named by it instead
+  // a single control takes the label (clicking the name focuses it); a
+  // list, a choice of kinds or a fixed value is a group named by it instead
   const takesId = !['const', 'null', 'object', 'array', 'map', 'union'].includes(kind) && !(kind === 'string' && readXui(shape).widget === 'jsonpath');
   const labelId = `${inputId}-name`;
   return (
@@ -1035,16 +1041,16 @@ export function FieldRow({
 
 // ---- unions ----------------------------------------------------------------------------------
 
-// A check on what is said is chosen by what it does ("Refuses tricks to change its instructions"), as Add names it, not by the schema's title
-// ("Prompt-injection detector"); with technical names on, the schema's own.
+// A check on what is said is named by what it does ("Refuses tricks to change its instructions"), as Add names it, not
+// by the schema's title; technical names show the schema's own.
 const isCheckPath = (path) => path.length === 3 && path[0] === 'guardrails' && (path[1] === 'input' || path[1] === 'output') && typeof path[2] === 'number';
 
 function UnionBody({ shape, value, path, onChange, disabled }) {
   const { engine, technical } = useForm();
   const branches = useMemo(() => engine.branchesOf(shape), [engine, shape]);
   const picked = engine.pickBranch(branches, value);
-  // The kind is clear when the value fits it, or carries its marker (`type: "http"`) with some required fields still missing: then
-  // that kind's editor is shown with what is missing marked, instead of raw JSON.
+  // The kind is clear when the value fits it, or carries its marker (`type: "http"`) with some required fields still
+  // missing: then that kind's editor is shown with what is missing marked, instead of raw JSON.
   const fitsBranch = engine.fits(branches[picked], value) || matchesDiscriminator(engine, branches[picked], value);
   const labels = branches.map((b, i) => {
     const kind = engine.flatten(b).properties?.type?.const;
@@ -1140,7 +1146,8 @@ function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
   const style = arrayStyle(engine, shape);
   const items = engine.flatten(shape.items);
 
-  // Lists of actions and of rules read as steps wherever they occur (on-enter steps, fallbacks, what to do when a caller goes quiet…).
+  // Lists of actions and of rules read as steps wherever they occur
+  // (on-enter steps, fallbacks, what to do when a caller goes quiet…).
   if (isActionList(engine, shape)) return <ActionSteps shape={shape} value={list} path={path} onChange={setValue} disabled={disabled} label="the list" />;
   if (isRuleList(engine, shape)) return <EffectsEditor shape={shape} value={list} path={path} onChange={setValue} disabled={disabled} />;
   if (style === 'strings')
@@ -1178,8 +1185,8 @@ function ArrayBody({ shape, value, path, onChange: setValue, disabled }) {
   return <CardList shape={shape} items={items} list={list} path={path} onChange={setValue} disabled={disabled} />;
 }
 
-// One card of a list. It is memoised: an edit in another card gives it exactly the props it had (the list's items keep their identity, see
-// shareStructure, and the handlers are stable), so it does not render. It reads the few things it needs from the config itself.
+// One card of a list, memoised: an edit in another card passes it the same props (items keep identity via
+// shareStructure; handlers are stable), so it skips rendering. It reads what it needs from the config itself.
 const sameCard = (a, b) => keyOf(a.basePath) === keyOf(b.basePath) && Object.keys(a).every((k) => k === 'basePath' || a[k] === b[k]);
 
 const CardItem = React.memo(function CardItem({
@@ -1313,7 +1320,8 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
     next.splice(to, 0, item);
     onChange(next);
   };
-  // handlers that never change identity but always act on the latest list: so a card that did not change gets the same props and skips rendering
+  // handlers with a stable identity that act on the latest list,
+  // so an unchanged card gets the same props and skips rendering
   const itemChange = useKeyedHandlers((index, v) => onChange(list.map((x, i) => (i === index ? v : x))));
   const removeItem = useStableCallback((index) => {
     const item = list[index];
@@ -1674,7 +1682,8 @@ function MapBody({ shape, value, path, onChange, disabled }) {
       })}
       {keys.length === 0 && disabled && <p className="stFEmpty">Nothing here yet.</p>}
       {autoKey ? (
-        // one click adds one, with a name made up for it that can be changed in place (no name to type before it exists)
+        // one click adds one, with a name made up for it that can
+        // be changed in place (no name to type before it exists)
         <button type="button" className="stAddBtn" disabled={disabled} onClick={() => add(autoKey)}>
           <Icon name="plus" size={14} /> Add {word}
         </button>

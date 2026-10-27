@@ -23,7 +23,8 @@ import './formLook.css';
 import Icon from '../../ui/Icon.jsx';
 import { hiddenParts } from './hiddenParts.js';
 
-// Sections whose content depends on something that isn't built yet, said where the author is working (see the API's "what is not there yet").
+// Sections whose content depends on something not built yet, said
+// where the author is working (the API's "what is not there yet").
 export const SECTION_NOTES = {
   tests:
     'Scenarios are conversations with what must be true afterwards. Tests › Scenarios writes and runs them, so use that for everyday work; this is the same list in its raw fields.',
@@ -37,9 +38,8 @@ export const SECTION_NOTES = {
 // The server owns these: the id is permanent and the rest are set when a version is published.
 const READ_ONLY = new Set(['meta.id', 'meta.status', 'meta.created_at', 'meta.updated_at']);
 
-// `only` (a list of top-level keys) limits the form to those sections and `embedded` draws it without the group tabs, for a place that
-// shows a part of the configuration (the agent's own pages: Agent, Settings and the section pages). Without them it is the whole form.
-// What a panel shows when the item it was opened for has been deleted (also by "delete everywhere"): it says so, and tells the panel to close.
+// What a panel shows when its item has been deleted (also by
+// "delete everywhere"): it says so and tells the panel to close.
 function ItemGone({ word, onGone }) {
   useEffect(() => {
     onGone?.();
@@ -47,10 +47,11 @@ function ItemGone({ word, onGone }) {
   return <p className="stFEmpty">This {word} is no longer here.</p>;
 }
 
-// `itemPath` (['tools', 2]) shows just that one item of a list, without the screens around it: the panel of a page that
-// lists the items. `itemWord` names it ("tool") for its Delete button, and `onItemGone` is called when it has been
-// deleted. `fold` ({ label, open }) folds the item's settings under that label (the panel asks the few that matter
-// above them in words); its Delete button stays outside the fold.
+// The whole configuration form, or a part of it:
+//   only, embedded: just these top-level sections, without the group tabs (for the agent's own pages)
+//   itemPath: one item of a list (['tools', 2]) without the screens around it, for the panel of a list page
+//   itemWord: names the item ("tool") for its Delete button; onItemGone: called once it has been deleted
+//   fold: { label, open } folds the item's settings under that label; its Delete button stays outside the fold
 export default function FormEditor({
   editor,
   focusRequest,
@@ -68,8 +69,8 @@ export default function FormEditor({
 }) {
   const { schema, error, loading, reload } = useSchema();
   const config = editor.parsed.value;
-  // The config lives in a small store the form's parts read from (useConfigSelect), so the context itself never changes when a letter is
-  // typed. The store is set while rendering (so a part rendered in this same pass reads the new config) and told after the commit.
+  // The config lives in a store the parts read from (useConfigSelect), so the context never changes per keystroke. The
+  // store is set while rendering (so parts in this pass read the new config) and told after the commit.
   const storeRef = useRef(null);
   if (!storeRef.current) storeRef.current = createConfigStore(config);
   storeRef.current.set(config);
@@ -83,20 +84,21 @@ export default function FormEditor({
   const [viewId, setViewId] = useState(null); // null: the first screen of the first group
   const [technical] = useTechnicalNames();
   const [focus, setFocus] = useState(null);
-  // Deleting is always undoable: whoever deletes says what it was (markDelete), the next change to the config
-  // keeps the previous one for the Undo bar, and any other edit dismisses the bar.
+  // Deleting is always undoable: the deleter names it (markDelete), the next config change keeps the previous one for
+  // the Undo bar, and any other edit dismisses the bar.
   const deleteLabelRef = useRef(null);
   const [toast, setToast] = useState(null); // { label | message, previous }
   const [dialog, setDialog] = useState(null); // { type: 'rename' | 'delete', collection, id, proceed? }
-  // Where focus was when something was deleted: the delete button goes with the thing, so focus is put back near it (see focusNear).
+  // Where focus was when something was deleted: the delete button goes
+  // with the thing, so focus is put back near it (see focusNear).
   const focusPathRef = useRef(null);
   const markDelete = useCallback((label) => {
     deleteLabelRef.current = label;
     const active = document.activeElement;
     focusPathRef.current = active && active !== document.body ? active.closest?.('[data-path]')?.getAttribute('data-path') || null : null;
   }, []);
-  // Keeps keyboard focus in the form when what had it is gone (a deleted card, the Undo button): on the same place if it is back,
-  // else the nearest place that still exists, else the section's heading. Focus that is somewhere sensible already is left alone.
+  // Keeps focus in the form when its holder is gone (a deleted card, the Undo button): on the same place if it is back,
+  // else the nearest that exists, else the section heading. Sensible focus is left alone.
   const focusNear = useCallback((pathKey) => {
     window.requestAnimationFrame(() => {
       const root = contentRef.current;
@@ -145,8 +147,8 @@ export default function FormEditor({
     [sectionKeys, engine, schema, skipViews],
   );
   const allViews = useMemo(() => groups.flatMap((g) => g.views), [groups]);
-  // fields that are asked for somewhere else (the page hides them here so a person is not asked twice): their paths as 'a.b.c'
-  // by what it holds, not by the array: a page that writes the list out on every render does not make the whole form draw again
+  // fields asked for on another page (hidden here so nobody is asked twice), as 'a.b.c'. Keyed by content, not by the
+  // array, so a page passing a new list each render doesn't redraw the whole form
   const hideKey = (hide || []).map((p) => (Array.isArray(p) ? p.join('.') : String(p))).join('\n');
   const hidden = useMemo(() => new Set(hideKey ? hideKey.split('\n') : []), [hideKey]);
   const view =
@@ -157,15 +159,16 @@ export default function FormEditor({
   const section = view?.key || '';
   const activeGroup = view ? view.group : '';
 
-  // Rebuilt on every change, but only a different list of ids is a different value, so they keep one identity while typing.
+  // Rebuilt on every change, but only a different list of ids is
+  // a different value, so they keep one identity while typing.
   const refOptions = useStableValue(useMemo(() => collectRefOptions(config), [config]));
   const { types: channelTypes } = useChannelTypes();
   const secretNames = useStableValue(
     useMemo(() => [...new Set([...collectSecretNames(config), ...(editor.report?.secrets_required || [])])].sort(), [config, editor.report]),
   );
   const issues = useMemo(() => groupIssues(editor.report), [editor.report]);
-  // problems about the whole configuration; on an agent's page the demo's "these are simple checks" line is left to the
-  // problems panel and the DEMO tag
+  // problems about the whole configuration; on an agent's page the demo's
+  // "simple checks" note is left to the problems panel and the DEMO tag
   const general = useMemo(() => issues.filter((issue) => !issue.path && !(embedded && issue.message === DEMO_VALIDATOR_NOTE)), [issues, embedded]);
 
   const exact = useMemo(() => {
@@ -214,8 +217,8 @@ export default function FormEditor({
     [groups],
   );
 
-  // Goes to a place in the form: the screen that holds it is shown, what is collapsed around it is opened, and it is scrolled into view, flashed and
-  // focused. Used for "Show me" on a problem, for a chip in "Used by", and for a box in the agent map.
+  // Goes to a place in the form: shows its screen, opens what is collapsed around it, then scrolls to, flashes and
+  // focuses it. Used by "Show me" on a problem, "Used by" chips and the agent map.
   const reveal = useCallback(
     (path) => {
       if (!Array.isArray(path) || !path.length) return undefined;
@@ -246,9 +249,8 @@ export default function FormEditor({
     },
     [sectionKeys, goTo],
   );
-  // "Show me" from the validation panel, or a setting found by the search. A request that is cleared at once (an agent's page clears it when the page
-  // changes, which is the moment this form appears) still finishes; only a newer request, or leaving, stops it.
-  // A request that comes before the schema is read waits for it.
+  // "Show me" or a search result. A request cleared at once (an agent's page clears it as this form appears) still
+  // finishes; only a newer one or leaving stops it, and one made before the schema loads waits.
   const revealing = useRef(null);
   const toReveal = useRef(null);
   useEffect(() => {
@@ -281,7 +283,8 @@ export default function FormEditor({
     setToast(message ? { message, previous: configRef.current } : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // A config that uses a 1.2 feature must say 1.2. The version isn't a field in the form, so the fix is offered where the problem shows.
+  // A config that uses a 1.2 feature must say 1.2. The version isn't a
+  // field in the form, so the fix is offered where the problem shows.
   const canRaise = !!schema && isObj(config) && (schema.properties?.schema_version?.enum || []).includes('1.2') && config.schema_version !== '1.2';
   const raiseVersion = useCallback(() => applyConfig({ ...configRef.current, schema_version: '1.2' }, 'Raised schema_version to 1.2.'), [applyConfig]);
   // Renames straight away (a key typed in a map): the pointers are rewritten and the toast says how many.
@@ -299,9 +302,10 @@ export default function FormEditor({
   );
 
   const store = storeRef.current;
-  const openModels = useStableCallback((stage) => onShowModels?.(stage)); // a parent often passes a new function each render; the context must not change with it
+  const openModels = useStableCallback((stage) => onShowModels?.(stage)); // parents often pass a new function each render; keep the context stable
   const openInJson = useStableCallback((path) => onOpenJson?.(path));
-  // A problem, described for a person (plain words, and fixes where one is certain), and a fix applied as an ordinary undoable edit.
+  // A problem, described for a person (plain words, and fixes where
+  // one is certain), and a fix applied as an ordinary undoable edit.
   const describe = useCallback((issue) => describeIssue(issue, { config: store.get(), schema, engine }), [store, schema, engine]);
   const applyFix = useCallback(
     (fix) => {
@@ -318,7 +322,7 @@ export default function FormEditor({
     [applyConfig, openModels, reveal],
   );
   const expertHome = !!groups.find((g) => g.id === activeGroup)?.advanced;
-  const hasOpenJson = !!onOpenJson; // the function itself is new on every render of the Config tab; the context must not change with it
+  const hasOpenJson = !!onOpenJson; // a new function on every Config tab render; keep the context stable
   const ctx = useMemo(
     () => ({
       hidden,
@@ -416,16 +420,16 @@ export default function FormEditor({
   const sectionSchema = schema.properties[section];
   const shape = sectionSchema ? engine.resolveShape(sectionSchema, config[section]) : null;
   const present = section in config;
-  // A section the agent doesn't have yet is drawn like one it has, with its defaults (an empty list, a group's default
-  // values): the first change puts it in the draft. So there is no "Add this section" step before the real "Add". Only
-  // a section with no plain shape to draw keeps a button.
+  // A section the agent doesn't have yet is drawn with its defaults and the first change puts it in the draft, so there
+  // is no "Add this section" step. Only a section with no plain shape keeps a button.
   const sectionKind = shape ? engine.kindOf(shape) : null;
   const drawable = present || ['object', 'array', 'map'].includes(sectionKind);
   const sectionValue = present ? config[section] : drawable && sectionSchema ? engine.defaultFor(sectionSchema) : undefined;
   const required = (schema.required || []).includes(section);
   const part = !!view?.only; // a screen that is only part of a section
   const visibleViews = embedded ? allViews : (groups.find((g) => g.id === activeGroup) || groups[0] || { views: [] }).views;
-  // A section says what it is for in plain words; the schema's own description is the technical one, shown when technical names are on.
+  // A section says what it is for in plain words; the schema's own
+  // description is the technical one, shown when technical names are on.
   const lead =
     VIEW_NOTES[section] && !part
       ? VIEW_NOTES[section]
@@ -519,7 +523,7 @@ export default function FormEditor({
           </div>
         )}
 
-        {/* about the whole configuration: not said in the panel of one item (the top bar lists every problem) */}
+        {/* whole-config problems: not in one item's panel (the top bar lists every problem) */}
         {general.length > 0 && !itemMode && (
           <ul
             className={`stFGeneral${general.some((issue) => issue.severity === 'error') ? '' : ' warnOnly'}`}
@@ -550,8 +554,7 @@ export default function FormEditor({
             };
             return (
               <div className="stFSection item" ref={contentRef} data-path={keyOf(itemPath)}>
-                {/* the item's settings are named as in the full form: by the list they are in ("input" for a check on what the caller says), not by
-                    the section the list is under */}
+                {/* settings are named by their list ("input" for a check on what the caller says), not its section */}
                 <OwnerCtx.Provider value={[...itemPath].reverse().find((p) => typeof p === 'string')}>
                   {gone ? (
                     <ItemGone word={itemWord} onGone={onItemGone} />
@@ -562,7 +565,8 @@ export default function FormEditor({
                           schema={itemSchema}
                           value={value}
                           path={itemPath}
-                          // as commit does for a section: a part taken out (a list's items, settings that do nothing here) can be put back with Undo
+                          // as a section's commit does: a part taken out (a list's items, settings that do nothing
+                          // here) can be put back with Undo
                           onChange={(next) => {
                             const label = deleteLabelRef.current;
                             deleteLabelRef.current = null;

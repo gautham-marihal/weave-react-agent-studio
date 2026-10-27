@@ -176,6 +176,37 @@
   font-size: var(--fs-md);
   font-weight: 600;
 }
+/* a field's title, with "Explain" at its end; what it says opens under the title */
+.suFieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.suExplain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.suExplain:hover,
+.suExplain[aria-expanded="true"] {
+  color: var(--accent-text);
+}
+.suField > small.suExplainNote {
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--accent-soft);
+  color: var(--text);
+}
 .suField > small {
   color: var(--muted);
   font-size: var(--fs-sm);
@@ -652,4 +683,54 @@
 }
 .suBroughtClose {
   flex: none;
+}
+
+/* ---- going live: the technical name of each place, and how people reach the agent once it is live ---- */
+.suEnvName {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.suReach {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-card, 12px);
+  background: var(--panel);
+}
+.suReach h3 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.suReach ul {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.suReach li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  color: var(--muted);
+}
+.suReach li > svg {
+  margin-top: 2px;
+}
+.suReach li span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.suReach li strong {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.suReach li small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
 }

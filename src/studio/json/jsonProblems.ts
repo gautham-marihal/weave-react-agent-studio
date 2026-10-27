@@ -3,10 +3,9 @@ import { lineOf, locatePath, syntaxErrorLine } from '../jsonPath.js';
 import { groupIssues } from '../../api/client.ts';
 import type { ValidationReport } from '../../api/types.ts';
 
-// What is wrong with the configuration's JSON text, each at the characters it is about, for the editor to mark: a
-// syntax error (where the browser says it is), a key written twice (both places), and, while the JSON reads, what the
-// checks say (errors and warnings, at the setting they name; a setting that spans many lines is marked on its first).
-// The words are the ones the studio already says about each.
+// What is wrong with the JSON text, at the characters it is about, for the editor to mark: a syntax error, a key
+// written twice (both places), and while it parses, the checks' errors and warnings at the setting they name (a
+// multi-line setting is marked on its first line). The words are the ones the studio already uses.
 
 export type JsonProblem = { from: number; to: number; severity: 'error' | 'warning'; message: string };
 type Duplicate = { key: string; path: (string | number)[]; offset: number; firstOffset: number };
@@ -17,7 +16,8 @@ const lineEnd = (text: string, at: number) => {
   return end < 0 ? text.length : end;
 };
 
-// the end of the word at a place: a quoted string to its closing quote, else up to a space or a bracket, comma or colon (at least one character)
+// the end of the word at a place: a quoted string to its closing quote, else up to a space, bracket, comma or colon
+// (at least one character)
 const tokenEnd = (text: string, at: number): number => {
   if (at >= text.length) return at;
   let i = at + 1;

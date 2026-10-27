@@ -1,8 +1,6 @@
-// Alerts: what is going wrong with an agent right now, found in its recent calls, compared with what is usual for it. A
-// tool that keeps failing, calls being cut off or passed on far more than usual, no calls arriving when there usually
-// are, slow answers, errors, a new version doing worse than the one before. Each rule has thresholds a person can
-// change; a spike is only raised on enough calls to mean something and well above the agent's usual.
-// Pure: no network, no DOM, no clock of its own (the caller passes `nowMs`).
+// Alerts: what is going wrong with an agent now, from its recent calls against its usual (failing tools, spikes in
+// cut-off or passed-on calls, no calls, slow answers, errors, a worse new version). Thresholds are editable; a spike
+// needs enough calls. Pure: no network, no DOM, no clock of its own (the caller passes `nowMs`).
 
 import { analyse, percentile, waitsOf } from '../monitoring/monitorModel.js';
 
@@ -105,10 +103,11 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 const at = (c) => Date.parse(c.started_at);
 const keyOf = (c) => `${c.bot}/${c.id}`;
 
-// calls: summaries of every agent (`bot`, `id`, `started_at`, `status`, `handoffs`, `version`) for at least the baseline and the longest window;
-// facts: { 'bot/id': facts } for the recent ones (failed tools, errors, answer times need them); bots: [{ id, name }].
-// Returns the alerts that hold now, most serious first: [{ key, rule, severity, bot, botName, title, detail, why,
-// count, since, callIds, subject, action }]
+// The alerts that hold now, most serious first: [{ key, rule, severity, bot, botName, title, detail, why, count, since,
+// callIds, subject, action }].
+//   calls: every agent's call summaries (bot, id, started_at, status, handoffs, version), covering baseline and windows
+//   facts: { 'bot/id': facts } for the recent calls (failed tools, errors and answer times need them)
+//   bots: [{ id, name }]
 export function evaluateAlerts({ calls = [], facts = {}, bots = [], nowMs = 0, rules = effectiveRules() } = {}) {
   const enabled = Object.fromEntries(rules.filter((r) => r.enabled).map((r) => [r.id, r]));
   const names = Object.fromEntries(list(bots).map((b) => [b.id, b.name || b.id]));
@@ -172,7 +171,7 @@ export function evaluateAlerts({ calls = [], facts = {}, bots = [], nowMs = 0, r
       if (share * 100 < percent) return;
       const usualCalls = before(minutes);
       const usual = usualCalls.length ? usualCalls.filter(isBad).length / usualCalls.length : 0;
-      // twice the usual (an agent that always passes half its calls on is not alarming), unless there is too little history to know the usual
+      // twice the usual (an agent that always passes half its calls on is fine), unless there's too little history
       if (usualCalls.length >= 10 && share < usual * 2) return;
       push(rule, bot, '', {
         title: `${pct(share)} of calls ${noun}`,
@@ -262,25 +261,23 @@ export function evaluateAlerts({ calls = [], facts = {}, bots = [], nowMs = 0, r
   return out.sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || Date.parse(b.since || 0) - Date.parse(a.since || 0));
 }
 
-// How far back an evaluation needs calls (the baseline and the longest window), and how far back it needs their records.
+// How far back an evaluation needs calls (the baseline and the longest window), and how far back their records.
 export function lookback(rules = effectiveRules()) {
   const windows = rules.filter((r) => r.enabled).map((r) => (r.params.minutes ? r.params.minutes * MIN : r.params.hours ? r.params.hours * HOUR : 0));
   const longest = Math.max(HOUR, ...windows);
   return { callsMs: BASELINE_DAYS * DAY + longest, recordsMs: longest };
 }
 
-// ---- what a person did about alerts, and what happened to them (kept in this browser) ----------------------------------------------------------
+// ---- what a person did about alerts, and what happened to them (kept in this browser)
 
 export const HISTORY_DAYS = 30;
 export const HISTORY_MAX = 200;
 
-// Brings the record up to date with the alerts that hold now: a new one is logged as fired, one that no longer holds is logged as cleared (and its
-// acknowledgement forgotten, so if it comes back it is new again), and a snooze that ran out ends. Returns { state, fired: [alerts new this time] }.
-//   checked: the ids of the agents this check looked at (the workspace's), when
-//            it is not all of them: an alert of an agent it did not look at (another
-//            workspace's) is left as it is, not cleared
+// Updates the record with the alerts that hold now: new ones are logged as fired, gone ones as cleared (and their
+// acknowledgement forgotten, so a return counts as new), and expired snoozes end. Returns { state, fired: [new ones] }.
+//   checked: the agent ids this check looked at, when not all; other agents' alerts (another workspace's) stay as is
 export function reconcile(state, alerts, nowMs, checked = null) {
-  // an alert still open is kept however old it is (dropped, it would fire again as new); one that cleared is kept for HISTORY_DAYS
+  // an open alert is kept however old (dropped, it would fire again as new); a cleared one is kept for HISTORY_DAYS
   const history = list(state?.history).filter((h) => !h.clearedAt || Date.parse(h.firedAt) > nowMs - HISTORY_DAYS * DAY);
   const acks = { ...(state?.acks || {}) };
   const active = new Map(list(alerts).map((a) => [a.key, a]));

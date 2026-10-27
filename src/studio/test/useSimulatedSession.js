@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createSimulatedAgent } from '../../demo/simulatedAgent.js';
+import { createSimulatedAgent, widenQuestion } from '../../demo/simulatedAgent.js';
+import { isDemoMode } from '../../demo/demoMode.js';
+import { api } from '../../api/client.ts';
 import { chooseSimulatedChannel } from './simulatedChannel.js';
 
-// A SIMULATED conversation with the same shape as useLiveSession, so the Test tab and the preview beside the editor can show either.
-// No server and no LiveKit: replies come from the rules in demo/simulatedAgent.js, marked `simulated` on every message. It runs on
-// whatever configuration `getConfig(ref)` gives (the current editor contents for the draft, so unsaved edits show at once).
+// A SIMULATED conversation shaped like useLiveSession, so the Test tab and the editor's preview can show either. No
+// server or LiveKit: replies come from demo/simulatedAgent.js, each marked `simulated`, on `getConfig(ref)` (for the
+// draft, the editor's current contents, so unsaved edits show at once).
 
 let counter = 0;
 const nextId = (prefix) => {
@@ -13,14 +15,30 @@ const nextId = (prefix) => {
 };
 const THINK_MS = 380;
 
+// What its documents say about what was said, best first, from the demo's own search, so the simulation can answer
+// from them (demo mode only: with a real server, try the real agent). Nothing found or no index yet means no hits.
+async function searchDocuments(playing, query) {
+  if (!isDemoMode() || !playing?.botId || !playing.bases.length) return [];
+  const found = await Promise.all(
+    playing.bases.map((base) =>
+      api
+        .searchKnowledge(playing.botId, base, { query: widenQuestion(query), ref: playing.ref })
+        .then((result) => (Array.isArray(result?.hits) ? result.hits : []))
+        .catch(() => []),
+    ),
+  );
+  return found.flat().sort((a, b) => (b.score || 0) - (a.score || 0));
+}
+
 export function useSimulatedSession({ onFinished, getConfig } = {}) {
   const [status, setStatus] = useState('idle'); // idle | starting | connecting | waiting | live | ended | error
   const [info, setInfo] = useState(null);
   const [messages, setMessages] = useState([]);
   const [events, setEvents] = useState([]);
-  const [records, setRecords] = useState([]); // what happened, as the same kind of records a real call has (see studio/trace)
+  const [records, setRecords] = useState([]); // what happened, as the records a real call has (see studio/trace)
   const [error, setError] = useState(null);
   const agentRef = useRef(null);
+  const playingRef = useRef(null); // what is being simulated: { botId, ref, bases } (the knowledge bases it reads)
   const timersRef = useRef(new Set());
   const aliveRef = useRef(true);
   const attemptRef = useRef(0); // which start is the current one (see startFor)
@@ -140,6 +158,7 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
       const played = chooseSimulatedChannel(config, options.channelId);
       const agent = createSimulatedAgent(config, { ...options, channelId: played?.id || options.channelId });
       agentRef.current = agent;
+      playingRef.current = { botId, ref, bases: (Array.isArray(config.knowledge) ? config.knowledge : []).map((base) => base?.id).filter(Boolean) };
       const channel = agent.channel;
       const sessionInfo = {
         room: 'simulated',
@@ -148,7 +167,7 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
         simulated: true,
         channel: {
           id: channel?.id || 'simulated',
-          // what the screen draws (no microphone in a simulation) and what the channel really is, so the two are never confused
+          // what the screen draws (no microphone in a simulation) vs what the channel really is, never confused
           type: channel?.type === 'sip_voice' || channel?.type === 'web_voice' ? 'web_chat' : channel?.type || 'web_chat',
           realType: channel?.type || 'web_chat',
           input: ['text', ...(Array.isArray(channel?.modalities?.input) && channel.modalities.input.includes('image') ? ['image'] : [])],
@@ -203,7 +222,10 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
       const agent = agentRef.current;
       if (!agent || !body) return false;
       push({ role: 'user', text: body });
-      const out = agent.reply(body);
+      const hits = await searchDocuments(playingRef.current, body);
+      // ended, or started again, while its documents were searched: this answer belongs to no conversation now
+      if (!aliveRef.current || agentRef.current !== agent) return false;
+      const out = agent.reply(body, { hits });
       out.toolCalls.forEach((call) => {
         log(`Simulated tool call: ${call.tool}${call.handoff ? ` (hand-off to ${call.handoff})` : ''}`);
         addRecord('tool_called', { tool: call.tool, args: call.args || {}, ...(call.handoff ? { handoff: call.handoff } : {}), simulated: true });
@@ -225,7 +247,7 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
     [addRecord, finish, later, log, push],
   );
 
-  // A picture sent in the preview: shown as what was sent, with a reply that says plainly it is made up (the real agent would look at the picture).
+  // A picture sent in the preview: shown as sent, with a reply saying it's made up (the real agent would look at it).
   const sendImage = useCallback(
     async (file) => {
       if (!agentRef.current || !file) return;

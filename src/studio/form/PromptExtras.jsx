@@ -1,10 +1,8 @@
 import React from 'react';
 import { knowledgeBlocks, modelLines, onEnterLines, stateLines } from './previewWords.js';
 
-// The parts of the server's prompt preview besides the instructions, the tools and the numbers: what runs when the
-// agent takes over, what knowledge is searched and by what, which models and which secret names would be used, and the
-// state the preview was built from (sensitive values masked). A part the server sent empty is left out; a part it sent
-// is always shown.
+// The prompt preview's parts besides the instructions, tools and numbers: on-enter steps, knowledge searched, models
+// and secret names, and the state used (sensitive values masked). A part the server sent empty is left out.
 
 export default function PromptExtras({ prompt }) {
   const enter = onEnterLines(prompt.onEnter);

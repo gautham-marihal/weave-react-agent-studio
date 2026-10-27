@@ -1,9 +1,7 @@
 import React from 'react';
 
-// One set of icons for the whole studio (Lucide's, chosen by name in icons.js), drawn with a round 1.75 px stroke in
-// the text colour. Text symbols (⌂ ✦ ◫ ⌘) look different on every machine and mean nothing to a screen reader; these
-// look the same everywhere, take the colour of what they sit in, and are hidden from assistive technology unless given
-// a `label` (the button or link around an icon should carry the words).
+// The studio's icons (Lucide, chosen by name in icons.js) in a round 1.75 px stroke of the text colour. Unlike text
+// symbols they look the same everywhere; they are hidden from screen readers unless given a `label`.
 import { ICONS } from './icons.js';
 
 export { ICON_NAMES } from './icons.js';

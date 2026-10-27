@@ -12,11 +12,9 @@ import { filterVoices, voiceFilters, voiceHue, voiceInUse } from './pickerLogic.
 import Select from '../../../ui/Select.tsx';
 import './pickers.css';
 
-// The voice of an agent, chosen from a list: search, filter by engine, gender and language, listen, and pick. Picking a
-// voice also sets the engine it belongs to (and that engine's model), which the line under the list says. The list
-// opens on the voices of the agent's main language when there are some (the language filter says so, and the voice in
-// use stays at the top whatever it speaks).
-// speech: whether it talks anywhere (a phone line or talking on the website); an agent that only chats needs no voice yet
+// An agent's voice, chosen from a list: search, filter, listen and pick. Picking a voice also sets its engine (and that
+// engine's model), noted under the list. The list opens filtered to the main language, with the voice in use on top.
+//   speech: whether it talks anywhere (phone or website); an agent that only chats needs no voice yet
 export default function VoicePicker({ config, set, speech = true }) {
   const voiceIdBox = useId();
   const { providers } = useProviders();
@@ -29,11 +27,11 @@ export default function VoicePicker({ config, set, speech = true }) {
     const main = languageName(readSimple(config).primaryLanguage);
     return filters.languages.includes(main) ? main : '';
   });
-  const [opened] = useState(() => tts); // the order is worked out from the voice the panel opened with, so the list does not jump when one is picked
+  const [opened] = useState(() => tts); // ordered by the voice the panel opened with, so the list doesn't jump on a pick
   const inUse = voiceInUse(tts);
   const voices = useMemo(() => filterVoices({ query, gender, engine, language, current: opened }), [query, gender, engine, language, opened]);
   const preview = useVoicePreview();
-  // a voice that a search or filter hides, and that is not the agent's own, must not go on talking with no button to stop it
+  // stop a sample hidden by a search or filter (unless it is the voice in use), so it never plays without a stop button
   const { playing: playingId, stop: stopSample } = preview;
   useEffect(() => {
     if (playingId && playingId !== inUse?.id && !voices.some((v) => v.id === playingId)) stopSample();
@@ -217,8 +215,7 @@ export default function VoicePicker({ config, set, speech = true }) {
             spellCheck={false}
             value={tts.voiceId}
             placeholder="The voice id shown by your provider"
-            // an id with no engine to use it with would be a voice the configuration can't have: the engine comes first
-            // (one already typed can be cleared)
+            // a voice id needs an engine, so the engine comes first (an id already typed can still be cleared)
             disabled={!tts.provider && !tts.voiceId}
             onChange={(event) => set(setVoiceId(config, event.target.value))}
             aria-label="Voice id"

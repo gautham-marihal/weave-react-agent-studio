@@ -6,8 +6,8 @@ import { describeExpectation } from './model.js';
 import { nextSteps, resultSummary, tokenWords, tokensOf } from './runResults.js';
 import Icon from '../../ui/Icon.jsx';
 
-// What one scenario did in a run: the verdict in a line, each check with why, what to do about it (an unanswered API request gets an
-// "Add a mock" button), the requests and tool calls, and the trace of what happened. Everything here comes from the server's answer.
+// What one scenario did in a run: the verdict, each check and why, what to do (an unanswered API request gets "Add a
+// mock"), the requests and tool calls, and the trace. Everything here comes from the server's answer.
 
 const MARK = { true: 'check', false: 'close', null: 'minus' };
 const checkClass = (passed) => (passed === true ? 'passed' : passed === false ? 'failed' : 'unchecked');

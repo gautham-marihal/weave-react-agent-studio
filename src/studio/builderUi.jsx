@@ -1,14 +1,10 @@
 import React, { useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-// The help bubble (a "?" that explains a setting), shared by the pages through pages/shared.jsx. It is styled by the `builder*` rules in
-// styles.css.
+// The "?" help bubble that explains a setting, shared through pages/shared.jsx; styled by `builder*` in styles.css.
 
-// Shared help tooltip. A click opens it and never closes it: a mouse has already opened it by hovering, so a toggle
-// would shut it on the click that was meant to read it; it closes on Escape, on scroll, on leaving or on moving focus
-// away. The bubble renders in a portal with fixed positioning, so scrolling panels and card edges can never clip it; it
-// is clamped inside the viewport on both sides, flips below the icon when there is no room above, and its arrow keeps
-// pointing at the icon.
+// A click only opens it: hovering already did, so a toggle would shut it on the click meant to read it. Escape, scroll,
+// leave or blur close it. A fixed portal keeps panels from clipping it; it stays in the viewport and flips when needed.
 export function HelpTooltip({ text: value, className = 'builderHelp', label = '?' }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);

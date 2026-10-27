@@ -7,11 +7,9 @@ import AiOrb from './AiOrb.jsx';
 import { inputCapabilities, pictureProblem, useDictation } from './useDictation.js';
 import { randomTag } from '../format.js';
 
-// The preview beside the agent's settings: talk to the agent while you edit it, with the state of the connection always visible.
-// It shows either the REAL agent (a real conversation over LiveKit, on the saved draft) or a SIMULATED one (rules in the browser on your
-// current edits, no server). The two are never confused: the panel says which, and every simulated reply carries a "Simulated" tag.
-//
-// States: idle, loading (starting / connecting / waiting for the agent), live, reconnecting, ended, and error.
+// The preview beside the agent's settings: talk to the agent while editing it. It is either the REAL agent (LiveKit,
+// on the saved draft) or a SIMULATED one (rules in the browser on current edits); the panel says which, and every
+// simulated reply is tagged "Simulated". States: idle, loading, live, reconnecting, ended, error.
 
 export function previewState(session) {
   if (session.status === 'error') return 'error';

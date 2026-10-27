@@ -47,38 +47,6 @@ small {
   letter-spacing: -1.2px;
   font-weight: 700;
 }
-.logoMark {
-  width: 28px;
-  height: 28px;
-  border: 1px solid #2b909d;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  position: relative;
-  box-shadow: 0 0 22px #31d9ee24;
-}
-.logoMark:before,
-.logoMark:after,
-.logoMark span {
-  content: "";
-  position: absolute;
-  height: 4px;
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--cyan), var(--mint));
-}
-.logoMark:before {
-  width: 14px;
-  transform: rotate(45deg);
-}
-.logoMark:after {
-  width: 14px;
-  transform: rotate(-45deg);
-}
-.logoMark span {
-  width: 4px;
-  height: 14px;
-  opacity: 0.75;
-}
 .cyan {
   color: var(--accent-text);
 }

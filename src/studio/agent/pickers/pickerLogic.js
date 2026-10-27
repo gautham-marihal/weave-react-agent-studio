@@ -1,6 +1,5 @@
-// What the language, voice and model pickers of the Agent page show, worked out from the draft and the catalogues:
-// which languages are left to add, which voices match a search and the filters, which models are offered for a part of
-// the call. Pure: no React, no DOM.
+// What the Agent page's language, voice and model pickers show, from the draft and the catalogues: languages left to
+// add, voices matching a search and filters, models offered for each part of the call. Pure: no React, no DOM.
 
 import { BASE_LANGUAGES, LANGUAGES, languageName } from '../../simple/simpleModel.js';
 import { VOICE_CATALOG } from '../../../voiceCatalog.js';
@@ -21,7 +20,7 @@ const baseOf = (code) =>
     .toLowerCase();
 
 // ---- languages
-// The small badge beside a language: its code, upper case ("en-US" → "EN").
+// The badge beside a language: its base code in capitals ("en-US" → "EN").
 export const languageBadge = (code) => baseOf(code).toUpperCase();
 
 // The main language is one of the locales ("English (United States)"); the others are languages without a region.
@@ -43,7 +42,7 @@ export function extraLanguageOptions({ primary = '', speaks = [], query = '' } =
     hint: l.code,
   }));
 }
-// The chips of the languages the agent speaks, the main one first and marked.
+// Chips for the languages the agent speaks, the main one first and marked.
 export function spokenChips({ primary = '', speaks = [] } = {}) {
   const main = baseOf(primary);
   const seen = new Set();
@@ -75,7 +74,7 @@ export const voiceFilters = () => {
     genders: [...new Set(voices.map((v) => v.gender))],
   };
 };
-// The voices that match a search and the filters; the one in use first, then the ones of the engine in use, then the rest by name.
+// The voices matching a search and filters: the one in use first, then its engine's voices, then the rest by name.
 export function filterVoices({ query = '', gender = '', engine = '', language = '', current = {} } = {}) {
   const list = allVoices().filter(
     (v) =>
@@ -92,13 +91,13 @@ export function filterVoices({ query = '', gender = '', engine = '', language = 
         : 2;
   return list.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
-// The catalogue voice that is the one in use, if it is one of them.
+// The catalogue voice in use, or null when the voice in use is not from the catalogue.
 export const voiceInUse = ({ provider = '', voiceId = '' } = {}) =>
   allVoices().find((v) => v.voiceId === voiceId && v.engine === String(provider).toLowerCase()) || null;
 
 // ---- models
-// What is offered for a part of the call (stage 'llm' | 'stt' | 'tts'): the catalogue's models of every provider the server can run for it, matched
-// against a search and a provider filter; the model in use first.
+// The models offered for a part of the call (stage 'llm' | 'stt' | 'tts'): catalogue models of every provider the
+// server can run for it, matching the search and provider filter; the model in use first.
 export function modelRows({ stage, providers, query = '', provider = '', current = {} } = {}) {
   const offered = providersForStage(providers, stage);
   const rows = [];
@@ -129,8 +128,8 @@ export function providerChips({ stage, providers } = {}) {
     .filter((p) => p.count > 0);
 }
 
-// A copy of the config with one of the language settings that has no screen of its own set (`also_understands`,
-// `auto_detect`); an empty list or false is not written.
+// A copy of the config with a language setting that has no screen of its own (`also_understands`, `auto_detect`).
+// An empty list or false removes the setting instead.
 export function setLanguageField(config, key, value) {
   const next = JSON.parse(JSON.stringify(config || {}));
   next.defaults = next.defaults && typeof next.defaults === 'object' ? next.defaults : {};

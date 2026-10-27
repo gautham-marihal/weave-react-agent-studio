@@ -4,11 +4,10 @@ import { filterOptions, groupOptions } from './pickerOptions.js';
 import Icon from '../../ui/Icon.jsx';
 import { trapTab } from '../../ui/useDialogFocus.js';
 
-// "Add…" as a choice of jobs rather than a drop-down of kinds: each choice is a card with a sentence on what it is for,
-// grouped, with a search box when there are many, in a window over the page (so the page, or the panel the Add is in,
-// stays where it was). It picks one and closes. A choice the runtime can't run yet says so on its card.
+// "Add…" as a window of job cards (grouped, with a search when there are many) instead of a drop-down of kinds; the
+// page, or the panel holding Add, stays where it was. A choice the runtime can't run yet says so on its card.
 // Keyboard: Tab or the arrow keys move between cards, Enter picks, Escape closes and puts focus back on the button.
-//   label: shorter words on the button where the heading beside it already says what is added ("Add a check"); its name stays the whole of it
+//   label: shorter button words when the heading beside it already says what is added; the accessible name stays whole
 //   intro: the line under the window's title
 export default function AddPicker({ what, label, intro, options, disabled, onPick, className = '' }) {
   const [open, setOpen] = useState(false);
@@ -22,8 +21,8 @@ export default function AddPicker({ what, label, intro, options, disabled, onPic
 
   useEffect(() => {
     if (!open) return;
-    // the search takes the keyboard; with no search, the window itself (a ring on the first card would look as if it
-    // were already chosen), and the arrow keys go on to the cards
+    // Focus the search; with no search, focus the window (a ring on the first
+    // card would look already chosen), and the arrow keys go on to the cards.
     const box = panelRef.current;
     const target = searchable ? box?.querySelector('input[type=search]') : box;
     target?.focus({ preventScroll: true });
@@ -37,8 +36,8 @@ export default function AddPicker({ what, label, intro, options, disabled, onPic
   const choose = (option) => {
     onPick(option, option.make());
     close(false);
-    // what was added may take the keyboard itself (its card opens on its first box); when nothing does, it comes back
-    // to the button, never to the page
+    // What was added may take focus itself (its card opens on its first
+    // box); otherwise focus returns to the button, never to the page.
     window.requestAnimationFrame(() =>
       window.requestAnimationFrame(() => {
         const at = document.activeElement;
@@ -145,9 +144,8 @@ export default function AddPicker({ what, label, intro, options, disabled, onPic
   );
 }
 
-// The choices in a window over the page (and over a side panel, when the Add is in one): a title that says what is added, the search, and the cards,
-// which scroll on their own under them. Escape, the close button and a click outside close it; the keys stay inside it, and none reach the panel
-// behind it (so Escape closes the window, not the panel too).
+// The choices in a window over the page (or the side panel), with cards that scroll under the title and search. Keys
+// never reach the panel behind, so Escape closes only this window.
 function PickDialog({ id, boxRef, title, intro, onClose, onKeys, children }) {
   const titleId = useId();
   useEffect(() => {

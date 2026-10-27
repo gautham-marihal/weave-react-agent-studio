@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
 import { createDemoApi, memoryStorage } from '../src/demo/demoApi.js';
 import { applyStarter } from '../src/studio/starters.ts';
-import { readSimple, setRole } from '../src/studio/simple/simpleModel.js';
+import { greetingOf, readSimple, setRole } from '../src/studio/simple/simpleModel.js';
+const greetingText = (config) => greetingOf(config).text;
 import {
   KNOWLEDGE_ID,
   actionsOf,
@@ -13,6 +14,7 @@ import {
   defaultLanguage,
   isStarterRole,
   knowledgeOf,
+  linesToTranslate,
   reachOf,
   removeKnowledge,
   setDetails,
@@ -20,6 +22,7 @@ import {
   setHandOver,
   setLookup,
   setReach,
+  setTranslation,
   stepForPath,
   stepStates,
   withMainLanguage,
@@ -243,4 +246,35 @@ test('demo: a new agent has no calls until it is put live', async () => {
 
   const seeded = await api.handle('GET', `/bots/acme-support/calls?since=${since}&limit=100`);
   assert.ok(seeded.body.calls.length > 0, 'the demo’s own agents keep their calls');
+});
+
+test('setup: a request asks what they need and when, in words that fit the phone', () => {
+  const config = setDetails(fresh(), true, { fields: ['name', 'phone', 'need', 'when'] });
+  const form = config.forms.find((f) => f.id === 'contact_details');
+  assert.deepEqual(
+    form.fields.map((f) => f.name),
+    ['name', 'phone', 'need', 'when'],
+  );
+  assert.equal(form.otherwise[0].text, 'Could you tell me your name, phone number, what you need and the day and time that suit you?');
+  assert.deepEqual(actionsOf(config).details, { on: true, fields: ['name', 'phone', 'need', 'when'] });
+});
+
+test('setup: the greeting and goodbye can be written in another language; the greeting becomes one fixed line its channels share', () => {
+  let config = care();
+  config.defaults = { ...config.defaults, language: { primary: 'en-US', speaks: ['en', 'zh'] } };
+  const lines = linesToTranslate(config);
+  assert.deepEqual(
+    lines.map((l) => l.label),
+    ['What it says first', 'Its goodbye'],
+  );
+  const greeting = lines[0].text.en;
+  config = setTranslation(config, lines[0].key, 'zh', '你好');
+  config = setTranslation(config, 'message:goodbye', 'zh-CN', '再见');
+  const say = config.channels.find((c) => c.greeting).greeting.say;
+  assert.equal(typeof say.message, 'string', 'the greeting is now a fixed line');
+  assert.deepEqual(config.messages.find((m) => m.id === say.message).text, { en: greeting, zh: '你好' });
+  assert.equal(config.messages.find((m) => m.id === 'goodbye').text.zh, '再见');
+  const again = linesToTranslate(config);
+  assert.equal(again[0].text.zh, '你好', 'read back the same');
+  assert.equal(greetingText(config), greeting, 'what it says first is unchanged in English');
 });

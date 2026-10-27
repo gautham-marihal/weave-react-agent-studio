@@ -1,7 +1,6 @@
-// The parts of a value that a page asks for somewhere else (`hidden`: the form's set of 'a.b.c' paths), and nothing
-// else: what is left when the form takes out what it shows (its Delete, its "Reset to defaults"), so a setting asked by
-// a card above the form is never removed from below it. undefined when none of those parts is set. Pure: no React, no
-// DOM.
+// The parts of a value that a page asks for elsewhere (`hidden`: the form's 'a.b.c' paths), and nothing else. The
+// form's Delete and "Reset to defaults" keep these, so a setting asked by a card above the form is never removed from
+// below it. undefined when none is set. Pure: no React, no DOM.
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 

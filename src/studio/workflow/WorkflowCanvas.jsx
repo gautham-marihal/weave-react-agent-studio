@@ -19,13 +19,9 @@ import { roundedPath } from './edgeLanes.js';
 import { EDGE, LABEL, labelBox } from './workflowModel.js';
 import { NOTE_SIZE } from './notes.js';
 
-// The picture itself (React Flow underneath): a block for where a call starts, for each agent and for what goes with
-// it, an arrow for each way the caller moves on. The empty space is dragged (or scrolled) to move the view, Ctrl or a
-// pinch zooms, and the overview in the corner shows where the view is and moves it. Blocks are dragged to where they
-// read best (or moved with the arrow keys), and the blocks that go with an agent follow it; an arrow is drawn from an
-// agent's lower edge to another agent to let it pass callers there. Arrows find their way round the blocks, and their
-// words sit where nothing covers them. It draws what it is given and reports what the person did; it never edits the
-// configuration itself.
+// The workflow picture (React Flow underneath): blocks for where a call starts, each subagent and what goes with it,
+// and arrows for each way the caller moves on. It draws what it is given and reports what the person did; it never
+// edits the configuration itself.
 const ICON = {
   start: 'flag',
   trigger: 'bolt',
@@ -63,7 +59,7 @@ export const PORTS = [
 const PORT_X = Object.fromEntries(PORTS.map(([port, , x]) => [port, x]));
 // the line to a plug-in starts under the port's words
 const PORT_DROP = 26;
-// arrows that are not drawn with a head: what is plugged in under a subagent
+// arrows drawn without a head: the lines to what is plugged in under a subagent
 const HEADLESS = new Set(['plug', 'uses']);
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 1.6;
@@ -74,17 +70,17 @@ const DRAG_FROM = 4;
 const OVERVIEW = { w: 168, h: 112, margin: 12 };
 // the toolbar floats over the top of the picture: room left above the blocks when the picture is fitted
 const UNDER_TOOLBAR = 68;
-// the room the toolbar takes as it is drawn now (in a narrow picture its buttons wrap onto a second row), never less than that
+// the room the toolbar takes now (in a narrow picture its buttons wrap to a second row), never less than UNDER_TOOLBAR
 const toolbarRoom = (el) => {
   const bar = el?.closest('.wfCanvasBox')?.querySelector('.wfCanvasTools');
   return bar ? Math.max(UNDER_TOOLBAR, Math.round(bar.offsetTop + bar.offsetHeight + 12)) : UNDER_TOOLBAR;
 };
-// the zoom and the Test button float over the foot of the picture: room left below the blocks when the picture is fitted
+// the zoom and Test button float over the picture's foot: room left below the blocks when the picture is fitted
 const OVER_ZOOMBAR = 68;
 // what a hand-over with nothing saying when it is taken shows on its arrow
 const SAY_WHEN = 'Say when';
 
-// What a block is called: what it shows first (its name and its line, as they are seen), then what kind of block it is, then any problems.
+// A block's accessible name: what it shows (name and line), then its kind, then any problems.
 const KIND_PHRASE = {
   start: () => ': where a call begins',
   trigger: (n) => (n.channel ? `: where a call comes in${n.off ? ', switched off' : ''}` : ': where a call begins'),
@@ -99,10 +95,10 @@ const iconOf = (n) => (n.type === 'trigger' ? CHANNEL_ICON[n.channelType] || 'bo
 const overlaps = (r, b) => r.x < b.x + b.w && r.x + r.w > b.x && r.y < b.y + b.h && r.y + r.h > b.y;
 const still = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-// what the blocks and arrows read from the picture around them (so they are not drawn again on every move of a dragged block)
+// what blocks and arrows read from the picture, via context so they aren't redrawn on every move of a dragged block
 const Picture = createContext(null);
 
-// a block: the studio's own, with the points an arrow leaves from and arrives at (an agent's can be drawn from, to pass callers to another agent)
+// a block, with the points arrows leave from and arrive at (an agent's can be drawn from, to pass callers to another)
 function Block({ id, data }) {
   const pic = useContext(Picture);
   const n = data.n;
@@ -110,7 +106,7 @@ function Block({ id, data }) {
   const problems = pic.badges?.get(id) || 0;
   const agent = n.type === 'agent';
   if (n.role === 'plug') return <Plug n={n} on={on} problems={problems} />;
-  // its one line: what it is told to do (an agent), what it says or does (the rest); a problem instead, when it has one
+  // its one line: its instructions (an agent) or what it says or does (the rest); a problem instead, when it has one
   const warn = agent ? (n.stranded ? 'Not reachable from Start' : n.deadEnd ? 'Can’t end the conversation' : '') : n.noNumber ? n.sub : '';
   const line = warn || (agent ? n.brief || n.sub : n.sub);
   return (
@@ -126,7 +122,7 @@ function Block({ id, data }) {
         data-node={n.id}
         data-type={n.type}
         onKeyDown={(event) => pic.onNodeKey(event, n)}
-        // reached by the keyboard (not a press of the pointer, which would move the view under it): brought into sight
+        // brought into sight when reached by keyboard (not by a pointer press, which would move the view under it)
         onFocus={(event) => event.currentTarget.matches(':focus-visible') && pic.onNodeFocus(n.id)}
         onPointerDown={(event) => pic.onPress(event, n)}
         onDoubleClick={() => pic.onOpen(n.id)}
@@ -135,7 +131,7 @@ function Block({ id, data }) {
           <Icon name={iconOf(n)} size={18} />
         </span>
         <span className="wfText">
-          {/* (a space between the two lines, so what is read out is "Billing You are…", not "BillingYou are…") */}
+          {/* a space between the two lines, so screen readers say "Billing You are…", not "BillingYou are…" */}
           <strong>{n.label}</strong> {line && <small className={warn ? 'wfWarnText' : undefined}>{line}</small>}
         </span>
         {n.type === 'trigger' && (
@@ -150,7 +146,7 @@ function Block({ id, data }) {
         )}
       </div>
       {agent && pic.showPlugs && (
-        // what can be plugged in under it, each with its own connector; one with nothing plugged in yet offers to add
+        // a connector for each kind of plug-in under it; one with nothing plugged in offers to add
         <div className="wfPorts">
           {PORTS.map(([port, words, x]) => {
             const used = pic.plugged.get(`${n.id}|${port}`);
@@ -186,7 +182,7 @@ function Block({ id, data }) {
   );
 }
 
-// something a subagent uses, plugged in under it: a round icon with its name and what it is under it
+// something a subagent uses, plugged in under it: a round icon with its name and kind under it
 function Plug({ n, on, problems }) {
   const pic = useContext(Picture);
   return (
@@ -217,7 +213,7 @@ function Plug({ n, on, problems }) {
   );
 }
 
-// an arrow: the way the studio routes it (round the blocks), drawn under the blocks; its words are drawn above them (Words, below)
+// an arrow, routed round the blocks and drawn under them; its words are drawn above them (the labels layer below)
 function Arrow({ id, data }) {
   const pic = useContext(Picture);
   const g = pic.routes.get(id);
@@ -273,7 +269,7 @@ function Note({ id, data, selected: _ }) {
 const nodeTypes = { block: Block, note: Note };
 const edgeTypes = { routed: Arrow };
 
-// the controls of the selected block, at their own size beside it (outside the zoomed picture), first in the tab order
+// the selected block's controls at their own size beside it (outside the zoomed picture), first in the tab order
 function Controls({ overlay, nodes }) {
   const { x, y, zoom } = useViewport();
   if (!overlay) return null;
@@ -281,7 +277,7 @@ function Controls({ overlay, nodes }) {
     <div
       className="wfOverlayLayer"
       style={{ transform: `translate(${x}px, ${y}px)` }}
-      // the keyboard gone elsewhere: the next time it comes to the controls, it comes in the page's order
+      // once focus leaves, the next visit to the controls follows the page's order again
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) delete event.currentTarget.dataset.from;
       }}
@@ -311,10 +307,10 @@ function Canvas({
   onOpen,
 }) {
   const rf = useReactFlow();
-  // the page's way to open a block to change it, as it is now (the picture's handlers are kept from one drawing to the next)
+  // the page's latest onOpen (the picture's handlers are kept from one render to the next)
   const openRef = useRef(onOpen);
   openRef.current = onOpen;
-  // the newest: the picture below is kept while only the notes change, and a resize must not write back the notes as they were before an edit
+  // the latest onNoteChange: the picture is kept while only notes change, and a resize must not write back stale notes
   const noteChangeRef = useRef(onNoteChange);
   noteChangeRef.current = onNoteChange;
   // the box the picture is shown in, to know whether all of it is in sight
@@ -325,7 +321,7 @@ function Canvas({
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
     let width = el.clientWidth;
     const watch = new ResizeObserver(() => {
-      // the box wider or narrower (the panel beside it hidden or shown, the window resized): what was in the middle of the view stays there
+      // when the box width changes (panel hidden or shown, window resized), keep what was mid-view in the middle
       const change = el.clientWidth - width;
       width = el.clientWidth;
       if (change && width && width !== change) {
@@ -338,7 +334,7 @@ function Canvas({
     return () => watch.disconnect();
   }, [rf]);
   const markerId = useId().replace(/:/g, '');
-  // the places of the blocks being dragged, as they move; the configuration gets only the dragged block's place, once it is let go
+  // the dragged blocks' places as they move; the configuration gets only the dragged block's place, on release
   const [live, setLive] = useState(null);
   // an arrow being drawn from an agent: the other agents show where it can go
   const [connecting, setConnecting] = useState(false);
@@ -380,8 +376,8 @@ function Canvas({
     return out;
   }, [flow]);
 
-  // each way out of a subagent's right side leaves from its own point, in the order of where it goes (top to bottom),
-  // so the arrows never start on top of one another (the layout's own routes have theirs already)
+  // each way out of a subagent's right side leaves from its own point, ordered top to bottom by target, so arrows never
+  // start on top of one another (the layout's own routes already have theirs)
   const fromShift = useMemo(() => {
     const outs = new Map();
     flow.edges.forEach((edge) => {
@@ -401,8 +397,8 @@ function Canvas({
     return shift;
   }, [flow, byId]);
 
-  // how each arrow runs: once per drawing, around the other blocks. While a block is dragged the arrows take their plain curves, which cost next to
-  // nothing on every move, and find their way round again when it is let go. A plug-in hangs from its port under the subagent.
+  // each arrow's route, around the other blocks. While a block is dragged, arrows take plain curves (cheap on every
+  // move) and route round again on release. A plug-in hangs from its port under the subagent.
   const dragging = !!live;
   const routes = useMemo(() => {
     const out = new Map();
@@ -420,7 +416,7 @@ function Canvas({
         out.set(edge.id, { d: `M ${sx} ${sy} C ${sx} ${sy + k}, ${ex} ${ey - k}, ${ex} ${ey}`, lx: (sx + ex) / 2, ly: (sy + ey) / 2 });
         return;
       }
-      // the layout's own route (on a lane of its own between the columns, never through a block), while both its blocks are where the layout put them
+      // the layout's own lane route, while both blocks are still where the layout put them
       if (edge.points?.length >= 2 && !(live && (live[edge.from] || live[edge.to]))) {
         const [start, end] = [edge.points[0], edge.points.at(-1)];
         out.set(edge.id, { d: roundedPath(edge.points), lx: edge.labelAt?.x ?? (start.x + end.x) / 2, ly: edge.labelAt?.y ?? (start.y + end.y) / 2 });
@@ -431,8 +427,8 @@ function Canvas({
     return out;
   }, [flow, nodes, byId, lanes, dragging, fromShift, live]);
 
-  // where the words of each arrow go: on the arrow, unless they would cover a block or other words; then a little up or down it, or to one side, as
-  // close as there is room (with no room anywhere near, on the arrow as before)
+  // each arrow's words go on the arrow unless they would cover a block or other words; then the nearest free spot up,
+  // down or beside it (with no room near, on the arrow as before)
   const spots = useMemo(() => {
     const blocks = nodes.map((n) => ({ x: n.x - 6, y: n.y - 6, w: n.w + 12, h: n.h + 12 }));
     const placed = [];
@@ -469,7 +465,7 @@ function Canvas({
     return out;
   }, [flow, nodes, routes, bounds, live]);
 
-  // React Flow's own lists: made from the drawing, not from each move (a dragged block's place comes from `live`)
+  // React Flow's own lists: built per render, not per move (a dragged block's place comes from `live`)
   const rfNodes = useMemo(
     () =>
       nodes.map((n) => ({
@@ -478,7 +474,7 @@ function Canvas({
         position: { x: n.x, y: n.y },
         width: n.w,
         height: n.h,
-        // its size is known (the arrows are drawn from it): React Flow takes it as measured, so a block can be dragged the moment it is drawn
+        // its size is known, so React Flow treats it as measured and a block can be dragged as soon as it is drawn
         measured: { width: n.w, height: n.h },
         data: { n },
         connectable: n.type === 'agent',
@@ -516,8 +512,8 @@ function Canvas({
   );
   const agents = useMemo(() => new Set(flow.nodes.filter((n) => n.type === 'agent').map((n) => n.id)), [flow]);
 
-  // A block follows the pointer from where it was pressed, by exactly what the pointer moved (at the zoom), once it has moved far enough to be a drag
-  // rather than a click; React Flow tells when that is, and where the pointer is.
+  // A dragged block follows the pointer from where it was pressed, by exactly what the pointer moved (at the
+  // zoom), once past the drag threshold; React Flow says when that is.
   const press = useRef(null);
   const followers = (node) => (node.type === 'agent' ? flow.nodes.filter((n) => n.agent === node.id && !n.moved) : []);
   const onNodeDragStart = (event, rfNode) => {
@@ -555,7 +551,7 @@ function Canvas({
       onNoteChange?.(d.id, last[d.id]);
       return;
     }
-    // only the block that was dragged gets a place of its own; the blocks that went with it follow it from where it now is
+    // only the dragged block gets a saved place; the blocks that went with it follow it from its new place
     onMove({ [d.id]: last[d.id] });
   };
 
@@ -592,16 +588,15 @@ function Canvas({
     }
   };
 
-  // the zoom the page asks for (its buttons, a number kept from before): the view zooms about its middle
+  // a zoom the page asks for (its buttons, a saved value): the view zooms about its middle
   const shown = useRef(zoom);
   useEffect(() => {
     if (Math.abs(zoom - shown.current) < 0.005) return;
     shown.current = zoom;
     rf.zoomTo(zoom, { duration: still() ? 0 : 160 });
   }, [zoom, rf]);
-  // The whole picture in sight, as large as it fits (never larger than its own size, nor smaller than `smallest`). One
-  // that can't all fit even then starts at its top-left, where a call starts, as a page does; the overview shows the
-  // rest. Gives the zoom it came to.
+  // Fits the whole picture, as large as fits (at most 100%, at least `smallest`). One that still can't fit starts at
+  // its top-left, where a call starts, as a page does; the overview shows the rest. Returns the zoom it reached.
   const showAll = useCallback(
     async (smallest, duration) => {
       const under = toolbarRoom(box.current);
@@ -630,7 +625,7 @@ function Canvas({
   useEffect(() => {
     if (!viewportRef) return undefined;
     viewportRef.current = {
-      // everything in sight (never larger than its own size); gives the zoom it came to
+      // everything in sight (at most 100%); returns the zoom it reached
       fit: async () => {
         shown.current = await showAll(MIN_ZOOM, still() ? 0 : 200);
         return shown.current;
@@ -640,7 +635,7 @@ function Canvas({
         const box = document.querySelector('.wfScroll')?.getBoundingClientRect();
         return box ? rf.screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 2 }) : { x: 200, y: 200 };
       },
-      // a block brought into sight (a block just added), the view moved only as far as it takes
+      // bring a block into sight (one just added), moving the view only as far as needed
       reveal: (id) => {
         const n = rf.getNode(id);
         const box = document.querySelector('.wfScroll')?.getBoundingClientRect();
@@ -653,8 +648,8 @@ function Canvas({
         if (left >= 0 && top >= 0 && left + w <= box.width && top + h <= box.height) return;
         rf.setCenter(n.position.x + (n.width || 0) / 2, n.position.y + (n.height || 0) / 2, { zoom: z, duration: still() ? 0 : 200 });
       },
-      // something drawn over the picture (the ＋ menu, the delete question) brought wholly into sight: the picture moves only as far as it takes, and
-      // keeps clear of the toolbar; one larger than the box starts at its top-left
+      // bring something drawn over the picture (the ＋ menu, the delete question) wholly into sight, moving as little
+      // as needed and clear of the toolbar; one larger than the box starts at its top-left
       keepInSight: (el) => {
         const scroll = document.querySelector('.wfScroll');
         const box = scroll?.getBoundingClientRect();
@@ -675,10 +670,8 @@ function Canvas({
     };
   }, [rf, viewportRef, showAll]);
 
-  // every block in the box at the zoom and place the view is at (a little room at the edges) The overview: only while
-  // some of the picture is out of sight (with all of it in sight it would only cover a block), in a corner where it
-  // covers no block (looked for again when the view stops moving, so it doesn't jump about while it moves); with a
-  // block in every corner, not at all.
+  // The overview shows only while part of the picture is out of sight (otherwise it would just cover a block), in a
+  // corner clear of blocks, re-chosen when the view stops so it doesn't jump about; none if every corner is taken.
   const [overview, setOverview] = useState(null);
   const placeOverview = useCallback(() => {
     const { w, h } = boxSize;
@@ -767,14 +760,14 @@ function Canvas({
           onConnectEnd={() => setConnecting(false)}
           onConnect={({ source, target }) => source && target && source !== target && onConnectAgents?.(source, target)}
           isValidConnection={({ source, target }) => source !== target && agents.has(source) && agents.has(target)}
-          // the zoom the person made (a pinch, Ctrl and the wheel, the overview) goes back to the page; the page's own (its buttons) it already knows
+          // report zooms the person made (pinch, Ctrl and wheel, overview); the page already knows its own
           onMoveEnd={(event, viewport) => {
             placeOverview();
             if (!event) return;
             shown.current = clampZoom(viewport.zoom);
             onZoom?.(shown.current, true);
           }}
-          // the first time, the whole picture fitted to the window (never smaller than is comfortable to read); after that, the zoom kept
+          // first visit: fit the picture to the window (never below a readable size); after that, the zoom is kept
           onInit={async () => {
             if (!autoFit) return;
             shown.current = await showAll(0.75, 0);
@@ -805,8 +798,7 @@ function Canvas({
           panActivationKeyCode={null}
           zoomActivationKeyCode={null}
           connectionRadius={36}
-          // the React Flow link in the lower right corner, clear of the zoom and of Test the agent in the middle (above
-          // the overview when it is there)
+          // the React Flow link sits lower right, clear of the zoom and Test the agent (above the overview if shown)
           attributionPosition="bottom-right"
           aria-label="The workflow: where a call starts, the agents, and the ways a caller moves on"
         >

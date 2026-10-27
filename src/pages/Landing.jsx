@@ -27,8 +27,7 @@ const LANDING_MENUS = {
   ],
 };
 
-// Landing navigation: Product, Solutions and Resources open menus (Radix): each under its word, the arrows move, Escape
-// or a click elsewhere closes it.
+// Product, Solutions and Resources menus (Radix): each opens under its word; arrows move; Escape or a click out closes.
 function LandingNav({ onStart }) {
   const choose = (item) =>
     afterMenu(() => {

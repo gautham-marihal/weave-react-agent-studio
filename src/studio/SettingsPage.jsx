@@ -9,8 +9,8 @@ import { DENSITIES, useDensity, useTechnicalNames } from './usePref.js';
 import { StyleCards } from '../ui/StylePicker.jsx';
 import { Choice, OneOf } from '../ui/OneOf.tsx';
 
-// Workspace settings. A workspace here is a label kept in this browser, and so is which workspace an agent is in;
-// the agents themselves live on the Agent Builder API. This page says what is on the server and what is only local.
+// Workspace settings. Workspaces and which agent is in which are kept in this browser; the agents live on the Agent
+// Builder API. The page says what is on the server and what is only local.
 export default function SettingsPage({ workspace, workspaceCount, bots, removedCount, sessions, onRename, onDelete, onOpenAgents }) {
   const [name, setName] = useState(workspace?.name || '');
   const [savedName, setSavedName] = useState(false);
@@ -149,7 +149,7 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
               )}
             </p>
           </section>
-          {/* Where the data comes from is for people who work with the studio's plumbing: shown with technical names, and whenever the API cannot be reached (so nobody is left wondering why nothing loads). */}
+          {/* shown with technical names, and whenever the API can't be reached so nobody wonders why nothing loads */}
           {(technical || (!online && !health.loading)) && (
             <Fold className="settingsCard settingsDev" open={isDemoMode() || (!online && !health.loading)} aria-labelledby="settings-dev">
               <summary id="settings-dev">

@@ -7,7 +7,7 @@ import Icon from '../ui/Icon.jsx';
 import { PartPanel, PartRow, Parts } from '../ui/Parts.tsx';
 import Select from '../ui/Select.tsx';
 
-// "English (US)" for "English (United States)": the table's language column fits on one line, the whole name is its tooltip
+// "English (US)" for "English (United States)", so the language column fits on one line (full name in the tooltip)
 const SHORT_COUNTRIES = { 'United States': 'US', 'United Kingdom': 'UK', 'United Arab Emirates': 'UAE' };
 const shortLanguage = (name) =>
   String(name || '').replace(/\(([^)]+)\)$/, (whole, country) => (SHORT_COUNTRIES[country] ? `(${SHORT_COUNTRIES[country]})` : whole));

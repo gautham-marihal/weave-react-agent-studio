@@ -6,10 +6,9 @@ import { sampleArgs, taskWords } from './serverPreview.js';
 import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
 import { PREVIEW_SOURCE } from './tryPanels.js';
 
-// "Try it" for one tool, answered by the server: type the arguments the model would give, paste an answer the API might send, and see the
-// request that would go out (the address, query, body, which secrets it would use), whether the tool's preconditions hold, what the
-// model would be shown of the answer (exactly as it reads it), what is kept in state, what goes straight to the caller, and which effects
-// fire. Nothing is called and nothing is spent. It reads what is in the editor, saved or not. The sample answer is never saved.
+// "Try it" for one tool, answered by the server: type the model's arguments and a sample API answer, then see the
+// request, whether preconditions hold, what the model is shown, what goes to state or the caller, and which effects
+// fire. Nothing is called or spent; the sample answer is never saved.
 
 function Json({ value }) {
   return <code className="stTryJson">{typeof value === 'string' ? value : JSON.stringify(value)}</code>;

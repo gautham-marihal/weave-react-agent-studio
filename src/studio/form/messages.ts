@@ -1,6 +1,6 @@
-// Messages: one fixed line, or the same line in several languages. The primary language is required when there is more than one
-// (the validator says so); every language the agent speaks should be there too, or a caller in that language hears the wrong one.
-// Pure: no network, no DOM.
+// Messages: one fixed line, or the same line in several languages. The primary language is required when there is more
+// than one (the validator says so); every language the agent speaks should be there too, or a caller in that language
+// hears the wrong one. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 
@@ -26,8 +26,8 @@ export const primaryOf = (config: unknown): string => {
   return first || '';
 };
 
-// Every language a message should cover, in order: the primary first, then the rest the agent speaks. Duplicates by base language
-// (en and en-US) count once, because a text written for "en" serves "en-US".
+// Every language a message should cover, in order: the primary first, then the rest the agent speaks. Duplicates by
+// base language (en and en-US) count once, because a text written for "en" serves "en-US".
 export function wantedLanguages(config: unknown): string[] {
   const primary = primaryOf(config);
   const speaks = (config as LanguageConfig)?.defaults?.language?.speaks;
@@ -53,8 +53,8 @@ export function languageStatus(text: unknown, config: unknown): LanguageStatus {
   return { kind: 'languages', have, missing, primaryMissing: !!primary && !hasLanguage(text, primary) };
 }
 
-// One text for everyone -> per language, starting with what is there under the primary language (written as its base, "en",
-// the way the example configuration does: a text for "en" serves "en-US").
+// One text for everyone -> per language, starting with what is there under the primary language (written as its base,
+// "en", the way the example configuration does: a text for "en" serves "en-US").
 export function toLanguages(text: unknown, config: unknown): Record<string, string> {
   if (textMap(text)) return text;
   return { [baseOf(primaryOf(config)) || 'en']: typeof text === 'string' ? text : '' };

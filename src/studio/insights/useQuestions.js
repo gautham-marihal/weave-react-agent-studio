@@ -2,13 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadCalls, loadFacts, newestFirst } from './callData.ts';
 import { collectQuestions, groupQuestions } from './questionsModel.js';
 
-// The questions one agent's callers asked that it did not answer, from its calls of the last few days. Only reads: the
-// list of calls, then the record of each finished one (the newest MAX_CALLS of them). A finished call does not change,
-// so its record is read once per page load.
+// The questions one agent's callers asked that it didn't answer, from its calls of the last few days. Read-only: the
+// call list, then the records of the newest MAX_CALLS finished calls, read once per page load (they never change).
 
 export const MAX_CALLS = 150;
 const factsCache = {};
-const lastResult = new Map(); // `${botId}|${days}` → the last result, shown at once on coming back while it is read again
+const lastResult = new Map(); // `${botId}|${days}` → last result, shown at once on return while it is read again
 
 export function useQuestions(botId, { days = 14, nowMs } = {}) {
   const [state, setState] = useState(() => ({

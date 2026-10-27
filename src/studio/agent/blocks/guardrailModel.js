@@ -1,13 +1,12 @@
-// Guardrails in plain words, for the top of the Guardrails page: the topics it keeps to, the limits on a call, and the
-// moments it hands over or ends the call by itself. Each reads its part of `guardrails` and writes it back complete; a
-// part left empty is taken out, so nothing is written that was not chosen. Pure: no React, no DOM.
+// Model for the top of the Guardrails page (topics, call limits, hand-over and ending rules). Each part is written back
+// complete, and an empty part is removed so nothing unchosen is written. Pure: no React, no DOM.
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
 const clone = (v) => JSON.parse(JSON.stringify(v));
 const strings = (v) => list(v).filter((s) => typeof s === 'string' && s.trim());
 
-// What a line it says is, in words: the text itself, or '' for a reference to one of the fixed lines (the field then says which).
+// A line's text, or '' when it refers to a fixed message (the field then says which).
 export const sayText = (say) => (typeof say === 'string' ? say : '');
 export const sayRef = (say) => (isObj(say) && typeof say.message === 'string' ? say.message : '');
 
@@ -27,8 +26,8 @@ function edit(config, change) {
   return next;
 }
 
-// ---- topics ---------------------------------------------------------------------------------------------------------------------------------------
-//   { allowed: [..], blocked: [..], offTopic: null | { strikes, then, say, sayRef } }; a topic written twice is shown once
+// ---- topics ---------------------------------------------------------------------------------------------------------
+//   { allowed: [..], blocked: [..], offTopic: null | { strikes, then, say, sayRef } }; duplicate topics show once
 export function topicsOf(config) {
   const t = isObj(config?.guardrails?.topics) ? config.guardrails.topics : {};
   const off = isObj(t.on_off_topic) ? t.on_off_topic : null;
@@ -54,9 +53,8 @@ export function setTopics(config, which, items) {
   });
 }
 
-// What it does when someone keeps going off topic: after `strikes` tries it runs the tool `then` (ending the conversation, passing to a person...),
-// saying `say` first. null takes the rule away. A new rule with no tool to run is not written (the schema needs one); one already there without a
-// tool (made by hand) is kept, with what else it has, until a tool is chosen. What it says is kept as typed (a space typed at its end included).
+// Off-topic rule: after `strikes` tries, say `say` and run tool `then`; null removes it. A new rule without a tool
+// isn't written (the schema needs one), but a hand-made one is kept until a tool is chosen. `say` is kept as typed.
 export function setOffTopic(config, value) {
   return edit(config, (g) => {
     const topics = isObj(g.topics) ? { ...g.topics } : {};
@@ -73,7 +71,7 @@ export function setOffTopic(config, value) {
   });
 }
 
-// The tools that can be run when the tries are used up, by name: ending the conversation and passing to a person first.
+// Tools that can run when the tries are used up, by name: ending the conversation and passing to a person first.
 export function endingTools(config) {
   const tools = list(config?.tools).filter((t) => isObj(t) && typeof t.id === 'string' && t.id);
   const rank = (t) => (t.builtin === 'end_call' ? 0 : t.builtin === 'transfer_or_callback' ? 1 : 2);
@@ -82,8 +80,8 @@ export function endingTools(config) {
   return [...tools].sort((a, b) => rank(a) - rank(b)).map((t) => ({ id: t.id, label: label(t), builtin: t.builtin || '' }));
 }
 
-// ---- limits ---------------------------------------------------------------------------------------------------------------------------------------
-// Each limit as it is asked: in minutes for the length of a call (the configuration keeps seconds), the others as they are.
+// ---- limits ---------------------------------------------------------------------------------------------------------
+// Each limit as asked: call length in minutes (the configuration keeps seconds), the others as they are.
 export const LIMITS = [
   {
     key: 'max_call_duration_s',
@@ -129,8 +127,8 @@ export function limitsOf(config) {
   return { values, say: sayText(l.say), sayRef: sayRef(l.say) };
 }
 
-// A limit as typed: '' takes it away; anything else is made a whole number within what the schema allows. What it says when a limit ends the call
-// stays when the last limit goes (the box is emptied for a moment while a new number is typed): it is shown, and cleared by hand.
+// '' removes the limit; anything else becomes a whole number within the schema's range. The closing line stays when the
+// last limit goes (the box is briefly empty while retyping); it is cleared by hand.
 export function setLimit(config, key, typed) {
   const limit = LIMITS.find((l) => l.key === key);
   if (!limit) return config;
@@ -143,7 +141,7 @@ export function setLimit(config, key, typed) {
   });
 }
 
-// Kept as typed (a space typed at its end included); nothing but spaces takes it away.
+// Kept exactly as typed; only spaces removes it.
 export function setLimitSay(config, text) {
   return edit(config, (g) => {
     const limits = isObj(g.limits) ? { ...g.limits } : {};
@@ -154,8 +152,8 @@ export function setLimitSay(config, text) {
   });
 }
 
-// ---- handing over and ending, by itself ---------------------------------------------------------------------------------------------------------
-// Three rules people ask for, as switches; any other rule is in the list below them. Each is known by its id.
+// ---- handing over and ending, by itself -----------------------------------------------------------------------------
+// Three common rules as switches, each known by its id; any other rule is in the list below.
 export const MOMENTS = [
   {
     id: 'frustrated_to_person',
@@ -193,11 +191,11 @@ export const MOMENTS = [
 ];
 
 const transferTool = (config) => list(config?.tools).find((t) => isObj(t) && t.builtin === 'transfer_or_callback' && t.id)?.id || '';
-// a check on what is said already has this id (the server takes the ids of the checks and of these rules as one set)
+// a check already has this id (the server treats check ids and rule ids as one set)
 const checkHasId = (config, id) => [...list(config?.guardrails?.input), ...list(config?.guardrails?.output)].some((c) => isObj(c) && c.id === id);
 
-// The switch a rule is, when it is one: known by its id, and still doing what the switch says (when it applies and what it does then, in words; what
-// it says may be anything). A rule changed in the list below to do something else is not that switch any more, and is not named as it.
+// The switch a rule is: matched by id and still doing what the switch says (its line may be anything). A rule changed
+// in the list below to do something else is no longer that switch.
 export function momentOf(rule, config) {
   const moment = isObj(rule) ? MOMENTS.find((m) => m.id === rule.id) : null;
   if (!moment) return null;
@@ -206,11 +204,9 @@ export function momentOf(rule, config) {
   return ruleWords(made, config) === ruleWords(rule, config) ? moment : null;
 }
 
-//   { [id]: { on, changed, keywords?, possible, why, needsHandOver } } for the
-//   three switches. A rule changed in the list below stays on, and `changed`
-//   says what it does now; the words of one are asked here only while it still
-//   listens for words. `needsHandOver`: it passes people to a person and the
-//   agent can't yet, so switching it on switches that on too (the page does both, and says so).
+// -> { [id]: { on, changed, keywords?, possible, why, needsHandOver } } for the three switches
+//   changed: what a rule edited in the list below does now (it stays on)
+//   needsHandOver: it hands over but the agent can't yet, so switching it on switches hand-over on too
 export const BRINGS_HAND_OVER = 'Switching it on also switches on “Pass people to a person” on the Tools page, which it uses.';
 export function momentsOf(config) {
   const rules = list(config?.guardrails?.escalation).filter(isObj);
@@ -235,8 +231,7 @@ export function momentsOf(config) {
   );
 }
 
-// Switching one on adds its rule at the end of the list; one already there stays as it is, with whatever was changed in the list below. Switching it
-// off takes the rule away.
+// On adds the rule at the end of the list (an existing one stays as it is); off removes it.
 export function setMoment(config, id, on, { keywords } = {}) {
   const moment = MOMENTS.find((m) => m.id === id);
   if (!moment) return config;
@@ -256,9 +251,8 @@ export function setMoment(config, id, on, { keywords } = {}) {
   });
 }
 
-// The words a switched-on rule listens for, changed where the rule is: what it says, its tool, its place in the list
-// and anything else changed in the list below stay as they are. With no word left it would never apply (and the schema
-// needs one), so the last word stays: `{ config, refused }` says so.
+// Changes a switched-on rule's words in place, leaving the rest as is. The last word can't go (the rule would never
+// apply, and the schema needs one): `{ config, refused }` says so.
 export function setMomentWords(config, id, keywords) {
   const words = tidyList(keywords);
   if (!words.length) return { config, refused: 'It needs at least one word. To stop it, switch it off.' };
@@ -270,7 +264,7 @@ export function setMomentWords(config, id, keywords) {
   return { config: next, refused: '' };
 }
 
-// One rule in words, for its row in the list: "When the caller sounds frustrated (2 turns in a row): pass them to a person".
+// One rule in words for its row: "When the caller sounds frustrated (2 turns in a row): pass them to a person".
 const SENTIMENT_WORDS = { frustrated: 'sounds frustrated', negative: 'is unhappy', abusive: 'is abusive' };
 export function ruleWords(rule, config) {
   if (!isObj(rule)) return '';
@@ -304,7 +298,7 @@ const words = (id) => {
   const text = String(id).replace(/[_-]+/g, ' ').trim();
   return text ? `${text[0].toUpperCase()}${text.slice(1)}` : '';
 };
-// an agent by its own name (or, alone, the agent's), else its id in words
+// a workflow agent's own name (or, if it is the only one, the agent's), else its id in words
 function agentWords(config, id) {
   const agents = list(config?.agents?.items).filter(isObj);
   const agent = agents.find((a) => a.id === id);
@@ -313,7 +307,7 @@ function agentWords(config, id) {
   return words(id);
 }
 
-// A check on what is said, in words, for its row and its panel: what it is and what it does when it finds something ("politely declines").
+// A check in words, for its row and panel: what it is and what it does on a hit ("politely declines").
 const TRIGGER_WORDS = {
   deflect: 'politely declines',
   redact_in_logs: 'hides it in the call log',

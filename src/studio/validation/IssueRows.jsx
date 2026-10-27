@@ -7,9 +7,9 @@ import { useTechnicalNames } from '../usePref.js';
 import { describeIssues } from './issues.js';
 import './validation.css';
 
-// What the checks found, for a person: each problem names the setting by its label, says what is wrong in plain words, and offers a button when the
-// studio can fix it (and "Show me" to go there either way). What needs the person's own words is listed apart from what a click will fix, and the
-// advice that never blocks anything last. The server's own sentence and the raw path are one click away, and open when technical names are on.
+// What the checks found, for a person: each problem names the setting by label, says what is wrong plainly, and offers
+// a fix button when the studio can (and "Show me" either way). Problems needing the person's words are listed apart
+// from one-click fixes, non-blocking advice last. The server's sentence and path open when technical names are on.
 function Row({ item, config, onJump, onApply, onOpenModels }) {
   const [technical] = useTechnicalNames();
   const apply = (fix) => {

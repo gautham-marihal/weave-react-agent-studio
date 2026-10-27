@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
 import { holdStagedPanel } from './stagedPanel.js';
 
-// Whether another dialog sits over the panel (a confirmation opened from inside it, the search): the key was pressed in that dialog, or it was put on
-// the page after the panel (each dialog goes to the end of the page when it opens, and is drawn above what came before).
+// Whether another dialog (a confirmation, the search) sits over the panel: the key came from it, or it was added to the
+// page after the panel (dialogs append to the end and draw above what came before).
 export function coveredBy(panel, target) {
   if (!panel) return false;
   const layer = typeof target?.closest === 'function' ? target.closest('[aria-modal="true"]') : null;
@@ -14,10 +14,9 @@ export function coveredBy(panel, target) {
   return !!top && top !== panel;
 }
 
-// A panel that slides in from the right and keeps the page where it was. The keyboard goes into it (to the close
-// button), Tab stays inside it, Escape closes it (an open list inside it closes first, and a dialog opened over it
-// closes alone), and closing puts the keyboard back on whatever opened it.
-//   panelRef: a ref that is given the panel too (StagedDrawer gives the keyboard back to it)
+// A panel that slides in from the right. Focus moves to its close button and Tab stays inside; Escape closes it (an
+// open list or a dialog over it closes first), and closing returns focus to whatever opened it.
+//   panelRef: also given the panel (StagedDrawer returns focus to it)
 export default function Drawer({ title, icon, onClose, children, footer = null, width = 'normal', label, className = '', panelRef }) {
   const own = useRef(null);
   const ref = panelRef || own;
@@ -27,12 +26,12 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
     return () => {
       if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus({ preventScroll: true });
     };
-    // once per opening: the ref is the same for as long as the panel is open
+    // once per opening: the ref stays the same while the panel is open
   }, [ref]);
   useEffect(() => {
     const onKey = (event) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
-      // a dialog over the panel takes its own Escape: closing the panel too would drop what is in it
+      // a dialog over the panel takes its own Escape; closing the panel too would drop its contents
       if (coveredBy(ref.current, event.target)) return;
       event.preventDefault();
       onClose();
@@ -58,8 +57,8 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
   };
   return createPortal(
     <>
-      {/* on click, not on press: closing on the press would let the release land on whatever is under the scrim, so one click would both close the
-          panel and open that (a menu item, a button) */}
+      {/* on click, not press: closing on press would let the release land on what is under the scrim, so one click
+          would both close the panel and press that */}
       <div className="nlScrim" aria-hidden="true" onClick={onClose} />
       <aside
         className={`nlDrawer ${width} ${className}`.trim()}
@@ -88,18 +87,16 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
   );
 }
 
-// A drawer whose edits wait for "Done": it works on a copy of the draft, and only Done puts the copy into the draft
-// (Cancel and Escape leave the draft as it was). `children` is a function of (config, set, stagedEditor): the first two
-// for a part that edits a config directly (the pickers, the plain-words blocks), the last for the settings form, which
-// wants an editor.
+// A drawer that edits a copy of the draft; only Done applies it (Cancel and Escape leave the draft as it was).
+//   children(config, set, stagedEditor): config/set for parts that edit config directly, stagedEditor for the form
 export function StagedDrawer({ editor, title, icon, onClose, children, width, doneLabel = 'Done', initial }) {
   const [draft, setDraft] = useState(() => (initial ? initial(editor.parsed.value) : editor.parsed.value));
   const original = editor.parsed.value;
   const latest = useRef({ draft, onClose, editor });
   latest.current.onClose = onClose;
   latest.current.editor = editor;
-  // a change is kept in the ref at once, so a panel that changes the copy and then finishes in the same breath
-  // (deleting what it shows) finishes with the change
+  // kept in the ref at once, so a panel that changes the copy and finishes in the same tick (deleting what it shows)
+  // finishes with the change
   const setCopy = useCallback((next) => {
     latest.current.draft = next;
     setDraft(next);
@@ -109,14 +106,13 @@ export function StagedDrawer({ editor, title, icon, onClose, children, width, do
     [editor, draft, setCopy],
   );
   const changed = JSON.stringify(draft) !== JSON.stringify(original);
-  // puts the copy into the draft and closes; stable, so a panel can hold on to it
+  // applies the copy and closes; stable, so a panel can hold on to it
   const done = useCallback(() => {
     const { draft: d, onClose: close, editor: e } = latest.current;
     if (JSON.stringify(d) !== JSON.stringify(e.parsed.value)) e.setValue(d);
     close();
   }, []);
-  // while it has changes waiting, whatever would replace it (the search opening another panel or page) asks first: keep
-  // them, or stay (stagedPanel.js)
+  // while changes wait, whatever would replace the panel (search opening a panel or page) asks first (stagedPanel.js)
   const panel = useRef(null);
   useEffect(() => {
     if (!changed) return undefined;

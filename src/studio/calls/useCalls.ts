@@ -6,11 +6,9 @@ import type { CallSummary } from '../../api/types.ts';
 import { fewAtATime } from '../insights/callData.ts';
 import { ALL_AGENTS_LIMIT, PER_AGENT_PAGE, callsWithoutGaps, queryFor } from './callModel.js';
 
-// Loads the calls of one agent, or of every agent (one request each, a few at a time, because the API lists calls per
-// agent), and pages through them. Reading calls never changes anything. A failure for one agent is kept next to the
-// others' calls, not allowed to hide them. Read through the shared cache (an infinite query): a page of the list is one
-// round of asking every agent that has more, so "Load more" asks only those; changing a filter keeps the last list on
-// screen, dimmed, until the new one is in; the list opened again shows at once and refreshes.
+// One agent's calls, or every agent's (one request each, a few at a time: the API lists calls per agent), paged.
+// One agent's failure shows beside the others' calls, never hiding them. An infinite query: a page is one round of
+// asking the agents with more, so "Load more" asks only those; a filter change keeps the last list on screen, dimmed.
 const AT_A_TIME = 4;
 
 type AgentPage = { id: string; calls: CallSummary[]; next: string | null; error: string | null };
@@ -30,7 +28,7 @@ const fetchPage = (id: string, filters: Filters, cursor: string | undefined, sig
       return { id, calls: [], next: null, error: (error as Error)?.message || 'This agent’s calls could not be read.' };
     });
 
-// each agent's newest page so far: the one whose `next` says whether it has more, and whose error (if any) is the one to show
+// each agent's newest page so far: its `next` says whether it has more, and its error (if any) is the one shown
 function latestOf(rounds: Round[]): Round {
   const latest: Round = {};
   rounds.forEach((round) => Object.values(round).forEach((page) => (latest[page.id] = page)));
@@ -89,7 +87,7 @@ export function useCalls({ bots = [], botId = '', filters, refreshMs = 0 }: { bo
   return {
     calls,
     loading: query.isFetching && !query.data,
-    // the last list is shown while another is read (a filter changed); a refresh of the same list (Refresh, every 10 s) only updates it in place
+    // a changed filter shows the last list meanwhile; a refresh of the same list (every 10 s) updates it in place
     refreshing: query.isPlaceholderData,
     busy: query.isFetching && !query.isFetchingNextPage,
     loadingMore: query.isFetchingNextPage,

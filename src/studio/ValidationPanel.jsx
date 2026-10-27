@@ -8,7 +8,7 @@ import Icon from '../ui/Icon.jsx';
 // The problem list is loaded when it is first shown.
 const IssueRows = lazy(() => import('./validation/IssueRows.jsx'));
 
-// What the checks found in the draft: a verdict, the parts that are declared but not enforced, the problems (each with a way to its place), what the
+// What the checks found: a verdict, parts declared but not enforced, the problems (each linked to its place), what the
 // runtime can't run yet, and the secrets the agent needs.
 export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, onFold, onApply, onOpenModels }) {
   const { report, validating, parsed } = editor;
@@ -27,7 +27,7 @@ export function ValidationPanel({ editor, onJump, onJumpOffset, folded = false, 
   else if (report.valid) headline = { tone: 'good', text: 'Valid. Ready to publish' };
   else headline = { tone: 'bad', text: `${errors.length} error${errors.length === 1 ? '' : 's'} to fix before publishing` };
 
-  // What the folded line says besides the verdict: so a hidden panel never hides that parts of the agent will not run, or that a key is missing.
+  // The folded line also counts these, so a hidden panel never hides that parts won't run or a key is missing.
   const secretCount = (report?.secrets_required || []).length;
   const summaryLine =
     parsed.error || !report

@@ -1,6 +1,5 @@
-// How wide words are, so a block, a plug-in or the words on an arrow can be made as big as their words and never cut
-// them: measured in the page's own font when there is a page (a canvas measures them), else a fair guess (in a test,
-// say). And words wrapped into lines no wider than a width.
+// Text width, so blocks, plug-ins and arrow labels fit their words without cutting them: measured on a canvas in the
+// page's font, else a fair guess (as in tests). Also wraps words into lines no wider than a width.
 //   font: { size, weight }
 
 let ruler = null;
@@ -16,7 +15,7 @@ function getRuler() {
   }
   return ruler;
 }
-// the page's font (looked up again now and then: the style can change)
+// the page's font, looked up again at most once a second since the style can change
 function pageFont() {
   const now = Date.now();
   if (!family || now - familyAt > 1000) {
@@ -26,7 +25,7 @@ function pageFont() {
   return family;
 }
 
-// measured again from now on (the fonts have loaded, or the style changed the font)
+// re-measure from now on (call when the fonts load or the style changes the font)
 export function resetMeasure() {
   family = '';
 }

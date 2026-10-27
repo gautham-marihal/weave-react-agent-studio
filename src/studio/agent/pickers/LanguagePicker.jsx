@@ -7,9 +7,9 @@ import { extraLanguageOptions, languageBadge, mainLanguageOptions, setLanguageFi
 import { BASE_LANGUAGES } from '../../simple/simpleModel.js';
 import './pickers.css';
 
-// The language of an agent in two parts, as one decision each: the main language (one choice from a list you can search) and the other languages it
-// understands (the ones chosen are chips you can take away; "Add a language" opens a list of the rest).
-//   brief: only those two (the guided setup); the languages it only recognises are left to the Agent page
+// An agent's languages, one decision each: the main language (a searchable list) and the other languages it speaks
+// (chips you can remove; "Add a language" lists the rest).
+//   brief: only those two (the guided setup); the languages it only recognises stay on the Agent page
 export default function LanguagePicker({ config, set, brief = false }) {
   const read = readSimple(config);
   const [mainQuery, setMainQuery] = React.useState('');
@@ -102,7 +102,8 @@ export default function LanguagePicker({ config, set, brief = false }) {
             </span>
           }
         />
-        <p className="pkNote">Write the fixed lines for each language under “Fixed lines” on the Agent page.</p>
+        {/* in the setup, the greeting and goodbye are written below for each language */}
+        {!brief && <p className="pkNote">Write the fixed lines for each language under “Fixed lines” on the Agent page.</p>}
       </section>
 
       {!brief && (

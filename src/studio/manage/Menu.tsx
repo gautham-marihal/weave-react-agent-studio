@@ -3,10 +3,9 @@ import Icon from '../../ui/Icon.jsx';
 import { afterMenu, keepEscape } from '../../ui/layer.ts';
 import Tip from '../../ui/Tip.tsx';
 
-// A small "⋯" menu (Radix DropdownMenu). Drawn above everything and placed beside its button on the side with room, so a card with overflow:hidden
-// never clips it. Keyboard: Enter, Space or ArrowDown opens it, the arrows move, a letter jumps to the item it starts, Escape closes it and gives the
-// keyboard back to the button. An item that opens something (a dialog) does so once the menu has given the keyboard back.
-//   icon: what the button shows ("more", the "⋯"; "chevronDown" for the second half of a split button, as "Open ▾" on the Agents list)
+// A small "⋯" menu (Radix DropdownMenu), drawn above everything beside its button so a card with overflow:hidden never
+// clips it. Escape gives the keyboard back to the button; an item that opens a dialog does so only after that.
+//   icon: "more" (the "⋯"), or "chevronDown" for the second half of a split button ("Open ▾" on the Agents list)
 
 export type MenuItem =
   { divider: true; label?: never } | { label: string; onClick?: () => void; disabled?: boolean; hint?: string; danger?: boolean; divider?: false };

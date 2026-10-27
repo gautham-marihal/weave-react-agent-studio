@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
 import { Switch } from '../../form/fields.jsx';
 
-// The small parts the plain-words blocks of the agent's pages share (Guardrails, After the call), in the setup's own look (setup.css).
+// Small parts shared by the plain-words blocks (Guardrails, After the call), in the setup's look (setup.css).
 
-// A card with an icon, a title, a line, and a switch or nothing at its right; what it opens goes underneath.
+// A card with an icon, title, line and an optional switch; its children go underneath.
 //   on: true | false | null (null: not set, the server decides — said under the line)
 //   pending: a line for what the server says it doesn't do yet (shown in the warning tone)
 export function Card({ icon, title, text, on, onToggle, unset = '', pending = '', children, label }) {
@@ -78,8 +78,8 @@ export function Chips({ label, items, onChange, placeholder, help }) {
   );
 }
 
-// A box for a number that keeps what is being typed ("0.", "1.5", or nothing for a moment) and hands on a number, or '' when it is emptied. What
-// it shows follows the draft again whenever the box is not being typed in.
+// A number box that keeps partial input ("0.", empty) while typing and hands on a number, or '' when emptied. It
+// follows the draft again when not being typed in.
 export function NumberBox({ value, onChange, className = 'stFInput smNumber', ...rest }) {
   const shown = value === null || value === undefined ? '' : String(value);
   const [text, setText] = useState(shown);
@@ -112,8 +112,7 @@ export function NumberBox({ value, onChange, className = 'stFInput smNumber', ..
   );
 }
 
-// Words typed with commas between them ("Happy, Neutral, Unhappy"), kept as typed while the box has the focus, and
-// handed on as a list at every change.
+// Comma-separated words ("Happy, Neutral, Unhappy"), kept as typed while focused, handed on as a list on each change.
 export function ListBox({ values, onChange, ...rest }) {
   const shown = values.join(', ');
   const [text, setText] = useState(shown);
@@ -140,7 +139,7 @@ export function ListBox({ values, onChange, ...rest }) {
   );
 }
 
-// A line it says, typed as text; when the configuration points at one of its fixed lines instead, the box says which, and typing replaces it.
+// A line the agent says; when the config points at a fixed message instead, the box names it and typing replaces it.
 export function SayField({ label, help, value, refId, onChange, placeholder }) {
   return (
     <label className="suField">

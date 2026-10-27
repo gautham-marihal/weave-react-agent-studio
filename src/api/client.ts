@@ -29,10 +29,8 @@ import * as S from './schemas.ts';
 const env: Record<string, string | undefined> | undefined = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
 const BASE: string = env?.VITE_API_BASE || '/api';
 
-// The signed-in person. The API guide asks for it on every request as `X-User`, so saves, publishes, deploys and
-// phone-number changes say who made them. It is only a claim (a browser can send any header): in production the proxy
-// in front of the API replaces it with the verified sign-in (docs/PRODUCTION.md). VITE_SEND_USER_HEADER=false stops the
-// browser sending it, where the proxy is the only source.
+// The signed-in person, sent as `X-User` so saves, deploys and number changes say who made them. Only a claim: in
+// production the proxy replaces it (docs/PRODUCTION.md); VITE_SEND_USER_HEADER=false stops the browser sending it.
 let currentUser = '';
 export const setApiUser = (name: unknown, fallback: unknown = ''): void => {
   currentUser = headerSafe(name) || headerSafe(fallback);
@@ -90,9 +88,8 @@ export class ApiError extends Error {
 
 export function classify(status: number, body: unknown): { kind: ApiErrorKind; message: string; errors: ValidationIssue[] } {
   const detail = body && typeof body === 'object' ? (body as { detail?: unknown }).detail : undefined;
-  // A 5xx with no JSON `detail` did not come from the API's own handlers. Empty (the dev proxy's answer when the API is
-  // down) or from a gateway (502, 503, 504): the API is down or restarting. Anything else (a 500 that says "Internal
-  // Server Error"): the API itself failed, which says it, as a change it was making may have been half made.
+  // A 5xx with no JSON `detail` didn't come from the API's handlers: empty (dev proxy) or 502/503/504 means the API is
+  // down or restarting; anything else means the API itself failed, so a change may be half made.
   if (status >= 500 && detail === undefined) {
     if (body === null || body === '' || [502, 503, 504].includes(status)) return { kind: 'network', message: 'The server isn’t responding.', errors: [] };
     return { kind: 'server', message: `The server had an error (${status}). If you were saving or deploying, check whether it went through.`, errors: [] };
@@ -120,9 +117,8 @@ async function request(method: string, path: string, options: SendOptions = {}):
   try {
     return await send(method, path, options);
   } catch (error) {
-    // A read that failed because the connection was dropped on the way (a proxy or the server closing an idle
-    // connection) is asked once more: it changes nothing, and the second try nearly always works. Writes are never
-    // repeated, and a person who cancelled is not asked again.
+    // A read dropped on the way (a proxy or server closing an idle connection) is retried once: it changes nothing and
+    // the retry nearly always works. Writes are never repeated, nor a request the person cancelled.
     if (method !== 'GET' || (error as ApiError)?.kind !== 'network' || options.signal?.aborted) throw error;
     await new Promise((resolve) => {
       setTimeout(resolve, 250);
@@ -166,10 +162,8 @@ async function send(method: string, path: string, { body, signal, raw }: SendOpt
   return data;
 }
 
-// A read's answer, checked against what the studio expects of it (schemas.ts) before anything uses it. It is given back
-// as it came (a field the studio doesn't know is kept); another shape is an error that says which field, instead of a
-// blank tile or a wrong number further on. Only reads are checked: a write that was made is never reported as failed
-// because of how its answer looked.
+// A read's answer is checked against schemas.ts before use and returned as it came (unknown fields kept); another shape
+// is an error naming the field. Only reads are checked, so a write that succeeded is never reported as failed.
 function describeIssue(issue: { path: PropertyKey[]; code: string; expected?: string }): string {
   const where = issue.path.length
     ? issue.path.map((part, i) => (typeof part === 'number' ? `[${part}]` : `${i ? '.' : ''}${String(part)}`)).join('')
@@ -199,7 +193,7 @@ async function read<T>(schema: ZodMiniType<T>, method: string, path: string, opt
   return checked(schema, await request(method, path, options), `${method} ${path.split('?')[0]}`);
 }
 
-// Demo mode: the same call, answered by the imitation API in the browser (see src/demo/demoApi.js). It is loaded only when needed.
+// Demo mode: the same call answered by the in-browser imitation API (src/demo/demoApi.js), loaded only when needed.
 async function demoRequest(method: string, path: string, body: unknown, signal?: AbortSignal): Promise<unknown> {
   const aborted = () => new DOMException('Aborted', 'AbortError');
   if (signal?.aborted) throw aborted();
@@ -208,7 +202,7 @@ async function demoRequest(method: string, path: string, body: unknown, signal?:
     setTimeout(resolve, 30);
   }); // a moment, so loading states are real
   if (signal?.aborted) throw aborted();
-  // a file for a knowledge upload is kept as it is; everything else is copied so the imitation can't change the caller's objects
+  // a knowledge upload's file is kept as it is; the rest is copied so the imitation can't change the caller's objects
   const isFile = !!body && typeof body === 'object' && (body as { __file?: unknown }).__file !== undefined;
   const payload = body === undefined ? undefined : isFile ? body : JSON.parse(JSON.stringify(body));
   const { status, body: data } = await getDemoApi().handle(method, path, payload);
@@ -221,7 +215,7 @@ async function demoRequest(method: string, path: string, body: unknown, signal?:
 
 const enc = encodeURIComponent;
 
-// The address of a path on the API as the browser sees it (for a plain link, such as a file download). In demo mode there is none.
+// The browser's address for an API path (for a plain link, such as a file download). None in demo mode.
 export const apiUrl = (path: string): string | null => (isDemoMode() ? null : `${BASE}${path}`);
 
 type Opts = RequestOptions | undefined;
@@ -277,16 +271,16 @@ export const api = {
   startSession: (id: string, { ref, identity, channel }: { ref?: string; identity?: string; channel?: string } = {}, opts?: Opts): Promise<Session> =>
     request('POST', `/bots/${enc(id)}/sessions`, {
       ...opts,
-      // `channel` is the id of the web channel the visitor chose, when the bot offers more than one (chat and voice side by side)
+      // `channel`: the web channel the visitor chose, when the bot offers more than one (chat and voice side by side)
       body: { ...(ref ? { ref } : {}), ...(identity ? { identity } : {}), ...(channel ? { channel } : {}) },
     }),
 
-  // ---- test scenarios (the real runner): scripted scenarios replace the model with a script, live ones use a real model and cost money
+  // ---- test scenarios: scripted ones replace the model with a script, live ones use a real model (costs money)
   // `{ scenarios, ref, network_allowed }`: each scenario with the result of its last run.
   listTests: (id: string, { ref }: { ref?: string } = {}, opts?: Opts): Promise<Loose> =>
     request('GET', `/bots/${enc(id)}/tests${ref ? `?ref=${enc(ref)}` : ''}`, opts),
-  // Answers 202 with a run to poll. `config` tests what is in the editor without saving it (the run's ref is "unsaved"); `scenarios` is a
-  // list of ids; `live` also runs the scenarios that have no model_script against a real model (costs money); `judge` grades `judge` checks.
+  // Answers 202 with a run to poll. `config` tests the unsaved editor (ref "unsaved"); `scenarios` is a list of ids;
+  // `live` also runs scenarios without a model_script on a real model (costs money); `judge` grades `judge` checks.
   runTests: (
     id: string,
     run: { ref?: string; config?: AgentConfig | unknown; scenarios?: string[]; live?: boolean; judge?: boolean; allow_network?: boolean } = {},
@@ -307,7 +301,7 @@ export const api = {
     read(S.CallRecords, 'GET', `/bots/${enc(id)}/calls/${enc(callId)}${queryOf(query)}`, opts),
   getTranscript: (id: string, callId: string, opts?: Opts): Promise<Loose> => request('GET', `/bots/${enc(id)}/calls/${enc(callId)}/transcript`, opts),
 
-  // ---- previews: what the model would be told and shown (they call nothing and spend nothing; send `config` for what is in the editor)
+  // ---- previews: what the model would be told and shown (they call and spend nothing; send `config` for the editor's)
   previewPrompt: (
     body: { config?: AgentConfig | unknown; bot?: string; ref?: string; agent?: string; channel?: string; state?: object; caller_phone?: string; now?: string },
     opts?: Opts,
@@ -355,9 +349,8 @@ export const api = {
   // What each kind of channel may carry and offer: the source for which options a screen shows. A read.
   channelTypes: (opts?: Opts): Promise<{ types: Loose[]; note?: string }> => request('GET', '/channel-types', opts),
 
-  // ---- phone numbers: the number is the person's; the API checks it is free and sets up the LiveKit trunk and
-  // dispatch rule. Reads are safe; the three writes (create, change, release) change the phone system, so they are only
-  // ever sent on a person's click.
+  // ---- phone numbers: the API checks a number is free and sets up the LiveKit trunk and dispatch rule. The three
+  // writes (create, change, release) change the phone system, so they are only ever sent on a person's click.
   numberSettings: (opts?: Opts): Promise<Loose> => request('GET', '/numbers/settings', opts),
   listNumbers: (opts?: Opts): Promise<Loose[]> => request('GET', '/numbers', opts),
   checkNumber: (number: string, opts?: Opts): Promise<{ status: string; owner?: Loose; warnings?: string[]; reason?: string }> =>
@@ -413,9 +406,8 @@ type FollowHandlers = {
   after?: number;
 };
 
-// Follows a call that is in progress: one record at a time through server-sent events (the API's `/calls/{id}/stream`). `EventSource`
-// cannot set headers, so this relies on the proxy adding the key, and the proxy must not buffer this path. Demo mode follows an
-// imitation call instead. Returns a function that stops following.
+// Follows a call in progress one record at a time over server-sent events (`/calls/{id}/stream`). EventSource can't
+// set headers, so the proxy must add the key and not buffer this path. Demo mode follows an imitation. Returns a stop.
 export function followCall(id: string, callId: string, { onOpen, onRecord, onEnd, onError, after }: FollowHandlers = { onRecord() {} }): () => void {
   if (isDemoMode()) {
     let stop = () => {};

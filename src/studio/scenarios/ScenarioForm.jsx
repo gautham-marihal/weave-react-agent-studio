@@ -25,18 +25,17 @@ import {
 } from './model.js';
 import Select from '../../ui/Select.tsx';
 
-// The editor for one scenario. It covers every part the schema has (the caller's turns, thirteen kinds of expectation, a description, a pretend
-// clock, starting state, answers for the bot's API calls, a model script) and "Edit as JSON" for anything else. It never blocks Save for a
-// part it does not know: that part is kept exactly as it is. Only what is positively wrong (a missing id, a channel that isn't there, an
-// invalid pattern) is a problem, and it is said where it is.
+// The editor for one scenario: every part the schema has (turns, thirteen kinds of expectation, clock, state, API
+// mocks, model script) plus "Edit as JSON". Unknown parts are kept as they are and never block Save; only what is
+// positively wrong (a missing id, a missing channel, a bad pattern) is a problem, shown where it is.
 
-// A box for a JSON object or value: keeps what is typed, only passes up what parses, says what is wrong when it doesn't.
+// A box for a JSON object or value: keeps what is typed, passes up only what parses, and says what is wrong if not.
 function JsonBox({ value, onChange, label, rows = 3, placeholder, objectOnly = true, className = '', onValid = null }) {
   const [text, setText] = useState(() => (value === undefined ? '' : JSON.stringify(value, null, 2)));
   const [error, setError] = useState('');
   const boxId = useId();
   const mine = useRef(JSON.stringify(value));
-  // tell the form whether this box holds something that does not parse, so Save can say so instead of silently keeping the old value
+  // tell the form when this box doesn't parse, so Save can say so instead of silently keeping the old value
   useEffect(() => {
     onValid?.(boxId, !error);
     return () => onValid?.(boxId, true);
@@ -94,8 +93,8 @@ function JsonBox({ value, onChange, label, rows = 3, placeholder, objectOnly = t
   );
 }
 
-// A state value as a person types it: the box keeps the text, spaces and all ("not paid"), and passes up what it means (true, 3, "not paid"). It is
-// only written over when the value changes from somewhere else.
+// A state value box that keeps the typed text ("not paid") and passes up what it means (true, 3, "not paid"). Only
+// overwritten when the value changes from somewhere else.
 function ValueBox({ value, onChange, ...rest }) {
   const shown = (v) => (v === undefined ? '' : showValue(v));
   const [text, setText] = useState(() => shown(value));
@@ -628,7 +627,7 @@ function ScriptEditor({ script, onChange, tools, reportBox }) {
 
 export default function ScenarioForm({ initial, config, others, onSave, onCancel, isNew }) {
   const formRef = useRef(null);
-  // the keyboard goes to the form's first field when it opens, and back to what opened it when it closes (else it is lost with the form)
+  // focus goes to the form's first field when it opens, and back to its opener when it closes (else it is lost)
   const [opener] = useState(() => (typeof document === 'undefined' ? null : document.activeElement));
   useEffect(() => {
     formRef.current?.querySelector('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])')?.focus();
@@ -644,7 +643,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState('');
   const [badBoxes, setBadBoxes] = useState([]); // the JSON boxes that hold something that does not parse
-  // "More" stays as the author left it: open when the scenario has something in it, and not shut again when the last of it is removed
+  // "More" stays as the author left it: open when the scenario uses it, not shut when the last of it is removed
   const [moreOpen, setMoreOpen] = useState(() => !!(initial?.model_script || initial?.http_mocks || initial?.now || initial?.state));
   const [blocked, setBlocked] = useState(false); // Save was pressed with something still wrong
   const reportBox = useCallback(
@@ -718,7 +717,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
       }
     }
     if (badBoxes.length || hasProblems(found)) {
-      // the boxes and fields say what is wrong; what is folded away is opened, and the first of it gets the keyboard, so Save is never silent
+      // the boxes and fields say what is wrong; folded parts open and the first gets focus, so Save is never silent
       setBlocked(true);
       window.requestAnimationFrame(() => {
         const form = formRef.current;

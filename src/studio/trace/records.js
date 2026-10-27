@@ -1,10 +1,6 @@
-// The records of a call, or of a test scenario (they are the same records, FRONTEND_GUIDE 10.3 and 10.4): `{ t, seq, elapsed_s, event, ...fields }`,
-// one per thing that happened. This reads them into rows a person can follow: what was said, which tool ran with what and how it went,
-// which API answered, what a knowledge search found, what changed in the call's memory, what went wrong. Pure: no network, no DOM.
-//
-// The API's log writes the record kinds it has today (call_started, agent_entered, agent_said, user_said, model_request, tool_called,
-// http_request, knowledge_search, state_changed, error, session_closed, call_ended) and may add more, so a record this file does not know
-// still gets a row (its name, made readable, and its fields) instead of being dropped.
+// The records of a call or test scenario (the same ones, FRONTEND_GUIDE 10.3/10.4) read into rows a person can follow.
+// Each record is `{ t, seq, elapsed_s, event, ...fields }`. Pure: no network, no DOM.
+// The API may add record kinds, so an unknown record still gets a row (its readable name and fields), never dropped.
 
 import { isObj } from '../form/engine.js';
 import { channelName } from '../simple/simpleModel.js';
@@ -18,10 +14,9 @@ const channelWords = (type) => {
 const list = (v) => (Array.isArray(v) ? v : []);
 const first = (...values) => values.find((v) => v !== undefined && v !== null && v !== '');
 
-// ---- text ---------------------------------------------------------------------------------------------------------------------------
-// The call log of the API currently holds UTF-8 text that was read back as Windows-1252 ("Iâ€™m" for "I’m"). The transcript endpoint has
-// it right; the records do not. This puts it right again when (and only when) a string has that unmistakable pattern, and leaves
-// anything else exactly as it is, so correct text is never touched.
+// ---- text
+// The API's call log holds UTF-8 read back as Windows-1252 ("Iâ€™m" for "I’m"); the transcript endpoint has it right.
+// This fixes a string only when it has that unmistakable pattern, so correct text is never touched.
 const CP1252 = {
   0x20ac: 0x80,
   0x201a: 0x82,
@@ -69,7 +64,7 @@ export function fixMojibake(text) {
   }
 }
 
-// ---- the kinds ----------------------------------------------------------------------------------------------------------------------
+// ---- the kinds
 export const GROUPS = [
   { id: 'conversation', label: 'Conversation', kinds: ['user_said', 'agent_said'] },
   { id: 'tools', label: 'Tools', kinds: ['tool_called'] },
@@ -188,7 +183,7 @@ export function describeRecord(record, index = 0) {
         text: `${first(r.name, r.variable, r.key, 'a value')} → ${short(first(r.value, r.new, r.to), 80)}`,
         facts: first(r.old, r.before, r.from) !== undefined ? [['was', short(first(r.old, r.before, r.from), 80)]] : [],
       };
-    // a multi-step task (FRONTEND_GUIDE 10.3): started, one row per step, finished (with how), or skipped because the caller was already verified
+    // a multi-step task (FRONTEND_GUIDE 10.3): started, each step, finished, or skipped (caller already verified)
     case 'task_started':
       return { ...base, label: 'Task', text: `Started “${first(r.task, r.id, 'a task')}”` };
     case 'task_step': {
@@ -300,8 +295,7 @@ export function describeRecord(record, index = 0) {
         facts: r.where ? [['where', String(r.where)]] : [],
       };
     default: {
-      // a record this file doesn't know: its name made readable, and whatever else it carries
-      // (what it leaves out of `rest`: the time and order, said elsewhere, and the bookkeeping)
+      // an unknown record: its readable name and other fields (time, order and bookkeeping are shown elsewhere)
       const { t: _t, seq: _seq, elapsed_s: _elapsed, event, kind: _kind, ...rest } = r;
       return {
         ...base,
@@ -328,7 +322,7 @@ export function groupCounts(rows) {
   return counts;
 }
 
-// Rows for the groups turned on (none turned on = all). Records of a kind this file doesn't know are in "other", which is always shown.
+// Rows for the groups turned on (none = all). Unknown kinds are in "other", which is always shown.
 export function filterRows(rows, active) {
   const on = new Set(active);
   if (!on.size) return list(rows);

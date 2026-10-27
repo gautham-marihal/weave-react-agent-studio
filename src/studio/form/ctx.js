@@ -1,23 +1,18 @@
 import { createContext, useCallback, useContext, useRef, useState, useSyncExternalStore } from 'react';
 import { formatPath } from '../format.js';
 
-// Shared by every node of the form: the schema engine, the ids that references may point at, the
-// validation issues by path, and where the user last asked to jump to.
-//
-// What is in here is STABLE while a person types: it changes when the schema, the lists of ids, the issues or the focus change, never
-// because one letter was typed. (If it carried the whole config, every keystroke would change it and every card of a big agent would
-// re-render.) A component that needs something from the config asks for exactly that with useConfigSelect, below, and re-renders only
-// when what it asked for changes.
+// Shared by every node of the form: the schema engine, ids that references may point at, issues by path, jump target.
+// Stable while typing (else every card re-renders per keystroke); parts read the config with useConfigSelect instead.
 export const FormCtx = createContext(null);
 export const useForm = () => useContext(FormCtx);
 
-// The schema property whose object a setting is drawn inside ('inactivity' for `timeout_s`, '' at the top). The plain-language catalogue
-// needs it to tell the settings that share a name apart (see plainLanguage.js); a path can't say, because a map's keys are the author's own.
+// The schema property whose object a setting is inside ('inactivity' for `timeout_s`, '' at the top). plainLanguage.js
+// needs it to tell same-named settings apart; a path can't, as map keys are the author's own.
 export const OwnerCtx = createContext('');
 export const useOwner = () => useContext(OwnerCtx);
 
-// The config as a tiny store: `get()` is always the latest, `subscribe` is told after each change. The editor keeps one and puts it in the
-// context (`ctx.store`); a test or another screen can make its own with a fixed config.
+// The config as a tiny store: `get()` is always the latest, `subscribe` hears each change. The editor puts one in
+// `ctx.store`; a test or another screen can make its own.
 export function createConfigStore(initial) {
   let value = initial;
   const listeners = new Set();
@@ -38,8 +33,8 @@ export function createConfigStore(initial) {
 
 const sameJson = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
 
-// Reads something derived from the whole config (`(config) => value`) and re-renders only when that value changes (compared as JSON, so a
-// selector may build a new list or object each time). Keep the selector cheap: it runs on every change of the config.
+// Re-renders only when `selector(config)` changes (compared as JSON, so a selector may build new objects). Keep the
+// selector cheap: it runs on every config change.
 export function useConfigSelect(selector, equal = sameJson) {
   const { store } = useContext(FormCtx);
   const last = useRef(null);
@@ -54,16 +49,15 @@ export function useConfigSelect(selector, equal = sameJson) {
   return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
 }
 
-// A function that is the same function on every render but always runs the latest `fn`: for handing a callback to a memoised child without
-// the child seeing a "new" prop each time.
+// The same function on every render, always running the latest `fn`, so a memoised child never sees a "new" prop.
 export function useStableCallback(fn) {
   const ref = useRef(fn);
   ref.current = fn;
   return useCallback((...args) => ref.current(...args), []);
 }
 
-// One stable handler per key, each running the latest `call(key, ...args)`: so a list can give every item its own onChange and the items
-// that did not change get exactly the props they had, and can skip rendering.
+// One stable handler per key, each running the latest `call(key, ...args)`,
+// so unchanged list items get identical props and skip rendering.
 export function useKeyedHandlers(call) {
   const latest = useRef(call);
   latest.current = call;
@@ -78,11 +72,8 @@ export function useKeyedHandlers(call) {
   }, []);
 }
 
-// React keys for the items of a list that go with the items, not with their places: so what belongs to an item (its
-// card open or shut, its sheet, the keyboard on its Move button) goes with it when it is moved, and goes away with it
-// when it is deleted, from here or from anywhere else. An item keeps its key when it is the same object, or else has
-// the same content, as an item before (a moved item is parsed again as a new object); what is left is paired up in
-// order, so the item being typed in, whose content changes with every letter, keeps its key too.
+// React keys that follow list items, not places, so an item's open card, sheet and focus move and go with it. Same
+// object or same content keeps the key; the rest pair up in order, so the item being typed in keeps its key too.
 let keySeq = 0;
 const newKey = () => {
   keySeq += 1;
@@ -107,8 +98,8 @@ export function useItemKeys(list) {
   return keys;
 }
 
-// Returns the previous value when the new one is the same JSON, so something rebuilt on every change (the lists of ids) keeps one identity
-// until it really changes.
+// Returns the previous value while the new one is the same JSON, so
+// a value rebuilt on every change (the id lists) keeps one identity.
 export function useStableValue(value) {
   const ref = useRef(value);
   if (!sameJson(ref.current, value)) ref.current = value;

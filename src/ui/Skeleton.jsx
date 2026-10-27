@@ -1,7 +1,7 @@
 import React from 'react';
 
-// A shape where words or numbers will be while they are read, so the page keeps its layout and nothing jumps when they arrive. A screen reader hears
-// one "Loading" for the group (SkeletonRows), not every shape.
+// A placeholder shape while words or numbers load, so nothing jumps when they arrive.
+// A screen reader hears one "Loading" for the group (SkeletonRows), not every shape.
 export function Skeleton({ width = '60%', height = 12, round = false, className = '' }) {
   return <span className={`skeleton ${round ? 'round' : ''} ${className}`} style={{ width, height }} aria-hidden="true" />;
 }

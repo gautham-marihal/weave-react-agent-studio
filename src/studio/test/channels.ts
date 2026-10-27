@@ -1,5 +1,5 @@
-// Which channels a browser can try. The Test tab talks to the agent over the web, so only web chat and web voice work; a phone line
-// is tried by calling its number. Pure: no network, no DOM.
+// Which channels a browser can try. The Test tab talks to the agent over the web, so only web chat and web voice work;
+// a phone line is tried by calling its number. Pure: no network, no DOM.
 
 type Channel = { id?: string; type?: string; enabled?: boolean; input?: string[]; output?: string[] };
 
@@ -11,8 +11,8 @@ const channelsOf = (config: unknown): Channel[] => {
 
 export type Testability = { state: 'none' | 'off' | 'ok' | 'unknown'; phone: string[] };
 
-// 'none' = no web channel at all (the server refuses a test), 'off' = web channels exist but all are switched off, 'ok' otherwise,
-// 'unknown' when the configuration isn't loaded yet.
+// 'none': no web channel (the server refuses a test); 'off': web channels all switched off; 'ok' otherwise;
+// 'unknown': configuration not loaded yet.
 export function testability(config: unknown): Testability {
   if (!config) return { state: 'unknown', phone: [] };
   const all = channelsOf(config);
@@ -26,8 +26,7 @@ export function testability(config: unknown): Testability {
   return { state: 'ok', phone };
 }
 
-// Draw the widget by what the channel carries, not only by its kind (FRONTEND_GUIDE 5): a web chat that carries audio
-// is, to the server, a web voice channel, so the microphone is drawn for it too. `channel` is what a session answers: {
-// type, input, output }.
+// Draw the widget by what the channel carries, not just its kind (FRONTEND_GUIDE 5): a web chat carrying audio is a
+// web voice channel to the server, so it gets a microphone too. `channel`: a session's answer, { type, input, output }.
 export const drawsVoice = (channel: Channel | null | undefined): boolean =>
   !!channel && (channel.type === 'web_voice' || (Array.isArray(channel.input) && channel.input.includes('audio')));

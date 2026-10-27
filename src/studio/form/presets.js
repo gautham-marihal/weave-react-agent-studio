@@ -1,14 +1,13 @@
-// Starting points for a new channel. A blank channel is invalid (empty modalities, a phone line with no entry), so
-// "Add channel" offers these instead: each is a complete, valid channel for one kind of reach.
-// Pure data and helpers: no network, no DOM.
+// Starting points for a new channel. A blank channel is invalid (empty modalities, a phone line with no entry), so "Add
+// channel" offers these complete, valid channels instead. Pure data and helpers: no network, no DOM.
 
 import { freshId } from './references.js';
 import { FALLBACK, infoOf, isVoiceChannel, stripVoiceOnly } from './channelTypes.js';
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
-// Which `entry` fields mean something for each channel type. The runtime reads none of them (they describe the route);
-// they exist so people reading the config know how a channel is reached.
+// Which `entry` fields mean something for each channel type. The runtime reads none of them; they tell people reading
+// the config how a channel is reached.
 export const ENTRY_FIELDS = {
   sip_voice: ['dnis', 'sip_trunk', 'dispatch_rule'],
   web_voice: ['widget_id', 'allowed_origins'],
@@ -28,9 +27,8 @@ export const ENTRY_LABELS = {
 };
 
 export const CHANNEL_TYPES = ['sip_voice', 'web_voice', 'web_chat', 'whatsapp', 'sms', 'email', 'custom'];
-// The three ways people reach an agent, in the words the Channels page uses for them everywhere: its switches, its
-// rows, "Add a channel" and the kind of a channel in its panel (one name each, so ticking a switch is plainly what made
-// the row under it).
+// The three ways people reach an agent, in the Channels page's words everywhere (switches, rows, "Add a channel", the
+// panel), so ticking a switch plainly made the row under it.
 export const REACH_WORDS = {
   web_chat: { label: 'Chat on your website', text: 'A chat box on your website that visitors type into.' },
   web_voice: { label: 'Talk on your website', text: 'Visitors talk to it from the browser, with their microphone.' },
@@ -59,8 +57,7 @@ export const CHANNEL_PRESETS = [
   { id: 'email', type: 'email', label: 'Email', note: 'Email conversations', base: 'email' },
 ];
 
-// What a channel of this type starts with: modalities, greeting, capabilities. (Greetings and widget ids are the
-// things a person is expected to change.)
+// What a channel of this type starts with: modalities, greeting, capabilities (greetings and widget ids are to change).
 export function defaultsForType(type, botId) {
   const widget = `${botId || 'agent'}-widget`;
   switch (type) {
@@ -98,15 +95,15 @@ export function defaultsForType(type, botId) {
 export function buildChannel(presetId, { taken = [], botId = '' } = {}) {
   const preset = CHANNEL_PRESETS.find((item) => item.id === presetId) || CHANNEL_PRESETS[0];
   const start = defaultsForType(preset.type, botId);
-  // an id that differs from one already taken only by a hyphen ("web-chat", "web_chat") counts as taken: the two would read the same
+  // an id that differs from one already taken only by a hyphen
+  // ("web-chat", "web_chat") counts as taken: the two would read the same
   const lookalikes = taken.map((id) => String(id).replace(/-/g, '_'));
   const channel = { id: freshId([...taken, ...lookalikes], preset.base), type: preset.type, enabled: true, ...start };
   return channel;
 }
 
-// Changing a channel's type: the type itself, the `entry` fields that don't belong to the new type (dropped), the
-// fields the new type needs (added), and modalities / greeting / capabilities only where they were still the old type's
-// untouched defaults. `cleared` lists what was dropped so the person can be asked first.
+// Changing a channel's type: drop `entry` fields it lacks, add the ones it needs, and reset modalities / greeting /
+// capabilities only if still the old defaults. `cleared` lists what was dropped so the person can be asked first.
 export function changeChannelType(channel, nextType, botId = '', types = FALLBACK) {
   const old = defaultsForType(channel.type, botId);
   const fresh = defaultsForType(nextType, botId);
@@ -136,7 +133,7 @@ export function changeChannelType(channel, nextType, botId = '', types = FALLBAC
     cleared.push('match');
     delete next.match;
   } // how participants are matched follows the type
-  // what the new kind cannot carry or offer goes too, so the channel is valid as it lands (the server's table: GET /channel-types)
+  // what the new kind cannot carry or offer goes too, so the channel is valid as it lands (GET /channel-types)
   const kind = infoOf(types, nextType);
   if (kind && isObj(next.modalities)) {
     const fit = (list, allowed, fallback) => {
@@ -163,7 +160,7 @@ export function changeChannelType(channel, nextType, botId = '', types = FALLBAC
     if (Object.keys(caps).length) next.capabilities = caps;
     else delete next.capabilities;
   }
-  // a kind with no voice does not keep the settings only a voice channel has, and one that takes no pictures or video does not keep their settings
+  // a kind with no voice drops the voice-only settings, and one that takes no pictures or video drops theirs
   if (kind && isObj(next.overrides) && !isVoiceChannel(next, types)) {
     const { overrides, removed } = stripVoiceOnly(next.overrides);
     cleared.push(...removed);
@@ -184,8 +181,8 @@ export function changeChannelType(channel, nextType, botId = '', types = FALLBAC
   return { channel: next, cleared: [...new Set(cleared)] };
 }
 
-// What a channel's modalities need from the rest of the config, as plain sentences. (The validator says the same, but
-// only after the fact and not next to the field.)
+// What a channel's modalities need from the rest of the config, as sentences. The validator says the same, but only
+// afterwards and not beside the field.
 export function modalityNotes(channel, config) {
   const models = config?.defaults?.models || {};
   const input = channel?.modalities?.input || [];

@@ -1,10 +1,6 @@
-// Scripted callers, and tests made from what the agent has. A "caller" is a kind of person who phones in: someone who
-// wants the main thing, someone who rambles, someone cross, someone who asks for a person. Each is a short list of
-// things to say, written from this agent's own tools, with what should hold afterwards. They are scenarios in the same
-// shape as the ones a person writes, so they run on the same runner (the real runtime or, in demo mode, its imitation),
-// and a good one can be kept as a test. The callers are scripted, not played by a model: what they say does not change
-// with the agent's answers. A check that needs judgement is a `judge` (a reviewer, which needs the live model); the
-// rest are plain and free to check.
+// Scripted callers (someone who wants the main thing, rambles, is cross, asks for a person) and checks made from what
+// the agent has. Each is a scenario in the usual shape, so it runs on the same runner and can be kept as a test.
+// Callers are scripted, not played by a model; a check needing judgement is a `judge`, which needs the live model.
 // Pure: no network, no DOM.
 
 import { describeExpectation, freshScenarioId, modelNameOf } from '../scenarios/model.js';
@@ -171,11 +167,11 @@ export const CALLERS = [
   },
 ];
 
-// Checks made from what the agent has: it greets, each of its tools is used when asked for, it hangs up when thanked, it offers a person.
+// Checks from what the agent has: it greets, uses each tool when asked, hangs up when thanked, offers a person.
 export function autoChecks(config) {
   const c = contextOf(config);
   const out = [];
-  // the first words of its greeting, with anything between them allowed (“Hi, I’m” and “Hi I m” are the same words), in plain letters and digits only
+  // the greeting's first words, letters and digits only, anything allowed between them (“Hi, I’m” matches “Hi I m”)
   const greetWords = (c.greeting.match(/[A-Za-z0-9]+/g) || []).slice(0, 3);
   const greeting = greetWords.length >= 2 ? [{ said_matches: greetWords.join('[\\W_]+') }] : [];
   out.push({ key: 'check:greets', name: 'It answers a greeting', blurb: 'Says hello and says something back.', turns: ['Hello?'], expect: [ANY, ...greeting] });
@@ -219,7 +215,7 @@ export function suggestions(config) {
       .replace(/^_+|_+$/g, '')
       .toLowerCase();
     const ours = group === 'caller' ? `Simulated caller: ${name}` : `Made by the studio: ${name}`;
-    const same = tests.find((t) => t.description === ours); // only one the studio made: a test of a person's own with the same id is not ours
+    const same = tests.find((t) => t.description === ours); // only one the studio made: a person's own test with the same id is not ours
     const id = same ? same.id : freshScenarioId(tests, base);
     const expectations = [...expect, ...(judge ? [{ judge }] : [])];
     return {

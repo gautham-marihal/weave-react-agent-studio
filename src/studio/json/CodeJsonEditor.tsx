@@ -23,13 +23,11 @@ import { tags } from '@lezer/highlight';
 import { locatePath } from '../jsonPath.js';
 import type { JsonProblem } from './jsonProblems.ts';
 
-// The configuration's JSON in a code editor (CodeMirror): colours for keys, text, numbers and true/false/null; folds;
-// the matching bracket; Ctrl/Cmd+F to find and replace; and what is wrong marked where it is (underlined, a mark beside
-// the line, the words when the pointer rests on it; F8 goes to the next). Tab indents; Escape then Tab leaves the
-// editor. Ctrl/Cmd+S is the workspace's, as on every page. Its colours are the style's own (tokens), so it reads in
-// every style, light and dark. It loads only when the JSON is opened (JsonEditor.jsx draws the plain editor until it is
-// here).
-//   text, onChange: the JSON, held by the workspace   problems: jsonProblems.ts   ref: jumpTo(path), jumpToOffset(offset)
+// The config's JSON in CodeMirror: highlighting, folds, bracket matching, find and replace, problems marked in place
+// (F8 goes to the next). Tab indents; Escape then Tab leaves the editor; Ctrl/Cmd+S stays the workspace's. It loads
+// only when the JSON is opened (JsonEditor.jsx draws the plain editor until then).
+//   text, onChange: the JSON, held by the workspace
+//   problems: from jsonProblems.ts; ref: jumpTo(path), jumpToOffset(offset)
 
 export type JsonEditorHandle = { jumpTo: (path: (string | number)[]) => void; jumpToOffset: (offset: number) => void };
 type Props = { text: string; onChange: (text: string) => void; problems: JsonProblem[]; label?: string };
@@ -222,7 +220,7 @@ const CodeJsonEditor = forwardRef<JsonEditorHandle, Props>(function CodeJsonEdit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // the workspace's text, when it changed from outside (a form, a reload): the editor takes it, keeping the cursor where it can
+  // text changed from outside (a form, a reload): the editor takes it, keeping the cursor where it can
   useEffect(() => {
     const editor = view.current;
     if (!editor) return;

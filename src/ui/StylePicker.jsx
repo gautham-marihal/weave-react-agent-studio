@@ -6,8 +6,7 @@ import Tip from './Tip.tsx';
 import { Choice, OneOf } from './OneOf.tsx';
 import { ACCENTS, STYLES, useAccent, useStyle } from '../studio/usePref.js';
 
-// The design styles as cards, each with a small picture of how it looks in the mode in use (light or dark). Picking one
-// changes the whole site at once.
+// The design styles as cards, each previewed in the current mode (light or dark). Picking one restyles the whole site.
 export function StyleCards({ onPicked }) {
   const [style, setStyle] = useStyle();
   return (
@@ -85,9 +84,8 @@ function ColourOptions({ style }) {
   );
 }
 
-// The "Theme" button of the top bar, the one place for how the studio looks: light or dark, the design style and its
-// colour, in one small panel (a Radix pop-over). It opens under the button on the side with room, with the keyboard on
-// the light/dark choice in use; Escape or a click elsewhere closes it and gives the keyboard back to the button.
+// The top bar's "Theme" button, the one place for the studio's look: light/dark, style and colour in a Radix pop-over.
+// Focus starts on the current light/dark choice; Escape or an outside click closes it and returns focus to the button.
 export function StyleMenu({ theme, onToggleTheme }) {
   return (
     <div className="styleMenu">

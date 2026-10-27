@@ -1,18 +1,16 @@
-// "Where am I on the way to live?": the five things between a draft and callers, in order (save it, it is valid, it is
-// tested, it is published, it is deployed), each done, to do, blocked or optional, with the one thing to do next. Built
-// only from what the studio already knows. It informs; it does not decide: nothing here stops a publish or a deploy
-// (when someone turns on "tests must pass before publishing", the tested step says so, and the publish panel holds).
-// Pure: no network, no DOM.
+// "Where am I on the way to live?": saved, valid, tested, published, deployed, each done, to do, blocked or optional,
+// plus the one thing to do next. It informs only; nothing here stops a publish (the "tests must pass" gate lives in
+// the publish panel). Pure: no network, no DOM.
 
 import { gateCheck } from './gateCheck.js';
 import { coveredOnlySome, coveredOnlyText } from '../scenarios/runResults.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 
-// dirty: unsaved edits. parseError: the JSON cannot be read. report: the validator's answer for the draft (or null
-// while unknown). scenarioCount / latestRun: the draft's test scenarios and the newest finished run of them (or null).
-// published: { version, changes } for the newest published version, `changes` being how many differences the draft has
-// from it, or null when nothing is published. deployed: { development: '0.1.0', ... }.
+//   report: the validator's answer for the draft (null while unknown)
+//   latestRun: the newest finished run of the draft's scenarios, or null
+//   published: { version, changes } for the newest published version (changes: differences in the draft), or null
+//   deployed: { development: '0.1.0', ... }
 export function shipSteps({
   dirty = false,
   parseError = '',

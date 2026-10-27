@@ -1,9 +1,5 @@
-// The choices of a setting, in words. A setting's NAME has a plain label in plainLanguage.js; its choices
-// ("standalone", "web_voice", "redact_in_logs") are the machine's words too. This catalogue gives each choice a label a
-// customer can read. The stored value never changes: only what is drawn. With "Technical names" on, the value is shown
-// beside the label.
-//
-// Keyed by the setting's name, then the choice. A choice that means the same wherever it appears is also found without its name (lookup()).
+// Plain labels for each setting's choices, keyed by setting name then choice. Only the label changes, never the stored
+// value; "Technical names" shows the value beside it. lookup() finds a choice that means the same without its name.
 // Pure data and two helpers: no DOM.
 
 export const ENUM_LABELS = {
@@ -153,7 +149,7 @@ export const ENUM_LABELS = {
   sentiment: { frustrated: 'Frustrated', negative: 'Negative', abusive: 'Abusive' },
 };
 
-// Choices that are best left as they are: standard names a technical person expects, or the names of fields a template reads.
+// Choices best left as written: standard names a technical person expects, or field names a template reads.
 export const KEEP_AS_WRITTEN = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', '1.1', '1.2', 'text', 'json', 'id', 'room', 'started_at', 'type', 'modality']);
 
 // A choice that has the same label wherever it is found, so a setting with an unlisted name still reads well.
@@ -170,8 +166,8 @@ export function enumLabel(name, value) {
   return ENUM_LABELS[name]?.[text] ?? ALL.get(text) ?? text;
 }
 
-// { value: label } for the choices of one setting, only where the label differs from the value (what Select and CheckGroup take).
-// `technical`: the value follows the label, for people who work with the file.
+// { value: label } for one setting's choices, only where the label differs (what Select and CheckGroup take).
+//   technical: show the value after the label, for people who work with the file
 export function enumLabels(name, values, { technical = false, suffix = {} } = {}) {
   const out = {};
   values.forEach((value) => {

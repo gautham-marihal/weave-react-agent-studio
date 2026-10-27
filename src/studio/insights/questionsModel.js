@@ -1,12 +1,11 @@
-// "Questions it couldn't answer": what callers asked that the agent dodged, did not know, or passed to a person, found
-// in the records of real calls, with the different wordings of one question grouped together and counted, so the
-// answers worth adding first are at the top. Answering one writes a line into the agent's instructions (and, if asked,
-// a test) in the draft; nothing is sent anywhere. Pure: no network, no DOM, no clock of its own.
+// "Questions it couldn't answer": what callers asked that the agent dodged, didn't know or passed on, from real calls,
+// with wordings of one question grouped and counted so the most asked come first. Answering adds a line to the draft's
+// instructions (and optionally a test); nothing is sent. Pure: no network, no DOM, no clock of its own.
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
-// ---- what counts as "not answered" ----------------------------------------------------------------------------------------------------------------
+// ---- what counts as "not answered"
 
 // The agent saying it does not know, cannot help, or has nothing on it.
 const DID_NOT_KNOW = new RegExp(
@@ -26,8 +25,7 @@ const DID_NOT_KNOW = new RegExp(
 // The agent passing the caller on.
 const PASSED_ON =
   /\b(?:pass(?:ing)? you|transfer(?:ring)? you|put(?:ting)? you through|connect(?:ing)? you|hand(?:ing)? you (?:over|to)|someone (?:who|that) can help|a colleague)\b/i;
-// A caller asking for a person outright is not a gap in what the agent knows.
-// (a list of the ways people ask for a person, one alternative each, easier to read as one list)
+// A caller asking for a person outright is not a gap in what the agent knows. One alternative per way of asking.
 export const WANTS_A_PERSON =
   // eslint-disable-next-line sonarjs/regex-complexity -- one list of ways to say it
   /\b(?:speak|talk|chat)\s+(?:to|with)\s+(?:a|an|the|someone|somebody|real|actual|human|person|agent|representative|operator|manager|staff)\b|\b(?:real|actual|live) (?:person|human|agent)\b|\b(?:human|operator|representative)\b|\btransfer me\b|\bput me through\b/i;
@@ -59,7 +57,7 @@ export const REASONS = {
   no_answer: { label: 'Call ended before an answer', short: 'no answer' },
 };
 
-// The caller turns of one call (its facts, see replay/callFacts.js) that the agent did not answer: [{ text, reason, turnIndex, agent }]
+// The unanswered caller turns in one call's facts (replay/callFacts.js): [{ text, reason, turnIndex, agent }]
 export function unansweredTurns(facts, { cutOff = false } = {}) {
   const turns = list(facts?.turns);
   const out = [];
@@ -83,7 +81,7 @@ export function unansweredTurns(facts, { cutOff = false } = {}) {
   return out;
 }
 
-// ---- grouping the wordings of one question ------------------------------------------------------------------------------------------------------
+// ---- grouping the wordings of one question
 
 const STOP = new Set(
   (
@@ -129,18 +127,17 @@ export function closeness(a, b) {
   x.forEach((w) => {
     if (y.has(w)) shared += 1;
   });
-  // the share of the smaller one that the other has: "Sunday delivery?" is the same question as "Do you deliver on Sundays at all?". One word alone
-  // ("Where is my order?") is only the same as a short question: "order" is not what "Can you ship my order to Malaysia?" is about.
+  // the share of the smaller one the other has: "Sunday delivery?" matches "Do you deliver on Sundays at all?". One
+  // word alone ("Where is my order?") matches only a short question, not "Can you ship my order to Malaysia?".
   const small = Math.min(x.size, y.size);
   return shared / (small === 1 && Math.max(x.size, y.size) > 2 ? 2 : small);
 }
 export const SAME_QUESTION = 0.67;
 const sameQuestion = (a, b) => closeness(a, b) >= 0.85;
 
-// questions: [{ text, reason, bot, callId, startedAt, agent }] → groups, the most asked first: [{ key, words, text (the
-// wording most used), wordings: [{ text, count }], count, reasons: { reason: n }, calls: [{ callId, bot, startedAt,
-// text, reason }],
-//    firstAt, lastAt, agents }]
+// questions: [{ text, reason, bot, callId, startedAt, agent }] → groups, most asked first: [{ key, words, text (the
+// most used wording), wordings: [{ text, count }], count, reasons: { reason: n },
+// calls: [{ callId, bot, startedAt, text, reason }], firstAt, lastAt, agents }]
 export function groupQuestions(questions) {
   const groups = [];
   [...list(questions)]
@@ -199,7 +196,9 @@ export function groupQuestions(questions) {
     .sort((a, b) => b.count - a.count || Date.parse(b.lastAt) - Date.parse(a.lastAt));
 }
 
-// Every unanswered question in a set of calls. calls: summaries (`bot`, `id`, `started_at`, `status`); facts: { 'bot/id': facts }.
+// Every unanswered question in a set of calls.
+//   calls: summaries (bot, id, started_at, status)
+//   facts: { 'bot/id': facts }
 export function collectQuestions(calls, facts) {
   return list(calls).flatMap((c) => {
     const f = facts[`${c.bot}/${c.id}`];
@@ -214,7 +213,7 @@ export function collectQuestions(calls, facts) {
   });
 }
 
-// ---- what the person decided about a group (kept in this browser, see insightsStore.js) ---------------------------------------------------------
+// ---- what the person decided about a group (kept in this browser, see insightsStore.js)
 
 // The decision that belongs to a group: the same question asked again later still finds it, however it is worded.
 export function decisionFor(group, decisions) {
@@ -229,11 +228,10 @@ export function decisionFor(group, decisions) {
   });
   return bestScore >= SAME_QUESTION ? best : null;
 }
-// After an answer was added: the times the question was still not answered (the change may not be live yet, or the answer did not help).
+// After an answer was added: how often the question still went unanswered (not live yet, or the answer didn't help).
 export const askedSince = (group, at) => (at ? group.calls.filter((c) => Date.parse(c.startedAt) > Date.parse(at)) : []);
 
 // ---- answering: what goes into the draft
-// ------------------------------------------------------------------------------------------------------------
 
 export const ruleFor = (question, answer) => `If a caller asks “${question.replace(/[“”"]/g, '').trim()}” (or something like it), answer: ${answer.trim()}`;
 
@@ -254,8 +252,7 @@ export function addAnswer(config, { agentId, question, answer }) {
   return { ...config, agents: { ...config.agents, items: nextItems } };
 }
 
-// The two or three words of an answer a test can look for: the longest ones that are not small words, as a pattern that
-// needs all of them (in any order).
+// The two or three longest meaningful words of an answer, as a pattern a test can look for (all of them, any order).
 export function answerPattern(answer) {
   const words = [
     ...new Set(
@@ -305,7 +302,7 @@ export function addTest(config, test) {
   return { ...config, tests: [...list(config?.tests), test] };
 }
 
-// Takes back an answer added from the questions page: its rule from the agent, and the test made with it. Anything else in the draft stays as it is.
+// Takes back an answer added from the questions page: its rule and the test made with it. The rest of the draft stays.
 export function removeAnswer(config, { agentId, rule, testId }) {
   let next = config;
   const items = list(config?.agents?.items);

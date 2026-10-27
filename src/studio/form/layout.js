@@ -1,13 +1,9 @@
-// How "All settings" is laid out: by the customer's task, not by the shape of the configuration file.
-//
-// The schema has 25 top-level sections. Listed in the file's order they make five tabs of equal weight, the first of which holds fields the
-// server owns. Here they are grouped by what someone came to do (describe the agent, shape how it talks, give it abilities, set how it
-// behaves, choose where it is reached, handle what happens after a call, check quality, and, last and out of the way, the engine's own
-// settings). Nothing is removed: every property of every section is in exactly one view, and a test (tests/layout.test.js) fails if the schema
-// gains one that no view claims. A new top-level section the schema adds later appears at the end of "Engine and operator settings" until it
-// is placed here. Pure: no React, no network.
+// How "All settings" is laid out: grouped by the task someone came to do, not by the shape of the config file.
+// Every property is in exactly one view (tests/layout.test.js fails otherwise); a section the schema adds later shows
+// at the end of "Engine and operator settings" until placed here. Pure: no React, no network.
 
-// A view is one screen of the form: a whole top-level section, or part of one (`only`: the sub-sections of `defaults` it shows).
+// A view is one screen of the form: a whole top-level section, or
+// part of one (`only`: the sub-sections of `defaults` it shows).
 const view = (key, label, extra = {}) => ({ id: extra.only ? `${key}.${extra.only.join('+')}` : key, key, label, ...extra });
 
 export const LAYOUT = [
@@ -78,9 +74,10 @@ export const VIEW_NOTES = {
   constants: 'Values that never change, which you can use in what the agent says.',
 };
 
-// The groups for a given schema: LAYOUT with the views that exist in it, a view for each part of a split section the layout didn't claim,
-// and a last view for each top-level section the layout has never heard of. `sectionKeys` is the names of the schema's top-level sections,
-// `subkeys(key)` the property names inside a section's object.
+// The groups for a schema: LAYOUT's views that exist in it, plus a view for each unclaimed part of a split section and
+// each unknown section.
+//   sectionKeys: the schema's top-level section names
+//   subkeys(key): the property names inside a section's object
 export function layoutFor(sectionKeys, subkeys = () => []) {
   const present = new Set(sectionKeys);
   const groups = LAYOUT.map((group) => ({

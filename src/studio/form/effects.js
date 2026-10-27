@@ -1,6 +1,5 @@
-// Effects in plain words: a tool's `effects` are rules, each "when this holds, do these things in order". This names the kinds of
-// action, and writes a rule as a sentence so an author can read what a tool does after it succeeds without opening each part.
-// Pure: no network, no DOM.
+// Effects in plain words: a tool's `effects` are rules ("when this holds, do these in order"). This names the action
+// kinds and writes a rule as a sentence. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 import { describeCondition } from './promptPreview.js';

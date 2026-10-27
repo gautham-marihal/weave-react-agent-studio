@@ -2,19 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { isFinished, normalizeHeadline, normalizeRun } from './runResults.js';
 
-// Starts a test run on the server and follows it until it is over. Results appear as scenarios finish, so `run.scenarios` grows while
-// `run.status` is "running". One run per agent at a time: if the server says one is already going (409), this attaches to it
-// instead of failing, so a second tab or a refresh shows the same run. Reading a run never changes anything on the server.
+// Starts a test run on the server and follows it until over; `run.scenarios` grows while `run.status` is "running".
+// One run per agent: if the server says one is going (409) this follows it instead, so another tab or a refresh shows
+// the same run. Reading a run changes nothing on the server.
 const POLL_MS = 1000;
-export const MAX_POLL_MS = 10 * 60 * 1000; // a run that never finishes stops being followed after ten minutes (it is still on the server)
+export const MAX_POLL_MS = 10 * 60 * 1000; // stop following an endless run after 10 minutes (it stays on the server)
 
 export function useTestRun(botId, { scenarios = [], onFinished, pollMs = POLL_MS } = {}) {
   const [run, setRun] = useState(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(null);
   const timer = useRef(null);
-  // which following is the current one: each new one (and clear, or another agent) moves it on, so a read still on its
-  // way when that happens is dropped instead of carrying on as a second loop beside the new one
+  // which follow loop is current: a new run, clear or another agent moves it on, so a read still in flight is dropped
+  // rather than carrying on as a second loop
   const loop = useRef(0);
   const stopFollowing = useCallback(() => {
     loop.current += 1;

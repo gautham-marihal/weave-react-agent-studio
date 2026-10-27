@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal } from '../ui.jsx';
 import './changes.css';
 
-// "What have I changed?": the draft against the newest published version, by part of the agent, each part with a way back to how it was published.
+// "What have I changed?": the draft against the newest published version, by part, each with a way back.
 export default function ChangesPanel({ changes, version, onRevert, onClose }) {
   return (
     <Modal

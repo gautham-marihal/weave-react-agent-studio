@@ -1,5 +1,5 @@
-// How an agent's list pages name a row: in words a person reads ("Escalate to human", "Web chat"), not the id the configuration uses
-// (escalate_to_human, web-chat), which stays in the row's tooltip for whoever needs it. Pure: no React, no DOM.
+// Row names for an agent's list pages, in words ("Escalate to human"), not config ids (escalate_to_human), which stay
+// in the tooltip. Pure: no React, no DOM.
 
 import { summarize } from '../form/cardLogic.js';
 import { channelName } from '../simple/simpleModel.js';
@@ -19,7 +19,7 @@ export function humanize(id) {
   return words ? `${words[0].toUpperCase()}${words.slice(1)}` : '';
 }
 
-// An agent of the workflow by name: its own name, else (when it is the only one) the agent's name, else its id in words.
+// A workflow agent's name: its own, else the agent's name if it is the only one, else its id in words.
 export function agentLabel(config, id) {
   const agents = list(config?.agents?.items).filter(isObj);
   const agent = agents.find((a) => a.id === id);
@@ -28,7 +28,7 @@ export function agentLabel(config, id) {
   return humanize(id);
 }
 
-// A channel by the name its row has on the Channels page ("Chat on your website"); an id the agent does not have stays as it is.
+// A channel by its Channels page row name ("Chat on your website"); an unknown id stays as it is.
 export function channelLabel(config, id) {
   const channels = list(config?.channels);
   const index = channels.findIndex((c) => isObj(c) && c.id === id);
@@ -43,8 +43,8 @@ export function rowName(kind, item, index, config) {
   if (!isObj(item)) return { title: base.title, hint: base.hint, id: '' };
   const id = typeof item.id === 'string' ? item.id : '';
   if (kind === 'channels') {
-    // by its kind, in the words of the page's switches ("Chat on your website"); two of one kind are told apart by their ids in words ("Phone calls ·
-    // Sales line"), or by number when the ids say nothing more than the kind ("web-chat", "web_chat_2": "Chat on your website", "… 2")
+    // named by kind as the page's switches are; two of one kind are told apart by id in words ("Phone calls · Sales
+    // line"), or by number when the ids say nothing more than the kind ("… 2")
     const sameKind = list(config?.channels).filter((c) => isObj(c) && c.type === item.type);
     const kindTitle = TYPE_LABELS[item.type] || channelName(item.type);
     const plainId = (c) => {
@@ -63,7 +63,7 @@ export function rowName(kind, item, index, config) {
   }
   // a rule for handing over or ending: when it applies and what it does, in words
   if (kind === 'escalation') {
-    // the rules switched on above are named as their switches are, while they still do what the switch says
+    // rules from the switches above keep the switch's name while they still do what the switch says
     const moment = momentOf(item, config);
     return { title: moment ? moment.label : id ? humanize(id) : base.title, hint: ruleWords(item, config), id };
   }

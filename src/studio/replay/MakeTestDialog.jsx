@@ -5,8 +5,8 @@ import { addScenario, buildScenario, hasPersonalData, suggestTest, testProblems 
 import Select from '../../ui/Select.tsx';
 import './replay.css';
 
-// "Keep this call as a test": the caller's words (edited if you like), the checks to keep, and what should have happened. The test is added to the
-// draft like any other edit; nothing is saved until the draft is saved, and it can be undone.
+// "Keep this call as a test": the caller's words (editable), the checks to keep, and what should have happened. The
+// test is added to the draft like any other edit: nothing is saved until the draft is, and it can be undone.
 export default function MakeTestDialog({ facts, config, call, onAdd, onClose, expected = '' }) {
   const start = useMemo(() => suggestTest(facts, config, { callId: call?.id || '', startedAt: call?.started_at || '' }), [facts, config, call]);
   const [id, setId] = useState(start.id);

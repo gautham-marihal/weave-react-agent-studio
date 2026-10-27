@@ -2,10 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { drawsVoice } from './channels.ts';
 
-// One conversation with an agent over LiveKit: ask the API for a join token (POST /sessions), connect, and
-// turn what arrives into messages. The bot's text replies come as text streams on `lk.transcription`, the
-// visitor's chat goes out on `lk.chat`, and forms travel on `agent-builder.form` / `agent-builder.form.submit`.
-// The join token is a secret for this one session: it is used to connect and never kept or logged.
+// One conversation with an agent over LiveKit: get a join token (POST /sessions), connect, and turn what arrives into
+// messages. Bot text arrives on `lk.transcription`, chat goes out on `lk.chat`, forms use `agent-builder.form` and
+// `agent-builder.form.submit`. The join token is a secret for this session: used to connect, never kept or logged.
 
 const TOPIC_TRANSCRIPTION = 'lk.transcription';
 const TOPIC_CHAT = 'lk.chat';
@@ -31,7 +30,7 @@ export function describeStartError(error, ref) {
         ? { title: 'This agent has no draft to test', body: error.message }
         : { title: `Nothing is deployed to “${ref}” yet`, body: 'Deploy a version there first, or test the draft instead.' };
     case 'invalid': {
-      // a channel the bot does not offer to browsers: the server's message lists the ones it does offer, so it is shown as it is
+      // a channel not offered to browsers: the server's message lists the ones that are, so it is shown as it is
       if (/offer/i.test(error.message) && /channel/i.test(error.message) && !error.errors?.length)
         return { title: 'That channel can’t be tried in a browser', body: error.message };
       const noChannel = /web|channel/i.test(error.message) && !error.errors?.length;
@@ -43,7 +42,7 @@ export function describeStartError(error, ref) {
         : { title: 'The configuration has errors, so it can’t be tried', body: 'Fix them, save the draft and try again.', errors: error.errors };
     }
     case 'unavailable':
-      // What a customer needs is what to do; the names of the server's settings are for whoever runs it, one click away.
+      // A customer needs what to do; the server's setting names are for whoever runs it, one click away.
       return {
         title: 'Live conversations aren’t set up on this server yet',
         body: 'Ask whoever runs the server to turn them on. Until then you can try the agent with the simulated preview.',
@@ -77,8 +76,7 @@ export function useLiveSession({ onFinished } = {}) {
   const lkRef = useRef(null);
   const aliveRef = useRef(true);
   const stoppingRef = useRef(false);
-  // which start is the current one: End (or another start) moves it on, so a start still on its way stops where it is
-  // (no room joined, no microphone on)
+  // which start is current: End (or another start) moves it on, so one still in flight stops (no room, no microphone)
   const attemptRef = useRef(0);
   const formViaRef = useRef('data');
   const hintTimerRef = useRef(null);
@@ -155,7 +153,7 @@ export function useLiveSession({ onFinished } = {}) {
     };
   }, [cleanup, finish]);
 
-  // ---- forms ----------------------------------------------------------------------------------------
+  // ---- forms
 
   const onFormPacket = useCallback(
     (raw, via) => {
@@ -205,9 +203,8 @@ export function useLiveSession({ onFinished } = {}) {
     [form],
   );
 
-  // Closing the form is an answer too: the bot is told the visitor cancelled it (FORM_PROTOCOL: `{request_id,
-  // cancelled: true}`), so it can run what the form's `otherwise` says instead of waiting for values that will never
-  // come.
+  // Closing the form is an answer: the bot is told it was cancelled (FORM_PROTOCOL: `{request_id, cancelled: true}`),
+  // so it can run the form's `otherwise` instead of waiting for values that will never come.
   const dismissForm = useCallback(async () => {
     const room = roomRef.current;
     const current = form;
@@ -223,10 +220,10 @@ export function useLiveSession({ onFinished } = {}) {
     }
   }, [form, addSystem]);
 
-  // ---- starting and stopping -----------------------------------------------------------------------
+  // ---- starting and stopping
 
   // `botId` is passed per call so one hook instance can serve whichever agent is open.
-  // `connect` is made again on every render; startFor reaches the newest one through this, and so does not change with it
+  // `connect` is remade every render; startFor reaches the newest through this ref, so startFor doesn't change with it
   const connectRef = useRef(null);
   connectRef.current = connect;
   const startFor = useCallback(
@@ -415,7 +412,7 @@ export function useLiveSession({ onFinished } = {}) {
     log('You ended the conversation');
   }, [cleanup, finish, log]);
 
-  // ---- sending ---------------------------------------------------------------------------------------
+  // ---- sending
 
   const sendText = useCallback(
     async (text) => {

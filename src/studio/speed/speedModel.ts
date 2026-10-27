@@ -1,8 +1,6 @@
-// How fast an agent answers, from its calls, and where each wait goes. Pure: no React, no network. Speed is measured
-// from the call's own records: the time from the caller's words to the agent's answer (or, on a voice call, the delay
-// the call itself records between the caller stopping and the agent starting to speak), and inside it, when the records
-// say so: waiting to be sure the caller had finished, the model starting its answer, the tools and the requests to the
-// business's own systems, and the voice starting to speak.
+// How fast an agent answers, from its calls' own records, and where each wait goes. A wait runs from the caller's words
+// to the answer (or a voice call's recorded delay) and, when the records say so, splits into: making sure the caller
+// had finished, the model starting, tools and business systems, and the voice starting. Pure: no React, no network.
 
 import type { CallRecords, CallSummary } from '../../api/types.ts';
 import { fixMojibake } from '../trace/records.js';
@@ -26,7 +24,7 @@ export type Sample = {
   tools: { tool: string; ms: number; failed: boolean }[];
   requests: { name: string; ms: number; failed: boolean; retried: boolean }[];
 };
-// one record of a call: its kind (`event`), when, and the fields of that kind (a reply's `timing`, a tool's `duration_ms`, a request's `ms`, …)
+// one call record: `event`, when, and its kind's fields (a reply's `timing`, a tool's `duration_ms`, a request's `ms`)
 type Ev = { event?: string; seq?: number; elapsed_s?: unknown; timing?: Record<string, unknown>; [field: string]: unknown };
 
 const list = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? v : []);
@@ -81,7 +79,7 @@ export function sampleOf(summary: Partial<CallSummary> | null | undefined, page:
       const elapsed = num(e.elapsed_s);
       const gap = current.at !== null && elapsed !== null ? Math.max(0, Math.round((elapsed - current.at) * 1000)) : null;
       const e2e = secMs(e.timing?.e2e_latency);
-      // what the caller waited: the delay a voice call records, else from their words to the answer (on a voice call, plus making sure they finished)
+      // the caller's wait: a voice call's recorded delay, else words to answer (on voice, plus checking they finished)
       const ms = e2e ?? (gap === null ? null : gap + (voice && current.listen !== null ? current.listen : 0));
       if (ms === null) return;
       const stages: Stages = {};
@@ -94,8 +92,8 @@ export function sampleOf(summary: Partial<CallSummary> | null | undefined, page:
       const speak = secMs(e.timing?.tts_node_ttfb);
       if (voice && speak !== null) stages.reply = speak;
       const rest = ms - Object.values(stages).reduce((a, b) => a + (b ?? 0), 0);
-      // in a chat what is left once the model has started is the answer being written; on a voice call it is not put down to anything
-      // (a tenth of a second or more: less is rounding in the records)
+      // time left after the model starts is the answer being written in a chat, and 'other' on a voice call (from a
+      // tenth of a second: less is rounding in the records)
       if (rest >= 100 && (think !== null || systems)) stages[voice ? 'other' : 'reply'] = rest;
       answers.push({ ms, say: current.say, stages });
     }
@@ -139,10 +137,8 @@ const BUCKETS: [number, number, string][] = [
   [8000, Infinity, '8 s or more'],
 ];
 
-// Which of an agent's finished calls (newest first) to read for their timings when there are more than `count`: some
-// from every day of the period, not only the newest (a busy agent's newest calls can all be today's), so the day-by-day
-// line reaches back over the whole period. The newest call of each day is taken in turn, newest day first, then the
-// next of each, until `count` are taken. Returned newest first.
+// Which finished calls to read for timings when over `count`: round-robin across days, newest first, since a busy
+// agent's newest calls could all be today's and the daily line must cover the whole period. Returned newest first.
 export function spreadPick<C extends { started_at?: string | null }>(calls: C[], count: number): C[] {
   if (calls.length <= count) return calls;
   const byDay = new Map<string, C[]>();
@@ -167,7 +163,7 @@ export function spreadPick<C extends { started_at?: string | null }>(calls: C[],
 
 export type Verdict = 'few' | 'good' | 'ok' | 'slow';
 
-// How the calls did against the target, in one word: good (9 in 10 within it), ok (3 in 4), slow; few when there are too few answers to say.
+// How the calls did against the target: good (9 in 10 within it), ok (3 in 4), slow, or few (too few answers to say).
 export function verdictOf(within: number | null, answers: number): Verdict {
   if (within === null || answers < 5) return 'few';
   if (within >= 0.9) return 'good';
@@ -179,7 +175,7 @@ type FullAnswer = Answer & { bot: string; callId: string; startedAt: string | nu
 export type StageAverages = { answers: number; wait: number | null; avg: Partial<Record<StageId, { ms: number; n: number }>> };
 export type StagesByKind = { voice?: StageAverages; chat?: StageAverages };
 
-// The parts of a wait, averaged over the answers that recorded each part, for voice calls and for chats apart (a voice call has more of them).
+// The parts of a wait, averaged over the answers that recorded each, for voice calls and chats apart (voice has more).
 function stagesOf(answers: FullAnswer[]): StagesByKind {
   const out: StagesByKind = {};
   for (const kind of ['voice', 'chat'] as const) {
@@ -231,10 +227,9 @@ export type Advice = {
   path: string[];
 };
 
-// What would make answers sooner, from what the calls show (nothing is suggested without the numbers for it), biggest first.
-//   { id, ms, title, lead, tail, why, whyAll?, action, path }: path, the setting
-//   to open (as the agent's pages take it); lead and tail around the time
-// a suggestion's title, and its two halves around the time, so suggestions about several agents can be said once with the range of their times
+// What would make answers sooner, biggest first; nothing is suggested without the numbers for it.
+//   { id, ms, title, lead, tail, why, whyAll?, action, path }; path: the setting to open (as the agent's pages take it)
+// a suggestion's title and its halves around the time, so one for several agents can be said once with their range
 const titled = (lead: string, ms: number, tail: string) => ({ title: `${lead} ${seconds(ms)}${tail}`, lead, tail });
 export const ADVICE_AT = { listen: 1000, think: 1000, speak: 600, write: 2500, system: 700 }; // ms
 function adviceOf(stages: StagesByKind, systems: SystemRow[]): Advice[] {
@@ -332,7 +327,7 @@ export type Summary = {
   advice: Advice[];
 };
 
-// Everything the page shows, from the calls read (`samples`) and how many calls there were in the period (`totalCalls`).
+// Everything the page shows, from the calls read (`samples`) and the period's call count (`totalCalls`).
 //   targetMs: the "answered within" target; days, nowMs: the period, for the day-by-day line (left out without them)
 export function summarize({
   samples = [],

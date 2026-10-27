@@ -62,8 +62,8 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
   );
 }
 
-// A number with both ends known (how creative, how fast, a share): a slider beside the box, the box for an exact value. The slider is a second way to
-// change the same number, so it is not in the tab order (the box is the control a screen reader announces).
+// A number with both ends known: a slider beside the box. The slider is a second way to change the same number, so it
+// is out of the tab order (screen readers announce the box).
 export function RangeNumber({ value, onChange, min, max, integer, disabled, invalid, id, placeholder, nullable }) {
   const step = integer ? 1 : Math.max((max - min) / 100, 0.01);
   const shown = typeof value === 'number' ? value : min;
@@ -114,8 +114,8 @@ export function Switch({ checked, onChange, disabled, label, id }) {
   );
 }
 
-// A choice from a list: the browser's own select for a few, a searchable list for many (see SmartSelect). A value that is no longer in the
-// list is still shown, marked "(not found)", so it is never silently changed.
+// A choice from a list: the browser's own select for a few, a searchable list for many (see SmartSelect). A value that
+// is no longer in the list is still shown, marked "(not found)", so it is never silently changed.
 export function Select({ value, options, onChange, disabled, placeholder, invalid, id, labels }) {
   const known = options.includes(value);
   const list = [
@@ -214,9 +214,8 @@ export function MultiPick({ options, values, onChange, disabled, emptyText }) {
   );
 }
 
-// Ticks for a set of choices. A value the choices don't have (from the JSON view, or an older schema) is kept and
-// shown, ticked and marked "(not found)", as the drop-downs do: ticking another box never drops it, and unticking it is
-// the way to take it out.
+// Ticks for a set of choices. A value the choices lack (from the JSON view or an older schema) stays shown, ticked and
+// marked "(not found)" like the drop-downs; unticking it is the way to remove it.
 export function CheckGroup({ options, values, onChange, disabled, labels }) {
   const list = Array.isArray(values) ? values : [];
   const unknown = list.filter((v) => !options.includes(v));
@@ -286,10 +285,8 @@ export function JsonInput({ value, onChange, disabled, id }) {
   );
 }
 
-// A value that may be any JSON scalar or structure, typed as text: plain text stays a string; true, 12, null, [..] and
-// {..} are read as JSON. Text that would read as one of those is a string when it is in quotes ("1", "true"), and a
-// string like that is shown in quotes, so keypad digits stay "1" and never turn into the number 1. Text that would stay
-// text anyway ({{args.name}}, which isn't JSON) is shown as it is.
+// Any JSON value typed as text: plain text stays a string; true, 12, null, [..] and {..} read as JSON. Quoted text
+// ("1", "true") stays a string and shows quoted, so keypad digits never become numbers.
 const READS_AS_JSON = /^(true|false|null|-?\d+(\.\d+)?)$/;
 const readsAsSomethingElse = (text) => {
   const t = text.trim();
@@ -302,8 +299,8 @@ const readsAsSomethingElse = (text) => {
     return false;
   }
 };
-// What read() returns for JSON with a key written twice: a symbol key, which no typed JSON can have (a plain { repeated
-// } would be taken for a value).
+// What read() returns for JSON with a repeated key: a symbol key no
+// typed JSON can have (a plain { repeated } could be a real value).
 const REPEATED = Symbol('repeated');
 
 export function FreeValue({ value, onChange, disabled, id, 'aria-label': ariaLabel }) {

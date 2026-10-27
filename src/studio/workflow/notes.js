@@ -1,6 +1,5 @@
-// Sticky notes on an agent's workflow: words placed on the picture, for whoever reads it next. The agent's
-// configuration has no place for them (the server refuses anything extra), so they are kept in this browser, one list
-// per agent. Pure apart from the browser storage, which may be missing or full.
+// Sticky notes on an agent's workflow. The server refuses extra fields in the configuration, so notes are kept in this
+// browser, one list per agent. Pure apart from browser storage, which may be missing or full.
 //   { id, x, y, w, h, text, color }
 
 export const NOTE_COLORS = [
@@ -15,8 +14,8 @@ const key = (botId) => `weave_workflow_notes:${botId}`;
 const isNote = (n) =>
   !!n && typeof n === 'object' && typeof n.id === 'string' && [n.x, n.y, n.w, n.h].every((v) => Number.isFinite(v)) && typeof n.text === 'string';
 
-// A note's id is never one an agent could have (an agent's id has no ":"), so a note and an agent are never the same
-// block. Notes kept before that rule ("note-1") are read under their new id.
+// A note id never matches an agent id (agent ids have no ":"), so a note and an agent are never the same block.
+// Notes saved before this rule ("note-1") are read under the new id.
 const NOTE_PREFIX = '::note::';
 const noteId = (id) => (id.startsWith(NOTE_PREFIX) ? id : `${NOTE_PREFIX}${id}`);
 
@@ -36,7 +35,7 @@ export function writeNotes(botId, notes) {
     /* storage unavailable or full: the notes last until the page is closed */
   }
 }
-// a new note at a place (the middle of what is in sight), its id unlike the others'
+// a new note centred on `at` (the middle of the view), with an unused id
 export function newNote(notes, at) {
   let n = notes.length + 1;
   while (notes.some((x) => x.id === `${NOTE_PREFIX}${n}`)) n += 1;

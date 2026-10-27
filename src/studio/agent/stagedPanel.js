@@ -1,13 +1,11 @@
 import { askConfirm } from '../../ui/dialogs.js';
 
-// The side panel that is open with changes still waiting for Done (StagedDrawer, Drawer.jsx, holds it here; one at a time, since a panel covers the
-// page), so whatever is about to replace it (a search result that opens another panel or another page of the agent) asks first instead of dropping
-// them. Pure state, no React.
-//   panel: { title, doneLabel, done(), refocus() }   done puts the changes into
-//   the draft and closes the panel; refocus gives the panel the keyboard back
+// The open side panel with changes waiting for Done (held by StagedDrawer), so whatever would replace it asks first
+// instead of dropping them. One at a time, since a panel covers the page. Pure state, no React.
+//   panel: { title, doneLabel, done(), refocus() }; done applies the changes and closes, refocus returns focus to it
 let waiting = null;
 
-// Marks `panel` as the one with changes waiting; the function it returns unmarks it (when its changes are put in or dropped, or it closes).
+// Marks `panel` as having changes waiting; the returned function unmarks it.
 export function holdStagedPanel(panel) {
   waiting = panel;
   return () => {
@@ -17,8 +15,8 @@ export function holdStagedPanel(panel) {
 
 export const stagedPanel = () => waiting;
 
-// Runs `then` once the open panel's changes are safe: at once when no panel has any waiting, else after the person chooses to keep them (they go into
-// the draft, as Done does, and then `then` runs). Stay leaves the panel open as it was, with its changes, and `then` does not run.
+// Runs `then` once the open panel's changes are safe: at once if none wait, else after the person keeps them (applied
+// as Done does). Stay leaves the panel open with its changes, and `then` does not run.
 export function whenPanelKept(then) {
   if (!waiting) {
     then();
@@ -31,13 +29,13 @@ export function whenPanelKept(then) {
     confirmLabel: 'Keep and go on',
     cancelLabel: 'Stay',
   }).then((ok) => {
-    // the panel as it is now (it marks itself again when its title changes)
+    // the panel as it is now (it re-marks itself when its title changes)
     const panel = waiting;
     if (!ok) {
       panel?.refocus?.();
       return;
     }
-    // unmarked at once, so what `then` does next (open another panel) isn't asked about the same changes again
+    // unmark at once, so what `then` does next isn't asked about the same changes again
     waiting = null;
     panel?.done();
     then();

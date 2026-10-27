@@ -5,7 +5,7 @@ import { withStatus } from './alertsModel.js';
 import { useInsights, useLiveAlerts } from './insightsStore.js';
 import './insights.css';
 
-// How many alerts nobody has looked at yet (not acknowledged, not snoozed). The sidebar badge and the bell both show it.
+// How many alerts nobody has looked at yet (not acknowledged, not snoozed), for the sidebar badge and the bell.
 export function useNewAlertCount() {
   const { acks } = useInsights();
   const { alerts } = useLiveAlerts();

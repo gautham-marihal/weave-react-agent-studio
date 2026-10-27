@@ -2,9 +2,8 @@ import React from 'react';
 import { useConfigSelect, useForm } from '../form/ctx.js';
 import { buildToolGrid, setToolOffered } from './toolGrid.js';
 
-// Who can use which tool: a row for each tool, a column for each agent, a tick where an agent offers the tool. Ticking edits the same `tools` list
-// the agent's own card edits, and can be undone. It is closed until asked for, because a short list needs no grid, and it stays out of the way of the
-// cards below it.
+// Who can use which tool (see toolGrid.js); ticking edits the agent's `tools` list and can be undone.
+// Closed until asked for: a short list needs no grid, and it stays out of the way of the cards below.
 export default function ToolGrid() {
   const ctx = useForm();
   const grid = useConfigSelect(buildToolGrid);

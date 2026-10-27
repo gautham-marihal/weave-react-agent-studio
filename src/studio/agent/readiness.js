@@ -1,8 +1,5 @@
-// "Getting it ready": the steps between a new agent and one that is live, as a checklist a person can follow while
-// building, each pointing at the page where it is done. It is built from the draft and what the studio already knows
-// (the checks, the tests and their latest run, the published versions, what is deployed); it informs and never blocks.
-// It is the one answer to "is it ready?": the menu's progress card, the Overview, Home and Releases all read it.
-// Pure: no React, no DOM.
+// "Getting it ready": the checklist from a new agent to a live one, each step pointing at its page. The one answer to
+// "is it ready?" for the menu, Overview, Home and Releases; it informs and never blocks. Pure: no React, no DOM.
 
 import { languageName, readSimple } from '../simple/simpleModel.js';
 import { readModels } from '../models/config.js';
@@ -30,13 +27,12 @@ const KNOWLEDGE_TODO = {
   reading: 'Its documents are being read.',
 };
 
-// steps: [{ id, label, text, state: 'done' | 'todo' | 'blocked' | 'optional', page, part?, target? }]; `target` says
-// what to open on the Agent page, { open: <panel> } or { focus: 'role' | 'greeting' }; `next` is the first blocked
-// step, else the first to do.
-//   latestRun: the newest finished run of the tests ({ status, passed, total }), null when
-//   they were never run, undefined when not known (then written tests count as done).
-//   gate: { enabled, savedAt, dirty } when "tests must pass before publishing" is on for the agent.
-//   knowledgeRead: what the server has read of its documents (useKnowledge's data); left out, a draft with documents counts that step as done.
+// -> { steps, next, done, total }
+//   steps: [{ id, label, text, state: 'done' | 'todo' | 'blocked' | 'optional', page, part?, target? }]
+// `target` is what to open on the Agent page; `next` is the first blocked step, else the first to do.
+//   latestRun: newest finished test run ({ status, passed, total }); null if never run, undefined if unknown
+//   gate: { enabled, savedAt, dirty } when "tests must pass before publishing" is on
+//   knowledgeRead: what the server has read of the documents; if absent, documents count as read
 export function readinessSteps({ config, summary = null, report = null, scenarioCount = 0, latestRun, gate = null, knowledgeRead = null } = {}) {
   const steps = [];
   if (!config || typeof config !== 'object') return { steps, next: null, done: 0, total: 0 };
@@ -110,7 +106,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
       ? {
           id: 'model',
           label: 'Choose the AI model',
-          text: `${providerLabel(models.llm.provider)} · ${modelLabel('llm', models.llm.provider, models.llm.model)}`, // in words: "OpenAI · GPT-4.1 Mini"
+          text: `${providerLabel(models.llm.provider)} · ${modelLabel('llm', models.llm.provider, models.llm.model)}`,
           state: 'done',
           page: 'agent',
           target: { open: 'models' },
@@ -145,8 +141,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
         },
   );
 
-  // documents and web pages are read before the agent can answer from them: a step while some are not saved, not read,
-  // or changed since they were read
+  // documents must be read before the agent can answer from them: a step while any are unsaved, unread or changed since
   const readable = knowledge.filter((b) => b && typeof b === 'object' && b.type === 'vector_store');
   if (readable.length) {
     const states = knowledgeRead
@@ -240,7 +235,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
           id: 'deploy',
           label: 'Put it live',
           text: published ? 'Choose where this version runs.' : 'Publish first, then choose where it runs.',
-          // to do either way (it is never optional, only not possible yet), so the number of steps stays the same once a version is published
+          // always to do (never optional, only not possible yet), so the step count stays the same after a publish
           state: 'todo',
           page: 'releases',
           part: 'deploy',
@@ -252,8 +247,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
   return { steps, next, done: counted.filter((s) => s.state === 'done').length, total: counted.length };
 }
 
-// Where a step is done, as an address: the page (and its part), and on the Agent page the panel or field to open. A step about what the checks found
-// opens the list of problems.
+// A step's address: its page and part, plus the Agent page panel or field to open. A checks step opens the problems.
 export function stepRoute(step) {
   if (!step) return { tab: 'home', params: undefined };
   if (step.page === 'checks') return { tab: 'agent', params: { show: 'problems' } };

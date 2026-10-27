@@ -5,20 +5,17 @@ import { CSS } from '@dnd-kit/utilities';
 import Icon from './Icon.jsx';
 import './sortable.css';
 
-// Dragging the items of a list into another order (dnd-kit), beside the Move up and Move down buttons that stay: by
-// mouse or touch from the handle, or from the keyboard (Space or Enter on the handle, the arrows to move, Space or
-// Enter to drop it, Escape to put it back). A screen reader is told what is happening, with the item's name and place.
-// Only up and down: a list moves in one direction.
+// Drag-to-reorder for lists (dnd-kit), beside the Move up / Move down buttons: by mouse or touch from the handle, or by
+// keyboard (Space or Enter to pick up and drop, arrows to move, Escape to put back). Up and down only; announced.
 //
 //   <SortableList ids={keys} nameOf={(id) => title} onMove={(from, to) => …} label="the messages">
 //     {keys.map((id) => <SortableItem key={id} id={id}> … <DragHandle label="Drag Billing" /> … </SortableItem>)}
 //   </SortableList>
 //
-// The ids are the keys the list is drawn with (useItemKeys), so what belongs to an item goes with it when it moves.
+// The ids are the keys the list is drawn with (useItemKeys), so what belongs to an item moves with it.
 
-// While a drag is going on, the keys are the drag's: taken first, at the window, and stopped there. dnd-kit listens on
-// the document, after the sheets, panels and dialogs the list is in, so without this Escape would also close the panel,
-// and Tab would be taken by its focus trap.
+// During a drag the keys are the drag's, caught first at the window. dnd-kit listens on the document, after the sheets,
+// panels and dialogs the list is in, so otherwise Escape would also close the panel and Tab be taken by its focus trap.
 class ListKeyboardSensor extends KeyboardSensor {
   attach() {
     this.handleStart();
@@ -62,19 +59,21 @@ const MODIFIERS = [upAndDown];
 const HandleCtx = createContext(null);
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-//   ids: the items' keys, in order; onMove(from, to): the item at `from` goes to `to` (indexes into `ids`); nameOf(id): what a person calls the item
-//   ("the step Say a line"); label: what the list is ("the steps of rule 1"), for the instructions a screen reader hears
+//   ids: the items' keys, in order
+//   onMove(from, to): the item at `from` goes to `to` (indexes into `ids`)
+//   nameOf(id): what a person calls the item ("the step Say a line")
+//   label: what the list is ("the steps of rule 1"), for the screen-reader instructions
 export function SortableList({ ids, onMove, nameOf = (id) => String(id), label = 'the list', children }) {
   const sensors = useSensors(
     useSensor(ListPointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(ListKeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  // the place last said: the item is "over" its own place as soon as it is picked up, which must not talk over "Picked up"
+  // the place last announced: the item is "over" its own place on pick-up, which must not talk over "Picked up"
   const lastSaid = useRef(null);
   const accessibility = useMemo(() => {
     const place = (id) => `${ids.indexOf(id) + 1} of ${ids.length}`;
     return {
-      // the hidden instructions and the live region go at the end of the page, not into the list (an <ol> holds only its items)
+      // the hidden instructions and live region go at the end of the page, not in the list (an <ol> holds only items)
       container: typeof document === 'undefined' ? undefined : document.body,
       screenReaderInstructions: {
         draggable: `To move it in ${label}, press Space or Enter, then the up and down arrows. Press Space or Enter again to put it there, or Escape to leave it where it was.`,
@@ -111,7 +110,7 @@ export function SortableList({ ids, onMove, nameOf = (id) => String(id), label =
   );
 }
 
-// The item's own handlers, for a handle inside it, and what puts it where it is dragged: for an item that draws its own outer element (a card).
+// An item's handlers and drag position, for an item that draws its own outer element (a card).
 //   -> { ref, style, dragging, handle }
 export function useSortableItem(id) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -135,9 +134,8 @@ export function SortableItem({ id, as: Tag = 'div', className = '', children, ..
 // Gives a DragHandle somewhere inside the item what it needs (for an item drawn by another component, a card's header).
 export const SortableHandles = ({ value, children }) => <HandleCtx.Provider value={value}>{children}</HandleCtx.Provider>;
 
-// The handle the item is dragged by: a button named for what it moves ("Drag Billing"). `handle`: the item's, from
-// useSortableItem, where the item draws its own element; else the SortableItem it is in. Outside a sortable item it
-// draws nothing.
+// The drag handle: a button named for what it moves ("Drag Billing"). `handle` comes from useSortableItem when the item
+// draws its own element, else from the SortableItem around it. Outside a sortable item it draws nothing.
 export function DragHandle({ label, disabled = false, handle: given = null }) {
   const fromItem = useContext(HandleCtx);
   const handle = given || fromItem;

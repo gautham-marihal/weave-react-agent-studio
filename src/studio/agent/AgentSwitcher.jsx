@@ -6,17 +6,14 @@ import { navigate, routeHref } from '../route.js';
 import StatePill from '../StatePill.jsx';
 import { agentState } from '../status.js';
 
-// At the top of an agent's menu: which agent this is, where it stands, and a list to move to another agent of the
-// workspace (on the same page, so going from one agent's Tools to the next one's is one click), or to create one. A
-// move is asked about first when there are unsaved edits (navigate's guard). The list is a Radix menu as wide as the
-// card: the arrows move, a letter jumps to an agent, Escape closes it and gives the keyboard back to the card.
+// The sidebar card inside an agent: which agent, its state, and a Radix menu to switch to another agent on the same
+// page (or create one). Unsaved edits are asked about first (navigate's guard); Escape returns focus to the card.
 export default function AgentSwitcher({ botId, bots = [], tab = '' }) {
   const current = bots.find((b) => b.id === botId) || { id: botId, name: botId };
   const name = current.name || current.id;
   const others = bots.filter((b) => b.id !== botId);
   const go = (href) => afterMenu(() => navigate(href));
-  // the setup is one agent's own steps: moving from it opens the other agent's overview (which offers its own setup
-  // when it is being set up), and does not start a setup it never asked for
+  // Switching from the setup opens the other agent's overview, so it doesn't start a setup that agent never asked for.
   const sameTab = tab === 'setup' ? '' : tab;
 
   return (

@@ -8,7 +8,7 @@ import { askConfirm, showNotice } from '../ui/dialogs.js';
 import { setApiUser } from '../api/client.ts';
 import { PageErrorBoundary } from '../ui/ErrorBoundary.jsx';
 import NotFound from '../ui/NotFound.jsx';
-import { ErrorState } from '../studio/ui.jsx';
+import { ErrorState, Notice } from '../studio/ui.jsx';
 import AiOrb from '../studio/preview/AiOrb.jsx';
 import { OfflineBanner, ServerDownBanner, SkipToContent } from '../ui/Connectivity.jsx';
 import { AGENT_SEARCH, PAGE_LABELS, capSameLabel, resolvePage, searchAgent, settingWhere } from '../studio/agent/pages.js';
@@ -16,12 +16,12 @@ import { bestFirst } from '../ui/match.ts';
 import { whenPanelKept } from '../studio/agent/stagedPanel.js';
 import { loadSchema } from '../studio/form/useSchema.js';
 import { requestSettingFocus } from '../studio/settingFocus.js';
-import { ownerOf, setWorkspaces as publishWorkspaces, toLegacyAgent, useBots, visibleCount } from '../studio/agents.js';
+import { hideBot, ownerOf, setWorkspaces as publishWorkspaces, toLegacyAgent, useBots, visibleCount } from '../studio/agents.js';
 import AgentPicker from '../studio/AgentPicker.jsx';
 import { queueChange } from '../studio/pendingChange.js';
 import { Choice, OneOf } from '../ui/OneOf.tsx';
-// The look of every page is loaded at once, in the order the pages' own imports gave it before their code was split off below (Home and the menu use
-// these styles before any page is opened; a style loaded later would also come after themes.css and win where the two are as specific).
+// Every page's styles load at once, in the order the pages' imports had before code splitting: Home and the menu use
+// them before any page opens, and a style loaded later would come after themes.css and win at equal specificity.
 import '../studio/smartSelect.css';
 import '../studio/preview/preview.css';
 import '../studio/insights/insights.css';
@@ -46,7 +46,7 @@ import '../studio/live/live.css';
 import '../studio/speed/speed.css';
 import '../studio/setup/setup.css';
 import { openTeam } from '../studio/team/useTeam.js';
-import { isDemoMode } from '../demo/demoMode.js';
+import { isDemoMode, isDemoSample } from '../demo/demoMode.js';
 import { AgentTable } from '../studio/AgentTable.jsx';
 import { describeHealth, useApiHealth } from '../studio/useApiHealth.js';
 import AgentSwitcher from '../studio/agent/AgentSwitcher.jsx';
@@ -129,7 +129,7 @@ function makeWorkspaceId() {
   return `ws_${Date.now().toString(36)}_${randomTag(5)}`;
 }
 
-// Records saved with each workspace: test sessions, readiness-check runs (stored as `simulations`, the field's old name) and the activity log.
+// Records saved with each workspace: test sessions, check runs (stored as `simulations`, the old name), activity log.
 function normalizeList(value) {
   return Array.isArray(value) ? value.filter((item) => item && item.id) : [];
 }
@@ -168,8 +168,8 @@ function loadWorkspaces(profile) {
   return [first];
 }
 
-// The first-time setup's workspace, named by the person who just set up (another person may have used this browser before): it opens, made first
-// when there is none by that name. Done once, as the setup finishes (on every load it would make it again after a rename).
+// Opens the first-time setup's workspace by the new person's name (this browser may have had others), making it if none
+// has that name. Run once as setup finishes (on every load it would come back after a rename).
 export function openWorkspaceNamed(name) {
   const wanted = String(name || '').trim();
   if (!wanted) return;
@@ -209,14 +209,14 @@ const RECENT_KEY = 'weave_search_recent';
 const RECENT_KEPT = 8;
 
 export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountOpen }) {
-  // who is signed in, sent with every request as X-User (every page, not only an agent's: phone-number changes are
-  // written to an audit file with it). Set during render, before any child sends its first request.
+  // who is signed in, sent with every request as X-User (phone-number changes are audited with it).
+  // Set during render, before any child sends its first request.
   setApiUser(profile?.fullName, profile?.email);
   const displayName = profile?.fullName || 'there';
   const firstName = displayName.split(' ')[0];
   const initials = getInitials(displayName);
-  // Every page has an address: an agent's (#/bots/...) opens the Agents area, a workspace page's (#/calls,
-  // #/telephony/numbers...) opens that page, so refreshes, bookmarks and Back land where you were.
+  // Every page has an address (#/bots/... opens the Agents area, #/calls... its page),
+  // so refreshes, bookmarks and Back land where you were.
   const [active, setActive] = useState(() => (/^#\/bots/.test(window.location.hash) ? 'agents' : parseWorkspaceHash(window.location.hash)?.id || 'home'));
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [picker, setPicker] = useState(null); // 'which agent?' for voices and integrations
@@ -232,18 +232,19 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const [range, setRange] = useState('Past 7 days');
   const [telephonySection, setTelephonySection] = useState(() => parseWorkspaceHash(window.location.hash)?.section || 'calls');
   const [workspaces, setWorkspaces] = useState(() => loadWorkspaces(profile));
-  // the workspace open last time, from the first render (not the first in the list for a moment, which an open agent's
+  // the workspace open last time, from the first render (not briefly the first in the list, which an open agent's
   // address would be checked against)
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => loadCurrentWorkspaceId(workspaces));
 
   const currentWorkspace = workspaces.find((ws) => ws.id === currentWorkspaceId) || workspaces[0] || null;
   const workspaceName = currentWorkspace?.name || 'My workspace';
-  // Agents are the Agent Builder API's. Which workspace an agent is in is kept in this browser (see studio/agents.js),
-  // so this is the open workspace's agents. The older pages read them in their own shape.
+  // The open workspace's agents, from the Agent Builder API; which workspace each is in is kept in this browser
+  // (studio/agents.js). The older pages read them in their own shape.
   const { bots, removed: removedBots, all: allBots, refresh: refreshAgents, error: agentsError } = useBots();
   const botList = useMemo(() => bots || [], [bots]);
-  // the team of this workspace is opened here, so the Team page and an agent's Share panel read the same one; "Open the
-  // Team page" in a Share panel asks for it
+  const samples = useMemo(() => botList.filter((bot) => isDemoSample(bot.id)), [botList]);
+  // this workspace's team opens here, so the Team page and an agent's Share panel read the same one
+  // ("Open the Team page" in a Share panel asks for it)
   useEffect(() => {
     if (currentWorkspace?.id) openTeam({ workspaceId: currentWorkspace.id, profile, demo: isDemoMode(), agentIds: botList.map((b) => b.id) });
   }, [currentWorkspace?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -257,7 +258,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     window.addEventListener('weave-open-alerts', open);
     return () => window.removeEventListener('weave-open-alerts', open);
   });
-  // Alerts: the recent calls of every agent of this workspace are checked while the studio is open (it only reads them)
+  // Alerts: every agent's recent calls in this workspace are checked (read-only) while the studio is open
   useAlertWatcher({ bots: botList, onOpenAlert: () => window.dispatchEvent(new Event('weave-open-alerts')) });
   const newAlerts = useNewAlertCount();
   const workspaceNav = NAV.map((item) => (item.id === 'alerts' && newAlerts ? { ...item, badge: String(newAlerts), badgeTone: 'bad' } : item));
@@ -271,7 +272,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   // Records go to the workspace you are in (a test conversation can finish after you switch pages).
   const workspaceIdRef = useRef(null);
   workspaceIdRef.current = currentWorkspaceId;
-  // the workspace the agent is in (not the one open now: a conversation that ends as another workspace opens is still its agent's)
+  // the agent's own workspace, not the open one: a conversation that ends after a switch still belongs to its agent's
   const updateWorkspaceOfAgent = (agentId, updater) => {
     const owner = ownerOf(agentId) || workspaceIdRef.current;
     setWorkspaces((items) => items.map((ws) => (ws.id === owner ? updater(ws) : ws)));
@@ -329,8 +330,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   useEffect(() => {
     if (currentWorkspaceId) saveWorkspaceState(workspaces, currentWorkspaceId);
   }, [workspaces, currentWorkspaceId]);
-  // the workspaces changed in another tab (one made, renamed, deleted, a test session recorded): taken up here, so this tab's next change doesn't put
-  // back what it had before (the workspace open in this tab stays this tab's own)
+  // workspaces changed in another tab are taken up here, so this tab's next change doesn't restore stale data
+  // (the workspace open in this tab stays this tab's own)
   useEffect(() => {
     const onStorage = (event) => {
       if (event.key !== WORKSPACE_STORAGE_KEY || !event.newValue) return;
@@ -352,11 +353,14 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
   // A link to an agent that belongs to another workspace (a bookmark, a shared link) opens that workspace.
   const route = useRoute();
-  const inAgentView = active === 'agents' && route.view === 'bot'; // inside an agent the sidebar shows that agent's menu
+  const inAgentView = active === 'agents' && route.view === 'bot'; // sidebar shows the agent's name
   useEffect(() => {
     if (route.view === 'bot') rememberAgent(route.botId);
   }, [route.view, route.botId]);
-  // An address opened while the app is already running (back/forward, a pasted link) opens its page: an agent's switches to Agents.
+  // inside an agent the sidebar starts folded to icons so the agent's pages get the width; elsewhere it starts open.
+  // The toggle wins until the person moves between the two.
+  useEffect(() => setSidebarCollapsed(inAgentView), [inAgentView]);
+  // An address opened while the app runs (back/forward, a pasted link) opens its page; an agent's switches to Agents.
   useEffect(() => {
     if (/^#\/bots/.test(window.location.hash)) {
       setActive('agents');
@@ -364,14 +368,15 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     }
     const page = parseWorkspaceHash(window.location.hash);
     if (!page) {
-      // an address that names no page leaves the Agents area, so the "not found" page shows (in place of the workspace's pages)
+      // an address naming no page leaves the Agents area, so the "not found" page shows instead
       if (isUnknownAddress(window.location.hash)) setActive((value) => (value === 'agents' ? 'home' : value));
       return;
     }
     setActive(page.id);
     if (page.section) setTelephonySection(page.section);
   }, [route]);
-  // ...and the address follows the page when it changes by other means (switching workspace goes Home): replaced, so Back does not stop on it twice
+  // ...and the address follows the page when it changes otherwise (a workspace switch goes Home),
+  // replaced so Back doesn't stop on it twice
   useEffect(() => {
     if (active === 'agents' || isUnknownAddress(window.location.hash)) return;
     const want = workspaceHref(active, active === 'telephony' ? telephonySection : undefined);
@@ -402,7 +407,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const agentCount = botList.length;
   const configuredCount = botList.filter((bot) => bot.latest_version).length;
   const apiHealth = useApiHealth();
-  const health = describeHealth(apiHealth.state);
+  const health = describeHealth(apiHealth.state, apiHealth.latency);
 
   const recentActivity = useMemo(() => {
     const events = [];
@@ -460,8 +465,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       return next;
     });
 
-  // The settings of the agent that is open can be searched by name (what they are called, what they are for, the key
-  // the file uses). The index is built from the schema the first time search is opened on an agent, and not before.
+  // The open agent's settings are searchable by name, purpose or file key. The index is built from the schema the
+  // first time search opens on an agent, and not before.
   const [settingsIndex, setSettingsIndex] = useState(null);
   const agentOpen = route.view === 'bot';
   useEffect(() => {
@@ -537,7 +542,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         description: `${item.versionLabel}, ${formatRelative(item.startedAt).toLowerCase()}, ${formatDuration(item.durationSec)}`,
         icon: 'clock',
       }));
-    // things to do from anywhere, and, for each agent (but the one open, whose own come first), the ones people come to do most
+    // actions from anywhere, and each agent's most common ones (the open agent's own come first)
     const actions = [
       {
         type: 'action',
@@ -719,8 +724,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       studioNavigate('#/bots?new=1');
     });
 
-  // The workspace dialogs are opened from the workspace menu, which has closed by the time they close: the keyboard goes back to the workspace button
-  // (only when it would otherwise be on nothing)
+  // The workspace dialogs open from the workspace menu, which has closed by the time they close: focus goes back to
+  // the workspace button (only when it would otherwise be on nothing)
   const backToSwitcher = () =>
     window.requestAnimationFrame(() =>
       window.requestAnimationFrame(() => {
@@ -739,8 +744,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const switchWorkspace = (workspaceId, { home = false } = {}) => {
     setWorkspaceOpen(false);
     if (workspaceId === currentWorkspaceId && !home) return;
-    // An open agent belongs to the workspace you are leaving: leave it first, after asking when it has unsaved edits. Nothing moves before the
-    // answer, so Stay keeps everything as it was.
+    // An open agent belongs to the workspace you are leaving: leave it first, asking if it has unsaved edits.
+    // Nothing moves before the answer, so Stay keeps everything as it was.
     whenLeaveConfirmed(() => {
       setCurrentWorkspaceId(workspaceId);
       if (home) {
@@ -840,7 +845,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       )}
     </>
   );
-  // where you are, for the bar across the top and the browser tab: the page, the agent it belongs to, the part of Telephony
+  // where you are, for the top bar and the browser tab: the page, its agent, the part of Telephony
   const lostAddress = active !== 'agents' && isUnknownAddress(window.location.hash);
   const missingAgent = inAgentView && !!allBots && !allBots.some((bot) => bot.id === route.botId);
   const agentName = inAgentView && !missingAgent ? (allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId : '';
@@ -852,7 +857,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         ? PAGE_LABELS[resolvePage(route.tab, { bare: route.bare }).page]
         : [...NAV, ...LIBRARY_NAV, ...SETTINGS_NAV].find((item) => item.id === active)?.label || 'Home';
   const sectionLabel = active === 'telephony' && !lostAddress ? TELEPHONY_SECTIONS.find((item) => item.id === telephonySection)?.label : '';
-  // most specific first, so a row of tabs still tells them apart: "Tools · Acme Support · Weave", "Phone numbers · Telephony · Weave"
+  // most specific first, so a row of browser tabs still tells them apart: "Tools · Acme Support · Weave"
   const tabTitle = [sectionLabel, pageLabel, agentName, 'Weave'].filter(Boolean).join(' · ');
   useEffect(() => {
     document.title = tabTitle;
@@ -867,7 +872,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         <SkipToContent target="pageContent" />
         <aside className="sidebar">
           <div className="sideBrand">
-            <Logo />
+            <Logo health={health} />
             <Tip label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} side="right">
               <button
                 className="collapse"
@@ -881,9 +886,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
             </Tip>
           </div>
 
-          {/* inside an agent the agent is the context: the workspace switch gives way to the agent's own switcher, below. The switcher is a Radix pop-over
-            as wide as the switch, with the keyboard on the workspace in use; each workspace's actions are a Radix menu in it (Escape closes the menu
-            first, then the switcher, and gives the keyboard back to what opened each) */}
+          {/* inside an agent its own switcher (below) replaces this. A Radix pop-over with focus on the current
+            workspace and a Radix menu per workspace: Escape closes the menu, then the switcher, returning focus */}
           {!inAgentView && (
             <Popover.Root open={workspaceOpen} onOpenChange={setWorkspaceOpen}>
               <Popover.Trigger asChild>
@@ -971,13 +975,13 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           {inAgentView && (
             <nav className="sideNav agentSideNav" aria-label="This agent">
               <Tip label={sidebarCollapsed ? 'All agents' : null} side="right">
-                <button type="button" className="agentBack" onClick={() => studioNavigate('#/bots')}>
+                <button type="button" className="agentBack" aria-label="All agents" onClick={() => studioNavigate('#/bots')}>
                   <Icon name="chevronLeft" size={15} />
                   <span className="agentBackText">All agents</span>
                 </button>
               </Tip>
-              {/* the workspace's agents to switch between (all of them, when this agent is listed in another workspace) */}
-              {/* not for an agent that isn't there (the page says so): it would show a made-up card for it */}
+              {/* agents to switch between (all of them, when this agent is listed in another workspace) */}
+              {/* not for a missing agent (the page says so): it would show a made-up card */}
               {!missingAgent && (
                 <AgentSwitcher botId={route.botId} bots={botList.some((b) => b.id === route.botId) ? botList : allBots || botList} tab={route.tab} />
               )}
@@ -1055,7 +1059,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
             </div>
             <div className="topbarActions">
               <DemoSlot />
-              {/* a search field, not a button: it says what it finds and how to reach it from the keyboard (its words are its name, as seen) */}
+              {/* looks like a search field: its visible words (what it finds, its shortcut) are its name */}
               <button className="topSearch" type="button" onClick={openSearch}>
                 <Icon name="search" size={15} />
                 <span>Search agents, pages, settings…</span>
@@ -1076,7 +1080,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
             }}
           />
           <div className="dashContent" id="pageContent">
-            {/* a page that breaks says so on its own; the menu and the bar above keep working, and opening another page starts afresh */}
+            {/* a page that breaks says so on its own; the menu and top bar keep working, another page starts afresh */}
             <PageErrorBoundary resetKey={`${active}|${route.view}|${route.botId || ''}|${route.tab || ''}`}>
               <Suspense fallback={<PageLoading />}>
                 {bots === null && !agentsError && ['sessions', 'live', 'monitoring', 'speed', 'alerts'].includes(active) ? (
@@ -1257,7 +1261,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                             : agentCount === 0
                               ? 'Your workspace is ready. Start by creating an agent.'
                               : `${agentCount} agent${agentCount === 1 ? '' : 's'} in ${workspaceName}, ${configuredCount} published.`}{' '}
-                          {/* said only when there is something to know: the demo's data, or a server that doesn't answer (a working one goes unsaid) */}
+                          {/* shown only when there's something to know: demo data, or a server that doesn't answer */}
                           {health.show && (
                             <span className="homeConnection" title={health.note}>
                               <span className={`healthSignal ${health.tone}`} aria-hidden="true" />
@@ -1271,6 +1275,23 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                       </button>
                     </section>
 
+                    {/* sample agents, labelled so a new workspace isn't mistaken for someone else's */}
+                    {samples.length > 0 && (
+                      <div className="homeSamples">
+                        <Notice
+                          kind="info"
+                          title={`${samples.length === 1 ? 'This agent is a sample' : `These ${samples.length} agents are samples`}`}
+                          actions={
+                            <button type="button" className="quietButton" onClick={() => samples.forEach((bot) => hideBot(bot.id))}>
+                              Hide the samples
+                            </button>
+                          }
+                        >
+                          They come with demo mode, with made-up calls, so there is something to explore. Hide them to start with an empty workspace; the Agents
+                          page can bring them back.
+                        </Notice>
+                      </div>
+                    )}
                     {agentCount > 0 && <WorkspacePulse bots={botList} onOpen={activate} />}
 
                     <section className="overviewGrid">
@@ -1290,14 +1311,14 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                               </div>
                             </div>
                             <div className="starterCard">
-                              {/* the studio's own orb (the one a test conversation shows), in the style's colours */}
+                              {/* the studio's orb (as in a test conversation), in the style's colours */}
                               <div className="starterVisual" aria-hidden="true">
                                 <AiOrb size={136} />
                               </div>
                               <div className="starterCopy">
                                 <span className="cardTag">Recommended</span>
                                 <h3>Build an agent from an idea</h3>
-                                <p>Pick a starting point, name your agent, and refine its voice, tools and handoff rules in its config.</p>
+                                <p>Describe what it should do in your own words or pick a starting point, try it out, then put it live.</p>
                                 <div className="starterActions">
                                   {/* quiet: "Create agent" above is the page's one strong button, and does the same */}
                                   <button className="quietButton compactCta" type="button" onClick={openCreateAssistant}>
@@ -1376,8 +1397,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                       </div>
                     </section>
 
-                    {/* the conversations had in the studio's own test panel (the calls themselves are in the numbers at the top): only once there are some,
-                      and named for what they are, so they are never read as the agents' traffic */}
+                    {/* test-panel conversations, shown once there are some and named so they're never
+                      read as the agents' traffic */}
                     {sessions.length > 0 && (
                       <section className="insightsSection">
                         <div className="sectionHeader">

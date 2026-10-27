@@ -4,12 +4,9 @@ import { Select as RadixSelect } from 'radix-ui';
 import Icon from './Icon.jsx';
 import { keepEscape } from './layer.ts';
 
-// A drop-in for the browser's <select> (Radix Select): the same <option> and <optgroup> children, the same `value` and
-// `onChange(event)` (event.target.value is the chosen value), so a page swaps <select> for <Select> and nothing else
-// changes. What changes is the list: it looks like the rest of the studio in every style and mode (the browser's own
-// list looks like the operating system), opens under the box on the side with room, shows a choice's description on a
-// second line, and takes the keyboard: arrows, a letter to jump, Enter to pick, Escape to close.
-//   An option whose value is '' (an "Any …" choice) is kept: Radix needs a value for each, so '' stands in as EMPTY between here and Radix.
+// A drop-in for <select> (Radix Select): same <option>/<optgroup> children, `value` and `onChange(event)`, so a page
+// just swaps the tag. The list matches the studio's style, shows option descriptions and takes the keyboard.
+// Radix needs a value per option, so an '' option ("Any …") travels as EMPTY.
 
 const EMPTY = '\u0000empty';
 const toRadix = (value: string) => (value === '' ? EMPTY : value);
@@ -76,7 +73,7 @@ export default function Select({ value, defaultValue, onChange, children, id, cl
   const all = groups.flatMap((g) => g.choices);
   const controlled = value !== undefined && value !== null;
   const current = controlled ? String(value) : undefined;
-  // a value no option has (an old one, or none chosen and no "" option): the box shows the first option's words, as the browser's <select> does
+  // a value no option has (old, or none chosen and no "" option): show the first option's words, as <select> does
   const shown = current !== undefined && all.some((c) => c.value === current) ? current : current !== undefined ? (all[0]?.value ?? '') : undefined;
   return (
     <RadixSelect.Root
@@ -90,7 +87,7 @@ export default function Select({ value, defaultValue, onChange, children, id, cl
       name={name}
       required={required}
     >
-      {/* the button carries the chosen value too (button.value), as the browser's <select> does: a test, or a script, reads it the same way */}
+      {/* the button carries the chosen value too (button.value), as <select> does, for tests and scripts */}
       <RadixSelect.Trigger id={id} className={`rxSelect ${className}`} title={title} value={shown ?? ''} {...aria}>
         <RadixSelect.Value />
         <RadixSelect.Icon className="rxSelectIcon">

@@ -50,9 +50,8 @@ import Tip from '../../ui/Tip.tsx';
 import Select from '../../ui/Select.tsx';
 import { agentsUsingTool } from '../form/toolInfo.js';
 
-// The panel beside the picture: what the selected block or arrow is, in plain words, with the few settings that belong
-// to it. Everything it changes is a field of the configuration; "All settings" has the rest. With nothing selected it
-// tells the call step by step (each step picks its arrow), with how to use the picture folded under it.
+// The side panel: the selected block or arrow in plain words, with the few configuration fields that belong to it
+// ("All settings" has the rest). With nothing selected, it walks through the call step by step.
 const list = (v) => (Array.isArray(v) ? v : []);
 // the configuration without the value at a path (a field emptied leaves nothing behind)
 const unsetAt = (root, path) => {
@@ -98,9 +97,8 @@ const Text = ({ id, value, onChange, placeholder, multiline, rows = 4, mono }) =
     />
   );
 
-// Where what is selected lives in the configuration: the path, the JSON as it is right now, and a way to open it in its
-// settings or in the file. Whatever is changed here is written to that place at once, and whatever is changed there is
-// what this panel and the picture show.
+// Where the selection lives in the configuration: its path, its current JSON, and links to its settings or the JSON.
+// Changes here are written there at once, and changes there show here.
 const WhereCtx = createContext(null);
 export function placesFor(selected, config) {
   if (!selected) return [];
@@ -201,7 +199,7 @@ export default function Inspector(props) {
       : placesFor(props.selected, props.config);
   return (
     <WhereCtx.Provider value={{ places, config: props.config, onOpenSettings: props.onOpenSettings, onOpenJson: props.onOpenJson, onHide: props.onHide }}>
-      {/* a new selection starts a new panel: a question half-asked about one block is not carried to the next */}
+      {/* a new selection remounts the panel, so a half-asked question about one block isn't carried to the next */}
       <InspectorBody key={props.selected ? `${props.selected.type}:${props.selected.id}:${props.selected.tab || ''}` : 'none'} {...props} />
     </WhereCtx.Provider>
   );
@@ -253,7 +251,7 @@ function InspectorBody({
     );
 
   const at = parseNodeId(node.id);
-  // a way back to the first subagent: its block says what its arrow says
+  // a "Back to …" block shows its arrow's panel
   if (node.type === 'back') {
     const back = flow.edges.find((e) => e.id === node.edge);
     if (back)
@@ -338,9 +336,9 @@ function InspectorBody({
   return <ToolView node={node} owner={owner} config={config} set={set} apply={apply} onSelect={onSelect} onRemove={onRemove} onOpenSettings={onOpenSettings} />;
 }
 
-// A line it says, which may be one of the agent's fixed lines: shown in its words, and typing makes them its own words
-// here (the fixed line stays as it is for whatever else says it).
-// required: the words can't be left empty (the settings need at least one letter there), so an empty box says so rather than being taken as it is
+// A line it says, which may be one of the agent's fixed lines: typing here makes it its own words (the fixed line stays
+// as it is wherever else it is said).
+//   required: the warning shown while the box is empty, since the settings need at least one letter there
 function LineField({ id, label, value, config, onChange, hint, placeholder, rows = 3, required = '' }) {
   const fixed = isObj(value);
   const words = typeof value === 'string' ? value : fixed ? speechText(value, config) : '';
@@ -352,8 +350,8 @@ function LineField({ id, label, value, config, onChange, hint, placeholder, rows
   );
 }
 
-// ---- a subagent: what it is and how it talks (General), what it reads (Knowledge base), what it can do (Tools), the
-// tests that check a call reaches it (Tests), and where it sends callers and who sends them to it (Edges)
+// ---- a subagent, in tabs: General (what it is, how it talks), Knowledge base, Tools, Tests (that a call reaches it)
+// and Edges (where it sends callers, and who sends them to it)
 const AGENT_TABS = [
   { id: 'general', label: 'General' },
   { id: 'knowledge', label: 'Knowledge base' },
@@ -367,7 +365,7 @@ function AgentView({ node, agent, i, flow, config, agents, set, apply, onSelect,
   const id = `wf-agent-${node.id}`;
   const path = ['agents', 'items', i];
   const write = (next, group) => apply(setAt(config, path, next), { group: group ?? `agent:${node.id}` });
-  // what keeps it (the only agent; a test, a wrap-up or a task step that needs it): said, rather than a Delete that does nothing
+  // what keeps it (the only agent, or a test, wrap-up or task step needs it), shown instead of a useless Delete
   const keep = whyKeepAgent(config, node.id);
   return (
     <Shell
@@ -465,7 +463,7 @@ function AgentView({ node, agent, i, flow, config, agents, set, apply, onSelect,
   );
 }
 
-// a setting the agent may have of its own: what it is, and whether it uses the default (with the way back to it when it doesn't)
+// a setting the agent may override: its label, and "Use the default" while it has its own
 function OwnSetting({ label, id, mine, onDefault, children }) {
   return (
     <div className="wfField wfOwn">
@@ -564,7 +562,7 @@ function AgentOverrides({ id, agent, config, write }) {
   );
 }
 
-// a row of a list with a switch at its end: a name, a line under it, and whether it is on
+// a list row with a switch at its end: a name, a line under it, and whether it is on
 function ToggleRow({ label, sub, warn, checked, onChange, disabled, title }) {
   return (
     <li className="wfToggleRow" title={title}>
@@ -577,9 +575,8 @@ function ToggleRow({ label, sub, warn, checked, onChange, disabled, title }) {
   );
 }
 
-// ---- Knowledge base: what the subagent reads in every conversation (a base it looks up when it needs to is reached
-// through a tool, so it is one of its tools); a base it is given that is not read that way is still listed, to be taken
-// away
+// ---- Knowledge base: what the subagent reads in every conversation (a base looked up on demand is reached through a
+// tool, so it counts as a tool). A base it was given that isn't read that way is still listed, so it can be removed.
 function AgentKnowledge({ agent, config, write, onOpenSettings }) {
   const reads = list(agent.knowledge);
   const all = list(config?.knowledge).filter((b) => isObj(b) && b.id);
@@ -614,16 +611,15 @@ function AgentKnowledge({ agent, config, write, onOpenSettings }) {
   );
 }
 
-// ---- Tools: the built-in ones (ending the call, going back, transfers to a number or to another agent, keypad tones,
-// forms), then the tools set up on the Tools page. On: the subagent may use it. Off: what deleting its block does (a
-// way to end the call or a transfer nobody else offers goes with it).
+// ---- Tools: the built-in ones (ending the call, going back, transfers, keypad tones, forms), then the Tools page's.
+// Switching one off does what deleting its block does (an end or transfer nobody else offers goes with it).
 const isBuiltinTool = (t) => isObj(t) && (t.type === 'builtin' || (!t.type && t.builtin));
 function AgentTools({ agent, config, workspace, apply, onOpenSettings, isEntry }) {
   const defined = list(config?.tools).filter((t) => isObj(t) && t.id);
   const offered = list(agent.tools).filter((t) => typeof t === 'string');
   const offers = (id) => offered.includes(id);
-  // several at once in one change (an agent can offer two End tools, one for calls and one for chats): one after another from the same config would
-  // each undo the one before
+  // switch several off in one change (an agent can offer two End tools, for calls and chats): applying each to the
+  // same config in turn would undo the one before
   const offAll = (toolIds) =>
     apply(
       toolIds.reduce((c, toolId) => removeNode(c, toolNodeId(agent.id, toolId)), config),
@@ -707,7 +703,7 @@ function AgentTools({ agent, config, workspace, apply, onOpenSettings, isEntry }
   );
 }
 
-// ---- Tests: the tests that check a call ends with this subagent in charge (agent_is). "Add test" adds one, with a
+// ---- Tests: the tests checking that a call ends with this subagent in charge (agent_is). "Add test" adds one with a
 // first caller line to change, and opens it on the Tests page.
 function AgentTests({ agent, config, apply, onOpenSettings }) {
   const tests = list(config?.tests)
@@ -760,7 +756,7 @@ function AgentTests({ agent, config, apply, onOpenSettings }) {
   );
 }
 
-// ---- Edges: where the subagent can send the caller (other subagents, other agents), who sends callers to it, and a new hand-over to a subagent
+// ---- Edges: where the subagent can send the caller, who sends callers to it, and a new hand-over to a subagent
 function AgentEdges({ node, flow, config, agents, apply, onSelect, onAddHandoff }) {
   const nameOf = (agentId) => agents.find((a) => a?.id === agentId)?.name || agentId;
   const isAgent = (id) => agents.some((a) => a?.id === id);
@@ -844,9 +840,8 @@ function AgentEdges({ node, flow, config, agents, apply, onSelect, onAddHandoff 
   );
 }
 
-// ---- an Agent transfer: the call goes on to another agent of the workspace, through one of its numbers. Which agent,
-// when the subagent makes it (the tool's own words, as on the Tools page), what is said while the transfer is made and
-// how long to wait first.
+// ---- an Agent transfer: the call moves on to another workspace agent through one of its numbers. Which agent, when
+// (the tool's own words, as on the Tools page), what is said during the transfer and how long to wait first.
 const TRANSFER_TABS = [
   { id: 'general', label: 'General' },
   { id: 'edges', label: 'Edges' },
@@ -977,9 +972,8 @@ function AgentTransferView({ node, owner, config, flow, workspace, botId, apply,
   );
 }
 
-// The panel's frame: the icon, what it is and its name; a button to hide the panel (the picture gets the whole width)
-// and one to close what is selected; its parts as tabs when it has several (the configuration's place is then on its
-// first part, which says so itself).
+// The panel's frame: icon, kind and name, Hide (the picture gets the whole width) and Close; parts as tabs when there
+// are several (the configuration's place is then shown on the first part, which says so itself).
 function Shell({ icon, title, kicker, children, onClose, tabs = null }) {
   const head = (
     <header>
@@ -1064,7 +1058,7 @@ function DeleteButton({ label, why, onConfirm, disabled }) {
   );
 }
 
-// the button that hides the panel (the picture gets the whole width): in every panel's frame, and on the overview
+// the Hide button (the picture gets the whole width), in every panel's frame and on the overview
 function HideButton() {
   const ctx = useContext(WhereCtx);
   if (!ctx?.onHide) return null;
@@ -1202,7 +1196,7 @@ function Overview({ flow, config, apply, onSelect }) {
   );
 }
 
-// ---- a sticky note: what it says and its colour (kept in this browser: the agent's configuration has no place for notes)
+// ---- a sticky note: its words and colour (kept in this browser; the configuration has no place for notes)
 function NoteView({ note, edit, onChange, onDelete, onClose }) {
   const box = useRef(null);
   useEffect(() => {
@@ -1246,10 +1240,8 @@ function NoteView({ note, edit, onChange, onDelete, onClose }) {
   );
 }
 
-// ---- a channel a call comes in on: whether it is on (on the Channels page), what it says first, and who answers. What
-// it says first is written to it and to every other channel that says the same line, as the Agent page's greeting is
-// (simpleModel.js); which channels, kept from the first change, so that emptying the field and typing again writes to
-// the same ones.
+// ---- a channel: whether it is on (Channels page), its greeting and who answers first. The greeting goes to every
+// channel sharing that line (simpleModel.js), fixed at the first edit so clearing and retyping writes the same ones.
 function ChannelView({ node, flow, config, apply, onClose, onOpenSettings }) {
   const agents = list(config?.agents?.items);
   const channel = node.channel ? list(config?.channels)[node.channelIndex] : null;
@@ -1329,7 +1321,7 @@ function ChannelView({ node, flow, config, apply, onClose, onOpenSettings }) {
   );
 }
 
-// ---- the AI model plugged into a subagent: its own, or the default, with its voice and interruptions (as on its General part)
+// ---- the AI model plugged into a subagent: its own or the default, with voice and interruptions (as on General)
 function ModelView({ node, agent, i, config, apply, onSelect }) {
   const write = (next, group) => apply(setAt(config, ['agents', 'items', i], next), { group: group ?? `agent:${agent.id}` });
   return (
@@ -1622,9 +1614,8 @@ function StateRows({ values, variables, config, apply, path }) {
   );
 }
 
-// ---- what an agent can do: its tools A tool block: what the tool does here, and what it says, written here as on the
-// Tools page (it is the same tool): when it is used, what it says before it ends the conversation, the number a
-// transfer passes calls to. The rest of its settings are on the Tools page.
+// ---- a tool block, edited as on the Tools page (it is the same tool): when it is used, its goodbye line, a transfer's
+// number. The rest of its settings are on the Tools page.
 function ToolView({ node, owner, config, set, apply, onSelect, onRemove, onOpenSettings }) {
   const toolId = parseNodeId(node.id).tool;
   const ti = list(config?.tools).findIndex((t) => t?.id === toolId);
@@ -1640,7 +1631,7 @@ function ToolView({ node, owner, config, set, apply, onSelect, onRemove, onOpenS
       </p>
     ) : null;
   const when = typeof tool?.description === 'string' ? tool.description : '';
-  // an optional line: emptied, it is taken away
+  // an optional line: emptied, it is removed
   const setOrUnset = (path, v, group) => (v ? set(path, v, group) : apply(unsetAt(config, path), { group }));
   return (
     <Shell

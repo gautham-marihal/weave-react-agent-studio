@@ -4,9 +4,8 @@ import PageShell from '../PageShell.jsx';
 
 const FormEditor = lazy(() => import('../../form/FormEditor.jsx'));
 
-// A page that is the settings form limited to some sections of the configuration (the tools, the channels, the
-// guardrails...). Everything the form can do is here (add, rename, delete with its undo, "used by", the problems under
-// each field); the page gives it a title and says what it is for.
+// A page that is the settings form limited to some config sections (tools, channels, guardrails...), with a title and
+// lead. Everything the form can do works here.
 export default function SectionPage({
   title,
   lead,

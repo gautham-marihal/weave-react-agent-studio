@@ -1,7 +1,6 @@
-// How an agent is doing, at a glance, for the Agents list: is it valid, will all of it run, do its tests pass, do its knowledge bases have an
-// index. It is built from what the API already says (`POST /validate`, `GET /tests`, `GET /knowledge`), so the list needs no endpoint of
-// its own. A badge only appears for what applies: an agent with no scenarios has no tests badge, and "no problems found" says exactly which
-// checks it looked at, never "healthy". Pure: no network, no DOM.
+// How an agent is doing at a glance, for the Agents list, from what the API already says (`POST /validate`,
+// `GET /tests`, `GET /knowledge`), so the list needs no endpoint of its own. A badge appears only for what applies, and
+// "no problems found" names the checks it looked at, never "healthy". Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
 import { splitUnsupported } from '../preflight.ts';

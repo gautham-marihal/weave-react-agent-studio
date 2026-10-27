@@ -1,5 +1,5 @@
-// The smallest valid agent: one web chat channel and one agent that answers briefly. New agents start from it (the demo API, the draft assistant,
-// the starters). It lives in its own file so a screen that only needs it doesn't pull the whole imitation API into the main bundle.
+// The smallest valid agent (one web chat channel, one brief agent), which new agents start from.
+// In its own file so a screen that needs only this doesn't pull the imitation API into the main bundle.
 
 export const minimalConfig = (id, name) => ({
   schema_version: '1.2',

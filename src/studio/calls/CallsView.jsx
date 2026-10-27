@@ -11,10 +11,9 @@ import { useCalls } from './useCalls.ts';
 import Select from '../../ui/Select.tsx';
 import './calls.css';
 
-// The calls an agent (or every agent) has had: who called, when, for how long, how it went (handled, passed to a
-// person, cut off). Selecting one opens the trace of what happened in it. The API serves these per agent, so "All
-// agents" asks each agent and merges the answers. These records hold what callers said, and the API cannot yet limit
-// who reads them, so the screen says so, once, until "Got it".
+// An agent's calls (or every agent's): who, when, how long, how it went; selecting one opens its trace.
+// The API lists calls per agent, so "All agents" asks each and merges. The records hold what callers said and the API
+// can't yet limit who reads them, so the screen says so once, until "Got it".
 export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, initialCall = null, editor = null }) {
   const [botId, setBotId] = useState(fixedBotId);
   const [range, setRange] = useState('7d');
@@ -193,7 +192,7 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
         {loading && rows.length === 0 && <SkeletonRows rows={4} label="Loading calls" square={false} />}
         {!loading && rows.length === 0 && errors.length === 0 && (
           <div className="clEmpty">
-            {/* what the empty list means: no agent yet, filters that match nothing, or only a time range with nothing in it */}
+            {/* why it's empty: no agent yet, filters matching nothing, or a time range with nothing in it */}
             <strong>{bots.length === 0 ? 'No calls yet' : outcome || channel || caller ? 'No calls match these filters' : 'No calls found'}</strong>
             <p>
               {bots.length === 0

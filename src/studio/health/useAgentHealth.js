@@ -3,16 +3,15 @@ import { api } from '../../api/client.ts';
 import { metaOfConfig } from '../agentList.js';
 import { healthFrom, healthKey } from './health.js';
 
-// Reads, for the agents it is given, what the Agents list shows beyond the list itself: their tags and owner (from the draft) and how they
-// are doing (validity, what will run, test results, knowledge indexes). That is up to four requests per agent (all reads; the validator
-// only checks), so it asks a few at a time, only for the agents on the page being looked at (or, on request, for all), and remembers the
-// answer until the agent's draft is saved again. Nothing here changes anything.
+// What the Agents list shows beyond the list: tags and owner (from the draft) and health. That is up to four reads per
+// agent, so it asks a few at a time, only for the agents on the page (or all, on request), and keeps each answer until
+// the draft is saved again. Read-only (the validator only checks).
 const AT_A_TIME = 3;
 const cache = new Map(); // `${id}@${revision}` -> { tags, owner, health }
 const lastById = new Map(); // id -> the latest answer for it, shown while a newer one is being read
 const inflight = new Set();
-// a read that failed (a network blip, the server restarting): not remembered like an answer, but tried again after a while; its blank answer is shown
-// only when there is no earlier one for the agent
+// a failed read (network blip, server restart) isn't kept as an answer but retried after a while; its blank answer
+// shows only when there is no earlier one for the agent
 const failed = new Map(); // `${id}@${revision}` -> when it failed
 const RETRY_AFTER_MS = 60_000;
 const BLANK = { tags: [], owner: '', health: { state: 'unknown', parts: [], checked: [] }, failed: true };
@@ -23,7 +22,7 @@ async function read(bot) {
   const report = await api.validate(config).catch(() => null);
   const tests = Array.isArray(config?.tests) && config.tests.length ? await api.listTests(bot.id, { ref: 'draft' }).catch(() => null) : null;
   const knowledge = Array.isArray(config?.knowledge) && config.knowledge.length ? await api.getKnowledge(bot.id, { ref: 'draft' }).catch(() => null) : null;
-  // the draft and its check are kept too: Home works out the agent's steps to get ready from them (readiness.js); and who saved it last, for the list
+  // the draft and its check are kept too: Home works out the agent's readiness steps from them (readiness.js)
   return { ...metaOfConfig(config), health: healthFrom({ config, report, tests, knowledge }), config, report, savedBy: draft.saved_by || '' };
 }
 

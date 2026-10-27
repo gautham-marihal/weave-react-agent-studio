@@ -6,7 +6,7 @@ import { navigate, routeHref } from '../../route.js';
 import { OUTCOMES, channelLabel, formatSeconds, outcomeOf, statusOf } from '../../calls/callModel.js';
 import { analyse, changeWords } from '../../monitoring/monitorModel.js';
 import { useMonitoring } from '../../monitoring/useMonitoring.ts';
-import { seconds } from '../../speed/speedModel.ts'; // a wait is written as Speed writes it, so the two show the same number
+import { seconds } from '../../speed/speedModel.ts'; // same wait format as Speed, so both show the same number
 import PageShell, { Section } from '../PageShell.jsx';
 import Stat from '../Stat.jsx';
 import { Skeleton, SkeletonRows } from '../../../ui/Skeleton.jsx';
@@ -16,25 +16,40 @@ import { STEPS, stepIndex } from '../../setup/setupModel.js';
 import { inSetup, useSetupProgress } from '../../setup/setupProgress.js';
 
 const MARK = { done: 'check', blocked: 'alert' };
+// a build part drawn as a step of the same list
+const PART_STATE = { done: 'done', todo: 'todo', attention: 'blocked', optional: 'optional' };
 const DAYS = 7;
 const pct = (v) => (v === null || v === undefined ? '–' : `${Math.round(v * 100)}%`);
 const callWord = (n) => `${n} call${n === 1 ? '' : 's'}`;
 
-// The calls of the last days against the days before, in words: "Down from 12 the week before", never a bare "-4".
+// This week's calls against the week before, in words ("Down from 12 the week before"), never a bare "-4".
 const comparedWithBefore = (now, before) => changeWords(now, before, 'the week before') || (now ? 'None the week before' : 'None the week before either');
 
-// How many were passed to a person, as a count: two rounded percentages (88% handled, 13% passed on) would not add up to 100.
+// Calls passed to a person, as a count: two rounded percentages (88% handled, 13% passed on) may not add up to 100.
 function passedOnText(calls, handoffRate) {
   const passed = Math.round((handoffRate || 0) * calls);
   if (!passed) return 'None passed to a person';
   return `${passed} of ${callWord(calls)} passed to a person`;
 }
 
-// An agent's overview: how it did this week, how far it is from ready (the steps, each opening the page where it is
-// done), where it runs, and its latest calls.
-//   plan: the steps to get ready (readiness.js); when not given they are worked
-//   out here. onStep(step): opens a step (else this page goes to its page).
-export default function HomePage({ botId, name, summary, editor, scenarioCount, plan: givenPlan = null, onProblems, onTest, onStep, top = null }) {
+// An agent's overview: build parts, readiness steps, this week's numbers, where it runs and the latest calls. Until it
+// is live, the build comes first (an agent nobody can reach has no numbers worth reading); once live, the numbers lead.
+//   plan: readiness steps (readiness.js); worked out here when not given
+//   onStep(step): opens a step (else this page goes to the step's page)
+//   sections: the build parts (buildSections.js)
+export default function HomePage({
+  botId,
+  name,
+  summary,
+  editor,
+  scenarioCount,
+  plan: givenPlan = null,
+  sections = [],
+  onProblems,
+  onTest,
+  onStep,
+  top = null,
+}) {
   const config = editor.parsed.value;
   const computed = useMemo(
     () => (givenPlan ? null : readinessSteps({ config, summary, report: editor.report, scenarioCount })),
@@ -70,11 +85,72 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
     go(tabFor(step.page, step.part));
   };
   const ready = plan.total > 0 && !plan.next;
-  // the guided setup: offered to an agent that is being set up, or was never published, until it is ready; picked up where it was left
+  // the guided setup is offered while an agent is in setup or unpublished, until ready; it resumes where it was left
   const [setup] = useSetupProgress(botId);
   const offerSetup = !ready && inSetup(setup, summary);
   const description = config?.meta?.description;
   const reading = data.loading && !data.calls.length;
+  const live = Object.values(summary?.deployed || {}).some(Boolean);
+  const partsDone = sections.filter((s) => s.state === 'done').length;
+
+  const stats = (
+    <div className="ovStats" role="group" aria-label={`The last ${DAYS} days`}>
+      <Stat
+        label={`Calls · last ${DAYS} days`}
+        loading={reading}
+        value={totals.calls}
+        sub={comparedWithBefore(totals.calls, previous.calls)}
+        series={series}
+        onOpen={() => go('calls')}
+      />
+      <Stat
+        label="Handled without a person"
+        loading={reading}
+        value={totals.calls ? pct(1 - (totals.handoffRate || 0)) : '–'}
+        sub={totals.calls ? passedOnText(totals.calls, totals.handoffRate) : 'No calls yet'}
+        onOpen={() => go('monitoring')}
+      />
+      <Stat
+        label="Typical answer time"
+        loading={reading}
+        value={seconds(totals.waitP50)}
+        sub={totals.waitP90 !== null && totals.waitP90 !== undefined ? `1 in 10 over ${seconds(totals.waitP90)}` : 'No answers timed yet'}
+        onOpen={() => go('speed')}
+      />
+      <Stat
+        label="Cut off"
+        loading={reading}
+        value={totals.calls ? pct(totals.cutOffRate) : '–'}
+        sub={totals.calls ? (totals.cutOff ? `${callWord(totals.cutOff)} stopped without an ending` : 'None stopped without an ending') : 'No calls yet'}
+        onOpen={() => go('monitoring')}
+      />
+    </div>
+  );
+
+  // one row per build part, each opening its page
+  const build = sections.length > 0 && (
+    <Section title="Build" lead={`${partsDone} of ${sections.length} parts set up. The optional ones can wait; open any part to change it.`}>
+      <ol className="nlSteps ovBuild">
+        {sections.map((part) => (
+          <li key={part.id} className={PART_STATE[part.state]} data-part={part.id} data-state={part.state}>
+            <button type="button" onClick={() => go(part.id)} title={part.purpose}>
+              <span className="nlStepMark" aria-hidden="true">
+                {MARK[PART_STATE[part.state]] ? <Icon name={MARK[PART_STATE[part.state]]} size={14} /> : null}
+              </span>
+              <span className="nlStepText">
+                <strong>
+                  {part.label}
+                  {part.state === 'optional' ? <em> optional</em> : null}
+                </strong>
+                <small>{part.status}</small>
+              </span>
+              <Icon name="chevronRight" size={16} />
+            </button>
+          </li>
+        ))}
+      </ol>
+    </Section>
+  );
 
   return (
     <PageShell title="Overview" lead={description || `How ${name} is doing, and what to do next.`} wide>
@@ -100,46 +176,17 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
 
       {/* laid out by its own width, so it also reads well beside the docked test panel */}
       <div className="ovBody">
-        <div className="ovStats" role="group" aria-label={`The last ${DAYS} days`}>
-          <Stat
-            label={`Calls · last ${DAYS} days`}
-            loading={reading}
-            value={totals.calls}
-            sub={comparedWithBefore(totals.calls, previous.calls)}
-            series={series}
-            onOpen={() => go('calls')}
-          />
-          <Stat
-            label="Handled without a person"
-            loading={reading}
-            value={totals.calls ? pct(1 - (totals.handoffRate || 0)) : '–'}
-            sub={totals.calls ? passedOnText(totals.calls, totals.handoffRate) : 'No calls yet'}
-            onOpen={() => go('monitoring')}
-          />
-          <Stat
-            label="Typical answer time"
-            loading={reading}
-            value={seconds(totals.waitP50)}
-            sub={totals.waitP90 !== null && totals.waitP90 !== undefined ? `1 in 10 over ${seconds(totals.waitP90)}` : 'No answers timed yet'}
-            onOpen={() => go('speed')}
-          />
-          <Stat
-            label="Cut off"
-            loading={reading}
-            value={totals.calls ? pct(totals.cutOffRate) : '–'}
-            sub={totals.calls ? (totals.cutOff ? `${callWord(totals.cutOff)} stopped without an ending` : 'None stopped without an ending') : 'No calls yet'}
-            onOpen={() => go('monitoring')}
-          />
-        </div>
+        {live && stats}
 
         <div className="ovGrid">
           <div className="ovMain">
+            {build}
             <Section
               title="Getting it ready"
               lead={plan.total ? `${plan.done} of ${plan.total} steps done${ready ? '. It is ready.' : ''}` : ''}
               action={
                 plan.next ? (
-                  // quiet: the next step's row is marked below, and the bar above the page has the page's one strong button
+                  // quiet: the next step is marked below, and the top bar has the page's one strong button
                   <button type="button" className="quietButton compactCta" onClick={() => open(plan.next)}>
                     {plan.next.label}
                   </button>
@@ -257,6 +304,7 @@ export default function HomePage({ botId, name, summary, editor, scenarioCount, 
             </Section>
           </div>
         </div>
+        {!live && stats}
       </div>
     </PageShell>
   );

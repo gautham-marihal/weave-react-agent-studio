@@ -1,11 +1,10 @@
-// Plain facts about tools, for the tool editor: what kind a tool is, whether the runtime can run it yet, which agents use
-// it, and advice on its settings. Pure: no network, no DOM.
+// Plain facts about tools, for the tool editor: what kind a tool is, whether the runtime can run it yet, which agents
+// use it, and advice on its settings. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 
-// The kinds the runtime does NOT run yet (the validator reports them as "unsupported"; this is the same list, so the
-// "Add tool" menu can say so before anyone builds one). Built-ins are named by `builtin`.
-// Checked against the real validator on 2026-10-16: task tools and the two keypad built-ins now run, so only these two remain.
+// The kinds the runtime does not run yet (the validator's "unsupported" list, checked on 2026-10-16), so "Add tool" can
+// say so before anyone builds one. Built-ins are named by `builtin`.
 export const UNSUPPORTED_KINDS = {
   mcp: 'MCP server tools',
   code: 'Custom code tools',
@@ -46,9 +45,8 @@ export function agentsUsingTool(config, toolId) {
     .filter(Boolean);
 }
 
-// Tools that no agent offers (the validator warns about the same).
-// Whether something other than an agent's list of tools names the tool: a guardrail rule, what is done off topic, a task step's check, a test. Such a
-// tool is in use (the validator says so too) even when no agent offers it.
+// Whether something besides an agent's tool list names the tool (a guardrail rule, the off-topic action, a task step's
+// check, a test). Such a tool is in use even when no agent offers it; the validator agrees.
 export function toolNamedElsewhere(config, toolId) {
   const list = (v) => (Array.isArray(v) ? v : []);
   const guardrails = config?.guardrails;
@@ -114,7 +112,7 @@ export const REPLY_CHOICES = [
   },
 ];
 
-// ---- finding a tool in a long list ----------------------------------------------------------------------------------------------------
+// ---- finding a tool in a long list ----------------------------------------------------------------------------------
 export const TOOL_KIND_LABEL = { http: 'HTTP', builtin: 'Built-in', task: 'Task', mcp: 'MCP', knowledge: 'Knowledge', code: 'Code' };
 
 // How many of each kind there are: [{ kind, label, count }], the most common first.
@@ -129,8 +127,8 @@ export function toolKindCounts(tools) {
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }
 
-// Does this tool match what was typed, the kind chosen, and "only the unused"? The words are looked for in its id, name, description and kind
-// (and, for a built-in, which one), all of them, in any order, ignoring case.
+// Does this tool match the typed words, the chosen kind and "only the unused"? Every word must appear (any order, any
+// case) in its id, name, description, kind or built-in.
 export function toolMatches(tool, { query = '', kind = '', unusedOnly = false } = {}, unused = new Set()) {
   if (!isObj(tool)) return !query && !kind && !unusedOnly;
   if (kind && (kindOfTool(tool) || 'other') !== kind) return false;

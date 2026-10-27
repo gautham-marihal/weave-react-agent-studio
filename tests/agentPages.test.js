@@ -30,9 +30,10 @@ test('every page can be reached by address, and every old tab is shown by some p
     const r = resolvePage(tab);
     assert.ok(PAGE_IDS.includes(r.page), `${tab} lands on a page (${r.page})`);
   });
-  // an address only the agent's pages have is a page, or a part of one (Tests has a part called callers); the guided setup is a screen of its own, with an
-  // address and outside the menu (its steps take the menu's place while it is open)
-  EXTRA_PAGE_IDS.filter((id) => id !== 'setup').forEach((id) =>
+  // an address only the agent's pages have is a page, or a part of one (Tests has a part called callers); the guided setup and Build's guided view are
+  // screens of their own, with an address and outside the page groups
+  assert.deepEqual(resolvePage('build'), { page: 'build' });
+  EXTRA_PAGE_IDS.filter((id) => id !== 'setup' && id !== 'build').forEach((id) =>
     assert.ok(PAGE_IDS.includes(id) || PAGE_IDS.includes(resolvePage(id).page), `${id} is a page or a part of one`),
   );
   assert.ok(!PAGE_IDS.includes('setup'));

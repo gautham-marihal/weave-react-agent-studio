@@ -1,124 +1,27 @@
-/* An agent's screens: one menu down the side, one bar across the top, one page at a time. Every page has the same shape (see PageShell). */
+/* An agent's screens: one bar across the top with its stages as tabs under it (workspace/StageTabs.jsx), one page at a time. Every page has the
+   same shape (see PageShell). */
 
-/* ---- the menu in the sidebar ---- */
-.nlNav {
-  display: grid;
-  gap: 6px;
-}
-.nlNavGroup {
-  display: grid;
-  gap: 1px;
-}
-.nlNavHead {
-  padding: 4px 10px;
-  color: var(--dim);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-}
-.nlNav button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: 10px;
-  background: none;
-  color: var(--muted);
-  font-size: var(--fs-md);
-  text-align: left;
-}
-.nlNav button:hover {
-  background: var(--surface2);
-  color: var(--textStrong);
-}
-.nlNav button.on {
-  background: var(--surface2);
-  color: var(--textStrong);
-  font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-.nlNavIcon {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 20px;
-}
-.nlNavLabel {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.nlNavCount {
-  margin-left: auto;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: var(--danger);
-  color: #fff;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  line-height: 18px;
-  text-align: center;
-}
-.nlNavDot {
-  margin-left: auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--good-text);
-}
-/* folded to pictures */
+/* ---- the agent's name in the sidebar, folded to pictures ---- */
 .sidebarCollapsed .agentSideNav {
   align-items: center;
   padding: 4px 8px;
 }
-.sidebarCollapsed .nlNav {
-  gap: 4px;
-}
-.sidebarCollapsed .nlNavHead,
-.sidebarCollapsed .nlNavLabel {
-  display: none;
-}
-.sidebarCollapsed .nlNav button {
-  justify-content: center;
-  width: 44px;
-  height: 32px;
-  padding: 0;
-}
-.sidebarCollapsed .nlNavCount {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  margin: 0;
-  min-width: 14px;
-  height: 14px;
-  line-height: 14px;
-  font-size: var(--fs-xs);
-}
-.sidebarCollapsed .nlNavDot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  margin: 0;
-}
-.sidebarCollapsed .nlNavGroup + .nlNavGroup {
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
-}
 
 /* ---- the bar across the top ---- */
 .nlWorkspace {
+  /* where something that stays in view while the page scrolls sits: under the app's top bar and the agent's own (its height measured into
+     --nl-head-h by AgentLayout) */
+  --under-bar: calc(var(--ds-topbar-h, 56px) + var(--nl-head-h, 112px) + 12px);
   gap: 16px;
 }
-.nlBar {
+/* the agent's bar and its stage tabs, kept together at the top while the page scrolls, under the workspace's own top bar */
+.nlHead {
   position: sticky;
-  /* under the workspace's own top bar, which sticks too */
   top: var(--ds-topbar-h, 72px);
   z-index: 45;
+  background: var(--page, var(--bg));
+}
+.nlBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -766,126 +669,10 @@ html[data-theme] body .agentSwitchButton > svg {
   color: var(--muted);
 }
 
-/* how far from ready: a card at the top of the menu that opens the next step */
-html[data-theme] body .nlSetup {
-  display: grid;
-  gap: 7px;
-  width: 100%;
-  margin: 0 0 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--line2);
-  border-radius: 12px;
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-html[data-theme] body .nlSetup:hover {
-  border-color: color-mix(in srgb, var(--textStrong) 28%, var(--line2));
-  background: var(--panel);
-}
-.nlSetupHead {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: var(--fs-sm);
-}
-.nlSetupHead strong {
-  color: var(--textStrong);
-  font-weight: 600;
-}
-.nlSetupHead span {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.nlSetupBar {
-  display: block;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--surface2);
-}
-.nlSetupBar i {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-  background: var(--accent);
-}
-.nlSetupNext {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--accent-text);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-.nlSetupNext span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.nlSetupNext svg {
-  flex: none;
-}
-
-/* the pages: compact rows, so the whole menu fits; the settings set apart at the end */
-html[data-theme] body .nlNav {
-  gap: 10px;
-}
-html[data-theme] body .nlNav button {
-  min-height: 32px;
-  padding: 5px 10px;
-}
-html[data-theme] body .nlNavHead {
-  padding: 2px 10px 3px;
-}
-html[data-theme] body .nlNavGroup[aria-label="Settings"] {
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
-}
-/* a step to get ready is still to do on this page */
-.nlNavTodo {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin-left: auto;
-  border: 1.5px solid var(--warn-text);
-  border-radius: 50%;
-}
 .sidebarCollapsed .agentSwitchText,
 .sidebarCollapsed .agentSwitchButton > svg,
-.sidebarCollapsed .nlSetup,
 .sidebarCollapsed .agentBackText {
   display: none;
-}
-.sidebarCollapsed .nlNavTodo {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  margin: 0;
-}
-
-html[data-theme] body .dashboard.inAgent .nlNav {
-  gap: 4px;
-}
-html[data-theme] body .dashboard.inAgent .nlNavHead {
-  padding: 6px 10px 2px;
-  line-height: 16px;
-}
-/* the progress card is a button of the menu too: it keeps its own size, whatever the style does to the menu's rows (their corners it shares) */
-html[data-theme] body .dashboard.inAgent .nlNav .nlSetup {
-  display: grid;
-  gap: 6px;
-  min-height: 0;
-  padding: 8px 11px;
-}
-html[data-theme] body .dashboard.inAgent .nlNavGroup button {
-  min-height: 30px;
-  padding-top: 4px;
-  padding-bottom: 4px;
 }
 
 /* ---- the top bar: secondary actions as real buttons, the main one solid; what the checks found as a chip; the draft's distance from what is published ---- */
@@ -970,7 +757,7 @@ html[data-theme] body .nlSaveState {
 }
 .nlTestDock {
   position: sticky;
-  top: calc(var(--ds-topbar-h, 56px) + 72px);
+  top: var(--under-bar);
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--ds-topbar-h, 56px) - 88px);
@@ -1015,8 +802,10 @@ html[data-theme] body .nlTestDockBody .pvPanel {
 .nlTestDockBody {
   padding: 4px 4px 8px;
 }
+/* as tall as the window leaves under the agent's header, from where it starts before the page scrolls (52px lower than where it pins: the page's
+   gap and its own margin) to 16px above the window's foot */
 .nlTestDock {
-  height: calc(100vh - var(--ds-topbar-h, 56px) - 150px);
+  height: calc(100vh - var(--under-bar) - 68px);
 }
 
 /* ---- the overview: four numbers of the week, then the steps to get ready beside where it runs and its latest calls --------------------------------- */
@@ -1548,4 +1337,71 @@ html[data-theme] body .nlDrawer.testDrawer .pvPanel {
 }
 .nlHint.warn {
   color: var(--warn-text);
+}
+
+/* ---- each stage and part in its own colour (workspace/HueIcon.jsx): the icon in it, or on a soft tile of it. Darker in light mode and lighter
+   in dark, so every icon keeps 3:1 against the page ---- */
+.hueIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--hue);
+}
+.hueIcon.tile {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--hue) 13%, transparent);
+}
+.hueIcon[data-hue="violet"] {
+  --hue: #7c3aed;
+}
+.hueIcon[data-hue="blue"] {
+  --hue: #2563eb;
+}
+.hueIcon[data-hue="green"] {
+  --hue: #15803d;
+}
+.hueIcon[data-hue="amber"] {
+  --hue: #b45309;
+}
+.hueIcon[data-hue="teal"] {
+  --hue: #0f766e;
+}
+.hueIcon[data-hue="rose"] {
+  --hue: #e11d48;
+}
+.hueIcon[data-hue="indigo"] {
+  --hue: #4f46e5;
+}
+.hueIcon[data-hue="slate"] {
+  --hue: #64748b;
+}
+html[data-theme="dark"] .hueIcon[data-hue="violet"] {
+  --hue: #a78bfa;
+}
+html[data-theme="dark"] .hueIcon[data-hue="blue"] {
+  --hue: #60a5fa;
+}
+html[data-theme="dark"] .hueIcon[data-hue="green"] {
+  --hue: #4ade80;
+}
+html[data-theme="dark"] .hueIcon[data-hue="amber"] {
+  --hue: #fbbf24;
+}
+html[data-theme="dark"] .hueIcon[data-hue="teal"] {
+  --hue: #2dd4bf;
+}
+html[data-theme="dark"] .hueIcon[data-hue="rose"] {
+  --hue: #fb7185;
+}
+html[data-theme="dark"] .hueIcon[data-hue="indigo"] {
+  --hue: #818cf8;
+}
+html[data-theme="dark"] .hueIcon[data-hue="slate"] {
+  --hue: #94a3b8;
+}
+html[data-theme="dark"] .hueIcon.tile {
+  background: color-mix(in srgb, var(--hue) 16%, transparent);
 }

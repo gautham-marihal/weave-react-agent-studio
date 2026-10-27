@@ -1,6 +1,5 @@
-// A change to an agent's draft that another page asks for ("use this voice in an agent", "add this connection
-// to an agent"). It is queued for the agent, applied when its Config tab opens, and left unsaved so the person
-// reviews it first.
+// A change another page asks for on an agent's draft ("use this voice", "add this connection"). Queued, applied when
+// the agent's Config tab opens, and left unsaved so the person reviews it first.
 
 import { applyStarter, starterById } from './starters.ts';
 

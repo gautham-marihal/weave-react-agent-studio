@@ -1,8 +1,7 @@
 import React from 'react';
 import { describeTask } from './taskSteps.js';
 
-// A task read from top to bottom, above the fields that edit it: what is asked at each step, how the answer is checked, when a step is skipped, and
-// how the task ends. It is drawn from the task being edited.
+// A task read top to bottom (see taskSteps.js), above the fields that edit it.
 export default function TaskSteps({ value }) {
   const task = describeTask(value);
   if (!task.steps.length) return null;

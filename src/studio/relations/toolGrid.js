@@ -1,6 +1,5 @@
-// Who can use which tool, as a grid: a row for each tool, a column for each agent, a tick where the agent offers the tool. Where a list of tools
-// per agent says "which tools does this agent have", the grid answers the other question, "who has this tool", and shows a tool nobody has and
-// an agent with none at a glance. Ticking a cell edits the same `tools` list of the agent the form edits. Pure: no React, no DOM.
+// Who can use which tool, as a grid. A per-agent list answers "which tools does this agent have"; the grid answers
+// "who has this tool", showing unused tools and agents with none at a glance. Pure: no React, no DOM.
 
 import { isObj } from '../form/engine.js';
 
@@ -28,7 +27,7 @@ export function buildToolGrid(config) {
   };
 }
 
-// The config with `toolId` offered (or not) by `agentId`. Other lists are untouched; the order of an agent's tools is kept, a new tool goes last.
+// The config with `toolId` offered (or not) by `agentId`; an agent's tool order is kept and a new tool goes last.
 export function setToolOffered(config, agentId, toolId, on) {
   const next = clone(config);
   const agent = list(next?.agents?.items).find((a) => isObj(a) && a.id === agentId);

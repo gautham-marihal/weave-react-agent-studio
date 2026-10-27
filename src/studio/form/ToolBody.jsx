@@ -12,9 +12,8 @@ import { BUILTIN_HELP, ON_ERROR_HELP, ON_ERROR_SEARCH_HELP, REPLY_CHOICES, agent
 import { readParams } from './paramSchema.js';
 import { TechKey } from './TechName.jsx';
 
-// One tool, drawn for what it is. The description (the text that tells the model when to use it) comes first, the
-// model-facing parts are in one place each (what it fills in, the request, the response, what happens on an error), and
-// what the runtime can't run yet or what no agent uses is said right on the card. The rest uses the ordinary form.
+// One tool, drawn for what it is: the description (which tells the model when to use it) first, each model-facing part
+// in one place, and what can't run yet or no agent uses said on the card. The rest uses the ordinary form.
 
 const HANDLED = ['id', 'name', 'description', 'parameters', 'connection', 'request', 'result', 'reply', 'effects', 'on_error', 'timeout_s', 'retries'];
 
@@ -108,7 +107,8 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
                     type="button"
                     className="stLink"
                     onClick={() => {
-                      // starts from the id in the form a model-facing name takes (an id may have "-", a name may not), and the box opens on it
+                      // starts from the id in the form a model-facing name takes (an
+                      // id may have "-", a name may not), and the box opens on it
                       setNaming(true);
                       set({
                         name: String(obj.id || 'tool')
@@ -277,7 +277,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
         </fieldset>
       )}
 
-      {/* a request (timeout, retries, a message for the model) and a knowledge search (a message for the model) can each go wrong */}
+      {/* a request (timeout, retries, a model message) and a knowledge search (a model message) can each go wrong */}
       {(has('on_error') || has('timeout_s') || has('retries')) && (
         <fieldset className="stToolBlock">
           <legend>When it goes wrong</legend>
@@ -316,7 +316,7 @@ export default function ToolBody({ shape, value, path, onChange, disabled }) {
                     <div className="stFLabel">
                       <label htmlFor={fieldId}>{label}</label>
                       <TechKey name={key} path={[...path, key]} />
-                      {/* set, it can be taken out again (the runtime's own default applies), as any other optional setting can */}
+                      {/* once set, it can be taken out again (the runtime's default applies) */}
                       {obj[key] !== undefined && !disabled && (
                         <button
                           type="button"

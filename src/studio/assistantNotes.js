@@ -1,5 +1,5 @@
-// What the draft assistant assumed and couldn't decide, kept for the agent it made until the person has read it (sessionStorage, per
-// agent), so the editor can show it above the settings. See demo/draftAssistant.js.
+// What the draft assistant assumed and couldn't decide, kept per agent in sessionStorage until read, so the editor can
+// show it above the settings. See demo/draftAssistant.js.
 
 const key = (botId) => `weave_assistant_notes:${botId}`;
 

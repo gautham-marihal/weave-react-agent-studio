@@ -183,7 +183,10 @@ if (await fasterModel.count()) {
 await page.locator('section[aria-labelledby="csAgents"] tr', { hasText: 'Front Desk' }).getByRole('button', { name: 'Open' }).click();
 await page.waitForSelector('.nlWorkspace .csVerdict h2', { timeout: 60000 });
 check('“Open” goes to the agent’s own Speed page', /#\/bots\/front-desk\/speed/.test(page.url()), page.url());
-check('the agent’s menu says Speed', (await page.locator('.nlNav button', { hasText: /^Speed$/ }).count()) === 1);
+check(
+  'the agent’s Monitor tabs have Speed open',
+  (await page.locator('nav[aria-label="Monitor"] button[aria-current="page"]', { hasText: /^Speed$/ }).count()) === 1,
+);
 check('no money on the agent’s page either', !(await moneyOnPage()), await moneyOnPage());
 await shot('agent');
 

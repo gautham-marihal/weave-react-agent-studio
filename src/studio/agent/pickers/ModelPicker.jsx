@@ -6,8 +6,8 @@ import { readModels, setModel, setProvider, slotProblem } from '../../models/con
 import { modelRows, providerChips } from './pickerLogic.js';
 import './pickers.css';
 
-// The three parts of a call, in the order a person thinks of them: what thinks (the language model), what listens (speech-to-text) and what speaks
-// (text-to-speech). Each is a card that says what is chosen; "Change" opens the list of models, which can be searched and narrowed to one provider.
+// The three parts of a call, in the order people think of them: what thinks (language model), listens (speech-to-text)
+// and speaks (text-to-speech). Each card shows the choice; "Change" opens a searchable list, filterable by provider.
 const PARTS = [
   { id: 'llm', title: 'Language model', what: 'Decides what to say and which tool to use.' },
   { id: 'stt', title: 'Speech-to-text', what: 'Turns what the caller says into text.' },
@@ -72,7 +72,7 @@ function ModelList({ part, config, set, providers }) {
       <ul className="pkModelList" aria-label={`${part.title} models`}>
         {rows.map((row) => (
           <li key={`${row.provider}/${row.id}`} className={row.selected ? 'on' : ''}>
-            {/* a provider whose plugin isn't installed on the server can't run: shown, not chosen (the one in use stays visible) */}
+            {/* a provider not installed on the server can't run: shown but not choosable (unless already in use) */}
             <button
               type="button"
               aria-pressed={row.selected}
@@ -138,7 +138,8 @@ function ModelList({ part, config, set, providers }) {
   );
 }
 
-// speech: the agent takes calls or talks on a website; without, the parts that hear and speak are said to be not needed (they can still be chosen)
+// speech: the agent takes calls or talks on a website; without it, hearing and speaking are marked not needed
+// (but can still be chosen)
 function PartCard({ part, config, set, providers, open, onToggle, speech = true }) {
   const notNeeded = !speech && part.id !== 'llm';
   const slot = readModels(config)[part.id];
@@ -185,8 +186,8 @@ function PartCard({ part, config, set, providers, open, onToggle, speech = true 
   );
 }
 
-// speech: whether the agent hears and speaks (a phone or website voice channel); the list that opens first is the first
-// part still to choose that it needs
+// speech: whether the agent hears and speaks (a phone or website voice channel).
+// The list that opens first is the first part it needs that is still to choose.
 export default function ModelPicker({ config, set, providers, live, speech = true }) {
   const models = readModels(config);
   const [open, setOpen] = useState(() => (PARTS.find((p) => !models[p.id].provider && (speech || p.id === 'llm')) || {}).id || '');

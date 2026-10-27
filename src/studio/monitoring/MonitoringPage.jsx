@@ -11,7 +11,7 @@ import Select from '../../ui/Select.tsx';
 import './monitoring.css';
 
 // The Monitoring page: how the agents' calls went over a period, calls per day, what needs attention, what goes wrong
-// most, and each agent and version. On an agent's own page (agentOnly) it is that agent alone. It only reads.
+// most, per agent and version. With agentOnly it is that one agent. Read-only.
 
 const PERIODS = [
   { days: 7, label: 'Past 7 days' },
@@ -37,8 +37,8 @@ export function niceMax(max) {
 }
 const dayLabel = (key) => new Date(`${key}T12:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
-// Calls per day: a column for every day, the part that was cut off in red, the number on top while there is room, a few gridlines to read it against.
-// Plain HTML, so the labels are never stretched; every column has its numbers in its title for anyone who cannot see the colours.
+// Calls per day: a column per day, cut-off calls in red, a few gridlines. Plain HTML so labels never stretch; each
+// column's title holds its numbers for anyone who can't see the colours.
 function DayBars({ series }) {
   const top = niceMax(Math.max(1, ...series.map((d) => d.calls)));
   const every = series.length > 16 ? 5 : series.length > 8 ? 2 : 1;
@@ -91,7 +91,7 @@ function DayBars({ series }) {
 // `agentOnly`: the page is one agent's own (inside that agent), so it speaks of that agent and does not list agents.
 export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, agentOnly = false, top = null }) {
   const [days, setDays] = useState(14);
-  // with no cap on the calls read, they are the ones the Speed page reads, so the answer time here is Speed's for the same period
+  // no cap, so it reads the same calls as Speed and the answer time matches Speed's for the period
   const data = useMonitoring({ bots, days, cap: Infinity });
   const report = useMemo(
     () => analyse({ calls: data.calls, samples: data.samples, bots, nowMs: data.nowMs, days }),
@@ -103,7 +103,7 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
   const samplesPending = !data.loading && data.calls.length > 0 && Object.keys(data.samples).length === 0;
 
   return (
-    // while a new reading comes in (another period, or Refresh) the last one stays, dimmed, rather than the page going blank
+    // while a new reading comes in (another period, or Refresh) the last one stays, dimmed, instead of a blank page
     <div className={`mnPage ${data.refreshing ? 'reading' : ''}`} aria-busy={data.loading || data.refreshing || undefined}>
       <section className="welcomeBlock">
         <div>
@@ -341,7 +341,7 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
                       </td>
                       <td>
                         {p.calls}
-                        {/* what it was the period before, when that differs: a bare "−2" beside the count reads as minus two calls */}
+                        {/* the period before, when different: a bare "−2" beside the count reads as minus two calls */}
                         {p.previousCalls && p.previousCalls !== p.calls ? (
                           <small className="mnDelta" title={changeWords(p.calls, p.previousCalls)}>
                             {' '}

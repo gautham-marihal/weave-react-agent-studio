@@ -32,7 +32,7 @@ function tomorrowMorning() {
   return d.toISOString();
 }
 
-// One alert: what is wrong, on which agent, since when; the one thing to do about it; the calls it rests on; and "I'm on it", snooze, copy.
+// One alert: what is wrong, where and since when; the one thing to do; the calls behind it; "I'm on it", snooze, copy.
 export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '' }) {
   const [showCalls, setShowCalls] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -121,9 +121,8 @@ export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '' }) {
   );
 }
 
-// A number of a rule: what is typed is kept as typed. A whole number within the rule's limits is taken at once;
-// anything else is taken (brought within the limits) when the box is left or Enter is pressed. Bringing it within the
-// limits at every key would make 30 (where the least is 10) 10 at the "3", then 100.
+// A rule's number box keeps what is typed. A whole number within limits is taken at once; anything else is clamped
+// when the box is left or Enter is pressed (clamping each key would turn 30, least 10, into 10 at the "3").
 function RuleNumber({ rule, name, field }) {
   const value = rule.params[name];
   const [typed, setTyped] = useState(String(value));
@@ -145,8 +144,7 @@ function RuleNumber({ rule, name, field }) {
       onChange={(event) => {
         const text = event.target.value;
         setTyped(text);
-        // a whole number in range is taken at once; one that isn't yet (a 3 on its way to 30 minutes) waits for Enter or leaving the box, and is then
-        // brought into range, so it is never changed under the typing
+        // a number not yet in range (3 on its way to 30) waits for Enter or blur, so it never changes mid-typing
         const v = Number(text);
         if (text.trim() !== '' && Number.isInteger(v) && v >= field.min && v <= field.max) setRule(rule.id, { params: { [name]: v } });
       }}

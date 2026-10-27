@@ -3,17 +3,16 @@ import { api } from '../../api/client.ts';
 import { useAsync } from '../useAsync.js';
 import { isBuilding, normalizeBuild, normalizeKnowledge } from './model.js';
 
-// The knowledge of an agent as the server sees it: its bases, their files and indexes. It reads the SAVED draft (`ref: "draft"`): the
-// server builds and searches from what is saved, not from unsaved edits in the editor. Reading changes nothing.
-// No botId: nothing is read (the page around has read it already, or does not need it).
+// An agent's knowledge as the server sees it (bases, files, indexes), from the SAVED draft (`ref: "draft"`), because
+// the server builds and searches what is saved. Read-only. No botId: nothing is read (the page around already has it).
 export function useKnowledge(botId, ref = 'draft') {
   const load = useAsync((signal) => (botId ? api.getKnowledge(botId, { ref }, { signal }) : Promise.resolve(null)), [botId, ref]);
   const data = useMemo(() => (load.data ? normalizeKnowledge(load.data) : null), [load.data]);
   return { data, raw: load.data, loading: load.loading, error: load.error, reload: load.reload };
 }
 
-// Starts building one base's index and follows the job until it is over. One build per base at a time (the server answers 409 for a second
-// one: that one is followed instead). The old index keeps answering while a new one builds, so a failed build costs nothing.
+// Starts building one base's index and follows the job. One build per base at a time (a second gets 409, and that one
+// is followed instead). The old index keeps answering while a new one builds, so a failed build costs nothing.
 const POLL_MS = 1500;
 export function useBuilds(botId, { ref = 'draft', onChange, pollMs = POLL_MS } = {}) {
   const [builds, setBuilds] = useState({}); // baseId -> normalized build

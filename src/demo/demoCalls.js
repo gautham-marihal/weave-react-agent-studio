@@ -1,14 +1,13 @@
-// Call records, IMITATED for demo mode: a few made-up calls per agent, and the conversations had in the simulated preview, answered in the
-// shapes the real API uses (`GET /bots/{id}/calls`, `.../calls/{id}`, `.../transcript`). They are labelled as demo data on the screens.
-// Pure: no network, no DOM, no clock of its own.
+// Call records IMITATED for demo mode: made-up calls per agent plus simulated-preview conversations, in the real API's
+// shapes (GET /bots/{id}/calls, .../calls/{id}, .../transcript). Pure: no network, DOM or clock of its own.
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const stamp = (iso) => iso.replace(/[-:]/g, '').replace(/\.\d+/, '').replace(/Z?$/, 'Z');
-// the number a phone caller rang, as the runtime records it on a call (FRONTEND_GUIDE 10.3: `dialled`); a web visitor rings nothing
+// the number a phone caller rang (FRONTEND_GUIDE 10.3: `dialled`); a web visitor rings nothing
 const DEMO_DIALLED = '+6531580100';
 
-// The records of a conversation, like the runtime writes them: call_started, agent_entered, agent_said / user_said, tool_called, state_changed,
-// session_closed, call_ended. `messages` is [{ role: 'user' | 'assistant', text, tools?: [{ tool, args, output, error }] }].
+// A conversation's records as the runtime writes them (call_started … call_ended).
+//   messages: [{ role: 'user' | 'assistant', text, tools?: [{ tool, args, output, error }] }]
 export function buildEvents({
   botId,
   ref = 'draft',
@@ -22,8 +21,8 @@ export function buildEvents({
   state = {},
   closedBy = 'participant_disconnected',
   stepSeconds = 4,
-  // optional, for calls that should look like a real line: how long the caller takes to say the next thing, and how long the agent takes to answer
-  // (each a number or a function of the turn), and the model the agent runs on (written on its requests and in the usage)
+  // optional, to look like a real line: callerGap and replyGap in seconds (a number or a function of the turn),
+  // and the agent's model (written on its requests and usage)
   callerGap = null,
   replyGap = null,
   model = null,
@@ -60,8 +59,8 @@ export function buildEvents({
   let inputTokens = 0;
   let outputTokens = 0;
   const gap = (value, turn, fallback) => (typeof value === 'function' ? value(turn) : typeof value === 'number' ? value : fallback);
-  // a voice call records what the runtime times on one (in seconds): waiting to be sure the caller finished, the text of what they said, and, on the
-  // answer, the model starting, the voice starting and the whole delay the caller heard. Varied a little from turn to turn, the same every time.
+  // voice calls record the runtime's timings in seconds (end of speech, transcript, model start, voice start,
+  // delay heard), varied a little per turn but the same every time
   const voice = channel?.type === 'sip_voice' || channel?.type === 'web_voice';
   const r3 = (v) => Math.round(v * 1000) / 1000;
   let heard = 0; // making sure the caller finished, on the turn being answered
@@ -77,7 +76,7 @@ export function buildEvents({
     } else {
       let toolMs = 0; // the tools of this answer, which the delay a voice call records includes
       list(m.tools).forEach((t) => {
-        // a tool takes a few hundred milliseconds to a second or so on a call that looks real, and a moment otherwise
+        // a tool takes a few hundred ms to about a second on a real-looking call, a moment otherwise
         const took = typeof t.ms === 'number' ? t.ms : model ? 180 + ((seq * 389 + String(t.tool).length * 97) % 1300) : 12;
         toolMs += took;
         add('tool_called', { tool: t.tool, args: t.args || {}, ...(t.error ? { error: t.error } : { result: t.output ?? null }), duration_ms: took }, 0.3);
@@ -195,7 +194,7 @@ export function makeCall({
 
 const SEED_VERSION = '0.1.1'; // the version the made-up calls say they ran (the agent's draft has moved on)
 
-// The model an agent runs on, as its calls report it (the draft's language model), written in their usage as a real call writes it.
+// The model an agent's calls report (the draft's language model), written in usage as a real call writes it.
 export const llmOf = (config) => {
   const llm = config?.defaults?.models?.llm;
   return llm && typeof llm.model === 'string' && llm.model
@@ -203,7 +202,7 @@ export const llmOf = (config) => {
     : { provider: 'openai', model: 'gpt-4.1-mini' };
 };
 
-// A few believable calls for an agent, newest first, spread over the last days. Made from the agent's own greeting and a couple of lines.
+// A few believable calls for an agent, newest first, over the last days, made from its own greeting and a few lines.
 export function seedCalls(botId, config, nowIso, { history = true } = {}) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
@@ -297,15 +296,14 @@ export function seedCalls(botId, config, nowIso, { history = true } = {}) {
   ].sort((x, y) => Date.parse(y.summary.started_at) - Date.parse(x.summary.started_at));
 }
 
-// Something going wrong right now, so Alerts has something to show: on an agent whose id says "support" its lookup tool
-// has failed on the last few calls (an API that is down); on one whose id says "front" the answers of the last hour are
-// slow. The others are fine. Deterministic, relative to `nowIso`.
+// A current problem so Alerts has something to show: a "support" agent's tool fails on the last few calls, a "front"
+// agent's answers this hour are slow, others are fine. Deterministic, relative to `nowIso`.
 export function seedIncident(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
   const greeting = typeof web?.greeting?.say === 'string' ? web.greeting.say : 'Hello! How can I help you today?';
   const entry = config?.agents?.entry || 'assistant';
-  // the hand-over to a person is what fails: every demo agent has that tool, so "Open the tool" on the alert lands on it
+  // the hand-over to a person fails: every demo agent has that tool, so "Open the tool" on the alert lands on it
   const tools = list(config?.tools).filter((t) => t && t.id);
   const tool = (tools.find((t) => /escalat|transfer|human/.test(t.id)) || tools.find((t) => t.id !== 'end_call'))?.id || 'escalate_to_human';
   const chan = { id: web?.id || 'web-chat', type: web?.type || 'web_chat' };
@@ -364,9 +362,7 @@ export function seedIncident(botId, config, nowIso) {
   return [];
 }
 
-// Two weeks of questions the agent could not answer, worded different ways, so "Questions it couldn't answer" has
-// something to group: Sunday delivery (passed to a person), paying with PayPal and a student discount (it did not
-// know), shipping abroad (found nothing), and one the caller had to ask twice.
+// Two weeks of unanswered questions, worded different ways, so "Questions it couldn't answer" has something to group.
 export function seedQuestions(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
@@ -436,10 +432,8 @@ export function seedQuestions(botId, config, nowIso) {
   return calls;
 }
 
-// Two weeks of earlier calls, so Monitoring has something to show: version 0.1.0 early on and doing well, version 0.1.1
-// since. Agents whose id says "support" have a rough 0.1.1 (calls cut off, a tool failing, people handed over), so the
-// comparison between versions has something to find; the others have a few ordinary hiccups. Deterministic: the same
-// agent always gets the same history.
+// Two weeks of earlier calls for Monitoring: 0.1.0 doing well, then 0.1.1. "support" agents have a rough 0.1.1 so the
+// version comparison finds something; others have ordinary hiccups. The same agent always gets the same history.
 export function seedHistory(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
@@ -510,7 +504,7 @@ export function seedHistory(botId, config, nowIso) {
   return out;
 }
 
-// A conversation had in the simulated preview, kept as a call so Sessions and the trace have something real-looking to show.
+// A simulated-preview conversation, kept as a call so Sessions and the trace have something real-looking to show.
 export function callFromConversation(botId, { startedAt, channel, messages, tools = [], state = {}, version = 'draft', agent }) {
   const withTools = messages.map((m, i) =>
     m.role === 'assistant' && tools.length
@@ -529,7 +523,7 @@ export function callFromConversation(botId, { startedAt, channel, messages, tool
   });
 }
 
-// ---- the endpoints --------------------------------------------------------------------------------------------------------------------
+// ---- the endpoints --------------------------------------------------------------------------------------------------
 export function listCallsOf(calls, params) {
   const limit = Math.min(200, Math.max(1, Number(params.get('limit')) || 25));
   const since = params.get('since') ? Date.parse(params.get('since')) : -Infinity;
@@ -584,7 +578,7 @@ export const transcriptOf = (call) => ({
     .map((e) => ({ role: e.event === 'user_said' ? 'caller' : 'agent', text: e.text, at: e.t, elapsed_s: e.elapsed_s })),
 });
 
-// Replays a call to `onRecord` one record at a time (what the stream does), then `onEnd` when it has ended. Returns a function that stops.
+// Replays a call to `onRecord` one record at a time (like the stream), then `onEnd`. Returns a stop function.
 export function followCallOf(call, { onOpen, onRecord, onEnd }, { delayMs = 350, schedule = setTimeout, cancel = clearTimeout } = {}) {
   let stopped = false;
   let timer = null;

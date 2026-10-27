@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 
-// A <details> that opens itself when `open` turns true (a problem inside it, something worth seeing) and is otherwise
-// left as the person set it. A plain <details open={condition}> is shut again by React the moment the condition turns
-// false, which can be while someone is typing in it; this one never closes by itself.
+// A <details> that opens itself when `open` turns true (a problem inside) and is otherwise left as the person set it.
+// A plain <details open={condition}> is shut by React when the condition turns false, even while someone types in it.
 export default function Fold({ open = false, onToggle, children, ...rest }) {
   const [shown, setShown] = useState(!!open);
   const [asked, setAsked] = useState(!!open);

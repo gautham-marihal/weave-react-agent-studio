@@ -11,10 +11,8 @@ import { agentState } from '../studio/status.js';
 import { useAsync } from '../studio/useAsync.js';
 import Select from '../ui/Select.tsx';
 
-// Home's answer to "what now?": the agent you were last working on, how far it is from ready, and the one thing to do
-// next. The steps are the same ones its menu and its Overview show (readiness.js), worked out from the same things (the
-// draft, its check, its tests' latest run, what is published and deployed), so Home, the agent and Releases always
-// agree.
+// Home's "what now?": the agent you last worked on, how far it is from ready, and the next thing to do.
+// The steps come from readiness.js with the same inputs as the agent's menu and Overview, so they always agree.
 const LAST_KEY = 'weave_last_agent';
 export const rememberAgent = (botId) => {
   try {
@@ -50,7 +48,7 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
   const visible = useMemo(() => (bot ? [bot] : []), [bot]);
   const { meta } = useAgentHealth(visible);
   const answer = bot ? meta[bot.id] || null : null;
-  // the runs of the agent shown now: the answer kept while another agent's loads (or after it failed) is not used for this one
+  // runs of the shown agent only: an answer kept for another agent (while loading, or after a failure) is ignored
   const runs = useAsync(async (signal) => (bot ? { bot: bot.id, list: await api.listTestRuns(bot.id, 20, { signal }) } : null), [bot?.id]);
   const runsHere = runs.data && runs.data.bot === bot?.id && !runs.loading ? runs.data.list : undefined;
   const latestRun = useMemo(
@@ -59,7 +57,7 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
   );
   const [gateOn] = useGate(bot?.id || '');
   const config = answer?.config || null;
-  // what the server has read of its documents, when it has any (so this says what its menu says)
+  // what the server has read of its documents, so this matches its menu
   const knowledge = useKnowledge(Array.isArray(config?.knowledge) && config.knowledge.length ? bot.id : null);
   const plan = useMemo(
     () =>

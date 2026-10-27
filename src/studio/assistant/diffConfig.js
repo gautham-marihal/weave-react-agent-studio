@@ -1,6 +1,5 @@
-// What a new configuration changes, compared with the one it would replace: as a list of changes by place, and then in
-// words. Items of a list that all have an id are matched by id, so a reordered or inserted agent does not look like
-// everything changed. Pure: no React, no DOM.
+// What a new config changes against the one it replaces, by place and in words. List items with ids are matched by id,
+// so a reordered or inserted agent doesn't look like everything changed. Pure: no React, no DOM.
 
 import { isObj } from '../form/engine.js';
 import { describeSetting } from '../form/plainLanguage.js';
@@ -95,7 +94,7 @@ const NOUN = {
   guardrails: 'safety rule',
 };
 const plainList = (v) => Array.isArray(v) && v.every((x) => ['string', 'number', 'boolean'].includes(typeof x));
-// A value as a person would read it: text as it is, a short list joined, a number or yes/no plainly. Anything bigger is not quoted (null).
+// A value as a person reads it: text as is, a short list joined, a number or yes/no plainly; anything bigger is null.
 const quote = (v) => {
   if (typeof v === 'string') return `“${v.length > 70 ? `${v.slice(0, 69)}…` : v}”`;
   if (typeof v === 'number' || typeof v === 'boolean') return `“${v}”`;

@@ -28,10 +28,10 @@ import {
   setReach,
 } from './setupModel.js';
 
-// The setup's simple controls, shared with the agent's own pages: the same choice made the same way, the first time and every time after.
+// The setup's simple controls, shared with the agent's own pages, so a choice is made the same way every time.
 
-// A phone number as it is typed: the box keeps the spaces people write numbers with ("+65 6123 4567"), and the draft gets it without spaces at either
-// end. (Trimming what is typed would take each space away as it is typed.) It is only written over when the number changes from somewhere else.
+// A phone number box that keeps the spaces people type ("+65 6123 4567") while the draft gets it trimmed (trimming the
+// box would remove each space as it is typed). Only overwritten when the number changes from somewhere else.
 function NumberBox({ value, onChange, ...rest }) {
   const [text, setText] = useState(value || '');
   const [was, setWas] = useState(value);
@@ -51,23 +51,19 @@ function NumberBox({ value, onChange, ...rest }) {
   );
 }
 
-// Where people reach it, as three choices that can each be switched on: chat on your website, talk on your website,
-// phone calls. Used by the setup and at the top of the Channels page, so a change later is the same move as the first
-// time.
-//   onPage: on the Channels page, the recording notice (said at the start of a call, before
-//   the greeting) is not asked: it is asked once, beside what is recorded, under After the
-//   call; the setup asks it here, the moment the first voice channel is switched on
-//   onShowNotice(): opens where the recording notice is asked (After the call › Recording), for the link under the choices on the Channels page
-//   onShowVoice(), onShowNumber(): open the Agent page's voice, and Releases where
-//   a phone number is added (the links of what a switch brought, on the page)
+// Where people reach it: chat on your website, talk on your website, phone calls, each a switch. Used by the setup and
+// atop the Channels page, so a later change is the same move as the first.
+//   onPage: on the Channels page; the recording notice is asked under After the call there (the setup asks it here)
+//   onShowNotice(): opens After the call › Recording, for the link under the choices on the Channels page
+//   onShowVoice(), onShowNumber(): open the Agent page's voice, and Releases where a phone number is added
 export function ReachChoices({ config, set, botId, onPage = false, onShowNotice = null, onShowVoice = null, onShowNumber = null }) {
   const { providers } = useProviders();
-  // the server's kinds of channel: another channel that is on, of a kind that runs today, lets the last of these three be switched off
+  // another enabled channel of a kind that runs today lets the last of these three be switched off
   const { types } = useChannelTypes();
   const reach = reachOf(config);
   const [refused, setRefused] = useState('');
-  // on the page, what the last switch did besides: a voice and a line about recording that came with it, what is still
-  // to do (a voice that couldn't be chosen, a phone number), or that a way of reaching it is off
+  // on the page, what the last switch also did: a voice and recording line it brought, what is still to do (a voice,
+  // a phone number), or that a way of reaching it is off
   const [brought, setBrought] = useState(null);
   const simple = readSimple(config);
   const toggle = (r) => {
@@ -219,8 +215,8 @@ function savedSystems() {
 
 function LookupForm({ config, set, current, onCancel }) {
   const [form, setFormState] = useState({ url: current.url || '', finds: current.finds || '', needs: current.needs || '' });
-  // the form follows the configuration (a change made in the Connections panel, say) until it is typed in: a stale form saved as it is would put the
-  // old address back
+  // the form follows the configuration (e.g. a Connections panel change) until typed in: a stale form saved as it is
+  // would put the old address back
   const [edited, setEdited] = useState(false);
   const setForm = (next) => {
     setEdited(true);
@@ -239,8 +235,8 @@ function LookupForm({ config, set, current, onCancel }) {
       setEdited(false);
     }
   };
-  // switched on, an edit is put in when the cursor leaves the card (no second Save beside the page's own); one that
-  // can't be is kept in the boxes, and the note says why and what it still asks
+  // when switched on, an edit is applied as focus leaves the card (no second Save beside the page's own); one that
+  // can't be applied stays in the boxes, and the note says why
   const leave = (event) => {
     if (!current.on || !edited || event.currentTarget.contains(event.relatedTarget)) return;
     apply();
@@ -255,6 +251,13 @@ function LookupForm({ config, set, current, onCancel }) {
               {s.name}
             </button>
           ))}
+        </p>
+      )}
+      {/* the one technical ask of the setup: who to ask for it, and that the agent works without it */}
+      {!current.on && (
+        <p className="suNote">
+          This needs a web address from your booking, order or customer system: ask whoever runs it (your IT person or the system’s support). Not sure? Leave it
+          off. Your agent can still take requests and pass people to your team.
         </p>
       )}
       <label className="suField">
@@ -299,10 +302,9 @@ function LookupForm({ config, set, current, onCancel }) {
   );
 }
 
-// What it can do, as switches: end the conversation politely, pass people to a person, take their contact details, look
-// something up in your own system. Each switch makes everything it needs (see setupModel.js). Used by the setup and at
-// the top of the Tools page.
-//   onPage: drawn on the agent's own page (no closing note about the agent's own pages; a note when several agents share the work)
+// What it can do, as switches (end politely, pass to a person, take details, look something up). Each switch makes
+// everything it needs (see setupModel.js). Used by the setup and atop the Tools page.
+//   onPage: on the agent's own page (no closing note about those pages; a note when several agents share the work)
 export function ActionSwitches({ config, set, onPage = false }) {
   const actions = actionsOf(config);
   const reach = reachOf(config);
@@ -340,7 +342,7 @@ export function ActionSwitches({ config, set, onPage = false }) {
               </span>
               <Switch checked={state.on} onChange={() => toggle(a.id)} label={a.label} />
             </div>
-            {/* switched off, but its tool is still there because something else uses it: said, so the switch and "All its tools" don't seem to disagree */}
+            {/* off but kept because something else uses it: said so the switch and "All its tools" don't disagree */}
             {!state.on && state.kept && (
               <p className="suNote" role="status">
                 {state.kept}
@@ -406,12 +408,11 @@ export function ActionSwitches({ config, set, onPage = false }) {
   );
 }
 
-// What it knows, as documents and web pages in one list: they go into one knowledge base that the agent that answers reads on every turn (see
-// setupModel.js). Used by the setup and at the top of the Knowledge page.
-//   latest(): the newest draft (an upload takes a while, and other changes may
-//   come meanwhile); onPage: drawn on the Knowledge page (the index is built
-//   there, below, rather than when the setup moves on)
-//   onUploaded: told after documents are uploaded (the page below reads the knowledge again: a replaced document is no longer what was read)
+// What it knows: documents and web pages in one list, in one knowledge base the answering agent reads every turn
+// (see setupModel.js). Used by the setup and atop the Knowledge page.
+//   latest(): the newest draft (an upload takes a while and other changes may come meanwhile)
+//   onPage: on the Knowledge page (the index is built there, below, not when the setup moves on)
+//   onUploaded: called after uploads (the page re-reads the knowledge: a replaced document is no longer what was read)
 export function KnowledgeBlock({ botId, config, set, latest, onPage = false, onUploaded }) {
   const { files, pages, depths } = knowledgeOf(config);
   const [linked, setLinked] = useState(false);
@@ -486,7 +487,7 @@ export function KnowledgeBlock({ botId, config, set, latest, onPage = false, onU
     setPage('');
     setLinked(false);
   };
-  // Takes one out. The focus moves to the next one's Remove (else the one before, else the web page box), not back to the top of the page.
+  // Takes one out. Focus moves to the next Remove (else the one before, else the web page box), not to the page top.
   const remove = (event, kind, value) => {
     setReplaced([]);
     const result = removeKnowledge(config, kind, value);

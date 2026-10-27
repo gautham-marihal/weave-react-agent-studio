@@ -1,10 +1,8 @@
 import { SHOWN, matchScore } from '../../ui/match.ts';
 
-// The pages of an agent. One level: a menu of what the agent has, in the order the work is done: an overview, then
-// building it, testing and launching it, watching it, and its settings last. Every old address still works
-// (#/bots/x/deploy, /scenarios, /versions...): it opens the page that now holds it.
-// Pure: no React, no DOM.
-//   `bare`: a group drawn without a heading (the overview at the top, the settings at the bottom)
+// An agent's pages, in the order the work is done (overview, build, test and launch, watch, settings). Old addresses
+// (#/bots/x/deploy, /scenarios...) open the page that now holds them. Pure: no React, no DOM.
+//   bare: a group drawn without a heading (the overview at the top, the settings at the bottom)
 
 export const PAGE_GROUPS = [
   { id: 'overview', label: 'Overview', bare: true, pages: [{ id: 'home', label: 'Overview', icon: 'home' }] },
@@ -43,12 +41,25 @@ export const PAGE_GROUPS = [
 ];
 
 export const PAGES = PAGE_GROUPS.flatMap((g) => g.pages);
+
+// The stage tabs across an agent's top, with the pages each holds; the first opens when its tab is chosen. Build opens
+// on its guided view ("build", every part on one page).
+export const STAGES = [
+  { id: 'overview', label: 'Overview', pages: ['home'] },
+  { id: 'build', label: 'Build', pages: ['build', 'agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings'] },
+  { id: 'test', label: 'Test', pages: ['tests'] },
+  { id: 'release', label: 'Release', pages: ['releases'] },
+  { id: 'monitor', label: 'Monitor', pages: ['calls', 'monitoring', 'questions', 'speed'] },
+];
+// The stage a page belongs to (null for one in no stage: the guided setup)
+export const stageOf = (page) => STAGES.find((stage) => stage.pages.includes(page)) || null;
 export const PAGE_IDS = PAGES.map((p) => p.id);
-// (the guided setup is a page with an address, and not in the menu: while it is open the menu shows its steps instead)
-export const PAGE_LABELS = { ...Object.fromEntries(PAGES.map((p) => [p.id, p.label])), setup: 'Set up' };
+// the guided setup has an address but isn't in the menu: while it is open, the menu shows its steps instead
+export const PAGE_LABELS = { ...Object.fromEntries(PAGES.map((p) => [p.id, p.label])), setup: 'Set up', build: 'Build' };
 // The addresses of the agent's own pages; route.js accepts them beside the old ones (journey.js).
 export const EXTRA_PAGE_IDS = [
   'home',
+  'build',
   'agent',
   'tools',
   'channels',
@@ -62,7 +73,7 @@ export const EXTRA_PAGE_IDS = [
   'setup',
 ];
 
-// An old address (or a page's own) → the page that shows it, and which part of that page (`part`) when the page has several.
+// An address (old or current) → the page that shows it, and its `part` when the page has several.
 const SHOWN_BY = {
   describe: { page: 'agent', drawer: 'describe' },
   config: { page: 'agent' },
@@ -76,6 +87,7 @@ const SHOWN_BY = {
   deploy: { page: 'releases', part: 'deploy' },
   calls: { page: 'calls' },
   setup: { page: 'setup' },
+  build: { page: 'build' },
 };
 export function resolvePage(tab, { bare = false } = {}) {
   if (bare) return { page: 'home' };
@@ -83,13 +95,12 @@ export function resolvePage(tab, { bare = false } = {}) {
   return SHOWN_BY[tab] || { page: 'agent' };
 }
 
-// The address segment for a page and one of its parts (a part keeps the address it always had, so old links still open it).
+// The address segment for a page's part (each part keeps its old address, so old links still open it).
 const PART_TAB = { tests: { try: 'test', scenarios: 'scenarios', checks: 'checks', callers: 'callers' }, releases: { versions: 'versions', deploy: 'deploy' } };
 export const tabFor = (page, part) => (PART_TAB[page] && PART_TAB[page][part]) || page;
 
-// Which top-level sections of the configuration each page edits, so that every part of the schema is reachable from
-// somewhere (a test checks it against the schema). `only` is what the page's settings form is limited to; the Agent
-// page's rows and the Workflow canvas cover their own sections as well.
+// The top-level config sections each page edits, so every part of the schema is reachable (a test checks this).
+// `only` limits the page's settings form; the Agent page's rows and the Workflow canvas cover their own sections too.
 export const PAGE_SECTIONS = {
   agent: ['meta', 'persona', 'messages', 'defaults'],
   tools: ['tools', 'connections', 'forms', 'notifications', 'tasks', 'telephony'],
@@ -102,10 +113,8 @@ export const PAGE_SECTIONS = {
   settings: ['meta', 'runtime', 'constants', 'builder', 'defaults'],
 };
 
-// What the Settings page leaves out of its form because another page already asks for it (the name, the languages, the
-// provider, model and voice of each part of a call; the test scenarios are not in its sections at all): a person is
-// asked for each thing once. What is left is what only Settings has: the description, tags and owner, the keys and
-// addresses of the models, how turns are taken, the engine.
+// What Settings leaves out because another page asks for it (name, languages, models, voice), so each thing is asked
+// once. What remains is only Settings': description, tags, owner, model keys and addresses, turns, engine.
 export const SETTINGS_ELSEWHERE = {
   skipViews: ['defaults.language'], // all of the language is asked on the Agent page
   hide: [
@@ -137,20 +146,19 @@ export const PAGE_LEAD = {
   questions: 'What callers asked that it couldn’t answer, grouped however they put it. Answer one in a sentence and it goes into the draft, with a test.',
 };
 
-// Where a place in the configuration (a path such as ['defaults', 'models', 'tts', 'voice_id']) is edited on the
-// agent's pages: the page, the panel of the Agent page that holds it when it is one of its rows, and the field
-// (`focus`) when it is one of the few asked above a page's form. Used for "show me" on a problem.
+// Where a config path is edited: the page, the Agent page panel (`drawer`) if it is one of its rows, and the field
+// (`focus`) if it is asked above a page's form. Used for "show me" on a problem.
 export function locate(path) {
   const [key, sub, third, fourth] = Array.isArray(path) ? path : [];
-  // what callers are told about the recording is asked beside what is recorded (After the call › Recording); the tone and style rules have a panel of
-  // their own; the Personality and rules panel leaves all three out
+  // the recording disclosure lives beside the recording settings (After the call); tone and style rules have their own
+  // panel; the Personality panel leaves all three out
   if (key === 'persona' && sub === 'disclosures') return { page: 'aftercall', focus: 'notice' };
   if (key === 'persona' && (sub === 'tone' || sub === 'style_rules')) return { page: 'agent', drawer: 'behaviour' };
   if (key === 'persona') return { page: 'agent', drawer: 'persona' };
   if (key === 'messages') return { page: 'agent', drawer: 'messages' };
-  // what each channel says first is the Agent page's field (a channel's panel leaves it out); the rest of the greeting stays with the channel
+  // each channel's first words are the Agent page's field (the channel panel leaves them out); the rest stays there
   if (key === 'channels' && sub !== undefined && third === 'greeting' && fourth === 'say') return { page: 'agent', focus: 'greeting' };
-  // what the Agent page asks for (all of the language; each model's provider and model; the voice); the rest of `defaults` is on Settings
+  // language, each model's provider and model, and the voice are on the Agent page; other `defaults` are on Settings
   if (key === 'defaults' && sub === 'language') return { page: 'agent', drawer: 'language' };
   if (key === 'defaults' && sub === 'models') {
     if (third === 'tts' && fourth === 'voice_id') return { page: 'agent', drawer: 'voice' };
@@ -177,11 +185,10 @@ const AGENT_PANELS = {
   messages: 'Fixed lines',
 };
 
-// Where a setting the search found is shown: the place `locate` gives for the part of its path that can be opened, and,
-// for the two settings that are fields of the Agent page (what it says first, and what it should do), that field. What
-// an agent should do is the Agent page's field when the agent has one agent; with several, which agent is meant is
-// chosen in the Workflow's settings. Whether the greeting may be interrupted stays with the channel.
-//   entry: { trail, jump } from the settings index (src/studio/settingsSearch.js); config: the draft, when it is known
+// Where a search result is shown: `locate` for its openable path, or the Agent page field for greeting and role.
+// The role is that field only with one agent; with several it is chosen in the Workflow's settings.
+//   entry: { trail, jump } from the settings index (settingsSearch.js)
+//   config: the draft, when known
 export function searchTarget({ trail = [], jump = [] } = {}, config = null) {
   const t = Array.isArray(trail) ? trail : [];
   const several = Array.isArray(config?.agents?.items) && config.agents.items.length > 1;
@@ -192,11 +199,11 @@ export function searchTarget({ trail = [], jump = [] } = {}, config = null) {
   return { ...locate(path), path };
 }
 
-// The fields `focus` names, as their page names them (the recording notice is a field of After the call's Recording card).
+// The fields `focus` names, as their page names them (the notice is in After the call's Recording card).
 const FIELD_NAMES = { greeting: 'What it says first', role: 'What it should do', notice: 'Recording' };
 
-// Where a setting lives, in the agent pages' own words: "Channels › Business hours › Opening times", "Agent › Voice". A
-// panel or field of the Agent page is named as the page names it, and nothing deeper (the panel shows it plainly).
+// Where a setting lives, in the pages' own words ("Channels › Business hours › Opening times", "Agent › Voice"). Agent
+// page panels and fields stop at the page's own name for them.
 //   entry: { trail, jump, screen: { label }, crumbs } from the settings index
 export function settingWhere(entry = {}) {
   const target = searchTarget(entry);
@@ -207,9 +214,8 @@ export function settingWhere(entry = {}) {
   return parts.filter((p, i) => i === 0 || p !== parts[i - 1]).join(' › ');
 }
 
-// A setting found in many places under one name (Business hours as a condition in every task and transfer) is shown at
-// most `max` times: the best matches, in the order the search ranked them, so the other settings it found still fit in
-// the list.
+// A setting found in many places under one name (Business hours in every task) is shown at most `max` times, best
+// first, so other results still fit in the list.
 export function capSameLabel(entries, max = 2) {
   const seen = new Map();
   return entries.filter((entry) => {
@@ -219,7 +225,7 @@ export function capSameLabel(entries, max = 2) {
   });
 }
 
-// The words people use for each page, besides its name: what they would type to find it.
+// The words people would type to find each page, besides its name.
 const PAGE_WORDS = {
   home: 'overview home dashboard status ready next',
   agent: 'instructions prompt role greeting hello voice language model persona name tone',
@@ -238,7 +244,7 @@ const PAGE_WORDS = {
   settings: 'description owner tags engine keys json reliability',
 };
 
-// What the search offers on an agent besides its settings: its pages, and the things people come to do, by the words they would type.
+// What search offers on an agent besides settings: its pages and common tasks, by the words people would type.
 //   { id, title, description, words, tab, params? }; the address is routeHref(botId, tab, params)
 export const AGENT_SEARCH = [
   ...PAGES.map((p) => ({
@@ -301,11 +307,8 @@ export const AGENT_SEARCH = [
   },
 ];
 
-// The entries of AGENT_SEARCH that match what was typed, however it is typed (ui/match.ts: any order, the start of a
-// word, a letter left out or a slip): every word in the title or the words people use (not the description, which also
-// says what a page is NOT for). Those whose title starts with what was typed come first, then those whose title has it,
-// then the things to do, then the pages; within each, the closer match first, then their own order. With nothing typed,
-// the pages.
+// AGENT_SEARCH entries matching the query (fuzzy, ui/match.ts) on title or words, not the description, which also says
+// what a page is NOT for. Ranked: title starts with it, title has it, tasks, pages. With nothing typed, the pages.
 export function searchAgent(query) {
   const phrase = String(query || '')
     .toLowerCase()
@@ -315,7 +318,7 @@ export function searchAgent(query) {
   if (!phrase) return AGENT_SEARCH.filter((item) => item.id.startsWith('page-'));
   const rank = (item) => {
     const title = item.title.toLowerCase();
-    // a match on the title first; then a thing to do before a page that is only where it is done
+    // a title match first; then a task before a page that is only where it is done
     return title.startsWith(phrase) ? 0 : title.includes(phrase) ? 1 : item.id.startsWith('page-') ? 3 : 2;
   };
   return AGENT_SEARCH.map((item, i) => ({ item, i, r: rank(item), score: matchScore(phrase, item.title, item.words) }))

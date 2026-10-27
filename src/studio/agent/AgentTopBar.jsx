@@ -8,10 +8,8 @@ import { formatWhen } from '../format.js';
 import { navigate, routeHref } from '../route.js';
 import { SAVE_LABEL } from '../../pages/shared.jsx';
 
-// The one bar across the top of an agent. On the left: which agent, where it stands, whether the draft is saved and how
-// far it has moved from what is published. On the right, only what is reached for from any page: what the checks found
-// (when they found something), describing a change in words, trying it, saving (when there is something to save) and
-// publishing; everything else is in the "More" menu.
+// The bar across the top of an agent: name, state, save state and changes since publish on the left; on the right only
+// what any page needs (checks, describe, test, save, publish). Everything else is in the "More" menu.
 export default function AgentTopBar({
   botId,
   name,
@@ -27,12 +25,13 @@ export default function AgentTopBar({
   onChanges,
   onTest,
   onShare,
+  onPreview,
 }) {
   const { dirty, saving, parsed } = editor;
   const canSave = dirty && !saving && !parsed.error && editor.isObject;
   const state = agentState({ deployed: summary?.deployed || {}, tests: 'unknown', problems });
   const go = (tab, params) => navigate(routeHref(botId, tab, params), { guard: false });
-  // nothing is said about saving until the draft has arrived (it is not "Saved" while it loads, nor broken if it couldn't be read)
+  // say nothing about saving until the draft has loaded (not "Saved" while loading, nor broken if it failed)
   const loaded = editor.status === 'ready';
   const saveText = !loaded
     ? editor.status === 'error'
@@ -94,8 +93,16 @@ export default function AgentTopBar({
             Test{live ? <i className="nlLive" aria-label="A test conversation is running" /> : null}
           </button>
         </Tip>
+        {onPreview && (
+          <Tip label="See the exact instructions the model is given, as the runtime puts them together">
+            <button type="button" className="quietButton nlBtn" onClick={onPreview}>
+              <Icon name="eye" size={16} />
+              Preview prompt
+            </button>
+          </Tip>
+        )}
         {canSave || saving ? (
-          // a disabled button gets no pointer, so it keeps the browser's own tip
+          // a disabled button gets no pointer events, so it keeps the browser's own tip
           <Tip label={`Save the draft (${SAVE_LABEL})`}>
             <button
               type="button"

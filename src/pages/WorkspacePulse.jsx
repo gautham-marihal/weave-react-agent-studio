@@ -9,9 +9,8 @@ import { seconds } from '../studio/speed/speedModel.ts';
 
 const DAYS = 7;
 
-// Home's four numbers for the workspace: calls today (with the week by day), calls going on now, the alerts that hold,
-// and how fast the week's calls were answered. Each is worked out the way its own page works it out (Monitoring, Live,
-// Alerts, Speed) and opens that page. It only reads.
+// Home's four workspace numbers: calls today, calls now, alerts, and answer speed. Each is worked out as its own page
+// does it (Monitoring, Live, Alerts, Speed) and opens that page. Read-only.
 //   onOpen(pageId): 'sessions' | 'live' | 'alerts' | 'speed'
 export default function WorkspacePulse({ bots, onOpen }) {
   const agents = useMemo(() => bots.map((b) => ({ id: b.id, name: b.name || b.id, deployed: b.deployed || {} })), [bots]);
@@ -34,7 +33,7 @@ export default function WorkspacePulse({ bots, onOpen }) {
   const fresh = holding.filter((a) => a.status === 'new').length;
   const critical = holding.filter((a) => a.severity === 'critical').length;
 
-  // the answer time comes from the same calls as Monitoring's (and Speed's): the records of some, spread over the days, are read after the list
+  // answer time uses Monitoring's and Speed's calls: records of some, spread over the days, are read after the list
   const timing = !watched.loading && watched.calls.length > 0 && Object.keys(watched.samples).length === 0;
   const { waitP50, waitP90 } = report.totals;
 

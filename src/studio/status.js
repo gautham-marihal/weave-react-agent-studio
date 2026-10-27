@@ -1,7 +1,5 @@
-// One vocabulary for where an agent is, used by the Agents list, the agent's header, the Deploy tab and the Home page, so the same agent never
-// wears three different names for the same state. In the order of the journey: Draft, Tested, Live in Development, Live in Staging, Live in
-// Production; and Needs attention, which outranks them all, because a customer should hear about a problem before a milestone.
-// Pure: no React, no DOM.
+// One vocabulary for an agent's state on every page: Draft, Tested, Live in … (journey order), and Needs attention,
+// which outranks them all because a problem matters more than a milestone. Pure: no React, no DOM.
 
 export const STATES = {
   attention: {
@@ -29,10 +27,8 @@ export function agentState({ deployed = {}, tests = 'unknown', problems = 0 } = 
   return STATES.draft;
 }
 
-// The line under an agent's name: the parts worth saying, each with a tone. A part with nothing to say is left out (the
-// number of calls is unknown until it has been read, and nothing is claimed about it before then). What is said about
-// the tests, from how the scenarios stand (see summariseScenarios in scenarios/runResults.js): every scenario counted
-// by its own latest result, so "4 of 7 passing" can never hide that three have not been run.
+// The line under an agent's name: parts with a tone; one with nothing to say (e.g. calls not read yet) is left out.
+// Tests: each scenario counts by its latest result, so "4 of 7 passing" can't hide that three have not run.
 export function testsPart(s) {
   if (!s || !s.total) return { id: 'tests', text: 'No tests written', tone: 'idle' };
   const said = (n, what) => (n ? `${n} ${what}` : '');
@@ -40,7 +36,7 @@ export function testsPart(s) {
   if (s.failed > 0) return { id: 'tests', text: [`${s.failed} failing`, said(s.passed, 'passing'), notRun].filter(Boolean).join(' · '), tone: 'bad' };
   if (s.passed === 0) return { id: 'tests', text: `${s.total} test${s.total === 1 ? '' : 's'}, not run yet`, tone: 'idle' };
   if (s.notRun === 0) return { id: 'tests', text: s.total === 1 ? '1 test passing' : `All ${s.total} tests passing`, tone: 'ok' };
-  // everything that runs for free has passed and only live ones are left: fine to say so; a scripted scenario that has not run is only half the story
+  // only live ones are left, so it's fine to say so; an unrun scripted scenario means the story is half told
   return { id: 'tests', text: [`${s.passed} passed`, notRun].filter(Boolean).join(' · '), tone: s.scriptedNotRun ? 'idle' : 'ok' };
 }
 
@@ -63,7 +59,7 @@ export function statusLine({ dirty = false, savedAt = '', scenarioCount = 0, run
   return parts;
 }
 
-// The state of an agent in the list, from what the list knows: where it is deployed and, when it has been read, its health (see health/health.js).
+// An agent's state in the list: where it is deployed and, once read, its health (see health/health.js).
 export function stateFromHealth(bot, health) {
   const parts = Array.isArray(health?.parts) ? health.parts : [];
   const failing = parts.some((p) => p.id === 'tests_failing');

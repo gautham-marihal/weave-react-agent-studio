@@ -1,15 +1,12 @@
-// The paths a tool uses to pick fields out of an API response (`result.to_llm`, `result.to_state`). The runtime
-// understands a small subset, not full JSONPath:
-//
-//   found          a bare field name is the same as $.found (every bot we have writes `to_llm` this way)
+// The paths a tool uses to pick fields from an API response (`result.to_llm`, `result.to_state`). The runtime reads a
+// small subset of JSONPath:
+//   found          a bare name is the same as $.found (every bot we have writes `to_llm` this way)
 //   $.a.b          a field of a field
 //   $.a[0].b       an element of a list
-//   $.a-b          a hyphen is fine after a dot too; a name with a dot or a space goes in brackets: $['a.b']
+//   $.a-b          a hyphen is fine after a dot; a name with a dot or a space goes in brackets: $['a.b']
 //   $.items[*].id  that field of every element
-//
-// No filters (?(…)), no recursive descent (..), no slices. A path that uses them, or one that matches nothing, gives
-// NO error at runtime: the value is simply empty. So the form checks the grammar and tries paths on a sample response.
-// Pure: no network, no DOM.
+// No filters (?(…)), recursive descent (..) or slices. A path using them, or matching nothing, gives no runtime error,
+// just an empty value, so the form checks the grammar and tries paths on a sample. Pure: no network, no DOM.
 
 const WORD = /^[A-Za-z_]\w*$/;
 

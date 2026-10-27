@@ -1,9 +1,8 @@
-// Playing a call's caller side again. The caller's words are fed, turn by turn, to something that answers as the agent would, and what comes back is
-// read into the same facts as the original call (see callFacts.js), so the two can be compared.
+// Plays a call's caller side again: the caller's words go turn by turn to something that answers as the agent would,
+// and the answers are read into the same facts as the original (see callFacts.js) so the two can be compared.
 //
-// Two ways to answer: the SIMULATED agent (in the browser, free, instant: a few plain rules for the tools, hand-offs, goodbye and a person; no
-// language model, so its wording is not the real agent's), and the scenario runner (the real runtime when there is one: see scenarioForReplay).
-// Pure: no network, no DOM.
+// Two answerers: the SIMULATED agent (in the browser, free, instant; plain rules, no language model, so not the real
+// wording) and the scenario runner (the real runtime when there is one: see scenarioForReplay). Pure: no I/O, no DOM.
 
 import { createSimulatedAgent } from '../../demo/simulatedAgent.js';
 import { readCall, readTranscript } from './callFacts.js';
@@ -11,7 +10,7 @@ import { freshScenarioId } from '../scenarios/model.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 
-// The caller's turns through the simulated agent on `config`. Stops where the agent ends the conversation (the rest are said not to be reached).
+// The caller's turns through the simulated agent on `config`; stops where the agent ends (the rest count as unreached).
 export function playSimulated(config, original) {
   const agent = createSimulatedAgent(config, { channelId: original.channelId });
   const facts = {
@@ -50,9 +49,8 @@ export function playSimulated(config, original) {
   return facts;
 }
 
-// What a run of the scenario runner answers for one scenario (a result of GET /tests/runs/{id}), read as facts. The
-// records of the run are used when it has them (they carry the waiting times and the hand-offs); otherwise its
-// transcript and tool list.
+// A scenario runner result (from GET /tests/runs/{id}) read as facts: from the run's records when present (they carry
+// waits and hand-offs), else from its transcript and tool list.
 export function factsFromResult(result, { channelId = '' } = {}) {
   if (!result) return null;
   const events = list(result.events);
@@ -69,8 +67,8 @@ export function factsFromResult(result, { channelId = '' } = {}) {
   };
 }
 
-// The caller's turns as a scenario the runner can play, with a name that cannot clash with the agent's own. It is run from the editor's contents
-// (`config` in the body of the run), never saved, so replaying changes nothing in the draft.
+// The caller's turns as a scenario the runner can play, named so it can't clash with the agent's own. It runs from the
+// editor's contents (`config` in the run body) and is never saved, so replaying changes nothing in the draft.
 export function scenarioForReplay(config, original, { id = '' } = {}) {
   const channels = list(config?.channels).filter((c) => c && typeof c === 'object' && c.id);
   const channel = channels.find((c) => c.id === original.channelId) || channels.find((c) => c.enabled !== false) || channels[0];

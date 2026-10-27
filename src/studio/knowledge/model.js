@@ -1,7 +1,6 @@
-// Knowledge: the files and web pages an agent answers from. A `vector_store` base is searched from an INDEX built before calls, so someone
-// has to upload files, build the index and check a search; a `rag_api` base asks a search service that already exists, so there is nothing
-// to build. This reads the API's answers (`GET /knowledge`, `.../status`, a build job, a search) into what the screen shows, tolerantly: a
-// field that is missing or new is left out, never an error. Pure: no network, no DOM.
+// Knowledge: the files and web pages an agent answers from. A `vector_store` base is searched from an INDEX built
+// before calls (upload, build, check a search); a `rag_api` base asks an existing search service (nothing to build).
+// Reads the knowledge, status, build and search answers tolerantly (odd fields are skipped). Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
 
@@ -27,7 +26,7 @@ export function formatBytes(bytes) {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-// ---- a build job ---------------------------------------------------------------------------------------------------------------------
+// ---- a build job
 export function normalizeBuild(raw) {
   if (!isObj(raw)) return null;
   const status = ['running', 'done', 'failed'].includes(raw.status) ? raw.status : raw.error ? 'failed' : raw.result ? 'done' : 'running';
@@ -43,7 +42,7 @@ export function normalizeBuild(raw) {
 }
 export const isBuilding = (build) => build?.status === 'running';
 
-// ---- one base ------------------------------------------------------------------------------------------------------------------------
+// ---- one base
 export function normalizeBase(raw, keyAvailable = true) {
   const b = isObj(raw) ? raw : {};
   const type = text(b.type);
@@ -83,7 +82,7 @@ export function normalizeBase(raw, keyAvailable = true) {
 export function baseState(base) {
   if (!base.buildable) return 'external';
   if (isBuilding(base.build)) return 'building';
-  // the last build failed: said even when an older index is still there (it keeps answering, as the hint says), never "Ready"
+  // the last build failed: said even when an older index still answers (as the hint says), never "Ready"
   if (base.build?.status === 'failed') return 'failed';
   if (!base.index) return 'not_built';
   if (base.problems.some((p) => /changed after|stale|out of date|not uploaded/i.test(p.problem))) return 'stale';
@@ -99,9 +98,8 @@ export const STATE_TEXT = {
   ready: { label: 'Ready', tone: 'good', hint: 'The index is built and current.' },
 };
 
-// The server's `fix` is sometimes a command line for an operator (`python -m …`), which means nothing in a browser (UI
-// review 3a). Such text is not shown; the problem stays, and the screen's own button (Build now, Upload a file) says
-// what to do.
+// The server's `fix` is sometimes an operator command line (`python -m …`), meaningless in a browser (UI review 3a):
+// it is hidden; the problem stays, and the screen's own button (Build now, Upload a file) says what to do.
 // eslint-disable-next-line sonarjs/regex-complexity -- the shapes of a command line, one alternative each
 const COMMAND_LINE = /(^|[\s`'"(])(python3?|pip3?|npm|npx|curl|docker|\.\/\S+)\s+\S|^\s*\$\s|\s-m\s+[\w.]+/i;
 export function readableFix(problem) {
@@ -117,7 +115,7 @@ export function fixActionFor(problem) {
   return '';
 }
 
-// ---- the whole answer ----------------------------------------------------------------------------------------------------------------------
+// ---- the whole answer
 export function normalizeKnowledge(raw) {
   const keyAvailable = raw?.embedding_key_available !== false;
   const bases = list(raw?.bases).map((b) => normalizeBase(b, keyAvailable));
@@ -132,7 +130,7 @@ export function normalizeKnowledge(raw) {
   return { ref: text(raw?.ref), bases, files, keyAvailable: keyAvailable && bases.every((b) => b.keyAvailable !== false) };
 }
 
-// How many bases need attention, for a one-line summary elsewhere (the Knowledge page, the agent's health, the release checklist).
+// How many bases need attention, for one-line summaries (Knowledge page, agent health, release checklist).
 export function knowledgeSummary(knowledge) {
   const bases = list(knowledge?.bases);
   const states = bases.map(baseState);
@@ -145,7 +143,7 @@ export function knowledgeSummary(knowledge) {
   };
 }
 
-// ---- a search ------------------------------------------------------------------------------------------------------------------------
+// ---- a search
 export function normalizeSearch(raw) {
   const r = isObj(raw) ? raw : {};
   return {
@@ -157,14 +155,14 @@ export function normalizeSearch(raw) {
   };
 }
 
-// Which hits a `min_score` would keep. Scores only exist for sources that give one; a hit without a score is always kept.
+// Which hits a `min_score` would keep. Only some sources give scores; a hit without a score is always kept.
 export function applyMinScore(hits, minScore) {
   if (typeof minScore !== 'number') return hits.map((h) => ({ ...h, kept: true }));
   return hits.map((h) => ({ ...h, kept: h.score === undefined || h.score >= minScore }));
 }
 
-// Plain words for what a score means, from the guide: with the default embeddings related text scores about 0.5 to 0.75 and unrelated
-// text below 0.25. Other embeddings differ, so this is a guide and says so.
+// Plain words for a score, from the guide: with the default embeddings related text scores about 0.5–0.75 and
+// unrelated below 0.25. Other embeddings differ, so this is a guide and says so.
 export function describeScore(score) {
   if (typeof score !== 'number') return '';
   if (score >= 0.5) return 'related';
@@ -180,9 +178,8 @@ export function matchWords(score) {
   return { text: 'Not related', tone: 'idle' };
 }
 
-// What a base's index read, against what it lists now: the files added since (they are not in the index), the files the index still holds that were
-// taken out, the ones that changed after it was read (the server says so in a problem), and the ones that are not on the server any more. Files only:
-// the server names a web page's documents in its own way. With no documents from the server, or none named like a source, nothing is compared.
+// What a base's index read against what it lists now: files added since, removed ones it still holds, ones changed
+// since (a server problem says so) and ones gone from the server. Files only: web pages' documents are named otherwise.
 export function sinceRead(base) {
   const sources = list(base?.sources);
   const files = sources.filter((s) => s.kind === 'file').map((s) => s.label);
@@ -205,11 +202,11 @@ export function sinceRead(base) {
 const draftKey = (s) => (s?.type === 'url' ? `url:${s.url}` : `file:${s?.file_id}`);
 const savedKey = (s) => `${s.kind === 'url' ? 'url' : 'file'}:${s.label}`;
 
-// How far one base of documents and pages is from being something the agent answers from, for the Knowledge page's status line and "Getting it
-// ready": { state, names }. state: 'unsaved' (the draft lists other sources than the saved one, or the server has no such base yet) | 'reading' |
-// 'missing' (a file it lists is not on the server) | 'failed' | 'unread' (saved, never read) | 'changed' (read, but something changed since) |
-// 'ready'. names: the files a 'missing' or 'changed' is about.
-//   draftSources: the base's sources in the draft (left out, the saved ones are taken as they are); build: a build followed on this screen
+// How far one base is from being answerable, for the status line and "Getting it ready": { state, names }.
+//   state: 'unsaved' (draft sources differ from saved, or no such base on the server) | 'reading' | 'missing' (a listed
+//     file isn't on the server) | 'failed' | 'unread' (saved, never read) | 'changed' (changed since read) | 'ready'
+//   names: the files a 'missing' or 'changed' is about
+//   draftSources: the base's sources in the draft (left out: the saved ones); build: a build followed on this screen
 export function readingState(base, { draftSources, build } = {}) {
   if (!base) return { state: 'unsaved', names: [] };
   if (draftSources) {
@@ -239,7 +236,7 @@ export const settingsOf = (config, baseId) => {
   };
 };
 
-// A base set to rebuild on a timer: the server doesn't do that yet (FRONTEND_GUIDE 8 and 10.2), so the screen says so. '' when nothing needs saying.
+// A base set to rebuild on a timer: the server can't yet (FRONTEND_GUIDE 8, 10.2), so the screen says so; '' otherwise.
 const EVERY = { hourly: 'every hour', daily: 'every day', weekly: 'every week' };
 export function refreshNote(refresh) {
   if (!refresh || refresh === 'manual') return '';

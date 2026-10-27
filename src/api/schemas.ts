@@ -1,11 +1,8 @@
 import * as z from 'zod/mini';
 import type { AgentConfig } from './agentConfig';
 
-// What the Agent Builder API answers, written once (Zod): the types in types.ts are made from these, and the client
-// checks each answer it reads against them as it arrives (client.ts), so an answer of another shape is a clear "the
-// server sent something unexpected" naming the field, and never a blank tile or a wrong number further on. They follow
-// the API's FRONTEND_GUIDE and what the server sends (checked against its answers). A field the server adds is let
-// through: only what the studio reads is checked.
+// The Agent Builder API's answers, written once in Zod: types.ts is made from these, and client.ts checks each read
+// against them, so an unexpected shape is a clear error naming the field. Fields the server adds pass through.
 
 const text = z.string();
 const when = z.string(); // an ISO date and time
@@ -15,7 +12,7 @@ const config = z.custom<AgentConfig>((value) => !!value && typeof value === 'obj
 
 export const ValidationIssue = z.looseObject({ path: z.nullable(path), message: text });
 export const Unsupported = z.looseObject({ feature: text, where: text, severity: z.optional(z.literal('security')) });
-// what the runtime can't do yet and the secrets it needs are read as "none" when they aren't there (an older server sends neither)
+// unsupported features and needed secrets read as "none" when missing (an older server sends neither)
 export const ValidationReport = z.looseObject({
   valid: z.boolean(),
   errors: z.array(ValidationIssue),
@@ -115,7 +112,7 @@ export const CallRecord = z.looseObject({ event: text, t: z.optional(when), seq:
 export const CallRecords = z.looseObject({
   call: z.optional(CallSummary),
   events: z.array(CallRecord),
-  // the next page starts after this record; `more` says there is one, `complete` that the call has ended and every record is here
+  // the next page starts after this record; `more`: there is one; `complete`: the call ended and every record is here
   next_after: z.optional(z.nullable(z.number())),
   more: z.optional(z.boolean()),
   complete: z.optional(z.boolean()),

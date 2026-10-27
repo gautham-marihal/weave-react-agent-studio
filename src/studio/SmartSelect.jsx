@@ -5,14 +5,10 @@ import './smartSelect.css';
 import Icon from '../ui/Icon.jsx';
 import { useDropPlace } from '../ui/dropPlace.js';
 
-// One selector for every list of choices. A short list (8 or fewer) is the studio's choice box (ui/Select.tsx, a Radix Select: the browser's <select>
-// in how it works, the studio's in how it looks, with a choice's description on a second line).
-// A longer list (tools, state variables, agents, versions, languages…) is a combobox: type to narrow it, arrows to move, Enter to pick, Escape
-// to close, with a description under each choice and headings for groups. It is built to the WAI-ARIA combobox pattern (role=combobox on the
-// input, a listbox of options, aria-activedescendant for the highlighted one), so a screen reader hears the same thing a sighted person sees.
-//
+// One selector for every list of choices: eight or fewer is a Radix Select (ui/Select.tsx); longer lists are a combobox
+// built to the WAI-ARIA pattern (role=combobox, listbox, aria-activedescendant), so screen readers hear what is seen.
 //   options: strings, or { value, label?, description?, group?, disabled? }
-//   action:  true for a "＋ Add…" control: it picks something and then goes back to showing its placeholder (the value stays empty)
+//   action: true for a "＋ Add…" control: it picks, then shows its placeholder again (the value stays empty)
 
 const MAX_SHOWN = 200;
 const LIST_MAX = 290; // px, as .stComboPop's max-height in smartSelect.css
@@ -60,7 +56,7 @@ function Combo({ value, options, onChange, placeholder, ariaLabel, id, disabled,
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const popRef = useRef(null);
-  // under the field, or above it when there is more room there; no taller than the room on its side (ui/dropPlace.js)
+  // below the field, or above when there is more room there, never taller than that room (ui/dropPlace.js)
   const place = useDropPlace(inputRef, popRef, open, (pop) =>
     Math.min(LIST_MAX, pop.offsetHeight - (listRef.current?.clientHeight || 0) + (listRef.current?.scrollHeight || 0)),
   );
@@ -232,8 +228,8 @@ export default function SmartSelect({
 }) {
   const list = useMemo(() => normalizeOptions(options), [options]);
   const common = { value, options: list, onChange, placeholder, ariaLabel, id, disabled, invalid, action, className, emptyText };
-  // once it has been the searchable kind it stays so: a pick that takes the list from nine choices to eight would otherwise swap the control for
-  // another one under the keyboard, and the focus would be lost
+  // Once searchable, it stays so: a pick that takes the list from nine choices to eight would otherwise swap the
+  // control under the keyboard and lose focus.
   const [searchable, setSearchable] = useState(list.length > searchAfter);
   if (!searchable && list.length > searchAfter) setSearchable(true);
   return searchable ? <Combo {...common} /> : <Native {...common} />;

@@ -8,10 +8,8 @@ import { carryOver } from './cardLogic.js';
 import Icon from '../../ui/Icon.jsx';
 import { DragHandle, SortableItem, SortableList } from '../../ui/Sortable.jsx';
 
-// A list of actions as ordered, numbered steps: pick what each step does from a plain-language menu, and fill in its details with
-// the ordinary form for that kind of action. Used wherever the schema asks for actions (a tool's effects, an agent's on-enter
-// steps, a transfer's fallbacks, what to do when a caller goes quiet…), so every trigger point reads the same. `label` names the
-// list for screen readers ("rule 1", "the list").
+// A list of actions as numbered steps: a plain menu picks each kind, the ordinary form fills in the details. Used
+// wherever the schema asks for actions, so every trigger reads the same. `label` names the list for screen readers.
 export function ActionSteps({ shape, value, path, onChange, disabled, label = 'the list' }) {
   const ctx = useForm();
   const { engine } = ctx;
@@ -51,7 +49,8 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
                     options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))}
                     onChange={(chosen) => {
                       if (!chosen || chosen === type) return;
-                      // what the new kind can hold too is kept (as the other kind pickers do); what it can't is undoable, from the bar that says so
+                      // what the new kind can hold too is kept (as other kind pickers
+                      // do); the rest can be undone from the bar that says so
                       const made = carryOver(engine, action, branchOf(chosen), makeAction(chosen));
                       const lost = isObj(action) ? Object.keys(action).filter((key) => key !== 'type' && !(isObj(made) && key in made)) : [];
                       if (lost.length) ctx.markDelete(`the settings step ${j + 1} had for “${kindLabel(type)}”`);
@@ -124,10 +123,8 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
   );
 }
 
-// A tool's effects as readable rules: each rule says when it applies ("Always", or a condition) and then lists, in order, what happens
-// (say a line, change state, hand off, end the call…). Each rule is also written out as a sentence. The details of an action are the
-// ordinary form for that kind of action, so nothing the schema allows is out of reach.
-// A list of rules (`when` + `do`): each applies always or when a condition holds, then does its steps in order. Used for a tool's effects.
+// A tool's effects as rules: each applies always or when a condition holds, does its steps in order, and is also
+// written as a sentence. Action details use the ordinary form, so nothing the schema allows is out of reach.
 export default function EffectsEditor({
   shape,
   value,

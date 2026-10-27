@@ -1,19 +1,16 @@
-// The Workflow of an agent as a picture you can edit: where a call starts, each agent, and what happens around them.
-// Everything here is read from the configuration (and written back to it by workflowOps.js); nothing is stored that the
-// runtime doesn't already understand, apart from where each block is drawn, which has its own place in the file
-// (builder.ui.graph_positions). Pure: no React, no DOM.
+// An agent's Workflow as an editable picture: where a call starts, each subagent, and what happens around them. All of
+// it is read from the configuration (and written back by workflowOps.js); only block positions are extra, kept in
+// builder.ui.graph_positions. Pure: no React, no DOM.
 //
-// It reads left to right, as a call goes. What a block is, in the configuration's own terms:
-//   trigger    a channel a call or a chat comes in on (channels[]), with what
-//              it says first; it leads to the subagent that answers first (agents.entry).
-//              With no channel, one "Start".
-//   agent      a subagent (agents.items[]): the parts of this agent's workflow
-//   (the agents themselves are the workspace's: Voice test, Support Agent…)
+// It reads left to right, as a call goes. Block types, in the configuration's terms:
+//   trigger    a channel a call or chat comes in on (channels[]) with its greeting; leads to the subagent that answers
+//              first (agents.entry). With no channel, one "Start".
+//   agent      a subagent (agents.items[]); the agents themselves are the workspace's (Voice test, Support Agent…)
 //   say, state, step, end, transfer (left of a subagent)   what it does as it takes over (agent.on_enter)
-//   end, transfer, agentTransfer (right of a subagent)     where it can send the caller: hang up, a person's number, another of your agents
-//   model, knowledge, tool (plugged in under a subagent)   what it uses: its AI model, the knowledge it reads, its tools
-// And what an arrow is: a hand-over to another agent (agent.handoffs, or an on_enter or tool step that hands over), a tool's own hand-over, a safety
-// rule's hand-over, "back to the first agent", or the plain link between an agent and one of its blocks.
+//   end, transfer, agentTransfer (right of a subagent)     where it sends the caller: hang up, a number, another agent
+//   model, knowledge, tool (plugged in under a subagent)   what it uses: its AI model, its knowledge, its tools
+// Arrows: a hand-over to another subagent (agent.handoffs, or an on_enter or tool step that hands over), a tool's or a
+// safety rule's hand-over, "back to the first agent", or the link between a subagent and one of its blocks.
 
 import { isObj } from '../form/engine.js';
 import { BUILTIN_WORDS, plainKind, plainToolKind } from '../form/plainKinds.js';
@@ -28,9 +25,9 @@ import { textWidth, wrapText } from './textMeasure.js';
 import { planLanes } from './edgeLanes.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-// a block is its icon, its name and one grey line (the rest is in its tooltip and its panel); a plug-in is a round icon with its name under it
+// a block is an icon, a name and one grey line (more in its tooltip and panel); a plug-in is a round icon over its name
 export const SIZE = { start: { w: 196, h: 60 }, trigger: { w: 196, h: 60 }, agent: { w: 256, h: 76 }, step: { w: 208, h: 60 }, plug: { w: 84, h: 88 } };
-// plug: a subagent and what is plugged in under it; plugs: one plug-in and the next
+// plug: between a subagent and its plug-ins; plugs: between one plug-in and the next
 const GAP = { plug: 56, plugs: 16 };
 // no line leaves or reaches a block nearer its top or bottom than this
 const PORT_INSET = 10;
@@ -38,7 +35,7 @@ const PAD = 40;
 // the nearest a block comes to the picture's top and left edges (the canvas keeps a dragged block there too)
 export const EDGE = 8;
 
-// the Start block's id (an agent with no channel): never an agent's (agent ids have no colon, and a subagent named "Start" has the id "start")
+// the Start block's id (no channel): never an agent id, since those have no colon (a subagent named "Start" is "start")
 export const START_ID = '::start';
 export const triggerId = (channelId) => `::channel::${channelId}`;
 export const enterId = (agentId, index) => `${agentId}::enter::${index}`;
@@ -60,13 +57,13 @@ export function parseNodeId(id) {
 // where a call begins: a channel's block, or Start
 export const isTriggerId = (id) => id === START_ID || String(id).startsWith('::channel::');
 
-// words as they are, on one line of text (spaces and line ends made one); never cut: a block grows to hold them
+// words on one line (whitespace collapsed), never cut: a block grows to hold them
 const clip = (text) =>
   String(text || '')
     .replace(/\s+/g, ' ')
     .trim();
 
-// One action of an agent's "when it takes over" list, as a block (or null when it is really a hand-over, which is an arrow).
+// One on_enter action as a block (or null when it is really a hand-over, drawn as an arrow).
 function enterBlock(action, config) {
   if (!isObj(action)) return null;
   switch (action.type) {
@@ -108,15 +105,15 @@ function targetWords(target) {
   if (isObj(target) && target.lookup) return 'chosen by what the caller wants';
   return '';
 }
-// A transfer block's line: where calls go, or (with no number yet) what callers get instead, marked so the block can say it needs one.
+// A transfer block's line: where calls go or, with no number yet, the fallback (flagged so the block can say so).
 const NO_NUMBER = 'No number yet: callers are offered a callback';
 function numberWords(transfer) {
   const words = clip(targetWords(transfer?.target));
   return words ? { sub: words } : { sub: NO_NUMBER, noNumber: true };
 }
 
-// The other agent of the workspace a number reaches (workspace: { agents: [{ id, name, numbers: [{ number }] }] }), or null. Numbers are compared by
-// their digits and letters only ("+1 (800) 555-0100" is "18005550100"); a SIP address names its number before the "@".
+// The workspace agent a number reaches (workspace: { agents: [{ id, name, numbers: [{ number }] }] }), or null. Numbers
+// compare by digits and letters only ("+1 (800) 555-0100" is "18005550100"); a SIP address's number is before the "@".
 const plainNumber = (v) =>
   String(v ?? '')
     .replace(/^(sips?|tel):/i, '')
@@ -161,7 +158,7 @@ function modelOf(agent, config) {
   return { label: model ? modelLabel('llm', provider, model) : 'No model yet', sub: mine ? 'Its own model' : 'Default model', own: !!mine, missing: !model };
 }
 
-// workspace: the other agents and their numbers (useWorkspaceAgents), so a transfer to one of them is drawn as an Agent transfer
+//   workspace: other agents and their numbers (useWorkspaceAgents), so a transfer to one draws as an Agent transfer
 export function buildWorkflow(config, { tools = true, workspace = null } = {}) {
   const agents = list(config?.agents?.items).filter((a) => isObj(a) && typeof a.id === 'string' && a.id);
   const empty = agents.length === 0;
@@ -195,8 +192,8 @@ export function buildWorkflow(config, { tools = true, workspace = null } = {}) {
     edges.push({ ...edge, id });
   };
 
-  // where a call comes in: each channel, with what it says first (one switched off is drawn faint); with no channel, Start
-  // (`channelIndex` is the channel's place in config.channels itself, which the panel reads and writes, not its place among the ones drawn)
+  // where a call comes in: each channel with its greeting (faint when switched off); with no channel, Start.
+  // `channelIndex` is the index in config.channels (which the panel edits), not among the drawn ones.
   const channels = list(config?.channels)
     .map((c, at) => ({ c, at }))
     .filter(({ c }) => isObj(c) && typeof c.id === 'string' && c.id);
@@ -241,9 +238,9 @@ export function buildWorkflow(config, { tools = true, workspace = null } = {}) {
     addEdge({ id: `${agent.id}->${nodeId}`, from: agent.id, to: nodeId, kind: 'exit', stub: true, label: '', ref });
   };
 
-  // the built-in tools that let a call leave an agent: hanging up, passing to a person, going back to the agent that answers first
+  // built-in tools that let a call leave a subagent: hang up, pass to a person, go back to the first subagent
   const LEAVING = ['end_call', 'transfer_or_callback', 'return_to_entry'];
-  // a step that takes the call away from the agent: hanging up, a transfer, going back, or a hand-over to an agent that is there
+  // a step that takes the call away: hang up, transfer, go back, or hand over to an existing agent
   const leavesWith = (action) =>
     isObj(action) && (['end_call', 'transfer', 'return_to_entry'].includes(action.type) || (action.type === 'handoff' && ids.has(action.to)));
   const leavesBy = (toolId) => {
@@ -255,8 +252,8 @@ export function buildWorkflow(config, { tools = true, workspace = null } = {}) {
   };
   agents.forEach((agent, index) => {
     const offered = list(agent.tools).filter((t) => typeof t === 'string');
-    // a subagent a call can reach but never leave: it can't hang up, hand over or pass the caller back (the one that answers first is left alone: a
-    // caller can always end a call it starts)
+    // a dead end: a call reaches the subagent but can't leave (no hang-up, hand-over or way back). The first subagent
+    // is exempt, since a caller can always end a call it starts.
     const deadEnd =
       agent.id !== entry && !list(agent.handoffs).some((h) => isObj(h) && ids.has(h.to)) && !list(agent.on_enter).some(leavesWith) && !offered.some(leavesBy);
     nodes.push({
@@ -268,7 +265,7 @@ export function buildWorkflow(config, { tools = true, workspace = null } = {}) {
       index,
       entry: agent.id === entry,
       detail: `${offered.length} tool${offered.length === 1 ? '' : 's'}`,
-      // the start of what it is told to do, the grey line of its block
+      // the first sentence of its instructions, as the block's grey line
       brief: clip(String(agent.instructions?.role || '').split(/(?<=[.!?])\s/)[0]),
       deadEnd,
       // hand-overs to an agent that no longer exists: no arrow, listed in its panel to be taken away
@@ -493,12 +490,8 @@ export function labelBox(text) {
   return { lines, width: Math.ceil(width), height: lines.length * LABEL.line + 2 * LABEL.pad.y };
 }
 
-// Where each block goes when nobody has moved it: in columns, left to right as a call goes (the channels, the subagent
-// that answers first, those it passes callers to…), placed so that the arrows cross as little as can be, run between
-// the blocks and never through one, and the words on each arrow have a place of their own. Each subagent keeps what it
-// uses plugged in under it (the two take one place). A block somebody dragged keeps the place saved for it, and the
-// blocks of a subagent that was dragged follow it; an arrow to or from a block that is not where the layout put it
-// finds its own way (geometry.js).
+// Default places: columns left to right as a call goes, arrows crossing little, each subagent's plug-ins under it.
+// Saved places win (a moved subagent's blocks follow it); an arrow to a moved block routes itself (geometry.js).
 function layout(nodes, edges, { entry, saved }) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   // a subagent no hand-over leads to from where a call starts can never be reached
@@ -521,7 +514,7 @@ function layout(nodes, edges, { entry, saved }) {
 
   sizeBlocks(nodes);
   const drawn = edges.filter((e) => !e.hidden && e.kind !== 'plug' && e.kind !== 'uses' && byId.has(e.from) && byId.has(e.to));
-  // a block with many lines leaving (or reaching) it is made tall enough for each to have a point of its own on its side, 8px or more apart
+  // a block with many lines on one side grows so each has its own point there, at least 8px apart
   nodes
     .filter((n) => n.role !== 'plug')
     .forEach((n) => {
@@ -552,7 +545,7 @@ function layout(nodes, edges, { entry, saved }) {
     g.setEdge(e.from, e.to, lb ? { width: lb.width, height: lb.height, labelpos: 'c' } : {}, e.id);
   });
   dagre.layout(g);
-  // each line on a lane of its own between the columns, the columns moved apart where the lanes need the room (edgeLanes.js)
+  // each line on its own lane between the columns, which move apart where the lanes need room (edgeLanes.js)
   const lanes = planLanes(
     new Map(
       main.map((n) => {
@@ -596,8 +589,8 @@ function layout(nodes, edges, { entry, saved }) {
     const p = saved[id];
     return isObj(p) && Number.isFinite(p.x) && Number.isFinite(p.y) ? inside(p) : null;
   };
-  // blocks with a place of their own first; then the rest where the layout (or their moved subagent) puts them, moved aside only as far as needed so
-  // nothing lies on top of anything else
+  // blocks with saved places first; then the rest where the layout (or their moved subagent) puts them, nudged only
+  // as far as needed so nothing overlaps
   const taken = [];
   let nudged = 0;
   const free = (x, y, n) => !taken.some((t) => x < t.x + t.w + 16 && x + n.w + 16 > t.x && y < t.y + t.h + 16 && y + n.h + 16 > t.y);
@@ -649,8 +642,8 @@ function layout(nodes, edges, { entry, saved }) {
     const base = defaults.get(n.id) || { x: PAD, y: PAD };
     n.placed = n.x !== Math.max(EDGE, base.x) || n.y !== Math.max(EDGE, base.y);
   });
-  // the route on its lanes for each arrow whose two blocks are where the layout put them (else the arrow finds its own
-  // way), and the place of its words; its two ends exactly on the sides of its blocks
+  // arrows whose two blocks are where the layout put them follow their lanes (others route themselves), with a place
+  // for their words; their ends sit exactly on the block sides
   drawn.forEach((e) => {
     const route = lanes.routes.get(e.id);
     const a = byId.get(e.from);
@@ -680,8 +673,8 @@ export function describeItems(flow) {
     rule: 'passes the caller, under a safety rule, to',
     return: 'sends the caller back to',
   };
-  // in the order the picture is read: where a call starts, then agent by agent (in the order of the list), what it does
-  // as it takes over, where it can send the caller, then what else it can do
+  // in reading order: where a call starts, then subagent by subagent (list order): what it does as it takes over,
+  // where it can send the caller, then what else it can do
   const agentOrder = new Map(flow.nodes.filter((n) => n.type === 'agent').map((n, i) => [n.id, i]));
   const ownerOf = (id) => flow.nodes.find((n) => n.id === id)?.agent || id;
   const owner = (e) => (e.kind === 'start' ? -1 : (agentOrder.get(e.kind === 'enter' ? ownerOf(e.to) : ownerOf(e.from)) ?? agentOrder.size));

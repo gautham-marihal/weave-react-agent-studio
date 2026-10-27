@@ -2,10 +2,9 @@ import React from 'react';
 import Icon from '../../ui/Icon.jsx';
 import { PartPanel, PartRow, Parts } from '../../ui/Parts.tsx';
 
-// The shape every page of an agent has: a title with a line about it, the one main action on the right, parts to switch between (when the page has
-// several: tabs, ui/Parts.tsx), then the page. `wide` lets a page use the whole width (a canvas, a table); the rest
-// read in a column. `partsInHead` puts the parts on the title's row, on the right, so what is under them starts higher
-// (the Workflow's canvas, which is as tall as the window leaves it).
+// Every agent page's frame: title and lead, the main action on the right, part tabs (ui/Parts.tsx), then the page.
+//   wide: use the whole width (a canvas, a table); other pages read in a column
+//   partsInHead: put the part tabs on the title row so the content starts higher (the Workflow canvas)
 export default function PageShell({ title, lead, actions, parts, part, onPart, wide = false, children, partsInHead = false }) {
   const tabs = parts && parts.length > 1 ? <PartRow className="nlParts" label={`${title} sections`} items={parts} value={part} /> : null;
   const inHead = partsInHead && tabs;
@@ -44,9 +43,9 @@ export default function PageShell({ title, lead, actions, parts, part, onPart, w
   );
 }
 
-// One setting as a row: what it is, what it is now, and a chevron that opens its panel. A row that needs attention says so without being opened. Its
-// name is what it shows (the setting, what it is now, its note), as it is seen.
-//   tip: more for the tooltip (the id the configuration uses, for whoever needs it); the tooltip starts with the value, which a narrow row cuts short
+// One setting as a row: what it is, its value, and a chevron that opens its panel; a problem shows without opening.
+// Its accessible name is its visible text.
+//   tip: extra tooltip text (the configuration id); the tooltip starts with the value, which a narrow row cuts short
 export function SettingRow({ icon, title, value, hint, status, onOpen, tip, children }) {
   return (
     <button type="button" className={`nlRow ${status ? status.tone || '' : ''}`} onClick={onOpen} title={[value, tip].filter(Boolean).join('\n') || undefined}>

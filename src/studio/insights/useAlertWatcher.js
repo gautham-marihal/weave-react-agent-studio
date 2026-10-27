@@ -3,10 +3,9 @@ import { effectiveRules, evaluateAlerts, lookback, reconcile } from './alertsMod
 import { loadCalls, loadFacts, newestFirst } from './callData.ts';
 import { getInsights, getLive, setInsights, setLive } from './insightsStore.js';
 
-// Checks every agent's recent calls for alerts while the studio is open: once soon after it opens, then every few
-// minutes, and again when the tab comes back after a while. What it finds goes to the shared store (the bell, the
-// Alerts page, the banners on an agent read it); an alert that is new this time is also shown as a browser notification
-// when the person turned those on. It only reads.
+// Checks every agent's recent calls for alerts while the studio is open: soon after opening, every few minutes, and
+// when the tab returns after a while. Results go to the shared store (bell, Alerts page, agent banners); new alerts
+// also show as browser notifications when turned on. Read-only.
 
 export const CHECK_EVERY_MS = 3 * 60 * 1000;
 const RECORDS_PER_AGENT = 40;
@@ -15,7 +14,7 @@ let checkNowFn = null;
 // Runs the check now (the Alerts page's button); nothing happens when no watcher is running.
 export const checkAlertsNow = () => (checkNowFn ? checkNowFn() : null);
 
-// A check that was stopped (another workspace opened, the studio closing) settles nothing: what it read is not all there is.
+// A stopped check (another workspace opened, the studio closing) settles nothing: what it read is not all there is.
 const stopped = () => new DOMException('The check was stopped.', 'AbortError');
 
 export async function checkAlerts(bots, { nowMs = Date.now(), signal } = {}) {
@@ -35,9 +34,8 @@ export async function checkAlerts(bots, { nowMs = Date.now(), signal } = {}) {
   const { facts, failedBots } = await loadFacts(wanted, { known: factsSeen, signal });
   if (signal?.aborted) throw stopped();
   factsSeen = facts;
-  // Only the agents whose calls (and their records) were all read are checked: one whose reading failed keeps the
-  // alerts it had, open and acknowledged as they were, rather than having them cleared (and coming back as new next
-  // time) because nothing could be seen.
+  // Only agents whose calls and records were all read are checked: one whose reading failed keeps its alerts as they
+  // were, rather than having them cleared (and coming back as new) because nothing could be seen.
   const unread = new Set([...errors.map((e) => e.botId), ...failedBots]);
   const checked = new Set(ids.filter((id) => !unread.has(id)));
   const kept = getLive().alerts.filter((a) => unread.has(a.bot));
@@ -48,7 +46,7 @@ export async function checkAlerts(bots, { nowMs = Date.now(), signal } = {}) {
   return { alerts, fired };
 }
 
-// A browser notification for each alert that is new this time (and not snoozed), when the person turned them on and the browser allows it.
+// A browser notification for each new, unsnoozed alert, when the person turned them on and the browser allows it.
 export function notify(fired, { onOpen } = {}) {
   const { notify: prefs, acks } = getInsights();
   if (!prefs.browser || typeof window === 'undefined' || !('Notification' in window) || window.Notification.permission !== 'granted') return 0;
@@ -97,10 +95,8 @@ export function useAlertWatcher({ bots = [], enabled = true, everyMs = CHECK_EVE
     return job;
   }, []);
 
-  // Another workspace opened: what was found for agents that aren't in it is dropped at once (all of it, in a workspace
-  // with no agents), rather than shown there until its own check is done; it comes back when that workspace is opened
-  // again. (and the time of the last check, which was of another workspace: it is "not checked yet" until its own check
-  // is done)
+  // Another workspace opened: results for agents not in it are dropped at once (all, if it has none) rather than shown
+  // until its own check is done, and the last-check time resets to "not checked yet"; they return when switching back.
   const idsKey = bots.map((b) => b.id).join(',');
   useEffect(() => {
     const ids = new Set(latest.current.bots.map((b) => b.id));

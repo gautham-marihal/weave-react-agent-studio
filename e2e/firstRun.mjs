@@ -101,10 +101,18 @@ await page.waitForSelector('.dashMain');
 const afterSignIn = await mark();
 
 await scan();
-await page
-  .getByRole('button', { name: /Create agent/ })
-  .first()
-  .click();
+// the first-time setup ends in the create dialog; opened another way, it is the "Create agent" button
+const opened = await page
+  .getByPlaceholder('e.g. Acme Support')
+  .waitFor({ timeout: 4000 })
+  .then(() => true)
+  .catch(() => false);
+if (!opened) {
+  await page
+    .getByRole('button', { name: /Create agent/ })
+    .first()
+    .click();
+}
 await page.getByPlaceholder('e.g. Acme Support').waitFor();
 await scan();
 await page.getByPlaceholder('e.g. Acme Support').fill('Harbour Plumbing');

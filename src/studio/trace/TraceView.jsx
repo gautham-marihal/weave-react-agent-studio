@@ -2,10 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GROUPS, describeRecords, filterRows, groupCounts, traceAsText, traceSummary } from './records.js';
 import './trace.css';
 
-// One component for what happened in a conversation: the Sessions page (a real call), the Test tab (the conversation just had) and a
-// failed scenario (what the runner did) all show the same records, so they all use this. It lists them in order, lets you narrow to the
-// kinds you care about (the conversation, the tools, the API requests, the errors…), marks what went wrong, and shows any record's raw
-// fields on request. `live` follows a call in progress.
+// What happened in a conversation, for a real call, the Test tab and a failed scenario (all the same records): rows in
+// order, filters by kind, what went wrong marked, raw fields on request. `live` follows a call in progress.
 export default function TraceView({ records, live = false, compact = false, title = 'What happened', emptyText = 'Nothing has been recorded yet.', note }) {
   const [active, setActive] = useState([]);
   const [copied, setCopied] = useState(false);

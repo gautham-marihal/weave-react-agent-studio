@@ -1,8 +1,6 @@
 // What the AI is told, and how its answer is read. Pure: no network, no DOM.
-//
-// The assistant is asked for the WHOLE configuration back (not a patch), through one tool, so the answer has a shape
-// that can be checked: the same validator that checks a hand-made draft checks this one, and what it finds is handed
-// back to the model to fix. Nothing here knows which provider answers.
+// The model returns the WHOLE configuration (not a patch) through one tool, so the hand-made draft's validator can
+// check it and its findings go back to fix. Nothing here knows which provider answers.
 
 import { isObj } from '../form/engine.js';
 
@@ -67,7 +65,7 @@ export function systemPrompt(schema) {
 
 const asText = (value) => JSON.stringify(value, null, 1);
 
-// The first message: the current draft and what is wanted. `earlier` is what the person asked before in this session, for context.
+// The first message: the current draft and what is wanted. `earlier`: what the person asked before in this session.
 export function requestMessage({ request, config, earlier = [] }) {
   const parts = [];
   if (earlier.length)

@@ -1,6 +1,5 @@
-// "＋ New …" next to a field that points at something (a message, a state variable, an HTTP connection): make the thing and
-// point the field at it in one step, so nobody has to leave the field, find the right section, add it there and come back.
-// Pure: no network, no DOM.
+// "＋ New …" beside a field that points at something (a message, a state variable, an HTTP connection): create the thing
+// and point the field at it in one step, without leaving the field. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 import { freshId } from './references.js';

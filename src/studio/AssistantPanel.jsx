@@ -1,23 +1,24 @@
-import React, { useMemo, useState } from 'react';
-import { ASSISTANT, MIN_DESCRIPTION, generateDraft } from '../demo/draftAssistant.js';
-import { minimalConfig } from '../demo/minimalConfig.js';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { ASSISTANT } from '../demo/draftAssistant.js';
 import { readSimple } from './simple/simpleModel.js';
 
-// "Describe the agent" in the Create dialog: write what it should do, get a draft to review. The assistant is the rule-based demo one
-// (demo/draftAssistant.js) and every part of this panel says so: what it is, what it assumed, and what it left for you to decide.
-export default function AssistantPanel({ description, onDescription, name, id, generated, onGenerated, edits, onEdits, disabled }) {
-  const [tried, setTried] = useState(false);
-  const tooShort = description.trim().length < MIN_DESCRIPTION;
+// "Describe the agent" in the Create dialog: describe what it should do, get a draft to review. The assistant is the
+// rule-based demo one (demo/draftAssistant.js); the panel says so, with what it assumed and left to you.
+export default function AssistantPanel({ description, onDescription, tried, tooShort, generated, edits, onEdits, disabled, focusOnOpen }) {
   const preview = generated?.result;
   const read = useMemo(() => (preview?.ok ? readSimple(preview.config) : null), [preview]);
-
-  const generate = () => {
-    setTried(true);
-    if (tooShort) return;
-    const result = generateDraft(description, minimalConfig(id || 'new-agent', name || 'New agent'), { name: name.trim() || undefined });
-    onGenerated({ result, for: description });
-    onEdits({ role: result.ok ? readSimple(result.config).role : '', greeting: result.ok ? readSimple(result.config).greeting : '' });
-  };
+  const box = useRef(null);
+  // The panel opens below the starting points, out of sight in a short window: scroll the box into view (and focus it
+  // after a click; arrowing through the starting points keeps focus there).
+  useEffect(() => {
+    box.current?.scrollIntoView({ block: 'nearest' });
+    if (focusOnOpen) box.current?.focus({ preventScroll: true });
+  }, [focusOnOpen]);
+  // a draft just written: its review starts below the box
+  const review = useRef(null);
+  useEffect(() => {
+    if (preview) review.current?.scrollIntoView({ block: 'start' });
+  }, [preview]);
   const stale = generated && generated.for !== description;
 
   return (
@@ -29,6 +30,7 @@ export default function AssistantPanel({ description, onDescription, name, id, g
         <span>Describe the agent</span>
         <small>Who it talks to, what it helps with, how it should sound, anything it must never do. A few sentences are enough.</small>
         <textarea
+          ref={box}
           className="stFInput"
           rows={5}
           value={description}
@@ -40,20 +42,17 @@ export default function AssistantPanel({ description, onDescription, name, id, g
         />
         {tried && tooShort && <small className="stFieldError">Describe what the agent should do in a sentence or two.</small>}
       </label>
-      <button type="button" className="quietButton" onClick={generate} disabled={disabled}>
-        {generated ? 'Generate again' : 'Generate a draft'}
-      </button>
 
       {preview && !preview.ok && (
-        <p className="stFieldError" role="alert">
+        <p ref={review} className="stFieldError" role="alert">
           {preview.problem}
         </p>
       )}
       {preview?.ok && (
-        <section className="asReview" aria-label="The generated draft">
+        <section ref={review} className="asReview" aria-label="The generated draft">
           {stale && (
             <p className="pvBanner warn" role="status">
-              You changed the description after this draft was made. Generate again to update it.
+              You changed the description after this draft was made. Press “Update the draft” to bring it up to date.
             </p>
           )}
           <h4>The draft, to review</h4>

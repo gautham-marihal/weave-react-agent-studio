@@ -28,7 +28,7 @@ const keyOfPath = (path) => (Array.isArray(path) ? path.join('.') : '');
 const firstSentence = (text) => (typeof text === 'string' ? (text.trim().match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text.trim()) : '');
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const sizeOf = (v) => (Array.isArray(v) ? v.length : isObj(v) ? Object.keys(v).length : 0);
-// The configuration with the agent that answers first offering the tool `id`.
+// The config with the entry agent offering the tool `id`.
 function offerToEntry(config, id) {
   const items = list(config?.agents?.items);
   const at = Math.max(
@@ -55,15 +55,14 @@ function iconFor(kind, item) {
   return 'shield';
 }
 
-// Above a channel's settings, in place of what it says first (asked once, on the Agent page). A channel that says
-// nothing first waits for the person to start; one of a kind that usually greets can be given the agent's first line
-// from here, since nowhere else adds it to just this channel.
+// Above a channel's settings, in place of its greeting (asked once, on the Agent page). A channel that usually greets
+// can be given the agent's first line here, since nowhere else adds it to just this channel.
 function GreetingNote({ config, set, index, onShowGreeting }) {
   const channel = list(config?.channels)[index];
   if (!isObj(channel)) return null;
   const line = firstLineOf(config);
   if (channel.greeting?.say !== undefined) {
-    // said as it is: the same line on every channel, the agent's first line (some channels wait), or a line of this channel's own
+    // the same line on every channel, the agent's first line (some channels wait), or this channel's own line
     const sameAs = (c) => isObj(c) && c.greeting?.say !== undefined && JSON.stringify(c.greeting.say) === JSON.stringify(channel.greeting.say);
     const every = list(config?.channels).filter(isObj).every(sameAs);
     const own = String(speechText(channel.greeting.say, config) || '').trim();
@@ -105,14 +104,13 @@ function GreetingNote({ config, set, index, onShowGreeting }) {
   );
 }
 
-// Which agents may use a tool, as a tick per agent (by name), at the top of the tool's panel: a tool no agent offers is
-// never used, so this is the first thing the panel asks. Ticking changes the agents' own lists of tools, on the panel's
-// copy like the rest of it.
+// Which agents may use a tool, one tick per agent, first in the tool's panel because a tool no agent offers is never
+// used. Ticking edits the agents' tool lists on the panel's copy.
 function ToolAgents({ config, set, index }) {
   const tool = list(config?.tools)[index];
   const agents = list(config?.agents?.items).filter((a) => isObj(a) && typeof a.id === 'string');
   if (!isObj(tool) || typeof tool.id !== 'string' || !tool.id || !agents.length) return null;
-  // with one agent, a tool a switch on the page stands for is given and taken there (asked once)
+  // with one agent, a tool that a page switch stands for is given and taken by that switch (asked once)
   if (agents.length === 1 && switchOf(config, tool.id)) return null;
   const toggle = (agentId, on) =>
     set({
@@ -149,8 +147,7 @@ const hostOf = (url) => {
     return '';
   }
 };
-// What a tool does, in a sentence of its own: where it passes calls, what it searches, what it asks, which form it
-// shows. '' when its kind says it all.
+// What a tool does, in one sentence (where it passes calls, what it searches...); '' when its kind says it all.
 function toolDoes(config, tool) {
   if (tool.builtin === 'transfer_or_callback') {
     const transfer = list(config?.telephony?.transfers).find((t) => isObj(t) && t.id === tool.params?.transfer);
@@ -172,8 +169,8 @@ function toolDoes(config, tool) {
   return '';
 }
 
-// The top of a tool's panel, in words: what it does, the switch on this page that stands for it, and when the agent uses it (which the agent reads to
-// decide, so it is asked here and not in the settings folded below). Changes go on the panel's copy like the rest of it.
+// The top of a tool's panel: what it does, its switch on this page, and when the agent uses it (the agent reads this to
+// decide, so it is asked here, not in the folded settings). Changes go on the panel's copy.
 function ToolPlain({ config, set, index, problem }) {
   const tool = list(config?.tools)[index];
   if (!isObj(tool)) return null;
@@ -183,7 +180,7 @@ function ToolPlain({ config, set, index, problem }) {
   const advice = describeAdvice(description);
   const setDescription = (text) =>
     set({ ...config, tools: config.tools.map((t, i) => (i === index ? (text ? { ...t, description: text } : omit(t, 'description')) : t)) });
-  // ending the call: what it says first, typed here, or the fixed line it says (changed under Fixed lines)
+  // ending the call: its last line typed here, or a fixed message (changed under Fixed lines)
   const ends = tool.builtin === 'end_call';
   const say = tool.params?.say;
   const setGoodbye = (text) =>
@@ -245,11 +242,10 @@ function ToolPlain({ config, set, index, problem }) {
     </section>
   );
 }
-// What a check on what is said does, in words, at the top of its panel: what it is, what it does when it finds
-// something, how it is enforced, and which side of the conversation it watches.
+// A check's panel top, in words: what it is, what it does on a hit, how it is enforced and which side it watches.
 const CHECK_SIDE = { input: 'It reads what the caller says, before the agent answers.', output: 'It reads what the agent says, before it is spoken.' };
-// A check for personal details asks what it looks for as ticks in words (as After the call's hiding card does), not as a list of ids; a kind it was
-// given that has no tick here is kept, ticked, under its own name. The last one stays: a check that looks for nothing finds nothing.
+// A personal-details check shows its kinds as ticks (as After the call does); an unknown kind is kept, ticked, under
+// its own name. The last tick stays: a check that looks for nothing finds nothing.
 function CheckPlain({ config, set, path, index }) {
   const rule = list(getAtPath(config, path))[index];
   const [refused, setRefused] = useState('');
@@ -300,12 +296,12 @@ function CheckPlain({ config, set, path, index }) {
   );
 }
 
-// A hand-over or ending rule in words at the top of its panel, and the switch above that made it (changed here, it becomes a rule of your own).
+// A hand-over or ending rule's panel top in words, with the switch that made it (once changed here, it is your own).
 function RulePlain({ config, index }) {
   const rule = list(config?.guardrails?.escalation)[index];
   if (!isObj(rule)) return null;
   const moment = momentOf(rule, config);
-  // one not finished yet says what is missing, rather than a sentence about nothing
+  // an unfinished rule says what is missing, rather than a sentence about nothing
   const when = isObj(rule.when) && Object.values(rule.when).some((v) => v !== undefined && v !== '' && !(Array.isArray(v) && !v.length));
   const then = rule.action === 'end_call' || (rule.action === 'handoff' && rule.to) || (rule.action === 'tool' && rule.tool);
   const missing = [!when && 'when it applies (Only when)', !then && 'what it does then'].filter(Boolean);
@@ -321,8 +317,8 @@ function RulePlain({ config, index }) {
   );
 }
 
-// What a panel asks above its form (so the form leaves it out), and what does not apply to the item as it is: a rule that runs a tool is not asked
-// which agent to hand over to, nor one that hands over which tool to run (each is shown again while it is set).
+// What the form leaves out: what the panel asks above it, and what doesn't apply (a tool rule isn't asked for an agent,
+// nor a hand-over rule for a tool; each shows again while it is set).
 function askedAbove(kind, itemPath, item) {
   if (kind === 'channels') return [[...itemPath, 'greeting', 'say']];
   if (kind === 'tools')
@@ -342,15 +338,12 @@ const omit = (o, key) => {
   return next;
 };
 
-// A page that lists the things of one kind the agent has (its tools, its channels, its checks on what is said), one row
-// each, with one place to add another. A row, and the adding, open a panel with just that item's settings, which works
-// on a copy until Done. The rest of what belongs on the page (connections, forms, transfers...) is a row too, opening
-// the settings form for just that section.
-//   lists:  [{ id, path, kind, word, title?, lead?, pickerKey, empty }]
-//   extras: [{ key, title, value (a sentence), icon, status?(config, engine),
-//   start? }]: `start` ({ title, text, label, make(config) }) is what an empty
-//   panel offers to begin from
-//   top: drawn above the lists (the setup's simple switches for what the page holds)
+// A page listing one kind of thing (tools, channels, checks), one row each, plus an Add. A row opens a panel with that
+// item's settings, edited on a copy until Done. Other sections (connections, forms...) are rows that open their form.
+//   lists: [{ id, path, kind, word, title?, lead?, pickerKey, empty }]
+//   extras: [{ key, title, value (a sentence), icon, status?(config, engine), start? }]
+//   extras[].start: { title, text, label, make(config) }, what an empty panel offers to begin from
+//   top: drawn above the lists (the setup's simple switches)
 export default function ListPage({
   title,
   lead,
@@ -374,12 +367,12 @@ export default function ListPage({
   const { providers } = useProviders();
   const engine = useMemo(() => (schema ? createEngine(schema) : null), [schema]);
   const [panel, setPanel] = useState(null); // { list, index, made?, extra? }
-  // an item just deleted from its panel: { label, previous, after }, offered back with Undo until the draft changes
-  // again (`after` is the draft as the deletion left it)
+  // an item just deleted from its panel, offered back with Undo until the draft changes again
+  // { label, previous, after }: `after` is the draft as the deletion left it
   const [removed, setRemoved] = useState(null);
   useEffect(() => {
     if (!removed) return;
-    // the first draft that is not the one before the deletion is the one it left
+    // the first draft other than `previous` is the one the deletion left
     if (!removed.after) {
       if (config !== removed.previous) setRemoved({ ...removed, after: config });
     } else if (config !== removed.after) setRemoved(null);
@@ -401,7 +394,7 @@ export default function ListPage({
   }, [openRequest]);
 
   const problemsIn = (path) => issues.filter((i) => path.every((p, n) => i.path[n] === p)).length;
-  // a problem with what a tool's panel asks above its folded settings (when it uses it)
+  // a problem in what a tool's panel asks above its folded settings (when it uses it)
   const ownProblem = (path) => issues.some((i) => keyOfPath(i.path) === keyOfPath([...path, 'description']));
 
   const pickerOf = (l) => {
@@ -439,9 +432,8 @@ export default function ListPage({
     );
   };
 
-  // Ending the call and passing to a person need one tool each: an agent that has one is offered it again (its panel
-  // opens) rather than a second one that nothing would use. Other kinds can sensibly be added twice (two lookups, two
-  // forms).
+  // Ending the call and passing to a person need one tool each: if one exists its panel opens, rather than adding a
+  // second that nothing would use. Other kinds can sensibly be added twice.
   const ONE_OF = { end_call: 'end_call', hand_over: 'transfer_or_callback' };
   const toolOptions = (options) =>
     options.map((option) => {
@@ -449,7 +441,7 @@ export default function ListPage({
       const at = builtin ? list(config?.tools).findIndex((t) => isObj(t) && t.type === 'builtin' && t.builtin === builtin) : -1;
       return at < 0 ? option : { ...option, help: `${option.help} It has one already: this opens it.`, existing: at };
     });
-  // a kind of channel it has already: said on its card, so a second one (a twin that also needs its own widget or number) is made knowingly
+  // a channel kind it already has is marked on its card, so a second (needing its own widget or number) is deliberate
   const channelOptions = (options) =>
     options.map((option) =>
       option.type && !option.badge && list(config?.channels).some((c) => isObj(c) && c.type === option.type)
@@ -488,14 +480,14 @@ export default function ListPage({
     }
     const { list: l, index, made } = panel;
     const itemPath = [...l.path, index];
-    // a new channel is added as the switches above add one: it says the agent's first line, and a voice one brings
-    // speech models and the recording notice
+    // a new channel is added as the switches add one: with the agent's first line, and for voice, speech models and the
+    // recording notice
     const initial = !made
       ? undefined
       : l.kind === 'channels'
         ? (c) => addChannel(c, made, { providers })
         : l.kind === 'tools'
-          ? // a new tool is given to the agent that answers first (its panel says so, and can give it to others instead)
+          ? // a new tool goes to the entry agent (its panel says so and can give it to others instead)
             (c) => offerToEntry(setAtPath(c, l.path, [...list(getAtPath(c, l.path)), made]), made?.id)
           : (c) => setAtPath(c, l.path, [...list(getAtPath(c, l.path)), made]);
     const item = made || list(getAtPath(config, l.path))[index];
@@ -512,7 +504,7 @@ export default function ListPage({
       >
         {(c, s, staged, { done }) => (
           <Suspense fallback={<Spinner label="Loading the settings" />}>
-            {/* what a channel says first is the same on every channel and is asked on the Agent page, so its panel does not ask it again */}
+            {/* the greeting is asked on the Agent page, so the channel panel doesn't ask it again */}
             {l.kind === 'channels' && <GreetingNote config={c} set={s} index={index} onShowGreeting={onShowGreeting} />}
             {l.kind === 'tools' && (
               <ToolPlain
@@ -541,8 +533,8 @@ export default function ListPage({
               onOpenJson={onOpenJson}
               onShowModels={onShowModels}
               hide={askedAbove(l.kind, itemPath, getAtPath(c, itemPath))}
-              // a tool's settings in full (its kind, its name for the model, what it fills in, what happens after) are folded under the words above;
-              // open for a new one, which may need them filled in, and for one with something to fix in them
+              // the tool's full settings are folded under the words above; open for a new tool (it may need them) or
+              // one with something to fix
               fold={l.kind === 'tools' ? { label: 'Technical details', open: !!made || problemsIn(itemPath) > (ownProblem(itemPath) ? 1 : 0) } : null}
             />
           </Suspense>
@@ -562,7 +554,7 @@ export default function ListPage({
               intro={INTRO[l.pickerKey]}
               options={opts}
               onPick={(option, made) => pick(l, option, made)}
-              // outlined: the bar above has the page's one dark button (Publish, or Save)
+              // outlined: the top bar has the page's one dark button (Publish, or Save)
               className="nlAddPicker quiet"
             />
           ) : null;
@@ -606,7 +598,7 @@ export default function ListPage({
             lead={l.lead}
             action={
               opts ? (
-                // one of several lists on the page: a quieter button, its heading says what it adds
+                // one of several lists: a quieter button, since its heading says what it adds
                 <AddPicker
                   what={WHAT[l.pickerKey] || `a ${l.word}`}
                   intro={INTRO[l.pickerKey]}
@@ -626,7 +618,7 @@ export default function ListPage({
                   const { title: t, hint, id } = rowName(l.kind, item, index, config);
                   const used = l.kind === 'tools' && isObj(item) && item.id ? agentsUsingTool(config, item.id) : null;
                   const problems = problemsIn([...l.path, index]);
-                  // a tool or a check says what it is in words ("Hides personal details"), and a check what it does when it finds something
+                  // tools and checks say what they are ("Hides personal details"); checks also say what they do
                   const kindWord = !isObj(item) ? '' : l.kind === 'tools' ? plainToolKind(item) : l.kind === 'guardrails' ? plainKind(item.type) : '';
                   const checkThen = l.kind === 'guardrails' && isObj(item) ? checkWords(item).then : '';
                   const status = problems
@@ -635,16 +627,16 @@ export default function ListPage({
                       ? { tone: '', text: 'Not used' }
                       : l.kind === 'channels' && isObj(item) && item.enabled === false
                         ? { tone: '', text: 'Off' }
-                        : // a kind nothing connects to the runtime yet (WhatsApp, SMS, email) says so, as its card in Add does
+                        : // a kind the runtime can't run yet (WhatsApp, SMS, email) says so, as its card in Add does
                           l.kind === 'channels' && isObj(item) && notRunningYet(channelTypes, item.type)
                           ? { tone: '', text: NOT_RUNNING }
                           : null;
-                  // which agents use a tool is said only when there are several (with one, it is that agent)
+                  // which agents use a tool, only when there are several
                   const several = list(config?.agents?.items).length > 1;
                   const usedBy = several && used && used.length ? `used by ${used.map((a) => agentLabel(config, a)).join(', ')}` : '';
-                  // what the page around it knows about a row that the configuration doesn't say (a phone line's number)
+                  // what the page knows about a row beyond the config (a phone line's number)
                   const extra = rowInfo && isObj(item) ? rowInfo(l.kind, item) : '';
-                  // a tool says what stands for it on this page (a switch above), else when it is used (the first sentence of its description)
+                  // a tool names its switch above, else when it is used (its description's first sentence)
                   const toggle = l.kind === 'tools' && isObj(item) ? switchOf(config, item.id) : null;
                   const when = l.kind === 'tools' && isObj(item) ? firstSentence(item.description) : '';
                   const said = toggle?.on ? 'switched on above' : when || (checkThen ? `then it ${checkThen}` : '') || (hint && hint !== kindWord ? hint : '');

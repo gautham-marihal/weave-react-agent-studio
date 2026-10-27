@@ -76,7 +76,7 @@ const inWords = (names) => {
 };
 const says = (names, verb) => `${inWords(names)} ${new Set(names).size === 1 ? `${verb}s` : verb}`;
 
-// What the line under the greeting says: which channels say it (or wait for the caller), and what any other channel says instead.
+// The line under the greeting: which channels say it (or wait for the caller), and what other channels say instead.
 //   greeting: from greetingOf
 function greetingHint(greeting) {
   const others = greeting.others.map((o) => `${o.name} says “${o.text}”.`).join(' ');
@@ -95,25 +95,24 @@ function ModelsBody({ config, set }) {
   return <ModelPicker config={config} set={set} providers={providers} live={live} speech={readSimple(config).voiceChannel} />;
 }
 
-// The agent's own page: what it should do, what it says first, and the few choices that make it sound like itself. The
-// text you write is on the page; the choices (voice, language, models, behaviour) are rows that open a panel with just
-// that topic, and only "Done" puts the panel's changes into the draft.
-//   plan: the steps to get ready (readiness.js): a step still to do on this page marks its row or field, as the menu's card names it
+// The Agent page: what it should do, what it says first, and the choices that make it sound like itself. Choices are
+// rows that open a panel on one topic; only "Done" puts the panel's changes into the draft.
+//   plan: readiness steps (readiness.js); one still to do on this page marks its row or field
 export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels, openRequest = null, notices = null, plan = null }) {
   const config = editor.parsed.value;
   const [open, setOpen] = useState(null); // 'voice' | 'language' | 'models' | 'behaviour' | 'persona' | 'messages'
-  // the channels the greeting field writes to, kept from its first change on this visit: emptied and typed again, it is still theirs, and a channel
-  // that says something else is never written over by it
+  // the channels the greeting writes to, fixed at its first change this visit, so emptying and retyping keeps them and
+  // a channel with its own greeting is never overwritten
   const [greetingFor, setGreetingFor] = useState(null);
   // "Show me" on a problem opens the panel that holds it
   useEffect(() => {
     if (openRequest?.id || openRequest?.open) setOpen(openRequest.id || openRequest.open);
   }, [openRequest]);
-  // a step on Home that is about a field on this page: bring the field into view and put the cursor in it
+  // a Home step about a field on this page: scroll the field into view and focus it
   useEffect(() => {
     const label = { role: 'What the agent should do (its role)', greeting: 'Greeting' }[openRequest?.focus];
     if (!label) return;
-    // not cancelled when the request is cleared at once: the request is for this visit, and the field is there a moment after the page
+    // not cancelled when the request clears: it is for this visit, and the field appears a moment after the page
     window.setTimeout(() => {
       const el = [...document.querySelectorAll('textarea, input')].find((node) => node.getAttribute('aria-label') === label);
       if (el) {
@@ -128,11 +127,11 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
   const scope = useMemo(() => templateScope(config), [config]);
   const issues = useMemo(() => groupIssues(editor.report).filter((i) => i.severity === 'error' && i.path), [editor.report]);
   const errors = (match) => issues.filter(match).length;
-  // the steps of getting ready that are on this page and not done: their row says "To do" (a problem to fix says so instead)
+  // readiness steps on this page not yet done: their row says "To do" (a problem to fix says so instead)
   const todo = (plan?.steps || []).filter((step) => step.page === 'agent' && (step.state === 'todo' || step.state === 'blocked'));
   const todoOpen = new Set(todo.map((step) => step.target?.open).filter(Boolean));
   const status = (n, panel) => (n ? { tone: 'bad', text: `${n} to fix` } : panel && todoOpen.has(panel) ? { tone: 'warn', text: 'To do' } : null);
-  // a problem with one of the page's own fields is said under it, in words (the checks name the path)
+  // a problem with one of the page's fields is shown under it in words (the checks name the path)
   const entry = entryAgentIndex(config);
   const fieldError = (match, plain) => {
     const found = issues.find((i) => match(i.path));
@@ -154,19 +153,18 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
     if (next !== config) editor.setValue(next);
   };
 
-  // what would stop a call from starting with the models chosen (a key the server doesn't have, a provider it can't
-  // run): said on the row too, not only in its panel; the parts that hear and speak only for an agent that talks
+  // what would stop a call starting with these models (a missing key, an unsupported provider), shown on the row too;
+  // speech models only count for an agent that talks
   const { providers } = useProviders();
   const modelProblem = ['llm', ...(read.voiceChannel ? ['stt', 'tts'] : [])].map((stage) => slotProblem(stage, models[stage], providers)).find(Boolean);
   const voice = voicesFor(models.tts.provider).find((v) => v.voiceId === models.tts.voiceId);
   const voiceValue = models.tts.voiceId ? `${voice?.name || 'Custom voice'}${models.tts.provider ? ` · ${providerLabel(models.tts.provider)}` : ''}` : '';
-  // the other languages it speaks, by name, as the panel shows them (the main language's own base, "en" for en-US, is not one more)
+  // the other languages by name, as the panel shows them (the main language's base, "en" for en-US, isn't counted)
   const moreLanguages = spokenChips({ primary: read.primaryLanguage, speaks: read.speaks })
     .filter((chip) => !chip.main)
     .map((chip) => chip.name);
   const languageValue = read.primaryLanguage ? `${languageName(read.primaryLanguage)}${moreLanguages.length ? ` · also ${inWords(moreLanguages)}` : ''}` : '';
-  // in words, with the models' own names: "Language model: OpenAI GPT-4.1 Mini · Text-to-speech: ElevenLabs Flash v2.5"
-  // (not "LLM openai gpt-4.1-mini")
+  // with the models' display names: "Language model: OpenAI GPT-4.1 Mini · …", not "LLM openai gpt-4.1-mini"
   const modelsValue = ['llm', 'stt', 'tts']
     .map((id) => summarizeModels(config).find((m) => m.stage === id))
     .filter((m) => m && m.set)
@@ -175,7 +173,7 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
   const behaviourValue = [read.tone, read.styleRules.length ? `${read.styleRules.length} style rule${read.styleRules.length === 1 ? '' : 's'}` : '']
     .filter(Boolean)
     .join(' · ');
-  // the Personality and rules row says what its panel holds now: the name it gives, the company, how many rules every agent gets
+  // the Personality and rules row summarises its panel: the name, the company, how many rules every agent gets
   const persona = config && typeof config.persona === 'object' && config.persona ? config.persona : {};
   const sharedRules = Array.isArray(persona.shared_rules) ? persona.shared_rules.filter((r) => typeof r === 'string' && r.trim()).length : 0;
   const personaValue = [
@@ -193,8 +191,8 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
     ? `${lines.length} fixed line${lines.length === 1 ? '' : 's'}${lineLanguages.size > 1 ? ` in ${lineLanguages.size} languages` : ''}`
     : '';
 
-  // renamed: what it says first, the name it introduces itself by and its instructions may still say the old name; offered once the name box is left,
-  // never changed unasked
+  // after a rename, the greeting, persona name and instructions may still say the old name: offered once the name box
+  // is left, never changed unasked
   const nameAtFocus = useRef('');
   const [renamed, setRenamed] = useState(null); // { from, to }
   const oldNameIn = (text, name) => !!name && typeof text === 'string' && text.includes(name);
@@ -218,7 +216,7 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
       ].filter(Boolean)
     : [];
 
-  // hide: what another panel or page already asks for, left out so a person is asked once
+  // hide: what another panel or page already asks for, so a person is asked once
   const form = (keys, hide) => (staged) => (
     <Suspense fallback={<Spinner label="Loading the settings" />}>
       <FormEditor editor={staged} only={keys} hide={hide} embedded onShowJson={onShowJson} onOpenJson={onOpenJson} onShowModels={onShowModels} />
@@ -229,7 +227,7 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
     language: { title: 'Language', icon: 'globe', body: (c, s) => <LanguagePicker config={c} set={s} /> },
     models: { title: 'AI models', icon: 'sparkle', width: 'wide', body: (c, s) => <ModelsBody config={c} set={s} /> },
     behaviour: { title: 'Tone and style', icon: 'quote', body: (c, s) => <BehaviourFields config={c} set={s} /> },
-    // its tone and style rules are asked under Tone and style, and what callers are told about recording under After the call › Recording
+    // tone and style rules are under Tone and style; the recording notice is under After the call › Recording
     persona: {
       title: 'Personality and rules',
       icon: 'pencil',
@@ -433,7 +431,7 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
               title="Personality and rules"
               value={personaValue}
               hint="The name it introduces itself by, the company it speaks for, rules for every agent"
-              // not what its panel leaves out (the tone and style rules, and the recording notice, have their own places)
+              // not what its panel leaves out (tone and style rules and the recording notice live elsewhere)
               status={status(errors((i) => locate(i.path).drawer === 'persona'))}
               onOpen={() => setOpen('persona')}
             />

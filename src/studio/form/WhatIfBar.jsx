@@ -2,9 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { whatIfValue, whatIfVariables } from './serverPreview.js';
 import Select from '../../ui/Select.tsx';
 
-// "Preview as…": the what-ifs the server's previews take: which channel the caller is on, what time it is, which number
-// they call from, and what a few state values are. Shared by the prompt preview and the tool's "Try it", so both ask
-// the same questions in the same words. Only what was changed from the defaults is sent.
+// "Preview as…": the what-ifs the server's previews take (channel, time, caller number, a few state values). Shared by
+// the prompt preview and "Try it" so both ask the same in the same words; only changes from the defaults are sent.
 
 // The what-if choices as state, with the request fields they make: { channel, state, nowLocal, callerPhone }.
 export function useWhatIf(config) {

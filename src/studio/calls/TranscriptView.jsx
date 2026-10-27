@@ -4,9 +4,8 @@ import { Notice } from '../ui.jsx';
 import { formatWhen } from '../format.js';
 import { useAsync } from '../useAsync.js';
 
-// A call as a conversation and nothing else: who said what, in order (`GET /bots/{id}/calls/{call}/transcript`). The
-// trace beside it shows everything that happened (tools, requests, state); this is for reading the call the way the
-// caller and the agent lived it. It holds what the caller said.
+// A call as a conversation only: who said what, in order (`GET /bots/{id}/calls/{call}/transcript`).
+// The trace beside it shows everything else (tools, requests, state). It holds what the caller said.
 const SPEAKER = { user: 'Caller', caller: 'Caller', agent: 'Agent', assistant: 'Agent', system: 'System', tool: 'Tool' };
 const speakerOf = (role) => SPEAKER[String(role || '').toLowerCase()] || (role ? String(role) : 'Someone');
 

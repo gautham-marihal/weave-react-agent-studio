@@ -4,18 +4,17 @@ import type { CallRecords, CallSummary } from '../../api/types.ts';
 import { readCall } from '../replay/callFacts.js';
 import { sampleOf } from '../speed/speedModel.ts';
 
-// Reads calls for the pages that look across many of them (Speed, Monitoring, Home, the alert check, the questions
-// page), and only reads: the list of calls of each agent since a moment, and the records of the calls that need them, a
-// few agents (and a few calls) at a time. One agent or one call that cannot be read is left out and reported; it never
-// hides the rest.
+// Read-only call loading for pages that look across many calls (Speed, Monitoring, Home, alerts, questions): each
+// agent's calls since a moment, and the records of those that need them, a few at a time. A call or agent that can't be
+// read is left out and reported; it never hides the rest.
 
 const AT_A_TIME = 4;
 const PAGE = 100;
 
 export type ListedCall = CallSummary & { bot: string };
 
-// `size` at a time: as soon as one is done the next starts, so a slow answer holds up only its own place, not the few asked with it. The results come
-// back in the order of the items.
+// Runs `work` on `size` items at a time, starting the next as each finishes, so a slow one holds up only its own place.
+// Results keep the order of the items.
 export async function fewAtATime<T, R>(items: T[], size: number, work: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array<R>(items.length);
   let next = 0;
@@ -60,10 +59,8 @@ export async function loadCalls(
   };
 }
 
-// The records of a finished call (GET /calls/{id}), kept in the shared cache for as long as the studio is open: a
-// finished call does not change, so each is read once whichever page asks first (Speed, Monitoring, Home, the alert
-// check and the questions page all share it). A read that failed is not kept, so the next page to ask tries again; a
-// server hiccup is retried once.
+// A finished call's records (GET /calls/{id}), cached while the studio is open: they never change, so every page shares
+// one read. A failed read is not cached (the next page tries again), and a server hiccup is retried once.
 export function readFinishedCall(c: { bot: string; id: string }): Promise<CallRecords> {
   return queryClient.fetchQuery({
     queryKey: keys.call(c.bot, c.id),
@@ -78,9 +75,8 @@ export function readFinishedCall(c: { bot: string; id: string }): Promise<CallRe
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the facts are callFacts.js's (untyped) reading of a call
 type Facts = any;
 
-// The facts of each call (see replay/callFacts.js), by 'bot/id'. `known` are facts already read: a finished call does
-// not change, so it is not read again (and its records come from the shared cache when another page read them).
-// `failedBots`: the agents one of whose calls could not be read.
+// The facts of each call (see replay/callFacts.js), by 'bot/id'. `known` facts are not read again (a finished call
+// doesn't change). `failedBots`: agents with a call that couldn't be read.
 export async function loadFacts(
   calls: ListedCall[],
   { known = {}, signal }: { known?: Record<string, Facts>; signal?: AbortSignal } = {},

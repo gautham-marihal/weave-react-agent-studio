@@ -18,8 +18,9 @@ const press = (el, key) =>
 
 test('the colours of the style in use: five, its own first, one picked; a click or the arrow keys pick another, and each style keeps its own', async () => {
   localStorage.clear();
+  localStorage.setItem('weave_style', 'simple'); // the colours of one style, Simple's (a new visitor starts in Studio)
   const app = await mountScreen('stylecards', {}, { ready: '.stylePicker' });
-  assert.equal($$(app.container, '.styleCard').length, 6);
+  assert.equal($$(app.container, '.styleCard').length, 7);
   assert.deepEqual(
     radios(app.container).map((r) => r.getAttribute('aria-label')),
     ACCENTS.simple.map((o) => o.label),

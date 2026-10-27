@@ -4,8 +4,7 @@ import { sentenceCase } from '../ui/text.js';
 import Icon from '../ui/Icon.jsx';
 import { trapTab, useDialogFocus } from '../ui/useDialogFocus.js';
 
-// The agents area's small shared parts: Notice (a note in a colour), Modal (a dialog), Spinner, ErrorState (what went
-// wrong, with Try again), and where an agent runs (envLabel, EnvSlots).
+// Small shared parts of the agents area: Notice, Modal, Spinner, ErrorState (with Try again), envLabel and EnvSlots.
 
 const NOTICE_ICON = { error: 'alert', warn: 'alert', good: 'check', info: 'info' };
 
@@ -26,12 +25,12 @@ export function Notice({ kind = 'info', title, children, actions }) {
 
 export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wide = false, busy = false }) {
   const box = useRef(null);
-  // the keyboard goes into the dialog when it opens (unless a field in it took it), and back where it was when it closes
+  // focus moves into the dialog on open (unless a field took it) and back where it was on close
   useDialogFocus(box);
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    // Escape while the keyboard is outside the dialog (one pressed in it is taken below); an open list closes first (it marks its Escape as handled)
+    // Escape pressed outside the dialog (inside is handled below); an open list closes first and marks it handled
     const onKey = (event) => {
       if (event.key === 'Escape' && !busy && !event.defaultPrevented) {
         event.preventDefault();
@@ -44,8 +43,7 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
       document.removeEventListener('keydown', onKey);
     };
   }, [onClose, busy]);
-  // the keys pressed in the dialog stay in it: Escape closes it, and not the side panel or sheet it was opened from
-  // too; Tab goes round its own buttons
+  // keys stay in the dialog: Escape closes only the dialog, not the panel that opened it; Tab cycles its buttons
   const keys = (event) => {
     if (event.key === 'Escape') {
       if (!busy && !event.defaultPrevented) {
@@ -80,7 +78,7 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
             <Icon name="close" size={18} />
           </button>
         </div>
-        {/* the title and the buttons stay put; what is between them scrolls when it is taller than the window */}
+        {/* the title and buttons stay put; the body scrolls when taller than the window */}
         <div className="stModalBody">{children}</div>
         {footer && <div className="createModalFooter">{footer}</div>}
       </section>
@@ -149,11 +147,10 @@ export function Spinner({ label = 'Loading' }) {
   );
 }
 
-// Why something couldn't be loaded, in words for the person using the studio; what the person who runs the server needs (the server's own
-// message, the setting to check) is one click further down.
+// Why something couldn't load, in plain words; the server's own message and the setting to check are one click down.
 export function ErrorState({ error, onRetry, what = 'this' }) {
   const kind = error?.kind;
-  // a server that does not answer is said once, by the strip across the top of every page; here, what that leaves missing
+  // the strip across every page already says the server is down; here, say what that leaves missing
   const title =
     kind === 'network'
       ? `Couldn’t load ${what}`

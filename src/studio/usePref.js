@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
-// A choice one person makes about how the studio looks or behaves, kept in this browser (localStorage). Every part of the page that reads
-// the same key sees a change at once, and so does another tab. When storage is blocked the choice still holds until the page is closed.
+// A per-person preference kept in localStorage. Every reader of the key, in this tab or another, sees a change at once.
+// When storage is blocked the choice still holds until the page is closed.
 const listeners = new Set();
 const memory = new Map();
 
@@ -48,8 +48,7 @@ export function usePref(key, fallback) {
   return [value, set];
 }
 
-// "Show technical names": off, a customer sees plain labels only; on, every setting also shows the name the configuration file uses for it,
-// and can copy its path or open it in the JSON.
+// "Show technical names": on, every setting also shows its configuration name, with copy-path and open-in-JSON.
 export const TECHNICAL_NAMES_KEY = 'weave_tech_names';
 export function useTechnicalNames() {
   const [value, set] = usePref(TECHNICAL_NAMES_KEY, '0');
@@ -57,9 +56,7 @@ export function useTechnicalNames() {
   return [value === '1', setOn];
 }
 
-// Density: "comfortable" (the default) or "compact", for people who live in the tool all day. It is a preference of the
-// person, kept in this browser, and applied as an attribute of the page so one set of tokens (tokens.css) changes the
-// spacing everywhere.
+// Density: "comfortable" (default) or "compact", applied as a page attribute so tokens.css changes spacing everywhere.
 export const DENSITY_KEY = 'weave_density';
 export const DENSITIES = ['comfortable', 'compact'];
 export function useDensity() {
@@ -68,11 +65,11 @@ export function useDensity() {
   return [density, set];
 }
 
-// The design style, on top of light or dark: the colours, the accent, the corners and the headings of the whole site. A
-// preference of the person, kept in this browser, applied as `data-style` on the page (see src/themes.css); index.html
-// applies it before the first paint so nothing flashes.
+// The design style on top of light or dark, applied as `data-style` (src/themes.css). index.html applies it before the
+// first paint so nothing flashes.
 export const STYLE_KEY = 'weave_style';
 export const STYLES = [
+  { id: 'studio', label: 'Studio', description: 'Calm and precise: a light grey page, white cards, IBM Plex type, one plum accent.' },
   { id: 'simple', label: 'Simple', description: 'Quiet and neutral: black and white, nothing in the way.' },
   { id: 'professional', label: 'Professional', description: 'Enterprise and trustworthy: a navy bar, crisp blue, neat lines.' },
   { id: 'calm', label: 'Calm', description: 'Soft and natural: sage and sand, round and airy, easy on the eyes.' },
@@ -81,16 +78,21 @@ export const STYLES = [
   { id: 'vibrant', label: 'Vibrant', description: 'Playful: candy colours, round type, a colour for every place.' },
 ];
 export function useStyle() {
-  const [value, set] = usePref(STYLE_KEY, 'simple');
-  const style = STYLES.some((s) => s.id === value) ? value : 'simple';
+  const [value, set] = usePref(STYLE_KEY, 'studio');
+  const style = STYLES.some((s) => s.id === value) ? value : 'studio';
   return [style, set];
 }
 
-// The colour options of each style (src/accents.css): only colours that keep the style's character (Simple's are quiet
-// and deep, Premium's are metals and jewels, Futuristic's are screen neons, Vibrant's are bright gradients). The first
-// is the style's own palette. `swatch` is what the picker shows: one colour, or two for a pair or a gradient. The
-// choice is kept per style, so going back to a style finds its colour as it was left.
+// Each style's colour options (src/accents.css), chosen to keep the style's character; the first is its own palette.
+// `swatch` is what the picker shows. The choice is kept per style, so returning to a style finds its colour as left.
 export const ACCENTS = {
+  studio: [
+    { id: 'plum', label: 'Plum', swatch: ['#72308f', '#f5ebfa'] },
+    { id: 'indigo', label: 'Indigo', swatch: ['#4338ca', '#eef0fe'] },
+    { id: 'teal', label: 'Teal', swatch: ['#0f766e', '#e3f5f2'] },
+    { id: 'blue', label: 'Blue', swatch: ['#175cd3', '#ebf2fe'] },
+    { id: 'graphite', label: 'Graphite', swatch: ['#101828', '#eef0f3'] },
+  ],
   simple: [
     { id: 'mono', label: 'Black and white', swatch: ['#0b0b0d', '#ffffff'] },
     { id: 'slate', label: 'Slate', swatch: ['#334155', '#ffffff'] },

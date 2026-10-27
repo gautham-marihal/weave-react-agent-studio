@@ -2,9 +2,8 @@ import React from 'react';
 import { useGate, useGateStatus } from './gate.js';
 import '../callers/callers.css';
 
-// "Tests must pass before publishing": one switch for the agent, and where it stands now. When it is on, the publish
-// panel holds until the newest run of the tests passed and nothing changed after it (and can still be overridden on
-// purpose).
+// "Tests must pass before publishing": the agent's switch and where it stands now.
+// When on, the publish panel holds until the newest test run passed with nothing changed since (it can be overridden).
 export default function GateStrip({ botId, editor }) {
   const [on, setOn] = useGate(botId);
   const status = useGateStatus(botId, editor);

@@ -4,10 +4,9 @@ import { Skeleton } from '../../ui/Skeleton.jsx';
 const dayName = (day) => new Date(`${day}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 const callsText = (n) => `${n} call${n === 1 ? '' : 's'}`;
 
-// One number, what it means and how it compares; it opens the page that explains it (the agent's Overview and Home use
-// it). `series`: [{ day: 'YYYY-MM-DD', calls }] drawn as small bars, today's the darkest; pointing at a bar says its
-// day and its count in place of the line under the number, and a screen reader hears the days in words. While
-// `loading`, shapes stand where the number and its line will be.
+// One number, its meaning and comparison; it opens the page that explains it (Overview and Home).
+//   series: [{ day: 'YYYY-MM-DD', calls }] as small bars; hover shows a bar's day and count; screen readers hear words
+//   loading: placeholder shapes where the number and its line will be
 export default function Stat({ label, value, sub, series, onOpen, title, loading = false }) {
   const [at, setAt] = useState(null);
   const days = series || [];

@@ -12,8 +12,8 @@ import MakeTestDialog from '../replay/MakeTestDialog.jsx';
 import FixCallDrawer from '../fixcall/FixCallDrawer.jsx';
 import { readCall } from '../replay/callFacts.js';
 
-// One call: who and when, how it went, and the trace of everything that happened in it (the same component a Test conversation and a
-// failed scenario use). A call still in progress is followed live. The records hold what the caller said, so the screen says so.
+// One call: who, when, how it went, and its trace (the same component Test conversations and failed scenarios use).
+// A call in progress is followed live. The records hold what the caller said, so the screen says so.
 const PAGE = 500;
 const MAX_EVENTS = 5000;
 
@@ -22,7 +22,7 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
   const [events, setEvents] = useState([]);
   const [meta, setMeta] = useState({ counts: {}, finalState: null, usage: [] });
   const [state, setState] = useState({ loading: true, error: null, truncated: false });
-  const [view, setView] = useState(initialView === 'replay' ? 'replay' : 'trace'); // 'trace' (everything that happened) | 'conversation' (only what was said) | 'replay' (played again)
+  const [view, setView] = useState(initialView === 'replay' ? 'replay' : 'trace'); // 'trace' (everything) | 'conversation' (only what was said) | 'replay'
   const [makingTest, setMakingTest] = useState(false);
   const [fixing, setFixing] = useState(false);
   const [fixed, setFixed] = useState(null); // { previous, fixes, finding }: changes made to the draft from this call, not saved yet

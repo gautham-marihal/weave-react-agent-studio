@@ -1,10 +1,9 @@
 import { DropdownMenu } from 'radix-ui';
 import { afterMenu, keepEscape } from './layer.ts';
 
-// A button with a short list of choices under it (Radix DropdownMenu): "Snooze ▸ for an hour…", "Dismiss ▸ why". Placed
-// under the button on the side with room; the arrows move, a letter jumps to a choice, Escape closes it and gives the
-// keyboard back to the button.
-//   label: the button's words   menuLabel: what the list is, for a screen reader
+// A button with a short list of choices (Radix DropdownMenu): "Snooze ▸ for an hour…", "Dismiss ▸ why". Arrows move,
+// a letter jumps to a choice, Escape closes it and returns focus to the button.
+//   menuLabel: what the list is, for a screen reader
 //   choices: [words, what it does]   align: the list's edge under the button
 export default function ChoiceMenu({
   label,

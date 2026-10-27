@@ -1,8 +1,6 @@
-// A tool's `parameters` is a JSON Schema of the arguments the model fills in. Writing JSON Schema by hand is the
-// biggest hurdle in the tool editor, so the form shows rows instead: a name, a kind, what it is for (this is the text the
-// model reads), whether it is needed, and for a list of choices, the choices. This turns those rows into the schema and
-// back, without ever losing a keyword it doesn't understand.
-// Pure: no network, no DOM.
+// A tool's `parameters` is a JSON Schema of the arguments the model fills in. Hand-written JSON Schema is the tool
+// editor's biggest hurdle, so the form shows rows (name, kind, the description the model reads, needed, choices). This
+// converts rows to schema and back without losing a keyword it doesn't know. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 

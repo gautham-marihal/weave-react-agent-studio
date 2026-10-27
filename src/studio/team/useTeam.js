@@ -2,9 +2,8 @@ import { useCallback, useMemo } from 'react';
 import { getPref, setPref, usePref } from '../usePref.js';
 import { demoTeam, ownerFrom } from './teamModel.js';
 
-// The team of the workspace that is open, kept in this browser (localStorage) until the server can hold it (see
-// docs/COLLABORATION_API.md). Every part of the page that reads it sees a change at once, so the Team page and an
-// agent's Share panel always agree. The workspace is chosen once, by the dashboard.
+// The open workspace's team, kept in localStorage until the server can hold it (docs/COLLABORATION_API.md). Every
+// reader sees a change at once, so the Team page and an agent's Share panel agree. The dashboard picks the workspace.
 const ACTIVE = 'weave_team_active';
 const keyOf = (workspaceId) => `weave_team_${workspaceId}`;
 
@@ -24,7 +23,7 @@ const profileNow = () => {
   }
 };
 
-// Opens the team of a workspace: the first time, it is made of its owner (and, in demo mode, a few people to try the page with).
+// Opens a workspace's team; the first time it is just the owner (plus a few people to try it with, in demo mode).
 export function openTeam({ workspaceId, profile, demo = false, agentIds = [] }) {
   const id = String(workspaceId || 'default');
   if (getPref(ACTIVE, '') !== id) setPref(ACTIVE, id);

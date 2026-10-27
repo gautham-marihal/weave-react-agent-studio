@@ -1,7 +1,6 @@
-// A comparison of two versions (what the server's diff answers with: [{ op: 'add' | 'remove' | 'change', path, before?,
-// after? }]) put in words a person would use: "Changed the language model from GPT-4.1 Mini to GPT-5.4", not
-// "defaults.models.llm.model". The settings that people change most (the models, the voice, the language) have their
-// own sentences; the rest use the plain-language names the settings form already has. Pure: no React, no DOM.
+// The server's diff of two versions ([{ op, path, before?, after? }]) in a person's words: "Changed the language model
+// from GPT-4.1 Mini to GPT-5.4", not "defaults.models.llm.model". Models, voice and language get their own sentences;
+// the rest use the settings form's names. Pure: no React, no DOM.
 
 import { describeChange, sectionOf } from '../assistant/diffConfig.js';
 import { MODEL_OPTIONS, providerLabel } from '../models/catalog.js';
@@ -15,7 +14,7 @@ const PART = { llm: 'language model', stt: 'speech-to-text', tts: 'text-to-speec
 const THING = { llm: 'language model', stt: 'speech-to-text model', tts: 'text-to-speech model' };
 const BOOKKEEPING = new Set(['version', 'status', 'created_at', 'updated_at']);
 
-// the server addresses an item of a list by its id as "id=billing"; the rest of the studio's wording works from { id: 'billing' }
+// the server names a list item by id as "id=billing"; the rest of the studio's wording works from { id: 'billing' }
 const segment = (part) => {
   const hit = typeof part === 'string' ? /^([a-z_]+)=(.+)$/.exec(part) : null;
   return hit ? { id: hit[2] } : part;
@@ -43,7 +42,7 @@ const clip = (text, n = 70) => (text.length > n ? `${text.slice(0, n - 1)}…` :
 const q = (text) => `“${clip(text)}”`;
 const isEmptyObject = (v) => isObj(v) && Object.keys(v).length === 0;
 
-// What a change to the speech and language models, the voice and the language says, or null when it is some other setting.
+// What a change to the models, the voice or the language says, or null for any other setting.
 function special(change) {
   const [a, b, c, d] = change.path;
   const { kind, before, after } = change;
@@ -126,7 +125,7 @@ export function plainChange(raw) {
   return { verb: base.verb, text: own || base.text, full: wording(change), key: topic(change) };
 }
 
-// { total, groups: [{ key, title, items: [{ verb, text, full }] }] } for the server's list of changes; the studio's own notes are left out.
+// { total, groups: [{ key, title, items: [{ verb, text, full }] }] } from the server's changes, minus studio notes.
 export function plainChanges(changes) {
   const groups = new Map();
   (changes || [])

@@ -6,9 +6,9 @@ import { askConfirm } from '../ui/dialogs.js';
 // Hash routes, so a bot has a link and a refresh keeps you where you were:
 //   #/bots                 the list      (#/bots?new=1 opens the create dialog)
 //   #/bots/{id}            a bot, on its Home
-//   #/bots/{id}/{tab}      config | knowledge | test | scenarios | checks | versions | deploy | calls   (the stages of the journey, see journey.js)
+//   #/bots/{id}/{tab}      config | knowledge | test | ... (the journey's stages, see journey.js)
 export const TABS = [...TAB_IDS, ...EXTRA_PAGE_IDS];
-// Pages that were renamed, so an old link still opens them (Cost and speed became Speed when the costs were taken out).
+// Renamed pages, so an old link still opens them (Cost and speed became Speed when costs were removed).
 const OLD_TABS = { cost: 'speed' };
 
 export function parseRoute(hash) {
@@ -20,28 +20,27 @@ export function parseRoute(hash) {
   if (parts[0] !== 'bots' || !parts[1]) return { view: 'list', params };
   const named = OLD_TABS[parts[2]] || parts[2];
   const tab = TABS.includes(named) ? named : 'config';
-  // `bare`: no page was named (an agent opened from a list): it opens on its Home.
+  // `bare`: no page was named (opened from a list), so it opens on Home.
   return { view: 'bot', botId: parts[1], tab, bare: !parts[2], params };
 }
 
 export function routeHref(botId, tab, params) {
   const query = params && Object.keys(params).length ? `?${new URLSearchParams(params)}` : '';
   if (!botId) return `#/bots${query}`;
-  // every page is named; an address with no page opens the agent's Home
   return `#/bots/${botId}${tab ? `/${tab}` : ''}${query}`;
 }
 
-// A page with unsaved work registers a guard: a function saying what leaving would lose ("Your unsaved edits will be lost."), or '' when nothing.
+// A page with unsaved work registers a guard: a function saying what leaving would lose, or '' when nothing.
 // In-app navigation asks before leaving.
 let leaveGuard = null;
 export const setLeaveGuard = (guard) => {
   leaveGuard = guard;
 };
 let agreed = false;
-// the moment the person last agreed to leave: the change of address that follows (it comes a moment later) is not asked about again
+// when the person last agreed to leave, so the address change that follows a moment later isn't asked about again
 let agreedAt = 0;
-// Runs `then` once leaving is fine: at once when nothing would be lost, else after the person agrees in a dialog. Whatever `then` navigates to
-// is already agreed, so it isn't asked twice.
+// Runs `then` once leaving is fine: at once if nothing would be lost, else after the person agrees in a dialog.
+// Whatever `then` navigates to is already agreed, so it isn't asked twice.
 export function whenLeaveConfirmed(then) {
   const lost = !agreed && leaveGuard ? leaveGuard() : '';
   if (!lost) {
@@ -65,10 +64,8 @@ const agentOf = (hash) => {
   const r = parseRoute(hash);
   return r.view === 'bot' ? r.botId : '';
 };
-// Back and Forward, or an address typed in, that would leave an agent with unsaved work: the change is held (no page
-// hears of it), the address goes back to where it was, and the person is asked, as by a link in the studio; Leave goes
-// on to where they were going. Moving between one agent's own pages keeps its edits (they live above the pages), so is
-// not asked about. This listener is added before any page's, so it hears the change first.
+// Back/Forward or a typed address that would leave an agent with unsaved work: the change is held and undone, then the
+// person is asked. Pages of the same agent are not asked about. Added before any page's listener, so it hears first.
 let here = typeof window !== 'undefined' ? window.location.hash : '';
 let restoring = false;
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
@@ -105,8 +102,8 @@ export function navigate(href, { guard = true } = {}) {
   else go();
 }
 
-// Changes the address without a new entry in the browser's history (Back does not come back to it): for an address that only says where on a page
-// someone is (the setup's step), or a dialog that closed. The app follows it as it follows any other change.
+// Changes the address without a history entry (Back skips it): for a position within a page (the setup's step) or a
+// dialog that closed. The app follows it like any other change.
 export function replaceRoute(href) {
   window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${href}`);
   window.dispatchEvent(new HashChangeEvent('hashchange'));

@@ -18,8 +18,8 @@ import { Card, Chips, NumberBox, SayField } from './SimpleParts.jsx';
 import { setHandOver } from '../../setup/setupModel.js';
 import Select from '../../../ui/Select.tsx';
 
-// The top of the Guardrails page, in plain words: the topics it keeps to, when it hands over or ends the call by itself, and the limits on a call.
-// The checks on what is said (with their own pickers) are in the lists below these.
+// The plain-words top of the Guardrails page: topics, when it hands over or ends the call, and call limits. The checks
+// on what is said are in the lists below.
 
 export function TopicsBlock({ config, set }) {
   const topics = topicsOf(config);
@@ -110,14 +110,14 @@ export function MomentsBlock({ config, set }) {
               s.possible || s.on
                 ? (on) => {
                     setRefused({ ...refused, [m.id]: '' });
-                    // a rule that passes people to a person, on an agent that can't yet: the hand-over is switched on with it, in the same change
+                    // a hand-over rule on an agent that can't hand over yet switches hand-over on in the same change
                     const base = on && s.needsHandOver ? setHandOver(config, true) : config;
                     set(setMoment(base, m.id, on, { keywords: s.keywords }));
                   }
                 : null
             }
           >
-            {/* the words are asked here only while the rule still listens for words; one changed in the list below is changed there */}
+            {/* words are asked here only while the rule listens for words and wasn't changed in the list below */}
             {s.on && m.keywords && !s.changed ? (
               <>
                 <Chips
@@ -169,7 +169,7 @@ export function LimitsBlock({ config, set, onShowNudges = null }) {
           </label>
         ))}
       </div>
-      {/* shown while there is a limit, or a line typed for one (kept while a limit is being retyped) */}
+      {/* shown while there is a limit or a line for one (kept while a limit is retyped) */}
       {(any || limits.say || limits.sayRef) && (
         <SayField
           label="What it says when a limit ends the call"

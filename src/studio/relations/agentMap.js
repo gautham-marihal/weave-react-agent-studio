@@ -1,7 +1,6 @@
-// How the agents of an assistant hand a caller on, as a picture: each agent a box, each hand-over an arrow, the one that answers first marked.
-// Three kinds of arrow, because a caller can be passed on in three ways: an agent's own hand-over (`handoffs`), a tool whose rules hand over,
-// and a safety rule that passes the caller to someone. The layout is by distance from the agent that answers first (left to right); what can't
-// be reached from there stands in a column of its own, so a stranded agent is visible. Pure: no React, no DOM.
+// How an assistant's agents hand a caller on, as boxes and arrows. Three kinds of arrow: an agent's own `handoffs`, a
+// tool whose rules hand over, and a safety rule. Columns go by distance from the first agent to answer; an agent that
+// can't be reached gets its own column, so it is visible. Pure: no React, no DOM.
 
 import { humanize, isObj } from '../form/engine.js';
 
@@ -50,7 +49,7 @@ export function buildAgentMap(config) {
           targets.forEach((to) => add({ kind: 'tool', from: agent.id, to, label: tool.id, word: humanize(tool.id), title: tool.description || '' })),
         );
     });
-  // a safety rule that passes the caller to an agent: from whichever agent answers first (the rule applies to every call)
+  // a safety rule that passes the caller to an agent: from the first agent to answer (the rule applies to every call)
   list(config?.guardrails?.escalation)
     .filter(isObj)
     .forEach((rule) => {
@@ -122,7 +121,7 @@ export function buildAgentMap(config) {
   };
 }
 
-// "Greeter passes the caller to Billing (when the caller asks about a bill)", one sentence per arrow, for the text version of the picture.
+// One sentence per arrow (the list view): "Greeter passes the caller to Billing (when the caller asks about a bill)"
 export function describeEdges(map) {
   const name = (id) => map.nodes.find((n) => n.id === id)?.name || id;
   const how = { handoff: 'hands the caller to', tool: 'can pass the caller to', rule: 'passes the caller, under a safety rule, to' };

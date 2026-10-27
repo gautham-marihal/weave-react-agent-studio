@@ -1,9 +1,6 @@
-// From a call to a test: the caller's words become the turns of a scenario, and what the agent did in the call becomes
-// checks to start from. A scenario is part of the agent's draft (`tests`), so it is saved and versioned with it, and
-// from then on every run checks that the same conversation still goes the same way. The person chooses which checks to
-// keep, can say what should have happened instead, and can edit what the caller said before it is kept: a call holds
-// real words, and a test is published with the agent.
-// Pure: no network, no DOM.
+// From a call to a test: the caller's words become a scenario's turns, and what the agent did becomes starting checks.
+// Scenarios live in the draft (`tests`), so each run checks the conversation still goes the same way. The caller's
+// words can be edited first, as a call holds real words and tests get published. Pure: no network, no DOM.
 
 import { describeExpectation, freshScenarioId, slugId } from '../scenarios/model.js';
 
@@ -30,9 +27,8 @@ const defaultsOf = (config) =>
     Object.entries(isObj(config?.state?.variables) ? config.state.variables : {}).map(([name, v]) => [name, isObj(v) ? (v.default ?? null) : null]),
   );
 
-// The checks worth offering for this call, each with why it is offered. `checked` says which start ticked: what the
-// agent plainly did (a tool that worked, a hand-over, a value it ended up remembering) is ticked; its exact wording is
-// offered but not ticked, because the same meaning can be said in other words.
+// The checks worth offering for this call, each with why. `checked` marks what starts ticked: what the agent plainly
+// did (a working tool, a hand-over, a remembered value). Its exact wording is offered unticked, as it can be reworded.
 export function suggestChecks(facts, config) {
   const checks = [];
   const tools = [];

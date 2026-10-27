@@ -4,8 +4,8 @@ import { useSchema } from '../form/useSchema.js';
 import { describeIssue } from './issues.js';
 import './validation.css';
 
-// A plain list of problems for a place that can't offer fixes (a dialog, the notice after a failed publish): each one named by its labels and said in
-// plain words, never by its path. `issues` are `{ path, message, severity }` as the server sends them (severity defaults to the given one).
+// A plain list of problems where fixes can't be offered (a dialog, the notice after a failed publish), named by labels,
+// never paths. `issues`: `{ path, message, severity }` as the server sends them (severity defaults to the given one).
 export default function PlainIssues({ issues = [], config = null, severity = 'warning' }) {
   const { schema } = useSchema();
   const engine = useMemo(() => (schema ? createEngine(schema) : null), [schema]);

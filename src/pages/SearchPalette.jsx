@@ -5,16 +5,13 @@ import Icon from '../ui/Icon.jsx';
 import { backTo, keepEscape } from '../ui/layer.ts';
 import { Glyph, searchKey } from './shared.jsx';
 
-// The search (Ctrl K): a box to type in and the results under it, grouped, the best match first (the page that opens it
-// decides what matches, so the words can be found however they are typed: ui/match.ts). cmdk draws the list the way a
-// command palette works: the arrows (and Home, End) move through the results across the groups and round, Enter or a
-// click opens one, and a screen reader hears the box, the list and the result the keyboard is on. It is a Radix Dialog:
-// it takes the keyboard, Escape or a click outside closes it (and nothing under it), and closing gives the keyboard
-// back. Its code (cmdk) arrives the first time the search is opened.
-//   groups: [{ group, items: [{ type, id, title, description, icon }] }]   onSelect(item), onClose()
+// The search (Ctrl K): grouped results, best match first (the opening page decides matches, see ui/match.ts).
+// cmdk gives palette keys and screen-reader roles; a Radix Dialog traps focus, closes on Escape or an outside click
+// (and nothing under it), and gives focus back. cmdk loads on first open.
+//   groups: [{ group, items: [{ type, id, title, description, icon }] }]
 export default function SearchOverlay({ query, onQueryChange, groups, onSelect, onClose }) {
   const inputRef = useRef(null);
-  // what had the keyboard when it was opened, to give it back to
+  // what had focus when the search opened, to give it back to
   const [opener] = useState(() => document.activeElement);
   // cmdk tells a screen reader which result the keyboard is on (aria-activedescendant) only once the arrows have moved:
   // the box says it from the start, following the result marked as selected

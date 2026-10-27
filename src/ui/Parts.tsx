@@ -1,12 +1,11 @@
 import type { KeyboardEvent, ReactNode } from 'react';
 import { Tabs } from 'radix-ui';
 
-// The parts of a page to switch between (Radix Tabs): one Tab stop for the row, the arrows move along it (and round),
-// Home and End go to the ends, and Enter or Space opens the part the keyboard is on (the arrows alone don't, so a part
-// that changes the page's address is never opened by passing over it).
-//   <Parts value onChange> holds a row and its panel, and draws no box of its own: the page lays out the row and the panel as before
-//   <PartRow label items value>: the row (label names it for a screen reader; the open part has the class `on`, or activeClass)
-//   <PartPanel value>: what the open part shows (a grid with the page's gap; `flow` for a page that isn't a grid)
+// A page's parts to switch between (Radix Tabs): one Tab stop, arrows move (and wrap), Home and End go to the ends, and
+// only Enter or Space opens a part, so a part that changes the address is never opened by passing over it.
+//   <Parts value onChange>: holds a row and its panel, with no box of its own
+//   <PartRow label items value>: the row (label names it for screen readers; the open part has `on`, or activeClass)
+//   <PartPanel value>: the open part's content (a grid with the page's gap; `flow` for a page that isn't a grid)
 export type Part = { id: string; label: ReactNode; badge?: ReactNode };
 
 export function Parts({ value, onChange, children }: { value: string; onChange: (id: string) => void; children: ReactNode }) {
@@ -17,10 +16,8 @@ export function Parts({ value, onChange, children }: { value: string; onChange: 
   );
 }
 
-// A part can draw the page anew (another address; a part whose code loads first hides the page a moment), and the
-// keyboard, which was on the part just chosen, would be left on nothing. For a few seconds after a choice, whenever it
-// is left on nothing, the row's open part takes it back. It stops as soon as the keyboard goes anywhere else, or the
-// pointer is pressed elsewhere.
+// Choosing a part can redraw the page (another address, or code loading), leaving focus on nothing. For a few seconds
+// after a choice the row's open part takes focus back, until focus goes elsewhere or the pointer is pressed elsewhere.
 function keepOnRow(label: string) {
   const until = Date.now() + 3000;
   let done = false;

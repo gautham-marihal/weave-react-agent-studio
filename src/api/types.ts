@@ -1,8 +1,5 @@
-// The shapes the Agent Builder API sends and takes, so the type checker (and an editor) can catch a wrong field name or
-// a missing property. They are made from the schemas the client checks each answer against (schemas.ts), so what is
-// checked and what is typed never drift apart. Nothing here runs: the file only holds types.
-//
-// AgentConfig is generated from the schema (npm run types) into agentConfig.d.ts.
+// The shapes the Agent Builder API sends and takes, for the type checker. Made from schemas.ts, so what is checked and
+// what is typed never drift apart. Types only; AgentConfig is generated into agentConfig.d.ts (npm run types).
 
 import type * as z from 'zod/mini';
 import type * as S from './schemas.ts';
@@ -10,7 +7,7 @@ import type { AgentConfig } from './agentConfig';
 
 export type { AgentConfig };
 
-/** One problem the validator found. `path` is the list of keys and indexes to the field; null or [] means it applies to the whole config. */
+/** One problem the validator found. `path` leads to the field; null or [] means the whole config. */
 export type ValidationIssue = z.infer<typeof S.ValidationIssue>;
 
 /** Something the runtime can't do yet. `severity: "security"` means a protection is declared but not enforced. */
@@ -55,7 +52,7 @@ export type CallSummary = z.infer<typeof S.CallSummary>;
 /** A page of GET /bots/{id}/calls. */
 export type CallPage = z.infer<typeof S.CallPage>;
 
-/** GET /bots/{id}/calls/{call_id}: the call and its records (events), each with its own fields by `event`, a page at a time. */
+/** GET /bots/{id}/calls/{call_id}: the call and its records (events), a page at a time. */
 export type CallRecords = z.infer<typeof S.CallRecords>;
 
 export type RequestOptions = { signal?: AbortSignal };

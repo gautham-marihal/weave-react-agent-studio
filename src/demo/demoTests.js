@@ -1,8 +1,6 @@
-// The test runner, IMITATED for demo mode. The real API runs scenarios in the real runtime (with a scripted or a live model); this plays
-// them with the simulated agent and a few rules, and answers in the same shapes the real API does so the screens are the same ones. It is
-// a FAKE and every result says so (`notes`): a pass here means the scenario is well formed and its checks can be met by the imitation,
-// not that the real bot would pass. Checks that need a model (`judge`) are never graded.
-// Pure: no network, no DOM, no clock of its own (`now` is passed in).
+// The test runner IMITATED for demo mode: plays scenarios with the simulated agent, in the real API's shapes.
+// A FAKE, and every result says so (`notes`): a pass means only the imitation met the checks. `judge` isn't graded.
+// Pure: no network, DOM or clock of its own (`now` is passed in).
 
 import { createSimulatedAgent } from './simulatedAgent.js';
 import { isObj } from '../studio/form/engine.js';
@@ -13,9 +11,9 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
 export const DEMO_RUN_NOTE = 'Demo mode: this result was made by a simple imitation of the runtime, not by the real one.';
-export const STEP_MS = 400; // how long the imitation "takes" per scenario, so results appear one by one like the real runner's
+export const STEP_MS = 400; // time per scenario, so results appear one by one like the real runner's
 
-// A stable fingerprint of a config (keys sorted), so a run can say which exact config it tested and a version can be compared with it.
+// A stable fingerprint of a config (keys sorted), so a run names the exact config it tested.
 export function checksumOf(config) {
   const canon = (v) =>
     Array.isArray(v)
@@ -53,7 +51,7 @@ export const fillArgs = (value, args) =>
       : isObj(value)
         ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fillArgs(v, args)]))
         : value;
-// the same value; a number and the text of it count as the same (a query string's "2" is 2), an object or a list only as the same contents
+// a number equals its text (a query string's "2" is 2); objects and lists are compared by contents
 const sameValue = (a, b) =>
   JSON.stringify(a) === JSON.stringify(b) || (a !== null && b !== null && typeof a !== 'object' && typeof b !== 'object' && String(a) === String(b));
 const subset = (needle, haystack) => isObj(needle) && isObj(haystack) && Object.entries(needle).every(([k, v]) => sameValue(haystack[k], v));
@@ -198,8 +196,7 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
     };
 
   const agents = list(config?.agents?.items);
-  // a tool is found by the name the model calls it: two tools may share one (a voice and a chat variant), and the one
-  // of this scenario's channel answers
+  // tools are found by the name the model calls; a voice and a chat variant may share it, and this channel's answers
   const toolNamed = (name) => {
     const same = list(config?.tools).filter((t) => modelNameOf(t) === name);
     return (
@@ -209,8 +206,8 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
   const sim = createSimulatedAgent(config, { channelId: scenario?.channel, state: isObj(scenario?.state) ? scenario.state : undefined });
   let agent = agents.find((a) => a?.id === config?.agents?.entry)?.id || agents[0]?.id || '';
   const state = { ...sim.state, ...(isObj(scenario?.state) ? scenario.state : {}) };
-  // what the simulated agent starts with: at the end only what it changed is laid over what the API answers wrote (its
-  // untouched defaults would undo them)
+  // at the end only what the simulated agent changed is laid over what the API answers wrote
+  // (its untouched defaults would undo them)
   const simStart = JSON.stringify(sim.state);
   const transcript = [];
   const tools = [];
@@ -274,7 +271,7 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
   };
 
   for (const turn of list(scenario?.turns)) {
-    // keys pressed on a phone keypad: never written to the result (the digits may be a PIN), so only that keys were pressed is recorded
+    // keypad digits are never written to the result (they may be a PIN), only that keys were pressed
     const pressed = isObj(turn) && typeof turn.keys === 'string' && turn.say === undefined;
     const textIn = String(turn?.say ?? '');
     if (pressed) event('keys_pressed', { count: turn.keys.length });
@@ -335,7 +332,7 @@ const aggregate = (results) =>
         ? 'skipped'
         : 'passed';
 
-// A run: every result is computed now, and `visible` hides the ones that "haven't finished yet" so results appear one by one.
+// A run: every result is computed now, and `visible` hides the unfinished ones so results appear one by one.
 export function createRun({ id, config, ref, body, startedAt, stepMs = STEP_MS }) {
   const ids = list(body?.scenarios);
   const all = list(config?.tests).filter(isObj);
@@ -416,7 +413,7 @@ export function scenarioListOf(config, runs, nowMs) {
           break;
         }
       }
-      // like the real API's row: the scenario, whether it is scripted or live (the row says so, whatever it carries), and its last result
+      // like the real API's row: the scenario, scripted or live, and its last result
       const mode = list(scenario.model_script).length > 0 ? 'scripted' : 'live';
       return last ? { ...scenario, mode, last } : { ...scenario, mode };
     });

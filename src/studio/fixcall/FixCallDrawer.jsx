@@ -9,9 +9,8 @@ import './fixcall.css';
 
 const SEVERITY = { high: 'Serious', medium: 'Worth fixing', low: 'Worth knowing' };
 
-// "Fix this call": what went wrong in this call (with the evidence), what is suggested for it (as sentences, before
-// anything is changed), the call played again with those changes, and then the changes put into the draft, with a test
-// so the call is checked from then on. Nothing changes until the last button.
+// "Fix this call": what went wrong (with evidence), suggested changes as sentences, the call replayed with them, then
+// the changes put into the draft with a test. Nothing changes until the last button.
 export default function FixCallDrawer({ botId, facts, call, events, editor, onClose, onApplied }) {
   const config = editor.parsed.value;
   const findings = useMemo(() => diagnoseCall(facts, { call, config }), [facts, call, config]);

@@ -1,16 +1,13 @@
-// The lines of a tidied picture. The layout puts everything in columns (every block, and every point a line passes, in
-// one column has the same middle). Here each line runs level out of its block, turns in the gap between two columns on
-// a lane of its own, and runs level on through the next column (at the place the layout kept for it there: between the
-// blocks, through its own words), so no two lines share a stretch and none crosses a block or the words on another
-// line. A gap is made wider when its lanes need the room, and the lines leaving (or reaching) one side of a block each
-// have a point of their own, in the order of where they go, so they do not cross as they leave it.
-//   blocks: Map id → { cx, cy, half (half its own width), boxHalf (half the
-//           room it takes, with what is plugged in under it), lo, hi (where on its side
-//           a line can leave or arrive) }
+// Routes the lines of a tidied picture. The layout puts blocks and line points in columns; each line runs level out of
+// its block and turns on its own lane in the gap between columns, so no two lines share a stretch or cross a block or a
+// label. Gaps widen to fit their lanes; lines on one side of a block get their own points, ordered so they don't cross.
+//   blocks: Map id → { cx, cy, half (half its width), boxHalf (half the room it takes, with what hangs under it),
+//           lo, hi (where on its side a line can leave or arrive) }
 //   lines:  [{ id, from, to, via: [{ x, y }] (the layout's points between its two blocks), label: { x, y, w } | null }]
-// → { shift (id → how far right a block moves), routes (id → { points, labelAt, out, in (the sides it leaves and reaches) }) }
+// → { shift (id → how far right a block moves),
+//     routes (id → { points, labelAt, out, in (the sides it leaves and reaches) }) }
 
-// a lane's distance from the columns on either side of its gap, and from the next lane
+// a lane's distance from the columns either side of its gap (MARGIN) and from the next lane (LANE, at most MOST)
 const MARGIN = 18;
 const LANE = 12;
 const MOST = 24;
@@ -19,12 +16,11 @@ const SEP = 10;
 
 const span = (s) => Math.abs(s.a - s.b);
 const within = (y, s) => y > Math.min(s.a, s.b) + 0.5 && y < Math.max(s.a, s.b) - 0.5;
-// what it costs for s to turn before t (nearer the left column): the times the two cross, and a stretch they would share
+// the cost of s turning before t (nearer the left column): each crossing, plus a stretch they would share
 const cost = (s, t) => (within(t.a, s) ? 1 : 0) + (within(s.b, t) ? 1 : 0) + (Math.abs(s.b - t.a) < 3 ? 2 : 0);
 
-// The order of the lanes in one gap, left to right, so the lines in it cross as little as can be. s: { a (y at the left
-// column), b (y at the right) }. The longest are placed first, each where it costs least; then each is moved to where
-// it costs least, twice over.
+// The left-to-right order of the lanes in one gap, crossing as little as possible. s: { a (y at the left column), b (y
+// at the right) }. Longest first, each placed where it costs least; then each moves to its cheapest place, twice over.
 export function orderLanes(segs) {
   const placeOf = (list, i) => {
     let best = 0;
@@ -56,8 +52,8 @@ export function orderLanes(segs) {
   return order;
 }
 
-// Points on one side of a block, in the order given: each as near the height it heads for as the side allows, at least
-// SEP apart (spread evenly when the side is too short for that).
+// Points on one side of a block, in the order given: each as near its wanted height as the side allows, at least SEP
+// apart (spread evenly when the side is too short).
 export function spread(wants, lo, hi, sep = SEP) {
   const k = wants.length;
   if (!k) return [];
@@ -88,7 +84,7 @@ export function planLanes(blocks, lines) {
   const colOf = new Map(columns.map((c, i) => [keyOf(c.x), i]));
   const col = (x) => colOf.get(keyOf(x)) ?? 0;
 
-  // each line's stations: its two ends (a point on the side of each block that faces the other) and the points between, a column apart
+  // each line's stations: its two ends (on the block sides facing each other) and the points between, a column apart
   const ends = new Map();
   const end = (id, side, plan, leaves, toward) => {
     const key = `${id}|${side}`;
@@ -134,7 +130,7 @@ export function planLanes(blocks, lines) {
     });
   });
 
-  // a gap with lanes in it made as wide as they need; every column after it moves right by as much
+  // widen each gap to fit its lanes; every column after it moves right by the same amount
   const shiftOf = [0];
   gaps.forEach((segs, g) => {
     const need = segs.length ? 2 * MARGIN + (segs.length - 1) * LANE : 0;
@@ -172,7 +168,7 @@ export function planLanes(blocks, lines) {
   return { shift, routes };
 }
 
-// the same points without those that add nothing (one on top of another, or in line with the two either side of it)
+// the points without redundant ones (duplicates, or in line with their neighbours)
 function straight(pts) {
   const out = [];
   pts.forEach((p) => {
@@ -185,7 +181,7 @@ function straight(pts) {
   return out;
 }
 
-// A line through points joined by straight runs, each corner rounded (never more than half a run, so two corners never meet).
+// A path through points joined by straight runs, corners rounded (at most half a run, so two corners never meet).
 export function roundedPath(pts, r = 8) {
   const p = straight(pts.map((q) => ({ x: Math.round(q.x * 10) / 10, y: Math.round(q.y * 10) / 10 })));
   if (!p.length) return '';

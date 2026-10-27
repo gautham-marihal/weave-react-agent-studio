@@ -1,8 +1,5 @@
-// What the validator says the runtime can't do yet (`unsupported`, valid configs only): [{ feature, where, severity? }].
-//
-// Most are plain advice ("this agent uses X, which isn't available yet"). An item with severity "security" is
-// different: a protection the config asks for (a sensitive variable, redaction) is declared but NOT enforced yet, so
-// the agent looks protected and isn't. Those are shown in red, first, and gate a production deploy.
+// What the runtime can't do yet (`unsupported`, valid configs only): [{ feature, where, severity? }]. "security" means
+// a protection is declared but NOT enforced: the agent looks protected and isn't. Shown first, in red; gates prod.
 
 import type { Deployments, Provider, Unsupported } from '../api/types.ts';
 
@@ -13,9 +10,8 @@ export function splitUnsupported(list: unknown): { security: Unsupported[]; advi
   return { security: items.filter(isSecurity), advice: items.filter((item) => !isSecurity(item)) };
 }
 
-// The secrets a version needs, each marked when the server says its key isn't set. `providers` is GET /providers:
-// a provider's default_secret with key_available false is known missing. Others can't be known before deploying
-// (the deploy answer then lists secrets_missing), so they are just listed.
+// The secrets a version needs. `providers` (GET /providers) marks a default_secret with key_available false as missing;
+// others can't be known before deploying (the deploy answer lists secrets_missing).
 export function secretsStatus(required: unknown, providers: Partial<Provider>[] | null | undefined): { name: string; missing: boolean; known: boolean }[] {
   const names: string[] = Array.isArray(required) ? required : [];
   return names.map((name) => {
@@ -41,8 +37,8 @@ type DeploymentsLike =
   | null
   | undefined;
 
-// The version an environment ran before the current one, for a "Roll back" shortcut. `data` is GET /deployments:
-// { current: { env: { id, version, ... } }, history: [...] }. null when there is nothing earlier to go back to.
+// The version an environment ran before the current one, for "Roll back", or null. `data` is GET /deployments:
+// { current: { env: { id, version, ... } }, history: [...] }.
 export function rollbackTarget(data: DeploymentsLike, environment: string): string | null {
   const current = data?.current?.[environment];
   if (!current) return null;

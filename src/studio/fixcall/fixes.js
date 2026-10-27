@@ -1,9 +1,6 @@
-// The changes the studio can suggest for what it found in a call. They are a checklist of well-known remedies, not the
-// answer of a language model: the usual cure for a spoken answer that is too long is a rule that keeps it short, for a
-// failing tool a rule about what to say when it fails, for a slow answer a faster model. Each one is a small, visible
-// change to the draft (a style rule, or the model), shown as a sentence before it is applied, and each says whether the
-// browser's simulation can show its effect (a change of wording cannot be seen without the real agent). Pure: no
-// network, no DOM.
+// The changes the studio can suggest for a call's findings: well-known remedies, not a model's answer (e.g. a rule
+// that keeps spoken answers short, or a faster model). Each is shown as a sentence before it is applied, and says
+// whether the browser's simulation can show its effect. Pure: no network, no DOM.
 
 import { readSimple, setStyleRules } from '../simple/simpleModel.js';
 import { modelsFor, modelLabel, providerLabel } from '../models/catalog.js';
@@ -36,7 +33,8 @@ function fasterModel(config) {
   return options.find((m) => m.id !== llm.model && (m.tags || []).includes('fast')) || null;
 }
 
-// The suggestions for one finding: [{ id, title, why, change, kind, needsRuntime, expected, applied(config), apply(config) }]
+// The suggestions for one finding:
+//   [{ id, title, why, change, kind, needsRuntime, expected, applied(config), apply(config) }]
 export function fixesFor(finding, config) {
   const out = [];
   switch (finding.kind) {

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api, groupIssues } from '../../api/client.ts';
 import CallsView from '../calls/CallsView.jsx';
 import ChangesPanel from '../changes/ChangesPanel.jsx';
@@ -16,8 +16,16 @@ import { useAsync } from '../useAsync.js';
 import Icon from '../../ui/Icon.jsx';
 import { ErrorState, Notice, Spinner } from '../ui.jsx';
 import { SkeletonRows } from '../../ui/Skeleton.jsx';
-import AgentNav from './AgentNav.jsx';
 import { readinessSteps } from './readiness.js';
+import { buildSections } from './buildSections.js';
+import StageTabs from './workspace/StageTabs.jsx';
+import BuildStage from './workspace/BuildStage.jsx';
+import GuidedBuild from './workspace/GuidedBuild.jsx';
+import ChecksCard from './workspace/ChecksCard.jsx';
+import PromptPreview from '../form/PromptPreview.jsx';
+import { readSimple } from '../simple/simpleModel.js';
+import MonitorTabs from './workspace/MonitorTabs.jsx';
+import NextStepBar from './workspace/NextStepBar.jsx';
 import AgentTopBar from './AgentTopBar.jsx';
 import ShareAgentDrawer from '../team/ShareAgentDrawer.jsx';
 import { ActionSwitches, KnowledgeBlock, ReachChoices } from '../setup/SimpleBlocks.jsx';
@@ -31,7 +39,7 @@ import GateStrip from '../release/GateStrip.jsx';
 import Drawer from './Drawer.jsx';
 import PageShell, { Section } from './PageShell.jsx';
 import { humanize } from './rowNames.js';
-import { PAGE_LABELS, PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, searchTarget, tabFor } from './pages.js';
+import { PAGE_LABELS, PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, searchTarget, stageOf, tabFor } from './pages.js';
 import { onSettingFocus, takeSettingFocus } from '../settingFocus.js';
 import AgentPage from './pages/AgentPage.jsx';
 import HomePage from './pages/HomePage.jsx';
@@ -58,9 +66,8 @@ const QuestionsPage = lazy(() => import('../insights/QuestionsPage.jsx'));
 const SpeedPage = lazy(() => import('../speed/SpeedPage.jsx'));
 const SetupWizard = lazy(() => import('../setup/SetupWizard.jsx'));
 
-// The steps of getting ready that the guided setup asks for: while the agent is being set up (setupProgress.js
-// `inSetup`), opening one opens the setup at that step, so there is one place to get it ready. Once it is published the
-// steps open the agent's own pages and panels.
+// Readiness steps the guided setup covers: while the agent is in setup (`inSetup`), each opens the setup at that step,
+// so there is one place to get it ready. Once published, the steps open the agent's own pages.
 const SETUP_STEP = { prompt: 'purpose', hello: 'purpose', voice: 'voice', abilities: 'actions', publish: 'live', deploy: 'live' };
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -91,9 +98,9 @@ function transfersInWords(config) {
 }
 // the part of a page that holds its settings form, for a page that has other parts
 const FORM_PART = { workflow: 'settings', knowledge: 'settings', settings: 'settings' };
-// the pages that show the draft through their own controls and change it with them: with a draft that isn't valid JSON they wait for it to be fixed
-// (the Agent and Workflow pages say so themselves; Settings is where the JSON is fixed)
-const READS_THE_DRAFT = new Set(['home', 'tools', 'channels', 'guardrails', 'aftercall', 'knowledge', 'tests']);
+// Pages that edit the draft through their own controls; they wait while the draft isn't valid JSON (Agent and Workflow
+// say so themselves; Settings is where the JSON is fixed).
+const READS_THE_DRAFT = new Set(['home', 'build', 'tools', 'channels', 'guardrails', 'aftercall', 'knowledge', 'tests']);
 const TOOL_LISTS = [
   {
     id: 'tools',
@@ -111,7 +118,7 @@ const TOOL_EXTRAS = [
     key: 'telephony',
     title: 'Phone transfers',
     icon: 'phoneTransfer',
-    // what is set, not what the section is: the numbers calls go to, or that none is set yet (callers are then offered a callback)
+    // what is set, not what the section is
     value: (c) => transfersInWords(c),
   },
   {
@@ -157,9 +164,8 @@ const CHANNEL_LISTS = [
     empty: { title: 'No channels yet', text: 'A channel is where people reach the agent: a phone line, a chat on your website.' },
   },
 ];
-// Business hours in words: the one schedule's week and time zone ("Monday to Friday 09:00–17:00, Asia/Singapore"), or
-// the names of several. They change nothing on their own (a phone transfer or a rule follows them), so one nothing uses
-// says so, and an empty panel starts from a ready week.
+// Business hours in words: one schedule's week and time zone, or the names of several. Hours change nothing on their
+// own (a transfer or rule follows them), so an unused one says so.
 const scheduleWords = (c, n) => {
   const all = Object.entries(c?.schedules && typeof c.schedules === 'object' ? c.schedules : {});
   if (!n || !all.length) return 'None yet. Opening hours your hand-overs and rules can follow; on their own they change nothing.';
@@ -264,10 +270,8 @@ function useWide(query) {
   return wide;
 }
 
-// An agent's screens: one menu down the side, one bar across the top, one page at a time. Everything the agent's state
-// needs (the draft, the test conversation, the published versions, the dialogs) is held by AgentWorkspace
-// (AgentWorkspace.jsx) and handed in as `ws`, so moving between the agent's pages never loses an edit or hangs up a
-// test.
+// An agent's screens: a side menu, a top bar, one page at a time. AgentWorkspace.jsx holds the state and hands it in as
+// `ws`, so moving between pages never loses an edit or hangs up a test.
 export default function AgentLayout({ ws }) {
   const {
     botId,
@@ -300,39 +304,56 @@ export default function AgentLayout({ ws }) {
     if (resolved.drawer) setDrawer(resolved.drawer);
   }, [resolved.drawer, tab]);
   const [changesOpen, setChangesOpen] = useState(false);
-  const [localPart, setLocalPart] = useState({}); // the part of a page that has no address of its own (Knowledge, Workflow, Settings)
+  const [localPart, setLocalPart] = useState({}); // parts with no address of their own
   const [focusRequest, setFocusRequest] = useState(null);
   const [openRequest, setOpenRequest] = useState(null);
   const [lastFix, setLastFix] = useState(null); // { label, previous }
-  // on a wide window the test conversation sits beside the page and stays there while you move between pages; on a narrow one it slides over the page
+  // on a wide window the test conversation docks beside the page across page changes; on a narrow one it slides over
   const wideEnough = useWide('(min-width: 1280px)');
   const testDocked = drawer === 'test' && wideEnough;
+  // the bar and stage tabs stick to the top; their height (--nl-head-h) is where other sticky parts sit
+  const headRef = useRef(null);
+  useLayoutEffect(() => {
+    const head = headRef.current;
+    if (!head || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => head.parentElement?.style.setProperty('--nl-head-h', `${head.offsetHeight}px`);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(head);
+    return () => watch.disconnect();
+  }, [page === 'setup']); // eslint-disable-line react-hooks/exhaustive-deps -- the header is there on every page but the setup's
 
   const config = editor.parsed.value;
   const issues = useMemo(() => groupIssues(editor.report), [editor.report]);
   const errorIssues = issues.filter((i) => i.severity === 'error');
   const errorCount = errorIssues.length;
-  // problems to fix, counted against the page that holds each (the Agent page's rows included)
-  const errorsByPage = errorIssues.reduce((acc, i) => {
-    const p = locate(i.path).page;
-    acc[p] = (acc[p] || 0) + 1;
-    return acc;
-  }, {});
+  // errors counted per page that holds each (the Agent page's rows included)
+  const errorsByPage = useMemo(
+    () =>
+      issues
+        .filter((i) => i.severity === 'error')
+        .reduce((acc, i) => {
+          const p = locate(i.path).page;
+          acc[p] = (acc[p] || 0) + 1;
+          return acc;
+        }, {}),
+    [issues],
+  );
   const scenarioCount = Array.isArray(config?.tests) ? config.tests.length : 0;
   const { published } = useLatestPublished(botId, refresh);
   const changes = useMemo(() => (published?.config && config ? changesSince(published.config, config) : { total: 0, groups: [] }), [published, config]);
 
-  // A request to open something on a page names the page it is for (`page`), and is for that visit only: arriving keeps it (what the page draws, a
-  // form that loads a moment later included, can still take it), leaving the page ends it, so coming back later does not open it again.
+  // An open/focus request names its `page` and lasts for that visit only: arriving keeps it (a form that loads later
+  // can still take it), leaving ends it, so coming back later doesn't open it again.
   useEffect(() => {
     setOpenRequest((r) => (r && r.page === page ? r : null));
     setFocusRequest((r) => (r && r.page === page ? r : null));
   }, [page]);
-  // a link to a step from elsewhere (Home, Releases): ?open=<panel> or ?focus=<field> on the Agent page, ?show=problems for what the checks found
+  // links from elsewhere: ?open=<panel> or ?focus=<field> on the Agent page, ?show=problems for the checks
   const askOpen = page === 'agent' ? params?.open || '' : '';
   const askFocus = page === 'agent' ? params?.focus || '' : '';
   const askShow = params?.show || '';
-  // a link to one setting from outside the agent (Speed's suggestions on the workspace): ?setting=defaults.models.llm opens the place that holds it
+  // a link to one setting from outside the agent (e.g. Speed): ?setting=defaults.models.llm opens where it lives
   const askSetting = params?.setting || '';
   useEffect(() => {
     if (askOpen) setOpenRequest({ open: askOpen, nonce: Date.now(), page: 'agent' });
@@ -340,11 +361,11 @@ export default function AgentLayout({ ws }) {
   }, [askOpen, askFocus]);
   useEffect(() => {
     if (askShow === 'problems') setDrawer('problems');
-    // ?show=json on Settings: its JSON (the publish checklist's "Edit as JSON" when the draft can't be read)
+    // ?show=json: the publish checklist's "Edit as JSON" when the draft can't be read
     if (askShow === 'json') setLocalPart((old) => ({ ...old, settings: 'json' }));
   }, [askShow]);
-  // the recording notice, asked for from elsewhere (the search, "Show me"): After the call asks for it in its Recording card, above the page's form,
-  // which brings it into view with the cursor in it. Not cancelled when the request is cleared: the field is there a moment after the page.
+  // The recording notice asked for from search: scroll to its field and focus it. Not cancelled when the request
+  // clears, because the field appears a moment after the page.
   useEffect(() => {
     if (page !== 'aftercall' || openRequest?.focus !== 'notice') return;
     window.setTimeout(() => {
@@ -355,7 +376,7 @@ export default function AgentLayout({ ws }) {
       }
     }, 60);
   }, [page, openRequest]);
-  // a link to one tool (an alert's "Open the tool"): its panel opens on the Tools page, once per visit; one the draft no longer has is said so
+  // ?tool= (an alert's "Open the tool") opens its panel once per visit; a tool no longer in the draft is said so
   const toolsList = config?.tools;
   const toolIndex =
     page === 'tools' && params?.tool && Array.isArray(toolsList) ? toolsList.findIndex((t) => t && (t.id === params.tool || t.name === params.tool)) : -1;
@@ -365,8 +386,7 @@ export default function AgentLayout({ ws }) {
   }, [toolIndex, params?.tool]);
 
   const go = useCallback((target, query) => navigate(routeHref(botId, target, query), { guard: false }), [botId]);
-  // Ctrl/Cmd+S saves the draft from any page of the agent, the Workflow's canvas and settings included, and only when there
-  // is something to save
+  // Ctrl/Cmd+S saves the draft from any page of the agent, and only when there is something to save.
   const saveKey = useRef(null);
   saveKey.current = { save: editor.save, can: editor.dirty && !editor.saving && !editor.parsed.error && editor.isObject };
   useEffect(() => {
@@ -378,8 +398,7 @@ export default function AgentLayout({ ws }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  // the steps between this draft and an agent that is live (the Overview's checklist, and the progress card in the menu), and opening one
-  // the tests' latest run (read again on leaving the Tests page, where they are run), and whether they must pass before publishing
+  // the tests' latest run (re-read on leaving the Tests page, where they run) and whether they must pass to publish
   const runs = useAsync((signal) => api.listTestRuns(botId, 20, { signal }), [botId, page === 'tests']);
   const latestRun = useMemo(
     () => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : undefined),
@@ -390,8 +409,8 @@ export default function AgentLayout({ ws }) {
     () => (gateOn ? { enabled: true, savedAt: editor.meta?.savedAt || '', dirty: editor.dirty } : null),
     [gateOn, editor.meta?.savedAt, editor.dirty],
   );
-  // what the server has read of its documents (a step to get ready while they need reading): read while the draft has knowledge, or on the Knowledge
-  // page (which shares it, so the menu follows a build there), and again after each save
+  // What the server has read of the documents: read while the draft has knowledge or on the Knowledge page (which
+  // shares it, so the menu follows a build there), and again after each save.
   const hasKnowledge = Array.isArray(config?.knowledge) && config.knowledge.length > 0;
   const knowledgeRead = useKnowledge(hasKnowledge || page === 'knowledge' ? botId : null);
   const reloadKnowledge = knowledgeRead.reload;
@@ -402,10 +421,13 @@ export default function AgentLayout({ ws }) {
     knowledgeSaved.current = savedAt;
     reloadKnowledge();
   }, [editor.meta?.savedAt, reloadKnowledge]);
+  // the steps from this draft to a live agent (the Overview's checklist and the menu's progress card)
   const plan = useMemo(
     () => readinessSteps({ config, summary, report: editor.report, scenarioCount, latestRun, gate, knowledgeRead: knowledgeRead.data }),
     [config, summary, editor.report, scenarioCount, latestRun, gate, knowledgeRead.data],
   );
+  // the seven build parts and where each stands, for Build's side list and the Overview
+  const sections = useMemo(() => buildSections({ config, errorsByPage, knowledgeRead: knowledgeRead.data }), [config, errorsByPage, knowledgeRead.data]);
   const [setupProgress] = useSetupProgress(botId);
   const settingUp = inSetup(setupProgress, summary);
   const openStep = useCallback(
@@ -428,8 +450,8 @@ export default function AgentLayout({ ws }) {
     },
     [go, settingUp],
   );
-  // Shows a place in the configuration: the page that holds it, and (on the Agent page) the panel, or (on a settings page) the field. A page whose
-  // settings form is one of its parts (Workflow's canvas, Knowledge's files, the JSON of Settings) shows that part, where the field is.
+  // Shows a place in the configuration: its page, then the panel (Agent page) or field. A page whose form is one of its
+  // parts (Workflow, Knowledge, Settings) switches to that part first.
   const showPath = useCallback(
     (path) => {
       const where = locate(path);
@@ -441,7 +463,7 @@ export default function AgentLayout({ ws }) {
     },
     [go],
   );
-  // ?setting=… once the draft is read (going to the setting's page drops the parameter, so it is asked for once)
+  // ?setting=… once the draft is read (going to the setting's page drops the parameter, so it runs once)
   useEffect(() => {
     if (askSetting && editor.isObject) showPath(askSetting.split('.'));
   }, [askSetting, editor.isObject, showPath]);
@@ -460,25 +482,22 @@ export default function AgentLayout({ ws }) {
     setLocalPart((old) => ({ ...old, settings: 'json' }));
     go('settings');
   };
-  // "Open Models" in a form (a voice channel without speech models, a problem whose fix is choosing one): the Agent page's AI models panel; a side
-  // panel with changes not yet put in is asked about first
-  //   stage: 'stt' | 'llm' | 'tts', the model to show (a problem's fix names it); anything else (a click) shows the panel
+  // "Open Models" in a form: the Agent page's AI models panel; a side panel with unapplied changes asks first.
+  //   stage: 'stt' | 'llm' | 'tts', the model to show; anything else (a click) shows the panel
   const openModels = (stage) => whenPanelKept(() => showPath(['defaults', 'models', ...(['stt', 'llm', 'tts'].includes(stage) ? [stage] : [])]));
   const form = (id) => ({ keys: PAGE_SECTIONS[id], editor, focusRequest, onShowJson: openJson, onOpenJson: openJson, onShowModels: openModels });
-  // the newest draft, for what finishes later than the render that started it (an upload)
+  // the newest draft, for work that finishes after the render that started it (an upload)
   const latestConfig = useRef(config);
   latestConfig.current = config;
-  // A setting asked for from elsewhere (the search, Ctrl K): its page, and its panel or field; what it says first and
-  // what it should do are fields of the Agent page. Taken when it is asked for, and when the agent opens with one
-  // waiting. a field asked on another page (a link such as "change it on the Agent page"): that page, with the cursor
-  // in the field; a side panel with changes not yet put in is asked about first
+  // A field asked for by another page ("change it on the Agent page"): go there and focus it. Search requests (Ctrl K)
+  // are taken below, on ask and when the agent opens with one waiting; a side panel with unapplied changes asks first.
   const showField = (target, focus) =>
     whenPanelKept(() => {
       setDrawer(null);
       setOpenRequest({ focus, nonce: Date.now(), page: target });
       go(target);
     });
-  // the numbers callers dial for this agent (read only), said on the Channels page's phone line: a phone line with no number can't be called yet
+  // the numbers callers dial (read only), shown on the Channels page: a phone line with no number can't be called yet
   const phoneNumbers = useLiveNumbers(page === 'channels' && !!config && reachOf(config).sip_voice, { botId });
   const phoneLine =
     phoneNumbers.mode !== 'live'
@@ -504,12 +523,17 @@ export default function AgentLayout({ ws }) {
   useEffect(() => {
     const take = () => {
       const request = takeSettingFocus(botId);
-      // a panel with changes not yet put in (no Done pressed) is asked about first, rather than replaced and its changes lost
+      // a panel with unapplied changes (no Done pressed) asks first, rather than being replaced and its changes lost
       if (request) whenPanelKept(() => showSetting.current(request));
     };
     take();
     return onSettingFocus(take);
   }, [botId]);
+
+  // Only the setup's own knowledge base (or none): documents are added with the plain controls. An agent with bases of
+  // its own keeps the full Knowledge page.
+  const knowledgeBases = Array.isArray(config?.knowledge) ? config.knowledge : [];
+  const simpleKnowledge = editor.isObject && knowledgeBases.every((b) => b?.id === KNOWLEDGE_ID && b.type === 'vector_store' && b.mode === 'inject');
 
   let body = null;
   if (page === 'home') {
@@ -522,9 +546,24 @@ export default function AgentLayout({ ws }) {
         scenarioCount={scenarioCount}
         onProblems={() => setDrawer('problems')}
         plan={plan}
+        sections={sections}
         onTest={() => setDrawer('test')}
         onStep={openStep}
         top={<AgentAlerts botId={botId} />}
+      />
+    );
+  } else if (page === 'build') {
+    body = (
+      <GuidedBuild
+        botId={botId}
+        config={config}
+        set={editor.setValue}
+        latest={() => latestConfig.current}
+        sections={sections}
+        problems={errorsByPage}
+        simpleKnowledge={simpleKnowledge}
+        onUploaded={knowledgeRead.reload}
+        onOpen={go}
       />
     );
   } else if (page === 'agent') {
@@ -670,17 +709,14 @@ export default function AgentLayout({ ws }) {
     );
   } else if (page === 'knowledge') {
     const p = part('knowledge', 'files');
-    const bases = Array.isArray(config?.knowledge) ? config.knowledge : [];
-    const simpleKnowledge =
-      editor.isObject && (bases.length === 0 || bases.every((b) => b?.id === KNOWLEDGE_ID && b.type === 'vector_store' && b.mode === 'inject'));
     body =
       p === 'files' ? (
         <PageShell
           title="Knowledge"
           lead={PAGE_LEAD.knowledge}
           parts={[
-            { id: 'files', label: 'Files and index' },
-            { id: 'settings', label: 'Settings' },
+            { id: 'files', label: 'Documents' },
+            { id: 'settings', label: 'How it searches' },
           ]}
           part={p}
           onPart={setPart('knowledge')}
@@ -690,8 +726,7 @@ export default function AgentLayout({ ws }) {
             name={name}
             editor={editor}
             knowledge={knowledgeRead}
-            // the setup's own "What it knows" while the agent has no knowledge, or only the base the setup makes; an
-            // agent with bases of its own keeps the page as it was
+            // the setup's own "What it knows" while the agent has only the setup's base, or none
             simple={simpleKnowledge}
             top={
               simpleKnowledge
@@ -709,8 +744,8 @@ export default function AgentLayout({ ws }) {
           title="Knowledge"
           lead={PAGE_LEAD.knowledge}
           parts={[
-            { id: 'files', label: 'Files and index' },
-            { id: 'settings', label: 'Settings' },
+            { id: 'files', label: 'Documents' },
+            { id: 'settings', label: 'How it searches' },
           ]}
           part={p}
           onPart={setPart('knowledge')}
@@ -729,7 +764,7 @@ export default function AgentLayout({ ws }) {
           partsInHead
           parts={[
             { id: 'canvas', label: 'Canvas' },
-            { id: 'settings', label: 'Settings' },
+            { id: 'settings', label: 'Advanced' },
           ]}
           part={p}
           onPart={setPart('workflow')}
@@ -744,16 +779,16 @@ export default function AgentLayout({ ws }) {
           partsInHead
           parts={[
             { id: 'canvas', label: 'Canvas' },
-            { id: 'settings', label: 'Settings' },
+            { id: 'settings', label: 'Advanced' },
           ]}
           part={p}
           onPart={setPart('workflow')}
-          // every subagent's instructions, the first one's too (the same as the Agent page's "What it should do"), as on the Canvas part's panel
+          // every subagent's instructions, as on the Canvas panel (the first is the Agent page's "What it should do")
           {...form('workflow')}
         />
       );
   } else if (page === 'settings') {
-    // the sections of the settings are its tabs; the whole configuration as JSON is one button away, for the people who want it
+    // the settings' sections are its tabs; the whole configuration as JSON is one button away
     const p = part('settings', 'settings');
     const toggle = (
       <button type="button" className="quietButton nlBtn" onClick={() => setPart('settings')(p === 'json' ? 'settings' : 'json')}>
@@ -806,7 +841,7 @@ export default function AgentLayout({ ws }) {
       </PageShell>
     );
   } else if (page === 'tests') {
-    // the page opens on trying the agent; a link to one part (Scenarios from the checklist, Readiness checks) still opens that part
+    // opens on trying the agent; a link to one part (e.g. Scenarios from the checklist) still opens that part
     const p = part('tests', 'try');
     body = (
       <PageShell title="Tests" lead={PAGE_LEAD.tests} wide parts={TEST_PARTS} part={p} onPart={setPart('tests')}>
@@ -839,8 +874,9 @@ export default function AgentLayout({ ws }) {
     );
   }
 
-  // Every page reads the draft: until it has arrived they show its outline (not an empty agent, nor "the JSON needs fixing"), and if it couldn't
-  // be read, why, with a way to try again.
+  // Every page reads the draft: show an outline while it loads (not an empty agent or "the JSON needs fixing"), and
+  // why it failed, with Try again, if it couldn't be read.
+  const drawn = editor.status !== 'loading' && editor.status !== 'error' && !((editor.parsed?.error || !editor.isObject) && READS_THE_DRAFT.has(page));
   if (editor.status === 'loading') {
     body = (
       <div className="nlPage" aria-busy="true">
@@ -856,8 +892,8 @@ export default function AgentLayout({ ws }) {
       </PageShell>
     );
   } else if ((editor.parsed?.error || !editor.isObject) && READS_THE_DRAFT.has(page)) {
-    // the draft isn't valid JSON (a half-typed edit in the JSON view): a page that changes it through its own controls would make its change from
-    // nothing and replace the whole draft with it, so it waits, as the Agent page does (Settings, with the JSON, is where it is fixed)
+    // Invalid JSON (a half-typed edit): a page editing through its own controls would build from nothing and replace
+    // the whole draft, so it waits until the JSON is fixed in Settings.
     body = (
       <PageShell title={PAGE_LABELS[page] || 'Agent'}>
         <Notice
@@ -875,7 +911,34 @@ export default function AgentLayout({ ws }) {
     );
   }
 
-  // a save that was refused (someone else saved first) or failed, said on every page of the agent, the setup's too
+  // The page in its stage's frame: Build's parts down the side (checks beside on a wide screen), Monitor's pages as
+  // tabs. A page that couldn't be drawn (loading, error, JSON to fix) is shown as it is.
+  const checksPanel = <ChecksCard editor={editor} onJump={(path) => showPath(path)} onAll={() => setDrawer('problems')} />;
+  const stage = drawn ? stageOf(page)?.id : null;
+  const staged =
+    stage === 'build' ? (
+      <BuildStage
+        botId={botId}
+        page={page}
+        sections={sections}
+        problems={errorsByPage}
+        checks={testDocked ? null : checksPanel}
+        jsonOpen={page === 'settings' && localPart.settings === 'json'}
+        onJson={openJson}
+        status={{ checked: !!editor.report, problems: errorCount }}
+        onChecks={() => setDrawer('problems')}
+      >
+        {body}
+      </BuildStage>
+    ) : stage === 'monitor' ? (
+      <MonitorTabs botId={botId} page={page}>
+        {body}
+      </MonitorTabs>
+    ) : (
+      body
+    );
+
+  // a refused (someone else saved first) or failed save, shown on every page of the agent, the setup's too
   const saveNotices = (
     <>
       {editor.conflict && (
@@ -912,8 +975,7 @@ export default function AgentLayout({ ws }) {
     </>
   );
 
-  // The guided setup is a page of its own: its steps take the menu's place, and the agent's own top bar (Publish,
-  // Test...) gives way to its Back and Next.
+  // The guided setup is its own page: its steps replace the menu, and its Back and Next replace the top bar.
   if (page === 'setup') {
     return (
       <div className="stWorkspace nlWorkspace" data-layout="new" data-page="setup">
@@ -946,41 +1008,44 @@ export default function AgentLayout({ ws }) {
 
   return (
     <div className="stWorkspace nlWorkspace" data-layout="new" data-page={page}>
-      <AgentNav botId={botId} page={page} counts={errorsByPage} dots={{ tests: live }} plan={plan} onStep={openStep} />
-      <AgentTopBar
-        botId={botId}
-        name={name}
-        summary={summary}
-        editor={editor}
-        manageMenu={manage.menuItems(manageBot, {
-          dirty: editor.dirty,
-          before: [
-            {
-              label: 'Discard unsaved edits and reload',
-              disabled: !editor.dirty,
-              onClick: async () => {
-                const ok = await askConfirm({
-                  title: 'Discard your unsaved edits?',
-                  body: 'The saved draft is loaded again, and what you changed since the last save is lost.',
-                  confirmLabel: 'Discard edits',
-                  tone: 'danger',
-                });
-                if (ok) editor.reload();
+      <div className="nlHead" ref={headRef}>
+        <AgentTopBar
+          botId={botId}
+          name={name}
+          summary={summary}
+          editor={editor}
+          manageMenu={manage.menuItems(manageBot, {
+            dirty: editor.dirty,
+            before: [
+              {
+                label: 'Discard unsaved edits and reload',
+                disabled: !editor.dirty,
+                onClick: async () => {
+                  const ok = await askConfirm({
+                    title: 'Discard your unsaved edits?',
+                    body: 'The saved draft is loaded again, and what you changed since the last save is lost.',
+                    confirmLabel: 'Discard edits',
+                    tone: 'danger',
+                  });
+                  if (ok) editor.reload();
+                },
               },
-            },
-            { divider: true },
-          ],
-        })}
-        problems={errorCount}
-        changes={published?.config ? changes.total : null}
-        live={live}
-        onDescribe={() => setDrawer('describe')}
-        onProblems={() => setDrawer('problems')}
-        onChanges={() => setChangesOpen(true)}
-        testOpen={drawer === 'test'}
-        onTest={() => setDrawer((d) => (d === 'test' ? null : 'test'))}
-        onShare={() => setDrawer('share')}
-      />
+              { divider: true },
+            ],
+          })}
+          problems={errorCount}
+          changes={published?.config ? changes.total : null}
+          live={live}
+          onDescribe={() => setDrawer('describe')}
+          onProblems={() => setDrawer('problems')}
+          onChanges={() => setChangesOpen(true)}
+          testOpen={drawer === 'test'}
+          onTest={() => setDrawer((d) => (d === 'test' ? null : 'test'))}
+          onShare={() => setDrawer('share')}
+          onPreview={editor.isObject ? () => setDrawer('prompt') : null}
+        />
+        <StageTabs botId={botId} page={page} plan={plan} problems={errorsByPage} onStep={openStep} />
+      </div>
 
       {saveNotices}
       {lastFix && (
@@ -1009,7 +1074,8 @@ export default function AgentLayout({ ws }) {
 
       <div className={`nlMain ${testDocked ? 'docked' : ''}`}>
         <div className="nlBody">
-          <Suspense fallback={<Spinner label="Loading" />}>{body}</Suspense>
+          <Suspense fallback={<Spinner label="Loading" />}>{staged}</Suspense>
+          <NextStepBar plan={plan} onStep={openStep} />
         </div>
         {testDocked && (
           <aside className="nlTestDock" aria-label="Test your agent">
@@ -1030,6 +1096,12 @@ export default function AgentLayout({ ws }) {
       </div>
 
       {drawer === 'share' && <ShareAgentDrawer botId={botId} name={name} onClose={() => setDrawer(null)} />}
+      {drawer === 'prompt' && (
+        <Drawer title="Preview the prompt" icon="eye" width="wide" onClose={() => setDrawer(null)}>
+          {/* what the agent that answers first is told; another agent's is on its own page */}
+          <PromptPreview agentId={readSimple(config).agentId} config={config} startOpen />
+        </Drawer>
+      )}
       {drawer === 'describe' && (
         <Drawer title="Describe it" icon="sparkle" width="wide" onClose={() => setDrawer(null)}>
           <div className="nlDescribe">
@@ -1071,7 +1143,7 @@ export default function AgentLayout({ ws }) {
       )}
 
       {manage.element}
-      {/* The agent's voice is played from here, so it keeps playing when you move between pages. */}
+      {/* the agent's voice plays from here, so it keeps playing across page changes */}
       <div ref={realSession.audioHostRef} className="stTAudio" aria-hidden="true" />
     </div>
   );

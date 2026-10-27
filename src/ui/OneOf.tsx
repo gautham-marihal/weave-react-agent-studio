@@ -2,10 +2,9 @@ import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { ToggleGroup } from 'radix-ui';
 
-// A row of buttons of which one is chosen (a Radix ToggleGroup of one): it is one Tab stop, landing on the chosen one,
-// the arrows move along it (and round), and Enter, Space or a click chooses. Pressing the chosen one again keeps it
-// chosen. A screen reader hears a group of choices, and which is on.
-//   <OneOf label value onChange className> around <Choice value>s; the chosen one also has the class `on`, which the styles draw
+// A row of buttons with one chosen (Radix ToggleGroup): one Tab stop on the chosen one, arrows move (and wrap), Enter,
+// Space or a click chooses, and pressing the chosen one keeps it. A screen reader hears a group and which is on.
+//   <OneOf label value onChange className> around <Choice value>s; the chosen one also gets the class `on`
 const Chosen = createContext<string>('');
 
 export function OneOf({

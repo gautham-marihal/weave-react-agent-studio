@@ -8,10 +8,8 @@ import './team.css';
 
 const VIA = { workspace: 'Whole workspace', agent: 'This agent only' };
 
-// "Who can open this agent?" from inside the agent: the people who can (some because they have the whole workspace,
-// some because this agent was shared with them), and a way to share just this one agent with someone, by their address
-// or from the people already on the team. The rest of the workspace stays closed to them; that is chosen from the Team
-// page.
+// "Who can open this agent?" from inside it: who can (through the whole workspace or a share), and a way to share just
+// this agent by address or from the team. Wider access is chosen on the Team page.
 export default function ShareAgentDrawer({ botId, name, onClose, onOpenTeam }) {
   const { members, update } = useTeam();
   const agent = useMemo(() => ({ id: botId, name }), [botId, name]);

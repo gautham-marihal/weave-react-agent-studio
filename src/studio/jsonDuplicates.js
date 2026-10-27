@@ -1,6 +1,4 @@
-// JSON.parse keeps only the last of two equal keys in one object, silently. A pasted or hand-edited config that repeats a
-// key would lose a setting without a word, so the editor looks for them in the raw text first.
-//
+// JSON.parse silently keeps only the last of two equal keys, so the editor looks for repeats in the raw text first.
 // findDuplicateKeys(text) -> [{ path, key, offset, firstOffset }]
 //   path         the object that repeats the key, as keys and array indexes (the same shape the API's errors use)
 //   key          the repeated key

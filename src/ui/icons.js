@@ -1,6 +1,5 @@
-// One icon set for the whole studio: Lucide's (lucide.dev, ISC licence), each kept under the name the studio has always
-// asked for it by, so a page asks for "agent" or "dial" and the drawing behind the name is chosen here, in one place.
-// Kept apart from the component so a test can check them.
+// The studio's one icon set: Lucide (lucide.dev, ISC licence), under the names pages always used ("agent", "dial"),
+// so the drawing behind each name is chosen here. Kept apart from the component so a test can check them.
 import {
   Activity,
   ArrowLeft,
@@ -27,6 +26,7 @@ import {
   Copy,
   Ellipsis,
   ExternalLink,
+  Eye,
   FileText,
   FlaskConical,
   Flag,
@@ -67,6 +67,7 @@ import {
   Plus,
   Radio,
   Redo2,
+  Rocket,
   Search,
   Shield,
   ShieldCheck,
@@ -93,7 +94,7 @@ import {
   createLucideIcon,
 } from 'lucide-react';
 
-// stop: a solid square, as on any player (Lucide's square is an outline, which beside a play button reads as a box to tick)
+// stop: a solid square, as on any player (Lucide's outline square beside a play button reads as a box to tick)
 const Stop = createLucideIcon('stop', [['rect', { x: '5', y: '5', width: '14', height: '14', rx: '2', fill: 'currentColor', key: 'stop' }]]);
 
 export const ICONS = {
@@ -198,6 +199,10 @@ export const ICONS = {
   table: Table2,
   // keeps an agent at the top of the Agents list
   pin: Pin,
+  // see what something comes to (the prompt the model is given)
+  eye: Eye,
+  // putting a version live (the agent's Release stage)
+  rocket: Rocket,
 };
 
 export const ICON_NAMES = Object.keys(ICONS);

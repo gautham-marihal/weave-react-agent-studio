@@ -4,48 +4,34 @@ import { api, groupIssues } from '../../api/client.ts';
 import Icon from '../../ui/Icon.jsx';
 import { askConfirm } from '../../ui/dialogs.js';
 import { AgentNumbers, useLiveNumbers } from '../../pages/LiveNumbers.jsx';
-import LanguagePicker from '../agent/pickers/LanguagePicker.jsx';
-import VoicePicker from '../agent/pickers/VoicePicker.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
 import { useGateStatus } from '../release/gate.js';
 import { navigate, replaceRoute, routeHref } from '../route.js';
-import { greetingOf, greetingTarget, readSimple, setAgentName, setGreeting, setRole } from '../simple/simpleModel.js';
-import { starterById } from '../starters.ts';
-import { Notice } from '../ui.jsx';
+import { Notice, envLabel } from '../ui.jsx';
 import { describeIssue } from '../validation/issues.js';
-import {
-  KNOWLEDGE_ID,
-  STEPS,
-  STEP_IDS,
-  isStarterRole,
-  knowledgeOf,
-  reachOf,
-  stepForPath,
-  stepIndex,
-  stepStates,
-  usesVoice,
-  withMainLanguage,
-} from './setupModel.js';
+import { KNOWLEDGE_ID, STEPS, STEP_IDS, knowledgeOf, reachOf, stepForPath, stepIndex, stepStates } from './setupModel.js';
 import { useSetupProgress } from './setupProgress.js';
 import { ActionSwitches, KnowledgeBlock, ReachChoices } from './SimpleBlocks.jsx';
+import { PurposeFields, VoiceFields } from './StepFields.jsx';
 import './setup.css';
 
-// The guided setup: one step at a time, everything for that step on one screen, Next to move on. The draft is saved at
-// every move, so leaving keeps the work and "Continue setup" comes back to the same step. The steps are in the menu at
-// the side; any can be opened at any time.
+// The guided setup: one step per screen, with Next to move on. Every move saves the draft, so "Continue setup"
+// returns to the same step. The side menu opens any step at any time.
 
+// [id, name here, what it is for, "live …"]: plain words first, the technical name (envLabel) small after
 const ENVIRONMENTS = [
-  ['development', 'Development', 'for you and your team to try it for real'],
-  ['staging', 'Staging', 'for a last check before everyone'],
-  ['production', 'Production', 'for everyone'],
+  ['development', 'Testing', 'just you and your team, to try it for real', 'for testing'],
+  ['staging', 'Final check', 'one last look before customers', 'for a final check'],
+  ['production', 'Live for customers', 'everyone who calls or chats', 'for customers'],
 ];
-const words = (text) =>
-  String(text || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
+const envOf = (id) => ENVIRONMENTS.find((e) => e[0] === id) || ENVIRONMENTS[0];
+// the most public place it is live (after a reload the setup knows only what the server says is deployed)
+const liveFrom = (deployed) => {
+  const env = ['production', 'staging', 'development'].find((id) => deployed?.[id]);
+  return env ? { version: deployed[env], environment: env, status: 'active', current: null } : null;
+};
 
-// ---- the steps down the side ----------------------------------------------------------------------------------------------------------------------
+// ---- the steps down the side
 function StepList({ step, states, onStep, busy }) {
   const [slot, setSlot] = useState(null);
   useLayoutEffect(() => {
@@ -96,97 +82,7 @@ function StepList({ step, states, onStep, busy }) {
   return slot ? createPortal(list, slot) : list;
 }
 
-// ---- 2. what it does
-// ---------------------------------------------------------------------------------------------------------------------------------
-function PurposeStep({ config, set }) {
-  const simple = readSimple(config);
-  // the channels the greeting is written to, kept from its first change (as on the Agent page): those that say the same line; a channel that says
-  // something else (or waits for the caller) is left as it is, and a line that is one of the agent's messages stays that message
-  const [greetingFor, setGreetingFor] = useState(null);
-  const greeting = greetingOf(config, greetingFor);
-  const example = starterById('support').role;
-  return (
-    <div className="suFields">
-      <label className="suField">
-        <span>Its name</span>
-        <small>What you and your team see in the list of agents.</small>
-        <input className="stFInput" value={config?.meta?.name || ''} onChange={(event) => set(setAgentName(config, event.target.value))} />
-      </label>
-      <label className="suField">
-        <span>What it should do</span>
-        <small>Who it helps, what it does for them, and anything it must never do. Plain sentences are best.</small>
-        <textarea className="stFInput" rows={8} value={simple.role} onChange={(event) => set(setRole(config, event.target.value))} />
-        <span className="suFieldFoot">
-          <small className={words(simple.role) < 8 ? 'suWarn' : ''}>
-            {words(simple.role)} word{words(simple.role) === 1 ? '' : 's'}
-            {words(simple.role) < 8 ? ' · a sentence or two more helps it do the job well' : ''}
-          </small>
-          {!simple.role.trim() && (
-            <button type="button" className="linkButton" onClick={() => set(setRole(config, example))}>
-              Start from an example
-            </button>
-          )}
-        </span>
-        {isStarterRole(simple.role) && (
-          <small className="suTip">
-            These are the starting point’s own words. Make them yours: what your business does, what people usually ask about (hours, prices, how to book), and
-            what it must never do.
-          </small>
-        )}
-      </label>
-      <label className="suField">
-        <span>The first thing it says</span>
-        <small>When someone opens the chat or the call is answered.</small>
-        <input
-          className="stFInput"
-          value={greeting.text}
-          placeholder="Hello! How can I help you today?"
-          onChange={(event) => {
-            const target = greetingFor || greetingTarget(config);
-            if (!greetingFor) setGreetingFor(target);
-            set(setGreeting(config, event.target.value, target));
-          }}
-        />
-      </label>
-    </div>
-  );
-}
-
-// ---- 3. where people reach it
-// --------------------------------------------------------------------------------------------------------------------
-// ---- 4. language and voice
-// -------------------------------------------------------------------------------------------------------------------------
-function VoiceStep({ config, set }) {
-  const voice = usesVoice(config);
-  const main = readSimple(config).primaryLanguage;
-  // an agent with no main language starts with the person's own (the browser's), shown here to change
-  useEffect(() => {
-    if (!main) set(withMainLanguage(config, typeof navigator === 'undefined' ? [] : navigator.languages || [navigator.language]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [main]);
-  return (
-    <div className="suFields">
-      <section className="suBlock" aria-labelledby="suLanguage">
-        <h3 id="suLanguage">Language</h3>
-        <LanguagePicker config={config} set={set} brief />
-      </section>
-      <section className="suBlock" aria-labelledby="suVoice">
-        <h3 id="suVoice">Voice</h3>
-        {voice ? (
-          // drawn again when the language changes, so the voices listed first are the ones that speak it
-          <VoicePicker key={main} config={config} set={set} />
-        ) : (
-          <p className="suNote">It only types, so it needs no voice. Switch on talking or phone calls in the step before, and you choose one here.</p>
-        )}
-      </section>
-    </div>
-  );
-}
-
-// ---- 6. what it can do
-// -----------------------------------------------------------------------------------------------------------------------------
 // ---- 7. try it
-// ------------------------------------------------------------------------------------------------------------------------------------
 function TryStep({ botId, editor, session, sessionMode, modeLocked, setSessionMode, onTried }) {
   const spoke = (session?.messages || []).some((m) => m.role === 'user');
   useEffect(() => {
@@ -212,14 +108,16 @@ function TryStep({ botId, editor, session, sessionMode, modeLocked, setSessionMo
   );
 }
 
-// ---- 8. go live -----------------------------------------------------------------------------------------------------------------------------------
-//   done: what was put live, { version, environment, status, current } (kept by the
-//   setup: the agent is read again after it goes live, which redraws this step)
+// ---- 8. go live
+//   done: what was put live, { version, environment, status, current }; kept by the setup because the agent is
+//   read again after going live, which redraws this step
 function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, bump }) {
   const config = editor.parsed.value;
   const [environment, setEnvironment] = useState('development');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // live already, and asked to put the latest changes live: the form again
+  const [again, setAgain] = useState(false);
   const gate = useGateStatus(botId, editor);
   const numbers = useLiveNumbers(!!done && reachOf(config).sip_voice, { botId });
   const problems = useMemo(
@@ -235,9 +133,9 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
   const goLive = async () => {
     if (environment === 'production') {
       const yes = await askConfirm({
-        title: `Put ${name} live for everyone?`,
-        body: 'Production is what your customers reach. Development is the place to try it for real first.',
-        confirmLabel: 'Put it live in Production',
+        title: `Put ${name} live for customers?`,
+        body: 'Everyone who calls or chats reaches this version from now on. “Testing” is the place to try it for real first.',
+        confirmLabel: 'Put it live for customers',
       });
       if (!yes) return;
     }
@@ -252,6 +150,7 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
       const result = await api.deploy(botId, { version: published.version, environment, note: 'Put live from the setup' });
       const deployments = await api.listDeployments(botId).catch(() => null);
       onLive({ version: published.version, environment, status: result?.deployment?.status || 'active', current: deployments?.current || null });
+      setAgain(false);
       // read again: publishing moved the draft on to the next version number
       editor.reload();
       bump?.();
@@ -262,8 +161,9 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
     }
   };
 
-  if (done) {
-    const where = ENVIRONMENTS.find((e) => e[0] === done.environment)[1];
+  if (done && !again) {
+    const reach = reachOf(config);
+    const widgets = (config.channels || []).filter((c) => c?.enabled !== false && ['web_chat', 'web_voice'].includes(c.type));
     return (
       <div className="suFields">
         <div className="suDone" role="status">
@@ -272,24 +172,71 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
           </span>
           <div>
             <strong>
-              {name} is live in {where}
+              {name} is live {envOf(done.environment)[3]}
             </strong>
             <p>
               Version {done.version}
-              {done.status === 'pending' ? ' is being set up; the one before keeps answering until it is ready.' : ' answers from now on.'}
+              {done.status === 'pending' ? ' is being set up; the one before keeps answering until it is ready.' : ' answers from now on.'}{' '}
+              <span className="suEnvName">({envLabel(done.environment)})</span>
             </p>
           </div>
         </div>
-        {reachOf(config).sip_voice && numbers.mode === 'live' && <AgentNumbers live={numbers} botId={botId} botName={name} current={done.current} />}
-        {reachOf(config).sip_voice && numbers.mode !== 'live' && (
-          <p className="suNote">Phone numbers are added on the Releases page, under Deploy, once this server can set them up.</p>
-        )}
+        {/* what each way of reaching it still needs: nothing here pretends a channel works before it does */}
+        <section className="suReach" aria-labelledby="suReachTitle">
+          <h3 id="suReachTitle">How people reach it</h3>
+          <ul>
+            {reach.sip_voice && (
+              <li>
+                <Icon name="phone" size={16} />
+                <span>
+                  <strong>Phone calls</strong>
+                  <small>
+                    {numbers.mode === 'live'
+                      ? numbers.rows?.length
+                        ? `Callers dial ${numbers.rows.map((r) => r.number).join(' or ')}.`
+                        : 'Add a phone number below, and callers who dial it reach it.'
+                      : 'Phone numbers are added on the Releases page, under Deploy, once this server can set them up.'}
+                  </small>
+                </span>
+              </li>
+            )}
+            {widgets.map((c) => (
+              <li key={c.id}>
+                <Icon name={c.type === 'web_voice' ? 'mic' : 'chat'} size={16} />
+                <span>
+                  <strong>{c.type === 'web_voice' ? 'Talk on your website' : 'Chat on your website'}</strong>
+                  <small>
+                    Needs the website widget, which your server team adds to your site. Give them the agent’s id <code>{botId}</code>
+                    {c.entry?.widget_id ? (
+                      <>
+                        {' '}
+                        and the widget id <code>{c.entry.widget_id}</code>
+                      </>
+                    ) : null}
+                    .
+                  </small>
+                </span>
+              </li>
+            ))}
+            <li>
+              <Icon name="test" size={16} />
+              <span>
+                <strong>You, now</strong>
+                <small>Talk to it yourself any time on its Test page, or with “Try it again” below.</small>
+              </span>
+            </li>
+          </ul>
+        </section>
+        {reach.sip_voice && numbers.mode === 'live' && <AgentNumbers live={numbers} botId={botId} botName={name} current={done.current} />}
         <div className="suActionButtons">
           <button type="button" className="primaryCta" onClick={() => navigate(routeHref(botId, 'home'), { guard: false })}>
             Go to the agent
           </button>
           <button type="button" className="quietButton" onClick={() => onStep('try')}>
             Try it again
+          </button>
+          <button type="button" className="quietButton" onClick={() => setAgain(true)}>
+            Put my latest changes live
           </button>
         </div>
       </div>
@@ -365,7 +312,7 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
           <label key={id} className={`suCheck ${environment === id ? 'on' : ''}`}>
             <input type="radio" name="suEnv" value={id} checked={environment === id} onChange={() => setEnvironment(id)} />
             <span>
-              <strong>{label}</strong> <small>{text}</small>
+              <strong>{label}</strong> <small>{text}</small> <small className="suEnvName">({envLabel(id)})</small>
             </span>
           </label>
         ))}
@@ -380,15 +327,14 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
         </Notice>
       )}
       <button type="button" className="primaryCta suGoLive" onClick={goLive} disabled={busy || blocked}>
-        <Icon name="release" size={16} /> {busy ? 'Putting it live…' : `Put it live in ${ENVIRONMENTS.find((e) => e[0] === environment)[1]}`}
+        <Icon name="release" size={16} /> {busy ? 'Putting it live…' : `Put it live ${envOf(environment)[3]}`}
       </button>
     </div>
   );
 }
 
 // ---- the setup
-// ---------------------------------------------------------------------------------------------------------------------------------------
-// notices: what the agent's pages say about a save that was refused or failed (shown under the step's heading)
+//   notices: what the agent's pages say about a refused or failed save (shown under the step's heading)
 export default function SetupWizard({
   botId,
   name,
@@ -421,7 +367,7 @@ export default function SetupWizard({
   const at = stepIndex(step);
   const meta = STEPS[at];
 
-  // each step is a new screen: its heading takes the focus, so the keyboard starts there and a screen reader reads where it is
+  // each step is a new screen: its heading takes focus so the keyboard and a screen reader start there
   const loaded = editor.status !== 'loading' && !!config;
   useEffect(() => {
     if (loaded) headRef.current?.focus({ preventScroll: true });
@@ -434,7 +380,7 @@ export default function SetupWizard({
     if (step && progress.step !== step) update({ step });
   }, [step, progress.step, update]);
 
-  // Leaving What it knows (to another step, or to finish later) starts reading the documents, once each time they change.
+  // Leaving What it knows (for another step, or to finish later) starts reading the documents, once per change.
   const readWhatItKnows = () => {
     if (step !== 'knowledge') return;
     const k = knowledgeOf(latest.current);
@@ -444,7 +390,7 @@ export default function SetupWizard({
       api.buildKnowledge(botId, KNOWLEDGE_ID).catch(() => {});
     }
   };
-  // Every move saves the draft first, so nothing is lost and the next step (Try it, Go live) works on what was just set.
+  // Every move saves the draft first, so nothing is lost and the next step (Try it, Go live) uses what was just set.
   const goTo = async (target) => {
     if (target === step) return;
     setMoving(true);
@@ -453,8 +399,7 @@ export default function SetupWizard({
       const saved = await editor.save();
       if (!saved) {
         setMoving(false);
-        // (what went wrong, and the choice after a conflict, is in the note under the heading: `editor` here is from
-        // before the save, so it can't say)
+        // what went wrong (and any conflict choice) is in the note under the heading; `editor` here predates the save
         setMoveError('Your changes couldn’t be saved, so it stayed on this step. The note above says why.');
         return;
       }
@@ -464,7 +409,7 @@ export default function SetupWizard({
     // coming back to the last step after changing something offers to put it live again
     if (step === 'live') setWentLive(null);
     setStep(target);
-    // the address names the step, so a reload (or a link copied now) opens this step and not the one the setup was opened at
+    // the address names the step, so a reload or a copied link opens this step, not the one the setup was opened at
     replaceRoute(routeHref(botId, 'setup', { step: target }));
     mainRef.current?.scrollIntoView?.({ block: 'start' });
   };
@@ -494,9 +439,9 @@ export default function SetupWizard({
   const next = STEPS[at + 1];
   const prev = at > 1 ? STEPS[at - 1] : null;
   let body = null;
-  if (step === 'purpose') body = <PurposeStep config={config} set={set} />;
+  if (step === 'purpose') body = <PurposeFields config={config} set={set} />;
   else if (step === 'reach') body = <ReachChoices config={config} set={set} botId={botId} />;
-  else if (step === 'voice') body = <VoiceStep config={config} set={set} />;
+  else if (step === 'voice') body = <VoiceFields config={config} set={set} startLanguage />;
   else if (step === 'knowledge') body = <KnowledgeBlock botId={botId} config={config} set={set} latest={() => latest.current} />;
   else if (step === 'actions') body = <ActionSwitches config={config} set={set} />;
   else if (step === 'try')
@@ -520,7 +465,7 @@ export default function SetupWizard({
         summary={summary}
         states={states}
         onStep={goTo}
-        done={wentLive}
+        done={wentLive || (progress.finished ? liveFrom(summary?.deployed) : null)}
         onLive={(result) => {
           setWentLive(result);
           update({ finished: true });

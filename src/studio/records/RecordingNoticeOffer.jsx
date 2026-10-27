@@ -1,8 +1,8 @@
 import React from 'react';
 
-// Asked when a voice channel is added and callers are not told anything yet. A recording notice is a legal matter in many places, and the
-// agent keeps a record of its calls unless that is turned off, so it is raised at the moment it starts to matter rather than left behind a
-// default. `onAdd` writes the notice; `onDone` closes the question either way.
+// Asked when a voice channel is added and callers aren't told anything yet. A recording notice is a legal matter in
+// many places and calls are recorded unless turned off, so it is raised when it matters, not left to a default.
+//   onAdd: writes the notice; onDone: closes the question either way
 export const DEFAULT_RECORDING_NOTICE = 'This call may be recorded to improve our service.';
 
 export default function RecordingNoticeOffer({ onAdd, onDone }) {

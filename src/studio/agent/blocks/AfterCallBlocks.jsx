@@ -20,11 +20,9 @@ import { describeRecords, readRecords, setLogDays, setLogEnabled } from '../../r
 import { TryRedactionView } from '../../form/TryPanels.jsx';
 import Select from '../../../ui/Select.tsx';
 
-// The top of the After the call page, in plain words: a summary of each call, questions answered about it, what is
-// recorded (and what callers are told), and the sensitive details hidden in what is kept. The rest of the page (the
-// model that writes summaries, files sent after the call, closing messages, call records and logs) is in the settings
-// below, which no longer ask for any of this.
-//   unsupported: the validator's `unsupported` list: a card whose part the server says it doesn't do yet says so (none is listed today)
+// The plain-words top of the After the call page: summary, questions, recording (and the notice), hidden sensitive
+// details. Everything else is in the settings form below, which no longer asks for these.
+//   unsupported: the validator's list; a card the server says it can't do yet says so (none is listed today)
 
 export function SummaryBlock({ config, set, unsupported }) {
   const { summary } = afterCallOf(config);
@@ -57,15 +55,15 @@ export function SummaryBlock({ config, set, unsupported }) {
   );
 }
 
-// Each row writes to its own place in the configuration (`q.index`), which is not its place in the list when something there is not a question.
+// Each row writes to `q.index`, its place in the config, which differs from its row when non-questions are there.
 export function QuestionsBlock({ config, set, unsupported }) {
   const { questions } = afterCallOf(config);
   const ideas = QUESTION_IDEAS.filter((idea) => !questions.some((q) => q.question.trim().toLowerCase() === idea.question.toLowerCase()));
-  // The answers to choose from of a question switched away from "One of a list", so switching it back brings them back (the configuration keeps a
-  // list only with "One of a list").
+  // Choices of a question switched away from "One of a list", so switching back restores them (the config keeps a list
+  // only with "One of a list").
   const keptValues = useRef(new Map());
-  // Where the focus goes once a question is added or removed (the row it is in, or the "Add a question" button), so it is not lost with the button
-  // that was pressed: { row, count } waits for the list to have `count` questions.
+  // Where focus goes after adding or removing a question, so it isn't lost with the pressed button: { row, count }
+  // waits for the list to have `count` questions.
   const listRef = useRef(null);
   const addRef = useRef(null);
   const focusNext = useRef(null);
@@ -125,7 +123,7 @@ export function QuestionsBlock({ config, set, unsupported }) {
                 Remove
               </button>
               {q.type === 'enum' && (
-                // the choices sit under their question with a label of their own, so they don't read as another question
+                // the choices have their own label under the question, so they don't read as another question
                 <label className="smValuesField">
                   <span>Answers it can pick from</span>
                   <ListBox
@@ -156,9 +154,8 @@ export function QuestionsBlock({ config, set, unsupported }) {
   );
 }
 
-// What is kept of each call: its log (on unless switched off), the audio and the transcript, each for as long as it
-// says, and what callers are told. A box the agent doesn't set is marked as the server's own default; the card ends
-// with what all of it means.
+// What is kept of each call (log, audio, transcript, for how long) and what callers are told. A box the agent doesn't
+// set is marked as the server's default.
 export function RecordingBlock({ config, set, unsupported }) {
   const { recording, notice } = afterCallOf(config);
   const records = readRecords(config);
@@ -237,7 +234,7 @@ export function RecordingBlock({ config, set, unsupported }) {
           aria-label="Recording notice"
         />
       </label>
-      {/* people who talk to it (a phone line, talking on the website) and are told nothing: said here, where the line is written */}
+      {/* voice callers told nothing about recording: said here, where the notice is written */}
       {!notice.trim() && voice && (
         <p className="suNote warn" role="status">
           People who talk to it aren’t told that calls are kept. Many places require it.{' '}

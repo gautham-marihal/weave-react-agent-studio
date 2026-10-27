@@ -540,13 +540,6 @@ html:not([data-style="simple"])[data-theme] body :is(.quickCard, .integrationCar
 html:not([data-style="simple"])[data-theme] body :is(h1, h2, h3) {
   font-family: var(--font-display);
 }
-html:not([data-style="simple"])[data-theme] body :is(.sideLink.selected, .nlNav button.on) {
-  background: var(--accent-soft);
-  color: var(--accent-text);
-}
-html:not([data-style="simple"])[data-theme] body :is(.sideLink.selected i, .nlNav button.on .nlNavIcon) {
-  color: var(--accent-text);
-}
 html:not([data-style="simple"])[data-theme] body :is(.linkButton, .stLink:not(.stFHelp .stLink)) {
   color: var(--accent-text);
 }
@@ -586,15 +579,6 @@ html[data-style="premium"][data-theme] body .welcomeBlock h1 span {
   color: var(--gold);
 }
 /* small capitals for labels: the menu's headings, the heads of tables, the eyebrows */
-html[data-style="premium"][data-theme]
-  body
-  :is(.navLabel, .nlNavHead, .eyebrow, .csTable th, .tmTable th, .sessionsTable thead th, .clTable th, .lvStat span, .csStat > span) {
-  color: var(--label);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
 html[data-style="premium"][data-theme] body :is(.lvStat span, .csStat > span) {
   letter-spacing: 0.12em;
 }
@@ -744,22 +728,8 @@ html[data-style="premium"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .
   letter-spacing: 0.06em;
 }
 /* the menu: a gold rule beside the page you are on */
-html[data-style="premium"][data-theme] body :is(.sideLink, .nlNav button) {
-  border-radius: 2px;
-}
-html[data-style="premium"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--metal) 20%, transparent), color-mix(in srgb, var(--metal) 2%, transparent) 85%);
-  color: var(--metal-pale);
-  box-shadow: inset 2px 0 0 var(--metal);
-}
-html[data-style="premium"][data-theme] body :is(.sideLink.selected i, .nlNav button.on .nlNavIcon) {
-  color: var(--metal);
-}
 html[data-style="premium"][data-theme] body .sidebar :is(.workspaceSwitch, .sideUtility, .profileTrigger) {
   color: var(--text);
-}
-html[data-style="premium"][data-theme] body .sidebar :is(.navLabel, .nlNavHead) {
-  color: var(--label);
 }
 html[data-style="premium"][data-theme] body .sidebar .sideDivider {
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--metal) 35%, transparent), transparent);
@@ -839,19 +809,6 @@ html[data-style="futuristic"][data-theme] body :is(.nlBar h1, .agentStatusLine h
   text-transform: none;
 }
 /* labels read like a readout: monospace, capitals, spaced */
-html[data-style="futuristic"][data-theme]
-  body
-  :is(.navLabel, .nlNavHead, .eyebrow, .csTable th, .tmTable th, .sessionsTable thead th, .clTable th, .lvStat span, .csStat > span, .lvSpeaker, .inSubhead) {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-html[data-style="futuristic"][data-theme] body :is(.navLabel, .nlNavHead)::before {
-  content: "// ";
-  color: var(--hud);
-}
 /* numbers glow */
 html[data-style="futuristic"][data-theme]
   body
@@ -1024,19 +981,6 @@ html[data-style="futuristic"][data-theme] body :is(.stPill, .nlPill, .lvFlags li
   text-transform: uppercase;
 }
 /* the menu: a lit bar beside the page you are on, icons that glow */
-html[data-style="futuristic"][data-theme] body :is(.sideLink, .nlNav button) {
-  border-radius: 2px;
-}
-html[data-style="futuristic"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 20%, transparent), transparent 85%);
-  box-shadow: inset 2px 0 0 var(--hud);
-}
-html[data-style="futuristic"][data-theme] body :is(.sideLink.selected i, .nlNav button.on .nlNavIcon) {
-  filter: drop-shadow(0 0 6px var(--glow));
-}
-html[data-style="futuristic"][data-theme] body :is(.sideLink:hover, .nlNav button:hover) {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
 html[data-style="futuristic"][data-theme] body :is(.agentRowAvatar, .nlRowIcon, .nlDrawerIcon) {
   border-radius: 2px;
   border-color: var(--hud-dim);
@@ -1111,10 +1055,6 @@ html[data-style="vibrant"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1
 }
 html[data-style="vibrant"][data-theme] body :is(.welcomeBlock h1 span, .heroCopy h1 span) {
   -webkit-text-fill-color: transparent;
-}
-html[data-style="vibrant"][data-theme] body :is(.navLabel, .nlNavHead) {
-  font-weight: 750;
-  letter-spacing: 0.02em;
 }
 /* cards: big soft corners and a coloured shadow */
 html[data-style="vibrant"][data-theme]
@@ -1268,11 +1208,7 @@ html[data-style="vibrant"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .
   border-radius: 999px;
 }
 /* the menu: every place has its own colour, and the open one is candy */
-html[data-style="vibrant"][data-theme] body :is(.sideLink, .nlNav button) {
-  border-radius: 14px;
-}
-html[data-style="vibrant"][data-theme] body .sideLink i,
-html[data-style="vibrant"][data-theme] body .nlNav .nlNavIcon {
+html[data-style="vibrant"][data-theme] body .sideLink i {
   display: inline-grid;
   place-items: center;
   width: 26px;
@@ -1280,36 +1216,6 @@ html[data-style="vibrant"][data-theme] body .nlNav .nlNavIcon {
   border-radius: 9px;
   background: color-mix(in srgb, var(--hue, var(--hue-1)) 15%, transparent);
   color: var(--hue, var(--hue-1));
-}
-html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav button):nth-of-type(7n + 1) {
-  --hue: var(--hue-1);
-}
-html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav button):nth-of-type(7n + 2) {
-  --hue: var(--hue-2);
-}
-html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav button):nth-of-type(7n + 3) {
-  --hue: var(--hue-3);
-}
-html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav button):nth-of-type(7n + 4) {
-  --hue: var(--hue-4);
-}
-html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav button):nth-of-type(7n + 5) {
-  --hue: var(--hue-5);
-}
-html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav button):nth-of-type(7n + 6) {
-  --hue: var(--hue-6);
-}
-html[data-style="vibrant"][data-theme] body :is(.sideNav .sideLink, .nlNav button):nth-of-type(7n) {
-  --hue: var(--hue-7);
-}
-html[data-style="vibrant"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
-  background: var(--candy);
-  color: #ffffff;
-  box-shadow: 0 8px 18px -10px var(--glow);
-}
-html[data-style="vibrant"][data-theme] body :is(.sideLink.selected i, .nlNav button.on .nlNavIcon) {
-  background: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
 }
 html[data-style="vibrant"][data-theme] body .sideLink.selected em {
   background: rgba(255, 255, 255, 0.24);
@@ -1911,15 +1817,6 @@ html[data-style="professional"][data-theme] body :is(.welcomeBlock h1, .nlPageHe
 html[data-style="professional"][data-theme] body .welcomeBlock h1 span {
   color: var(--accent-text);
 }
-html[data-style="professional"][data-theme]
-  body
-  :is(.navLabel, .nlNavHead, .eyebrow, .csTable th, .tmTable th, .sessionsTable thead th, .clTable th, .lvStat span, .csStat > span, .inSubhead) {
-  color: var(--label);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
 html[data-style="professional"][data-theme] body :is(.csTable th, .tmTable th, .sessionsTable thead th, .clTable th) {
   background: var(--panel2);
 }
@@ -2050,13 +1947,6 @@ html[data-style="professional"][data-theme] body :is(.stPill, .nlPill, .lvFlags 
   border-radius: 4px;
 }
 /* the menu: a blue edge on the open page */
-html[data-style="professional"][data-theme] body :is(.sideLink, .nlNav button) {
-  border-radius: 4px;
-}
-html[data-style="professional"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
-  box-shadow: inset 3px 0 0 var(--accent);
-  font-weight: 600;
-}
 html[data-style="professional"][data-theme] body :is(.agentRowAvatar, .workspaceAvatar) {
   border-radius: 4px;
 }
@@ -2199,10 +2089,6 @@ html[data-style="calm"][data-theme] body .welcomeBlock h1 span {
 html[data-style="calm"][data-theme="light"] body .welcomeBlock h1 span {
   color: #8f5434;
 }
-html[data-style="calm"][data-theme] body :is(.navLabel, .nlNavHead) {
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
 html[data-style="calm"][data-theme] body :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong) {
   color: var(--accent-text);
   font-family: var(--font-display);
@@ -2307,12 +2193,6 @@ html[data-style="calm"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .inC
   border-radius: 999px;
 }
 /* the menu: a soft green pill for the open page */
-html[data-style="calm"][data-theme] body :is(.sideLink, .nlNav button) {
-  border-radius: 12px;
-}
-html[data-style="calm"][data-theme] body :is(.sideLink.selected, .nlNav button.on) {
-  font-weight: 600;
-}
 html[data-style="calm"][data-theme] body :is(.agentRowAvatar, .workspaceAvatar, .nlRowIcon, .nlDrawerIcon) {
   border-color: transparent;
   border-radius: 12px;
@@ -2338,14 +2218,6 @@ html[data-style="calm"][data-theme] body .waveform i {
 }
 /* everything moves slowly and softly; the live dot breathes */
 @media (prefers-reduced-motion: no-preference) {
-  html[data-style="calm"][data-theme] body :is(.agentRow, .quickCard, .integrationCard, .lvCard, .stCard, .primaryCta, .quietButton, .sideLink, .nlNav button) {
-    transition:
-      background-color 0.35s ease,
-      border-color 0.35s ease,
-      box-shadow 0.35s ease,
-      color 0.35s ease,
-      filter 0.35s ease;
-  }
   html[data-style="calm"][data-theme] body .lvDot {
     animation: calmBreathe 4s ease-in-out infinite;
   }
@@ -2683,23 +2555,6 @@ html[data-style="premium"][data-theme] body .sidebar .stPill {
   background: transparent;
   color: var(--metal-pale);
 }
-html[data-style="premium"][data-theme] body .sidebar .nlSetupBar i {
-  background: var(--metal);
-}
-html[data-style="premium"][data-theme] body .sidebar .nlSetupNext {
-  color: var(--metal-text);
-}
-/* Vibrant: the coloured tiles of the menu a little smaller inside an agent, so the whole menu fits */
-html[data-style="vibrant"][data-theme] body .dashboard.inAgent .nlNav .nlNavIcon {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-}
-html[data-style="vibrant"][data-theme] body .dashboard.inAgent .nlNavGroup button {
-  min-height: 30px;
-  padding-top: 3px;
-  padding-bottom: 3px;
-}
 /* Professional's picture has its navy bar along the top: in the panel's shorter picture the bar is slimmer, so the rest still fits */
 .styleMenuPanel .styleCard[data-style-preview="professional"] .styleSwatch {
   background:
@@ -2808,4 +2663,146 @@ html[data-style="professional"][data-theme="dark"] body,
 html[data-style="premium"][data-theme="dark"] body,
 html[data-style="futuristic"][data-theme="dark"] body {
   --chart-1: #3987e5;
+}
+
+/* ============================================================================================================================================== */
+/* ==== STUDIO: calm and precise, a studio for building. A light grey page with white cards and fine borders, IBM Plex type, one plum accent
+        (lilac at night), quiet controls and generous room. The default style (src/studio/usePref.js). ===================================== */
+/* ============================================================================================================================================== */
+
+/* ---- the colours, day and night ---- */
+html[data-style="studio"][data-theme="light"] body {
+  --page: #f6f7f9;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel2: #f0f2f5;
+  --surface: #ffffff;
+  --surface2: #f0f2f5;
+  --surface-hover: #f0f2f5;
+  --line: #e4e7ec;
+  --line2: #d0d5dd;
+  --text: #344054;
+  --textStrong: #101828;
+  --muted: #5d6679;
+  --dim: #5d6679;
+  --field: #ffffff;
+  --ink: #72308f;
+  --ink2: #72308f;
+  --on-ink: #ffffff;
+  --sidebar: #ffffff;
+  --ring: rgba(114, 48, 143, 0.22);
+  --raise: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+  --panel-shadow: 0 12px 32px rgba(16, 24, 40, 0.14), 0 2px 6px rgba(16, 24, 40, 0.06);
+  --accent: #72308f;
+  --accent2: #72308f;
+  --accent-strong: #61297a;
+  --accent-soft: #f5ebfa;
+  --accent-text: #61297a;
+  --on-accent: #ffffff;
+  --cyan: #72308f;
+  --cyan2: #61297a;
+  --focus: rgba(114, 48, 143, 0.28);
+  --text-strong: #101828;
+  --text-muted: #5d6679;
+  --text-dim: #5d6679;
+  --text-faint: #5d6679;
+  --line-soft: #eef0f3;
+  --panel-soft: #f8f9fb;
+  --surface-soft: #f0f2f5;
+  --field-text: #101828;
+  --glow: transparent;
+  --good-text: #067647;
+  --danger-text: #b41838;
+  --warn-text: #93460a;
+  --info-text: #175cd3;
+  --label: #5d6679;
+  --card-fill: #ffffff;
+  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+  --card-hover: 0 0 0 1px rgba(114, 48, 143, 0.24), 0 4px 12px -4px rgba(16, 24, 40, 0.12);
+  --page-art: none;
+}
+html[data-style="studio"][data-theme="dark"] body {
+  --page: #0f172a;
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --panel2: #172033;
+  --surface: #1e293b;
+  --surface2: #334155;
+  --surface-hover: #334155;
+  --line: #334155;
+  --line2: #475569;
+  --text: #cbd5e1;
+  --textStrong: #f8fafc;
+  --muted: #a3b0c2;
+  --dim: #a3b0c2;
+  --field: #172033;
+  --ink: #c49bed;
+  --ink2: #c49bed;
+  --on-ink: #0f172a;
+  --sidebar: #172033;
+  --ring: rgba(196, 155, 237, 0.3);
+  --raise: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --panel-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --accent: #c49bed;
+  --accent2: #c49bed;
+  --accent-strong: #dbbbf8;
+  --accent-soft: #3b1852;
+  --accent-text: #dbbbf8;
+  --on-accent: #0f172a;
+  --cyan: #c49bed;
+  --cyan2: #dbbbf8;
+  --focus: rgba(196, 155, 237, 0.34);
+  --text-strong: #f8fafc;
+  --text-muted: #a3b0c2;
+  --text-dim: #a3b0c2;
+  --text-faint: #a3b0c2;
+  --line-soft: #273449;
+  --panel-soft: #172033;
+  --surface-soft: #334155;
+  --field-text: #f8fafc;
+  --glow: transparent;
+  --good-text: #34d399;
+  --danger-text: #fca5a5;
+  --warn-text: #fb923c;
+  --info-text: #60a5fa;
+  --label: #a3b0c2;
+  --card-fill: #1e293b;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --card-hover: 0 0 0 1px rgba(196, 155, 237, 0.35), 0 6px 16px -6px rgba(0, 0, 0, 0.7);
+  --page-art: none;
+}
+
+/* ---- the type: IBM Plex, self-hosted (main.jsx) ---- */
+html[data-style="studio"] {
+  --font-display: "IBM Plex Sans", "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+html[data-style="studio"][data-theme] body {
+  font-family: var(--font-display);
+}
+/* titles: semibold and a little tight, never shouting */
+html[data-style="studio"][data-theme] body :is(h1, h2, h3) {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* ---- its card in the style picker ---- */
+.styleCard[data-style-preview="studio"] {
+  --sw-radius: 8px;
+}
+[data-theme="light"] .styleCard[data-style-preview="studio"] {
+  --sw-page: #f6f7f9;
+  --sw-panel: #ffffff;
+  --sw-line: #d0d5dd;
+  --sw-text: #101828;
+  --sw-accent: #72308f;
+  --sw-ink: #72308f;
+}
+[data-theme="dark"] .styleCard[data-style-preview="studio"] {
+  --sw-page: #0f172a;
+  --sw-panel: #1e293b;
+  --sw-line: #475569;
+  --sw-text: #f8fafc;
+  --sw-accent: #c49bed;
+  --sw-ink: #c49bed;
 }

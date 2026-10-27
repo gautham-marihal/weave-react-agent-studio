@@ -69,7 +69,7 @@ function LiveCard({ call, name, hideCaller, onWatch, onOpenCall }) {
         {!call.loading && !lines.length && <li className="lvNote">Just started: nothing said yet.</li>}
         {lines.map((l) => (
           <li key={l.seq} className={`lvLine ${l.who}`}>
-            {/* the agent that said it, by name ("Assistant", "Billing specialist"), as a person reads it, not its id */}
+            {/* the agent's name ("Billing specialist"), not its id */}
             <span className="lvSpeaker">{l.who === 'caller' ? 'Caller' : humanize(l.agent || call.agent || 'agent')}</span>
             <span className="lvText">{l.who === 'caller' && hideCaller ? <i>{hiddenWords(l)}</i> : l.text}</span>
           </li>
@@ -97,8 +97,8 @@ function LiveCard({ call, name, hideCaller, onWatch, onOpenCall }) {
   );
 }
 
-// The Live board: every call going on now across the workspace's agents, updating as they are said, with what needs a
-// look first; and the calls that ended in the last ten minutes. It only watches: nothing here changes a call.
+// The Live board: every call in progress across the workspace, what needs a look first, plus calls that ended in the
+// last ten minutes. It only watches: nothing here changes a call.
 export default function LiveBoardPage({ bots = [], onOpenCall }) {
   const [paused, setPaused] = useState(false);
   const [agent, setAgent] = useState('');
@@ -129,7 +129,7 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
       before.current = now;
       return;
     }
-    // held back (said something a moment ago): compared later with what was there when it last spoke, so nothing that happened meanwhile is missed
+    // spoke a moment ago: held back, then compared with what was there when it last spoke, so nothing is missed
     if (Date.now() - lastSaid.current <= 4000) return;
     const said = changesToAnnounce(before.current, now, names);
     if (said.length) {
@@ -140,7 +140,7 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
   }, [board.calls, names]);
 
   const open = watching && board.calls.find((c) => c.bot === watching.bot && c.id === watching.id);
-  // why it isn't watching, when it isn't: paused, no agent yet, or the tab is out of sight (it watches again when it is back)
+  // why it isn't watching: paused, no agent yet, or the tab is out of sight (it resumes when the tab is back)
   const status = paused
     ? 'Paused'
     : !bots.length

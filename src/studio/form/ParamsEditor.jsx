@@ -4,9 +4,9 @@ import { PARAM_KINDS, modelView, problems as paramProblems, readParams, writePar
 import Icon from '../../ui/Icon.jsx';
 import Select from '../../ui/Select.tsx';
 
-// A tool's parameters as rows (name, kind, what it is for, needed or not, choices) instead of hand-written JSON Schema.
-// Anything the rows can't show (a pattern, a nested object, a list) is kept and written back untouched; "Edit as JSON"
-// shows the whole schema. The rows are kept in the box so a half-typed name doesn't disappear while you type it.
+// A tool's parameters as rows (name, kind, purpose, needed, choices) instead of
+// hand-written JSON Schema. What the rows can't show is written back untouched; "Edit
+// as JSON" shows it all. Rows live in local state so a half-typed name doesn't vanish.
 export default function ParamsEditor({ value, onChange, toolName, description, disabled }) {
   const parsed = useMemo(() => readParams(value), [value]);
   const [rows, setRows] = useState(parsed.rows);

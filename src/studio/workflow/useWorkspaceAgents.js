@@ -2,9 +2,8 @@ import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { api } from '../../api/client.ts';
 import { useBots } from '../agents.js';
 
-// The other agents of the workspace an agent can transfer a call to, each with the phone numbers the workspace gave it
-// (GET /numbers). A call reaches another agent through one of its numbers: an "Agent transfer" is a transfer to that
-// number. Read only; fetched once and shared, again when asked.
+// The workspace's other agents a call can be transferred to, each with its phone numbers (GET /numbers). An "Agent
+// transfer" goes to one of those numbers. Read only; fetched once and shared, refetched on request.
 //   { agents: [{ id, name, numbers: [{ number, environment }] }], numbers: [{ number, bot }], loading, error, reload }
 
 let state = { data: null, error: null, loading: false };

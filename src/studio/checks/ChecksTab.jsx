@@ -9,10 +9,8 @@ import './checks.css';
 import Icon from '../../ui/Icon.jsx';
 import { EmptyState } from '../agent/PageShell.jsx';
 
-// "Checks": this agent's configuration read against everyday situations (a greeting, a way to end the call, reaching a
-// person, a caller who goes quiet) before it is made live. They only read what is configured: no conversation is run
-// and no call is placed. (To talk to the agent use Test; to run the conversations it must always get right use
-// Scenarios.) The runs are kept in this browser, with the workspace, because the API has nowhere to keep them.
+// "Checks": the agent's config read against everyday situations (a greeting, ending the call, reaching a person, a
+// silent caller) before going live; no conversation is run. Runs are kept in this browser: the API has no store.
 const makeId = () => `SIM_${Date.now().toString(36)}${randomTag()}`;
 
 export default function ChecksTab({ botId, name, runs = [], onRun }) {

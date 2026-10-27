@@ -3,16 +3,15 @@ import { readModels } from '../models/config.js';
 import { MODEL_OPTIONS, PROVIDER_LABELS, secretFor } from '../models/catalog.js';
 import { allVoices, voiceInUse } from '../agent/pickers/pickerLogic.js';
 
-// What one agent of a workflow does differently from the rest: its own AI model, its own voice, whether a caller can
-// interrupt it. Each is kept in the agent's `overrides` (merged over the defaults by the runtime) and is absent while
-// the agent uses the default, which is what the panel says. Pure: it reads and returns agents, and never changes the
-// one it is given.
+// What one agent in a workflow does differently: its own AI model, its own voice, whether a caller can interrupt it.
+// Each lives in the agent's `overrides` (merged over the defaults by the runtime), absent while the default is used.
+// Pure: returns new agents and never changes the one given.
 
 const own = (agent) => (isObj(agent?.overrides) ? agent.overrides : {});
 const ownModels = (agent) => (isObj(own(agent).models) ? own(agent).models : {});
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
-// an agent with one part of its overrides set (or taken away, `value` undefined), and every part left empty by that taken away too
+// an agent with one override set (or removed when `value` is undefined), dropping any parts left empty
 function withOverride(agent, path, value) {
   const next = clone(agent);
   let at = (next.overrides = isObj(next.overrides) ? next.overrides : {});
@@ -34,11 +33,8 @@ function withOverride(agent, path, value) {
   return next;
 }
 
-// ---- the AI model: "provider|model", '' for the default An agent's own model is merged over the default's by the
-// runtime: it may leave the provider out (the default's is used) and carry settings of its own (a temperature), which
-// are kept. A model of another provider than the one in use brings that provider's key, and leaves the key, endpoint
-// and options of the one before behind (as the Models page does); back on the default's provider, the default's key is
-// used.
+// ---- the AI model: "provider|model", '' for the default. The runtime merges it over the default (own settings such
+// as a temperature are kept). A new provider brings its key and drops the old key, endpoint and options (as on Models).
 const modelLabel = (stage, provider, model) => MODEL_OPTIONS[stage]?.[provider]?.find((m) => m.id === model)?.label || model;
 export const providerName = (provider) => PROVIDER_LABELS[provider] || provider;
 const PROVIDER_KEYS = ['provider', 'api_key', 'base_url', 'options'];
@@ -58,7 +54,7 @@ export function defaultLlm(config) {
   const { provider, model } = readModels(config).llm;
   return model ? `${modelLabel('llm', provider, model)} (${providerName(provider)})` : 'Not chosen yet';
 }
-// the catalogue's models, by provider (only providers the server can run, when that is known); the agent's own choice is kept even if it isn't in it
+// catalogue models by provider (only those the server can run, when known); the agent's own choice stays if unlisted
 export function llmOptions(agent, providers = [], config = null) {
   const runnable = (name) => !providers.length || providers.some((p) => p.name === name && (p.stages || []).includes('llm') && p.installed !== false);
   const options = Object.entries(MODEL_OPTIONS.llm)
@@ -92,7 +88,7 @@ export function setLlm(agent, value, config = null, providers = []) {
   return withOverride(agent, ['models', 'llm'], next);
 }
 
-// ---- the voice: "engine|voiceId", '' for the default (the same merging: a voice of another engine brings that engine's first model and its key)
+// ---- the voice: "engine|voiceId", '' for the default. Merged the same way; another engine brings its model and key.
 export function voiceChoice(agent, config) {
   const tts = ownSlot(agent, 'tts');
   return tts.voice_id ? `${lower(tts.provider || readModels(config).tts.provider)}|${tts.voice_id}` : '';

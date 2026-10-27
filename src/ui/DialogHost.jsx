@@ -4,11 +4,9 @@ import { subscribeDialogs } from './dialogs.js';
 import Icon from './Icon.jsx';
 import { backTo } from './layer.ts';
 
-// Draws the decision asked by askConfirm() or showNotice() (dialogs.js): a title, a sentence or two, and the buttons (a
-// Radix Dialog, an alert dialog for a decision). It sits above every other layer (a drawer, a sheet, another dialog),
-// and while it is open it alone answers the keyboard: Escape or a click outside it declines, Tab goes round its own
-// buttons (and never reaches a dialog under it, which keeps the keyboard in itself too), and closing it gives the
-// keyboard back to what had it.
+// Draws the decision asked by askConfirm() or showNotice() (dialogs.js) as a Radix dialog above every other layer.
+// While open it alone answers the keyboard: Escape or an outside click declines, Tab stays in its buttons (never a
+// dialog under it), and closing returns focus to what had it.
 export default function DialogHost() {
   const [dialog, setDialog] = useState(null);
   useEffect(() => subscribeDialogs(setDialog), []);
@@ -16,7 +14,7 @@ export default function DialogHost() {
   return <Decision key={dialog.id} dialog={dialog} />;
 }
 
-// the keys of a dialog over another stay in it: the studio's own dialogs and panels listen to the page, and must not act on a key meant for this one
+// a dialog over another keeps its keys: the studio's dialogs and panels listen to the page and must not act on them
 const keepKeys = (event) => {
   if (event.key === 'Tab' || event.key === 'Escape') event.stopPropagation();
 };
@@ -24,7 +22,7 @@ const keepKeys = (event) => {
 function Decision({ dialog }) {
   const cancelRef = useRef(null);
   const confirmRef = useRef(null);
-  // what had the keyboard when it was asked, to give it back to
+  // what had focus when it was asked, to give it back to
   const [opener] = useState(() => document.activeElement);
   const danger = dialog.tone === 'danger';
   const notice = dialog.kind === 'notice';

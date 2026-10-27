@@ -1,12 +1,11 @@
-// The studio's data cache (TanStack Query). Pages read through it, so a page opened again shows what it last read straight away while it refreshes in
-// the background, two pages that need the same thing ask for it once, and a read that failed because the server hiccuped is asked again a moment
-// later. It only reads: nothing here writes to the API.
+// The studio's read-only data cache (TanStack Query): a reopened page shows what it last read while it refreshes, two
+// pages needing the same thing ask once, and a read that failed on a server hiccup is retried a moment later.
 
 import { QueryClient, timeoutManager } from '@tanstack/react-query';
 import { ApiError } from './client.ts';
 
-// In Node (the unit and component tests), the cache's timers (forgetting what no page uses any more, asking again on an interval) must not keep the
-// process alive once the tests are done; in a browser a timer is only a number and nothing changes.
+// In Node (unit and component tests) the cache's timers must not keep the process alive once the tests are done;
+// in a browser a timer is only a number and nothing changes.
 const probe = setTimeout(() => {}, 0) as unknown as { unref?: () => void };
 clearTimeout(probe as unknown as number);
 if (typeof probe?.unref === 'function') {
@@ -37,12 +36,12 @@ export function makeQueryClient({ retries = 2 }: { retries?: number } = {}): Que
   return new QueryClient({
     defaultOptions: {
       queries: {
-        // what was read is shown for half a minute without asking again; kept for ten minutes after the last page that used it closes
+        // shown for half a minute without asking again; kept ten minutes after the last page using it closes
         staleTime: 30_000,
         gcTime: 10 * 60_000,
         retry: (failures, error) => failures < retries && retryable(error),
         retryDelay: RETRY_DELAY,
-        // a person switching back to the studio's tab does not set every page reading again; the pages that are about "now" ask for it themselves
+        // switching back to the tab doesn't make every page re-read; pages about "now" ask for themselves
         refetchOnWindowFocus: false,
       },
     },

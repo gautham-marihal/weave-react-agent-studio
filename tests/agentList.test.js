@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PAGE_SIZE, collectFacets, filterBots, metaOfConfig, paginate, sortBots } from '../src/studio/agentList.js';
+import { PAGE_SIZE, STATUSES, collectFacets, filterBots, metaOfConfig, paginate, sortBots } from '../src/studio/agentList.js';
 import { healthFrom, healthKey, healthTitle, needsAttention } from '../src/studio/health/health.js';
 
 // 300 generated agents, the way a big organisation has them: a few teams, a few tags, most in development, some live
@@ -52,6 +52,21 @@ test('filters by tag, by owner, and by needs attention narrow the list, and agen
   assert.equal(result.unknown, 200, 'the 200 not read yet are counted');
   assert.ok(result.matched.every((b) => partial[b.id]));
   assert.equal(filterBots(bots, { query: 'agent 1' }, partial).unknown, 0, 'a search needs nothing beyond the list');
+});
+
+test('the status filter: needs attention, never published, published, and running somewhere; together they cover every agent', () => {
+  const count = (status) => filterBots(bots, { status }, meta).matched.length;
+  assert.deepEqual(Object.keys(STATUSES), ['all', 'attention', 'draft', 'published', 'live'], 'offered in this order');
+  assert.equal(count('all'), 300);
+  assert.equal(count('attention'), filterBots(bots, { attention: true }, meta).matched.length, 'the same as the attention filter');
+  assert.equal(count('draft'), 200, 'two in three were never published');
+  assert.equal(count('published'), 100);
+  assert.equal(count('draft') + count('published'), 300);
+  assert.equal(count('live'), bots.filter((b, i) => i % 10 === 0 || i % 3 === 0).length);
+  assert.ok(filterBots(bots, { status: 'live' }, meta).matched.every((b) => Object.keys(b.deployed).length > 0));
+  assert.equal(filterBots(bots, { status: 'live' }, {}).unknown, 0, 'needs nothing beyond the list');
+  assert.equal(filterBots(bots, { status: 'attention' }, {}).unknown, 300, 'needs the health read');
+  assert.equal(count('nonsense'), 300, 'an unknown status leaves the list as it is');
 });
 
 test('facets list each tag and owner with how many agents have it, the most common first', () => {

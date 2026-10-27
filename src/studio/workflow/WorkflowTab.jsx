@@ -39,36 +39,33 @@ import { navigate, routeHref } from '../route.js';
 import Select from '../../ui/Select.tsx';
 import './workflow.css';
 
-// The Workflow of an agent: how a call moves from where it starts, through the agents, to wherever it ends, as a
-// picture that can be edited. Blocks are moved by dragging them and the layout is kept in the draft; agents, lines to
-// say, transfers, tools and the end of the call are added with the ＋ under a block and taken away again; each change is
-// an ordinary edit of the draft, with undo and redo here and Save draft like every other tab.
+// An agent's Workflow tab: an editable picture of how a call moves from where it starts to where it ends. Blocks are
+// dragged (places kept in the draft) and added with the ＋; each change is an ordinary draft edit, with undo and redo.
 const BLANK = { past: [], future: [] };
-// Undo history is kept per agent for as long as the page is open, so it survives a visit to another tab; it is dropped
-// when the draft was changed some other way in between (then the steps no longer lead anywhere sensible).
+// Undo history is kept per agent while the page is open, so it survives a visit to another tab. It is dropped when the
+// draft changed some other way in between, since the steps would no longer make sense.
 const HISTORY = new Map();
 
-// onShowSetting(path), onShowJson(path): how the agent's workspace shows a setting (it opens its page and panel) and the JSON
-// (saving, Ctrl+S and a failed save are the workspace's, in its top bar, as on every page)
-// workspace: the workspace's agents and their numbers, when the page around already has them (else they are asked for here)
+//   onShowSetting(path), onShowJson(path): open a setting's page and panel, or the JSON, in the agent's workspace
+//   (saving, Ctrl+S and a failed save belong to the workspace's top bar, as on every page)
+//   workspace: the workspace's agents and their numbers, when the page already has them (else fetched here)
 export default function WorkflowTab({ editor, botId, onShowSetting = null, onShowJson = null, onTest = null, workspace: given = null }) {
   const config = editor.parsed?.value;
   const ok = editor.status === 'ready' && !editor.parsed?.error && isObj(config);
-  // how many hand-overs an agent has (a null or half-typed item in the list is skipped, not read)
+  // how many hand-overs an agent has (a null or half-typed item in the list is skipped)
   const handoffCount = (agentId) => {
     const agent = (Array.isArray(config?.agents?.items) ? config.agents.items : []).find((a) => isObj(a) && a.id === agentId);
     return Array.isArray(agent?.handoffs) ? agent.handoffs.length : 0;
   };
-  // the zoom is the person's, kept from one visit to the next; the first time, the picture is fitted to the window
-  // (never smaller than is comfortable)
+  // the zoom is the person's, kept between visits; the first time, the picture is fitted to the window (not too small)
   const [zoomPref, setZoomPref] = usePref('weave_workflow_zoom', 'auto');
   const [autoFit] = useState(() => zoomPref === 'auto');
   const [zoom, setZoomShown] = useState(() => (zoomPref === 'auto' ? 1 : clampZoom(Number(zoomPref) || 1)));
   const [toolsPref, setToolsPref] = usePref('weave_workflow_tools', 'auto');
-  // the panel beside the picture: hidden to give the picture the whole width, kept so from one visit to the next
+  // the side panel can be hidden to give the picture the whole width; kept between visits
   const [panel, setPanel] = usePref('weave_workflow_panel', 'open');
   const panelOpen = panel !== 'closed';
-  // the canvas filling the window, over the page (Esc or the same button goes back), kept so from one visit to the next
+  // the canvas can fill the window over the page (Esc or the same button goes back); kept between visits
   const [fullPref, setFullPref] = usePref('weave_workflow_full', 'off');
   const full = fullPref === 'on';
   const tabRef = useRef(null);
@@ -80,7 +77,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     },
     [setZoomPref],
   );
-  // the picture says where its zoom ended up: kept when the person zoomed it (a pinch, Ctrl and the wheel, the overview)
+  // the picture reports its zoom; kept only when the person zoomed (a pinch, Ctrl and the wheel, the overview)
   const onZoom = useCallback(
     (z, byPerson) => {
       setZoomShown(z);
@@ -108,11 +105,10 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
   const pendingSelect = useRef(null);
   // what was just deleted, said above the picture with Undo until the next change
   const [deleted, setDeleted] = useState(null); // { label, after: the draft the deletion left, as JSON }
-  // the picture's height: what is left of the window below its top edge (never less than is comfortable), measured when
-  // it is drawn and when the window changes size
+  // the picture's height: the room left below its top edge (never too small), measured on render and on resize
   const workRef = useRef(null);
-  // A button that goes as it is pressed (the panel's own Hide, its Close) would leave the keyboard on nothing: it goes
-  // to what is still there instead, the toolbar's panel button, or the block that was selected (else the toolbar).
+  // A button that disappears as it is pressed (the panel's Hide or Close) would leave focus on nothing, so focus moves
+  // to what is still there: the toolbar's panel button, or the block that was selected (else the toolbar).
   const keepKeyboard = (find) =>
     requestAnimationFrame(() => {
       const active = document.activeElement;
@@ -131,9 +127,8 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
       el.scrollLeft = 0;
     }
   };
-  // The controls come first in the page; Tab on the selected block brings the keyboard to them, and from there, Tab
-  // from the last goes on to the block after it (or the panel) and Shift+Tab from the first back to the block. Reached
-  // any other way, Tab and Shift+Tab go on in the page's order.
+  // Tab on the selected block reaches its controls; Tab from the last goes on to the next block (or the panel), and
+  // Shift+Tab from the first back to the block. Reached any other way, Tab follows the page's order.
   const overlayKeys = (event) => {
     if (event.key !== 'Tab') return;
     const layer = event.currentTarget.closest('.wfOverlayLayer');
@@ -158,7 +153,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     setConfirmFor('');
     window.requestAnimationFrame(() => document.querySelector('.wfNodeTools button[aria-label^="Delete "]')?.focus({ preventScroll: true }));
   };
-  // "Add a step after <subagent>": shown in the side panel (opened if it was hidden), the ⊕ keeps its place on the picture
+  // "Add a step after <subagent>" opens in the side panel (shown if hidden); the ⊕ stays on the picture
   const openAdd = (agentId) => {
     setConfirmFor('');
     setMenuFor(agentId);
@@ -168,7 +163,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     setMenuFor('');
     window.requestAnimationFrame(() => plusRef.current?.focus({ preventScroll: true }));
   };
-  // a port under a subagent: its model, the knowledge it reads, its tools (the part of its panel that holds them)
+  // a port under a subagent opens the part of its panel that holds it: its model, knowledge or tools
   const openPort = (agentId, port) => {
     setMenuFor('');
     setConfirmFor('');
@@ -176,8 +171,8 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     if (port === 'model' && flow.nodes.some((n) => n.id === `${agentId}::model`)) setSelected({ type: 'node', id: `${agentId}::model` });
     else setSelected({ type: 'node', id: agentId, tab: port === 'knowledge' ? 'knowledge' : port === 'tool' ? 'tools' : 'general' });
   };
-  // A block opened to change it (a double click, or Enter on the selected block): selected, its panel shown, and, once the panel is drawn (a frame,
-  // then another; a block already selected draws nothing new), the cursor in the panel's first field, after what it says
+  // Opening a block to edit it (double click, or Enter when selected): select it, show the panel, then two frames later
+  // (once the panel is drawn) put the cursor at the end of the panel's first field.
   const openToEdit = (id) => {
     setMenuFor('');
     setConfirmFor('');
@@ -207,7 +202,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
   };
   const changeNote = (id, patch) => setNotes(notes.map((n) => (n.id === id ? { ...n, ...patch } : n)));
   const addNote = () => {
-    // in the middle of what is in sight, moved to the nearest place that covers no block (a note on a block would be dragged with it by mistake)
+    // mid-view, moved to the nearest spot clear of blocks (a note on a block would get dragged with it by mistake)
     const middle = viewport.current?.center?.() || { x: 300, y: 200 };
     const spot = freeSpot(flow, { x: middle.x - NOTE_SIZE.w / 2, y: middle.y - NOTE_SIZE.h / 2 }, { w: NOTE_SIZE.w, h: NOTE_SIZE.h });
     const made = newNote(notes, { x: spot.x + NOTE_SIZE.w / 2, y: spot.y + NOTE_SIZE.h / 2 });
@@ -242,20 +237,18 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     // filling the window, the picture's height is the window's (CSS)
     if (el.closest('.wfTab.full')) return;
     const top = el.getBoundingClientRect().top + window.scrollY;
-    // what the window leaves below the picture's top, so its foot (the zoom, Test the agent) is in sight; the same height again changes nothing
-    setWorkH(Math.round(Math.max(360, Math.min(1400, window.innerHeight - top - 16))));
+    // the room below the picture's top, so its foot (the zoom, Test the agent) stays in sight
+    setWorkH(Math.round(Math.max(320, Math.min(1400, window.innerHeight - top - 16))));
   }, []);
-  // after every render: what is above the picture (a note, the toolbar moving beside the tabs) may have changed where it starts
+  // after every render, since what sits above the picture (a note, the toolbar) may have moved its top
   useLayoutEffect(measure);
   useEffect(() => {
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, [measure]);
 
-  // Filling the window, the page under it is out of reach (inert) for the keyboard and a screen reader, as under a
-  // dialog; what opens over it later (a drawer, a menu) is not. Put back as it was when the canvas goes back to the
-  // page. Also when it opens full straight away: the canvas is there only once the draft is read (`ok`), so that is
-  // waited for.
+  // Filling the window, the page underneath is made inert, as under a dialog (layers opened later, like a drawer or
+  // menu, are not); restored on exit. Waits for `ok`, since the canvas exists only once the draft is read.
   useEffect(() => {
     if (!full || !ok || !tabRef.current) return undefined;
     const made = [];
@@ -268,7 +261,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     }
     return () => made.forEach((other) => (other.inert = false));
   }, [full, ok]);
-  // filling the window, Esc that reached the page (nothing focused) is the canvas's too; one meant for a layer open over it (a drawer, a menu) is not
+  // filling the window, an Esc reaching the page (nothing focused) is the canvas's too, unless meant for a layer on top
   useEffect(() => {
     if (!full) return undefined;
     const onKey = (event) => {
@@ -290,7 +283,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
   const asked = useWorkspaceAgents();
   const workspace = given || asked;
   const workspaceAgents = workspace.agents;
-  // blocks are sized to their words, measured in the page's font: measured again once the fonts have loaded, and when the style changes the font
+  // blocks are sized to their words in the page's font: re-measured once fonts load and when the style changes the font
   const [fontsAt, setFontsAt] = useState(0);
   useEffect(() => {
     const again = () => {
@@ -313,7 +306,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     [config, ok, showTools, workspaceAgents, fontsAt],
   );
 
-  // the undo history belongs to the edits made here: when the draft changes some other way (reloaded, edited elsewhere) it starts again
+  // undo history covers edits made here; it resets when the draft changes another way (reloaded, edited elsewhere)
   useEffect(() => {
     if (!ok) return;
     const now = JSON.stringify(config);
@@ -374,7 +367,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
       el?.focus?.({ preventScroll: true });
     });
   }, [flow]);
-  // asking "delete this agent?" puts the keyboard on the answer
+  // asking "delete this agent?" moves focus to the answer
   useEffect(() => {
     if (!confirmFor) return;
     window.requestAnimationFrame(() => {
@@ -481,7 +474,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     setSelected(null);
     apply(next);
     setDeleted({ label: n?.label || 'the block', after: JSON.stringify(next) });
-    // the keyboard goes to the agent the block belonged to (or, for an agent, the one that answers first), not to the page
+    // focus goes to the deleted block's agent (or, for an agent, the one that answers first), not to the page
     const owner = parseNodeId(nodeId).agent;
     const to = n?.type === 'agent' ? next.agents?.entry : owner;
     window.requestAnimationFrame(() => {
@@ -515,7 +508,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     note(done.note);
     apply(done.config);
   };
-  // every block back where the layout puts it (in columns, no line through a block, nothing on anything), then all of it in sight
+  // every block back to its layout place (columns, no line through a block, no overlap), then all fitted in view
   const tidy = () => {
     if (hasSavedPositions(config)) {
       apply(clearPositions(config));
@@ -569,7 +562,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     );
   }
 
-  // "Let <the first agent> pass callers to <one no call reaches>": a hand-over from the agent that answers first,
+  // "Let <first agent> pass callers to <unreachable one>": adds a hand-over from the agent that answers first,
   // selected so its words can be written
   const entryName = flow.nodes.find((n) => n.id === flow.entry)?.label || 'the first subagent';
   const reach = (agentId) => {
@@ -583,9 +576,8 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     if (!n) return null;
     const isAgent = n.type === 'agent';
     const keepReason = isAgent && confirmFor === n.id ? whyKeepAgent(config, parseNodeId(n.id).agent) : '';
-    // Its actions sit above it, unless that covers another block (two stacked close together): then under it (not under
-    // a subagent, where what it uses hangs), or beside it on the right (clear of its ⊕). Sizes are the toolbar's on the
-    // screen, in the picture's units.
+    // Its actions sit above it unless that covers another block: then below (not under a subagent, where its plug-ins
+    // hang) or to its right (clear of its ⊕). Sizes are the toolbar's on-screen size, in picture units.
     const tw = (isAgent ? 76 : 42) / z;
     const th = 42 / z;
     const gap = 8 / z;
@@ -636,7 +628,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
         )}
         {confirmFor === n.id &&
           (keepReason ? (
-            // an agent that can't go (the only one, or one something else can't do without): why, rather than a Delete that does nothing
+            // an agent that can't go (the only one, or needed elsewhere): say why, not a Delete that does nothing
             <div
               className="wfOverlayItem wfConfirmPop"
               role="alertdialog"
@@ -674,7 +666,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     );
   };
 
-  // a button of the toolbar: an icon with its name in a tip, or (text) with its name beside it too
+  // a toolbar button: an icon with its name in a tip, or (text) with its name beside it too
   const tool = (label, icon, onClick, { disabled = false, pressed, tip, id, text = false } = {}) => (
     <Tip label={disabled ? '' : tip || label}>
       <button
@@ -743,7 +735,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
 
   return (
     <div className={`wfTab ${full ? 'full' : ''}`} ref={tabRef} onKeyDown={onKeyDown}>
-      {/* what needs saying about the picture, above it (never over a block) */}
+      {/* notices about the picture, above it (never over a block) */}
       {deleted && (
         <div className="wfHint" role="status">
           <span>Deleted “{deleted.label}”.</span>
@@ -881,7 +873,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
   );
 }
 
-// "Templates": ready-made pieces of a workflow (workflowTemplates.js), each with what it adds, or why it can't be used here
+// "Templates": ready-made workflow pieces (workflowTemplates.js), each with what it adds or why it can't be used here
 function Templates({ config, onPick }) {
   return (
     <DropdownMenu.Root modal={false}>

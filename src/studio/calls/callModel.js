@@ -1,11 +1,10 @@
-// Reading call records for the Calls screen: how a status is worded, how a time range becomes the API's `since`, how the filters become a
-// query, and how the pages of several agents are merged into one list. The API lists calls one agent at a time, so "all agents" asks each
-// agent and merges here. Pure: no network, no DOM.
+// Call records for the Calls screen: status words, time range to `since`, filters to a query, and merging several
+// agents' pages (the API lists calls one agent at a time). Pure: no network, no DOM.
 
 const list = (v) => (Array.isArray(v) ? v : []);
 
-// ended: the call finished and was closed; in_progress: written to in the last two minutes; unfinished: the log stops with no ending
-// (the worker died, or the call was cut off).
+// ended: finished and closed; in_progress: written to in the last two minutes;
+// unfinished: the log stops with no ending (the worker died, or the call was cut off)
 export const CALL_STATUS = {
   ended: { label: 'Ended', tone: 'good', hint: 'The call finished.' },
   in_progress: { label: 'In progress', tone: 'warn', hint: 'Something was written to this call in the last two minutes.' },
@@ -13,9 +12,8 @@ export const CALL_STATUS = {
 };
 export const statusOf = (status) => CALL_STATUS[status] || { label: status || 'Unknown', tone: 'idle', hint: '' };
 
-// How a call went, in a word for the lists: still going, cut off, passed to a person, or handled by the agent itself.
-// `status` is what the API filters on (handled and passed to a person are both "ended" to it; the list tells them apart
-// by the hand-overs).
+// How a call went, in a word: still going, cut off, passed to a person, or handled by the agent itself.
+// `status` is the API's filter; it calls handled and passed-on both "ended", so the list splits them by hand-overs.
 export const OUTCOMES = {
   handled: { label: 'Handled', tone: 'good', status: 'ended', hint: 'The agent finished the call itself.' },
   handoff: { label: 'Passed to a person', tone: 'info', status: 'ended', hint: 'The agent handed the caller over to a person.' },
@@ -161,10 +159,9 @@ export function countsLine(counts) {
   return `${total} record${total === 1 ? '' : 's'}${known.length ? `: ${known.join(', ')}` : ''}`;
 }
 
-// Several agents' calls, newest first, with no gap: an agent with more to send has sent only its newest calls, so below
-// the oldest one it sent, another agent's calls of that time could be shown while its own are still to come. The list
-// stops at the newest such point; older calls come with "Load more" (and with one agent, or none with more to send,
-// every call is shown).
+// Several agents' calls, newest first, with no gap. An agent with more to send has sent only its newest, so below its
+// oldest, others' calls could show while its own are still to come. The list stops at the newest such point; older
+// calls come with "Load more".
 //   pages: every page so far ({ id, calls }); more: the ids of the agents with more to send
 export function callsWithoutGaps(pages, more) {
   const all = mergeCalls(pages);

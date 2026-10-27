@@ -1,8 +1,6 @@
-// A validation message the way a customer needs it: which setting (by its label, not its path), what is wrong in plain words, and, when the
-// studio can do it, a button that fixes it. The server's sentences stay the source of truth (they are what it says is wrong); this recognises
-// the common ones and rewrites them, and anything it doesn't recognise is shown as the server wrote it, with its place named by labels. The
-// fixes only ever change the draft (they are ordinary edits and can be undone), and each is offered only when it is certain what to do.
-// Pure: no network, no DOM.
+// A validation message the way a customer needs it: the setting by label, what is wrong in plain words, and a fix
+// button when the studio is certain what to do (fixes are ordinary, undoable draft edits). The server's sentences stay
+// the source of truth: common ones are reworded, anything else is shown as written. Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
 import { describeSetting } from '../form/plainLanguage.js';
@@ -33,7 +31,7 @@ const removeAt = (root, path) => {
   return next;
 };
 
-// ---- where a path is, in the customer's words -------------------------------------------------------------------------------------------------
+// ---- where a path is, in the customer's words
 const NOUNS = {
   'http connections': 'connection',
   'mcp connections': 'tool server',
@@ -55,8 +53,8 @@ const NOUNS = {
 };
 const noun = (collection) => NOUNS[String(collection).replace(/_/g, ' ')] || String(collection).replace(/_/g, ' ').replace(/s$/, '');
 
-// "Channels › phone › What it can hear and say › What it accepts" for ['channels', 0, 'modalities', 'input']. The first part is the screen of
-// "All settings" the setting is on; the rest are the labels of what contains it, with a list item or a map entry named by the author's own word.
+// "Channels › phone › What it can hear and say › What it accepts" for ['channels', 0, 'modalities', 'input']: the
+// "All settings" screen, then the labels of what contains it (list items and map entries by the author's own word).
 export function labelPath(config, schema, path, engine) {
   if (!Array.isArray(path) || !path.length) return { parts: [], text: '', screen: null };
   const sectionKeys = isObj(schema?.properties) ? Object.keys(schema.properties).filter((k) => !SKIPPED_SECTIONS.has(k)) : [];
@@ -106,7 +104,7 @@ export function labelPath(config, schema, path, engine) {
   return { parts, text: parts.join(' › '), screen: view };
 }
 
-// ---- recognising the server's sentences ------------------------------------------------------------------------------------------------------
+// ---- recognising the server's sentences
 const TYPE_WORDS = { number: 'a number', integer: 'a whole number', string: 'text', boolean: 'yes or no', array: 'a list', object: 'a group of settings' };
 const slug = (text) =>
   String(text)
@@ -126,8 +124,8 @@ const distance = (a, b) => {
 };
 const quoted = (text) => `“${text}”`;
 
-// Each rule: a pattern for the server's sentence, and a function from the match to { text, fixes }. `ctx` has the config, the engine, the path of the
-// issue, and `label(name, owner)` for a setting's plain name.
+// Each rule: a pattern for the server's sentence, and a function from the match to { text, fixes }.
+// `ctx` has the config, the engine, the issue's path, and `label(name, owner)` for a setting's plain name.
 const RULES = [
   {
     re: /audio input needs an stt/i,
@@ -172,7 +170,7 @@ const RULES = [
       const what = ctx.path.length ? quoted(label) : `the ${quoted(label)} section`;
       return {
         text: ctx.path.length ? `${what} has to be filled in here, and it is missing.` : `The agent needs ${what}, and it is missing.`,
-        // adding the setting is one click; what it should say is then the person's to write, so the form takes them to it
+        // adding the setting is one click; what it should say is the person's to write, so the form takes them there
         fixes:
           ctx.path.length && ctx.addMissing(name)
             ? [{ id: `add-${name}`, label: `Add ${what.replace(/[“”]/g, '')}`, apply: (config) => ctx.addMissing(name)(config), jumpTo: [...ctx.path, name] }]
@@ -326,8 +324,8 @@ const RULES = [
   },
 ];
 
-// ---- one issue, described ----------------------------------------------------------------------------------------------------------------------
-// `ctx`: { config, schema, engine } (engine and schema are optional: without them the words are still plain, just fewer fixes).
+// ---- one issue, described
+// `ctx`: { config, schema, engine } (engine and schema are optional: without them there are fewer fixes).
 export function describeIssue(issue, ctx = {}) {
   const config = ctx.config;
   const path = Array.isArray(issue.path) ? issue.path : [];
@@ -369,7 +367,7 @@ export function describeIssue(issue, ctx = {}) {
   return { severity: issue.severity, path: issue.path, where, text: issue.message, fixes: [], raw: issue.message, recognised: false };
 }
 
-// The issues of a report, described and ordered for reading: what can be fixed in a click first, then what needs the person.
+// A report's issues, described and ordered for reading: one-click fixes first, then what needs the person.
 export function describeIssues(issues, ctx = {}) {
   const described = issues.map((issue) => describeIssue(issue, ctx));
   const errors = described.filter((d) => d.severity === 'error');

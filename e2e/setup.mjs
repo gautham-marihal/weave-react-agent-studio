@@ -77,7 +77,7 @@ await page.waitForSelector('.dashMain');
 // ---- an agent that is already published is not offered the setup
 await go('#/bots/acme-support/home');
 check('a published agent’s Overview does not offer the setup', (await page.locator('.suBanner').count()) === 0);
-const next1 = page.locator('.nlSetup');
+const next1 = page.locator('[data-next-step]');
 if (await next1.count()) {
   await next1.click();
   await page.waitForTimeout(1200);
@@ -98,7 +98,10 @@ check(
   /#\/bots\/smile-dental\/setup/.test(page.url()) && /What should it do\?/.test(await heading()),
   page.url(),
 );
-check('the setup’s steps take the menu’s place', (await page.locator('.suSteps li').count()) === 8 && (await page.locator('.nlNav').count()) === 0);
+check(
+  'the setup’s steps take the stage tabs’ place',
+  (await page.locator('.suSteps li').count()) === 8 && (await page.locator('nav[aria-label="Agent stages"]').count()) === 0,
+);
 check('the agent’s own top bar is out of the way', (await page.locator('.nlBar').count()) === 0);
 await shot('1-purpose');
 
@@ -126,12 +129,12 @@ check(
 );
 check('a new agent has had no calls', /No calls in the last 7 days/.test(await page.locator('.ovSide').innerText()));
 // a new agent already has a main language (the browser's): the next thing to do is publishing, which the setup does at its last step
-const nextStep = await page.locator('.nlSetupNext').innerText();
-await page.locator('.nlSetup').click();
+const nextStep = await page.locator('[data-next-step]').innerText();
+await page.locator('[data-next-step]').click();
 await page.waitForSelector('.suPage');
 const opened = await heading();
 check(
-  'the menu’s “Getting it ready” card opens the setup at the next thing to do',
+  'the “Getting it ready” card opens the setup at the next thing to do',
   /\/setup/.test(page.url()) && /Publish/.test(nextStep) && /Put it live/.test(opened),
   `${nextStep} → ${page.url()} ${opened}`,
 );
@@ -221,8 +224,8 @@ check(
 );
 await switchOn('Pass people to a person');
 await action('Pass people to a person').locator('input').fill('+6561234567');
-await switchOn('Take people’s contact details');
-await action('Take people’s contact details').getByLabel('Email').click();
+await switchOn('Take requests and details');
+await action('Take requests and details').getByLabel('Email').click();
 await switchOn('Look something up');
 const lookup = action('Look something up');
 await lookup
@@ -270,14 +273,21 @@ check(
     .innerText()
     .catch(() => ''),
 );
-await page.getByRole('button', { name: /Put it live in Development/ }).click();
+await page.getByRole('button', { name: /Put it live for testing/ }).click();
 const live = await page
   .locator('.suDone')
   .waitFor({ timeout: 15000 })
   .then(() => true)
   .catch(() => false);
-check('it says it is live in Development', live && /Smile Dental is live in Development/.test(await page.locator('.suDone').innerText()));
-check('with phone calls on, a number can be added right there', (await page.locator('.agentNumbers, .suNote').count()) > 0);
+check(
+  'it says it is live for testing (Development)',
+  live && /Smile Dental is live for testing[\s\S]*\(Development\)/.test(await page.locator('.suDone').innerText()),
+);
+check(
+  'it says how people reach it',
+  /How people reach it/.test(await page.locator('.suReach').innerText()) && /Chat on your website/.test(await page.locator('.suReach').innerText()),
+);
+check('with phone calls on, it says where the number comes from', (await page.locator('.agentNumbers, .suReach li', { hasText: 'Phone calls' }).count()) > 0);
 await shot('5-live');
 
 // what the agent holds now

@@ -26,7 +26,7 @@ test('a page with parts: a named row of tabs, the open one chosen, and the page 
   const row = $(app.container, '[role=tablist]');
   assert.equal(row.getAttribute('aria-label'), 'Knowledge sections');
   const tabs = $$(row, '[role=tab]');
-  assert.deepEqual(tabs.map(textOf), ['Files and index', 'Settings']);
+  assert.deepEqual(tabs.map(textOf), ['Documents', 'How it searches']);
   assert.deepEqual(
     tabs.map((t) => t.getAttribute('aria-selected')),
     ['true', 'false'],

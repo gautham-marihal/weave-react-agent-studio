@@ -2,10 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { Modal, Notice } from '../ui.jsx';
 import { COLLECTIONS, ID_PATTERN, describeUsage, findUsage } from './references.js';
 
-// What the form shows for the machine keys other parts of the config point at (an id, or a map key):
-//   - IdChip      the key itself, read-only, with a Rename… action (typing in it would break every pointer)
-//   - RenameDialog     asks for the new name, says where it is used, and rewrites every pointer with it
-//   - DeleteDialog     warns when something is still pointing at what is about to be deleted
+// What the form shows for machine keys that other parts of the config point at (an id, or a map key):
+//   IdChip: the key, read-only, with a Rename… action (typing in it would break every pointer)
+//   RenameDialog: asks for the new name, says where it is used, and rewrites every pointer
+//   DeleteDialog: warns when something still points at what is about to be deleted
 
 const wordOf = (collection) => COLLECTIONS[collection]?.word || 'item';
 

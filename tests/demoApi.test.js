@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createDemoApi, memoryStorage, minimalConfig } from '../src/demo/demoApi.js';
 import { diffConfigs } from '../src/demo/diff.js';
 import { validateDemo } from '../src/demo/demoValidate.js';
+import { DEMO_SAMPLE_IDS } from '../src/demo/demoMode.js';
 
 const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
 const fresh = (options = {}) => createDemoApi({ storage: memoryStorage(), loadSchema: async () => schema, ...options });
@@ -13,6 +14,7 @@ test('the demo starts with a few agents, with some history to look at, and every
   const api = fresh();
   const { body: list } = await call(api, 'GET', '/bots');
   assert.deepEqual(list.map((b) => b.id).sort(), ['acme-support', 'bookings', 'front-desk']);
+  assert.deepEqual(list.map((b) => b.id).sort(), [...DEMO_SAMPLE_IDS].sort(), 'the agents Home calls samples are the ones it starts with');
   const support = list.find((b) => b.id === 'acme-support');
   assert.equal(support.latest_version, '0.1.1');
   assert.deepEqual(support.deployed, { development: '0.1.1', staging: '0.1.0' });

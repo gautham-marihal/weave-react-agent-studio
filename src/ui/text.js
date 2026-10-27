@@ -1,5 +1,5 @@
-// Labels written in capitals ("TOTAL CALL DURATION") are shown in sentence case ("Total call duration"), like every other label in the app. Short
-// abbreviations stay as they are ("LLM tokens", "Agent ID", "SIP URI").
+// Labels in capitals ("TOTAL CALL DURATION") are shown in sentence case, like every other label in the app.
+// Short abbreviations stay as they are ("LLM tokens", "Agent ID", "SIP URI").
 const KEEP = new Set(['AI', 'API', 'DEV', 'DTMF', 'HTTP', 'ID', 'IVR', 'LLM', 'MCP', 'PROD', 'SIP', 'SMS', 'STG', 'STT', 'TTS', 'URI', 'URL']);
 
 export function sentenceCase(text) {

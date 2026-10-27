@@ -10,14 +10,11 @@ import { sampleOf, spreadPick } from '../speed/speedModel.ts';
 import { MAX_PAGES, PER_AGENT } from '../speed/useSpeedData.ts';
 import { periodOf } from '../format.js';
 
-// Reads what the monitoring page needs, and only reads: the list of calls of each agent for the period (as many as
-// Speed lists) and the one before it, and the records of some finished calls of each agent, spread over the days of the
-// period as the Speed page picks them (for answer times, failed tools and the like). Each sample keeps its answers'
-// waits measured as the Speed page measures them, so the same period gives the same numbers there. Agents are asked a
-// few at a time. One agent failing does not hide the others. Read through the shared cache: the lists first (the page
-// is useful at once), then the records.
-//   perAgent, cap: how many calls of each agent are read (as many as Speed reads), and of all of them (none for the Monitoring page; Home keeps to a
-//   couple of hundred, shared evenly, so a big workspace reads fewer of each agent's and a small one reads exactly what Speed reads)
+// Reads (only) what Monitoring needs: each agent's calls for the period and the one before, and records of some
+// finished calls spread over the days as Speed picks them, with waits measured as Speed does, so both pages agree.
+// Agents are asked a few at a time; one failing doesn't hide the others. Lists come first so the page is useful soon.
+//   perAgent, cap: calls read per agent (as many as Speed) and in all (none for Monitoring; Home reads a couple of
+//   hundred, shared evenly, so a big workspace reads fewer per agent)
 const AT_A_TIME = 4;
 const PAGE = 100;
 const SAMPLE_CAP = 200;
@@ -53,7 +50,7 @@ async function readLists(ids: string[], days: number, signal: AbortSignal): Prom
       truncated = true;
     };
     try {
-      // the period, then the same length of time before it (each read on its own, so a busy period can't leave the one before unread)
+      // the period, then the same length before it (read apart, so a busy period can't leave the one before unread)
       await read({ since: iso(startMs) }, () => true);
       await read({ since: iso(startMs - (nowMs - startMs)), until: iso(startMs - 1) }, (c) => Date.parse(c.started_at) < startMs);
     } catch (e) {
@@ -101,7 +98,7 @@ async function readSamples(lists: Lists, ids: string[], perAgent: number, cap: n
   return samples;
 }
 
-//   { loading (the lists being read), calls, samples (once their records are read), errors, nowMs, truncated, refreshing, updatedAt, reload }
+//   { loading (lists being read), calls, samples (once read), errors, nowMs, truncated, refreshing, updatedAt, reload }
 export function useMonitoring({
   bots = [],
   days = 7,

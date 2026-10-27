@@ -24,9 +24,9 @@ import './team.css';
 
 const STATUS = { active: { text: 'Active', tone: 'good' }, invited: { text: 'Invited', tone: 'wait' } };
 
-// Who works in this workspace and on which agents. Someone is given a role and either the whole workspace or only some
-// agents; the same choice can be made from inside one agent ("Share"). `agents` is [{ id, name }]; `agentsLoaded` is
-// false while the list is still being read (so nobody is dropped from it).
+// Who works in this workspace and on which agents (an agent's "Share" panel makes the same choice).
+//   agents: [{ id, name }]
+//   agentsLoaded: false while the list is still being read (so nobody is dropped from it)
 export default function TeamPage({ agents, agentsLoaded = true, workspaceName }) {
   const { members, update } = useTeam();
   const [panel, setPanel] = useState(null); // { mode: 'invite' } | { mode: 'edit', id }
@@ -100,7 +100,6 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
   };
 
   return (
-    // the same title as every page of the workspace, then the team
     <div className="tmPage">
       <section className="welcomeBlock pageHeaderBlock">
         <div>

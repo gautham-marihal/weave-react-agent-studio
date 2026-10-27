@@ -6,8 +6,8 @@ import { scopeAt } from './templates.ts';
 import { LANGUAGE_PATTERN, hasLanguage, languageProblem, languageStatus, primaryOf, toLanguages, toPlain, wantedLanguages } from './messages.ts';
 import Icon from '../../ui/Icon.jsx';
 
-// The text of a message: one line for everyone, or the same line per language. In per-language mode every language the agent speaks
-// has a row, so a missing one is plain to see (and one click adds it), and the primary language can't be left out by accident.
+// The text of a message: one line for everyone, or one per language. Per language, every language the agent speaks gets
+// a row, so a missing one is plain to see (one click adds it) and the primary can't be left out.
 export default function MessageText({ value, onChange, path, disabled }) {
   const ctx = useForm();
   const perLanguage = isObj(value);

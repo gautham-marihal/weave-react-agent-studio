@@ -1,10 +1,8 @@
 import { useSyncExternalStore } from 'react';
 
-// What a person decided about alerts and unanswered questions, kept in this browser (like workspaces and the team
-// preview): the rules' thresholds, which alerts are acknowledged or snoozed, what fired and when, where to send alerts,
-// and for each agent the questions answered or dismissed. Plus the latest result of the alert check (not kept: it is
-// worked out again from the calls). Every part of the page reading it sees a change at once, as does another tab. When
-// storage is blocked it still works until the page is closed.
+// What a person decided about alerts and unanswered questions, kept in this browser: rule thresholds, acknowledged or
+// snoozed alerts, history, where alerts go, answered or dismissed questions; plus the latest alert check (not kept).
+// Every reader, and other tabs, see a change at once; with storage blocked it still works until the page closes.
 
 const KEY = 'weave_insights_v1';
 const EMPTY = { rules: {}, acks: {}, history: [], notify: { browser: false, email: '', slack: '' }, questions: {} };
@@ -61,7 +59,6 @@ export const useInsights = () => useSyncExternalStore(subscribe, read, () => EMP
 export const useLiveAlerts = () => useSyncExternalStore(subscribe, getLive, () => live);
 
 // ---- small edits
-// ------------------------------------------------------------------------------------------------------------------------------------
 
 export const setRule = (id, patch) =>
   setInsights((s) => ({
@@ -80,7 +77,7 @@ export const reopen = (key) =>
 export const setNotify = (patch) => setInsights((s) => ({ ...s, notify: { ...s.notify, ...patch } }));
 export const clearHistory = () => setInsights((s) => ({ ...s, history: s.history.filter((h) => !h.clearedAt) }));
 
-// A decision about a question of an agent: { words, text, kind: 'answered' | 'dismissed', reason?, answer?, at, agentId? }
+// A decision about an agent's question: { words, text, kind: 'answered' | 'dismissed', reason?, answer?, at, agentId? }
 export const questionDecisions = (state, botId) => (Array.isArray(state?.questions?.[botId]) ? state.questions[botId] : []);
 export function decideQuestion(botId, decision) {
   setInsights((s) => {

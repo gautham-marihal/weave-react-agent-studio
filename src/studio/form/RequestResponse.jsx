@@ -20,7 +20,7 @@ import ChoiceBox from '../../ui/Select.tsx';
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const CREDENTIAL_NAME = /authori[sz]ation|api[-_ ]?key|token|secret|password|passwd|bearer/i;
 
-// ---- a few name → value rows (query, headers), kept in the box so a half-typed name isn't lost ----------------------
+// ---- name → value rows (query, headers), kept locally so a half-typed name isn't lost
 function KeyValueRows({ value, onChange, scope, disabled, keyLabel, warnCredentials }) {
   const object = isObj(value) ? value : {};
   const fromObject = () => Object.entries(object).map(([key, v]) => ({ key, value: typeof v === 'string' ? v : JSON.stringify(v) }));
@@ -98,7 +98,7 @@ function joinUrl(base, path, query) {
   return pairs.length ? `${url}?${pairs.map(([k, v]) => `${k}=${v}`).join('&')}` : url;
 }
 
-// ---- the HTTP request: connection, method, path, query, headers, body ----------------------------------------------------------
+// ---- the HTTP request: connection, method, path, query, headers, body -----------------------------------------------
 export function RequestEditor({ request, onChange, connection, onConnection, connectionPath, scope, paramRows, disabled }) {
   const ctx = useForm();
   const req = isObj(request) ? request : { method: 'GET', path: '' };
@@ -255,7 +255,7 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
   );
 }
 
-// ---- a path with its check: the grammar, and what it picks out of the sample -------------------------------------------------------
+// ---- a path with its check: the grammar, and what it picks out of the sample ----------------------------------------
 export function PathInput({ value, onChange, sample, disabled, label, placeholder = '$.field' }) {
   const check = validatePath(value || '');
   const match = sample !== undefined && check.ok ? describeMatches(sample, value) : null;
@@ -278,7 +278,7 @@ export function PathInput({ value, onChange, sample, disabled, label, placeholde
   );
 }
 
-// ---- the response: what the model sees, which values go into state ------------------------------------------------------------------
+// ---- the response: what the model sees, which values go into state --------------------------------------------------
 export function ResponsePanel({ path: toolPath = [], result, onChange, outOfBand, disabled, toolId, parameters }) {
   const ctx = useForm();
   const value = isObj(result) ? result : {};

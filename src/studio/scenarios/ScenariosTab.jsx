@@ -16,11 +16,9 @@ import Icon from '../../ui/Icon.jsx';
 import { channelLabel } from '../agent/rowNames.js';
 import { askConfirm } from '../../ui/dialogs.js';
 
-// Test scenarios: conversations written down with what must be true afterwards, kept in the agent's draft (`tests`) and run by the
-// server's runner. A scenario with a `model_script` runs the real runtime with a scripted model (free, the same every time); one without
-// is live (a real model: it costs money and is only run when asked). Results appear as scenarios finish, each with its checks, what to
-// do about a failure, and the trace of what happened. In demo mode there is no runtime: an imitation answers in the same shapes and
-// says so.
+// Test scenarios: written conversations with what must be true afterwards, kept in the draft (`tests`) and run by the
+// server. With a `model_script` a run is scripted (free, repeatable); without, it is live (a real model that costs
+// money, run only when asked). In demo mode an imitation answers in the same shapes and says so.
 
 const STATUS = { passed: ['Passed', 'good'], failed: ['Failed', 'bad'], error: ['Broke', 'bad'], skipped: ['Skipped', 'idle'], running: ['Running…', 'warn'] };
 const Chip = ({ status }) => {
@@ -42,13 +40,13 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
   const config = editor.parsed.value;
   const ready = editor.status === 'ready' && editor.isObject && !editor.parsed.error;
   const scenarios = useMemo(() => (Array.isArray(config?.tests) ? config.tests.filter((s) => s && typeof s === 'object') : []), [config]);
-  // the scenario open in the form, known by its id (null: a new one), not by its place in the list, which a delete or an import can change
+  // the scenario in the form, by id (null: new), not by list position, which a delete or import can change
   const [editing, setEditing] = useState(null); // { id: string | null, scenario }
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importResult, setImportResult] = useState(null);
   const [paid, setPaid] = useState({ live: false, judge: false });
-  const [network, setNetwork] = useState(false); // let the bot's API calls reach real systems (the server refuses unless an operator allows it)
+  const [network, setNetwork] = useState(false); // let API calls reach real systems (only if an operator allows it)
   const [confirm, setConfirm] = useState(null); // 'live' | 'judge'
   const [queued, setQueued] = useState(null); // the ids the current run was asked for (null = all)
   const [mockAdded, setMockAdded] = useState({}); // scenario id -> ["GET /x"]
@@ -56,7 +54,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
   const saved = useAsync((signal) => api.listTests(botId, { ref: 'draft' }, { signal }), [botId]);
   const heads = useAsync((signal) => api.listTestRuns(botId, 10, { signal }), [botId]);
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId]);
-  // the newest version's own scenarios, so a run on it that covered only some of them is not called a pass of all of them
+  // the newest version's own scenarios, so a run covering only some of them is not called a pass of all
   const newestVersion = Array.isArray(versions.data) ? versions.data[0]?.version : undefined;
   const newestRead = useAsync((signal) => (newestVersion ? api.getVersion(botId, newestVersion, { signal }) : Promise.resolve(null)), [botId, newestVersion]);
   const list = useMemo(() => normalizeScenarioList(saved.data), [saved.data]);
@@ -283,8 +281,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                 const result = parseImport(importText, config);
                 setImportResult(result);
                 if (result.scenarios.length) writeTests([...scenarios, ...result.scenarios]);
-                // what was added (or was there already) leaves the box: what stays is only what still needs fixing, so
-                // "Add them" again adds nothing twice
+                // what was added (or already there) leaves the box, so "Add them" again adds nothing twice
                 if (result.rejected && (result.scenarios.length || result.already.length)) {
                   if (result.rejected.length) setImportText(JSON.stringify(result.rejected, null, 2));
                   else {
@@ -413,7 +410,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
             isNew={editing.id === null}
             onCancel={() => setEditing(null)}
             onSave={(savedScenario) => {
-              // put back where it was (found by its id); a new one, or one taken out of the list meanwhile, goes at the end
+              // put back in place (by id); a new one, or one removed from the list meanwhile, goes at the end
               const at = editing.id === null ? -1 : scenarios.findIndex((s) => s?.id === editing.id);
               writeTests(at < 0 ? [...scenarios, savedScenario] : scenarios.map((s, i) => (i === at ? savedScenario : s)));
               setEditing(null);

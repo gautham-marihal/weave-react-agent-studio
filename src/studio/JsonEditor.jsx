@@ -2,12 +2,11 @@ import React, { Suspense, forwardRef, lazy, useImperativeHandle, useMemo, useRef
 import { lineOf, locatePath, syntaxErrorLine } from './jsonPath.js';
 import { errorLinesOf, jsonProblems, offsetOfLine } from './json/jsonProblems.ts';
 
-// The code editor (CodeMirror: colours, folds, find, what is wrong marked where it is) is loaded only when the JSON is opened.
+// The CodeMirror editor is loaded only when the JSON is opened.
 const CodeJsonEditor = lazy(() => import('./json/CodeJsonEditor.tsx'));
 
-// The agent's configuration as plain JSON text, with line numbers and a way to jump to a place in it (a problem's path,
-// a character offset). It is drawn while the code editor loads, and stays if that can't load (offline, say). Ctrl/Cmd+S
-// is the workspace's, as on every page.
+// The configuration as plain JSON text, with line numbers and jumps to a path or offset. Shown while the code editor
+// loads, and kept if it can't load (offline, say). Ctrl/Cmd+S belongs to the workspace, as on every page.
 const LINE_HEIGHT = 20;
 
 export const JsonEditor = forwardRef(function JsonEditor({ text, onChange, errorLines }, ref) {
@@ -54,7 +53,7 @@ export const JsonEditor = forwardRef(function JsonEditor({ text, onChange, error
     <div
       className="stEditor"
       ref={(el) => {
-        // what the browser tests read the whole text through, as they do the code editor's
+        // the browser tests read the text through this, as they do the code editor's
         if (el) el.weaveJsonText = () => areaRef.current?.value ?? '';
       }}
     >
@@ -98,8 +97,8 @@ class OrPlain extends React.Component {
   }
 }
 
-// The whole configuration as JSON, with what is wrong with it said above it and marked in it: a syntax error (with its line and a way to it), a key
-// written twice (both places), and, while the JSON reads, what the checks say about a setting.
+// The whole configuration as JSON, with problems listed above and marked inline: a syntax error (with its line), a key
+// written twice (both places), and, while the JSON parses, what the checks say about a setting.
 export function JsonPart({ editor }) {
   const { text, parsed, report } = editor;
   const area = useRef(null);

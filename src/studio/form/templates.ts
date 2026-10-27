@@ -8,10 +8,8 @@ type Path = Array<string | number>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a draft being edited can be any shape; every read below checks what it finds
 type AnyConfig = any;
 
-// The roots a template may start with everywhere. `state`, `const` and `args` have names the config can be checked against; the
-// others (a tool's `result`, a form's answers, call details) have names only the runtime knows. Some places add roots of their own
-// (PLACE_ROOTS below), so which names are valid depends on where the text sits, and the server is the one that decides: it reports an
-// unknown name in `POST /validate` with a path. What this file finds is therefore only ever a HINT (amber), never an error.
+// Roots a template may start with anywhere. Only `state`, `const` and `args` names can be checked here; the server
+// decides the rest (POST /validate, with a path), so findings here are only hints (amber), never errors.
 export const TEMPLATE_ROOTS = ['state', 'const', 'args', 'result', 'form', 'meta', 'call', 'channel', 'caller'];
 
 type Place = { when: (path: string[]) => boolean; roots?: string[]; any?: boolean };
@@ -39,8 +37,8 @@ export type Template = { start: number; end: number; expr: string; root: string;
 
 const BLOCK = /\{\{([^{}]*)\}\}/g;
 
-// Every {{ … }} in the text, with what it starts with and the name after it: `{{ state.intent | default('x') }}` gives
-// root "state", name "intent".
+// Every {{ … }} in the text, with what it starts with and the name after it:
+// `{{ state.intent | default('x') }}` gives root "state", name "intent".
 export function findTemplates(text: unknown): Template[] {
   const found: Template[] = [];
   const source = String(text ?? '');
@@ -62,8 +60,8 @@ export function findTemplates(text: unknown): Template[] {
   return found;
 }
 
-// Roots only the runtime knows the names under (call details, the channel, the caller, a form's answers): offered as a start, `{{call.}}`,
-// with the caret left after the dot. `result` is added where the API's answer exists (inside a tool).
+// Roots whose names only the runtime knows (call, channel, caller, form): offered as a start, `{{call.}}`, with the
+// caret after the dot. `result` is added where the API's answer exists (inside a tool).
 export const RUNTIME_ROOTS = [
   { root: 'meta', help: 'About this agent (its id, name, version)' },
   { root: 'call', help: 'About this call or conversation' },
@@ -100,9 +98,8 @@ export const argNamesOf = (tool: AnyConfig): string[] => (isObj(tool?.parameters
 
 export type TemplateProblem = Template & { severity: 'hint'; reason: string };
 
-// What looks wrong in the templates of a text: a root that doesn't exist in this place, or a name the config doesn't have. Every
-// finding is a HINT (`severity: 'hint'`): the names depend on where the text sits and on what the runtime supplies, so only the server
-// can say for certain, and it does, with a path, when the draft is checked.
+// What looks wrong in a text's templates: a root not available here, or a name the config lacks. Always a hint
+// (`severity: 'hint'`): only the server can say for certain, and does, when the draft is checked.
 export function templateProblems(text: unknown, scope: TemplateScope): TemplateProblem[] {
   const problems: TemplateProblem[] = [];
   findTemplates(text).forEach((t) => {
@@ -169,9 +166,8 @@ export function insertables(scope: TemplateScope): { group: string; label: strin
 // Where a string sits in a tool: the arguments only exist inside the tool's own fields.
 export const toolIndexOf = (path: unknown): number | null => (Array.isArray(path) && path[0] === 'tools' && typeof path[1] === 'number' ? path[1] : null);
 
-// ---- which plain strings are templates -----------------------------------------------------------------------------------------
-// The schema doesn't say which strings the runtime reads as templates. These are the ones that do (what the agent is told, what it
-// says, what a request sends), plus any text that already contains {{ }}. Everything else (ids, descriptions, names) stays a plain box.
+// ---- which plain strings are templates
+// The schema doesn't say which strings the runtime reads as templates: these keys do, plus any text with {{ }} in it.
 const TEMPLATE_KEYS = new Set(['say', 'text', 'append', 'role', 'opening', 'instructions_append', 'uri_template', 'subject', 'body', 'prompt', 'instructions']);
 
 export function isTemplateString(path: unknown, shape: AnyConfig, value: unknown): boolean {
@@ -192,7 +188,7 @@ export const wordCount = (text: unknown): number =>
       .match(/\S+/g) || []
   ).length;
 
-// Which tool (if any) a field sits inside, so `args` names are known there, and which roots this place adds (PLACE_ROOTS).
+// Which tool (if any) a field sits inside, so `args` names are known, and which roots this place adds (PLACE_ROOTS).
 export function scopeAt(config: AnyConfig, path: Path | null | undefined): TemplateScope {
   const index = toolIndexOf(path);
   const tool = index === null ? null : config?.tools?.[index];
@@ -205,9 +201,8 @@ export function scopeAt(config: AnyConfig, path: Path | null | undefined): Templ
   });
 }
 
-// What the scope at `path` depends on, as one short string: the state and constant names (worked out once per config,
-// which every template box on the screen shares) and, inside a tool, its argument names. A box re-reads its scope only
-// when this changes, so a keystroke elsewhere costs a string compare.
+// What the scope at `path` depends on, as one short string (state and constant names, cached per config, plus a tool's
+// argument names). A box re-reads its scope only when this changes, so a keystroke elsewhere costs a string compare.
 const namesOfConfig = new WeakMap<object, string>();
 export function scopeSignature(config: AnyConfig, path: Path | null | undefined): string {
   const c = isObj(config) ? config : {};

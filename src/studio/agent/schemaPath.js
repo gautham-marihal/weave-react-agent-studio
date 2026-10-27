@@ -1,6 +1,4 @@
-// The part of the schema that describes one place in the configuration: for ['tools', 2] the schema of a tool, for
-// ['guardrails', 'input', 0] the schema of one check on what the caller says. The settings form is built from the
-// schema, so a panel that shows one item of a list asks for its schema here.
+// The schema for one place in the configuration (['tools', 2] -> a tool's schema), for panels that show one list item.
 // Pure: no React, no DOM.
 
 export function schemaAtPath(engine, schema, path) {

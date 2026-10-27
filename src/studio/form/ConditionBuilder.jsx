@@ -7,9 +7,8 @@ import { argNamesOf } from './templates.ts';
 import Icon from '../../ui/Icon.jsx';
 import ChoiceBox from '../../ui/Select.tsx';
 
-// A condition ("when the caller is verified", "when the argument is at least 3") as one readable row instead of a
-// choice between nine kinds of object. Combining conditions (all / any / not), channels and business hours still use the
-// full editor, which this falls back to; it only takes over for the plain "this thing is / isn't / at least … that" case.
+// A simple condition ("the caller is verified", "the argument is at least 3") as one readable row instead of a choice
+// of nine object kinds. All / any / not, channels and business hours fall back to the full editor.
 
 const SOURCES = [
   ['state', 'State variable'],
@@ -36,8 +35,8 @@ export function isSimpleCondition(value) {
   return sources.length === 1 && operators.length <= 1 && keys.length === sources.length + operators.length;
 }
 
-// The number "at least" / "at most" compare with: the box keeps what is typed (an empty box, a minus sign on its way to
-// -3), and the condition only ever gets a number; leaving the box with something that isn't one puts the number back.
+// The box keeps what is typed (empty, or a minus on its way to -3) but the condition only ever gets a number; leaving
+// the box with a non-number puts the number back.
 function NumberValue({ value, onChange, disabled }) {
   const shown = typeof value === 'number' ? String(value) : '';
   const [text, setText] = useState(shown);
@@ -92,11 +91,12 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
   const operand = obj[operator];
   const stateVars = ctx.refOptions.state_vars || [];
 
-  // the value compared with is kept as it is, null included ("is not null" means "is set": an empty text in its place would flip the meaning)
+  // the compared value is kept as is, null included: "is not
+  // null" means "is set", and an empty text there would flip it
   const kept = operand === undefined ? '' : operand;
   const setSource = (nextSource) => onChange({ [nextSource]: '', [operator]: kept });
   const setSubject = (v) => onChange({ [source]: v, [operator]: kept });
-  // "at least" and "at most" compare numbers: a number stays, text that is one becomes it, anything else starts at 0
+  // "at least" and "at most" compare numbers: a number stays, numeric text becomes one, anything else starts at 0
   // (shown in the box, never a hidden "")
   const asNumber = (v) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : 0);
   const setOperator = (nextOperator) => {

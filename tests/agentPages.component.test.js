@@ -4,6 +4,7 @@ import { $, $$, actions, byText, setupDom, teardownDom, textOf } from './compone
 import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/demoApi.js';
 import { humanize } from '../src/studio/agent/rowNames.js';
+import { buildSections } from '../src/studio/agent/buildSections.js';
 
 // An agent's pages, mounted in jsdom with a config in state: the Agent page (text on the page, choices in panels that work on a copy), a list page
 // (rows, a picker to add, a panel for one item), the Home checklist and the menu. Clicks and typing are replayed and the config that comes out is read back.
@@ -21,33 +22,16 @@ const TOOL_LISTS = [
   { id: 'tools', path: ['tools'], kind: 'tools', word: 'tool', pickerKey: 'tools', empty: { title: 'No tools yet', text: 'Tools let the agent do things.' } },
 ];
 
-test('the menu is in the order of the work, the current page marked, with a number where something is to fix', async () => {
-  const app = await mountScreen('agentnav', agent(), { ready: '.nlNav', props: { page: 'tools', counts: { agent: 2 }, dots: { tests: true } } });
-  assert.deepEqual($$(app.container, '.nlNavHead').map(textOf), ['Build', 'Test and launch', 'Monitor']);
+test('the stages are tabs in the order of the work, the open one marked, with a number where the checks found something to fix', async () => {
+  const app = await mountScreen('stagetabs', agent(), { ready: 'nav', props: { page: 'tools', problems: { agent: 2, tools: 1, calls: 4 } } });
+  const tabs = $$(app.container, 'nav[aria-label="Agent stages"] button');
   assert.deepEqual(
-    $$(app.container, '.nlNav button').map((b) => b.getAttribute('data-page')),
-    [
-      'home',
-      'agent',
-      'knowledge',
-      'tools',
-      'workflow',
-      'channels',
-      'guardrails',
-      'aftercall',
-      'tests',
-      'releases',
-      'calls',
-      'monitoring',
-      'questions',
-      'speed',
-      'settings',
-    ],
+    tabs.map((b) => b.dataset.stage),
+    ['overview', 'build', 'test', 'release', 'monitor'],
   );
-  assert.equal($$(app.container, '.nlNav button[aria-current="page"]').length, 1);
-  assert.equal($(app.container, '.nlNav button[aria-current="page"]').getAttribute('data-page'), 'tools');
-  assert.equal(textOf($(app.container, '.nlNav button[data-page="agent"] .nlNavCount')), '2');
-  assert.ok($(app.container, '.nlNav button[data-page="tests"] .nlNavDot'), 'a running test is marked');
+  assert.equal($(app.container, 'button[aria-current="page"]').dataset.stage, 'build', 'Tools is part of Build');
+  assert.match(textOf($(app.container, 'button[data-stage="build"]')), /^Build\s*3/, 'the problems of all of Build');
+  assert.match(textOf($(app.container, 'button[data-stage="monitor"]')), /4/);
   await app.unmount();
 });
 
@@ -272,7 +256,42 @@ test('the Home checklist names the next step, and a step that is done reads as d
   await app.unmount();
 });
 
-test('while the agent is not ready, the menu says how far along it is and opens the next step; a page with a step to do is marked', async () => {
+test('the Overview lists the parts of building it first while it is not live, each opening its page; the week’s numbers come after', async () => {
+  const config = agent();
+  const sections = buildSections({ config });
+  const app = await mountScreen('homepage', config, { ready: '.nlPage', props: { summary: {}, sections } });
+  assert.match(textOf($(app.container, '.nlSection h2')), /^Build/);
+  const rows = $$(app.container, '.ovBuild li');
+  assert.deepEqual(
+    rows.map((r) => r.dataset.part),
+    ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall'],
+  );
+  assert.ok($(app.container, '.ovBuild li[data-part="guardrails"][data-state="optional"]'));
+  const body = $(app.container, '.ovBody');
+  assert.equal(body.lastElementChild.className, 'ovStats', 'not live: the numbers last');
+  await app.unmount();
+  const live = await mountScreen('homepage', config, { ready: '.nlPage', props: { summary: { deployed: { development: '0.1.0' } }, sections } });
+  assert.equal($(live.container, '.ovBody').firstElementChild.className, 'ovStats', 'live: the numbers first');
+  await live.unmount();
+});
+
+test('Build lists its parts down the side: the open one marked, a done part checked, an optional one unmarked, then its views', async () => {
+  const config = agent();
+  const sections = buildSections({ config });
+  const app = await mountScreen('buildstage', config, { ready: 'nav', props: { page: 'tools', sections } });
+  assert.deepEqual(
+    $$(app.container, 'nav[aria-label="Build"] button[data-page]').map((b) => b.dataset.page),
+    ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings'],
+  );
+  assert.equal($(app.container, 'button[aria-current="page"]').dataset.page, 'tools');
+  assert.ok($(app.container, 'button[data-page="workflow"] [aria-label="Done"]'), 'one agent answers: done');
+  assert.ok(!$(app.container, 'button[data-page="guardrails"] [role="img"]'), 'nothing set, optional: no mark');
+  assert.ok(byText(app.container, 'button', /JSON/), 'the JSON is one of its views');
+  assert.equal(textOf($(app.container, '.theOpenPage')), 'the open page');
+  await app.unmount();
+});
+
+test('while the agent is not ready, the tabs say how far along it is and open the next step; a stage with a step to do is marked', async () => {
   const steps = [
     { id: 'prompt', label: 'Say what it should do', state: 'done', page: 'agent' },
     { id: 'voice', label: 'Pick its language', state: 'todo', page: 'agent', target: { open: 'language' } },
@@ -281,19 +300,17 @@ test('while the agent is not ready, the menu says how far along it is and opens 
   ];
   const opened = [];
   const plan = { steps, next: steps[1], done: 1, total: 3 };
-  const app = await mountScreen('agentnav', agent(), { ready: '.nlNav', props: { page: 'home', plan, onStep: (step) => opened.push(step.id) } });
-  const card = $(app.container, '.nlSetup');
-  assert.match(textOf(card), /Getting it ready\s*1 of 3/);
-  assert.match(textOf(card), /Next: Pick its language/);
-  assert.equal($(app.container, '.nlSetupBar').getAttribute('aria-valuenow'), '1');
+  const app = await mountScreen('stagetabs', agent(), { ready: 'nav', props: { page: 'home', plan, onStep: (step) => opened.push(step.id) } });
+  const card = byText(app.container, 'button', /Getting it ready/);
+  assert.match(textOf(card), /Getting it ready · 1 of 3\s*Next: Pick its language/);
   await a.click(card);
   assert.deepEqual(opened, ['voice'], 'the card opens the next step');
-  assert.ok($(app.container, '.nlNav button[data-page="agent"] .nlNavTodo'), 'a step to do on the Agent page');
-  assert.ok($(app.container, '.nlNav button[data-page="releases"] .nlNavTodo'));
-  assert.ok(!$(app.container, '.nlNav button[data-page="tools"] .nlNavTodo'), 'an optional step is not marked');
+  assert.ok($(app.container, 'button[data-stage="build"] [aria-label="1 step to do"]'), 'a step to do in Build');
+  assert.ok($(app.container, 'button[data-stage="release"] [aria-label="1 step to do"]'));
+  assert.ok(!$(app.container, 'button[data-stage="overview"] [role="img"]'));
   await app.unmount();
-  const ready = await mountScreen('agentnav', agent(), { ready: '.nlNav', props: { page: 'home', plan: { steps: [], next: null, done: 3, total: 3 } } });
-  assert.equal($(ready.container, '.nlSetup'), null, 'a ready agent has no progress card');
+  const ready = await mountScreen('stagetabs', agent(), { ready: 'nav', props: { page: 'home', plan: { steps: [], next: null, done: 3, total: 3 } } });
+  assert.equal(byText(ready.container, 'button', /Getting it ready/), null, 'a ready agent has no progress card');
   await ready.unmount();
 });
 
@@ -338,5 +355,28 @@ test('the agent switcher lists the other agents and opens one on the same page; 
   await a.pick($$(document.body, '.agentSwitchMenu [role="menuitem"]')[0]);
   assert.equal(window.location.hash, '#/bots/b/tools', 'the same page of the other agent');
   assert.equal($(document.body, '.agentSwitchMenu'), null, 'and the list closes');
+  await app.unmount();
+});
+
+test('the guided view: every part on one page in order, who it is in plain fields, the plain controls in place, and a way to every setting', async () => {
+  const config = agent();
+  const opened = [];
+  const app = await mountScreen('guidedbuild', config, {
+    ready: '[data-guided]',
+    props: { sections: buildSections({ config }), onOpen: (page) => opened.push(page) },
+  });
+  assert.deepEqual(
+    $$(app.container, '[data-guided]').map((s) => s.dataset.guided),
+    ['who', 'sound', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall'],
+  );
+  const who = $(app.container, '#guided-who');
+  assert.deepEqual($$(who, '.suFieldHead > span').map(textOf), ['Company name', 'Agent’s spoken name', 'Tone', 'Instructions', 'What it says first']);
+  assert.equal($$(who, '.suExplain').length, 5, 'each field can be explained');
+  assert.equal($(who, 'input').value, '', 'no company yet');
+  assert.ok(byText(app.container, '#guided-tools *', /End the conversation politely/), 'what it can do, as switches');
+  await a.click(byText(app.container, '#guided-tools button', /More settings for this/));
+  await a.click(byText(app.container, '#guided-guardrails button', /Set its boundaries/));
+  assert.deepEqual(opened, ['tools', 'guardrails']);
+  assert.equal(byText(app.container, '#guided-guardrails button', /More settings for this/), null, 'one way to its page, not two');
   await app.unmount();
 });

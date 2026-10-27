@@ -28,16 +28,15 @@ import {
   supportDetails,
 } from './numbersModel.js';
 
-// The real phone numbers of the platform (FRONTEND_GUIDE 10.5): the list (ours, and the ones set up outside the builder, read-only), a form that checks a number
-// as it is typed, and changing or releasing one of ours. The person gives a number and an environment; the platform makes the trunk and dispatch rule, whose
-// names are shown only in a folded "details for support". Reading is always safe. Creating, changing and releasing change the phone system, so each is sent
-// only after the person confirms it. The same pieces draw the workspace's Telephony page (every number) and an agent's Deploy page (its own numbers).
+// The platform's real phone numbers (FRONTEND_GUIDE 10.5): the list, a form that checks a number as it is typed, and
+// changing or releasing ours. Those changes alter the phone system, so each is sent only after the person confirms.
+// The same pieces draw the Telephony page (every number) and an agent's Deploy page (its own numbers).
 
 // How often the list is read again while it is on screen, so "Waiting for calls" turns to "Ready" after the first call
 const REFRESH_MS = 30000;
 
-// Loads the settings and the list (every number, or one agent's), and reads them again every half minute and when the window comes back into view.
-// `mode` is 'loading' | 'live' | 'preview' (this server has no numbers feature) | 'unavailable' (it has no phone-system credentials: 503).
+// Loads the settings and numbers (all, or one agent's), re-reading every half minute and when the window returns.
+// `mode`: 'loading' | 'live' | 'preview' (no numbers feature) | 'unavailable' (no phone-system credentials: 503).
 export function useLiveNumbers(enabled, { botId = '' } = {}) {
   const [state, setState] = useState({ mode: 'loading', rows: [], settings: null, error: null, reloadError: null });
   const run = useRef(0);
@@ -90,7 +89,7 @@ function useBotNames(agents) {
   return useMemo(() => Object.fromEntries(agents.map((a) => [a.id, a.name || a.id])), [agents]);
 }
 
-// What happens to a call to this number, its settings, what still has to be done, its last call, and (folded) the trunk and rule for support.
+// Where a call to this number goes, its settings, what is left to do, its last call, and (folded) support details.
 function NumberInfo({ row, botName }) {
   const details = supportDetails(row);
   const last = lastCallWords(row);
@@ -251,9 +250,9 @@ export function LiveNumbersPage({ live, agents }) {
   );
 }
 
-// One agent's numbers, on its Deploy page: what callers dial to reach it, which environment each goes to, and "Add a number". Hidden when this server has
-// no numbers feature or no phone-system credentials (rather than an empty list). `live` is useLiveNumbers(…, { botId }), read by the page so its environment
-// cards can name their numbers too; `current` is what is deployed where (GET deployments' `current`).
+// One agent's numbers on its Deploy page; hidden, not empty, when the server has no numbers feature or credentials.
+//   live: useLiveNumbers(…, { botId }), read by the page so its environment cards can name their numbers too
+//   current: what is deployed where (GET deployments' `current`)
 export function AgentNumbers({ live, botId, botName, current }) {
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -281,8 +280,8 @@ export function AgentNumbers({ live, botId, botName, current }) {
         <div>
           <h3 id="agentNumbersTitle">Phone numbers</h3>
           <p>
-            The numbers callers dial to reach {botName}. A call to a number is answered by the version deployed to its environment. You give the number; the
-            phone line and the rule that routes it are set up for you.
+            The numbers people dial to reach {botName}. You give the number; the phone line and its routing are set up for you. Each number answers with what is
+            live in the place it is added for (testing, final check or customers).
           </p>
         </div>
         <button type="button" className="secondaryCta compactCta" onClick={() => setDialog({ kind: 'add' })}>
@@ -308,10 +307,7 @@ export function AgentNumbers({ live, botId, botName, current }) {
         </p>
       )}
       {live.rows.length === 0 ? (
-        <p className="agentNumbersEmpty">
-          No number yet. Callers can reach {botName} by phone once it has a phone line, a version with that line is deployed, and a number is added here for
-          that environment.
-        </p>
+        <p className="agentNumbersEmpty">No number yet. Add one, and callers who dial it reach {botName} (it needs phone calls switched on in what is live).</p>
       ) : (
         <ul className="agentNumbersList">
           {live.rows.map((row) => {
@@ -349,8 +345,8 @@ export function AgentNumbers({ live, botId, botName, current }) {
   );
 }
 
-// What is deployed where for an agent (GET deployments' `current`), and whether a version has a phone line that is on. `given` is used when the page already
-// has the deployments (the agent's Deploy page); otherwise they are read for the agent chosen in the form.
+// What is deployed where for an agent, and whether a version has a phone line that is on.
+//   given: the deployments when the page already has them (Deploy page); else read for the agent chosen in the form
 function useDeployedPhone(botId, env, given) {
   const [read, setRead] = useState({ bot: '', current: null });
   const [phones, setPhones] = useState({}); // "bot@version" -> true | false
@@ -382,7 +378,7 @@ function useDeployedPhone(botId, env, given) {
   return { current, deployed: version, phone: version ? (phones[key] ?? null) : null };
 }
 
-// Add a number, or change one of ours. The number is checked as it is typed; before anything is sent the person sees what will happen and confirms it.
+// Add a number, or change one of ours. The number is checked as typed, and the person confirms what will happen first.
 function NumberDialog({ existing = null, agents, settings, current: givenCurrent = null, onClose, onDone }) {
   const defaults = settings?.defaults || { recordAudio: true, krisp: false, allowedAddresses: [] };
   const environments = settings?.environments || ['development', 'staging', 'production'];

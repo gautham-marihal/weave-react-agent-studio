@@ -52,10 +52,10 @@ function mainPart(stages) {
   return STAGES.find((s) => s.id === id) || null;
 }
 
-// "Speed": how fast an agent answers, where the time goes and what would make it quicker, from its calls. On the
-// workspace it compares the agents; on an agent's own page (agentOnly) it is that agent alone. It only reads; its
-// suggestions open the setting they are about.
-//   onOpenAgent(botId, tab, params): an agent's page; onShowSetting(path): on an agent's own page, the place of one of its settings
+// "Speed": how fast an agent answers, where the time goes and what would make it quicker, from its calls. The
+// workspace compares agents; an agent's own page (agentOnly) shows that one. Read-only; suggestions open their setting.
+//   onOpenAgent(botId, tab, params): opens an agent's page
+//   onShowSetting(path): on an agent's own page, opens one of its settings
 export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, onOpenAgent, onShowSetting }) {
   const [days, setDays] = useState(14);
   const [targetPref, setTargetPref] = usePref(TARGET_KEY, '2');
@@ -77,7 +77,7 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
       })),
     [bots, data.samples, data.totals, targetMs],
   );
-  // what would help, biggest first. On the workspace each suggestion is said once, with the agents it is about (each its own settings) under it.
+  // what would help, biggest first; on the workspace each is said once, with the agents it concerns listed under it
   const advice = useMemo(() => {
     const groups = new Map();
     (agentOnly ? [{ bot: bots[0], summary: all }] : perAgent).forEach(({ bot, summary }) =>
@@ -157,7 +157,7 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
           {e.message}
         </Notice>
       ))}
-      {/* a call whose records the server would not give: left out, and said, so the numbers are not taken for all of them */}
+      {/* calls whose records the server wouldn't give are left out, and said, so the numbers aren't taken for all */}
       {data.failed > 0 && !data.loading && (
         <Notice kind="warn" title={`${data.failed} call${data.failed === 1 ? '' : 's'} couldn’t be read`}>
           {all.sampled ? 'They are left out of the numbers below.' : 'So there is nothing to time yet.'} Refresh to try again.
@@ -285,7 +285,7 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
                             <span>{a.action}:</span>
                             {a.agents.map((g) => (
                               <button key={g.bot} type="button" className="quietButton" onClick={() => openSetting(g.bot, g.path)}>
-                                {/* named "Choose a faster model for Front Desk 2.4 s": what to do, then what is seen */}
+                                {/* named "Choose a faster model for Front Desk 2.4 s": action, then what's seen */}
                                 <span className="srOnly">{a.action} for </span>
                                 {names[g.bot] || g.bot}
                                 <small>{seconds(g.ms)}</small>

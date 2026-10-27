@@ -1,9 +1,6 @@
-// What the calls say about how the agents are doing: how many, how long, how often they were handed over or cut off,
-// how fast the agent answers, which tools fail, where callers had to repeat themselves, and whether a newer version
-// does worse than the one before. Built only from what the studio reads (the list of calls, and the records of the
-// newest few calls of each agent); nothing is written. Rates over a handful of calls are NOT trusted: below a minimum,
-// a number is shown but never raised as an alert, and the screen says how many calls it rests on.
-// Pure: no network, no DOM, no clock of its own.
+// How the agents are doing, from their calls: counts, durations, hand-overs and cut-offs, answer speed, failing tools,
+// repeats, and whether a newer version does worse. Rates over few calls are shown but never raised as an alert, and the
+// screen says how many calls they rest on. Pure: no network, no DOM, no clock of its own.
 
 import { similarity } from '../replay/compareReplay.js';
 import { localDay, periodOf } from '../format.js';
@@ -61,9 +58,8 @@ export function issuesOf(summary, facts) {
 
 const keyOf = (c) => `${c.bot}/${c.id}`;
 
-// What the caller waited for each answer of a call: [{ ms, say }], measured as the Speed page measures it (the delay a
-// voice call records, or from the caller's words to the answer plus making sure they finished) when the call's records
-// were read for that (`waits`), else from the turns' gaps.
+// What the caller waited for each answer: [{ ms, say }], measured as the Speed page does (`waits`, when the records
+// were read for that), else from the turns' gaps.
 export function waitsOf(facts) {
   if (Array.isArray(facts?.waits)) return facts.waits.filter((w) => typeof w?.ms === 'number');
   return list(facts?.turns)
@@ -94,10 +90,9 @@ function totalsOf(calls, samples) {
   };
 }
 
-// calls: every call summary read (`bot`, `id`, `started_at`, `status`, `duration_s`, `caller_turns`, `handoffs`,
-// `version`, `ref`); samples: { 'bot/id': facts };
-// bots: [{ id, name, deployed }]. `days` is the period (today and the days before it, see periodOf); the same length of
-// time before it is read for comparison.
+//   calls: every call summary read (bot, id, started_at, status, duration_s, caller_turns, handoffs, version, ref)
+//   samples: { 'bot/id': facts }; bots: [{ id, name, deployed }]
+//   days: the period (see periodOf); the same length of time before it is read for comparison
 export function analyse({ calls = [], samples = {}, bots = [], nowMs = 0, days = 7 } = {}) {
   const period = periodOf(nowMs, days);
   const start = period.startMs;
@@ -210,8 +205,8 @@ export function deltaOf(now, before) {
   const d = now - before;
   return d === 0 ? 'no change' : `${d > 0 ? '+' : '−'}${Math.abs(d)}`;
 }
-// The calls of a period against the one before it, in words: "Down from 12 the period before", never a bare "−4" (which reads as minus four calls).
-// '' when there is nothing to compare with.
+// A period's calls against the one before, in words ("Down from 12 the period before"), never a bare "−4", which reads
+// as minus four calls. '' when there is nothing to compare with.
 export function changeWords(now, before, period = 'the period before') {
   if (typeof now !== 'number' || typeof before !== 'number' || before === 0) return '';
   if (now === before) return `The same as ${period}`;
