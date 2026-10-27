@@ -1,8 +1,6 @@
-// Shared curated voice catalog used by both the Builder and the workspace Voice Library.
-// `previewUrl` is the provider's own recorded sample of that voice (ElevenLabs publishes one for each premade voice). Cartesia gives samples only to account holders, so each Cartesia voice below is one of the public Cartesia Sonic voices in a public voice directory (creativeclaw.co) that lists its exact id and a recording of it; Jacqueline's id is also the one Cartesia's own docs use.
-// Every voice id below was checked against the provider on 2026-10-15: ElevenLabs' public premade (free) voice list (GET /v1/voices lists them without a key), and Cartesia's
-// published voice ids (LiveKit, SignalWire). ElevenLabs retired its older premade voices (Rachel, Antoni, Elli, Josh, Arnold, Sam), so those are no longer offered; their ids
-// no longer exist. Custom or cloned voices still need an account-specific id.
+// The curated voices shared by the Builder and the Voice Library; previewUrl is the provider's own recorded sample.
+// Cartesia shares samples only with account holders, so its voices come from a public directory (creativeclaw.co).
+// Ids checked on 2026-10-15; retired ElevenLabs voices (Rachel, Josh…) are left out. Cloned voices need an account id.
 export const VOICE_CATALOG = [
   {
     id: 'elevenlabs-sarah',

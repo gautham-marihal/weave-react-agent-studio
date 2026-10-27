@@ -8,6 +8,7 @@
 // counted apart, because they are the demo's own), and no technical term on the way. It prints the count and fails when the target is missed.
 // Environment: E2E_BASE (default http://localhost:4180), E2E_BROWSER (a Chrome or Edge path), E2E_MAX_CLICKS (default 8).
 import { chromium } from 'playwright-core';
+import { pick } from './pick.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:4180';
 const MAX_CLICKS = Number(process.env.E2E_MAX_CLICKS || 8);
@@ -94,16 +95,24 @@ await page.getByRole('button', { name: /continue to workspace/i }).click();
 await page.getByPlaceholder('e.g. Alex Morgan').waitFor();
 await page.getByPlaceholder('e.g. Alex Morgan').fill('Asha Rao');
 await page.getByPlaceholder('e.g. Acme Inc.').fill('Harbour Plumbing');
-await page.locator('select').selectOption({ label: 'Customer Support' });
+await pick(page, page.locator('select, .rxSelect'), { label: 'Customer Support' });
 await page.getByRole('button', { name: /continue to my workspace/i }).click();
 await page.waitForSelector('.dashMain');
 const afterSignIn = await mark();
 
 await scan();
-await page
-  .getByRole('button', { name: /Create agent/ })
-  .first()
-  .click();
+// the first-time setup ends in the create dialog; opened another way, it is the "Create agent" button
+const opened = await page
+  .getByPlaceholder('e.g. Acme Support')
+  .waitFor({ timeout: 4000 })
+  .then(() => true)
+  .catch(() => false);
+if (!opened) {
+  await page
+    .getByRole('button', { name: /Create agent/ })
+    .first()
+    .click();
+}
 await page.getByPlaceholder('e.g. Acme Support').waitFor();
 await scan();
 await page.getByPlaceholder('e.g. Acme Support').fill('Harbour Plumbing');

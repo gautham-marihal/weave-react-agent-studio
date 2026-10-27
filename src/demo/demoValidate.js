@@ -1,8 +1,5 @@
-// A small stand-in for the API's validator, for demo mode. It is NOT the real validator and says so in every report: it checks the
-// things that are cheap and most useful to see (the shape of the document, ids that must match, duplicate ids, references to tools
-// that don't exist, the model settings, the schema version a feature needs) and lists what the runtime can't do yet. The real
-// validator knows the whole schema and the runtime's rules.
-// Pure: no network, no DOM.
+// A small stand-in for the API's validator, for demo mode. NOT the real validator, and every report says so: it checks
+// the cheap, useful things (shape, ids, missing tools, models, schema version) and what the runtime can't do yet. Pure.
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -38,6 +35,9 @@ export function validateDemo(config, botId) {
   });
   if (isObj(config.meta) && botId && config.meta.id !== botId) err(['meta', 'id'], `meta.id must be '${botId}' (it is '${config.meta.id}')`);
   if (isObj(config.meta) && !config.meta.name) err(['meta', 'name'], 'meta.name is required');
+  // published as it is: a version that isn't x.y.z can't be listed or counted on from
+  if (isObj(config.meta) && !/^\d+\.\d+\.\d+$/.test(String(config.meta.version ?? '')))
+    err(['meta', 'version'], `meta.version must be three numbers, like 1.0.0 (it is ${JSON.stringify(config.meta.version ?? null)})`);
 
   // duplicate ids inside the lists that have them
   const ids = (items) => list(items).map((item) => (isObj(item) ? item.id : undefined));
@@ -65,7 +65,13 @@ export function validateDemo(config, botId) {
         err(['agents', 'items', index, 'tools', t], `'${tool}' is not a declared tools id (declared: ${toolIds.join(', ') || 'none'})`);
     });
   });
-  const used = new Set(list(config.agents?.items).flatMap((agent) => list(agent?.tools)));
+  // used: offered by an agent, checked by a task step, or called by a guardrail (escalation or off-topic rule)
+  const used = new Set([
+    ...list(config.agents?.items).flatMap((agent) => list(agent?.tools)),
+    ...list(config.tasks).flatMap((task) => list(task?.steps).map((step) => step?.validate?.tool)),
+    ...list(config.guardrails?.escalation).map((rule) => rule?.tool),
+    config.guardrails?.topics?.on_off_topic?.then,
+  ]);
   list(config.tools).forEach((tool, index) => {
     if (isObj(tool) && tool.id && !used.has(tool.id))
       warnings.push({ path: ['tools', index], message: `tool '${tool.id}' is not used by any agent, task or guardrail` });
@@ -106,8 +112,8 @@ export function validateDemo(config, botId) {
     const kind = isObj(tool) ? tool.type : undefined;
     if (UNSUPPORTED_TOOL_KINDS[kind]) unsupported.push({ feature: UNSUPPORTED_TOOL_KINDS[kind], where: `tools[${index}]` });
   });
-  // Since 2026-10-16 the server enforces sensitive variables and redaction, so neither is reported any more. A protection that is declared but not enforced
-  // would come back as an item with `severity: "security"`, which the studio still shows in red (the tests send one).
+  // Since 2026-10-16 the server enforces sensitive variables and redaction, so neither is reported. A declared but
+  // unenforced protection would come back with `severity: "security"`, which the studio still shows in red.
 
   const valid = errors.length === 0;
   return { valid, errors, warnings, unsupported: valid ? unsupported : [], secrets_required: [...secretsIn(config)].sort() };

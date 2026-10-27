@@ -1,14 +1,10 @@
-// A SIMULATED agent: it answers a conversation from a configuration using a few plain rules, so the studio can show a chat preview and
-// run test scenarios without a runtime. It is not the real agent and does not pretend to be: it has no language model, makes no
-// requests, and its replies are marked `simulated` wherever they are shown. What it does imitate, in a crude way, is the shape of a
-// conversation: the greeting (and recording notice), saying goodbye through `end_call`, offering a person through
-// `transfer_or_callback`, "calling" a tool whose name or description matches what the caller said (and applying its `set_state`
-// effects), and handing off to another agent. Anything it can't do it says plainly.
-// Pure: no network, no DOM, no randomness.
+// A SIMULATED agent: answers from a config with plain rules, so the studio can preview chats and run tests without a
+// runtime. No language model and no requests; replies are marked `simulated`. It imitates the shape of a conversation
+// (greeting, goodbye, hand-overs, matching tools) and says plainly what it can't do. Pure, no randomness.
 
 import { isObj } from '../studio/form/engine.js';
 import { renderTemplate } from '../studio/form/promptPreview.js';
-import { baseOf, primaryOf } from '../studio/form/messages.js';
+import { baseOf, primaryOf } from '../studio/form/messages.ts';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const STOP = new Set([
@@ -77,6 +73,59 @@ export function speechText(speech, config) {
   return '';
 }
 
+// Something to hand to a person at once: an emergency, pain, a complaint (said on top of asking for a person by name)
+const URGENT = /\b(emergency|urgent|urgently|severe|bleeding|accident|ambulance|pain|painful|hurts?|complain|complaint)\b/;
+// A request to take down for the team: a booking, an order, a call-back
+const REQUEST = [/\bbook(s|ed|ing)?\b/, /\bappointments?\b/, /\breserv(e|ation)\b/, /\border(s|ed|ing)?\b/, /\bcall[ -]?back\b/];
+// When a request is for, from what was said: a day, a part of the day, a time ("Saturday morning", "tomorrow 3pm")
+const DAY = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|weekend)\b/i;
+const PART = /\b(morning|afternoon|evening)\b/i;
+const TIME = /\b\d{1,2}(:\d{2})? ?(am|pm)\b/i;
+const whenIn = (said) =>
+  [DAY, PART, TIME]
+    .map((re) => re.exec(said)?.[0])
+    .filter(Boolean)
+    .join(' ');
+// How it asks for each detail of a request, in conversation
+const ASK = {
+  name: 'Could I have your name, please?',
+  phone: 'What is the best phone number to reach you on?',
+  email: 'And your email address?',
+  need: 'What would you like to book or ask for?',
+  when: 'Which day and time would suit you?',
+  message: 'Is there anything you’d like to add?',
+};
+// Everyday question words a document says another way ("where are you?" is its address, "how much" its prices)
+const ALSO = [
+  [/\bwhere\b|\blocat/, 'address location'],
+  [/\bhow much\b|\bcost|\bprice|\bfees?\b/, 'price prices cost'],
+  [/\bwhen\b|\bopen|\bhours?\b|\bclos/, 'opening hours open'],
+  [/\bpark/, 'parking'],
+  [/\bpay\b|\bcards?\b|\bcash\b/, 'payment'],
+];
+// what was asked, with those words: what its documents are searched for
+export const widenQuestion = (text) => [text, ...ALSO.filter(([re]) => re.test(String(text || '').toLowerCase())).map(([, more]) => more)].join(' ');
+// The document line that answers best: most words shared with the question, its own words above everyday ones
+// (a passage may run several lines together, as "Prices: - Check-up: S$45 - Cleaning: S$90")
+function bestLine(passage, asked) {
+  const own = new Set(words(asked).map((w) => w.slice(0, 4)));
+  const also = new Set(words(widenQuestion(asked)).map((w) => w.slice(0, 4)));
+  const lines = String(passage || '')
+    .split(/\n+|(?<=[.!?])\s+|\s+[-•*]\s+/)
+    .map((l) => l.replace(/^[\s*•-]+/, '').trim())
+    .filter(Boolean);
+  let best = '';
+  let most = 0;
+  lines.forEach((line) => {
+    const n = words(line).reduce((sum, w) => sum + (own.has(w.slice(0, 4)) ? 2 : also.has(w.slice(0, 4)) ? 1 : 0), 0);
+    if (n > most) {
+      most = n;
+      best = line;
+    }
+  });
+  return best;
+}
+
 const DEFAULT_STATE = (config) =>
   Object.fromEntries(
     Object.entries(isObj(config?.state?.variables) ? config.state.variables : {}).map(([name, v]) => [name, isObj(v) ? (v.default ?? null) : null]),
@@ -87,9 +136,10 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
   const channels = list(config?.channels);
   const channel = channels.find((c) => c?.id === channelId) || channels.find((c) => c?.enabled !== false) || channels[0] || null;
   let current = agents.find((a) => a?.id === config?.agents?.entry) || agents[0] || null;
-  const state = { ...DEFAULT_STATE(config), ...(isObj(startingState) ? startingState : {}) }; // a scenario can start with some values already set
+  const state = { ...DEFAULT_STATE(config), ...(isObj(startingState) ? startingState : {}) }; // a scenario may preset values
   const calls = [];
   let ended = false;
+  let request = null; // a request being taken down: { tool, fields: [names], values: {}, asking }
 
   const persona = isObj(config?.persona) ? config.persona : {};
   const name = () => persona.name || current?.name || 'the agent';
@@ -104,7 +154,7 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
       .filter(Boolean);
   const isVoice = () => !!channel && (['sip_voice', 'web_voice'].includes(channel.type) || list(channel.modalities?.output).includes('audio'));
 
-  // Runs the `set_state` and `say` steps of a tool's effects whose condition is plainly true (no condition, or a state/arg test we can read).
+  // Runs a tool's `set_state` and `say` effects whose condition is plainly true (none, or a readable state/arg test).
   function applyEffects(tool) {
     const said = [];
     list(tool.effects).forEach((rule) => {
@@ -138,7 +188,21 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
     return out;
   }
 
-  function reply(userText) {
+  // a request's form: the fields it asks for, in order
+  const formOf = (tool) => list(config?.forms).find((f) => isObj(f) && f.id === tool?.params?.form);
+  // passing to a person: put through when a number is set, else the line callers hear when no one can take the call
+  function passOn(person, said, urgent, call) {
+    call(person, { reason: said });
+    const transfer = list(config?.telephony?.transfers).find((t) => isObj(t) && t.id === person.params?.transfer);
+    const fallback = list(person.params?.fallback).find((a) => a?.type === 'say');
+    const sorry = urgent ? 'I’m sorry to hear that. ' : '';
+    return transfer?.target
+      ? `${sorry}I’ll put you through to someone on the team now.`
+      : `${sorry}${fill(speechText(fallback?.text, config)) || 'I’ll put you through to a person.'}`;
+  }
+
+  // hits: what a search of its documents found ([{ text, source, score }], best first), when it has documents
+  function reply(userText, { hits = [] } = {}) {
     const said = String(userText || '').trim();
     const lower = said.toLowerCase();
     const out = { messages: [], toolCalls: [], handoff: null, ended: false };
@@ -171,16 +235,53 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
       return out;
     }
 
-    // a person
-    if (/\b(person|human|agent|representative|someone|operator|manager|transfer|speak to|talk to)\b/.test(lower)) {
+    // a person, asked for, or needed at once (an emergency, pain, a complaint)
+    const urgent = URGENT.test(lower);
+    if (urgent || /\b(person|human|agent|representative|someone|operator|manager|transfer|speak to|talk to)\b/.test(lower)) {
+      request = null;
       const person = tools.find((t) => t.builtin === 'transfer_or_callback');
       if (person) {
-        call(person, { reason: said });
-        const fallback = list(person.params?.fallback).find((a) => a?.type === 'say');
-        speak(fill(speechText(fallback?.text, config)) || 'I’ll put you through to a person.');
+        speak(passOn(person, said, urgent, call));
+        return out;
+      }
+      if (urgent) {
+        speak(
+          'I’m sorry to hear that. (Simulated: this agent has no way to pass someone to a person, so a real one could only keep talking. Switch on “Pass people to a person on your team”.)',
+        );
         return out;
       }
       speak('I can’t pass you to a person: this agent has no way to do that yet.');
+      return out;
+    }
+
+    // a request being taken down: this answer is the detail it asked for
+    if (request) {
+      request.values[request.asking] = said;
+      const next = request.fields.find((f) => !request.values[f]);
+      if (next) {
+        request.asking = next;
+        speak(ASK[next] || `Could you tell me your ${next}?`);
+        return out;
+      }
+      call(request.tool, { ...request.values });
+      const who = request.values.name ? `, ${request.values.name.split(/\s+/)[0]}` : '';
+      const when = request.values.when ? ` for ${request.values.when}` : '';
+      request = null;
+      speak(`Thank you${who}. I’ve noted your request${when}. Our team will confirm it with you shortly. Is there anything else I can help with?`);
+      return out;
+    }
+
+    // what it can do, asked straight out
+    if (/\b(what can you (do|help)|how can you help|what do you do|what can i ask)\b/.test(lower)) {
+      const can = [
+        tools.some((t) => t.builtin === 'send_form') && 'take a request for our team (a booking, an order or a call-back)',
+        tools.some((t) => t.builtin === 'transfer_or_callback') && 'pass you to someone on the team',
+        list(config?.knowledge).length > 0 && 'answer questions from our information',
+      ].filter(Boolean);
+      const about = String(config?.meta?.description || '').trim();
+      speak(
+        `${about ? `${about.replace(/\.$/, '')}. ` : ''}${can.length ? `I can ${can.length > 1 ? `${can.slice(0, -1).join(', ')} and ${can.at(-1)}` : can[0]}.` : 'Ask me anything.'}`,
+      );
       return out;
     }
 
@@ -213,11 +314,39 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
       return out;
     }
 
+    // a request to take down (booking, order, call-back), when it takes requests: ask for each detail still needed
+    const form = tools.find((t) => t.builtin === 'send_form');
+    if (form && REQUEST.some((re) => re.test(lower))) {
+      const fields = list(formOf(form)?.fields)
+        .map((f) => f?.name)
+        .filter(Boolean);
+      const values = {};
+      if (fields.includes('need')) values.need = said;
+      const when = whenIn(said);
+      if (when && fields.includes('when')) values.when = when;
+      const next = fields.find((f) => !values[f]);
+      if (next) {
+        request = { tool: form, fields, values, asking: next };
+        speak(`I can take that request for you. ${ASK[next] || `Could you tell me your ${next}?`}`);
+        return out;
+      }
+    }
+
+    // its documents: the line that answers best
+    const hit = hits.find((h) => h && h.score > 0 && h.text);
+    const line = hit ? bestLine(hit.text, said) : '';
+    if (line) {
+      speak(`${line}${/[.!?]$/.test(line) ? '' : '.'} (Simulated: found in ${hit.source || 'your documents'}; the real agent puts it in its own words.)`);
+      return out;
+    }
+
     const role = String(current?.instructions?.role || '')
       .replace(/\s+/g, ' ')
       .trim();
     const snippet = role ? role.split(/\s+/).slice(0, 14).join(' ') + (role.split(/\s+/).length > 14 ? '…' : '') : 'no instructions yet';
-    speak(`I’m ${name()}. This is a simulated reply: a real agent would answer using its instructions (“${snippet}”).`);
+    speak(
+      `I’m ${name()}. This is a simulated reply: the real agent answers from its instructions (“${snippet}”)${list(config?.knowledge).length ? ' and its documents' : ''}. Nothing here answers it yet: to be sure it can, add the answer under What it knows or What it does.`,
+    );
     return out;
   }
 

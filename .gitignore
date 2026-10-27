@@ -26,6 +26,13 @@ Thumbs.db
 
 # Test and coverage output
 coverage/
+# the screenshot e2e/smoke.mjs saves when a step fails
+e2e-failure.png
+# the agent configurations mock-bank/agents/build.mjs writes (made from the generators beside it)
+mock-bank/agents/out/
+# SonarQube: the scanner's working folder and the ESLint report it reads
+.scannerwork/
+eslint-report.json
 
 # Temporary files
 *.tmp

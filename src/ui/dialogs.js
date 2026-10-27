@@ -1,7 +1,7 @@
-// Asking for a decision in the studio's own dialog instead of the browser's confirm() and alert() boxes, which look like another app, can't follow
-// the style and freeze the page. askConfirm() resolves true or false; showNotice() resolves when the person closes it. One <DialogHost /> (App.jsx)
-// draws whichever is open. Where no host is on the page (a component test), the browser's box is used, so a decision is never silently skipped.
-//   tone: 'danger' for something that can't be undone (the button is red, and Cancel has the focus), else 'default'
+// Decisions in the studio's own dialog, not the browser's confirm()/alert(), which look foreign and freeze the page.
+// askConfirm() resolves true or false; showNotice() resolves on close; one <DialogHost /> (App.jsx) draws them.
+// With no host (a component test) the browser's box is used, so a decision is never silently skipped.
+//   tone: 'danger' for something that can't be undone (red button, focus on Cancel), else 'default'
 
 let current = null;
 let made = 0;

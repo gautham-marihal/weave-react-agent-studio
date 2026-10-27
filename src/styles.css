@@ -47,42 +47,6 @@ small {
   letter-spacing: -1.2px;
   font-weight: 700;
 }
-.logoMark {
-  width: 28px;
-  height: 28px;
-  border: 1px solid #2b909d;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  position: relative;
-  box-shadow: 0 0 22px #31d9ee24;
-}
-.logoMark:before,
-.logoMark:after,
-.logoMark span {
-  content: "";
-  position: absolute;
-  height: 4px;
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--cyan), var(--mint));
-}
-.logoMark:before {
-  width: 14px;
-  transform: rotate(45deg);
-}
-.logoMark:after {
-  width: 14px;
-  transform: rotate(-45deg);
-}
-.logoMark span {
-  width: 4px;
-  height: 14px;
-  opacity: 0.75;
-}
-.logo.compact .logoMark {
-  width: 27px;
-  height: 27px;
-}
 .cyan {
   color: var(--accent-text);
 }
@@ -1434,7 +1398,7 @@ small {
   margin-bottom: 7px;
 }
 .profileCard input,
-.profileCard select {
+.profileCard :is(select, button:where(.rxSelect)) {
   width: 100%;
   background: #080b0c;
   color: #dbe5e7;
@@ -1447,11 +1411,11 @@ small {
 .profileCard input::placeholder {
   color: #49565a;
 }
-.profileCard select {
+.profileCard :is(select, button:where(.rxSelect)) {
   appearance: auto;
 }
 .profileCard input:focus,
-.profileCard select:focus {
+.profileCard :is(select, button:where(.rxSelect)):focus {
   border-color: #3ed9e7;
   box-shadow: 0 0 0 3px #36d8ee12;
 }
@@ -1863,7 +1827,7 @@ select {
 }
 .loginCard input,
 .profileCard input,
-.profileCard select {
+.profileCard :is(select, button:where(.rxSelect)) {
   font-size: var(--fs-md);
   padding: 15px 16px;
 }
@@ -2030,7 +1994,7 @@ body,
 }
 .loginCard input,
 .profileCard input,
-.profileCard select {
+.profileCard :is(select, button:where(.rxSelect)) {
   background: #fff;
   color: #20353a;
   border-color: #cfdcdf;
@@ -2450,14 +2414,14 @@ html[data-theme="light"] .profileCard label > span {
 }
 html[data-theme="dark"] .loginCard input:not([type="checkbox"]),
 html[data-theme="dark"] .profileCard input,
-html[data-theme="dark"] .profileCard select {
+html[data-theme="dark"] .profileCard :is(select, button:where(.rxSelect)) {
   background: var(--page);
   color: var(--textStrong);
   border-color: var(--line2);
 }
 html[data-theme="light"] .loginCard input:not([type="checkbox"]),
 html[data-theme="light"] .profileCard input,
-html[data-theme="light"] .profileCard select {
+html[data-theme="light"] .profileCard :is(select, button:where(.rxSelect)) {
   background: var(--panel);
   color: var(--text);
   border-color: var(--line2);
@@ -3235,14 +3199,14 @@ html[data-theme="dark"] .profileCard label > span {
 }
 html[data-theme="light"] .loginCard input:not([type="checkbox"]),
 html[data-theme="light"] .profileCard input,
-html[data-theme="light"] .profileCard select {
+html[data-theme="light"] .profileCard :is(select, button:where(.rxSelect)) {
   background: var(--field);
   color: var(--field-text);
   border-color: var(--line2);
 }
 html[data-theme="dark"] .loginCard input:not([type="checkbox"]),
 html[data-theme="dark"] .profileCard input,
-html[data-theme="dark"] .profileCard select {
+html[data-theme="dark"] .profileCard :is(select, button:where(.rxSelect)) {
   background: var(--field);
   color: var(--field-text);
   border-color: var(--line2);
@@ -3257,13 +3221,13 @@ html[data-theme="dark"] .profileCard input::placeholder {
 }
 html[data-theme="light"] .loginCard input:not([type="checkbox"]):focus,
 html[data-theme="light"] .profileCard input:focus,
-html[data-theme="light"] .profileCard select:focus {
+html[data-theme="light"] .profileCard :is(select, button:where(.rxSelect)):focus {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line2));
   box-shadow: 0 0 0 4px var(--focus);
 }
 html[data-theme="dark"] .loginCard input:not([type="checkbox"]):focus,
 html[data-theme="dark"] .profileCard input:focus,
-html[data-theme="dark"] .profileCard select:focus {
+html[data-theme="dark"] .profileCard :is(select, button:where(.rxSelect)):focus {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line2));
   box-shadow: 0 0 0 4px var(--focus);
 }
@@ -4017,14 +3981,14 @@ html[data-theme="dark"] .insightsSection {
 }
 .loginCard input:not([type="checkbox"]),
 .profileCard input,
-.profileCard select {
+.profileCard :is(select, button:where(.rxSelect)) {
   height: 52px;
   padding: 0 15px;
   border-radius: 11px;
   font-size: var(--fs-md);
 }
 .profileCard input,
-.profileCard select {
+.profileCard :is(select, button:where(.rxSelect)) {
   padding: 13px 15px;
   height: 52px;
 }
@@ -5448,17 +5412,37 @@ html[data-theme="light"] .dangerButton:hover {
   max-height: 560px;
   padding: 10px 10px 14px;
 }
+/* the box to type in and the keys under the results stay in sight; only the results scroll, however short the window */
+.searchPanel {
+  display: flex;
+  flex-direction: column;
+}
+.searchPanel > [cmdk-root] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.searchPanel .searchHeader,
+.searchPanel .searchFooter {
+  flex: none;
+}
+.searchPanel .searchResults {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .searchGroup {
   padding: 8px 6px 2px;
 }
-.searchGroupLabel {
+/* the search draws its groups with cmdk: a group's heading and its results are its own elements */
+.searchGroup [cmdk-group-heading] {
   color: var(--muted2);
   font-size: var(--fs-xs);
   letter-spacing: 0.15em;
   font-weight: 800;
   padding: 8px;
 }
-.searchGroupItems {
+.searchGroup [cmdk-group-items] {
   display: grid;
   gap: 4px;
 }
@@ -5812,89 +5796,6 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
 }
 
 /* Weave Builder ---------------------------------------------------------- */
-.builderCard {
-  max-width: 860px;
-  margin: 0 auto 16px;
-  border: 1px solid var(--line2);
-  border-radius: 15px;
-  background: var(--panel);
-  box-shadow: 0 12px 30px color-mix(in srgb, #000 9%, transparent);
-  padding: 19px;
-}
-.builderCardHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 15px;
-  margin-bottom: 16px;
-}
-.builderCardHead h3 {
-  margin: 0;
-  color: var(--text);
-  font-size: var(--fs-lg);
-  letter-spacing: -0.2px;
-}
-.builderCardHead p {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  line-height: 1.5;
-}
-.builderCard > .builderField {
-  margin-bottom: 13px;
-}
-.builderCard > .builderField:last-child {
-  margin-bottom: 0;
-}
-.builderField {
-  display: block;
-  min-width: 0;
-}
-.builderFieldLabel {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 7px;
-  color: var(--text);
-  font-size: var(--fs-xs);
-  font-weight: 650;
-}
-.builderField input,
-.builderField textarea {
-  width: 100%;
-  border: 1px solid var(--line2);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--text);
-  padding: 11px 12px;
-  font-size: var(--fs-xs);
-  outline: none;
-  transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    background 0.16s ease;
-}
-.builderField textarea {
-  resize: vertical;
-  line-height: 1.55;
-  min-height: 100px;
-}
-.builderField input::placeholder,
-.builderField textarea::placeholder {
-  color: var(--dim);
-}
-.builderField input:focus,
-.builderField textarea:focus {
-  border-color: var(--cyan);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyan) 10%, transparent);
-}
-.builderFieldHint {
-  display: block;
-  margin-top: 5px;
-  color: var(--dim);
-  font-size: var(--fs-xs);
-  line-height: 1.45;
-}
 .builderHelpWrap {
   position: relative;
   display: inline-flex;
@@ -5919,79 +5820,12 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
   color: var(--accent-text);
   border-color: var(--cyan);
 }
-.builderToggle {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px solid var(--line2);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 11px;
-  padding: 10px 11px;
-  text-align: left;
-}
-.builderToggleCopy {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-.builderToggleCopy strong {
-  font-size: var(--fs-xs);
-}
-.builderSwitch {
-  position: relative;
-  width: 33px;
-  height: 19px;
-  border-radius: 999px;
-  background: var(--line2);
-  flex: 0 0 auto;
-  transition: background 0.16s;
-}
-.builderSwitch i {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: #aebabe;
-  transition: transform 0.16s;
-}
-.builderToggle.on .builderSwitch {
-  background: var(--cyan);
-}
-.builderToggle.on .builderSwitch i {
-  transform: translateX(14px);
-  background: #fff;
-}
-.builderToggle:hover {
-  border-color: color-mix(in srgb, var(--cyan) 32%, var(--line2));
-}
 .dangerText {
   border: 0;
   background: transparent;
   color: var(--danger-text);
   font-size: var(--fs-xs);
   padding: 6px;
-}
-.builderToggle {
-  position: relative;
-}
-.builderToggleState {
-  margin-left: auto;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.1px;
-}
-.builderToggle.on .builderToggleState {
-  color: var(--accent-text);
-}
-.builderToggle.off .builderToggleState {
-  color: var(--dim);
 }
 
 /* Agent list — polished row layout */
@@ -6669,6 +6503,10 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
   border-color: var(--accent-border);
   background: var(--accent-soft);
 }
+/* on the open tab's fill the dim grey is too faint to read (below 4.5:1 in dark): its note takes the text colour */
+.voiceWorkspaceTabs button.active small {
+  color: var(--text);
+}
 /* the search on the left, the three filters together on the right (not spread across the bar) */
 .voiceLibraryToolbar {
   gap: 10px;
@@ -6676,7 +6514,7 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
 .voiceLibraryToolbar .featureSearch {
   margin-right: auto;
 }
-.voiceLibraryToolbar select {
+.voiceLibraryToolbar :is(select, button:where(.rxSelect)) {
   height: 40px;
   min-width: 140px;
   border: 1px solid var(--line2);
@@ -6870,7 +6708,7 @@ html[data-theme="dark"] .workspaceOptionRow:hover {
     width: 100%;
     box-sizing: border-box;
   }
-  .voiceLibraryToolbar select {
+  .voiceLibraryToolbar :is(select, button:where(.rxSelect)) {
     width: 100%;
   }
 }
@@ -6958,7 +6796,8 @@ html[data-theme="dark"] .loginCard .fieldError {
 }
 
 /* Search palette: the keyboard-selected result is highlighted. */
-.searchResult.active {
+.searchResult.active,
+.searchResult[data-selected="true"] {
   background: var(--surface-hover);
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line2));
 }
@@ -6979,12 +6818,6 @@ html[data-theme="dark"] .loginCard .fieldError {
 }
 
 /* Builder: consistent vertical rhythm between stacked blocks inside cards. */
-.builderCard > .builderToggle {
-  margin-bottom: 14px;
-}
-.builderCard > .builderToggle:last-child {
-  margin-bottom: 0;
-}
 
 /* Agents index: empty panels and filter field. */
 .emptyPanel {
@@ -7892,7 +7725,6 @@ html[data-theme="dark"] {
     .agentStatCard,
     .agentPanel,
     .metricCard,
-    .sessionSummaryCard,
     .sessionsTablePanel,
     .telephonyStatCard,
     .telephonyTablePanel,
@@ -7903,7 +7735,6 @@ html[data-theme="dark"] {
     .integrationCard,
     .voiceTableWrap,
     .featureToolbar,
-    .healthStrip,
     .emptyPanel,
     .telephonyEmptyHero
   ) {
@@ -7911,7 +7742,7 @@ html[data-theme="dark"] {
   border-color: var(--line);
   box-shadow: var(--ds-card-shadow);
 }
-.dashboard :is(.agentStatCard, .metricCard, .sessionSummaryCard, .telephonyStatCard) {
+.dashboard :is(.agentStatCard, .metricCard, .telephonyStatCard) {
   padding: var(--ds-card-pad);
 }
 .dashboard :is(.integrationCard, .agentRow) {
@@ -7919,7 +7750,7 @@ html[data-theme="dark"] {
 }
 
 /* Buttons: standard (42px) and compact (34px) */
-.dashboard :is(.primaryCta, .secondaryCta, .quietButton, .themeToggle, .selectButton) {
+.dashboard :is(.primaryCta, .secondaryCta, .quietButton, .selectButton) {
   min-height: var(--ds-control-h);
   height: var(--ds-control-h);
   border-radius: var(--ds-radius-control);
@@ -7933,7 +7764,6 @@ html[data-theme="dark"] {
 .dashboard
   :is(
     .tableTools .iconOnly,
-    .sessionToolbarButton,
     .agentRowAction,
     .compactSecondary,
     .voiceTableActions .secondaryCta,
@@ -7946,7 +7776,7 @@ html[data-theme="dark"] {
   border-radius: var(--ds-radius-control) !important;
   font-size: var(--fs-sm) !important;
 }
-.dashboard :is(.tableTools .iconOnly, .sessionToolbarButton.iconOnly, .voiceTableActions .iconButton) {
+.dashboard :is(.tableTools .iconOnly, .voiceTableActions .iconButton) {
   width: var(--ds-control-h-sm);
   padding: 0;
   display: inline-grid;
@@ -7961,7 +7791,7 @@ html[data-theme="dark"] {
 }
 
 /* Badges: one shape for every small status label */
-:is(.versionState, .versionTag, .consoleLivePill, .cardTag, .agentRowHint, .workspaceFeaturePage .statusPill, .sideLink em, .navSoon) {
+:is(.cardTag, .agentRowHint, .workspaceFeaturePage .statusPill, .sideLink em) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -8012,16 +7842,6 @@ html[data-theme="dark"] {
   width: 6px;
   height: 6px;
 }
-.statusBadge.sm {
-  height: 22px;
-  gap: 6px;
-  padding: 0 9px 0 8px;
-  font-size: var(--fs-xs);
-}
-.statusBadge.sm i {
-  width: 7px;
-  height: 7px;
-}
 
 .statusBadge.draft {
   background: color-mix(in srgb, #e0a83b 14%, var(--panel));
@@ -8060,39 +7880,6 @@ html[data-theme="dark"] {
 }
 
 /* ---------- Environment tag ---------- */
-.envTag {
-  display: inline-flex;
-  align-items: center;
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid var(--line2);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--textStrong);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-.envTagPrefix {
-  margin-right: 7px;
-  padding-right: 7px;
-  border-right: 1px solid var(--line2);
-  color: var(--dim);
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.09em;
-}
-.envTag.sm {
-  height: 22px;
-  padding: 0 8px;
-  font-size: var(--fs-xs);
-}
-.envTag.sm .envTagPrefix {
-  font-size: var(--fs-xs);
-  margin-right: 6px;
-  padding-right: 6px;
-}
 
 /* ---------- Status change dialog ---------- */
 .statusDialogOverlay {
@@ -8356,7 +8143,7 @@ html[data-theme="dark"] {
 }
 .settingsRow input,
 .settingsField input,
-.settingsField select {
+.settingsField :is(select, button:where(.rxSelect)) {
   height: var(--ds-control-h);
   padding: 0 12px;
   border: 1px solid var(--line2);
@@ -8370,7 +8157,7 @@ html[data-theme="dark"] {
 }
 .settingsRow input:focus,
 .settingsField input:focus,
-.settingsField select:focus {
+.settingsField :is(select, button:where(.rxSelect)):focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);

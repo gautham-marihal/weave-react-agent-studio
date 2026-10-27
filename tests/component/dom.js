@@ -44,8 +44,22 @@ export async function setupDom() {
     cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
   };
   Object.entries(globals).forEach(([key, value]) => Object.defineProperty(globalThis, key, { value, configurable: true, writable: true }));
+  // every element type of the page, as a browser has them (Radix checks what it is given against them: HTMLFormElement, HTMLButtonElement…), and the
+  // few event and geometry types a component may ask for
+  Object.getOwnPropertyNames(window)
+    .filter((key) => /^(HTML|SVG)\w*Element$|^(Text|Range|DOMRect|FocusEvent|InputEvent|PointerEvent|DocumentFragment|ShadowRoot)$/.test(key))
+    .filter((key) => !(key in globalThis))
+    .forEach((key) => Object.defineProperty(globalThis, key, { value: window[key], configurable: true, writable: true }));
   Object.defineProperty(globalThis, 'navigator', { value: window.navigator, configurable: true });
   window.Element.prototype.scrollIntoView = () => {};
+  // a browser says when something changes size (cmdk's list, React Flow's boxes ask): nothing changes size here, so it never says anything
+  class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  Object.defineProperty(globalThis, 'ResizeObserver', { value: ResizeObserver, configurable: true, writable: true });
+  window.ResizeObserver = ResizeObserver;
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   // React's act() opens a MessageChannel for every flush and never closes it; the open ports would keep the test process alive
   // after the tests end. They are remembered here and closed by teardownDom().
@@ -90,7 +104,20 @@ export const byText = (root, selector, pattern) =>
   $$(root, selector).find((el) => (pattern instanceof RegExp ? pattern.test(textOf(el)) : textOf(el) === pattern)) || null;
 export const byLabel = (root, label) => $$(root, '[aria-label]').find((el) => el.getAttribute('aria-label') === label) || null;
 
+// the studio's choice box (ui/Select.tsx): a button that opens a Radix list of choices, drawn above the page
+const isChoiceBox = (el) => el?.tagName === 'BUTTON' && el.classList.contains('rxSelect');
+const choiceOptions = () => [...document.querySelectorAll('.rxSelectList [role="option"]')];
+// a choice's words (its label), and the description under it
+const choiceText = (option) => (option.querySelector('span')?.textContent || option.textContent || '').trim();
+const choiceNote = (option) => (option.querySelector('small')?.textContent || '').trim();
+
 export function actions(act) {
+  // a click opens it (Radix opens on the press of a mouse, or on the click of anything else)
+  const openChoiceBox = async (el) => {
+    await act(async () => {
+      el.click();
+    });
+  };
   const nativeSet = (el, value) => {
     const proto =
       el.tagName === 'TEXTAREA'
@@ -107,6 +134,24 @@ export function actions(act) {
         el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
       });
     },
+    // opens a menu or pop-over the way a person does: Radix opens it on the press of the button (pointerdown), not on the click that follows
+    async open(el) {
+      if (!el) throw new Error('nothing to open');
+      await act(async () => {
+        el.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
+        el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+      });
+    },
+    // a menu item's action runs once the menu has closed (layer.ts's afterMenu: a timer, then another): this waits for it, a moment and then a few
+    // timers one after another, which come after that pair however late a busy machine runs them
+    async pick(el) {
+      if (!el) throw new Error('nothing to pick');
+      await act(async () => {
+        el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        for (let i = 0; i < 3; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    },
     async type(el, value) {
       if (!el) throw new Error('nothing to type in');
       await act(async () => {
@@ -116,6 +161,16 @@ export function actions(act) {
     },
     async choose(el, value) {
       if (!el) throw new Error('nothing to choose in');
+      if (isChoiceBox(el)) {
+        // the studio's choice box (ui/Select.tsx, Radix): open it, and press the choice with this value (or these words)
+        await openChoiceBox(el);
+        const option = choiceOptions().find((o) => o.dataset.value === value || choiceText(o) === value);
+        if (!option) throw new Error(`the list has no choice “${value}”`);
+        await act(async () => {
+          option.click();
+        });
+        return;
+      }
       if (el.getAttribute('role') === 'combobox') {
         // a searchable list (SmartSelect): open it, and press on the option with this value (or this text)
         await act(async () => {
@@ -139,6 +194,8 @@ export function actions(act) {
     },
     // the texts of the choices of a select, or of a searchable list (opened to read it, then closed again)
     async options(el) {
+      // as the browser's list wrote a choice: its words, and its description after a dash
+      if (isChoiceBox(el)) return (await this.choices(el)).map((c) => (c.note ? `${c.text} — ${c.note}` : c.text));
       if (el.getAttribute('role') !== 'combobox') return [...el.options].map((o) => o.text);
       await act(async () => {
         el.focus();
@@ -150,6 +207,16 @@ export function actions(act) {
         el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
       });
       return texts;
+    },
+    // the choices of a choice box or a <select>: [{ value, text }] (the box is opened to read them, then closed again)
+    async choices(el) {
+      if (!isChoiceBox(el)) return [...el.options].map((o) => ({ value: o.value, text: o.text }));
+      await openChoiceBox(el);
+      const found = choiceOptions().map((o) => ({ value: o.dataset.value, text: choiceText(o), note: choiceNote(o) }));
+      await act(async () => {
+        el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      });
+      return found;
     },
     async check(el) {
       if (!el) throw new Error('nothing to check');

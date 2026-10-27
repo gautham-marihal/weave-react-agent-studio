@@ -1,5 +1,4 @@
-// Finds where a value lives inside JSON *text*, so a validation error addressed by `path`
-// (["agents", "items", 0, "tools", 2]) can be highlighted in the editor. The text must be valid JSON.
+// Where a `path` (["agents", "items", 0]) lives in valid JSON *text*, so a validation error can be highlighted.
 // If the exact path does not exist, the nearest existing ancestor is returned.
 
 export function locatePath(text, path) {
@@ -107,7 +106,7 @@ export function lineOf(text, offset) {
   return line;
 }
 
-// Where a syntax error is: the line the browser names ("… (line 3 column 22)"), else the line of the position it names ("… at position 1234").
+// A syntax error's line: the one the browser names ("(line 3 column 22)"), else the line of its "at position 1234".
 export function syntaxErrorLine(message, text) {
   const named = /\(line (\d+) column \d+\)/.exec(String(message || ''));
   if (named) return Number(named[1]);

@@ -1,17 +1,15 @@
-// Finding a SETTING by what it is called or what it is for ("silent", "timeout", "voice"), from anywhere in the studio. The index is built from the
-// schema the form is drawn from, the plain-language catalogue and the layout, so it knows every setting the schema has, says where each lives
-// ("How it talks › Conversation flow › When the caller goes quiet"), and finds technical names too (`timeout_s`). Pure: no network, no DOM.
+// Find a setting by name or purpose ("silent", `timeout_s`) from anywhere. Built from the schema, catalogue and layout,
+// so it knows every setting and where it lives ("How it talks › Conversation flow › …"). Pure: no network, no DOM.
 
 import { isObj } from './form/engine.js';
 import { describeSetting } from './form/plainLanguage.js';
 import { SKIPPED_SECTIONS, layoutFor, viewForPath } from './form/layout.js';
 
-// What the platform sets up for you and the studio never asks for: a phone channel's number, trunk and routing rule (they are made when a phone number is
-// added under Releases › Deploy). Offering them as settings would lead to a field that isn't there.
+// Set up by the platform when a phone number is added (Releases › Deploy), never asked for; offering them would lead to
+// a field that isn't there.
 const PLATFORM_SET = new Set(['channels.[].entry.dnis', 'channels.[].entry.sip_trunk', 'channels.[].entry.dispatch_rule']);
 
-// The everyday words for a part of the configuration that its own name does not use ("opening hours" for business hours), by its path. They find the
-// part itself, as well as its own name does.
+// Everyday words a part's own name doesn't use ("opening hours" for business hours), by path, so they find it too.
 const ALSO = {
   schedules: 'opening hours office hours open closed holidays',
   'telephony.transfers': 'hand over handover human person escalate',
@@ -40,9 +38,8 @@ const deref = (schema, node) => {
   return isObj(n) ? n : {};
 };
 
-// Every property of every object the schema describes, once per place it lives. `trail` is the names from the top ('defaults', 'conversation',
-// 'inactivity', 'timeout_s'), with '[]' for the items of a list and '{}' for the entries of a map; `jump` is the part of it that can be opened
-// (up to the first '[]' or '{}'), because a particular item can't be named before there is one.
+// Every property in the schema, once per place. `trail` is the keys from the top, with '[]' for list items and '{}' for
+// map entries; `jump` stops at the first of those, since an item can't be named before there is one.
 export function buildSettingsIndex(schema) {
   if (!isObj(schema?.properties)) return [];
   const sectionKeys = Object.keys(schema.properties).filter((k) => !SKIPPED_SECTIONS.has(k));
@@ -119,8 +116,8 @@ const wordsOf = (text) =>
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
 
-// Settings matching what was typed, best first. Every typed word must match somewhere; a word that starts a word of the label counts most, then
-// one in the label, the technical name, the purpose, or where the setting lives.
+// Settings matching what was typed, best first. Every word must match somewhere; a match at the start of a label word
+// counts most, then the label, technical name, purpose, or where it lives.
 export function searchSettings(index, query, limit = 8) {
   const typed = wordsOf(query);
   if (!typed.length || typed.join('').length < 2) return [];
@@ -150,7 +147,7 @@ export function searchSettings(index, query, limit = 8) {
       total += best;
     }
     if (!all) continue;
-    // a setting that is a screen's own heading is a better answer than the same word deep inside; experts' settings come after
+    // a screen's own heading beats the same word deep inside; experts' settings come after
     const depth = entry.trail.length;
     scored.push({ entry, score: total * 10 - depth + (entry.level === 'expert' ? -15 : 0) });
   }

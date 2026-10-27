@@ -2,8 +2,8 @@ import React, { createContext, useContext } from 'react';
 import { TechName } from '../form/TechName.jsx';
 import { useTechnicalNames } from '../usePref.js';
 
-// In the Simple view, "Technical names" shows where each setting lives in the configuration file (its path), with a way to copy it or open it in the JSON,
-// just as it does in the settings form. A page's own fields aren't inside the form, so the way to open the JSON comes from here.
+// "Technical names" on the agent's own pages: each setting's path in the config, to copy or open in the JSON.
+// A page's own fields aren't inside the settings form, so the way to open the JSON comes from this context.
 export const JsonOpenerCtx = createContext(null);
 
 export default function SimpleKey({ path }) {

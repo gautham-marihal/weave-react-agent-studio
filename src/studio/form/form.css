@@ -349,7 +349,7 @@ textarea.stFInput {
 .stFInput[aria-invalid="true"] {
   border-color: var(--danger);
 }
-select.stFInput {
+:is(select, button:where(.rxSelect)).stFInput {
   appearance: auto;
 }
 
@@ -1574,7 +1574,7 @@ select.stFInput {
   line-height: 1.5;
 }
 
-/* ---- the form drawn inside another screen (the Simple view's "More settings") ---- */
+/* ---- the form drawn inside another screen (an agent's page that shows a part of the configuration) ---- */
 .stForm.embedded .stFNav {
   margin-bottom: 8px;
 }
@@ -1897,7 +1897,7 @@ select.stFInput {
   border: 1px solid color-mix(in srgb, #e0a83b 50%, transparent);
   color: var(--warn-text);
 }
-/* The choices as a window over the page (the New layout): its title and search stay put, the cards scroll under them. Above the side panels, since an
+/* The choices as a window over the page: its title and search stay put, the cards scroll under them. Above the side panels, since an
    Add inside one opens it too. */
 .createOverlay.stPickOverlay {
   z-index: 6000;
@@ -2111,7 +2111,7 @@ select.stFInput {
 }
 
 /* One quiet button to add an optional setting; removing one is the Delete beside the setting itself */
-.stFAddRow select.stFInput.small {
+.stFAddRow :is(select, button:where(.rxSelect)).stFInput.small {
   appearance: none;
   -webkit-appearance: none;
   width: auto;
@@ -2124,7 +2124,7 @@ select.stFInput {
   font-weight: 600;
   cursor: pointer;
 }
-.stFAddRow select.stFInput.small:hover {
+.stFAddRow :is(select, button:where(.rxSelect)).stFInput.small:hover {
   border-color: var(--accent);
   background: var(--accent-soft, color-mix(in srgb, var(--accent) 10%, transparent));
 }
@@ -2377,7 +2377,7 @@ select.stFInput {
   border-top: 1px solid var(--line);
 }
 .stFGroupBody .stFAddRow .stCombo,
-.stFGroupBody .stFAddRow select.stFInput.small {
+.stFGroupBody .stFAddRow :is(select, button:where(.rxSelect)).stFInput.small {
   min-width: 0;
   min-height: 30px;
   padding: 0 12px;
@@ -2394,7 +2394,7 @@ select.stFInput {
   font-size: var(--fs-sm);
 }
 .stFGroupBody .stFAddRow .stCombo:hover,
-.stFGroupBody .stFAddRow select.stFInput.small:hover,
+.stFGroupBody .stFAddRow :is(select, button:where(.rxSelect)).stFInput.small:hover,
 .stFGroupBody .stFAddRow .stCombo:focus-within {
   border-color: var(--line2);
   background: var(--surface2);
@@ -2428,7 +2428,7 @@ select.stFInput {
   align-self: stretch;
 }
 .stFCards > .stCombo,
-.stFCards > select.stFInput.small {
+.stFCards > :is(select, button:where(.rxSelect)).stFInput.small {
   align-self: stretch;
   width: 100%;
   min-height: 46px;

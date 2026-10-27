@@ -1,18 +1,15 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { SEARCH_AFTER, filterOptions, normalizeOptions } from './selectOptions.js';
+import Select from '../ui/Select.tsx';
 import './smartSelect.css';
 import Icon from '../ui/Icon.jsx';
 import { useDropPlace } from '../ui/dropPlace.js';
 
-// One selector for every list of choices. A short list (8 or fewer) is the browser's own <select>: nothing to learn and it works everywhere.
-// A longer list (tools, state variables, agents, versions, languages…) is a combobox: type to narrow it, arrows to move, Enter to pick, Escape
-// to close, with a description under each choice and headings for groups. It is built to the WAI-ARIA combobox pattern (role=combobox on the
-// input, a listbox of options, aria-activedescendant for the highlighted one), so a screen reader hears the same thing a sighted person sees.
-//
+// One selector for every list of choices: eight or fewer is a Radix Select (ui/Select.tsx); longer lists are a combobox
+// built to the WAI-ARIA pattern (role=combobox, listbox, aria-activedescendant), so screen readers hear what is seen.
 //   options: strings, or { value, label?, description?, group?, disabled? }
-//   action:  true for a "＋ Add…" control: it picks something and then goes back to showing its placeholder (the value stays empty)
+//   action: true for a "＋ Add…" control: it picks, then shows its placeholder again (the value stays empty)
 
-export { SEARCH_AFTER, filterOptions, normalizeOptions };
 const MAX_SHOWN = 200;
 const LIST_MAX = 290; // px, as .stComboPop's max-height in smartSelect.css
 
@@ -21,7 +18,7 @@ function Native({ value, options, onChange, placeholder, ariaLabel, id, disabled
   const groups = grouped ? [...new Set(options.map((o) => o.group || ''))] : [''];
   const known = options.some((o) => o.value === String(value ?? ''));
   return (
-    <select
+    <Select
       id={id}
       className={className}
       value={action ? '' : (value ?? '')}
@@ -35,9 +32,8 @@ function Native({ value, options, onChange, placeholder, ariaLabel, id, disabled
       {groups.map((group) => {
         const items = options.filter((o) => (grouped ? (o.group || '') === group : true));
         const rendered = items.map((o) => (
-          <option key={o.value} value={o.value} disabled={o.disabled}>
+          <option key={o.value} value={o.value} disabled={o.disabled} data-description={o.description || undefined}>
             {o.label}
-            {o.description ? ` — ${o.description}` : ''}
           </option>
         ));
         return group ? (
@@ -48,7 +44,7 @@ function Native({ value, options, onChange, placeholder, ariaLabel, id, disabled
           rendered
         );
       })}
-    </select>
+    </Select>
   );
 }
 
@@ -60,7 +56,7 @@ function Combo({ value, options, onChange, placeholder, ariaLabel, id, disabled,
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const popRef = useRef(null);
-  // under the field, or above it when there is more room there; no taller than the room on its side (ui/dropPlace.js)
+  // below the field, or above when there is more room there, never taller than that room (ui/dropPlace.js)
   const place = useDropPlace(inputRef, popRef, open, (pop) =>
     Math.min(LIST_MAX, pop.offsetHeight - (listRef.current?.clientHeight || 0) + (listRef.current?.scrollHeight || 0)),
   );
@@ -232,5 +228,9 @@ export default function SmartSelect({
 }) {
   const list = useMemo(() => normalizeOptions(options), [options]);
   const common = { value, options: list, onChange, placeholder, ariaLabel, id, disabled, invalid, action, className, emptyText };
-  return list.length > searchAfter ? <Combo {...common} /> : <Native {...common} />;
+  // Once searchable, it stays so: a pick that takes the list from nine choices to eight would otherwise swap the
+  // control under the keyboard and lose focus.
+  const [searchable, setSearchable] = useState(list.length > searchAfter);
+  if (!searchable && list.length > searchAfter) setSearchable(true);
+  return searchable ? <Combo {...common} /> : <Native {...common} />;
 }

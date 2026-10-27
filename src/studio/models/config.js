@@ -1,9 +1,8 @@
-// Reads and writes the three model choices of an agent (how it listens, thinks and speaks) in its configuration,
-// under defaults.models. Pure: no network, no DOM, so the tests run it in plain Node.
+// Reads and writes an agent's three model choices (listen, think, speak) under defaults.models. Pure, so the tests run
+// it in plain Node.
 //
-// Choosing a provider also chooses what goes with it: that provider's first model, the conventional name of the
-// secret that holds its key, and (for speech) one of its voices. Everything else in the slot (language, keyterms,
-// temperature, fallbacks, ...) is left alone, and anything that only made sense for the old provider is removed.
+// Choosing a provider also sets its first model, the conventional name of its key's secret and (for speech) a voice.
+// The rest of the slot (language, keyterms, temperature, fallbacks…) stays; anything only the old provider used goes.
 
 import { VOICE_CATALOG } from '../../voiceCatalog.js';
 import { RENAMED_PROVIDERS, STAGES, defaultModelFor, modelLabel, providerLabel, providersForStage, secretFor } from './catalog.js';
@@ -63,7 +62,7 @@ function edit(config, stage, change) {
   return JSON.stringify(next) === JSON.stringify(config) ? config : next;
 }
 
-// `providers` is the server's list (for the name of each provider's secret); without it the conventional names are used.
+// `providers` is the server's list (for each provider's secret name); without it the conventional names are used.
 export function setProvider(config, stage, provider, providers) {
   if (readModels(config)[stage].provider === provider) return config;
   return edit(config, stage, (slot) => {
@@ -141,8 +140,8 @@ export function setVoiceId(config, voiceId) {
   });
 }
 
-// What would stop a part of the call from starting with the model chosen for it, from what the server says it can run (GET /providers): '' when
-// nothing (or nothing is chosen, or the server's list is not known). The Agent page's row and the AI models panel say the same.
+// What would stop a stage from starting with its chosen model, per GET /providers; null when nothing (or nothing is
+// chosen, or the list is unknown). The Agent page's row and the AI models panel say the same.
 //   -> { short, text } | null
 export function slotProblem(stage, slot, providers) {
   if (!slot?.provider || !Array.isArray(providers) || !providers.length) return null;
@@ -154,16 +153,15 @@ export function slotProblem(stage, slot, providers) {
   return null;
 }
 
-// ---- default speech models --------------------------------------------------------------------------------------------------------------
-// A phone or web-voice channel needs a speech-to-text and a text-to-speech model, and a new agent has neither. This picks, from what the
-// server says it can run (GET /providers), a provider for each missing stage: one that is installed and has its key set, else one that is
-// installed (its key can't be known, and the deploy check will say), never one that needs a base URL first. Returns null when there is none.
+// ---- default speech models
+// A voice channel needs speech-to-text and text-to-speech models (a new agent has neither). Picks an installed provider
+// with its key set, else any installed one (the deploy check flags the key), never one needing a base URL; else null.
 export function bestProviderFor(stage, providers) {
   const usable = providersForStage(providers, stage).filter((p) => p.installed !== false && p.name !== 'openai_compatible' && !!defaultModelFor(stage, p.name));
   return usable.find((p) => p.key_available === true) || usable[0] || null;
 }
 
-// A copy of the config with the speech models that are missing set to a default of the best provider. Models already set are left alone.
+// A copy of the config with missing speech models set to the best provider's default; models already set stay.
 // -> { config, added: [{ stage, provider, keySet }], skipped: [stage] }
 export function addDefaultSpeechModels(config, providers) {
   const models = isObject(config?.defaults?.models) ? config.defaults.models : {};

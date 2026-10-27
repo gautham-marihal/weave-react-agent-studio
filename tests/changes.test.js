@@ -53,3 +53,24 @@ test('a part that was not published is removed when put back', () => {
 test('a missing published version yields no changes', () => {
   assert.equal(changesSince(null, published).total, 0);
 });
+
+test('the same steps in another order is a change: a task runs its steps in order', () => {
+  const before = {
+    ...copy(published),
+    tasks: [
+      {
+        id: 'verify',
+        steps: [
+          { id: 'ask', say: 'a' },
+          { id: 'check', say: 'b' },
+        ],
+      },
+    ],
+  };
+  const after = copy(before);
+  after.tasks[0].steps.reverse();
+  const { total, groups } = changesSince(before, after);
+  assert.equal(total, 1);
+  assert.equal(groups[0].items[0].text, 'Changed the order of “Steps” of the task “verify”');
+  assert.equal(groups[0].items[0].detail, 'ask, check → check, ask');
+});

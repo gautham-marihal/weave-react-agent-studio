@@ -5,13 +5,14 @@ import CallDetail from '../calls/CallDetail.jsx';
 import { channelLabel } from '../calls/callModel.js';
 import { formatWhen } from '../format.js';
 import { humanize } from '../form/engine.js';
-import Drawer from '../newlayout/Drawer.jsx';
+import Drawer from '../agent/Drawer.jsx';
 import { Notice } from '../ui.jsx';
 import { usePref } from '../usePref.js';
 import { boardSummary, changesToAnnounce, clock, hiddenWords } from './liveModel.js';
 import { useLiveBoard } from './useLiveBoard.js';
+import Select from '../../ui/Select.tsx';
 import '../calls/calls.css';
-import '../newlayout/newlayout.css';
+import '../agent/agent.css';
 import './live.css';
 
 const PRIVATE_KEY = 'weave_live_private';
@@ -68,7 +69,7 @@ function LiveCard({ call, name, hideCaller, onWatch, onOpenCall }) {
         {!call.loading && !lines.length && <li className="lvNote">Just started: nothing said yet.</li>}
         {lines.map((l) => (
           <li key={l.seq} className={`lvLine ${l.who}`}>
-            {/* the agent that said it, by name ("Assistant", "Billing specialist"), as a person reads it, not its id */}
+            {/* the agent's name ("Billing specialist"), not its id */}
             <span className="lvSpeaker">{l.who === 'caller' ? 'Caller' : humanize(l.agent || call.agent || 'agent')}</span>
             <span className="lvText">{l.who === 'caller' && hideCaller ? <i>{hiddenWords(l)}</i> : l.text}</span>
           </li>
@@ -96,8 +97,8 @@ function LiveCard({ call, name, hideCaller, onWatch, onOpenCall }) {
   );
 }
 
-// The Live board: every call going on now across the workspace's agents, updating as they are said, with what needs a look first; and the calls that ended
-// in the last ten minutes. It only watches: nothing here changes a call.
+// The Live board: every call in progress across the workspace, what needs a look first, plus calls that ended in the
+// last ten minutes. It only watches: nothing here changes a call.
 export default function LiveBoardPage({ bots = [], onOpenCall }) {
   const [paused, setPaused] = useState(false);
   const [agent, setAgent] = useState('');
@@ -124,18 +125,22 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
   const lastSaid = useRef(0);
   useEffect(() => {
     const now = Object.fromEntries(board.calls.map((c) => [c.key, c]));
-    if (before.current && Date.now() - lastSaid.current > 4000) {
-      const said = changesToAnnounce(before.current, now, names);
-      if (said.length) {
-        setAnnounce(said.join('. '));
-        lastSaid.current = Date.now();
-      }
+    if (!before.current) {
+      before.current = now;
+      return;
+    }
+    // spoke a moment ago: held back, then compared with what was there when it last spoke, so nothing is missed
+    if (Date.now() - lastSaid.current <= 4000) return;
+    const said = changesToAnnounce(before.current, now, names);
+    if (said.length) {
+      setAnnounce(said.join('. '));
+      lastSaid.current = Date.now();
     }
     before.current = now;
   }, [board.calls, names]);
 
   const open = watching && board.calls.find((c) => c.bot === watching.bot && c.id === watching.id);
-  // why it isn't watching, when it isn't: paused, no agent yet, or the tab is out of sight (it watches again when it is back)
+  // why it isn't watching: paused, no agent yet, or the tab is out of sight (it resumes when the tab is back)
   const status = paused
     ? 'Paused'
     : !bots.length
@@ -159,7 +164,7 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
             {status}
           </small>
           <button type="button" className="quietButton" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
-            <Icon name={paused ? 'play' : 'stop'} size={14} /> {paused ? 'Resume' : 'Pause'}
+            <Icon name={paused ? 'play' : 'pause'} size={14} /> {paused ? 'Resume' : 'Pause'}
           </button>
         </div>
       </section>
@@ -194,7 +199,7 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
       <div className="lvFilters">
         <label>
           <span className="srOnly">Agent</span>
-          <select className="stFInput" value={agent} onChange={(event) => setAgent(event.target.value)} aria-label="Agent">
+          <Select className="stFInput" value={agent} onChange={(event) => setAgent(event.target.value)} aria-label="Agent">
             <option value="">All agents</option>
             {bots.map((b) => (
               <option key={b.id} value={b.id}>
@@ -202,18 +207,18 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
                 {sum.byAgent[b.id] ? ` (${sum.byAgent[b.id].live})` : ''}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           <span className="srOnly">Channel</span>
-          <select className="stFInput" value={channel} onChange={(event) => setChannel(event.target.value)} aria-label="Channel">
+          <Select className="stFInput" value={channel} onChange={(event) => setChannel(event.target.value)} aria-label="Channel">
             <option value="">All channels</option>
             {channels.map((type) => (
               <option key={type} value={type}>
                 {channelLabel({ type })}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="lvCheck">
           <input type="checkbox" checked={onlyAttention} onChange={(event) => setOnlyAttention(event.target.checked)} />

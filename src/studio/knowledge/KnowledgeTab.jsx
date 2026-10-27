@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { Notice } from '../ui.jsx';
 import { formatWhen, slugify } from '../format.js';
@@ -27,15 +27,15 @@ import {
 } from './model.js';
 import { KNOWLEDGE_ID, addKnowledgeFile, attachBase, knowledgeOf, readersInWords, readersOf } from '../setup/setupModel.js';
 import { entryAgentIndex } from '../simple/simpleModel.js';
-import { agentLabel, humanize } from '../newlayout/rowNames.js';
-import { Section } from '../newlayout/PageShell.jsx';
+import { agentLabel, humanize } from '../agent/rowNames.js';
+import { Section } from '../agent/PageShell.jsx';
 import Icon from '../../ui/Icon.jsx';
 import './knowledge.css';
 import { askConfirm } from '../../ui/dialogs.js';
 
-// Knowledge: the files and web pages an agent answers from. A "vector store" base is searched from an index built BEFORE calls, so this is
-// where someone uploads the files, builds the index, and tries a search to see what the model would be shown and how well each passage
-// scored (the scores are how `min_score` is chosen). It works from the SAVED draft: that is what the server builds and searches.
+// Knowledge: the files and web pages an agent answers from. A "vector store" base is searched from an index built
+// BEFORE calls, so here someone uploads files, builds the index and tries a search to see passages and their scores
+// (which guide `min_score`). It works from the SAVED draft, because that is what the server builds and searches.
 
 function SearchPanel({ botId, base, config }) {
   const settings = settingsOf(config, base.id);
@@ -171,8 +171,8 @@ function SearchPanel({ botId, base, config }) {
   );
 }
 
-// The page's own check, under "What it knows": something a caller might ask, and the passages it would answer from, each under the document it came
-// from and how close it is in words (the score is in the tooltip). The search settings (how many passages, the lowest score kept) are under Settings.
+// The page's own check under "What it knows": a question a caller might ask and the passages it would answer from, by
+// document and closeness (score in the tooltip). Search settings (passage count, lowest score kept) are under Settings.
 function FindPanel({ botId, base, config }) {
   const settings = settingsOf(config, base.id);
   const [query, setQuery] = useState('');
@@ -264,8 +264,8 @@ function FindPanel({ botId, base, config }) {
   );
 }
 
-// A base of the agent's own (more than the page's "What it knows"), in words: its name, what it is and when it is read, who reads it, its sources and
-// index, and what it needs. A base nothing reads offers to give it to the agent that answers.
+// A base of the agent's own (beyond the page's "What it knows"), in words: name, kind, when and by whom it is read,
+// sources, index and needs. A base nothing reads offers to give it to the agent that answers.
 function BaseCard({ botId, base, config, build, buildError, onBuild, onUpload, onAttach, dirty }) {
   const [searching, setSearching] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
@@ -278,7 +278,7 @@ function BaseCard({ botId, base, config, build, buildError, onBuild, onUpload, o
   const entryIndex = entryAgentIndex(config);
   const entry = entryIndex >= 0 ? config.agents.items[entryIndex] : null;
   const title = base.id === KNOWLEDGE_ID ? 'What it knows' : humanize(base.id);
-  // the index line says when there is none, and the card's own Build button builds: a problem that only says that is not said twice
+  // the index line already says there is none and the card's Build button builds, so that problem is not said twice
   const problems = base.problems.filter((p) => !/no index has been built/i.test(p.problem));
   return (
     <section className={`stCard kwBase ${state}`} data-base={base.id} aria-label={`Knowledge: ${title}`}>
@@ -445,21 +445,26 @@ function BaseCard({ botId, base, config, build, buildError, onBuild, onUpload, o
   );
 }
 
-//   uploads: offer to upload here (off when the page has its own place to add documents above); attachFirst: the first base made from an upload is
-//   read by the agent that answers on every turn (inject), so a file added here is used with no other step (the new layout)
+//   uploads: offer to upload here (off when the page has its own place to add documents above)
+//   attachFirst: a first base made from an upload is read by the answering agent every turn, so no other step is needed
 function FilesCard({ botId, files, bases, editor, onChanged, inputRef, uploads = true, attachFirst = false }) {
-  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(0); // uploads in progress (a drop during one starts another)
+  const busy = uploading > 0;
   const [problems, setProblems] = useState([]);
   const [over, setOver] = useState(false);
-  // what was just added, and the save it was made after: the note ("not saved yet") goes once the draft is saved, from here or anywhere else
+  // what was just added, and the save it followed: the "not saved yet" note goes once the draft is saved from anywhere
   const savedAt = editor.meta?.savedAt || '';
   const [added, setAddedNote] = useState(null);
   const setAdded = (text) => setAddedNote(text ? { text, savedAt } : null);
+  // an upload takes a while: what it adds goes into the draft as it is when the upload ends (with anything typed or
+  // uploaded meanwhile), not as it was when the upload began
+  const latest = useRef({ editor, files, bases });
+  latest.current = { editor, files, bases };
 
   const upload = async (picked) => {
     const chosen = [...picked];
     if (!chosen.length) return;
-    setBusy(true);
+    setUploading((n) => n + 1);
     const found = [];
     const uploaded = [];
     for (const file of chosen) {
@@ -482,13 +487,14 @@ function FilesCard({ botId, files, bases, editor, onChanged, inputRef, uploads =
       }
     }
     setProblems(found);
-    setBusy(false);
+    setUploading((n) => n - 1);
     placeUploaded(uploaded);
     onChanged();
   };
-  // A file only counts once a base lists it. So a new file goes where it obviously belongs, with no second step: into a new base when the agent has
-  // none, into the base when it has exactly one. With several bases the file waits for "Use in…", since only the author knows which.
+  // A file only counts once a base lists it, so a new file goes where it obviously belongs: a new base when the agent
+  // has none, the only base when it has one. With several, it waits for "Use in…", since only the author knows which.
   const placeUploaded = (names) => {
+    const { editor, files, bases } = latest.current;
     const fresh = names.filter((name) => !files.some((f) => f.name === name && f.usedBy.length));
     if (!fresh.length) return;
     const config = editor.parsed.value;
@@ -666,7 +672,7 @@ function FilesCard({ botId, files, bases, editor, onChanged, inputRef, uploads =
                   </td>
                   <td className="kwRowActions">
                     {attachFirst ? (
-                      // the page's own "What it knows" holds the documents: a file there is added to it, not to a base of its own that nothing reads
+                      // "What it knows" holds the documents: add the file there, not to a new base nothing reads
                       !inDraft.includes(file.name) && (
                         <button type="button" className="quietButton small" onClick={() => addToWhatItKnows(file)}>
                           Add to what it knows
@@ -698,11 +704,8 @@ function FilesCard({ botId, files, bases, editor, onChanged, inputRef, uploads =
   );
 }
 
-// The new layout passes `top` (its simple "What it knows" block, drawn first) and `simple` (that block adds the documents, so the files list below
-// does not offer a second upload, and a first base made here is read by the agent that answers).
-// The page's own "What it knows" in one line, under it: how far its documents and pages are from being something the agent can answer from (not saved,
-// saved but not read yet, being read, ready, or reading failed), with the one button that takes them on. It replaces the notes that each said a part of
-// this further down the page.
+// The page's own "What it knows" in one line: how far its documents and pages are from being usable (not saved, not
+// read yet, being read, ready, failed), with the one button that moves them on. It replaces scattered notes below.
 const quoted = (names) => {
   const q = names.map((n) => `“${n}”`);
   return q.length > 1 ? `${q.slice(0, -1).join(', ')} and ${q[q.length - 1]}` : q[0] || '';
@@ -774,9 +777,10 @@ function KnowledgeStatus({ config, editor, data, build, buildError, onSaveAndBui
   );
 }
 
-//   top: what is drawn first, or a function given { reload } (read the knowledge again, after a document is added or replaced up there)
-//   knowledge: the agent's knowledge as read by the page around this one (useKnowledge), so the menu's "Getting it ready" follows a build here; left
-//   out, this reads its own
+// The Knowledge tab: the agent's bases, uploaded files and builds.
+//   top: drawn first (the simple "What it knows" block), or a function given { reload } to re-read the knowledge
+//   simple: the block above adds documents (no second upload below); a first base made here goes to the answering agent
+//   knowledge: as read by the surrounding page (useKnowledge), so "Getting it ready" follows builds; else read here
 export default function KnowledgeTab({ botId, name, editor, pollMs, top = null, simple = false, knowledge: given = null }) {
   const config = editor.parsed.value;
   const ready = editor.status === 'ready' && editor.isObject && !editor.parsed.error;
@@ -784,8 +788,8 @@ export default function KnowledgeTab({ botId, name, editor, pollMs, top = null, 
   const knowledge = given || own;
   const inputRef = useRef(null);
   const { builds, errors, start, follow } = useBuilds(botId, { onChange: () => knowledge.reload(), pollMs });
-  // read again when the draft is saved (from anywhere: the top bar, Ctrl+S) and when what it knows changes (a document added above is on the server at
-  // once): the bases, their files and what needs building follow, with no reload of the page
+  // read again when the draft is saved (anywhere: top bar, Ctrl+S) or its knowledge changes (an upload above is on the
+  // server at once), so bases, files and builds follow without a page reload
   const savedAt = editor.meta?.savedAt || '';
   const sources = JSON.stringify(Array.isArray(config?.knowledge) ? config.knowledge.map((b) => b?.sources) : []);
   const reloadKnowledge = knowledge.reload;
@@ -825,7 +829,7 @@ export default function KnowledgeTab({ botId, name, editor, pollMs, top = null, 
 
   const unsavedBases = JSON.stringify((config?.knowledge || []).map((b) => b?.id)) !== JSON.stringify((data?.bases || []).map((b) => b.id));
   const attach = (baseId) => editor.setValue(attachBase(editor.parsed.value, baseId));
-  // the simple view's own base is told about in the status line and checked with "What would it find?"; any other base keeps its card
+  // the simple view's own base is covered by the status line and "What would it find?"; any other base keeps its card
   const ownBase = simple ? data?.bases.find((b) => b.id === KNOWLEDGE_ID) : null;
   const cards = (data?.bases || []).filter((b) => b !== ownBase);
   return (
@@ -929,16 +933,12 @@ export default function KnowledgeTab({ botId, name, editor, pollMs, top = null, 
       {data && data.bases.length === 0 && !knowledge.loading && !top && (
         <section className="stCard kwEmpty">
           <strong>This agent has no knowledge bases yet</strong>
-          <p className="stMuted">
-            {top
-              ? 'Once the documents and pages above are saved, what holds them shows here, ready to build its index.'
-              : 'Upload a file below and it becomes this agent’s knowledge base. Save the draft, then build the index.'}
-          </p>
+          <p className="stMuted">Upload a file below and it becomes this agent’s knowledge base. Save the draft, then build the index.</p>
         </section>
       )}
 
       {data && simple && data.files.length > 0 && (
-        // the files on the server, for the few who need them: folded, since "What it knows" above is where documents are added and removed
+        // the server's files, for the few who need them: folded, as "What it knows" above is where documents are kept
         <details className="kwAllFiles">
           <summary>All uploaded files ({data.files.length})</summary>
           <FilesCard

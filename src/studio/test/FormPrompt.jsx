@@ -1,5 +1,6 @@
 import React, { useId, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
+import Select from '../../ui/Select.tsx';
 
 // A form the agent asked for during a conversation. Whether and when it appears is the agent's decision;
 // this only draws it and sends the answers back. The server validates again and may answer with errors.
@@ -81,7 +82,7 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
                     aria-invalid={!!message || undefined}
                   />
                 ) : field.type === 'select' ? (
-                  <select
+                  <Select
                     id={id}
                     className="stFInput"
                     value={values[field.name]}
@@ -95,7 +96,7 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : (
                   <input
                     id={id}

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import Icon from './Icon.jsx';
 
-// When something on a page breaks while it is drawn, that page says so and offers a way on, and the rest of the studio (the menu, the bar at
-// the top) keeps working. A page that can't load because a newer version of the studio was released while the tab was open (its files are no
-// longer there) asks for a reload instead, since trying again can't help.
+// A page that breaks while drawing says so and offers a way on; the menu and top bar keep working. A page whose
+// files are gone (a newer studio was released while the tab was open) asks for a reload, since a retry can't help.
 //   resetKey: when it changes (another page is opened), the page is drawn again
 
 const STALE = /dynamically imported module|Importing a module script failed|Loading chunk|Failed to fetch/i;

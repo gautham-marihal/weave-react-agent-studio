@@ -6,6 +6,8 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge), E2E_HEADED=1 to watch, E2E_SHOTS=folder to save pictures.
 import { chromium } from 'playwright-core';
+import { valueOf, choiceTexts } from './pick.mjs';
+import { readJson, writeJson } from './json.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const SHOTS = process.env.E2E_SHOTS || '';
@@ -65,9 +67,7 @@ await page.evaluate(() => {
 });
 await page.waitForSelector('.nlWorkspace');
 await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
-const box = page.locator('.nlPage textarea').first();
-await page.waitForFunction(() => (document.querySelector('.nlPage textarea')?.value || '').length > 20);
-const config = JSON.parse(await box.inputValue());
+const config = JSON.parse(await readJson(page));
 const both = { input: ['audio'], output: ['audio'] };
 config.channels = [
   { id: 'phone', type: 'sip_voice', enabled: true, entry: { dnis: '+15550100' }, modalities: both, capabilities: { dtmf: true } },
@@ -84,7 +84,7 @@ config.channels = [
   },
   { id: 'own', type: 'custom', enabled: true, modalities: { input: ['text'], output: ['text'] } },
 ];
-await box.fill(JSON.stringify(config, null, 2));
+await writeJson(page, JSON.stringify(config, null, 2));
 await page.waitForTimeout(600);
 await page
   .locator('.nlBar')
@@ -141,7 +141,10 @@ check('the kind says what it is, in the server’s words', /A phone call carries
 await close();
 channel = await open(3);
 check('WhatsApp says nothing connects it yet', /Nothing connects WhatsApp to the runtime yet/.test(await channel.innerText()));
-check('WhatsApp is labelled in the kind list', /WhatsApp \(not available yet\)/.test(await channel.locator('select').first().innerText()));
+check(
+  'WhatsApp is labelled in the kind list',
+  (await choiceTexts(page, channel.locator('.rxSelect').first())).some((t) => /WhatsApp \(not available yet\)/.test(t)),
+);
 await close();
 let mislabelled = 0;
 for (let n = 0; n < 7; n += 1) {
@@ -183,7 +186,7 @@ await channel.getByRole('button', { name: 'Make it a web voice channel' }).click
 await page.waitForTimeout(500);
 check(
   'one click makes it a web voice channel',
-  (await channel.locator('[data-note=mislabelled]').count()) === 0 && (await channel.locator('select').first().inputValue()) === 'web_voice',
+  (await channel.locator('[data-note=mislabelled]').count()) === 0 && (await valueOf(channel.locator('.rxSelect').first())) === 'web_voice',
 );
 await close({ done: true });
 
@@ -202,7 +205,7 @@ check('a phone line and a channel that does not run are not offered', !/phone|Wh
 await group.locator('button').nth(1).click();
 check(
   'the choice is marked',
-  (await group.locator('button.on').count()) === 1 && (await group.locator('button').nth(1).getAttribute('aria-pressed')) === 'true',
+  (await group.locator('button.on').count()) === 1 && (await group.locator('button').nth(1).getAttribute('aria-checked')) === 'true',
 );
 await shot('test');
 check('no errors in the console', problems.length === 0, problems.slice(0, 2).join(' | '));

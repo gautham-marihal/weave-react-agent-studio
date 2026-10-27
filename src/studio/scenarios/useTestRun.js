@@ -1,18 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { isFinished, normalizeHeadline, normalizeRun } from './runResults.js';
 
-// Starts a test run on the server and follows it until it is over. Results appear as scenarios finish, so `run.scenarios` grows while
-// `run.status` is "running". One run per agent at a time: if the server says one is already going (409), this attaches to it
-// instead of failing, so a second tab or a refresh shows the same run. Reading a run never changes anything on the server.
+// Starts a test run on the server and follows it until over; `run.scenarios` grows while `run.status` is "running".
+// One run per agent: if the server says one is going (409) this follows it instead, so another tab or a refresh shows
+// the same run. Reading a run changes nothing on the server.
 const POLL_MS = 1000;
-export const MAX_POLL_MS = 10 * 60 * 1000; // a run that never finishes stops being followed after ten minutes (it is still on the server)
+export const MAX_POLL_MS = 10 * 60 * 1000; // stop following an endless run after 10 minutes (it stays on the server)
 
 export function useTestRun(botId, { scenarios = [], onFinished, pollMs = POLL_MS } = {}) {
   const [run, setRun] = useState(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(null);
   const timer = useRef(null);
+  // which follow loop is current: a new run, clear or another agent moves it on, so a read still in flight is dropped
+  // rather than carrying on as a second loop
+  const loop = useRef(0);
+  const stopFollowing = useCallback(() => {
+    loop.current += 1;
+    clearTimeout(timer.current);
+    return loop.current;
+  }, []);
   const alive = useRef(true);
   const scenariosRef = useRef(scenarios);
   scenariosRef.current = scenarios;
@@ -27,18 +35,20 @@ export function useTestRun(botId, { scenarios = [], onFinished, pollMs = POLL_MS
     };
   }, []);
   useEffect(() => {
-    clearTimeout(timer.current);
+    stopFollowing();
     setRun(null);
     setError(null);
-  }, [botId]);
+  }, [botId, stopFollowing]);
 
   const follow = useCallback(
     (first) => {
+      const mine = stopFollowing();
+      const here = () => alive.current && mine === loop.current;
       const started = Date.now();
       let current = normalizeRun(first, scenariosRef.current);
       setRun(current);
       const tick = async () => {
-        if (!alive.current) return;
+        if (!here()) return;
         if (isFinished(current.status)) {
           finishedRef.current?.(current);
           return;
@@ -49,11 +59,11 @@ export function useTestRun(botId, { scenarios = [], onFinished, pollMs = POLL_MS
         }
         try {
           const raw = await api.getTestRun(botId, current.id);
-          if (!alive.current) return;
+          if (!here()) return;
           current = normalizeRun(raw, scenariosRef.current);
           setRun(current);
         } catch (e) {
-          if (!alive.current) return;
+          if (!here()) return;
           setError({ title: 'Lost track of the run', body: e?.message || 'The studio could not read the run.' });
           return;
         }
@@ -61,12 +71,12 @@ export function useTestRun(botId, { scenarios = [], onFinished, pollMs = POLL_MS
       };
       timer.current = setTimeout(tick, isFinished(current.status) ? 0 : pollMs);
     },
-    [botId, pollMs],
+    [botId, pollMs, stopFollowing],
   );
 
   const start = useCallback(
     async (body = {}) => {
-      clearTimeout(timer.current);
+      stopFollowing();
       setStarting(true);
       setError(null);
       try {
@@ -101,28 +111,30 @@ export function useTestRun(botId, { scenarios = [], onFinished, pollMs = POLL_MS
         if (alive.current) setStarting(false);
       }
     },
-    [botId, follow],
+    [botId, follow, stopFollowing],
   );
 
   // Shows a run that already exists (from the list of earlier runs), following it if it is still going.
   const open = useCallback(
     async (runId) => {
-      clearTimeout(timer.current);
+      const asked = stopFollowing();
       setError(null);
       try {
-        follow(await api.getTestRun(botId, runId));
+        const raw = await api.getTestRun(botId, runId);
+        // another run was opened (or started, or this one closed) while it was read
+        if (alive.current && asked === loop.current) follow(raw);
       } catch (e) {
-        setError({ title: 'That run can’t be opened', body: e?.message || '' });
+        if (alive.current && asked === loop.current) setError({ title: 'That run can’t be opened', body: e?.message || '' });
       }
     },
-    [botId, follow],
+    [botId, follow, stopFollowing],
   );
 
   const clear = useCallback(() => {
-    clearTimeout(timer.current);
+    stopFollowing();
     setRun(null);
     setError(null);
-  }, []);
+  }, [stopFollowing]);
   const running = !!run && !isFinished(run.status);
   return { run, running, starting, error, start, open, clear, dismissError: () => setError(null) };
 }

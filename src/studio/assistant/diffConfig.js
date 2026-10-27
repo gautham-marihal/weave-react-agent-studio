@@ -1,5 +1,5 @@
-// What a new configuration changes, compared with the one it would replace: as a list of changes by place, and then in words. Items of a list that all have
-// an id are matched by id, so a reordered or inserted agent does not look like everything changed. Pure: no React, no DOM.
+// What a new config changes against the one it replaces, by place and in words. List items with ids are matched by id,
+// so a reordered or inserted agent doesn't look like everything changed. Pure: no React, no DOM.
 
 import { isObj } from '../form/engine.js';
 import { describeSetting } from '../form/plainLanguage.js';
@@ -18,6 +18,11 @@ export function diffConfigs(before, after, path = [], out = []) {
     return out;
   }
   if (Array.isArray(before) && Array.isArray(after) && (byId(before) || before.length === 0) && (byId(after) || after.length === 0)) {
+    // the same items in another order is a change of its own (a task's steps run in order, rules are tried in order)
+    const orderOf = (list, other) => list.map((x) => x?.id).filter((id) => other.some((y) => y?.id === id));
+    const was = orderOf(before, after);
+    const now = orderOf(after, before);
+    if (!same(was, now)) out.push({ path, kind: 'changed', order: true, before: was, after: now });
     const ids = new Set([...before.map((x) => x?.id), ...after.map((x) => x?.id)]);
     ids.forEach((id) => {
       const b = before.find((x) => x?.id === id);
@@ -89,7 +94,7 @@ const NOUN = {
   guardrails: 'safety rule',
 };
 const plainList = (v) => Array.isArray(v) && v.every((x) => ['string', 'number', 'boolean'].includes(typeof x));
-// A value as a person would read it: text as it is, a short list joined, a number or yes/no plainly. Anything bigger is not quoted (null).
+// A value as a person reads it: text as is, a short list joined, a number or yes/no plainly; anything bigger is null.
 const quote = (v) => {
   if (typeof v === 'string') return `“${v.length > 70 ? `${v.slice(0, 69)}…` : v}”`;
   if (typeof v === 'number' || typeof v === 'boolean') return `“${v}”`;
@@ -103,6 +108,14 @@ const quote = (v) => {
 // One change as a sentence for a person: "Added the agent “Billing”", "Changed “Tone” from “warm” to “formal”".
 function sentence(change) {
   const { path } = change;
+  if (change.order) {
+    const owner = [...path].reverse().find((p) => isObj(p));
+    const leaf = path[path.length - 1];
+    const parentKey = [...path].reverse().find((p, i) => i > 0 && typeof p === 'string');
+    const what = path.length === 1 ? SECTIONS[leaf] || String(leaf) : describeSetting(String(leaf), { owner: parentKey || path[0] }).label;
+    const named = /^The /.test(what) ? what.replace(/^The /, 'the ') : `“${what}”`; // "the agents", or a setting's name
+    return `Changed the order of ${named}${owner ? ` of the ${NOUN[path[0]] || 'item'} “${owner.id}”` : ''}`;
+  }
   const lastIsItem = isObj(path[path.length - 1]);
   const owner = [...path].reverse().find((p) => isObj(p));
   const noun = NOUN[path[0]] || 'item';
@@ -129,6 +142,7 @@ export function describeChange(change) {
   const text = sentence(change);
   if (change.kind === 'added') return { verb: 'Added', where, text, detail: isObj(change.after) || Array.isArray(change.after) ? '' : preview(change.after) };
   if (change.kind === 'removed') return { verb: 'Removed', where, text, detail: '' };
+  if (change.order) return { verb: 'Changed', where, text, detail: `${preview(change.before.join(', '))} → ${preview(change.after.join(', '))}` };
   return { verb: 'Changed', where, text, detail: `${preview(change.before)} → ${preview(change.after)}` };
 }
 

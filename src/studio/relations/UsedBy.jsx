@@ -2,8 +2,8 @@ import React from 'react';
 import { useConfigSelect, useForm } from '../form/ctx.js';
 import { usedBy } from './usedBy.js';
 
-// "Used by": the places in the agent that point at this tool, line, value or connection, each one a button that goes there. It tells a person what
-// else changes if this one does, and shows what nothing uses. (A tool also says "not used by any agent" on its card.)
+// "Used by": a button to each place in the agent that points at this item, so a person sees what else changes if
+// this one does, and what nothing uses.
 export default function UsedBy({ collection, id }) {
   const ctx = useForm();
   const uses = useConfigSelect((config) => usedBy(ctx.engine, config, collection, id));

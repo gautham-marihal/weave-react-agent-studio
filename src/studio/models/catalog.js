@@ -1,15 +1,11 @@
 // The providers and models offered when choosing how an agent listens, thinks and speaks.
 //
-// The list of providers comes from the server (GET /providers: what the runtime can run, which plugins are installed,
-// whether a key is set), see useProviders.js. FALLBACK_PROVIDERS below is only what the screen shows when the server
-// can't be reached; it is the set the server image ships with.
+// The provider list comes from the server (GET /providers, see useProviders.js); FALLBACK_PROVIDERS is shown only when
+// the server can't be reached, and is the set the server image ships with.
 //
-// A model list is a convenience, not a guarantee: the provider decides what its account can use, so every picker also
-// accepts any other model id (and the server does not check model ids at all).
-// This is a CATALOGUE kept in this file and reviewed by hand (CATALOGUE_REVIEWED): it is not a live check of what a provider or an
-// account offers. To add a model, add a line under its stage and provider below; `catalogueProblems()` (run by the tests) checks that the
-// table is consistent.
-// Pure data and a few helpers: no network, no DOM.
+// A model list is a convenience, not a guarantee: the provider decides what an account can use, so every picker also
+// accepts any other id (the server doesn't check model ids). The table is reviewed by hand (CATALOGUE_REVIEWED), not
+// checked live; add a model under its stage and provider, and catalogueProblems() (run by the tests) checks the table.
 
 export const CATALOGUE_REVIEWED = '2026-10-14';
 
@@ -48,10 +44,6 @@ export const FALLBACK_PROVIDERS = [
   { name: 'elevenlabs', stages: ['stt', 'tts'], installed: true, default_secret: 'ELEVEN_API_KEY', key_available: null },
   { name: 'silero', stages: ['vad'], installed: true, default_secret: null, key_available: null },
 ];
-
-const names = (stage) => FALLBACK_PROVIDERS.filter((provider) => provider.stages.includes(stage)).map((provider) => provider.name);
-// The shape the old Builder reads. The Studio itself uses the server's list.
-export const PROVIDERS = { stt: names('stt'), llm: names('llm'), tts: names('tts'), vad: names('vad') };
 
 export const MODEL_OPTIONS = {
   stt: {
@@ -208,13 +200,12 @@ export const providerLabel = (provider = '') =>
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 export const modelsFor = (stage, provider) => MODEL_OPTIONS[stage]?.[provider] || [];
 export const defaultModelFor = (stage, provider) => modelsFor(stage, provider)[0]?.id || '';
-// The model the studio picks when someone chooses this provider (the first in its list): marked "Recommended" wherever the models are listed.
+// The model picked with this provider (the first in its list), marked "Recommended" wherever models are listed.
 export const isRecommendedModel = (stage, provider, id) => !!id && id === defaultModelFor(stage, provider);
 export const modelLabel = (stage, provider, id) => modelsFor(stage, provider).find((model) => model.id === id)?.label || id || '';
 
-// The providers of one stage out of a server list (or the fallback): the ones the runtime has a use for at that stage.
-// What to say beside a provider in a list of choices for a stage: its technical name, whether it can run there (GET /providers: `installed`,
-// `realtime_runnable` for a speech-to-speech model) and whether its usual key is set on the server.
+// What to say beside a provider in a stage's choices: its technical name, whether it can run there (`installed`, or
+// `realtime_runnable` for speech-to-speech) and whether its usual key is set on the server.
 export function providerOptionNote(provider, stage) {
   return [
     provider.name !== providerLabel(provider.name) ? provider.name : '',
@@ -229,13 +220,14 @@ export function providerOptionNote(provider, stage) {
 // The turn detectors the runtime can run (GET /providers' `turn_detectors`), while the server can't be asked.
 export const FALLBACK_TURN_DETECTORS = ['livekit-multilingual', 'livekit-english'];
 
+// The providers of one stage out of a server list (or the fallback): the ones the runtime has a use for at that stage.
 export const providersForStage = (providers, stage) =>
   (providers || FALLBACK_PROVIDERS)
     .filter((provider) => (provider.stages || []).includes(stage))
     .sort((a, b) => Number(b.installed !== false) - Number(a.installed !== false) || providerLabel(a.name).localeCompare(providerLabel(b.name)));
 
-// ---- what each provider can do, by stage (the runtime's own list is GET /providers; this is the catalogue's copy, used to check the table
-// and to say sensible things when the server can't be asked)
+// ---- what each provider can do, by stage: the catalogue's copy of GET /providers, to check the table and to say
+// sensible things when the server can't be asked
 export const PROVIDER_STAGES = {
   openai: ['stt', 'llm', 'tts'],
   openai_compatible: ['stt', 'llm', 'tts'],

@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { useForm } from './ctx.js';
 import { formatPath } from '../format.js';
 
-// The name the configuration file uses for a setting, with a way to copy its path or open it in the JSON. It is drawn only when "Technical
-// names" is on, so a customer reads plain labels and a developer can see what each one is called in the file.
+// The file's name for a setting, with copy-path and open-in-JSON. Drawn only with "Technical names" on, so customers
+// read plain labels and developers see the names in the file.
 export function TechName({ name, path, onOpenJson }) {
   const form = useForm();
   const openInJson = onOpenJson || form?.openInJson;
   const [copied, setCopied] = useState('');
   const text = formatPath(path);
-  // Where it sits: the parents of the setting (channels[0].modalities.) dimmed in front of its own name, so the full path reads at a glance.
+  // The setting's parents (channels[0].modalities.) dimmed in
+  // front of its own name, so the full path reads at a glance.
   const head = name && text.endsWith(name) ? text.slice(0, text.length - name.length) : '';
   const copy = async () => {
     try {
@@ -47,8 +48,8 @@ export function TechName({ name, path, onOpenJson }) {
   );
 }
 
-// For a hand-made editor (a tool, a channel): its label plus, when technical names are on, the file's name for it. `path` is where the value
-// lives in the configuration; `name` is what to show (it can be a longer path, like on_error.tool_error).
+// For a hand-made editor (a tool, a channel): its label plus, with technical names on, the file's name for it. `path`
+// is where the value lives; `name` is what to show (may be longer, like on_error.tool_error).
 export function TechKey({ name, path }) {
   const { technical } = useForm();
   return technical ? <TechName name={name} path={path} /> : null;

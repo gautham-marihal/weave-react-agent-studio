@@ -259,3 +259,11 @@ html[data-theme] body .clPrivacy > .quietButton {
   min-height: 30px;
   padding: 0 12px;
 }
+
+/* while another list is read (a filter changed), the last one stays, dimmed */
+.clTableWrap {
+  transition: opacity 0.2s ease;
+}
+.clTableWrap.reading {
+  opacity: 0.55;
+}

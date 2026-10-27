@@ -1,6 +1,5 @@
-// Calls in progress, IMITATED for demo mode: a few conversations that start, go on, and end as the clock moves, so the Live board has something to watch without
-// a backend. Everything is a pure function of the agent and the time (no timers, no state): the same minute always gives the same calls, a call that began a minute ago
-// has the records it would have by now, and asking again a moment later gives more of them. They are labelled as demo data on the screens.
+// Calls in progress IMITATED for demo mode, so the Live board has something to watch without a backend.
+// A pure function of the agent and the time (no timers, no state): the same minute always gives the same calls.
 
 import { llmOf, makeCall } from './demoCalls.js';
 
@@ -20,8 +19,8 @@ function hash(text) {
   return h >>> 0;
 }
 
-// What each kind of call is about. A caller takes 14–28 s to say the next thing; the agent answers in 1–3 s (the "slow" one in 9–13 s), so a call lasts
-// two to four minutes and a few are always going on.
+// The kinds of call. Callers take 14–28 s per line and the agent 1–3 s (the "slow" one 9–13 s),
+// so a call lasts two to four minutes and a few are always going on.
 const SCENARIOS = [
   { id: 'plain', ask: 'What are your opening hours?' },
   { id: 'plain', ask: 'How do I reset my password?' },
@@ -143,7 +142,7 @@ function summaryOf(full, events, status, elapsedS) {
   };
 }
 
-// The calls of one agent as they are at `nowMs`: the ones in progress, and the ones that ended or were cut off in the last KEEP_MS.
+// One agent's calls at `nowMs`: in progress, or ended or cut off in the last KEEP_MS.
 // Each is { summary, events, final_state?, usage? } like a stored call. `bot` is { id, config }.
 export function liveCallsFor(bot, nowMs, { keepMs = KEEP_MS } = {}) {
   const config = bot?.config || {};
@@ -209,8 +208,8 @@ export function liveCallsFor(bot, nowMs, { keepMs = KEEP_MS } = {}) {
 // One of them, by id or room (what `GET /calls/{id}` does).
 export const liveCallOf = (bot, key, nowMs) => liveCallsFor(bot, nowMs).find((c) => c.summary.id === key || c.summary.room === key) || null;
 
-// Follows a live call the way the stream endpoint does: the records so far (after `after`), then each new one as the clock reaches it, then `onEnd` when the call
-// ends. A call that is cut off just stops. `read` gives the clock in ms; `every` is how often it looks. Returns a function that stops.
+// Follows a live call like the stream endpoint: records so far (after `after`), each new one as the clock reaches it,
+// then `onEnd` (a cut-off call just stops). `read`: the clock in ms; `every`: the poll interval. Returns a stopper.
 export function followLive(
   bot,
   key,

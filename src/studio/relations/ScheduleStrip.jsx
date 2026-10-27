@@ -1,8 +1,7 @@
 import React from 'react';
 import { DAYS, DAY_NAMES, describeWeek, exceptions, weekWindows } from './scheduleStrip.js';
 
-// A schedule as a week you can see: a bar for each day, filled where the line is open, with the same thing in words and the days that are different
-// on purpose. It is drawn from the schedule being edited, so the picture changes as the hours do.
+// A schedule as a week (see scheduleStrip.js), drawn from the schedule being edited so it changes as the hours do.
 const percent = (minutes) => `${(minutes / 1440) * 100}%`;
 
 export default function ScheduleStrip({ value }) {

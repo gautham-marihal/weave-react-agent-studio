@@ -1,11 +1,10 @@
 import CallsView from '../studio/calls/CallsView.jsx';
 
-// Every call of every agent: real callers and test conversations, with filters, and a trace of what happened in each. It is a page of the Home shell
-// (the sidebar and top bar belong to the Dashboard), like Voices and Integrations.
+// Every call of every agent (real and test), with filters and a trace of each. A page inside the Dashboard shell.
 export function CallsPage({ bots = [], onOpenAgent }) {
   return (
     <div className="sessionsContent">
-      {/* the same title as every page of the workspace; the calls themselves are in the panel below it */}
+      {/* the calls themselves are in the panel below the title */}
       <section className="welcomeBlock pageHeaderBlock">
         <div>
           <h1>Calls</h1>

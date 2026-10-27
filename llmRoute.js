@@ -7,6 +7,14 @@ const DEFAULT_MODELS = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-
 const MAX_BODY = 4 * 1024 * 1024; // the schema and the draft; nothing else needs to be this big
 const MAX_TOKENS = 32000;
 
+// The text without the slashes at its end ("/v1/messages/" → "/v1/messages"), by walking back from the end: a pattern like /\/+$/ can take a long time on
+// a request address of many slashes, and this runs on a server.
+const withoutTrailingSlashes = (text) => {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === '/') end -= 1;
+  return text.slice(0, end);
+};
+
 export function llmSettings(env) {
   const models = env.LLM_MODELS
     ? env.LLM_MODELS.split(',')
@@ -14,7 +22,7 @@ export function llmSettings(env) {
         .filter(Boolean)
     : DEFAULT_MODELS;
   const model = models.includes(env.LLM_MODEL) ? env.LLM_MODEL : models[0];
-  return { key: env.ANTHROPIC_API_KEY || '', base: (env.LLM_BASE_URL || 'https://api.anthropic.com').replace(/\/+$/, ''), models, model };
+  return { key: env.ANTHROPIC_API_KEY || '', base: withoutTrailingSlashes(env.LLM_BASE_URL || 'https://api.anthropic.com'), models, model };
 }
 
 function send(res, status, body) {
@@ -40,11 +48,11 @@ function readBody(req) {
   });
 }
 
-// `use` is a connect-style `app.use`; `fetchImpl` is injectable for tests.
+// The handler it returns is connect-style (mounted with `server.middlewares.use('/llm', …)`); `fetchImpl` is injectable for tests.
 export function llmMiddleware(env, fetchImpl = fetch) {
   const settings = llmSettings(env);
   return async (req, res, next) => {
-    const path = (req.url || '').split('?')[0].replace(/\/+$/, '');
+    const path = withoutTrailingSlashes((req.url || '').split('?')[0]);
     if (req.method === 'GET' && path === '/status')
       return send(res, 200, { configured: !!settings.key, model: settings.model, models: settings.models, provider: 'Anthropic' });
     if (!(req.method === 'POST' && path === '/v1/messages')) {

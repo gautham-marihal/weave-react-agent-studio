@@ -1,38 +1,52 @@
 import React from 'react';
 import Icon from '../ui/Icon.jsx';
+import Tip from '../ui/Tip.tsx';
 import { formatWhen } from './format.js';
 import { healthTitle } from './health/health.js';
 import { useAgentActivity } from './health/useAgentActivity.js';
 import { useAlertsByAgent } from './insights/AlertBell.jsx';
-import Menu from './manage/Menu.jsx';
+import Menu from './manage/Menu.tsx';
 import { navigate, routeHref } from './route.js';
 import StatePill from './StatePill.jsx';
+import StatusChip from '../ui/StatusChip.tsx';
 import { stateFromHealth } from './status.js';
 import { EnvSlots } from './ui.jsx';
+import { isDemoSample } from '../demo/demoMode.js';
+import { DragHandle } from '../ui/Sortable.jsx';
 
-// The agents as one table: the Agents page lists every agent with it (BotRow, with filters and a menu per row), and Home shows a few (AgentTable).
+// The agents table: every agent on the Agents page (BotRow), and a few on Home (AgentTable).
 
-// One agent in a list, as a row that opens it: name and id, where it runs (one slot per environment), its calls of the last days (`activity`: { total,
-// series } from useAgentActivity) with the alerts that hold for it (`alerts`: { count, critical }), and its latest published version and when the draft was
-// last saved. `menuItems` adds the "⋯" menu (Rename, Export, Remove). Also used on Home.
-//   compact: Home's short table, without the technical id and tags under the name
-export function BotRow({ bot, menuItems, onOpen, health, tags, activity, alerts, compact = false }) {
+// One agent as a table row that opens it.
+//   activity: recent calls, { total, series } from useAgentActivity
+//   alerts: { count, critical } for this agent
+//   menuItems(bot): the "⋯" menu (Rename, Export, Remove)
+//   compact: Home's short table, without the id and tags
+//   pinned, onPin(id): the pin that keeps it at the top of the list
+//   movable: show a drag handle (the list is in the person's own order)
+export function BotRow({ bot, menuItems, onOpen, health, tags, activity, alerts, compact = false, pinned = false, onPin = null, movable = false }) {
   const state = stateFromHealth(bot, health);
-  // Another page (Home) passes onOpen so it can switch to the Agents area too; a hash change alone wouldn't.
+  // Home passes onOpen so it can switch to the Agents area too; a hash change alone wouldn't.
   const open = () => (onOpen ? onOpen(bot) : navigate(routeHref(bot.id), { guard: false }));
   const name = bot.name || bot.id;
   const max = Math.max(1, ...(activity?.series || []).map((d) => d.calls));
   return (
     <div className={`agentRow stAgentRow ${menuItems ? 'withMenu' : ''} ${compact ? 'compact' : ''}`}>
-      <button type="button" className="agentRowMain" onClick={open} aria-label={`Open ${name}`}>
+      {/* no aria-label: screen readers read the visible text, name first */}
+      <button type="button" className="agentRowMain" onClick={open}>
         <span className="agentRowAvatar" aria-hidden="true">
           {name.slice(0, 1).toUpperCase()}
         </span>
         <span className="agentRowCopy">
-          {/* the name and its state on one line: a long name ends in "…" (all of it on hover), the state is never pushed under it */}
+          {/* a long name ends in "…" (full name on hover) so the state stays on the same line */}
           <span className="stRowTitle">
             <strong title={name}>{name}</strong>
             <StatePill state={state} />
+            {/* Home's short table says this once, above the table */}
+            {!compact && isDemoSample(bot.id) && (
+              <StatusChip tone="draft" title="An example that comes with demo mode, with made-up calls. Hide the samples from Home.">
+                Sample
+              </StatusChip>
+            )}
           </span>
           {!compact && (
             <small>
@@ -45,7 +59,7 @@ export function BotRow({ bot, menuItems, onOpen, health, tags, activity, alerts,
                 ))}
             </small>
           )}
-          {/* only what needs a look; an agent with nothing wrong says nothing */}
+          {/* only problems are listed; a healthy agent shows nothing here */}
           {health && health.state !== 'unknown' && health.parts.length > 0 && (
             <span className={`stHealth ${health.state}`} title={healthTitle(health)} data-health={health.state}>
               {health.parts.slice(0, 3).map((part) => (
@@ -84,12 +98,28 @@ export function BotRow({ bot, menuItems, onOpen, health, tags, activity, alerts,
         </span>
         <Icon name="chevronRight" size={16} />
       </button>
+      {onPin && (
+        <span className="agentRowTools">
+          {movable && <DragHandle label={`Drag ${name}`} />}
+          <Tip label={pinned ? 'Unpin it' : 'Pin it to the top'}>
+            <button
+              type="button"
+              className={`agentRowPin ${pinned ? 'on' : ''}`}
+              aria-pressed={pinned}
+              aria-label={pinned ? `Unpin ${name}` : `Pin ${name} to the top`}
+              onClick={() => onPin(bot.id)}
+            >
+              <Icon name="pin" size={15} />
+            </button>
+          </Tip>
+        </span>
+      )}
       {menuItems && <Menu label={`Actions for ${name}`} items={menuItems(bot)} className="agentRowMenu" />}
     </div>
   );
 }
 
-// A few agents as the same table as the Agents page, with their calls and alerts (Home's "Your agents").
+// Home's "Your agents": a few agents in the same table, with their calls and alerts.
 export function AgentTable({ bots, onOpen }) {
   const activity = useAgentActivity(bots);
   const alertsByAgent = useAlertsByAgent();

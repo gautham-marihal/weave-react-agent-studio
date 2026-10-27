@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 
 // The config schema is the same for every agent, so it is fetched once and shared.
 let cached = null;

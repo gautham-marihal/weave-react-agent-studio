@@ -1,15 +1,13 @@
-// "Is it safe to put this live?" in one list, built from evidence the studio already has: the validator, the test runs, the knowledge
-// indexes, the secrets. It is the same list on the Deploy tab (for a published version) and in the Publish dialog (for the draft).
-//
-// Two rules keep it honest and generic:
-//  - A line appears ONLY when it applies. A bot with no knowledge base has no knowledge line; a bot with no scenarios gets "none written"
-//    in amber, never "failed": nothing is called a failure for something the bot doesn't use.
-//  - It INFORMS, it does not decide. Which lines must be green before a production deploy is a release policy, and a policy belongs on the
-//    server so a browser can't skip it. There is none yet, so the list says it is advice (`policy: 'advice'`).
-// Pure: no network, no DOM.
+// "Is it safe to put this live?" as one list, built from what the studio already has: the validator, test runs,
+// knowledge indexes and secrets. Pure: no network, no DOM.
+// Two rules keep it honest:
+//  - A line appears only when it applies; nothing is called a failure for something the agent doesn't use
+//    (no scenarios is amber "none written", never "failed").
+//  - It informs, it doesn't decide: a release policy belongs on the server so a browser can't skip it.
+//    There is none yet, so the list says it is advice (`policy: 'advice'`).
 
 import { isObj } from '../form/engine.js';
-import { splitUnsupported } from '../preflight.js';
+import { splitUnsupported } from '../preflight.ts';
 import { isFinished, testStatusOf } from '../scenarios/runResults.js';
 import { baseState, knowledgeSummary } from '../knowledge/model.js';
 import { describeRecords, readDataFlow, recordingNoticeState } from '../records/recordsModel.js';
@@ -187,7 +185,7 @@ export function buildChecklist({ config, report, version, runs = [], knowledge, 
       });
   }
 
-  // ---- what happens to the conversation: where it is processed, what is kept about each call, whether callers are told
+  // ---- the conversation: where it is processed, what is kept, whether callers are told
   if (isObj(config)) {
     const flow = readDataFlow(config);
     add({
@@ -235,8 +233,8 @@ export function verdict(items) {
 export const POLICY_NOTE =
   'This list is advice. The server doesn’t enforce a release policy yet, so nothing here can stop a deploy except the typed confirmation for production when a protection isn’t enforced.';
 
-// `preflight.knowledge` in a deploy's answer: the problems for every base the version uses. Tolerant: a flat list of problems, or
-// [{ base, problems }] or { base: [problems] }.
+// `preflight.knowledge` in a deploy's answer: problems per base the version uses.
+// Accepts a flat list of problems, [{ base, problems }] or { base: [problems] }.
 export function normalizePreflightKnowledge(raw) {
   const rows = [];
   const push = (base, p) => {

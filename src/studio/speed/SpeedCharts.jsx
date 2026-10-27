@@ -1,8 +1,8 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { STAGES, seconds } from './speedModel.js';
+import { STAGES, seconds } from './speedModel.ts';
 
-// The two pictures of the Speed page: the typical wait day by day against the target, and where a wait goes, part by part.
-// Every value they show is also in a table (a button switches the line to one; the parts sit in their own table under the bars).
+// The Speed page's two charts: the typical wait per day against the target, and where a wait goes, part by part.
+// Every value is also in a table (a button switches the line to one; the parts' table sits under the bars).
 
 const dayLabel = (key, opts = { month: 'short', day: 'numeric' }) => new Date(`${key}T12:00:00Z`).toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
 
@@ -33,9 +33,8 @@ function scaleOf(top) {
 
 const tickText = (ms) => (ms === 0 ? '0' : ms < 1000 ? `${ms} ms` : `${ms / 1000} s`);
 
-// The typical wait (half the answers came sooner) of each day of the period: a dot on each day with answers, a line through them (dashed across days
-// without any, so it runs on from the first day with answers to the last) and the target across it. Pointing at the chart (or the arrow keys, once it has
-// the keyboard) shows that day's numbers.
+// The typical wait (median) per day: a dot on each day with answers, a line through them (dashed across empty days)
+// and the target. Pointing (or the arrow keys, once focused) shows that day's numbers.
 //   days: [{ day, n, p50, p90 }]; targetMs
 export function DayChart({ days, targetMs }) {
   const box = useRef(null);
@@ -203,8 +202,8 @@ const KINDS = [
   ['chat', 'Chats'],
 ];
 
-// Where a wait goes: for voice calls and for chats, a bar split into its parts (their average over the answers that recorded each), and under it the
-// same numbers in a table, each part named and said in words.
+// Where a wait goes: for voice calls and chats, a bar split into parts (averaged over the answers that recorded each),
+// with the same numbers in a table below, each part named and said in words.
 //   stages: { voice?: { answers, wait, avg: { [stage]: { ms, n } } }, chat?: … }
 export function StageBars({ stages }) {
   const kinds = KINDS.filter(([k]) => stages[k]);

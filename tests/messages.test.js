@@ -10,8 +10,8 @@ import {
   toLanguages,
   toPlain,
   wantedLanguages,
-} from '../src/studio/form/messages.js';
-import { isPromptPath, isTemplateString, scopeAt, wordCount } from '../src/studio/form/templates.js';
+} from '../src/studio/form/messages.ts';
+import { isPromptPath, isTemplateString, scopeAt, wordCount } from '../src/studio/form/templates.ts';
 
 const config = {
   defaults: { language: { primary: 'en-US', speaks: ['en', 'es', 'fr'] } },

@@ -1,7 +1,5 @@
-// "Used by": for a tool, a fixed line, a remembered value, a connection and the rest, the places in the agent that point at it, each with
-// somewhere to jump to. Deleting or renaming something is safer when its uses are in sight, and an item nothing uses is easy to spot. The
-// expensive part (walking the whole configuration for every pointer in it) is done once per configuration and shared by every card.
-// Pure: no React, no DOM.
+// "Used by": the places in the agent that point at a tool, line, value or connection, so renames and deletes are safer.
+// The costly walk over the whole config runs once per config and is shared by every card. Pure: no React, no DOM.
 
 import { allReferences, findUsage, placeLabel, sameIds } from '../form/references.js';
 
@@ -21,7 +19,7 @@ export function usedBy(engine, config, collection, id) {
   if (!engine || !config || !id) return [];
   const group = sameIds(collection);
   const pointers = referencesOf(engine, config).filter((hit) => group.includes(hit.collection) && hit.value === id);
-  // plain-text mentions ({{state.name}}, {{const.name}}) are found by a text search, only for the two collections that can be named in text
+  // text mentions ({{state.name}}, {{const.name}}) need a text search; only these two collections can be named in text
   const text = ['state_vars', 'constants'].includes(collection) ? findUsage(engine, config, collection, id).filter((hit) => hit.type === 'template') : [];
   const out = [];
   const seen = new Set();

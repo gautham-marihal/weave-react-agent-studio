@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { askConfirm } from '../ui/dialogs.js';
 import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from './demoMode.js';
 
-// Where the tag is drawn: first among the buttons of the screen's top bar (each top bar has a DemoSlot), so it never covers one of them; on a screen
-// without a top bar (the landing page, signing in), in its corner.
+// The tag sits first in the screen's top bar (each has a DemoSlot) so it never covers a button;
+// screens without a top bar (landing, sign-in) show it in the corner.
 const slots = new Set();
 const listeners = new Set();
 const currentSlot = () => [...slots].pop() || null;
@@ -22,8 +22,8 @@ export function DemoSlot() {
   return <span className="demoSlot" ref={ref} />;
 }
 
-// A small DEMO tag that is on every screen while the app runs on the imitation API, so a demo is never mistaken for the real thing.
-// It explains what is simulated, lets you start the demo data again, and (unless this is a demo build) switch back to the real API.
+// A DEMO tag on every screen while the app runs on the imitation API, so a demo is never mistaken for the real thing.
+// It explains what is simulated, resets the demo data, and (unless a demo build) switches back to the real API.
 export function DemoBadge() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);

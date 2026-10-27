@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { applyStarter, STARTERS, INACTIVITY, usesVoice } from '../src/studio/starters.js';
+import { applyStarter, STARTERS, INACTIVITY, usesVoice } from '../src/studio/starters.ts';
 import { runScenarioChecks } from '../src/studio/scenarios.js';
 import { ownerOfIn } from '../src/studio/agents.js';
 import { applyChange } from '../src/studio/pendingChange.js';
@@ -145,4 +145,15 @@ test('a recording notice is added only when voice is in use, and an existing one
   assert.equal(usesVoice(off), false);
   const byModality = { ...blank, channels: [{ id: 'c', type: 'whatsapp', modalities: { input: ['audio'], output: ['text'] } }] };
   assert.equal(usesVoice(byModality), true);
+});
+
+test('with a company, every starter greets as the company, worded for a call or a chat', () => {
+  const withCompany = (channels) => ({ ...blank, persona: { ...(blank.persona || {}), company: 'Acme' }, channels });
+  for (const starter of STARTERS.filter((s) => s.greeting)) {
+    const chat = applyStarter(withCompany([{ id: 'web_chat', type: 'web_chat', greeting: { say: '' } }]), starter.id);
+    const phone = applyStarter(withCompany([{ id: 'phone', type: 'sip_voice', greeting: { say: '' } }]), starter.id);
+    assert.match(chat.channels[0].greeting.say, /^Hello, welcome to Acme\. /, starter.id);
+    assert.match(phone.channels[0].greeting.say, /^Hello, thank you for calling Acme\. /, starter.id);
+    assert.doesNotMatch(phone.channels[0].greeting.say, /GM/, `${starter.id}: not the agent’s name`);
+  }
 });

@@ -1,13 +1,12 @@
 import React, { useRef } from 'react';
-import { RUNTIME_ROOTS, TEMPLATE_FILTERS, highlightSegments, insertAt, insertables, templateProblems, wordCount } from './templates.js';
+import { RUNTIME_ROOTS, TEMPLATE_FILTERS, highlightSegments, insertAt, insertables, templateProblems, wordCount } from './templates.ts';
 import { humanize } from './engine.js';
 
-// A text box for a string the runtime reads as a template ({{state.x}}, {{args.x}}, {{const.x}}). It helps write one
-// (a click inserts a value at the caret), shows which parts are templates, and hints at a name that may point at nothing (in amber, never
-// red: the names depend on where the text sits, so the server's check, with its path, is the one that counts).
-// `scope` says which names exist (see templateScope). `showCount` adds a word count (for the text a model is given).
-// `plain`: the menu for a person writing to the agent (the Agent page's instructions): "Insert a detail", the details by name ("Order number", not
-// state.order_number, which is in the tooltip), and none of the filters or open-ended roots a template author uses.
+// A text box for a runtime template ({{state.x}}, {{const.x}}): a click inserts a value at the caret. A name that may
+// point at nothing is hinted in amber, never red: names depend on where the text sits, so the server's check decides.
+//   scope: which names exist (see templateScope)
+//   showCount: add a word count (for text a model is given)
+//   plain: the menu for a person writing to the agent: "Insert a detail", details by name ("Order number"), no filters
 export default function TemplateField({
   value,
   onChange,
@@ -24,13 +23,13 @@ export default function TemplateField({
   plain = false,
 }) {
   const ref = useRef(null);
-  // whether the box has had the cursor: until it has, there is no place in it the person chose, and a value goes at the end
+  // whether the box has had the cursor: until then the person chose no place in it, so a value goes at the end
   const placed = useRef(false);
   const text = typeof value === 'string' ? value : value == null ? '' : String(value);
   const problems = templateProblems(text, scope);
   const chips = insertables(scope);
 
-  // `back` puts the caret that many characters before the end of what was inserted (`{{call.}}` with 2: before the braces).
+  // `back` puts the caret that many characters before the end of the insert (`{{call.}}` with 2: before the braces)
   const insert = (snippet, back = 0) => {
     const el = ref.current;
     const start = placed.current ? (el?.selectionStart ?? text.length) : text.length;

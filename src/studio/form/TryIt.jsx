@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react';
+import Fold from '../../ui/Fold.jsx';
 import { useConfigSelect } from './ctx.js';
 import { useResultPreview } from './usePreview.js';
 import { sampleArgs, taskWords } from './serverPreview.js';
 import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
+import { PREVIEW_SOURCE } from './tryPanels.js';
 
-// "Try it" for one tool, answered by the server: type the arguments the model would give, paste an answer the API might send, and see the
-// request that would go out (the address, query, body, which secrets it would use), whether the tool's preconditions hold, what the
-// model would be shown of the answer (exactly as it reads it), what is kept in state, what goes straight to the caller, and which effects
-// fire. Nothing is called and nothing is spent. It reads what is in the editor, saved or not. The sample answer is never saved.
-const SOURCE_TEXT = { server: 'exact', demo: 'demo imitation' };
+// "Try it" for one tool, answered by the server: type the model's arguments and a sample API answer, then see the
+// request, whether preconditions hold, what the model is shown, what goes to state or the caller, and which effects
+// fire. Nothing is called or spent; the sample answer is never saved.
 
 function Json({ value }) {
   return <code className="stTryJson">{typeof value === 'string' ? value : JSON.stringify(value)}</code>;
@@ -40,7 +40,7 @@ export default function TryIt({ toolId, parameters, sample, sampleError, hasSamp
 
   return (
     <section className="stTryIt" aria-label="Try this tool">
-      <h5>Try it {result.source && <span className={`stTag ${result.source === 'server' ? 'good' : ''}`}>{SOURCE_TEXT[result.source]}</span>}</h5>
+      <h5>Try it {result.source && <span className={`stTag ${result.source === 'server' ? 'good' : ''}`}>{PREVIEW_SOURCE[result.source]}</span>}</h5>
       <p className="stFHelp">
         Nothing is called and nothing is spent: the server shows what <em>would</em> go out and what the model <em>would</em> be shown.
       </p>
@@ -57,11 +57,11 @@ export default function TryIt({ toolId, parameters, sample, sampleError, hasSamp
         />
         {parsed.error && <small className="stFErr">{parsed.error}</small>}
       </label>
-      <details className="stTryWhatIf" open={what.changed || undefined}>
+      <Fold className="stTryWhatIf" open={what.changed}>
         <summary>What if… {what.changed && <span className="stTag">changed</span>}</summary>
         <p className="stFHelp">A tool can depend on the time, the channel or what has been remembered so far. Change them to see how this tool would behave.</p>
-        <WhatIfBar config={config} what={what} phone={false} idPrefix="try" />
-      </details>
+        <WhatIfBar config={config} what={what} phone={false} />
+      </Fold>
       {!hasSample && <p className="stMuted">Paste a sample answer above to also see what the model would be shown of it.</p>}
       {result.note && (
         <p className="stFWarn" role="note">

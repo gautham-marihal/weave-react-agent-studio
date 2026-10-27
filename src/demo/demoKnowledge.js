@@ -1,7 +1,6 @@
-// Knowledge, IMITATED for demo mode: uploaded files kept in this browser, an index "built" over a few steps by cutting the files into
-// passages, and a search that scores passages by the words they share with the question. The real API embeds the passages with a model and
-// searches by meaning; this has no model, so its scores are made up from word overlap and say so (`note`). Same shapes as the real API.
-// Pure: no network, no DOM, no clock of its own.
+// Knowledge IMITATED for demo mode: files kept in this browser, an index "built" in steps, and a word-overlap search.
+// The real API searches by meaning with a model; with none here, the scores are made up and `note` says so.
+// Same shapes as the real API. Pure: no network, DOM or clock of its own.
 
 import { isObj } from '../studio/form/engine.js';
 
@@ -78,7 +77,7 @@ function usedBy(config, baseId) {
   return { agents, tools };
 }
 
-// Brings finished builds up to date: when a build's time is up, the index is made from the files and the job is marked done (or failed).
+// Finishes builds whose time is up: makes the index from the files and marks the job done (or failed).
 // Returns true when something changed, so the caller saves.
 export function settle(bot, nowMs) {
   const k = state(bot);
@@ -88,7 +87,7 @@ export function settle(bot, nowMs) {
     const base = job.baseDef; // the base as it was when the build started
     const documents = [];
     const passages = [];
-    const log = [...STEPS.map((s) => `${s}…`)];
+    const log = STEPS.map((s) => `${s}…`);
     list(base?.sources).forEach((source) => {
       if (source?.type === 'url') {
         log.push(`Skipped ${source.url}: demo mode can’t fetch web pages.`);
@@ -129,7 +128,7 @@ export function settle(bot, nowMs) {
   return changed;
 }
 
-function problemsOf(bot, config, base, nowMs) {
+function problemsOf(bot, config, base) {
   const k = state(bot);
   const problems = [];
   if (base.type !== 'vector_store') return problems;
@@ -142,7 +141,6 @@ function problemsOf(bot, config, base, nowMs) {
     else if (index && index.stamps?.[file.name] !== file.modified)
       problems.push({ problem: `The file ${file.name} changed after the index was built.`, fix: 'Rebuild the index.' });
   });
-  void nowMs;
   return problems;
 }
 
@@ -178,7 +176,7 @@ function describeBase(bot, config, base, nowMs) {
           build: buildView(k.builds[base.id], nowMs),
         }
       : { connection: base.connection }),
-    problems: problemsOf(bot, config, base, nowMs),
+    problems: problemsOf(bot, config, base),
     embedding_key_available: true,
   };
 }
@@ -221,12 +219,19 @@ export function upload(bot, name, content, size, nowIso) {
   return { name, size, modified: nowIso, used_by: [] };
 }
 
-export function removeFile(bot, config, name, force) {
+// configs: the draft's and the deployed versions' (a file a running version reads counts too, not only the draft's)
+export function removeFile(bot, configs, name, force) {
   const k = state(bot);
   if (!k.files.some((f) => f.name === name)) return { status: 404, detail: `There is no file '${name}'.` };
-  const readers = list(config?.knowledge)
-    .filter((b) => list(b?.sources).some((s) => s?.type === 'file' && s.file_id === name))
-    .map((b) => b.id);
+  const readers = [
+    ...new Set(
+      (Array.isArray(configs) ? configs : [configs]).flatMap((config) =>
+        list(config?.knowledge)
+          .filter((b) => list(b?.sources).some((s) => s?.type === 'file' && s.file_id === name))
+          .map((b) => b.id),
+      ),
+    ),
+  ];
   if (readers.length && !force)
     return {
       status: 409,
@@ -286,9 +291,9 @@ export function searchBase(bot, config, baseId, body) {
 }
 
 // `preflight.knowledge` of a deploy: the problems of every base the deployed version uses, as [{ base, problems }].
-export function preflightKnowledge(bot, config, nowMs) {
+export function preflightKnowledge(bot, config) {
   return list(config?.knowledge)
     .filter(isObj)
-    .map((base) => ({ base: base.id, problems: problemsOf(bot, config, base, nowMs) }))
+    .map((base) => ({ base: base.id, problems: problemsOf(bot, config, base) }))
     .filter((row) => row.problems.length);
 }

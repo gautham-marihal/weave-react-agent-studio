@@ -168,3 +168,52 @@ test('per-agent rows list every agent, busiest first, with the calls of the peri
   assert.equal(r.perAgent[1].previousCalls, 1);
   assert.equal(r.perAgent[2].calls, 0);
 });
+
+test('days are the reader’s own: a late-evening call is on that day’s bar, and the calls counted are the calls charted', () => {
+  // in local time, whatever the machine's time zone: Sunday 25 October, 10 am
+  const now = new Date(2026, 9, 25, 10, 0).getTime();
+  const at = (d, h, m = 0) => ({ ...call('a', 0), started_at: new Date(2026, 9, d, h, m).toISOString() });
+  // the 18th is before the period's first day (it is in the 6 days 10 hours before it, from the 12th at 2 pm), the 12th at 9 am is before both
+  const calls = [at(20, 23, 30), at(25, 0, 15), at(18, 12), at(13, 9), at(12, 9)];
+  const r = analyse({ calls, bots, nowMs: now, days: 7 });
+  assert.deepEqual(
+    r.series.map((d) => d.day),
+    ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25'],
+  );
+  assert.equal(r.series.find((d) => d.day === '2026-10-20').calls, 1);
+  assert.equal(r.series.at(-1).calls, 1);
+  assert.equal(
+    r.totals.calls,
+    r.series.reduce((sum, d) => sum + d.calls, 0),
+  );
+  assert.equal(r.previous.calls, 2, 'the same length of time before the period');
+});
+
+test('calls are read a few at a time: never more at once, a slow one holds up only its own place, and the answers keep their order', async () => {
+  const { fewAtATime } = await import('../src/studio/insights/callData.ts');
+  let running = 0;
+  let most = 0;
+  const started = [];
+  const answers = await fewAtATime([300, 10, 10, 10, 10, 10], 2, async (ms) => {
+    started.push(ms);
+    running += 1;
+    most = Math.max(most, running);
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    running -= 1;
+    return ms * 2;
+  });
+  assert.deepEqual(answers, [600, 20, 20, 20, 20, 20]);
+  assert.equal(most, 2);
+  assert.equal(started.length, 6);
+  assert.deepEqual(await fewAtATime([], 4, async () => 1), []);
+});
+
+test('a slow answer does not hold up the others: they all finish while it is still out', async () => {
+  const { fewAtATime } = await import('../src/studio/insights/callData.ts');
+  const done = [];
+  await fewAtATime(['slow', 'a', 'b', 'c'], 2, async (id) => {
+    await new Promise((resolve) => setTimeout(resolve, id === 'slow' ? 200 : 10));
+    done.push(id);
+  });
+  assert.deepEqual(done, ['a', 'b', 'c', 'slow']);
+});

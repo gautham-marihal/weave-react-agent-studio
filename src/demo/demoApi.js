@@ -1,10 +1,8 @@
-// The Agent Builder API, imitated in memory, for demo mode (and for the end-to-end test, which runs without a backend). It answers the
-// endpoints the studio uses with the shapes in the API's FRONTEND_GUIDE: agents with drafts (revision-locked), versions, deployments, a
-// diff. It is a FAKE: its validator is a handful of simple rules (demoValidate.js), publishing and deploying only move records around,
-// and it has no LiveKit, so a "test session" is refused (the studio uses a simulated conversation instead).
-// `handle(method, path, body)` resolves to { status, body }. Pure apart from the `storage` it is given.
+// The Agent Builder API imitated in memory, for demo mode and the end-to-end tests (no backend needed).
+// A FAKE: a few validation rules (demoValidate.js), publish and deploy only move records, and with no LiveKit a test
+// session is refused (the studio simulates it). handle(method, path, body) resolves to { status, body }.
 
-import { applyStarter } from '../studio/starters.js';
+import { applyStarter } from '../studio/starters.ts';
 import { diffConfigs } from './diff.js';
 import { secretsIn, validateDemo } from './demoValidate.js';
 import {
@@ -56,32 +54,33 @@ export const memoryStorage = (initial = null) => {
 };
 
 export function browserStorage(key = STORAGE_KEY) {
-  let fallback = null;
+  // The last save the browser couldn't keep (storage full or blocked) is read from here, not the older stored copy,
+  // which would undo the save and make the next save a conflict.
+  let unkept = null;
   return {
     load() {
+      if (unkept) return unkept;
       try {
         const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : fallback;
+        return raw ? JSON.parse(raw) : null;
       } catch {
-        return fallback;
+        return null;
       }
     },
     save(state) {
-      fallback = state;
       try {
         localStorage.setItem(key, JSON.stringify(state));
+        unkept = null;
       } catch {
-        /* storage full or unavailable: kept for this page view */
+        unkept = state; // kept for this page view
       }
     },
   };
 }
 
-// The made-up calls (seeded, and the ones going on from the clock) are written as run in an environment, with a version. When they are read they say
-// where the agent really runs and what: the environment that runs the call's version now (its own first), else, for a version that was published, where
-// the agent runs now (it ran there before the version that is there now), and a version never published becomes the one running there. An agent never
-// put live has test conversations only ("draft"). So a call never claims an environment the agent was never put in, nor a version that does not exist.
-// Calls from real test conversations say "draft" already and are left alone.
+// Made-up calls are stored with an environment and version; placeCall moves each to where the agent really runs, so a
+// call never names an environment the agent was never put in, nor a version that doesn't exist.
+// An agent never put live has only "draft" calls; real test calls already say "draft".
 //   published: the agent's published versions (left out, every version counts as published)
 const ENVIRONMENTS_RUN = ['production', 'staging', 'development'];
 export function placeCall(call, deployed = {}, published = null) {
@@ -102,8 +101,8 @@ export function createDemoApi({
   seed = true,
   stepMs = STEP_MS,
   history = true,
-  // an agent created here starts with no calls, as on a real server, and made-up ones come in once it is put live; off, it is given sample calls at once
-  // (what the screen tests build on)
+  // On: a new agent has no calls, as on a real server, until it is put live.
+  // Off: it gets sample calls at once (what the screen tests build on).
   quietNewAgents = false,
 } = {}) {
   let counter = 0;
@@ -134,14 +133,14 @@ export function createDemoApi({
     const support = make('acme-support', 'Acme Support', 'support');
     const front = make('front-desk', 'Front Desk', 'receptionist');
     make('bookings', 'Bookings', 'appointment');
-    // Front Desk also answers the phone, so the screens that are about voice (phone callers on the Live board, voice calls on Calls) have something to show
+    // Front Desk also answers the phone, so the voice screens (Live board callers, voice calls) have something to show
     front.config.channels = [
       ...front.config.channels,
       {
         id: 'phone',
         type: 'sip_voice',
         enabled: true,
-        // how callers reach it is a phone number the platform sets up (Releases › Deploy), never typed into the channel
+        // callers ring a number the platform sets up (Releases › Deploy), never one typed into the channel
         entry: {},
         modalities: { input: ['audio'], output: ['audio'] },
         greeting: { say: 'Welcome to the front desk. How can I help you?' },
@@ -157,10 +156,8 @@ export function createDemoApi({
     };
     // a little history, so the Versions and Deploy screens have something to show
     const publish = (bot, version) => {
-      {
-        const config = { ...clone(bot.config), meta: { ...bot.config.meta, version } };
-        bot.versions.unshift({ version, published_at: now(), published_by: DEMO_USER, checksum: checksumOf(config), config });
-      }
+      const config = { ...clone(bot.config), meta: { ...bot.config.meta, version } };
+      bot.versions.unshift({ version, published_at: now(), published_by: DEMO_USER, checksum: checksumOf(config), config });
       bot.config.meta.version = bumpVersion(version);
       bot.revision += 1;
     };
@@ -207,8 +204,14 @@ export function createDemoApi({
   });
   const draftOf = (bot) => ({ bot_id: bot.id, revision: bot.revision, saved_at: bot.savedAt, saved_by: bot.savedBy, config: bot.config });
 
-  // Every answer is a copy: the screens and tests may change what they are given, and that must never change what is stored here.
+  // Every answer is a copy, so screens and tests changing it never change what is stored here.
   async function handle(method, rawPath, body = {}) {
+    // A file's words are read before the stored state, so nothing is awaited between reading and saving the state
+    // and a change made in another tab meanwhile isn't overwritten.
+    if (body && typeof body === 'object' && body.__file && typeof body.__file === 'object' && typeof body.__file.text === 'function') {
+      const file = body.__file;
+      body = { ...body, __file: await file.text(), __size: file.size };
+    }
     const answer = await route(method, rawPath, body);
     return { status: answer.status, body: answer.body === undefined ? undefined : clone(answer.body) };
   }
@@ -224,13 +227,15 @@ export function createDemoApi({
     if (path === '/schema' && method === 'GET') return ok(await loadSchema());
     if (path === '/environments' && method === 'GET') return ok(ENVIRONMENTS);
     if (path === '/providers' && method === 'GET') {
+      // keys for what the demo agents and new-agent setup use, so none shows "Key missing";
+      // Anthropic's is left unset to show what that looks like
       return ok({
         providers: [
           { name: 'anthropic', stages: ['llm'], installed: true, realtime_runnable: false, default_secret: 'ANTHROPIC_API_KEY', key_available: false },
           { name: 'assemblyai', stages: ['stt'], installed: false, realtime_runnable: false, default_secret: 'ASSEMBLYAI_API_KEY', key_available: false },
-          { name: 'cartesia', stages: ['stt', 'tts'], installed: true, realtime_runnable: false, default_secret: 'CARTESIA_API_KEY', key_available: false },
-          { name: 'deepgram', stages: ['stt', 'tts'], installed: true, realtime_runnable: false, default_secret: 'DEEPGRAM_API_KEY', key_available: false },
-          { name: 'elevenlabs', stages: ['stt', 'tts'], installed: true, realtime_runnable: false, default_secret: 'ELEVEN_API_KEY', key_available: false },
+          { name: 'cartesia', stages: ['stt', 'tts'], installed: true, realtime_runnable: false, default_secret: 'CARTESIA_API_KEY', key_available: true },
+          { name: 'deepgram', stages: ['stt', 'tts'], installed: true, realtime_runnable: false, default_secret: 'DEEPGRAM_API_KEY', key_available: true },
+          { name: 'elevenlabs', stages: ['stt', 'tts'], installed: true, realtime_runnable: false, default_secret: 'ELEVEN_API_KEY', key_available: true },
           {
             name: 'google',
             stages: ['stt', 'llm', 'tts', 'realtime'],
@@ -246,7 +251,7 @@ export function createDemoApi({
             installed: true,
             realtime_runnable: true,
             default_secret: 'OPENAI_API_KEY',
-            key_available: false,
+            key_available: true,
           },
           { name: 'openai_compatible', stages: ['stt', 'llm', 'tts'], installed: true, realtime_runnable: false, default_secret: null, key_available: false },
           { name: 'silero', stages: ['vad'], installed: true, realtime_runnable: false, default_secret: null, key_available: false },
@@ -257,9 +262,9 @@ export function createDemoApi({
       });
     }
     if (path === '/validate' && method === 'POST') return ok(validateDemo(body));
-    // previews: send `config` (what is in the editor) or name a saved agent (`bot`, `ref`)
     if (path === '/channel-types' && method === 'GET') return ok({ types: FALLBACK_TYPES, note: 'Demo mode: a copy of what a server answers.' });
     if (path === '/redaction/entities' && method === 'GET') return ok({ entities: demoEntities() });
+    // previews: send `config` (what is in the editor) or name a saved agent (`bot`, `ref`)
     if (
       ['/preview/prompt', '/preview/result', '/preview/speech', '/preview/guardrails', '/preview/redaction', '/preview/task'].includes(path) &&
       method === 'POST'
@@ -297,7 +302,7 @@ export function createDemoApi({
       if (RESERVED_IDS.includes(id)) return fail(400, `'${id}' is reserved and cannot be used as an agent id.`);
       if (state.bots[id]) return fail(409, `An agent with the id '${id}' already exists.`);
       state.bots[id] = newBot(id, String(name || id));
-      // a new agent has had no calls, as on a real server; made-up calls start coming in once it is put live (`quiet` goes at its first deploy)
+      // a new agent has no calls, as on a real server, until it is put live (`quiet` goes at its first deploy)
       if (quietNewAgents) {
         state.bots[id].calls = [];
         state.bots[id].quiet = true;
@@ -392,6 +397,8 @@ export function createDemoApi({
         bot.deployments.push(deployment);
         bot.deployed[environment] = version;
         delete bot.quiet;
+        // settle the index builds by the clock before reporting the deployed version's knowledge
+        settle(bot, Date.parse(now()));
         commit();
         const report = validateDemo(target.config, bot.id);
         return ok({
@@ -400,7 +407,7 @@ export function createDemoApi({
             secrets_required: [...secretsIn(target.config)].sort(),
             secrets_missing: [],
             unsupported: report.unsupported,
-            knowledge: preflightKnowledge(bot, target.config, Date.parse(now())),
+            knowledge: preflightKnowledge(bot, target.config),
           },
         });
       }
@@ -417,7 +424,7 @@ export function createDemoApi({
         const found = bot.deployments.find((d) => d.id === m[1]);
         return found ? ok(found) : fail(404, 'No such deployment.');
       }
-      // ---- knowledge (imitated: see demoKnowledge.js). Builds finish by the clock, so they are settled before every answer.
+      // ---- knowledge (imitated: see demoKnowledge.js). Builds finish by the clock: settle them before every answer.
       if (/^\/knowledge(\/|$)/.test(rest)) {
         const nowMs = Date.parse(now());
         if (settle(bot, nowMs)) commit();
@@ -436,14 +443,15 @@ export function createDemoApi({
             return fail(400, `'${name}' is not a kind of file knowledge can read: use text, markdown, HTML, PDF, CSV or JSON.`);
           const file = body && body.__file;
           const content = typeof file === 'string' ? file : file && typeof file.text === 'function' ? await file.text() : '';
-          const size = typeof file === 'string' ? file.length : (file?.size ?? content.length);
+          const size = typeof body?.__size === 'number' ? body.__size : typeof file === 'string' ? file.length : (file?.size ?? content.length);
           if (size > 20 * 1024 * 1024) return fail(413, 'That file is larger than this server accepts (20 MB).');
           const row = uploadFile(bot, name, content, size, now());
           commit();
           return ok(row, 201);
         }
         if (fileMatch && method === 'DELETE') {
-          const answer = removeFile(bot, bot.config, decodeURIComponent(fileMatch[1]), params.get('force') === 'true');
+          const deployedConfigs = Object.values(bot.deployed || {}).map((v) => bot.versions.find((x) => x.version === v)?.config);
+          const answer = removeFile(bot, [bot.config, ...deployedConfigs], decodeURIComponent(fileMatch[1]), params.get('force') === 'true');
           if (answer.status === 204) {
             commit();
             return { status: 204, body: undefined };
@@ -469,14 +477,15 @@ export function createDemoApi({
           }
         }
       }
-      // ---- call records (imitated: see demoCalls.js). Seeded the first time they are asked for, so older demo data gets some too.
+      // ---- call records (imitated: see demoCalls.js). Seeded on first request, so older demo data gets some too.
       if (/^\/calls(\/|$)/.test(rest)) {
         if (!bot.calls) {
           bot.calls = seedCalls(bot.id, bot.config, now(), { history });
           commit();
         }
         if (rest === '/calls' && method === 'GET') {
-          // calls in progress (made up from the clock, see demoLive.js) are listed only when they are asked for: the ones in progress, or the last half hour
+          // calls in progress (from the clock, see demoLive.js) are listed only when asked for:
+          // in progress, or the last half hour
           const nowMs = Date.parse(now());
           const since = params.get('since') ? Date.parse(params.get('since')) : -Infinity;
           const wantsLive = params.get('status') === 'in_progress' || nowMs - since <= 30 * 60 * 1000;
@@ -491,7 +500,6 @@ export function createDemoApi({
                 ),
               ),
               params,
-              nowMs,
             ),
           );
         }
@@ -554,7 +562,7 @@ export function createDemoApi({
     return fail(404, `Demo mode has no ${method} ${path}.`);
   }
 
-  // Follows a call one record at a time, the way the stream endpoint does (the studio's followCall uses this in demo mode).
+  // Follows a call one record at a time, like the stream endpoint (followCall uses this in demo mode).
   function follow(botId, callId, handlers) {
     const bot = read().bots[botId];
     const call = bot?.calls?.find((c) => c.summary.id === callId || c.summary.room === callId);
@@ -583,7 +591,7 @@ export function createDemoApi({
   return { handle, follow, recordConversation, reset: () => storage.save(seed ? seedState() : { v: 1, bots: {} }) };
 }
 
-// ---- the instance the app uses in demo mode: kept in this browser, with the schema served from the app's own public copy
+// ---- the instance the app uses in demo mode: kept in this browser, schema served from the app's public copy
 let instance = null;
 const loadPublicSchema = async () => {
   const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
@@ -591,7 +599,7 @@ const loadPublicSchema = async () => {
   if (!response.ok) throw new Error('The bundled schema could not be loaded.');
   return response.json();
 };
-// weave_demo_history = 'off' leaves out the two weeks of earlier made-up calls (a switch for tests, and for a demo with only the newest few calls)
+// weave_demo_history = 'off' leaves out the two weeks of earlier calls (for tests, or a demo of the newest calls only)
 const historyOn = () => {
   try {
     return window.localStorage.getItem('weave_demo_history') !== 'off';

@@ -1,4 +1,4 @@
-// How the form decides to draw a list or an object: as a card with a title, as chips, as a plain list of texts. Pure: no DOM.
+// How the form draws a list or an object: as a titled card, as chips, or as a plain list of texts. Pure: no DOM.
 
 import { isObj } from './engine.js';
 import { plainKind, plainToolKind } from './plainKinds.js';
@@ -50,9 +50,8 @@ export function arrayStyle(engine, shape) {
   return 'cards';
 }
 
-// A branch of a choice is plainly the one meant when the value carries the branch's fixed marker (`type: "http"`), even if other
-// required fields are still missing. Then the form should show that branch's editor, with what is missing marked, not give up and
-// show raw JSON.
+// A value carrying a branch's fixed marker (`type: "http"`) plainly means that branch, even with required fields
+// missing: show that branch's editor with the gaps marked, not raw JSON.
 export function matchesDiscriminator(engine, branch, value) {
   if (!isObj(value)) return false;
   const properties = engine.flatten(branch).properties || {};
@@ -60,9 +59,8 @@ export function matchesDiscriminator(engine, branch, value) {
   return markers.length > 0 && markers.every(([key, schema]) => value[key] === engine.flatten(schema).const);
 }
 
-// Switching an object to another kind of the same choice starts from that kind's defaults but keeps what the two share (an id, a
-// description, the channels it is offered on…), in the new kind's field order. A field that points at another collection is not
-// carried: what it names may not exist there (an HTTP connection is not an MCP one).
+// Switching kind starts from the new kind's defaults but keeps shared fields (id, description, channels…) in its order.
+// A field pointing at another collection is dropped: what it names may not exist there.
 export function carryOver(engine, previous, branch, fresh) {
   if (!isObj(previous) || !isObj(fresh)) return fresh;
   const properties = engine.flatten(branch).properties || {};
@@ -84,7 +82,7 @@ export function carryOver(engine, previous, branch, fresh) {
   return ordered;
 }
 
-// Is this array a list of actions (each one of say, generate, set state, hand off, end the call…)? Then it is drawn as numbered steps.
+// A list of actions (say, generate, set state, hand off, end the call…)? Then it is drawn as numbered steps.
 export function isActionList(engine, shape) {
   if (engine.kindOf(shape) !== 'array' || !shape.items) return false;
   const items = engine.flatten(shape.items);
@@ -93,11 +91,11 @@ export function isActionList(engine, shape) {
   return types.length > 0 && types.every((type) => typeof type === 'string') && types.includes('say');
 }
 
-// Is this array a list of rules (`when` and `do`, where `do` is a list of actions)? Then it is drawn as rules with steps.
+// A list of rules (`when` and `do`, where `do` is a list of actions)? Then it is drawn as rules with steps.
 export function isRuleList(engine, shape) {
   if (engine.kindOf(shape) !== 'array' || !shape.items) return false;
   const items = engine.flatten(shape.items);
   const keys = Object.keys(items.properties || {});
-  // only rules made of exactly `when` and `do`: an item with more to show (an event also has `on`) keeps its ordinary card
+  // Only items made of exactly `when` and `do`: an item with more (an event also has `on`) keeps its ordinary card.
   return keys.length > 0 && keys.every((key) => key === 'when' || key === 'do') && keys.includes('do') && isActionList(engine, items.properties.do);
 }

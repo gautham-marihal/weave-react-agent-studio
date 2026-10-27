@@ -1,6 +1,6 @@
-import { formatWhen } from '../studio/format.js';
-// The sidebar holds workspace-level things only: Home, Agents and the Calls of every agent; then the Library (what agents share: voices, integrations,
-// telephony) and Settings. Everything about ONE agent (building, testing, releasing, watching it) is inside that agent.
+import { formatWhen, randomTag } from '../studio/format.js';
+// The sidebar holds workspace-level pages only (Home, Agents, Calls, the shared Library, Settings);
+// everything about ONE agent lives inside that agent.
 export const NAV = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'agents', label: 'Agents', icon: 'agent' },
@@ -54,21 +54,17 @@ export function sessionsInRange(list = [], range = 'Past 7 days') {
 
 export function sessionStats(list = []) {
   const totalSec = list.reduce((sum, item) => sum + (Number(item.durationSec) || 0), 0);
-  const agentsSeen = new Set(list.map((item) => item.agentId)).size;
   return {
     count: list.length,
     avgSec: list.length ? totalSec / list.length : 0,
     minutes: totalSec / 60,
-    participants: list.length ? agentsSeen + 1 : 0, // you plus each agent you tested
     messages: list.reduce((sum, item) => sum + (Number(item.userMessages) || 0), 0),
   };
 }
 
 export function makeRecordId(prefix) {
-  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  return `${prefix}_${Date.now().toString(36)}${randomTag()}`;
 }
-
-export const WORKSPACE_NAV = [...LIBRARY_NAV, ...SETTINGS_NAV];
 
 export const TELEPHONY_SECTIONS = [
   { id: 'calls', label: 'Simulated calls', icon: 'phone' },
@@ -77,8 +73,8 @@ export const TELEPHONY_SECTIONS = [
   { id: 'trunks', label: 'SIP trunks', icon: 'plug' },
 ];
 
-// The address of each workspace page, so a refresh, a bookmark and Back keep you on it: #/home, #/calls, #/live, #/telephony/numbers... (an agent has its
-// own, #/bots/...). `id` is the page's id in NAV / LIBRARY_NAV / SETTINGS_NAV; Calls is `sessions` inside, "calls" in the address.
+// Each workspace page's address, so a refresh, bookmark or Back keeps you on it (agents have their own, #/bots/...).
+// `id` is the page's id in NAV / LIBRARY_NAV / SETTINGS_NAV; Calls is `sessions` inside, "calls" in the address.
 const PAGE_SLUGS = {
   home: 'home',
   sessions: 'calls',
@@ -96,7 +92,7 @@ export function workspaceHref(id, section) {
   const slug = PAGE_SLUGS[id] || 'home';
   return id === 'telephony' && TELEPHONY_SECTIONS.some((item) => item.id === section) ? `#/${slug}/${section}` : `#/${slug}`;
 }
-// Addresses a page used to have, so an old link or bookmark still opens it (Cost and speed became Speed when the costs were taken out).
+// Old addresses, so an old link or bookmark still opens the page (Cost and speed became Speed).
 const OLD_SLUGS = { cost: 'speed' };
 // { id, section? } for a workspace page's address, else null (an agent's address, or none)
 export function parseWorkspaceHash(hash) {
@@ -112,8 +108,8 @@ export function parseWorkspaceHash(hash) {
   return { id, section: TELEPHONY_SECTIONS.some((item) => item.id === parts[1]) ? parts[1] : 'calls' };
 }
 
-// An address that names no page (a mistyped or old link), so the workspace says "Page not found" instead of showing another page. No address
-// at all is Home; an agent's address (#/bots/...) is the Agents area's to judge.
+// An address naming no page (mistyped or old), so the workspace says "Page not found" instead of showing another page.
+// No address is Home; an agent's address (#/bots/...) is for the Agents area to judge.
 export const isUnknownAddress = (hash) => !!hash && !['#', '#/'].includes(hash) && !/^#\/bots/.test(hash) && !parseWorkspaceHash(hash);
 
 export function compactDateTime(value) {
@@ -127,7 +123,7 @@ export function agentLifecycle(agent) {
   return AGENT_LIFECYCLE.find((item) => item.status === (agent?.status || 'draft')) || AGENT_LIFECYCLE[0];
 }
 
-// The same words as formatWhen (studio/format.js), at the start of a line: "Just now", "3 hours ago", "4 days ago", then the date after a week.
+// formatWhen's words (studio/format.js), capitalised: "Just now", "3 hours ago", then the date after a week.
 export function formatRelative(value) {
   if (!value || Number.isNaN(new Date(value).getTime())) return '—';
   const text = formatWhen(value, { days: 7 });

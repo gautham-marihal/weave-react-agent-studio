@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { readRecords } from '../src/studio/records/recordsModel.js';
 import {
   ASKED_ABOVE,
@@ -17,10 +17,10 @@ import {
   setQuestion,
   setRecording,
   setRedaction,
-} from '../src/studio/newlayout/simple/afterCallModel.js';
+} from '../src/studio/agent/blocks/afterCallModel.js';
 import { $, $$, actions, byLabel, byText, setupDom, teardownDom, textOf } from './component/dom.js';
 
-// The After the call page's blocks (src/studio/newlayout/simple/afterCallModel.js and AfterCallBlocks.jsx): what they write is valid, agrees with what
+// The After the call page's blocks (src/studio/agent/blocks/afterCallModel.js and AfterCallBlocks.jsx): what they write is valid, agrees with what
 // the release checklist reads, and never loses what was typed or points at the wrong item.
 const care = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
 const at11 = () => ({ ...care(), schema_version: '1.1' });
@@ -133,7 +133,7 @@ before(async () => {
       contents: `
         import React, { act, useState } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { QuestionsBlock } from '../src/studio/newlayout/simple/AfterCallBlocks.jsx';
+        import { QuestionsBlock } from '../src/studio/agent/blocks/AfterCallBlocks.jsx';
         function Host({ initial, onConfig }) {
           const [config, setConfig] = useState(initial);
           return <QuestionsBlock config={config} set={(next) => { setConfig(next); onConfig(next); }} />;
@@ -202,7 +202,8 @@ test('blocks: rows write to their own item, a missing kind shows “Choose…”
     assert.equal($$(app.container, '.smQuestions > li').length, 3);
     const kind = byLabel(app.container, 'The answer to question 1');
     assert.equal(kind.value, '');
-    assert.equal(textOf(kind.selectedOptions[0]), 'Choose…');
+    // the choice box shows the chosen words (here, the empty choice's)
+    assert.equal(textOf(kind), 'Choose…');
     await ui.choose(kind, 'string');
     assert.equal(app.config.post_call.analysis[1].type, 'string', 'the first row shown is the second item');
     assert.equal(app.config.post_call.analysis[0], null);

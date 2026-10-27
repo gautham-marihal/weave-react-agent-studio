@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { $, $$, actions, byText, setupDom, teardownDom, textOf } from './component/dom.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/demoApi.js';
 
 // The language, voice and model pickers of the Agent page's panels, mounted in jsdom with a config in state: what is clicked and typed is replayed, and the
@@ -11,6 +11,9 @@ const a = actions(act);
 after(() => teardownDom());
 
 const agent = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
+// a picker's button: named by what it chooses, then what is chosen ("Main language: English")
+const picker = (app, label) => $$(app.container, 'button.pkTrigger').find((b) => textOf(b).startsWith(`${label}:`));
+const mainLanguage = (app) => picker(app, 'Main language');
 const option = (label) => $$(document.body, '[role="option"]').find((o) => textOf(o).includes(label));
 const key = (el, name) =>
   act(async () => {
@@ -19,7 +22,7 @@ const key = (el, name) =>
 
 test('language picker: choosing the main language writes it, and its base language is spoken too', async () => {
   const app = await mountScreen('languagepicker', agent(), { ready: '.pkPicker' });
-  await a.click($(app.container, 'button[aria-label="Main language"]'));
+  await a.click(mainLanguage(app));
   await a.type($(app.container, 'input[aria-label="Main language: search"]'), 'span');
   assert.deepEqual(
     $$(document.body, '[role="option"]').map((o) => textOf($(o, 'strong'))),
@@ -35,9 +38,9 @@ test('language picker: choosing the main language writes it, and its base langua
 
 test('language picker: other languages are added from a list that stays open and taken away with the chip’s cross; the main one cannot be removed', async () => {
   const app = await mountScreen('languagepicker', agent(), { ready: '.pkPicker' });
-  await a.click($(app.container, 'button[aria-label="Main language"]'));
+  await a.click(mainLanguage(app));
   await a.click(option('English (United States)'));
-  await a.click($(app.container, 'button[aria-label="Add a language"]'));
+  await a.click(picker(app, 'Add a language'));
   await a.click(option('French'));
   assert.ok($(app.container, '.pkMenu'), 'the list stays open to add more');
   await a.click(option('German'));
@@ -54,16 +57,16 @@ test('language picker: other languages are added from a list that stays open and
 
 test('language picker: the keyboard works the list: arrows, Enter and Escape', async () => {
   const app = await mountScreen('languagepicker', agent(), { ready: '.pkPicker' });
-  await a.click($(app.container, 'button[aria-label="Main language"]'));
+  await a.click(mainLanguage(app));
   const search = $(app.container, 'input[aria-label="Main language: search"]');
   assert.equal(document.activeElement, search, 'the search box has the keyboard');
   await key(search, 'ArrowDown');
   await key(search, 'Enter');
   assert.equal(app.config.defaults.language.primary, 'en-GB', 'the second one was picked');
-  await a.click($(app.container, 'button[aria-label="Main language"]'));
+  await a.click(mainLanguage(app));
   await key($(app.container, 'input[aria-label="Main language: search"]'), 'Escape');
   assert.equal($(app.container, '.pkMenu'), null, 'Escape closes it');
-  assert.equal(document.activeElement, $(app.container, 'button[aria-label="Main language"]'), 'and the keyboard goes back to the button');
+  assert.equal(document.activeElement, mainLanguage(app), 'and the keyboard goes back to the button');
   await app.unmount();
 });
 
@@ -85,8 +88,8 @@ test('voice picker: a search narrows the voices, picking one sets the engine and
 
 test('voice picker: the filters combine, and a voice id of your own can still be typed', async () => {
   const app = await mountScreen('voicepicker', agent(), { ready: '.pkVoices' });
-  await a.choose($(app.container, 'select[aria-label="Engine"]'), 'cartesia');
-  await a.choose($(app.container, 'select[aria-label="Gender"]'), 'Male');
+  await a.choose($(app.container, '.rxSelect[aria-label="Engine"]'), 'cartesia');
+  await a.choose($(app.container, '.rxSelect[aria-label="Gender"]'), 'Male');
   assert.ok($$(app.container, '.pkVoices > li:not(.pkNone)').length > 0);
   assert.ok($$(app.container, '.pkVoices .pkEngine').every((e) => /Cartesia/.test(textOf(e))));
   assert.equal($$(app.container, '.pkVoiceText small').filter((s) => /Female/.test(textOf(s))).length, 0);
@@ -130,7 +133,7 @@ test('language picker: the other language settings are here too: switching on de
   const app = await mountScreen('languagepicker', agent(), { ready: '.pkPicker' });
   await a.click($(app.container, 'input[aria-label="Detect the caller’s language automatically"]'));
   assert.equal(app.config.defaults.language.auto_detect, true);
-  await a.click($(app.container, 'button[aria-label="Add a language to recognise"]'));
+  await a.click(picker(app, 'Add a language to recognise'));
   await a.click(option('Japanese'));
   assert.deepEqual(app.config.defaults.language.also_understands, ['ja']);
   assert.ok($(app.container, 'button[aria-label="Stop recognising Japanese"]'));

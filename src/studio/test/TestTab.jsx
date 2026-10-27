@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { api, getApiUser } from '../../api/client.js';
+import { api, getApiUser } from '../../api/client.ts';
 import Icon from '../../ui/Icon.jsx';
 import { pictureProblem } from '../preview/useDictation.js';
 import AiOrb, { orbState } from '../preview/AiOrb.jsx';
@@ -9,16 +9,22 @@ import { navigate, routeHref } from '../route.js';
 import { useAsync } from '../useAsync.js';
 import { sameModels, summarizeModels } from '../models/config.js';
 import FormPrompt from './FormPrompt.jsx';
-import { drawsVoice, testability } from './channels.js';
+import { drawsVoice, testability } from './channels.ts';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import TraceView from '../trace/TraceView.jsx';
 import { useTrace } from '../trace/useTrace.js';
 import { finalStateOf, toolsUsedIn } from '../trace/records.js';
 import { scenarioFromConversation } from '../scenarios/model.js';
 import { browserChannels } from '../form/channelTypes.js';
+import Select from '../../ui/Select.tsx';
+import { Choice, OneOf } from '../../ui/OneOf.tsx';
 import './test.css';
 import '../preview/preview.css';
 import '../models/models.css';
+import { randomTag } from '../format.js';
+
+// The Test page: a conversation with the draft, by voice in a real session (LiveKit) or with the simulated agent (no
+// server), and what happened in each turn (the trace) beside it.
 
 const STATUS_TEXT = {
   idle: 'Not started',
@@ -36,7 +42,7 @@ function makeIdentity() {
       .replace(/[^A-Za-z0-9_.@-]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 50) || 'tester';
-  return `${base}-${Math.random().toString(36).slice(2, 6)}`;
+  return `${base}-${randomTag()}`;
 }
 
 function clock(ms) {
@@ -78,7 +84,7 @@ function Bubble({ message, botName }) {
 
 export default function TestTab({ botId, name, summary, editor, session, mode = 'real', modeLocked = false, onMode }) {
   const [ref, setRef] = useState('draft');
-  const [channelPick, setChannelPick] = useState(''); // which web channel to try, when the agent offers chat and voice side by side
+  const [channelPick, setChannelPick] = useState(''); // web channel to try when the agent offers both chat and voice
   const [draftText, setDraftText] = useState('');
   const [logOpen, setLogOpen] = useState(false);
   const [used, setUsed] = useState(null); // the models this conversation started with
@@ -88,8 +94,10 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const fileRef = useRef(null);
   const { status, info, messages, events, error, form, media, agentHint } = session;
   const trace = useTrace({ botId, session });
-  const [saved, setSaved] = useState(null); // the id of a scenario just made from this conversation
-  const [pictureNote, setPictureNote] = useState(''); // why a picture was not sent, in words, next to where it was chosen
+  // the scenario just made from a conversation: { id, first: its first line }, so it belongs to that conversation only
+  const [madeFrom, setMadeFrom] = useState(null);
+  const saved = madeFrom && messages.length > 0 && madeFrom.first === messages[0].id ? madeFrom.id : null;
+  const [pictureNote, setPictureNote] = useState(''); // why a picture wasn't sent, shown where it was chosen
 
   const running = ['starting', 'connecting', 'waiting', 'live'].includes(status);
   const connected = status === 'waiting' || status === 'live';
@@ -113,13 +121,13 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const imageCfg = ref === 'draft' ? channelCfg?.inputs?.image : null;
   const unsupported = editor.report?.unsupported || [];
 
-  // The models a test runs with. A draft test runs the saved draft (edits not saved yet are not part of it); a test of
-  // a published version or an environment runs that version, whatever the draft says now.
+  // The models a test runs with: a draft test runs the saved draft (not unsaved edits); a published version or an
+  // environment runs that version, whatever the draft says now.
   const version = ref === 'draft' ? null : ref === 'latest' ? summary?.latest_version : summary?.deployed?.[ref];
   const versionLoad = useAsync((signal) => (version ? api.getVersion(botId, version, { signal }) : Promise.resolve(null)), [botId, version]);
   const testConfig = ref === 'draft' ? editor.savedConfig || config : versionLoad.data?.config;
   const reach = testability(testConfig);
-  // every enabled web channel of what is being tried: a button for each (the server's own list comes back with the session)
+  // every enabled web channel being tried gets a button (the server's own list comes back with the session)
   const webChannels = useMemo(() => browserChannels(testConfig), [testConfig]);
   const channelId = webChannels.some((c) => c.id === channelPick) ? channelPick : webChannels[0]?.id || '';
   const simulated = mode === 'simulated';
@@ -140,8 +148,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     if (media.camera) attachPreview();
   }, [media.camera, attachPreview]);
 
-  // Keep the newest message in view, unless you scrolled up to read.
-  // (the list is scrolled itself: scrollIntoView would also scroll the whole page to the end of an empty chat)
+  // Keep the newest message in view, unless you scrolled up to read. The list scrolls itself: scrollIntoView would
+  // also scroll the whole page to the end of an empty chat.
   useEffect(() => {
     const el = listRef.current;
     if (stickRef.current && el) el.scrollTop = el.scrollHeight;
@@ -174,7 +182,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     await session.sendImage(file, imageCfg.topic || 'image-upload');
   };
 
-  // A finished conversation becomes a starting scenario (the caller's turns, the tools used, the final state) for the author to edit.
+  // A finished conversation becomes a starting scenario to edit (the caller's turns, the tools used, the final state).
   const canSave = messages.some((m) => m.role === 'user') && !running && !!config && editor.isObject && !editor.parsed.error;
   const saveAsScenario = () => {
     const made = scenarioFromConversation(config, {
@@ -184,7 +192,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
       finalState: finalStateOf(trace.records),
     });
     editor.setValue({ ...config, tests: [...(Array.isArray(config.tests) ? config.tests : []), made] });
-    setSaved(made.id);
+    setMadeFrom({ id: made.id, first: messages[0]?.id });
   };
 
   return (
@@ -203,51 +211,37 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
             )}
           </p>
           {onMode && (
-            <div className="pvModes stTMode" role="group" aria-label="What to talk to">
-              <button
-                type="button"
-                className={!simulated ? 'on' : ''}
-                aria-pressed={!simulated}
-                disabled={modeLocked || running}
-                onClick={() => onMode('real')}
-                title={modeLocked ? 'Demo mode has no real agent to talk to' : undefined}
-              >
+            <OneOf className="pvModes stTMode" label="What to talk to" value={simulated ? 'simulated' : 'real'} onChange={onMode}>
+              <Choice value="real" disabled={modeLocked || running} title={modeLocked ? 'Demo mode has no real agent to talk to' : undefined}>
                 Real agent
-              </button>
-              <button type="button" className={simulated ? 'on' : ''} aria-pressed={simulated} disabled={running} onClick={() => onMode('simulated')}>
+              </Choice>
+              <Choice value="simulated" disabled={running}>
                 Simulated
-              </button>
-            </div>
+              </Choice>
+            </OneOf>
           )}
         </div>
         <div className="stTControls">
           {webChannels.length > 1 && (
-            <div className="stTChannels" role="group" aria-label="Try it as">
-              <span>Try it as</span>
+            <OneOf className="stTChannels" label="Try it as" value={channelId} onChange={setChannelPick}>
+              <span aria-hidden="true">Try it as</span>
               {webChannels.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={c.id === channelId ? 'on' : ''}
-                  aria-pressed={c.id === channelId}
-                  disabled={running}
-                  onClick={() => setChannelPick(c.id)}
-                >
+                <Choice key={c.id} value={c.id} disabled={running}>
                   {drawsVoice(c) ? 'Web voice' : 'Web chat'}
                   {webChannels.filter((o) => o.type === c.type).length > 1 ? ` (${c.id})` : ''}
-                </button>
+                </Choice>
               ))}
-            </div>
+            </OneOf>
           )}
           <label>
             <span>Version to try</span>
-            <select value={ref} onChange={(event) => setRef(event.target.value)} disabled={running}>
+            <Select value={ref} onChange={(event) => setRef(event.target.value)} disabled={running}>
               {options.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           {running ? (
             <button type="button" className="dangerButton" onClick={session.stop}>

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import Fold from '../../ui/Fold.jsx';
 import { createEngine } from '../form/engine.js';
 import { useSchema } from '../form/useSchema.js';
 import { formatPath } from '../format.js';
@@ -6,9 +7,9 @@ import { useTechnicalNames } from '../usePref.js';
 import { describeIssues } from './issues.js';
 import './validation.css';
 
-// What the checks found, for a person: each problem names the setting by its label, says what is wrong in plain words, and offers a button when the
-// studio can fix it (and "Show me" to go there either way). What needs the person's own words is listed apart from what a click will fix, and the
-// advice that never blocks anything last. The server's own sentence and the raw path are one click away, and open when technical names are on.
+// What the checks found, for a person: each problem names the setting by label, says what is wrong plainly, and offers
+// a fix button when the studio can (and "Show me" either way). Problems needing the person's words are listed apart
+// from one-click fixes, non-blocking advice last. The server's sentence and path open when technical names are on.
 function Row({ item, config, onJump, onApply, onOpenModels }) {
   const [technical] = useTechnicalNames();
   const apply = (fix) => {
@@ -38,18 +39,18 @@ function Row({ item, config, onJump, onApply, onOpenModels }) {
           )}
         </div>
         {item.raw !== item.text && (
-          <details className="vxRaw" open={technical || undefined}>
+          <Fold className="vxRaw" open={technical}>
             <summary>What the server said</summary>
             <p>{item.raw}</p>
             {item.path && <code>{formatPath(item.path)}</code>}
-          </details>
+          </Fold>
         )}
       </div>
     </li>
   );
 }
 
-export default function IssueRows({ issues, config, onJump, onApply, onOpenModels, foldAdvice = false }) {
+export default function IssueRows({ issues, config, onJump, onApply, onOpenModels }) {
   const { schema } = useSchema();
   const engine = useMemo(() => (schema ? createEngine(schema) : null), [schema]);
   const shown = useMemo(() => describeIssues(issues, { config, schema, engine }), [issues, config, schema, engine]);
@@ -81,30 +82,18 @@ export default function IssueRows({ issues, config, onJump, onApply, onOpenModel
           </ul>
         </section>
       )}
-      {shown.worthALook.length > 0 &&
-        (foldAdvice ? (
-          <details className="vxFold" open={shown.fixNow.length + shown.needsYou.length === 0}>
-            <summary>
-              Worth a look <span>{shown.worthALook.length}</span>
-            </summary>
-            <ul>
-              {shown.worthALook.map((item, i) => (
-                <Row key={`w${i}`} item={item} {...rowProps} />
-              ))}
-            </ul>
-          </details>
-        ) : (
-          <section aria-label="Worth a look">
-            <h5>
-              Worth a look <span>{shown.worthALook.length}</span>
-            </h5>
-            <ul>
-              {shown.worthALook.map((item, i) => (
-                <Row key={`w${i}`} item={item} {...rowProps} />
-              ))}
-            </ul>
-          </section>
-        ))}
+      {shown.worthALook.length > 0 && (
+        <Fold className="vxFold" open={shown.fixNow.length + shown.needsYou.length === 0}>
+          <summary>
+            Worth a look <span>{shown.worthALook.length}</span>
+          </summary>
+          <ul>
+            {shown.worthALook.map((item, i) => (
+              <Row key={`w${i}`} item={item} {...rowProps} />
+            ))}
+          </ul>
+        </Fold>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { $, $$, actions, byText, setupDom, teardownDom, textOf } from './component/dom.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { createDemoApi, minimalConfig } from '../src/demo/demoApi.js';
 
 // "Fix this call", the simulated callers, and the switch that holds publishing until the tests pass, mounted in jsdom. The callers run on the demo's imitation of
@@ -88,7 +88,7 @@ test('Simulated callers: pick, run on the draft, see who passed, and keep the go
   // a caller whose only real check is the reviewer's is not called "Passed" when the reviewer did not grade it
   const direct = $(app.container, '.cpList > li[data-key="caller_direct"]');
   assert.match(textOf($(direct, '.cpResult')), /Basic checks passed/);
-  await a.click($(direct, 'button[aria-label*="says and checks"]'));
+  await a.click($(direct, 'button[aria-expanded]'));
   assert.ok($(direct, '.cpDetail ol li'), 'what the caller says');
   assert.match(textOf($(direct, '.cpDetail')), /a reviewer agrees that/);
   await a.click(byText(app.container, 'button', /Keep the ones that passed as tests/));
@@ -107,12 +107,12 @@ test('Simulated callers: one caller can be kept without running it, and the sele
   assert.ok($(app.container, '.cpRun .primaryCta').disabled);
   await a.click(byText(app.container, 'button', 'Select all'));
   assert.match(textOf($(app.container, '.cpCount')), /^(\d+) of \1 chosen/);
-  await a.click($(app.container, 'button[aria-label="Keep Frustrated as a test"]'));
+  await a.click(byText(app.container, 'button', 'Keep as a test: Frustrated'));
   assert.deepEqual(
     app.config.tests.map((t) => t.id),
     ['caller_frustrated'],
   );
-  assert.equal($(app.container, 'button[aria-label="Keep Frustrated as a test"]'), null, 'once kept it is not offered again');
+  assert.equal(byText(app.container, 'button', 'Keep as a test: Frustrated'), null, 'once kept it is not offered again');
   await app.unmount();
 });
 

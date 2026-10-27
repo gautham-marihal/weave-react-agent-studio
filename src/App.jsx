@@ -2,20 +2,22 @@ import React, { useEffect, useState } from 'react';
 import MobileNav from './studio/MobileNav.jsx';
 import { Landing } from './pages/Landing.jsx';
 import { Login, ProfileSetup } from './pages/Login.jsx';
-import { Dashboard } from './pages/Dashboard.jsx';
+import { Dashboard, openWorkspaceNamed } from './pages/Dashboard.jsx';
 import { AccountDialog, InfoDialogHost } from './pages/shared.jsx';
 import { DemoBadge } from './demo/DemoBadge.jsx';
 import { useAccent, useDensity, useStyle } from './studio/usePref.js';
 import DialogHost from './ui/DialogHost.jsx';
 import { PageErrorBoundary } from './ui/ErrorBoundary.jsx';
 import { forgetHealth } from './studio/health/useAgentHealth.js';
+import { queryClient } from './api/queryClient.ts';
+import { whenLeaveConfirmed } from './studio/route.js';
 
-// the last line of defence: a break outside any page (each page has its own, in the Dashboard) shows a calm screen with a reload
+// Last line of defence: a crash outside any page shows a calm screen with a reload (each page has its own boundary).
 export function AppErrorBoundary({ children }) {
   return <PageErrorBoundary full>{children}</PageErrorBoundary>;
 }
 
-// "Keep me signed in": remembered in localStorage (until sign out) or sessionStorage (until the browser closes).
+// "Keep me signed in": localStorage (until sign out) or sessionStorage (until the browser closes).
 // Sign-in is local to this browser in this prototype, so this only decides which screen a refresh opens.
 const SESSION_KEY = 'weave_signed_in';
 
@@ -35,17 +37,18 @@ function rememberSignIn(keep) {
   } catch {}
 }
 
-// signing out also drops what was read about the agents (their tags, owners and health), so the next person to sign in reads it afresh
+// Signing out also clears the data cache (tags, owners, health, calls, numbers) so the next person reads it afresh.
 function forgetSignIn() {
   try {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
   } catch {}
   forgetHealth();
+  queryClient.clear();
 }
 
 export function App() {
-  // A refresh keeps you signed in (and on the page the address points to) instead of returning to the landing page.
+  // A refresh keeps you signed in, on the page in the address, instead of returning to the landing page.
   const [screen, setScreen] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('weave_profile') || 'null') && readSignedIn() ? 'dashboard' : 'landing';
@@ -72,12 +75,12 @@ export function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme((value) => (value === 'light' ? 'dark' : 'light'));
-  // Comfortable or compact spacing (Settings): one attribute on the page, read by the spacing tokens.
+  // Comfortable or compact spacing (Settings), read by the spacing tokens.
   const [density] = useDensity();
   useEffect(() => {
     document.documentElement.dataset.density = density;
   }, [density]);
-  // The design style (Simple, Premium, Futuristic, Vibrant): one attribute on the page, read by src/themes.css, in light and in dark.
+  // The design style, read by src/themes.css in light and dark.
   const [designStyle] = useStyle();
   const [accent] = useAccent(designStyle);
   useEffect(() => {
@@ -108,27 +111,42 @@ export function App() {
   };
 
   const [pendingEmail, setPendingEmail] = useState('');
+  // Why the sign-in page opened: to start (a "Create…" button) or to sign in. A first-time starter is greeted as new.
+  const [loginIntent, setLoginIntent] = useState('signin');
+  const newcomer = loginIntent === 'start' && !profile;
 
   const handleProfileComplete = (nextProfile) => {
     try {
       localStorage.setItem('weave_profile', JSON.stringify(nextProfile));
     } catch {}
+    openWorkspaceNamed(nextProfile?.workspaceName);
     setProfile(nextProfile);
     rememberSignIn(keepSignedIn);
+    // The first-time setup ends where it promises ("03 Build: describe your first agent"): in the create dialog.
+    window.location.hash = '#/bots?new=1';
     setScreen('dashboard');
   };
 
-  // the browser tab before the workspace opens (inside it, the Dashboard names each page)
+  // The browser tab title before the workspace opens (inside it, the Dashboard names each page).
   useEffect(() => {
-    const titles = { landing: 'Weave · Build, test and run AI agents', login: 'Sign in · Weave', onboarding: 'Set up your workspace · Weave' };
+    const titles = {
+      landing: 'Weave · Build, test and run AI agents',
+      login: newcomer ? 'Get started · Weave' : 'Sign in · Weave',
+      onboarding: 'Set up your workspace · Weave',
+    };
     if (titles[screen]) document.title = titles[screen];
-  }, [screen]);
+  }, [screen, newcomer]);
+
+  const openLogin = (intent) => {
+    setLoginIntent(intent);
+    setScreen('login');
+  };
 
   let view;
   if (screen === 'landing') {
-    view = <Landing theme={theme} onToggleTheme={toggleTheme} onSignIn={() => setScreen('login')} onStart={() => setScreen('login')} />;
+    view = <Landing theme={theme} onToggleTheme={toggleTheme} onSignIn={() => openLogin('signin')} onStart={() => openLogin('start')} />;
   } else if (screen === 'login') {
-    view = <Login theme={theme} onToggleTheme={toggleTheme} onLogin={handleLogin} onBack={() => setScreen('landing')} />;
+    view = <Login theme={theme} onToggleTheme={toggleTheme} newcomer={newcomer} onLogin={handleLogin} onBack={() => setScreen('landing')} />;
   } else if (screen === 'onboarding') {
     view = <ProfileSetup theme={theme} onToggleTheme={toggleTheme} email={pendingEmail} onComplete={handleProfileComplete} onBack={() => setScreen('login')} />;
   } else {
@@ -162,11 +180,14 @@ export function App() {
           profile={profile}
           workspaceName={accountWorkspace || profile?.workspaceName}
           onClose={() => setAccountOpen(false)}
-          onSignOut={() => {
-            setAccountOpen(false);
-            forgetSignIn();
-            setScreen('landing');
-          }}
+          // asks first when an open agent has unsaved edits, as the profile menu's Sign out does
+          onSignOut={() =>
+            whenLeaveConfirmed(() => {
+              setAccountOpen(false);
+              forgetSignIn();
+              setScreen('landing');
+            })
+          }
         />
       )}
     </>

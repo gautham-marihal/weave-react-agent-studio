@@ -92,8 +92,8 @@ These are the targets the review set. They are measured on the five customers:
    would have cost money or exposed data).
 3. For each fix, write which of these it is, and do the cheapest first:
    - **Wording**: a label or sentence. Change it in `src/studio/form/plainLanguage.js` (the catalogue of labels and explanations).
-   - **Place**: a setting or button where people did not look. Move it (the grouping is in `src/studio/form/layout.js`; the Simple view's cards are in
-     `src/studio/simple/SimpleConfig.jsx`).
+   - **Place**: a setting or button where people did not look. Move it (the grouping is in `src/studio/form/layout.js`; an agent's own pages are in
+     `src/studio/agent/pages/`).
    - **Missing**: something people wanted that is not there. Add it to the list; do not build it before you have seen it twice.
 4. Run the study again with three new customers after the fixes. Compare task 1 time and the number of wrong turns.
 

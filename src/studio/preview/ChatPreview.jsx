@@ -1,17 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Notice } from '../ui.jsx';
+import { Choice, OneOf } from '../../ui/OneOf.tsx';
 import './preview.css';
 import Icon from '../../ui/Icon.jsx';
 import AiOrb from './AiOrb.jsx';
 import { inputCapabilities, pictureProblem, useDictation } from './useDictation.js';
+import { randomTag } from '../format.js';
 
-// The preview beside the agent's settings: talk to the agent while you edit it, with the state of the connection always visible.
-// It shows either the REAL agent (a real conversation over LiveKit, on the saved draft) or a SIMULATED one (rules in the browser on your
-// current edits, no server). The two are never confused: the panel says which, and every simulated reply carries a "Simulated" tag.
-//
-// States: idle, loading (starting / connecting / waiting for the agent), live, reconnecting, ended, and error.
-
-export const PREVIEW_STATES = ['idle', 'loading', 'live', 'reconnecting', 'ended', 'error'];
+// The preview beside the agent's settings: talk to the agent while editing it. It is either the REAL agent (LiveKit,
+// on the saved draft) or a SIMULATED one (rules in the browser on current edits); the panel says which, and every
+// simulated reply is tagged "Simulated". States: idle, loading, live, reconnecting, ended, error.
 
 export function previewState(session) {
   if (session.status === 'error') return 'error';
@@ -48,7 +46,7 @@ function Line({ message }) {
   );
 }
 
-export default function ChatPreview({ session, mode, modeLocked, onMode, botId, editor, onClose }) {
+export default function ChatPreview({ session, mode, modeLocked, onMode, botId, editor }) {
   const [draft, setDraft] = useState('');
   const endRef = useRef(null);
   const state = previewState(session);
@@ -60,7 +58,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
     if (el) el.scrollTop = el.scrollHeight;
   }, [session.messages]);
 
-  const start = () => session.startFor(botId, { ref: 'draft', identity: `preview-${Math.random().toString(36).slice(2, 6)}` });
+  const start = () => session.startFor(botId, { ref: 'draft', identity: `preview-${randomTag()}` });
   const send = async () => {
     const text = draft;
     if (!text.trim() || state !== 'live') return;
@@ -171,33 +169,18 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           <i aria-hidden="true" />
           {STATUS_WORDS[state] || 'Ready'}
         </span>
-        <div className="pvModes" role="group" aria-label="What to talk to">
-          <button
-            type="button"
-            className={!simulated ? 'on' : ''}
-            aria-pressed={!simulated}
+        <OneOf className="pvModes" label="What to talk to" value={simulated ? 'simulated' : 'real'} onChange={onMode}>
+          <Choice
+            value="real"
             disabled={modeLocked || running}
-            onClick={() => onMode('real')}
             title={modeLocked ? 'Demo mode has no real agent to talk to' : 'A real conversation with the saved draft'}
           >
             Real agent
-          </button>
-          <button
-            type="button"
-            className={simulated ? 'on' : ''}
-            aria-pressed={simulated}
-            disabled={running}
-            onClick={() => onMode('simulated')}
-            title="Made-up replies from simple rules, using your current edits. No server."
-          >
+          </Choice>
+          <Choice value="simulated" disabled={running} title="Made-up replies from simple rules, using your current edits. No server.">
             Simulated
-          </button>
-        </div>
-        {onClose && (
-          <button type="button" className="stIconBtn" aria-label="Hide the preview" onClick={onClose}>
-            <Icon name="close" size={16} />
-          </button>
-        )}
+          </Choice>
+        </OneOf>
       </header>
 
       <p className={`pvBanner ${simulated ? 'sim' : 'real'}`} role="note">

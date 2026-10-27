@@ -1,0 +1,4 @@
+/* Tailwind's utilities (tw-*), loaded last so they win over the plain stylesheets on the elements that use them. No base layer: the app's own
+   reset stays in charge (tailwind.config.js turns preflight off). */
+@tailwind components;
+@tailwind utilities;

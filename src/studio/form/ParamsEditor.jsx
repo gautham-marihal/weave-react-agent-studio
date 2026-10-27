@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { JsonInput, StringList } from './fields.jsx';
 import { PARAM_KINDS, modelView, problems as paramProblems, readParams, writeParams } from './paramSchema.js';
 import Icon from '../../ui/Icon.jsx';
+import Select from '../../ui/Select.tsx';
 
-// A tool's parameters as rows (name, kind, what it is for, needed or not, choices) instead of hand-written JSON Schema.
-// Anything the rows can't show (a pattern, a nested object, a list) is kept and written back untouched; "Edit as JSON"
-// shows the whole schema. The rows are kept in the box so a half-typed name doesn't disappear while you type it.
+// A tool's parameters as rows (name, kind, purpose, needed, choices) instead of
+// hand-written JSON Schema. What the rows can't show is written back untouched; "Edit
+// as JSON" shows it all. Rows live in local state so a half-typed name doesn't vanish.
 export default function ParamsEditor({ value, onChange, toolName, description, disabled }) {
   const parsed = useMemo(() => readParams(value), [value]);
   const [rows, setRows] = useState(parsed.rows);
@@ -58,7 +59,7 @@ export default function ParamsEditor({ value, onChange, toolName, description, d
             {row.kind === 'advanced' ? (
               <span className="stFTag">structured</span>
             ) : (
-              <select
+              <Select
                 className="stFInput small"
                 value={row.kind}
                 aria-label={`Parameter ${index + 1} kind`}
@@ -72,7 +73,7 @@ export default function ParamsEditor({ value, onChange, toolName, description, d
                     {kind.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
             <label className="stParamReq">
               <input type="checkbox" checked={row.required} disabled={disabled} onChange={(event) => setRow(index, { required: event.target.checked })} />{' '}

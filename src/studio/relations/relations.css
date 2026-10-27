@@ -43,12 +43,14 @@
 .rlEdge.rule path {
   stroke-dasharray: 2 4;
 }
+/* the words on an arrow, with a halo of the map's colour wide enough to cover a line passing behind them, the spaces between words too */
 .rlEdge text {
   font-size: var(--fs-xs);
   fill: var(--muted);
   paint-order: stroke;
   stroke: var(--surface);
-  stroke-width: 4px;
+  stroke-width: 6px;
+  stroke-linejoin: round;
 }
 .rlNode {
   position: absolute;

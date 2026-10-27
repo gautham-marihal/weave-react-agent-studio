@@ -1,8 +1,7 @@
 import React from 'react';
 import '../changes/changes.css';
 
-// What differs between two versions, as sentences grouped by what they are about. A change to a long text (the instructions, say) has a "Show the
-// wording" that opens the two texts one above the other.
+// What differs between two versions, as grouped sentences; a long text change has "Show the wording" for both texts.
 const MARK = { Added: '+', Removed: '−', Changed: '~' };
 
 export default function PlainDiff({ plain }) {

@@ -11,6 +11,7 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (a Chrome or Edge path), E2E_STYLES (default simple,premium), E2E_HEADED=1.
 import { chromium } from 'playwright-core';
+import { readJson, writeJson } from './json.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const STYLES = (process.env.E2E_STYLES || 'simple,premium').split(',');
@@ -181,9 +182,7 @@ for (const style of STYLES) {
   const { context, page, problems } = await open(browser, { width: 1440, height: 900, style });
   await go(page, '#/bots/acme-support/settings');
   await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
-  const box = page.locator('.nlPage textarea').first();
-  await page.waitForFunction(() => (document.querySelector('.nlPage textarea')?.value || '').length > 20);
-  const config = JSON.parse(await box.inputValue());
+  const config = JSON.parse(await readJson(page));
   const long = 'Thanks for contacting Nimbus Home Services today. We hope we could help, and have a really great day!';
   // agents are { entry, items: [...] }; a tool's goodbye can be words or a saved message: words here, long ones
   const items = Array.isArray(config.agents?.items) ? config.agents.items : [];
@@ -192,7 +191,7 @@ for (const style of STYLES) {
     t.name = `${t.name || t.id} with a much longer name than usual`;
     if (t.builtin === 'end_call' || /end/.test(t.id)) t.params = { ...(t.params || {}), say: long };
   });
-  await box.fill(JSON.stringify(config, null, 2));
+  await writeJson(page, JSON.stringify(config, null, 2));
   await go(page, '#/bots/acme-support/workflow', 1800);
   const nodes = await page.evaluate(() =>
     [...document.querySelectorAll('.wfNode')].map((node) => {
@@ -202,30 +201,18 @@ for (const style of STYLES) {
         const r = el.getBoundingClientRect();
         return r.top < n.top - 1 || r.bottom > n.bottom + 1 || r.left < n.left - 1 || r.right > n.right + 1;
       });
+      // nothing is cut: no line hidden under the block's edge, no "…" (a block is as tall as its words)
       const wrapped = words.filter((el) => {
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        // the lines that can be seen: those a clamp hides (below the element's own box) are laid out, but not shown
-        const own = el.getBoundingClientRect();
-        const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0 && r.top < own.bottom - 1).sort((a, b) => a.top - b.top);
-        let count = 0;
-        let bottom = -Infinity;
-        for (const r of rects) {
-          if (r.top >= bottom - 2) count += 1;
-          bottom = Math.max(bottom, r.bottom);
-        }
-        // one line, or as many as the block says it shows (its description may take two, cut with "…")
-        return count > (Number(getComputedStyle(el).webkitLineClamp) || 1);
+        const style = getComputedStyle(el);
+        return (
+          el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1 || (style.textOverflow === 'ellipsis' && style.overflow !== 'visible')
+        );
       });
       return { id: node.dataset.node, outside: outside.length, wrapped: wrapped.length, tip: !!node.getAttribute('title') };
     }),
   );
   const bad = nodes.filter((n) => n.outside || n.wrapped);
-  check(
-    `${style}: ${nodes.length} workflow blocks keep every word inside, on the lines they show`,
-    nodes.length > 2 && !bad.length,
-    JSON.stringify(bad.slice(0, 3)),
-  );
+  check(`${style}: ${nodes.length} workflow blocks keep every word inside, whole (none cut)`, nodes.length > 2 && !bad.length, JSON.stringify(bad.slice(0, 3)));
   check(
     `${style}: every block has its whole text as a tooltip`,
     nodes.every((n) => n.tip || n.id === 'start'),

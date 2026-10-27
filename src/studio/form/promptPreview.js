@@ -1,12 +1,9 @@
-// An approximate preview of what an agent is told. The real prompt is built by the runtime; this puts together what the
-// configuration says it is made of (the persona, the agent's role, opening, rules and conditional blocks, the channel's
-// addition, and the tools it may use) in that order, so an author can read it as one piece. It is labelled approximate
-// wherever it is shown: the runtime's wording, ordering and conditional blocks are its own, and an exact preview needs the
-// runtime itself (`POST /preview/prompt` returns the exact text; see src/studio/form/serverPreview.js).
-// Pure: no network, no DOM.
+// An approximate preview of what an agent is told, assembled from what the config says (persona, role, opening, rules,
+// conditional blocks, channel addition, tools) in that order. Always labelled approximate: the exact text comes from
+// `POST /preview/prompt` (serverPreview.js). Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
-import { wordCount } from './templates.js';
+import { wordCount } from './templates.ts';
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '');
 const list = (value) => (Array.isArray(value) ? value : []);
@@ -34,8 +31,8 @@ export function describeCondition(condition) {
   return 'a condition holds';
 }
 
-// The `when` of a block in the server's preview, in words. The server sends the condition as written (an object, or its JSON as text); anything that is
-// neither is plain text already and is shown as it is.
+// The `when` of a block in the server's preview, in words. The server sends the condition as written (an object, or its
+// JSON as text); anything else is already plain text.
 export function describeWhen(when) {
   if (isObj(when)) return describeCondition(when);
   if (typeof when === 'string') {
@@ -61,8 +58,8 @@ export function describeWhen(when) {
   return '';
 }
 
-// Fills in the template names the configuration knows. A state variable shows its starting value, a constant its value; names
-// that only exist during a call (a tool's arguments or result, the caller…) stay as ‹placeholders›, and the result lists them.
+// Fills in the template names the config knows (a state variable's starting value, a constant's value). Names that
+// only exist during a call (a tool's arguments, the caller…) stay as ‹placeholders›, and the result lists them.
 export function renderTemplate(source, config) {
   const unresolved = [];
   const variables = isObj(config?.state?.variables) ? config.state.variables : {};
@@ -91,7 +88,8 @@ export function renderTemplate(source, config) {
   return { text: out, unresolved };
 }
 
-// -> { sections: [{ id, title, note, text, words, conditional? }], words, conditionalWords, unresolved: [names] } or null.
+// -> { sections: [{ id, title, note, text, words, conditional?
+// }], words, conditionalWords, unresolved: [names] } or null.
 export function assemblePrompt(config, agentId, { channelId } = {}) {
   const agents = list(config?.agents?.items);
   const agent = agents.find((item) => item?.id === agentId) || null;
@@ -133,7 +131,7 @@ export function assemblePrompt(config, agentId, { channelId } = {}) {
   const channel = list(config.channels).find((item) => item?.id === channelId);
   if (channel) add('channel', `Added on ${channel.id}`, 'The channel’s instructions_append', channel.instructions_append);
 
-  // The tools it may call (the model sees each by name, with its description and the arguments it fills in).
+  // The tools it may call: the model sees each by name, with its description and the arguments it fills in.
   const tools = list(config.tools);
   const lines = [];
   list(agent.tools).forEach((id) => {

@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import Drawer from '../newlayout/Drawer.jsx';
+import Drawer from '../agent/Drawer.jsx';
 import AccessPicker from './AccessPicker.jsx';
 import { WHOLE_WORKSPACE, agentsScope, checkInvite, describeScope, hueOf, initialsOf, normalizeScope, roleOf, scopeProblem } from './teamModel.js';
 import './team.css';
 import Icon from '../../ui/Icon.jsx';
 
-// One panel for the two ways of giving access: inviting people (their addresses, then what they may do and where) and changing the access of someone who is
-// already in. Nothing changes until the button at the bottom is pressed; Cancel and Escape leave the team as it was.
+// One panel to invite people or change someone's access. Nothing changes until the bottom button is pressed;
+// Cancel and Escape leave the team as it was.
 export default function MemberDrawer({ mode, member = null, members, agents, startAgent = '', onClose, onInvite, onChange }) {
   const editing = mode === 'edit';
-  const [emails, setEmails] = useState([]); // the addresses added so far, one at a time
+  const [emails, setEmails] = useState([]); // the addresses added so far
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [role, setRole] = useState(editing ? member.role : 'editor');

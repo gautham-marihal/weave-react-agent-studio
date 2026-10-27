@@ -28,7 +28,7 @@ test('every kind of tool the schema has can be added from the cards, named for t
     'Run your own code',
   ].forEach((label) => assert.ok(labels.includes(label), label));
   tools.forEach((o) => {
-    assert.ok((o.label && !/[_]|HTTP|MCP|Built-in/.test(o.label)) || /MCP/.test(o.help), `${o.id}: a plain label`);
+    assert.ok((o.label && !/_|HTTP|MCP|Built-in/.test(o.label)) || /MCP/.test(o.help), `${o.id}: a plain label`);
     assert.ok(o.help, `${o.id}: says what it is for`);
   });
   // every branch of the schema is reachable: a made item fits the branch it came from, or carries its marker

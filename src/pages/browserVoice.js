@@ -1,6 +1,5 @@
-// The Voices page previews a voice with the browser's own speech engine (it is not a sample from the provider). Browsers don't say whether
-// an installed voice is a woman's or a man's, and when no voice is set they use their default, which is often a man's (Microsoft David on
-// Windows). So to preview a female voice as female and a male voice as male, the voice is picked by the gender its name is known for.
+// Picks a browser speech voice for voices with no playable sample (voicePreview.js). Browsers don't report a voice's
+// gender and often default to a man's (Microsoft David), so voices are picked by the gender their name is known for.
 // Pure: no DOM, so the tests run it in Node.
 
 const FEMALE = [
@@ -105,7 +104,6 @@ const MALE = [
   'hemant',
   'prabhat',
   'madhur',
-  'ravi',
   'liam',
   'connor',
   'neil',
@@ -142,13 +140,13 @@ const same = (a, b) =>
     .replace('_', '-');
 
 // Chooses the browser voice for a catalogue voice ({ locale: 'en-US', gender: 'Female' | 'Male' }).
-// Returns { voice, certain, pitch }: `certain` is true when the voice is known to be of that gender; otherwise `pitch` nudges whatever
-// is available towards it (higher for female, lower for male) and the page says the preview is approximate.
+// Returns { voice, certain, pitch }: `certain` when the voice is known to be that gender; otherwise `pitch` nudges
+// another voice towards it (higher for female, lower for male) and the page says the preview is approximate.
 export function pickBrowserVoice(voices, { locale, gender }) {
   const want = String(gender || '').toLowerCase();
   const list = Array.isArray(voices) ? voices : [];
   const sameLanguage = list.filter((v) => base(v.lang) === base(locale));
-  const rank = (v) => (same(v.lang, locale) ? 0 : 1) + (v.localService ? 0 : 0.5); // the exact locale first, installed voices before online ones
+  const rank = (v) => (same(v.lang, locale) ? 0 : 1) + (v.localService ? 0 : 0.5); // exact locale, then installed
   const byRank = (a, b) => rank(a) - rank(b);
   const confirmed = sameLanguage.filter((v) => genderOfBrowserVoice(v) === want).sort(byRank);
   if (confirmed.length) return { voice: confirmed[0], certain: true, pitch: 1 };

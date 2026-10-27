@@ -1,6 +1,5 @@
-// The two preview endpoints, IMITATED for demo mode. The real API builds the prompt and a tool's request with the runtime's own code, so
-// its answers are exact. Here there is no runtime: this builds the same shapes from the studio's own approximate copies (the prompt
-// assembly in studio/form/promptPreview.js, the path grammar in studio/form/jsonPaths.js) and says so in `note`. Pure.
+// The two preview endpoints IMITATED for demo mode. With no runtime, the shapes come from the studio's approximate
+// copies (studio/form/promptPreview.js, studio/form/jsonPaths.js) and `note` says so. Pure.
 
 import { assemblePrompt } from '../studio/form/promptPreview.js';
 import { isObj } from '../studio/form/engine.js';
@@ -165,7 +164,7 @@ export function previewResultDemo(config, body = {}) {
   return { status: 200, body: out };
 }
 
-// What the agent searches: the bases it reads before every reply, and the knowledge tools it can call (the server's own answer has the same two parts).
+// What the agent searches: bases read before every reply, and knowledge tools it can call (as in the server's answer).
 function knowledgeUse(config, agent, toolsById) {
   const bases = Object.fromEntries(list(config?.knowledge).map((b) => [b?.id, b]));
   const before = list(agent?.knowledge)

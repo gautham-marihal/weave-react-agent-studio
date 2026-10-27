@@ -1,7 +1,6 @@
-// An original call and a replay of it, turn against turn: did the agent say the same thing, use the same tools, hand over to the same agent, end the
-// same way? The wording of a language model is never identical twice, so "the same" for words means "close enough that nothing changed in meaning
-// a person would care about": most of the same words. What matters more, and is compared exactly, is what the agent DID: its tools, its hand-overs, its end.
-// Pure: no network, no DOM.
+// An original call and its replay, turn against turn: same words, tools, hand-overs and ending? Model wording is never
+// identical twice, so words count as the same when most of them match; what the agent DID (tools, hand-overs, end) is
+// compared exactly. Pure: no network, no DOM.
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -54,7 +53,7 @@ const handoffOf = (tools) =>
 const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 const quote = (text, max = 60) => `“${String(text).length > max ? `${String(text).slice(0, max - 1)}…` : text}”`;
 
-// → { verdict: 'same' | 'different', turns: [...], opening, agent, state, ended, lines: [plain sentences], changed: n, notReached }
+// → { verdict: 'same' | 'different', turns, opening, agent, state, ended, lines: [sentences], changed: n, notReached }
 export function compareReplay(original, replay) {
   const lines = [];
   const turns = list(original?.turns).map((o, index) => {

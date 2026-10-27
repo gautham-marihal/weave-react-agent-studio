@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { createEngine } from '../src/studio/form/engine.js';
 import { pickerFor, takenIdsAt } from '../src/studio/form/pickerOptions.js';
 import { describeSetting } from '../src/studio/form/plainLanguage.js';
@@ -17,10 +17,10 @@ import {
   setOffTopic,
   setTopics,
   topicsOf,
-} from '../src/studio/newlayout/simple/guardrailModel.js';
-import { rowName } from '../src/studio/newlayout/rowNames.js';
+} from '../src/studio/agent/blocks/guardrailModel.js';
+import { rowName } from '../src/studio/agent/rowNames.js';
 
-// The Guardrails page of the new layout: what its plain-words blocks keep while someone types, what they leave alone that was changed elsewhere, and
+// An agent's Guardrails page: what its plain-words blocks keep while someone types, what they leave alone that was changed elsewhere, and
 // the ids a new check is given (one set across the three guardrail lists, as the server checks them).
 const care = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
 const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));

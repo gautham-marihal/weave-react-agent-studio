@@ -136,35 +136,6 @@ html[data-theme] body .agentRowAvatar {
   color: var(--textStrong);
   border: 1px solid var(--line);
 }
-html[data-theme] body .nlNavHead {
-  padding: 10px 10px 4px;
-  color: var(--dim);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-}
-html[data-theme] body .nlNav button {
-  min-height: 34px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  color: var(--text);
-  font-weight: 450;
-}
-html[data-theme] body .nlNav button:hover {
-  background: var(--surface2);
-  color: var(--textStrong);
-}
-html[data-theme] body .nlNav button.on {
-  background: var(--surface2);
-  color: var(--textStrong);
-  font-weight: 600;
-  box-shadow: none;
-}
-html[data-theme] body .nlNavIcon {
-  color: var(--muted);
-}
-html[data-theme] body .nlNav button.on .nlNavIcon {
-  color: var(--textStrong);
-}
 
 /* ---- buttons ------------------------------------------------------------------------------------------------------------------------------------ */
 html[data-theme] body .primaryCta {
@@ -550,7 +521,7 @@ html[data-theme] body .metricTop,
 html[data-theme] body .miniHeading,
 html[data-theme] body .miniStep span,
 html[data-theme] body .navLabel,
-html[data-theme] body .searchGroupLabel,
+html[data-theme] body .searchGroup [cmdk-group-heading],
 html[data-theme] body .showcaseHeader,
 html[data-theme] body .sideLink em,
 html[data-theme] body .telephonyStatLabel,
@@ -702,14 +673,14 @@ html[data-theme] body .profileDot {
   background: var(--surface2);
   color: var(--textStrong);
 }
-html[data-theme] body .dashTopbar :is(.quietButton, .themeToggle) {
+html[data-theme] body .dashTopbar .quietButton {
   min-height: 36px;
   border: 1px solid var(--line2);
   border-radius: 10px;
   background: var(--panel);
   color: var(--textStrong);
 }
-html[data-theme] body .dashTopbar :is(.quietButton, .themeToggle):hover {
+html[data-theme] body .dashTopbar .quietButton:hover {
   background: var(--surface2);
 }
 
@@ -768,18 +739,13 @@ html[data-theme]
     .stRow.head,
     .tmHead,
     .stComboGroup,
-    .stNext small,
     .stEnvCard small,
     .stChangeBody small,
     .stPublishPanel > header small,
-    .builderSubhead,
     .hjHead,
-    .stStageHead,
-    .readinessRunner label span,
     .tableColumnsTitle,
     .stPickGroup h6,
     .stUrlPreview span,
-    .smList em,
     .wfSection h4
   ) {
   font-size: var(--fs-sm);
@@ -805,15 +771,6 @@ html[data-theme] body .segmented button.active {
   box-shadow: var(--raise);
 }
 
-/* the agent's menu fits a laptop screen without scrolling */
-html[data-theme] body .nlNav button {
-  min-height: 32px;
-  padding: 5px 10px;
-}
-html[data-theme] body .nlNavHead {
-  padding: 8px 10px 2px;
-}
-
 /* focus: one ring everywhere, in the ink colour */
 html[data-theme] body :where(button, select, a, [tabindex], input[type="checkbox"], input[type="radio"]):focus-visible {
   outline: 2px solid color-mix(in srgb, var(--textStrong) 60%, transparent);
@@ -830,7 +787,7 @@ html[data-theme] body .searchFieldWrap input:focus-visible {
 html[data-theme] body .searchFieldWrap > span {
   color: var(--muted);
 }
-html[data-theme] body :is(.loginCard input:not([type="checkbox"]), .profileCard input, .profileCard select):focus {
+html[data-theme] body :is(.loginCard input:not([type="checkbox"]), .profileCard input, .profileCard :is(select, button:where(.rxSelect))):focus {
   border-color: color-mix(in srgb, var(--textStrong) 45%, var(--line2));
   box-shadow: 0 0 0 3px var(--ring);
 }

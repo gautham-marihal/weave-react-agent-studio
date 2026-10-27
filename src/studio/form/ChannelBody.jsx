@@ -1,4 +1,5 @@
 import React from 'react';
+import Fold from '../../ui/Fold.jsx';
 import { isObj } from './engine.js';
 import { keyOf, useConfigSelect, useForm } from './ctx.js';
 import { StringList, Switch, TextInput } from './fields.jsx';
@@ -11,21 +12,19 @@ import { CHANNEL_TYPES, ENTRY_FIELDS, ENTRY_LABELS, TYPE_LABELS, changeChannelTy
 import { TechKey } from './TechName.jsx';
 import { askConfirm } from '../../ui/dialogs.js';
 import { canForms, canKeypad, entryFieldsFor, findVoiceOnly, infoOf, isVoiceChannel, mislabelledChat, plainSetting, stripVoiceOnly } from './channelTypes.js';
+import Select from '../../ui/Select.tsx';
 
-// One channel, drawn for what it is: the type decides which fields are shown, so a phone line never offers a widget id
-// and a web chat never offers a phone number. The id is a permanent key (Rename… rewrites everything that points at it).
-// What a person changes comes first (on or off, what it can do, extra instructions); the rest (its id, its kind, how it is reached, what it can hear and
-// say, exceptions and advanced settings) is folded under "Technical details", with a line that says what is in it. What it says first is asked on the
-// Agent page; a voice channel keeps only whether the caller may talk over it.
+// One channel, drawn for its type (a phone line never offers a widget id). Plain choices come first; id, kind, routing,
+// modalities, exceptions and advanced settings fold under "Technical details". The greeting is asked on the Agent page;
+// a voice channel keeps only whether the caller may talk over it here.
 
 const HANDLED = ['id', 'type', 'enabled', 'entry', 'capabilities'];
 const REQUIRES_ENTRY = ['sip_voice', 'web_chat'];
-// How a phone call reaches the agent is the platform's job (FRONTEND_GUIDE 8 and 10.5): adding a phone number for the agent and an environment sets up the
-// trunk and the dispatch rule, so the number, the trunk and the rule are never asked for here. The runtime reads none of them. Values an older configuration
-// noted are shown, and can be removed: they route nothing.
+// Phone routing is the platform's job (FRONTEND_GUIDE 8 and 10.5): adding a number and environment sets up the trunk
+// and dispatch rule, so they are never asked here. Older values are shown so they can be removed; they route nothing.
 const PLATFORM_ROUTE = ['dnis', 'sip_trunk', 'dispatch_rule'];
 const COLLAPSED = new Set(['match', 'inputs', 'overrides']);
-// asked above the fold; what it says first is the Agent page's (and the switch for talking over it is drawn here)
+// Asked above the fold; the greeting belongs to the Agent page (its talk-over switch is drawn here)
 const PLAIN_KEYS = ['instructions_append'];
 const OWN_KEYS = ['greeting'];
 // "text in and out", "voice in and out", "voice and text in, voice out"
@@ -78,8 +77,9 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   const botId = useConfigSelect((c) => c?.meta?.id || '');
   const notes = useConfigSelect((c) => modalityNotes(obj, c));
   const { providers } = useProviders();
-  // A voice channel on an agent with no speech models: one click sets a default for each missing stage (from what the server can run)
-  const firstSpeech = notes.findIndex((note) => note.stage); // the button goes under the first of the notes about speech, once
+  // A voice channel with no speech models: one click sets a
+  // default for each missing stage, from what the server can run
+  const firstSpeech = notes.findIndex((note) => note.stage); // the button goes under the first speech note only
   const addSpeech = () => {
     const { config: next, added, skipped } = addDefaultSpeechModels(ctx.store.get(), providers);
     if (!added.length) return;
@@ -90,7 +90,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   };
   const order = Object.keys(shape.properties);
   const mislabelled = mislabelledChat(obj);
-  // settings only a voice channel has, found on a channel that has no voice
+  // settings only a voice channel has, found on a channel with no voice
   const voiceOnlySet = kind && !isVoiceChannel(obj, types) ? findVoiceOnly(obj.overrides) : [];
 
   const handled = Object.fromEntries(Object.entries(obj).filter(([key]) => HANDLED.includes(key)));
@@ -102,7 +102,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   };
   const set = (patch) => onChange(sortByOrder({ ...obj, ...patch }, order));
 
-  // the settings only a voice channel has, on a channel that has no voice: removed on request (never behind the author's back), and the Undo bar takes it back
+  // removed only on request (never behind the author's back), and the Undo bar takes it back
   const removeVoiceOnly = () => {
     const { overrides, removed } = stripVoiceOnly(obj.overrides);
     if (!removed.length) return;
@@ -201,18 +201,19 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
   };
 
   const caps = isObj(obj.capabilities) ? obj.capabilities : {};
-  // the folded part: what it holds in a line, and open when something in it needs fixing
+  // the folded part: a line saying what it holds, open when something in it needs fixing
   const techKeys = Object.keys(restShape.properties).filter((key) => !PLAIN_KEYS.includes(key) && !OWN_KEYS.includes(key));
   const techProblems = ['id', 'type', 'entry', ...techKeys].some((key) => ctx.issuesUnder(keyOf([...path, key])).length > 0);
   const route = phoneLine ? 'a number added when it goes live' : typeof entry.widget_id === 'string' && entry.widget_id ? `widget ${entry.widget_id}` : '';
   const techSummary = [TYPE_LABELS[type] || type, modalityWords(obj.modalities), route].filter(Boolean).join(' · ');
   // a voice channel that says something first: whether the caller may talk over it (unset, they may)
   const greeting = isObj(obj.greeting) ? obj.greeting : null;
-  // (a channel that speaks: its first line is heard, so it can be talked over; one that only writes has nothing to interrupt)
+  // a channel that speaks can be talked over; one that only writes has nothing to interrupt
   const speaks = Array.isArray(obj.modalities?.output) ? obj.modalities.output.includes('audio') : type === 'sip_voice' || type === 'web_voice';
   const interruptible = speaks && greeting && greeting.say !== undefined;
   const setInterrupt = (on) => set({ greeting: { ...greeting, allow_interruptions: on } });
-  // a switch is offered only for what the kind of channel can have (the keypad needs a phone line, a form needs a screen)
+  // a switch is offered only for what the kind of channel can
+  // have (the keypad needs a phone line, a form needs a screen)
   const unavailable = (cap) => !!kind && ((cap.key === 'dtmf' && !canKeypad(types, type)) || (cap.key === 'forms' && !canForms(types, type)));
   const setCap = (key, on) => set({ capabilities: { ...caps, [key]: on } });
 
@@ -239,7 +240,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
               *
             </abbr>
           </div>
-          <select
+          <Select
             id={`${path.join('-')}-type`}
             className="stFInput"
             value={type ?? ''}
@@ -253,7 +254,7 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
                 {infoOf(types, item)?.runsToday === false ? ' (not available yet)' : ''}
               </option>
             ))}
-          </select>
+          </Select>
           <p className="stFHelp">Changing it clears the fields that only belong to the old kind (you are asked first).</p>
           {kind?.note && (
             <p className="stFHelp" data-note="kind">
@@ -391,13 +392,13 @@ export default function ChannelBody({ shape, value, path, onChange, disabled }) 
         onChange={(nextRest) => onChange(sortByOrder({ ...handled, ...nextRest }, order))}
       />
 
-      <details className="stFFold stChannelTech" open={techProblems || undefined}>
+      <Fold className="stFFold stChannelTech" open={techProblems}>
         <summary>
           Technical details
           {techSummary && <small>{techSummary}</small>}
         </summary>
         {technical}
-      </details>
+      </Fold>
 
       {(mislabelled || voiceOnlySet.length > 0) && (
         <ul className="stChannelNotes" aria-label="What does not fit this channel">

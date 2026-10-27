@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { isDemoMode } from '../../demo/demoMode.js';
 import { ASSISTANT, MIN_DESCRIPTION, generateDraft } from '../../demo/draftAssistant.js';
 import { minimalConfig } from '../../demo/minimalConfig.js';
@@ -13,14 +13,13 @@ import { usePref } from '../usePref.js';
 import { buildWorkflow, describeWorkflow } from '../workflow/workflowModel.js';
 import { countChanges, diffConfigs, groupChanges } from './diffConfig.js';
 import { askAssistant, loadStatus, postToModel } from './engine.js';
+import Select from '../../ui/Select.tsx';
 import './assistant.css';
 import { askConfirm } from '../../ui/dialogs.js';
 
-// "Describe it": a place to say, in plain English, what the agent should be and do, and have the AI make the settings. Nothing is changed behind anyone's back:
-// the answer arrives as a proposal (what it built, what it assumed, what it still needs to know, what would change, how a call would move), is checked by the
-// same validator as a hand-made draft, and only goes into the draft when "Apply" is pressed. Once applied, the answer turns into a summary of exactly what
-// changed, and a running list of everything changed here sits beside the conversation, next to what the agent is now. It edits the same draft as Config,
-// Workflow and the JSON, so whatever it makes is there to read and change by hand.
+// "Describe it": say in plain English what the agent should be and do, and the AI makes the settings. Nothing changes
+// behind anyone's back: the answer is a proposal, checked by the same validator as a hand-made draft, that enters the
+// draft only on "Apply". It edits the same draft as Config, Workflow and the JSON, so it can all be edited by hand.
 const EXAMPLES = [
   {
     title: 'A clinic receptionist',
@@ -53,7 +52,7 @@ const clip = (t, n) => {
     .trim();
   return x.length > n ? `${x.slice(0, n - 1)}…` : x;
 };
-// A change's place in the form's own terms: list items found by id become their position, so "All settings" and the JSON can be opened right there.
+// A change's path in the form's terms (list items by id become positions), so "All settings" and the JSON open there.
 function settingsPath(config, path) {
   const out = [];
   let at = config;
@@ -80,7 +79,7 @@ const nextId = () => {
   return `t${counter}`;
 };
 
-//   onShowSetting(path), onShowJson(path): how the agent's workspace shows a setting (it opens the page and panel that hold it), and the JSON
+//   onShowSetting(path), onShowJson(path): open the page and panel that hold a setting, or the JSON
 export default function AssistantTab({ editor, botId, name, onShowSetting = null, onShowJson = null }) {
   const config = editor.parsed?.value;
   const ok = editor.status === 'ready' && !editor.parsed?.error && isObj(config);
@@ -248,13 +247,13 @@ export default function AssistantTab({ editor, botId, name, onShowSetting = null
             <span className="asBadge ai">
               <Icon name="sparkle" size={14} /> AI ·{' '}
               {models.length > 1 ? (
-                <select aria-label="Which AI model" value={model} onChange={(event) => setModelPref(event.target.value)} disabled={busy}>
+                <Select aria-label="Which AI model" value={model} onChange={(event) => setModelPref(event.target.value)} disabled={busy}>
                   {models.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : (
                 model
               )}

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { api } from '../../api/client.js';
+import Fold from '../../ui/Fold.jsx';
+import { api } from '../../api/client.ts';
 import { isDemoMode } from '../../demo/demoMode.js';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import { Modal, Notice } from '../ui.jsx';
@@ -12,14 +13,12 @@ import ResultView from './ResultView.jsx';
 import ScenarioForm from './ScenarioForm.jsx';
 import './scenarios.css';
 import Icon from '../../ui/Icon.jsx';
-import { channelLabel } from '../newlayout/rowNames.js';
+import { channelLabel } from '../agent/rowNames.js';
 import { askConfirm } from '../../ui/dialogs.js';
 
-// Test scenarios: conversations written down with what must be true afterwards, kept in the agent's draft (`tests`) and run by the
-// server's runner. A scenario with a `model_script` runs the real runtime with a scripted model (free, the same every time); one without
-// is live (a real model: it costs money and is only run when asked). Results appear as scenarios finish, each with its checks, what to
-// do about a failure, and the trace of what happened. In demo mode there is no runtime: an imitation answers in the same shapes and
-// says so.
+// Test scenarios: written conversations with what must be true afterwards, kept in the draft (`tests`) and run by the
+// server. With a `model_script` a run is scripted (free, repeatable); without, it is live (a real model that costs
+// money, run only when asked). In demo mode an imitation answers in the same shapes and says so.
 
 const STATUS = { passed: ['Passed', 'good'], failed: ['Failed', 'bad'], error: ['Broke', 'bad'], skipped: ['Skipped', 'idle'], running: ['Running…', 'warn'] };
 const Chip = ({ status }) => {
@@ -41,12 +40,13 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
   const config = editor.parsed.value;
   const ready = editor.status === 'ready' && editor.isObject && !editor.parsed.error;
   const scenarios = useMemo(() => (Array.isArray(config?.tests) ? config.tests.filter((s) => s && typeof s === 'object') : []), [config]);
-  const [editing, setEditing] = useState(null); // { index: number | -1 (new), scenario }
+  // the scenario in the form, by id (null: new), not by list position, which a delete or import can change
+  const [editing, setEditing] = useState(null); // { id: string | null, scenario }
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importResult, setImportResult] = useState(null);
   const [paid, setPaid] = useState({ live: false, judge: false });
-  const [network, setNetwork] = useState(false); // let the bot's API calls reach real systems (the server refuses unless an operator allows it)
+  const [network, setNetwork] = useState(false); // let API calls reach real systems (only if an operator allows it)
   const [confirm, setConfirm] = useState(null); // 'live' | 'judge'
   const [queued, setQueued] = useState(null); // the ids the current run was asked for (null = all)
   const [mockAdded, setMockAdded] = useState({}); // scenario id -> ["GET /x"]
@@ -54,6 +54,9 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
   const saved = useAsync((signal) => api.listTests(botId, { ref: 'draft' }, { signal }), [botId]);
   const heads = useAsync((signal) => api.listTestRuns(botId, 10, { signal }), [botId]);
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId]);
+  // the newest version's own scenarios, so a run covering only some of them is not called a pass of all
+  const newestVersion = Array.isArray(versions.data) ? versions.data[0]?.version : undefined;
+  const newestRead = useAsync((signal) => (newestVersion ? api.getVersion(botId, newestVersion, { signal }) : Promise.resolve(null)), [botId, newestVersion]);
   const list = useMemo(() => normalizeScenarioList(saved.data), [saved.data]);
   const headlines = useMemo(() => (Array.isArray(heads.data) ? heads.data.map(normalizeHeadline) : []), [heads.data]);
 
@@ -97,7 +100,11 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
   const latest = run && isFinished(run.status) ? run : headlines.find((h) => isFinished(h.status)) || null;
   const testedVersion = latest?.checksum ? (Array.isArray(versions.data) ? versions.data : []).find((v) => v.checksum === latest.checksum) : null;
   const newest = Array.isArray(versions.data) ? versions.data[0] : null;
-  const newestStatus = newest ? testStatusOf(newest, headlines.length ? headlines : run ? [run] : []) : null;
+  const newestTests = newestRead.data?.version === newest?.version ? newestRead.data?.config?.tests : null;
+  const newestStatus =
+    newest && !newestRead.loading
+      ? testStatusOf(newest, headlines.length ? headlines : run ? [run] : [], { scenarioCount: Array.isArray(newestTests) ? newestTests.length : 0 })
+      : null;
 
   const turnOn = (what) => setConfirm(what);
   const accept = () => {
@@ -167,7 +174,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
           {paid.live || paid.judge ? ' · uses a paid model' : ''}
           {network ? ' · real requests' : ''}
         </button>
-        <button type="button" className="quietButton" disabled={!!editing} onClick={() => setEditing({ index: -1, scenario: newScenario(config) })}>
+        <button type="button" className="quietButton" disabled={!!editing} onClick={() => setEditing({ id: null, scenario: newScenario(config) })}>
           <Icon name="plus" size={14} /> New scenario
         </button>
         <button type="button" className="quietButton" aria-expanded={importOpen} onClick={() => setImportOpen((v) => !v)}>
@@ -273,11 +280,13 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
               onClick={() => {
                 const result = parseImport(importText, config);
                 setImportResult(result);
-                if (result.scenarios.length) {
-                  writeTests([...scenarios, ...result.scenarios]);
-                  if (!result.problems.length) {
+                if (result.scenarios.length) writeTests([...scenarios, ...result.scenarios]);
+                // what was added (or already there) leaves the box, so "Add them" again adds nothing twice
+                if (result.rejected && (result.scenarios.length || result.already.length)) {
+                  if (result.rejected.length) setImportText(JSON.stringify(result.rejected, null, 2));
+                  else {
                     setImportText('');
-                    setImportOpen(false);
+                    if (result.scenarios.length && !result.already.length) setImportOpen(false);
                   }
                 }
               }}
@@ -290,6 +299,13 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
               {importResult.scenarios.length > 0 && (
                 <p className="scOk">
                   Added {importResult.scenarios.length} scenario{importResult.scenarios.length === 1 ? '' : 's'} to the draft.
+                  {importResult.problems.length > 0 && ' The box keeps only the ones below, to fix and add.'}
+                </p>
+              )}
+              {importResult.already?.length > 0 && (
+                <p className="stMuted">
+                  {importResult.already.length === 1 ? `“${importResult.already[0]}” is` : `${importResult.already.length} of them are`} in the draft already,
+                  so {importResult.already.length === 1 ? 'it was' : 'they were'} not added again.
                 </p>
               )}
               {importResult.problems.length > 0 && (
@@ -387,14 +403,16 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
       {editing && (
         <section className="stCard">
           <ScenarioForm
-            key={editing.index}
+            key={editing.id ?? '(new)'}
             initial={editing.scenario}
             config={config}
-            others={scenarios.filter((_, i) => i !== editing.index)}
-            isNew={editing.index < 0}
+            others={scenarios.filter((s) => editing.id === null || s?.id !== editing.id)}
+            isNew={editing.id === null}
             onCancel={() => setEditing(null)}
             onSave={(savedScenario) => {
-              writeTests(editing.index < 0 ? [...scenarios, savedScenario] : scenarios.map((s, i) => (i === editing.index ? savedScenario : s)));
+              // put back in place (by id); a new one, or one removed from the list meanwhile, goes at the end
+              const at = editing.id === null ? -1 : scenarios.findIndex((s) => s?.id === editing.id);
+              writeTests(at < 0 ? [...scenarios, savedScenario] : scenarios.map((s, i) => (i === at ? savedScenario : s)));
               setEditing(null);
             }}
           />
@@ -409,7 +427,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
               A scenario is one conversation: what the caller says, and what must be true afterwards (a tool was called, something was said, a state variable
               ended up a certain way, an API request was or wasn’t made).
             </span>
-            <button type="button" className="primaryCta compactCta" onClick={() => setEditing({ index: -1, scenario: newScenario(config) })}>
+            <button type="button" className="primaryCta compactCta" onClick={() => setEditing({ id: null, scenario: newScenario(config) })}>
               Write the first one
             </button>
           </div>
@@ -447,7 +465,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                         type="button"
                         className="quietButton"
                         disabled={!!editing}
-                        onClick={() => setEditing({ index, scenario: JSON.parse(JSON.stringify(scenario)) })}
+                        onClick={() => setEditing({ id: scenario.id, scenario: JSON.parse(JSON.stringify(scenario)) })}
                       >
                         Edit
                       </button>
@@ -455,6 +473,8 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                         type="button"
                         className="stFDel small"
                         aria-label={`Delete ${scenario.id}`}
+                        // not while it is open in the form above
+                        disabled={editing?.id === scenario.id}
                         onClick={async () => {
                           const ok = await askConfirm({
                             title: `Delete the scenario “${scenario.id}”?`,
@@ -472,7 +492,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                   {scenario.description && <p className="scDesc">{scenario.description}</p>}
                   <p className="scSaid">{(scenario.turns || []).map(describeTurn).join(' → ')}</p>
                   {result && (
-                    <details className={`scLast ${result.status}`} open={open || undefined}>
+                    <Fold className={`scLast ${result.status}`} open={open}>
                       <summary>
                         <Chip status={result.status} />{' '}
                         <small>
@@ -483,14 +503,19 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                       <ResultView
                         result={result}
                         scenario={scenario}
-                        onEdit={() => setEditing({ index, scenario: JSON.parse(JSON.stringify(scenario)) })}
+                        onEdit={() => setEditing({ id: scenario.id, scenario: JSON.parse(JSON.stringify(scenario)) })}
                         mockAdded={mockAdded[scenario.id] || []}
-                        onAddMock={(request) => {
-                          writeTests(scenarios.map((s, i) => (i === index ? addMockTo(s, request) : s)));
-                          setMockAdded((m) => ({ ...m, [scenario.id]: [...(m[scenario.id] || []), `${request.method || ''} ${request.path}`] }));
-                        }}
+                        // not while it is open in the form above, whose Save would put it back as it was
+                        onAddMock={
+                          editing?.id === scenario.id
+                            ? null
+                            : (request) => {
+                                writeTests(scenarios.map((s, i) => (i === index ? addMockTo(s, request) : s)));
+                                setMockAdded((m) => ({ ...m, [scenario.id]: [...(m[scenario.id] || []), `${request.method || ''} ${request.path}`] }));
+                              }
+                        }
                       />
-                    </details>
+                    </Fold>
                   )}
                 </li>
               );

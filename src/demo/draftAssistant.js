@@ -1,16 +1,13 @@
-// "Describe an agent and get a draft": turns a few sentences of requirements into an agent configuration to review and edit.
-//
-// THIS IS NOT AN AI MODEL. It reads the description with simple rules (keywords for what kind of agent, which channels, languages, tone;
-// sentences that say "never…" or "always…" become rules) and fills in a starter and a few fields. That is why every screen that shows
-// its result says so, lists what it ASSUMED, and lists what it could not decide (the questions). A real assistant would be another
-// `generate` with the same inputs and outputs: { config, summary, assumptions, questions, source }, behind `ASSISTANT`.
-// Pure: no network, no DOM, no randomness.
+// "Describe an agent and get a draft": turns a few sentences into an agent config to review and edit.
+// NOT AN AI MODEL: keyword rules fill in a starter, so every screen showing it lists its assumptions and questions.
+// A real assistant would be another `generate` behind `ASSISTANT`, same inputs and outputs. Pure, no randomness.
 
-import { STARTERS, addPersonHandoff, applyStarter } from '../studio/starters.js';
+import { STARTERS, addPersonHandoff, applyStarter, isVoiceChannel } from '../studio/starters.ts';
 import { buildChannel } from '../studio/form/presets.js';
 import { setProvider } from '../studio/models/config.js';
-import { baseOf } from '../studio/form/messages.js';
+import { baseOf } from '../studio/form/messages.ts';
 import { languageName } from '../studio/simple/simpleModel.js';
+import { REQUEST_FIELDS, setDetails } from '../studio/setup/setupModel.js';
 
 export const ASSISTANT = {
   kind: 'demo-rules',
@@ -115,8 +112,9 @@ const has = (text, words) => words.some((w) => text.includes(w));
 const shorten = (text, n) => (text.length > n ? `${text.slice(0, n - 1).trimEnd()}…` : text);
 
 // -> { ok: false, problem } or { ok: true, config, summary, assumptions, questions, source }.
-// `base` is the configuration the draft is made from (a new agent's minimal draft); its id and version are kept.
-export function generateDraft(description, base, { name } = {}) {
+//   base: the config the draft is made from (a new agent's minimal draft); its id and version are kept
+//   company: the business when the description names none (the workspace's name, from the first sign-in)
+export function generateDraft(description, base, { name, company: fallbackCompany } = {}) {
   const raw = String(description || '').trim();
   if (raw.length < MIN_DESCRIPTION)
     return { ok: false, problem: 'Describe what the agent should do in a sentence or two, for example who it talks to and what it helps with.' };
@@ -151,17 +149,17 @@ export function generateDraft(description, base, { name } = {}) {
   if (company && company[1].length > 1 && !notACompany.has(company[1].toLowerCase().split(' ')[0])) {
     config.persona.company = company[1];
     assumptions.push(`The company is ${company[1]}.`);
+  } else if (fallbackCompany) {
+    config.persona.company = fallbackCompany;
+    assumptions.push(`The company is ${fallbackCompany}, your workspace’s name.`);
   }
   if (named) config.meta = { ...config.meta, name: agentName };
 
   // 3. channels
   const voiceWords = ['voice', 'phone', 'call', 'calls', 'calling', 'dial', 'ring'];
   const chatWords = ['chat', 'website', 'widget', 'web chat', 'text'];
-  const voice =
-    has(
-      text,
-      voiceWords.map((w) => ` ${w}`),
-    ) || has(text, ['phone', 'voice', 'calls']);
+  // whole words: "called Maya" names it, it doesn't mean phone calls
+  const voice = voiceWords.some((w) => new RegExp(String.raw`\b${w}\b`, 'i').test(text));
   const chat = has(text, chatWords);
   const wanted = [];
   if (voice) wanted.push('phone');
@@ -181,7 +179,8 @@ export function generateDraft(description, base, { name } = {}) {
   config.channels = channels;
   const starter = STARTERS.find((item) => item.id === kind.id);
   config.channels.forEach((c) => {
-    if (c.greeting && typeof c.greeting.say === 'string' && starter?.greeting) c.greeting.say = starter.greeting(agentName);
+    if (c.greeting && typeof c.greeting.say === 'string' && starter?.greeting)
+      c.greeting.say = starter.greeting(agentName, config.persona.company, isVoiceChannel(c));
   });
   assumptions.push(`Reachable by ${channels.map((c) => c.id.replace(/_/g, ' ')).join(' and ')}${voice ? '' : ', since no channel was mentioned'}.`);
   if (channels.some((c) => ['sip_voice', 'web_voice'].includes(c.type))) {
@@ -204,9 +203,11 @@ export function generateDraft(description, base, { name } = {}) {
     const primary = english ? 'en-US' : LOCALE_OF[spoken[0]];
     config.defaults = { ...config.defaults, language: { primary, speaks } };
     assumptions.push(
-      `It speaks ${speaks.map((c) => languageName(c)).join(' and ')}; the primary language is ${languageName(primary)}. Its fixed lines are written in English only: add the other languages under Messages.`,
+      `It speaks ${speaks.map((c) => languageName(c)).join(' and ')}; the primary language is ${languageName(primary)}. Its greeting and goodbye are written in English only: add the other languages in the “Language and voice” step.`,
     );
-    questions.push(`The fixed lines (greeting, goodbye) are in English. Write them in ${spoken.map((c) => languageName(c)).join(', ')} under Messages.`);
+    questions.push(
+      `The fixed lines (greeting, goodbye) are in English. Write them in ${spoken.map((c) => languageName(c)).join(', ')} in the “Language and voice” step.`,
+    );
   }
 
   // 5. tone
@@ -237,6 +238,27 @@ export function generateDraft(description, base, { name } = {}) {
       );
     }
     questions.push('Which number should callers be transferred to? Set it on the transfer under Telephony.');
+  }
+
+  // 7b. requests to take down for the team: a booking, an order, a call-back
+  // whole words ("in order to" is not an order, "bookkeeping" not a booking)
+  const asks = [
+    ['book', /\bbook(s|ed|ing|ings)?\b/],
+    ['appointment', /\bappointments?\b/],
+    ['reservation', /\breserv(e|es|ed|ation|ations)\b/],
+    ['order', /\border(s|ed|ing)?\b(?! to\b)/],
+    ['call-back', /\bcall[ -]?backs?\b/],
+  ]
+    .filter(([, re]) => re.test(text))
+    .map(([word]) => word);
+  if (asks.length) {
+    config = setDetails(config, true, { fields: REQUEST_FIELDS });
+    assumptions.push(
+      `It takes requests (it mentions ${asks
+        .slice(0, 2)
+        .map((w) => `“${w}”`)
+        .join(' and ')}): it asks for the name, phone number, what they need and a day and time, and your team confirms each one.`,
+    );
   }
 
   // 8. the role carries the description itself

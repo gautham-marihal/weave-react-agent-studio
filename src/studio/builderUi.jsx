@@ -1,12 +1,10 @@
 import React, { useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-// The Builder's own form pieces (help bubble, field, switch, card), shared by the Studio's screens. They are styled
-// by the `builder*` rules in styles.css.
+// The "?" help bubble that explains a setting, shared through pages/shared.jsx; styled by `builder*` in styles.css.
 
-// Shared help tooltip. A click opens it and never closes it: a mouse has already opened it by hovering, so a toggle would shut it on the click that was meant to read it; it closes on Escape, on scroll, on leaving or on moving focus away. The bubble renders in a portal with fixed positioning, so scrolling
-// panels and card edges can never clip it; it is clamped inside the viewport on both sides,
-// flips below the icon when there is no room above, and its arrow keeps pointing at the icon.
+// A click only opens it: hovering already did, so a toggle would shut it on the click meant to read it. Escape, scroll,
+// leave or blur close it. A fixed portal keeps panels from clipping it; it stays in the viewport and flips when needed.
 export function HelpTooltip({ text: value, className = 'builderHelp', label = '?' }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
@@ -83,110 +81,5 @@ export function HelpTooltip({ text: value, className = 'builderHelp', label = '?
           document.body,
         )}
     </span>
-  );
-}
-
-function Help({ text: value }) {
-  return <HelpTooltip text={value} />;
-}
-
-export function Field({
-  label,
-  help,
-  example,
-  value,
-  onChange,
-  multiline = false,
-  type = 'text',
-  children,
-  hint,
-  invalid = false,
-  rows = 4,
-  min,
-  requirement,
-}) {
-  const inputId = useId();
-  const need = requirement || 'required';
-  return (
-    <div className={`builderField ${invalid ? 'invalid' : ''}`}>
-      <span className="builderFieldLabel">
-        <label htmlFor={inputId}>{label}</label>
-        {need !== 'required' && (
-          <span className={`fieldNeed ${need}`} title={need === 'optional' ? 'You can leave this empty.' : 'Not required, but the agent works better with it.'}>
-            {need === 'optional' ? 'Optional' : 'Recommended'}
-          </span>
-        )}
-        {help && <Help text={help} />}
-      </span>
-      {children ||
-        (multiline ? (
-          <textarea
-            id={inputId}
-            value={value ?? ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={example}
-            rows={rows}
-            aria-invalid={invalid || undefined}
-          />
-        ) : (
-          <input
-            id={inputId}
-            type={type}
-            min={min}
-            value={value ?? ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={example}
-            aria-invalid={invalid || undefined}
-          />
-        ))}
-      {hint && <small className="builderFieldHint">{hint}</small>}
-    </div>
-  );
-}
-
-export function Toggle({ label, checked, onChange, help, compact = false }) {
-  const flip = () => onChange(!checked);
-  return (
-    <div
-      role="switch"
-      tabIndex={0}
-      aria-checked={checked}
-      aria-label={label}
-      className={`builderToggle ${checked ? 'on' : 'off'} ${compact ? 'compact' : ''}`}
-      onClick={flip}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
-        if (event.key === ' ' || event.key === 'Enter') {
-          event.preventDefault();
-          flip();
-        }
-      }}
-    >
-      <span className="builderToggleCopy">
-        <strong>{label}</strong>
-        {help && <Help text={help} />}
-      </span>
-      {!compact && <span className="builderToggleState">{checked ? 'Enabled' : 'Disabled'}</span>}
-      <span className="builderSwitch" aria-hidden="true">
-        <i />
-      </span>
-    </div>
-  );
-}
-
-export function Card({ title, subtitle, children, action, help }) {
-  return (
-    <section className="builderCard">
-      <div className="builderCardHead">
-        <div>
-          <h3>
-            {title} {help && <Help text={help} />}
-          </h3>
-          {subtitle && <p>{subtitle}</p>}
-        </div>
-        {action}
-      </div>
-      {children}
-    </section>
   );
 }

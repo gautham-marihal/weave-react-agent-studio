@@ -96,7 +96,8 @@ await page.waitForFunction(() => document.querySelector('.inBell b')?.textConten
 check('“I’m on it” takes it off the count, and says who', /On it: E2E/.test(await page.locator('.inAlert.seen .inStatus').textContent()));
 const slow = page.locator('.inAlert.new').first();
 await slow.getByRole('button', { name: 'Snooze' }).click();
-await slow.getByRole('menuitem', { name: 'For 4 hours' }).click();
+// the choices are drawn above the page (a Radix menu), not inside the alert
+await page.getByRole('menuitem', { name: 'For 4 hours' }).click();
 await page.waitForFunction(() => !document.querySelector('.inBell b'));
 check('a snoozed alert is off the count too', (await bellCount()) === 0);
 check(
@@ -146,7 +147,12 @@ check('the agent’s Home says what is wrong with it', /escalate_to_human/.test(
 await shot('home');
 
 // ---- Questions ---------------------------------------------------------------------------------------------------------------------------------------
-await page.locator('.nlNav button', { hasText: 'Questions' }).click();
+// the agent's Questions page: the Monitor tab, then its Questions
+async function openQuestions() {
+  await page.locator('nav[aria-label="Agent stages"] button[data-stage="monitor"]').click();
+  await page.locator('nav[aria-label="Monitor"] button[data-page="questions"]').click();
+}
+await openQuestions();
 await page.waitForSelector('.inQ');
 const questions = await page.locator('.inQ h3').allTextContents();
 const counts = (await page.locator('.inQ .inQCount').allTextContents()).map((t) => parseInt(t, 10));
@@ -156,7 +162,7 @@ check(
   ['paypal', 'student', 'malaysia'].every((w) => questions.some((q) => q.toLowerCase().includes(w))),
   questions.join(' | '),
 );
-check('one-off questions wait behind a line', /Asked once: \d+ more question/.test(await page.locator('.inQuestions > .inMore').textContent()));
+check('one-off questions wait behind a line', /Asked once: \d+ more question/.test(await page.locator('.inQuestions .rxPartPanel > .inMore').textContent()));
 await page.locator('.inQ').first().locator('.inMore').click();
 check(
   'how it was asked, and why it went unanswered, are shown',
@@ -177,7 +183,7 @@ await page.getByRole('button', { name: 'See the test' }).click();
 await page.waitForSelector('.nlPage');
 await page.waitForTimeout(400);
 check('the test that asks it is on the Scenarios', /answers_deliver_sunday/.test(await page.locator('.nlPage').textContent()));
-await page.locator('.nlNav button', { hasText: 'Questions' }).click();
+await openQuestions();
 await page.getByRole('tab', { name: /Answered/ }).click();
 await page.waitForSelector('.inQ .inDone');
 check('an answered question says it hasn’t been asked unanswered since', /Not asked unanswered since/.test(await page.locator('.inQ').first().textContent()));
@@ -190,7 +196,12 @@ check(
 
 const paypal = page.locator('.inQ', { hasText: /paypal/i });
 await paypal.getByRole('button', { name: 'Dismiss' }).click();
-await paypal.getByRole('menuitem', { name: 'Already taken care of' }).click();
+await page.getByRole('menuitem', { name: 'Already taken care of' }).click();
+// the menu's choice is made once the menu has closed (ui/layer.ts afterMenu): waited for, not read at once
+await page
+  .getByRole('tab', { name: /Dismissed \(1\)/ })
+  .waitFor({ timeout: 3000 })
+  .catch(() => {});
 check('Dismiss moves it to Dismissed', /Dismissed \(1\)/.test(await page.getByRole('tab', { name: /Dismissed/ }).textContent()));
 await page.getByRole('tab', { name: /Dismissed/ }).click();
 await page.getByRole('button', { name: 'Bring it back' }).click();

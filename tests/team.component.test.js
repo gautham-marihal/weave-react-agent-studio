@@ -1,7 +1,7 @@
 import test, { after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { $, $$, actions, byText, setupDom, teardownDom, textOf } from './component/dom.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/demoApi.js';
 import { openTeam } from '../src/studio/team/useTeam.js';
 
@@ -142,7 +142,7 @@ test('the list can be filtered to the people who can open one agent', async () =
     await a.click($(drawer(), `input[aria-label="${only}"]`));
     await a.click(byText(drawer(), 'button', /Send invitation/));
   }
-  await a.choose($(app.container, 'select[aria-label="Who can open"]'), 'a');
+  await a.choose($(app.container, '.rxSelect[aria-label="Who can open"]'), 'a');
   const emails = $$(app.container, '.tmRow').map((r) => r.getAttribute('data-member'));
   assert.deepEqual(emails.sort(), ['one@acme.com', 'owner@acme.com']);
   await app.unmount();

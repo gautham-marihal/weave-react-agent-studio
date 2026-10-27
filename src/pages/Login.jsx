@@ -4,8 +4,13 @@ import { isDemoMode } from '../demo/demoMode.js';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
+import Select from '../ui/Select.tsx';
 
-export function Login({ theme, onToggleTheme, onLogin, onBack }) {
+// Signing in (Login) and, the first time, saying who you are (ProfileSetup). There is no real sign-in in the studio:
+// who is signed in is kept in this browser (docs/PRODUCTION.md says what goes in front of it for real).
+
+//   newcomer: came to start (a "Create…" button) and never set up here, so greeted as new, not "welcome back"
+export function Login({ theme, onToggleTheme, onLogin, onBack, newcomer = false }) {
   const [keep, setKeep] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,9 +39,19 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
       </header>
       <div className="loginWrap">
         <div className="loginIntro">
-          <div className="eyebrow cyan">Welcome back</div>
-          <h1>Pick up where you left off.</h1>
-          <p>Your agents, tests, configurations, and workspace settings stay together in one place.</p>
+          {newcomer ? (
+            <>
+              <div className="eyebrow cyan">Get started</div>
+              <h1>Build your first agent in minutes.</h1>
+              <p>Say what it should do in your own words, try it out, then put it live. No code needed.</p>
+            </>
+          ) : (
+            <>
+              <div className="eyebrow cyan">Welcome back</div>
+              <h1>Pick up where you left off.</h1>
+              <p>Your agents, tests, configurations, and workspace settings stay together in one place.</p>
+            </>
+          )}
           <div className="loginHighlights">
             <div>
               <span>01</span>
@@ -71,8 +86,14 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
               <Icon name="shield" size={15} />
             </span>
           </div>
-          <h2>Sign in to Weave</h2>
-          <p className="formIntro">{demo ? 'Enter any email and password to continue.' : 'Use your work email to open your workspaces.'}</p>
+          <h2>{newcomer ? 'Get started with Weave' : 'Sign in to Weave'}</h2>
+          <p className="formIntro">
+            {demo
+              ? `Enter any email and password to ${newcomer ? 'start' : 'continue'}.`
+              : newcomer
+                ? 'Use your work email to set up your workspace.'
+                : 'Use your work email to open your workspaces.'}
+          </p>
           {/* sign-in isn't checked by a server yet: said plainly, because it decides who can change the agents */}
           <p className="demoNotice" role="note">
             {/* in demo mode the card's own label already says "Demo sign-in" */}
@@ -141,7 +162,7 @@ export function Login({ theme, onToggleTheme, onLogin, onBack }) {
             </div>
           )}
           <button className="primaryCta full" type="submit">
-            Continue to workspace
+            {newcomer ? 'Continue' : 'Continue to workspace'}
           </button>
         </form>
       </div>
@@ -227,7 +248,7 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
 
           <label>
             <span>What’s your role?</span>
-            <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <Select value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="">Select your role</option>
               <option>Founder / Owner</option>
               <option>Product</option>
@@ -236,7 +257,7 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
               <option>Customer Support</option>
               <option>Sales</option>
               <option>Other</option>
-            </select>
+            </Select>
           </label>
 
           <div className="profileEmail">

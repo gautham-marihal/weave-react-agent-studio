@@ -1,7 +1,6 @@
-// "Try a line": the four previews that answer for a setting by running the runtime's own code on a sample (FRONTEND_GUIDE 10.1): how a line would be said
-// (`POST /preview/speech`), what the safety rules do with a line a caller might say (`/preview/guardrails`), what redaction would hide (`/preview/redaction`)
-// and a task step by step (`/preview/task`). They call nothing, spend nothing and read no secrets, and they read the config as it is in the editor.
-// This module reads each answer TOLERANTLY (a missing part is left out, never an error) and turns it into the plain words the panels show. Pure: no DOM.
+// "Try a line": the four previews that run the runtime's own code on a sample (FRONTEND_GUIDE 10.1): speech,
+// guardrails, redaction and a task step by step. They call nothing, spend nothing, read no secrets, and use the config
+// as it is in the editor. Each answer is read tolerantly into plain words. Pure: no DOM.
 
 import { isObj } from './engine.js';
 import { enumLabel } from './plainEnums.js';
@@ -10,7 +9,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v));
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
-// ---- what the rules are called ------------------------------------------------------------------------------------------------------------------
+// ---- what the rules are called --------------------------------------------------------------------------------------
 export const RULE_WORDS = {
   currency: 'an amount of money',
   spell: 'spelled out letter by letter',
@@ -22,7 +21,8 @@ export const RULE_WORDS = {
 };
 export const ruleWords = (type) => RULE_WORDS[type] || (type ? String(type).replace(/_/g, ' ') : 'a rule');
 
-// What a safety rule did, in the words of the scenario checks (kept here so the panels do not import the scenario form).
+// What a safety rule did, in the words of the scenario checks
+// (kept here so the panels do not import the scenario form).
 export const ACTION_WORDS = {
   deflect: 'It declines and answers with a fixed line.',
   redact_in_logs: 'It hides the match in the saved records. The agent still reads the line.',
@@ -32,7 +32,7 @@ export const ACTION_WORDS = {
 };
 export const actionWords = (action) => ACTION_WORDS[action] || (action ? `It does “${action}”.` : '');
 
-// ---- speech ---------------------------------------------------------------------------------------------------------------------------------
+// ---- speech ---------------------------------------------------------------------------------------------------------
 export function normalizeSpeech(raw) {
   const r = isObj(raw) ? raw : {};
   return {
@@ -61,7 +61,7 @@ export function speechVerdict(view) {
   return `${view.changes.length} change${view.changes.length === 1 ? '' : 's'} before the voice speaks it.`;
 }
 
-// ---- redaction ------------------------------------------------------------------------------------------------------------------------------
+// ---- redaction ------------------------------------------------------------------------------------------------------
 export function normalizeRedaction(raw) {
   const r = isObj(raw) ? raw : {};
   return {
@@ -79,12 +79,12 @@ export function normalizeRedaction(raw) {
   };
 }
 
-// The sample line cut into pieces: { text, hit } so a hit can be drawn marked. Hits that overlap or lie outside the line are ignored.
+// The sample line cut into pieces: { text, hit } so a hit can be drawn
+// marked. Hits that overlap or lie outside the line are ignored.
 export function markHits(sample, found) {
   const chars = Array.from(text(sample)); // the server counts characters, not UTF-16 units
-  const line = { length: chars.length };
   const spans = list(found)
-    .filter((f) => Number.isInteger(f.start) && Number.isInteger(f.end) && f.start >= 0 && f.end > f.start && f.end <= line.length)
+    .filter((f) => Number.isInteger(f.start) && Number.isInteger(f.end) && f.start >= 0 && f.end > f.start && f.end <= chars.length)
     .sort((a, b) => a.start - b.start);
   const pieces = [];
   let at = 0;
@@ -118,7 +118,7 @@ export const FOUND_WORDS = {
 };
 export const foundWords = (kind) => FOUND_WORDS[kind] || (kind ? String(kind).replace(/_/g, ' ') : 'a match');
 
-// ---- guardrails -----------------------------------------------------------------------------------------------------------------------------
+// ---- guardrails -----------------------------------------------------------------------------------------------------
 export function normalizeGuardrails(raw) {
   const r = isObj(raw) ? raw : {};
   return {
@@ -148,7 +148,8 @@ export function normalizeGuardrails(raw) {
   };
 }
 
-// A line as the config holds it (`say`): words, a catalogue message, or words per language; '' when it can't be put in a sentence.
+// A line as the config holds it (`say`): words, a catalogue message,
+// or words per language; '' when it can't be put in a sentence.
 function sayText(v) {
   if (typeof v === 'string') return v;
   if (!isObj(v)) return '';
@@ -158,8 +159,8 @@ function sayText(v) {
   return first || '';
 }
 
-// How each action works, with the line it says by default (FRONTEND_GUIDE 10.1: `how_actions_work` and `default_lines` are the form's help text), in the
-// order of how strongly they act. [{ action, label, text, line }]
+// How each action works, with the line it says by default (FRONTEND_GUIDE 10.1: `how_actions_work` and `default_lines`
+// are the form's help text), in the order of how strongly they act. [{ action, label, text, line }]
 export function guardrailActions(view) {
   const lines = Object.fromEntries((view?.defaultLines || []).map((l) => [l.action, l.line]));
   const how = Object.fromEntries((view?.howActionsWork || []).filter((a) => isObj(a)).map((a) => [a.action, a.text]));
@@ -168,7 +169,8 @@ export function guardrailActions(view) {
   return actions.map((action) => ({ action, label: enumLabel('action', action), text: how[action] || '', line: lines[action] || '' }));
 }
 
-// The limits in force and the goodbye said when one is reached (`limits` of the guardrails preview), in a sentence; '' when none is set.
+// The limits in force and the goodbye said when one is reached (`limits`
+// of the guardrails preview), in a sentence; '' when none is set.
 export function limitsSentence(limits) {
   if (!isObj(limits)) return '';
   const n = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
@@ -192,7 +194,7 @@ export function guardrailsVerdict(view) {
   return `${view.matched.length === 1 ? 'The rule' : 'The rules'} ${names} caught this line. ${actionWords(view.action)}`.trim();
 }
 
-// ---- tasks ----------------------------------------------------------------------------------------------------------------------------------
+// ---- tasks ----------------------------------------------------------------------------------------------------------
 export const STEP_WORDS = { collect: 'Ask the caller', call: 'Call a tool', say: 'Say something' };
 
 export function normalizeTask(raw) {
@@ -253,7 +255,7 @@ export function stepState(step) {
   return { tag: 'runs', words: '' };
 }
 
-// ---- the sentences the panels share -----------------------------------------------------------------------------------------------------------
+// ---- the sentences the panels share ---------------------------------------------------------------------------------
 export const PREVIEW_SOURCE = { server: 'exact', demo: 'demo imitation' };
 
 // What went wrong asking, in a customer's words.

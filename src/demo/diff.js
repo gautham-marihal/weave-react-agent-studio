@@ -1,6 +1,6 @@
-// A difference between two configurations in the shape the API's diff answers with: [{ op: 'add' | 'remove' | 'change', path, before?, after? }].
-// Items of a list whose items all have an `id` are addressed by it ("id=billing"), as the API does; any other list by position.
-// Pure: no network, no DOM.
+// The difference between two configs in the API's diff shape:
+//   [{ op: 'add' | 'remove' | 'change', path, before?, after? }]
+// List items that all have an `id` are addressed by it ("id=billing"), as the API does; other lists by position. Pure.
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);

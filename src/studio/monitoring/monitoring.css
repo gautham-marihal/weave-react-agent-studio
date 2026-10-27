@@ -4,6 +4,13 @@
   gap: 18px;
   min-width: 0;
 }
+/* while a new reading comes in, the last one stays, dimmed (as on Speed): the numbers, the chart and the lists, not the controls above them */
+.mnPage > :not(.welcomeBlock) {
+  transition: opacity 0.2s ease;
+}
+.mnPage.reading > :not(.welcomeBlock) {
+  opacity: 0.55;
+}
 .mnControls {
   display: flex;
   align-items: center;

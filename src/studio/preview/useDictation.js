@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-// Speaking to the simulated agent: the browser's own speech recognition turns what is said into text that goes into the message box (the studio uploads nothing;
-// where the recognition runs is up to the browser). Where the browser has none, `supported` is false and the button says so. The real agent hears the microphone
-// itself, through the session; this is only for the simulated one.
+// Speaking to the simulated agent: the browser's own speech recognition types into the message box (the studio uploads
+// nothing). Without it, `supported` is false and the button says so. The real agent hears the microphone itself.
 export function useDictation(onText) {
   const Recognition = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : undefined;
   const [listening, setListening] = useState(false);
@@ -19,7 +18,7 @@ export function useDictation(onText) {
     }
     setListening(false);
   }, []);
-  // for when what was said is no longer wanted (the message was sent, the conversation ended): nothing more is delivered from it
+  // when what was said is no longer wanted (message sent, conversation ended): nothing more is delivered from it
   const cancel = useCallback(() => {
     const rec = ref.current;
     ref.current = null;
@@ -70,8 +69,8 @@ export function useDictation(onText) {
   return { supported: !!Recognition, listening, error, cancel, toggle: () => (listening ? stop() : start()) };
 }
 
-// What a channel lets the caller send, read from its settings (`modalities.input`, and `inputs.image` for pictures): the preview offers the microphone, the picture
-// button and the camera exactly when the channel does. `sessionChannel` is what a started session reported, used when the config does not say.
+// What a channel lets the caller send (`modalities.input`, and `inputs.image` for pictures), so the preview offers the
+// microphone, pictures and camera exactly when the channel does. `sessionChannel` fills in when the config doesn't say.
 export function inputCapabilities(config, sessionChannel) {
   const channels = Array.isArray(config?.channels) ? config.channels : [];
   const channel =

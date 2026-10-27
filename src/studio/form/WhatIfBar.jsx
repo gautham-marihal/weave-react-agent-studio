@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { whatIfValue, whatIfVariables } from './serverPreview.js';
+import Select from '../../ui/Select.tsx';
 
-// "Preview as…": the what-ifs the server's previews take: which channel the caller is on, what time it is, which number they call from, and what a few state
-// values are. Shared by the prompt preview and the tool's "Try it", so both ask the same questions in the same words. Only what was changed from the
-// defaults is sent.
+// "Preview as…": the what-ifs the server's previews take (channel, time, caller number, a few state values). Shared by
+// the prompt preview and "Try it" so both ask the same in the same words; only changes from the defaults are sent.
 
 // The what-if choices as state, with the request fields they make: { channel, state, nowLocal, callerPhone }.
 export function useWhatIf(config) {
@@ -40,7 +40,7 @@ export function useWhatIf(config) {
   };
 }
 
-export default function WhatIfBar({ config, what, phone = true, idPrefix = 'wi' }) {
+export default function WhatIfBar({ config, what, phone = true }) {
   const channels = (Array.isArray(config?.channels) ? config.channels : []).map((channel) => channel?.id).filter(Boolean);
   return (
     <div className="stPromptAs" role="group" aria-label="Preview as">
@@ -48,14 +48,14 @@ export default function WhatIfBar({ config, what, phone = true, idPrefix = 'wi' 
       {channels.length > 0 && (
         <label>
           <span>On channel</span>
-          <select className="stFInput small" value={what.channel} onChange={(event) => what.setChannel(event.target.value)} aria-label="Preview on channel">
+          <Select className="stFInput small" value={what.channel} onChange={(event) => what.setChannel(event.target.value)} aria-label="Preview on channel">
             <option value="">The first enabled one</option>
             {channels.map((id) => (
               <option key={id} value={id}>
                 {id}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       <label>
@@ -84,12 +84,12 @@ export default function WhatIfBar({ config, what, phone = true, idPrefix = 'wi' 
         </label>
       )}
       {what.variables.map((v) => (
-        <label key={`${idPrefix}-${v.name}`}>
+        <label key={v.name}>
           <span>
             If <code>{v.name}</code> were
           </span>
           {v.type === 'boolean' ? (
-            <select
+            <Select
               className="stFInput small"
               value={what.typed[v.name] ?? ''}
               onChange={(event) => what.setTyped((old) => ({ ...old, [v.name]: event.target.value }))}
@@ -98,7 +98,7 @@ export default function WhatIfBar({ config, what, phone = true, idPrefix = 'wi' 
               <option value="">as it starts</option>
               <option value="true">true</option>
               <option value="false">false</option>
-            </select>
+            </Select>
           ) : (
             <input
               className="stFInput small"

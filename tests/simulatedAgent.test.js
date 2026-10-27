@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSimulatedAgent } from '../src/demo/simulatedAgent.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/demoApi.js';
+import { setDetails, setHandOver } from '../src/studio/setup/setupModel.js';
 
 const support = () => applyStarter(minimalConfig('a', 'Sam'), 'support');
 
@@ -112,4 +113,57 @@ test('it is deterministic: the same conversation gives the same replies', () => 
     return [a.reply('hi').messages[0].text, a.reply('speak to a person').messages[0].text, a.reply('bye').messages[0].text];
   };
   assert.deepEqual(run(), run());
+});
+
+// the agent a first-time user builds: requests on, a person to pass to with a number, documents to answer from
+const clinic = () => {
+  let config = applyStarter(minimalConfig('smile', 'Smile Dental'), 'appointment');
+  config = setHandOver(setDetails(config, true, { fields: ['name', 'phone', 'need', 'when'] }), true, { number: '+6561234567' });
+  return { ...config, knowledge: [{ id: 'knowledge', type: 'vector_store', mode: 'inject', sources: [] }] };
+};
+
+test('pain or an emergency goes to a person at once, put through when there is a number', () => {
+  const agent = createSimulatedAgent(clinic());
+  const out = agent.reply('I have really bad tooth pain');
+  assert.deepEqual(
+    out.toolCalls.map((c) => c.id),
+    ['escalate_to_human'],
+  );
+  assert.match(out.messages[0].text, /^I’m sorry to hear that\. I’ll put you through to someone on the team now\./);
+});
+
+test('a booking is taken down detail by detail, keeping the day and time it was asked for', () => {
+  const agent = createSimulatedAgent(clinic());
+  const first = agent.reply('Can I book a check-up on Saturday morning?');
+  assert.match(first.messages[0].text, /I can take that request for you\. Could I have your name/);
+  assert.match(agent.reply('Sam Tan').messages[0].text, /phone number/);
+  const done = agent.reply('91234567');
+  assert.match(done.messages[0].text, /Thank you, Sam\. I’ve noted your request for Saturday morning\. Our team will confirm it/);
+  assert.deepEqual(done.toolCalls[0].args, {
+    need: 'Can I book a check-up on Saturday morning?',
+    when: 'Saturday morning',
+    name: 'Sam Tan',
+    phone: '91234567',
+  });
+});
+
+test('it answers from the line of its documents that fits the question, and says plainly what it is otherwise', () => {
+  const agent = createSimulatedAgent(clinic());
+  const hits = [{ text: 'Prices:\n- Check-up and consultation: S$45\n- Scale and polish (cleaning): S$90', source: 'smile-dental-info.txt', score: 0.4 }];
+  assert.match(
+    agent.reply('How much is a cleaning?', { hits }).messages[0].text,
+    /^Scale and polish \(cleaning\): S\$90\. \(Simulated: found in smile-dental-info\.txt/,
+  );
+  assert.match(agent.reply('Do you sell bicycles?').messages[0].text, /simulated reply.*add the answer under What it knows/);
+  assert.match(agent.reply('What can you do?').messages[0].text, /take a request for our team.*pass you to someone on the team.*answer questions/);
+});
+
+test('a document run together into one passage still gives the one line asked about, and everyday words find it', () => {
+  const agent = createSimulatedAgent(clinic());
+  const passage =
+    'Address: 12 Orchard Road, Singapore 238826. Opening hours: Monday to Saturday, 9am to 6pm. Prices: - Check-up and consultation: S$45 - Scale and polish (cleaning): S$90 - X-ray: S$30 each';
+  const hits = [{ text: passage, source: 'info.txt', score: 0.2 }];
+  assert.match(agent.reply('How much is a cleaning?', { hits }).messages[0].text, /^Scale and polish \(cleaning\): S\$90\./);
+  assert.match(agent.reply('Where are you located?', { hits }).messages[0].text, /^Address: 12 Orchard Road/);
+  assert.match(agent.reply('When are you open?', { hits }).messages[0].text, /^Opening hours: Monday to Saturday/);
 });

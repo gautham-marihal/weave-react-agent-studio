@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { hiddenParts } from '../src/studio/form/hiddenParts.js';
 import { subscribeDialogs } from '../src/ui/dialogs.js';
-import { holdStagedPanel, stagedPanel, whenPanelKept } from '../src/studio/newlayout/stagedPanel.js';
+import { holdStagedPanel, stagedPanel, whenPanelKept } from '../src/studio/agent/stagedPanel.js';
 
-// A side panel of the new layout with changes not yet put in (no Done pressed): what replaces it (a search result opening another panel) asks first.
+// A side panel of an agent's page with changes not yet put in (no Done pressed): what replaces it (a search result opening another panel) asks first.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 test('with no panel waiting, what was asked for happens at once', () => {

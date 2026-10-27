@@ -1,6 +1,6 @@
-// What one call that is going on right now looks like on the Live board, worked out from its records: who is talking, what was said last, which agent has
-// it, how long it has run, and what in it needs a look (a caller left waiting, a tool that failed, a caller who asked for a person...). Pure: no React, no
-// network, no clock of its own (the time is passed in), so the board can redraw it every second and the tests can play a call through.
+// One call in progress as a Live board card, worked out from its records: who is talking, what was said last, which
+// agent has it, how long it has run, and what needs a look. Pure, with the time passed in, so the board can redraw it
+// every second and tests can play a call through.
 
 import { HANDOFF_TOOL, WANTS_A_PERSON, closeness } from '../insights/questionsModel.js';
 import { fixMojibake } from '../trace/records.js';
@@ -18,7 +18,7 @@ const text = (v) => fixMojibake(String(v ?? '')).trim();
 
 const TONE_RANK = { bad: 3, warn: 2, info: 1 };
 
-// A phone number with only its last digits showing: "+65 •••• 4471". Anything else (a web visitor's id) is not shown at all.
+// A phone number with only its last digits showing: "+65 •••• 4471"; anything else (a web visitor's id) is hidden.
 export function maskCaller(caller) {
   const raw = String(caller || '').trim();
   const digits = raw.replace(/\D/g, '');
@@ -43,10 +43,10 @@ export function clock(seconds) {
 
 const times = (n) => (n === 2 ? 'twice' : `${n} times`);
 
-// summary: the row of the call list (id, bot, room, channel, caller, started_at, status, last_event_at, handoffs)
-// records: its records so far, in order of seq
-// heardAtMs: when the board last received a record of it (its own clock), so durations do not depend on the server's clock agreeing with this one
-// nowMs: the time now, on this clock
+//   summary: the call list row (id, bot, room, channel, caller, started_at, status, last_event_at, handoffs)
+//   records: its records so far, in seq order
+//   heardAtMs: when the board last got a record, on this clock, so durations don't rely on the server's clock agreeing
+//   nowMs: the time now, on this clock
 export function liveCall(summary, records, { nowMs, heardAtMs = null, endedAtMs = null } = {}) {
   const s = isObj(summary) ? summary : {};
   const recs = list(records)
@@ -102,7 +102,7 @@ export function liveCall(summary, records, { nowMs, heardAtMs = null, endedAtMs 
         const error = r.error ?? r.err ?? null;
         const name = String(r.tool || r.name || 'a tool');
         tools.push({ tool: name, error: error ? String(error) : '', at: num(r.elapsed_s) });
-        // a hand-over to another agent is the agent_entered record that follows; a tool that passes the call to a person has none
+        // a hand-over to another agent is the next agent_entered record; a tool passing the call to a person has none
         if (!error && !r.handoff && HANDOFF_TOOL.test(name)) handovers.push({ to: 'a person', at: num(r.elapsed_s), tool: name });
         break;
       }
@@ -185,13 +185,13 @@ export function liveCall(summary, records, { nowMs, heardAtMs = null, endedAtMs 
   };
 }
 
-// The order of the board: what needs a look first (the worst, then the longest waiting), then the rest, longest running first.
+// Board order: what needs a look first (worst, then longest waiting), then the rest, longest running first.
 export function boardOrder(a, b) {
   const rank = (c) => (c.attention ? TONE_RANK[c.worst] : 0);
   return rank(b) - rank(a) || b.durationS - a.durationS;
 }
 
-// The line at the top of the board: how many calls now, how many need a look, how many ended in the last minutes, and per agent.
+// The line atop the board: calls now, how many need a look, how many ended in the last minutes, and per agent.
 export function boardSummary(calls) {
   const live = list(calls).filter((c) => c.status === 'live');
   const ended = list(calls).filter((c) => c.status !== 'live');
@@ -212,8 +212,8 @@ export const hiddenWords = (line) => {
   return `Caller spoke (${n} word${n === 1 ? '' : 's'})`;
 };
 
-// What a screen reader is told when the board changes: a new call, a call that now needs a look, a call that ended. `before` and `after` are
-// liveCall()s by key; names are the agents' names by id. At most `max` messages, the most important first.
+// What a screen reader hears when the board changes: a new call, one now needing a look, one that ended.
+// before/after: liveCall()s by key; names: agent names by id. At most `max` messages, most important first.
 export function changesToAnnounce(before, after, names = {}, max = 3) {
   const out = [];
   const name = (c) => names[c.bot] || c.bot;

@@ -1,4 +1,4 @@
-import { EXTRA_PAGE_IDS } from '../src/studio/newlayout/pages.js';
+import { EXTRA_PAGE_IDS } from '../src/studio/agent/pages.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { STAGES, TAB_IDS } from '../src/studio/journey.js';
@@ -31,7 +31,7 @@ test('the tabs are the four stages in the order of the work, and every tab is in
 });
 
 test('every tab the route knows is a tab of the journey, so no old screen or link is lost', () => {
-  // the addresses the stages had, and the agent's own pages (see newlayout/pages.js); every old address still opens
+  // the addresses the stages had, and the agent's own pages (see agent/pages.js); every old address still opens
   assert.deepEqual([...TABS].sort(), [...TAB_IDS, ...EXTRA_PAGE_IDS].sort());
   TAB_IDS.forEach((tab) => assert.equal(parseRoute(`#/bots/acme/${tab}`).tab, tab, `${tab} opens`));
   assert.equal(parseRoute('#/bots/acme').tab, 'config');

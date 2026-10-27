@@ -1,8 +1,9 @@
-// Which setting a Provider or Model box belongs to.
-// (voice-activity detection and the turn detector have a provider and no model; their providers come from GET /providers too)
+// Which setting a Provider or Model box belongs to. Voice-activity detection and the turn detector have a provider but
+// no model (their providers come from GET /providers too).
 const STAGES = ['stt', 'llm', 'tts', 'realtime', 'vad', 'turn_detector'];
 
-// 'llm' for defaults.models.llm.model, and for its fallbacks too; null for any other setting called "model" or "provider".
+// 'llm' for defaults.models.llm.model, and for its fallbacks
+// too; null for any other setting called "model" or "provider".
 export function modelStageOf(path) {
   const leaf = path[path.length - 1];
   if (leaf !== 'provider' && leaf !== 'model') return null;

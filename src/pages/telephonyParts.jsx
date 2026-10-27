@@ -5,7 +5,7 @@ import { Glyph } from './shared.jsx';
 import Icon from '../ui/Icon.jsx';
 import { askConfirm } from '../ui/dialogs.js';
 
-// The parts the Telephony pages share: a table with search, column choice and row actions, and the dialog frame with its labelled fields.
+// What the Telephony pages share: a table with search, column choice and row actions, and a dialog frame with fields.
 
 // Table with working search, a choice of visible columns, row deletion and an empty state.
 export function TelephonyTablePanel({

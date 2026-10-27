@@ -1,0 +1,39 @@
+/* ---- dragging the items of a list into another order (ui/Sortable.jsx) ------------------------------------------------------------------------------ */
+/* the handle: as quiet as the Move up and Move down buttons beside it, a grab hand over it; a finger on it drags the item, not the page */
+.dragHandle {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--dim, var(--muted));
+  cursor: grab;
+  touch-action: none;
+}
+.dragHandle:hover {
+  color: var(--textStrong);
+  background: var(--surface2);
+}
+.dragHandle.isDragging,
+.dragHandle:active {
+  cursor: grabbing;
+  color: var(--textStrong);
+}
+
+/* the item being moved: lifted over the others while they make room */
+.sortItem.isDragging,
+.stFGroup.isDragging {
+  position: relative;
+  z-index: 5;
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lg);
+}
+.stAction.isDragging {
+  border-radius: 0 10px 10px 0;
+}
+/* (with reduced motion asked for, the others make room at once: useSortableItem leaves their slide out) */

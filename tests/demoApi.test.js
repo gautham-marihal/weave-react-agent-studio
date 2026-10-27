@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createDemoApi, memoryStorage, minimalConfig } from '../src/demo/demoApi.js';
 import { diffConfigs } from '../src/demo/diff.js';
 import { validateDemo } from '../src/demo/demoValidate.js';
+import { DEMO_SAMPLE_IDS } from '../src/demo/demoMode.js';
 
 const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
 const fresh = (options = {}) => createDemoApi({ storage: memoryStorage(), loadSchema: async () => schema, ...options });
@@ -13,6 +14,7 @@ test('the demo starts with a few agents, with some history to look at, and every
   const api = fresh();
   const { body: list } = await call(api, 'GET', '/bots');
   assert.deepEqual(list.map((b) => b.id).sort(), ['acme-support', 'bookings', 'front-desk']);
+  assert.deepEqual(list.map((b) => b.id).sort(), [...DEMO_SAMPLE_IDS].sort(), 'the agents Home calls samples are the ones it starts with');
   const support = list.find((b) => b.id === 'acme-support');
   assert.equal(support.latest_version, '0.1.1');
   assert.deepEqual(support.deployed, { development: '0.1.1', staging: '0.1.0' });
@@ -114,6 +116,28 @@ test('the diff addresses id lists by id, like the API', () => {
     { op: 'add', path: ['tags', 1], after: 'b' },
   );
   assert.deepEqual(diffConfigs(a, a), []);
+});
+
+test('the demo validator counts a tool as used when a task step checks with it or a guardrail calls it, as its warning says', () => {
+  const config = minimalConfig('a', 'A');
+  const http = (id) => ({
+    id,
+    type: 'http',
+    description: id,
+    connection: 'api',
+    request: { method: 'GET', path: '/x' },
+    parameters: { type: 'object', properties: {} },
+  });
+  config.tools = [...(config.tools || []), http('check_pin'), http('page_the_team'), http('off_topic_help'), http('spare')];
+  config.tasks = [{ id: 'verify', kind: 'verification', steps: [{ id: 'pin', ask: 'Ask for it.', validate: { type: 'tool', tool: 'check_pin' } }] }];
+  config.guardrails = {
+    escalation: [{ id: 'asks', when: { intent: 'asks_for_human' }, action: 'tool', tool: 'page_the_team' }],
+    topics: { blocked: ['x'], on_off_topic: { say: 'No.', max_strikes: 2, then: 'off_topic_help' } },
+  };
+  const unused = validateDemo(config, 'a')
+    .warnings.map((w) => /tool '(.+)' is not used/.exec(w.message)?.[1])
+    .filter(Boolean);
+  assert.deepEqual(unused, ['spare']);
 });
 
 test('the demo validator says it is a demo, and catches the cheap mistakes the real one would', () => {

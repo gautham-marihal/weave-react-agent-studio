@@ -1,5 +1,5 @@
-// What each kind of channel may carry and offer, so a screen never offers what `/validate` would refuse (FRONTEND_GUIDE 5, "Options that depend on the channel").
-// The truth is `GET /channel-types`; `FALLBACK_TYPES` is a copy of that answer (read from the real server on 2026-10-17) for when it cannot be asked.
+// What each kind of channel may carry and offer, so a screen never offers what `/validate` refuses (FRONTEND_GUIDE 5).
+// `GET /channel-types` is the truth; FALLBACK_TYPES is a copy of its answer (2026-10-17) for when it cannot be asked.
 // Pure: no network, no DOM.
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -101,7 +101,7 @@ export const FALLBACK_TYPES = [
   },
 ];
 
-// The server answers { types: [...], note }; an older or odd answer (a bare list) is read too. A row with no `type` is dropped.
+// The server answers { types: [...], note }; an older answer (a bare list) is read too. A row with no `type` is dropped.
 export function normalizeChannelTypes(raw) {
   const rows = list(isObj(raw) ? raw.types : raw);
   return rows
@@ -128,8 +128,8 @@ export const FALLBACK = normalizeChannelTypes(FALLBACK_TYPES);
 
 export const infoOf = (types, type) => list(types).find((t) => t.type === type) || null;
 
-// A channel that carries audio: its kind is a voice one, or its own modalities list audio.
-// (the guide: "`voice` is true for the type, or its modalities list audio"). A kind the studio does not know carries audio only if its modalities say so.
+// Carries audio when its kind is a voice one or its own modalities list audio (the guide's rule). An unknown kind
+// carries audio only if its modalities say so.
 export function isVoiceChannel(channel, types) {
   const info = infoOf(types, channel?.type);
   const m = channel?.modalities;
@@ -153,7 +153,7 @@ export function entryFieldsFor(types, type) {
 export const canKeypad = (types, type) => infoOf(types, type)?.canKeypad ?? true;
 export const canForms = (types, type) => infoOf(types, type)?.canForms ?? true;
 
-// ---- the settings only a voice channel has, on a channel's `overrides` (the same shape as at every level) ---------------------------------------------
+// ---- settings only a voice channel has, in a channel's `overrides`
 export const VOICE_ONLY = {
   conversation: ['sounds', 'speech', 'noise_cancellation', 'ivr_detection'],
   models: ['stt', 'tts', 'realtime', 'vad', 'turn_detector'],
@@ -165,7 +165,8 @@ export const findVoiceOnly = (overrides) =>
     keys.filter((key) => isObj(overrides?.[group]) && overrides[group][key] !== null && key in overrides[group]).map((key) => `${group}.${key}`),
   );
 
-// A channel's overrides without the voice-only settings: { overrides (undefined when nothing is left), removed: ['conversation.sounds', ...] }.
+// A channel's overrides without the voice-only settings: { overrides (undefined if empty), removed:
+// ['conversation.sounds', ...] }.
 export function stripVoiceOnly(overrides) {
   if (!isObj(overrides)) return { overrides, removed: [] };
   const next = { ...overrides };
@@ -174,7 +175,8 @@ export function stripVoiceOnly(overrides) {
     if (!isObj(next[group])) return;
     const left = { ...next[group] };
     keys.forEach((key) => {
-      // `null` is how a component is switched off on a channel (no text-to-speech on a text channel), which is right on a channel with no voice
+      // `null` switches a component off on a channel (no text-to-speech
+      // on a text channel), which is right with no voice, so it stays
       if (key in left && left[key] !== null) {
         delete left[key];
         removed.push(`${group}.${key}`);
@@ -186,8 +188,8 @@ export function stripVoiceOnly(overrides) {
   return { overrides: Object.keys(next).length ? next : undefined, removed };
 }
 
-// For an address into the config, the keys of that object that must not be OFFERED (what is already there stays, with its warning).
-// `path` is the address of the object being drawn, for example ['channels', 0, 'overrides', 'conversation'].
+// Keys of the object at `path` that must not be offered (what is already there stays, with its warning).
+// `path` is for example ['channels', 0, 'overrides', 'conversation'].
 export function keysNotOffered(config, types, path) {
   if (path[0] !== 'channels' || typeof path[1] !== 'number' || path[2] !== 'overrides') return [];
   const channel = list(config?.channels)[path[1]];
@@ -196,8 +198,9 @@ export function keysNotOffered(config, types, path) {
   return path.length === 4 && VOICE_ONLY[where] ? VOICE_ONLY[where] : [];
 }
 
-// The choices to draw for a list of options at `path` (a channel's modalities): { allowed, extra } or null when the path is not one.
-//   allowed: what the kind may carry; extra: ticked values the kind cannot carry (kept, so they can be seen and removed).
+// Choices for a list of options at `path` (a channel's modalities): { allowed, extra }, or null for any other path.
+//   allowed: what the kind may carry
+//   extra: ticked values the kind cannot carry (kept, so they can be seen and removed)
 export function modalityChoices(config, types, path, current) {
   if (path[0] !== 'channels' || typeof path[1] !== 'number' || path[2] !== 'modalities' || !['input', 'output'].includes(path[3])) return null;
   const channel = list(config?.channels)[path[1]];
@@ -216,8 +219,8 @@ export function mislabelledChat(channel) {
 export const NOT_RUNNING = 'Not available yet';
 export const notRunningYet = (types, type) => infoOf(types, type)?.runsToday === false;
 
-// ---- the browser channels of a bot (what the Test tab offers) -------------------------------------------------------------------------------------------
-// From the config: its enabled web chat and web voice channels, in order. A session response's `channels` list is the server's version of the same thing.
+// ---- the browser channels of a bot (what the Test tab offers)
+// The config's enabled web chat and web voice channels, in order (a session's `channels` is the server's version).
 export function browserChannels(config) {
   return list(config?.channels)
     .filter((c) => isObj(c) && c.id && (c.type === 'web_chat' || c.type === 'web_voice') && c.enabled !== false)

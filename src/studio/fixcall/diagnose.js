@@ -1,6 +1,6 @@
-// What went wrong in a call, read from its records in plain terms. Each finding says what, where (which turn), and shows the evidence (the words or the error), so
-// a person can see for themselves that it is true. These are rules, not a model: they find what is plainly there (a tool that failed, a long wait, a caller who had
-// to repeat themselves), and they never claim to know why. Pure: no network, no DOM.
+// What went wrong in a call, from its records: each finding says what, which turn, and shows the evidence so a person
+// can check it. Rules, not a model: they find what is plainly there and never claim to know why.
+// Pure: no network, no DOM.
 
 import { similarity } from '../replay/compareReplay.js';
 

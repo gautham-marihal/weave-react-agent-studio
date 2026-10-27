@@ -33,7 +33,7 @@ html[data-theme="dark"] .csPage {
   font-size: var(--fs-xs);
   font-weight: 500;
 }
-.csControls select {
+.csControls :is(select, button:where(.rxSelect)) {
   width: auto;
   min-width: 150px;
 }

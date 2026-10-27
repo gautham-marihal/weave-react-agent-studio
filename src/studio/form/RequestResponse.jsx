@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
+import Fold from '../../ui/Fold.jsx';
 import SmartSelect from '../SmartSelect.jsx';
 import { isObj } from './engine.js';
 import { JsonInput, Select } from './fields.jsx';
@@ -11,11 +12,15 @@ import { bodyFromParams } from './paramSchema.js';
 import TemplateField from './TemplateField.jsx';
 import { TechKey } from './TechName.jsx';
 import Icon from '../../ui/Icon.jsx';
+import ChoiceBox from '../../ui/Select.tsx';
+
+// A tool's HTTP call in the form: the request (RequestEditor: connection, method, path, query, headers, body), a path
+// field that offers what can go in it (PathInput), and what is done with the answer (ResponsePanel).
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const CREDENTIAL_NAME = /authori[sz]ation|api[-_ ]?key|token|secret|password|passwd|bearer/i;
 
-// ---- a few name → value rows (query, headers), kept in the box so a half-typed name isn't lost ----------------------
+// ---- name → value rows (query, headers), kept locally so a half-typed name isn't lost
 function KeyValueRows({ value, onChange, scope, disabled, keyLabel, warnCredentials }) {
   const object = isObj(value) ? value : {};
   const fromObject = () => Object.entries(object).map(([key, v]) => ({ key, value: typeof v === 'string' ? v : JSON.stringify(v) }));
@@ -93,11 +98,14 @@ function joinUrl(base, path, query) {
   return pairs.length ? `${url}?${pairs.map(([k, v]) => `${k}=${v}`).join('&')}` : url;
 }
 
-// ---- the HTTP request: connection, method, path, query, headers, body ----------------------------------------------------------
+// ---- the HTTP request: connection, method, path, query, headers, body -----------------------------------------------
 export function RequestEditor({ request, onChange, connection, onConnection, connectionPath, scope, paramRows, disabled }) {
   const ctx = useForm();
   const req = isObj(request) ? request : { method: 'GET', path: '' };
   const [creating, setCreating] = useState(false);
+  const own = useId(); // ids of this request's own boxes: two tools' requests can be open at once
+  const methodId = `${own}-method`;
+  const pathId = `${own}-path`;
   const set = (patch) => {
     const next = { ...req, ...patch };
     Object.keys(next).forEach((key) => {
@@ -139,13 +147,13 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
         </div>
         <div className="stFRow">
           <div className="stFLabel">
-            <label htmlFor="req-method">Method</label>
+            <label htmlFor={methodId}>Method</label>
             <abbr title="Required" className="stFReq">
               *
             </abbr>
           </div>
-          <select
-            id="req-method"
+          <ChoiceBox
+            id={methodId}
             className="stFInput"
             value={req.method || 'GET'}
             disabled={disabled}
@@ -156,18 +164,18 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
                 {method}
               </option>
             ))}
-          </select>
+          </ChoiceBox>
         </div>
       </div>
       <div className="stFRow wide">
         <div className="stFLabel">
-          <label htmlFor="req-path">Path</label>
+          <label htmlFor={pathId}>Path</label>
           <abbr title="Required" className="stFReq">
             *
           </abbr>
         </div>
         <TemplateField
-          id="req-path"
+          id={pathId}
           value={req.path || ''}
           onChange={(v) => set({ path: v })}
           scope={scope}
@@ -178,7 +186,7 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
           <span>Calls</span> <code>{url}</code>
         </p>
       </div>
-      <details className="stFold" open={isObj(req.query) && Object.keys(req.query).length > 0}>
+      <Fold className="stFold" open={isObj(req.query) && Object.keys(req.query).length > 0}>
         <summary>Query parameters{isObj(req.query) && Object.keys(req.query).length ? ` (${Object.keys(req.query).length})` : ''}</summary>
         <KeyValueRows
           value={req.query}
@@ -190,8 +198,8 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
           disabled={disabled}
           keyLabel="Query parameter"
         />
-      </details>
-      <details className="stFold" open={isObj(req.headers) && Object.keys(req.headers).length > 0}>
+      </Fold>
+      <Fold className="stFold" open={isObj(req.headers) && Object.keys(req.headers).length > 0}>
         <summary>Headers{isObj(req.headers) && Object.keys(req.headers).length ? ` (${Object.keys(req.headers).length})` : ''}</summary>
         <KeyValueRows
           value={req.headers}
@@ -204,7 +212,7 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
           keyLabel="Header"
           warnCredentials
         />
-      </details>
+      </Fold>
       <div className="stFRow wide">
         <div className="stFLabel">
           <label>Body</label>
@@ -247,7 +255,7 @@ export function RequestEditor({ request, onChange, connection, onConnection, con
   );
 }
 
-// ---- a path with its check: the grammar, and what it picks out of the sample -------------------------------------------------------
+// ---- a path with its check: the grammar, and what it picks out of the sample ----------------------------------------
 export function PathInput({ value, onChange, sample, disabled, label, placeholder = '$.field' }) {
   const check = validatePath(value || '');
   const match = sample !== undefined && check.ok ? describeMatches(sample, value) : null;
@@ -270,7 +278,7 @@ export function PathInput({ value, onChange, sample, disabled, label, placeholde
   );
 }
 
-// ---- the response: what the model sees, which values go into state ------------------------------------------------------------------
+// ---- the response: what the model sees, which values go into state --------------------------------------------------
 export function ResponsePanel({ path: toolPath = [], result, onChange, outOfBand, disabled, toolId, parameters }) {
   const ctx = useForm();
   const value = isObj(result) ? result : {};

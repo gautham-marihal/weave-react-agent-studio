@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { voiceUsage } from '../src/studio/voiceUsage.js';
+import { voiceUsage } from '../src/studio/voiceUsage.ts';
 
 const voices = [
   { id: 'elevenlabs-rachel', provider: 'ElevenLabs', voiceId: 'RACHEL' },

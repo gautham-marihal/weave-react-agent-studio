@@ -1,5 +1,5 @@
-// The four "try a line" previews and the redaction kinds, IMITATED for demo mode (and for the tests). The real API runs the runtime's own code, so its
-// answers are exact; here there is no runtime, so this follows the same shapes with simple stand-ins and says so in `note`. Pure.
+// The four "try a line" previews and the redaction kinds IMITATED for demo mode and the tests. With no runtime, simple
+// stand-ins give the real shapes and `note` says so. Pure.
 
 import { isObj } from '../studio/form/engine.js';
 import { DEMO_PREVIEW_NOTE } from './demoPreview.js';
@@ -16,7 +16,7 @@ const tryRe = (source, flags) => {
 const demo = (body) => ({ status: 200, body: { demo: true, note: DEMO_PREVIEW_NOTE, ...body } });
 const refuse = (detail) => ({ status: 422, body: { detail } });
 
-// ---- what redaction can find ----------------------------------------------------------------------------------------------------------------
+// ---- what redaction can find ----------------------------------------------------------------------------------------
 export const DEMO_ENTITIES = [
   { kind: 'card_number', how: 'A run of 13 to 19 digits, which may have spaces or dashes between them.', re: /\b\d(?:[ -]?\d){12,18}\b/g },
   { kind: 'bank_account', how: 'A run of 8 to 12 digits.', re: /\b\d{8,12}\b/g },
@@ -84,7 +84,7 @@ export function previewRedactionDemo(config, body = {}) {
   });
 }
 
-// ---- safety rules ---------------------------------------------------------------------------------------------------------------------------
+// ---- safety rules ---------------------------------------------------------------------------------------------------
 const INJECTION =
   /ignore (all )?(your )?(previous|prior) instructions|disregard (the |your )?(system|previous)|reveal (your|the) (system )?prompt|you are now/i;
 const DEFAULT_LINES = {
@@ -151,7 +151,7 @@ export function previewGuardrailsDemo(config, body = {}) {
   });
 }
 
-// ---- speech ---------------------------------------------------------------------------------------------------------------------------------
+// ---- speech ---------------------------------------------------------------------------------------------------------
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const ordinal = (n) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'}`;
 
@@ -240,7 +240,7 @@ export function previewSpeechDemo(config, body = {}) {
   out.spoken = spoken;
   const chunks = list(body.chunks).map(String);
   if (chunks.length) {
-    // pieces that could still become a match wait for the next piece: here, a trailing number, and the start of an AM or PM after it
+    // a piece that could still become a match (a trailing number, or the start of AM/PM) waits for the next piece
     let carry = '';
     const arrived = [];
     chunks.forEach((piece, i) => {
@@ -255,8 +255,8 @@ export function previewSpeechDemo(config, body = {}) {
   return demo(out);
 }
 
-// ---- tasks ----------------------------------------------------------------------------------------------------------------------------------
-// true, false, or null when this imitation cannot tell (a condition on a tool argument, a result or an event): then nothing is claimed
+// ---- tasks ----------------------------------------------------------------------------------------------------------
+// true, false, or null when the imitation can't tell (a condition on a tool argument, result or event)
 const compare = (actual, c) => {
   if ('equals' in c) return JSON.stringify(actual ?? null) === JSON.stringify(c.equals);
   if ('not_equals' in c) return JSON.stringify(actual ?? null) !== JSON.stringify(c.not_equals);

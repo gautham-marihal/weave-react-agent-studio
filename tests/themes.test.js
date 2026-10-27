@@ -42,9 +42,9 @@ const NEEDED = [
 test('the styles are the ones the page applies before it is drawn', () => {
   assert.deepEqual(
     STYLES.map((s) => s.id),
-    ['simple', 'professional', 'calm', 'premium', 'futuristic', 'vibrant'],
+    ['studio', 'simple', 'professional', 'calm', 'premium', 'futuristic', 'vibrant'],
   );
-  const listed = html.match(/\[('simple'[^\]]*)\]\.indexOf/)?.[1];
+  const listed = html.match(/\[('studio'[^\]]*)\]\.indexOf/)?.[1];
   assert.ok(listed, 'index.html applies the style before the first paint');
   assert.deepEqual(
     listed.split(',').map((s) => s.trim().replace(/'/g, '')),

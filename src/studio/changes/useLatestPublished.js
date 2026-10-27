@@ -1,7 +1,7 @@
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { useAsync } from '../useAsync.js';
 
-// The newest published version of an agent and its configuration, for comparing the draft with. { version, config } or null when nothing is published yet.
+// The newest published version and its config, to compare the draft with: { version, config }, or null if none.
 export function useLatestPublished(botId, refreshKey = 0) {
   const state = useAsync(
     async (signal) => {

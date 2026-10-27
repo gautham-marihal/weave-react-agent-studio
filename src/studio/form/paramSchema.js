@@ -1,8 +1,6 @@
-// A tool's `parameters` is a JSON Schema of the arguments the model fills in. Writing JSON Schema by hand is the
-// biggest hurdle in the tool editor, so the form shows rows instead: a name, a kind, what it is for (this is the text the
-// model reads), whether it is needed, and for a list of choices, the choices. This turns those rows into the schema and
-// back, without ever losing a keyword it doesn't understand.
-// Pure: no network, no DOM.
+// A tool's `parameters` is a JSON Schema of the arguments the model fills in. Hand-written JSON Schema is the tool
+// editor's biggest hurdle, so the form shows rows (name, kind, the description the model reads, needed, choices). This
+// converts rows to schema and back without losing a keyword it doesn't know. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 
@@ -25,7 +23,6 @@ function readProperty(name, schema, required) {
   const extra = Object.fromEntries(keys.filter((key) => !SIMPLE_KEYS.includes(key)).map((key) => [key, raw[key]]));
   const hasChoices = Array.isArray(raw.enum) && raw.enum.length > 0 && raw.enum.every((item) => typeof item === 'string');
   const known = ['string', 'number', 'integer', 'boolean'].includes(raw.type) && (raw.enum === undefined || (raw.type === 'string' && hasChoices));
-  const advanced = !known || Object.keys(extra).length > 0;
   return {
     name,
     kind: !known ? 'advanced' : hasChoices ? 'choice' : raw.type,
@@ -33,7 +30,7 @@ function readProperty(name, schema, required) {
     choices: hasChoices ? raw.enum : [],
     required: required.includes(name),
     extra, // other keywords of this property, written back untouched
-    raw: advanced && !known ? raw : undefined,
+    raw: !known ? raw : undefined,
   };
 }
 

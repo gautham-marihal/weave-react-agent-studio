@@ -7,6 +7,7 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge), E2E_HEADED=1 to watch, E2E_SHOTS=folder to save pictures.
 import { chromium } from 'playwright-core';
+import { pick } from './pick.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const SHOTS = process.env.E2E_SHOTS || '';
@@ -119,7 +120,7 @@ check('and it is remembered', (await page.evaluate(() => localStorage.getItem('w
 await page.getByLabel('Hide what callers say').uncheck();
 
 // one agent
-await page.locator('select[aria-label="Agent"]').selectOption('front-desk');
+await pick(page, page.locator('[aria-label="Agent"]'), 'front-desk');
 await page.waitForTimeout(300);
 const agents = await texts('.lvCard .lvAgent');
 check(
@@ -127,7 +128,7 @@ check(
   agents.every((a) => a === 'Front Desk'),
   agents.join(', '),
 );
-await page.locator('select[aria-label="Agent"]').selectOption('');
+await pick(page, page.locator('[aria-label="Agent"]'), '');
 
 // pause
 await page.getByRole('button', { name: 'Pause' }).click();

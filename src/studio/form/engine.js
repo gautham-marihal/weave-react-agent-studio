@@ -1,6 +1,5 @@
-// Reads the Agent Builder's JSON Schema (draft 2020-12) and answers the questions a form needs:
-// what kind of control is this value, which branch of a oneOf is it, which fields exist right now
-// (after if/then), what is a sensible default. Plain functions, no React, so it can be tested alone.
+// Reads the Agent Builder's JSON Schema (draft 2020-12) and answers what a form needs: which control a value needs,
+// which oneOf branch it is, which fields exist after if/then, and a sensible default. No React, so it tests alone.
 
 export const isObj = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const union = (a = [], b = []) => [...new Set([...a, ...b])];
@@ -99,9 +98,8 @@ export function createEngine(root) {
     'format',
   ];
 
-  // One flat description of a schema: $ref followed, allOf folded in, if/then collected (not yet applied).
-  // Results are cached by schema object (the schema never changes while the editor is open) and must be
-  // treated as read-only by callers.
+  // One flat description of a schema: $ref followed, allOf folded in, if/then collected (not yet applied). Cached per
+  // schema object (the schema never changes while the editor is open), so callers must treat results as read-only.
   const flatCache = new WeakMap();
   function flatten(schema, depth = 0) {
     if (depth === 0 && isObj(schema)) {
@@ -326,7 +324,12 @@ export function collectRefOptions(config) {
     Object.entries(isObj(c.connections) ? c.connections : {})
       .filter(([, v]) => v?.type === type)
       .map(([k]) => k);
-  const handoffTools = (c.agents?.items || []).flatMap((agent) => (agent?.handoffs || []).map((h) => h?.tool)).filter((t) => typeof t === 'string');
+  // read whatever shape the JSON view left (agents.items or handoffs
+  // not yet lists): the form must still open to show what is wrong
+  const asList = (v) => (Array.isArray(v) ? v : []);
+  const handoffTools = asList(c.agents?.items)
+    .flatMap((agent) => asList(agent?.handoffs).map((h) => h?.tool))
+    .filter((t) => typeof t === 'string');
   return {
     agents: ids(c.agents?.items),
     tools: ids(c.tools),

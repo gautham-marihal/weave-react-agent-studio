@@ -1,10 +1,11 @@
 import React from 'react';
 import Icon from '../../ui/Icon.jsx';
+import Tip from '../../ui/Tip.tsx';
 import { withStatus } from './alertsModel.js';
 import { useInsights, useLiveAlerts } from './insightsStore.js';
 import './insights.css';
 
-// How many alerts nobody has looked at yet (not acknowledged, not snoozed). The sidebar badge and the bell both show it.
+// How many alerts nobody has looked at yet (not acknowledged, not snoozed), for the sidebar badge and the bell.
 export function useNewAlertCount() {
   const { acks } = useInsights();
   const { alerts } = useLiveAlerts();
@@ -35,9 +36,11 @@ export default function AlertBell({ onOpen = openAlertsPage }) {
   const count = useNewAlertCount();
   const label = count ? `Alerts: ${count} new` : 'Alerts: nothing new';
   return (
-    <button type="button" className="inBell" onClick={onOpen} title={label} aria-label={label}>
-      <Icon name="bell" size={18} />
-      {count > 0 && <b aria-hidden="true">{count > 9 ? '9+' : count}</b>}
-    </button>
+    <Tip label={label}>
+      <button type="button" className="inBell" onClick={onOpen} aria-label={label}>
+        <Icon name="bell" size={18} />
+        {count > 0 && <b aria-hidden="true">{count > 9 ? '9+' : count}</b>}
+      </button>
+    </Tip>
   );
 }

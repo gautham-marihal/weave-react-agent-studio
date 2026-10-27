@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Icon from '../ui/Icon.jsx';
 import './mobileNav.css';
 
-// On a phone the sidebar is hidden, which left no way to move between pages. This adds a menu button that
-// opens the same sidebar as a drawer. It works for every page because they all share the `.sidebar` element.
+// On a phone the sidebar is hidden, so this menu button opens it as a drawer. It works on every page because they all
+// share the `.sidebar` element.
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
 
@@ -17,8 +17,7 @@ export default function MobileNav() {
     const onKey = (event) => {
       if (event.key === 'Escape') setOpen(false);
     };
-    // Choosing a page or a workspace closes the drawer; opening the workspace menu, its ⋯ actions and the
-    // collapse button keep it open.
+    // Choosing a page or workspace closes the drawer; the workspace menu, its ⋯ actions and collapse keep it open.
     const onClick = (event) => {
       const target = event.target instanceof Element ? event.target.closest('.sidebar button, .sidebar a') : null;
       if (target && (!target.closest('.workspaceSwitch, .workspaceMenu, .collapse') || target.closest('.workspaceOption'))) setOpen(false);

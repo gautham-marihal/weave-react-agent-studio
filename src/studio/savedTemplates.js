@@ -1,8 +1,5 @@
-// Starting points an author makes themselves: "save this agent as a template", then pick it in the Create dialog next to the built-in ones.
-// The built-in seven (starters.js) are a default set written for customer-care style agents; an organisation has its own, so these are data,
-// not code. They are kept in THIS browser (the API has no templates endpoint yet: see "what the backend side can provide next") and can be
-// exported to a file and imported, which is how they are shared today. Pure apart from `storage` (localStorage, or anything with
-// getItem/setItem in tests).
+// The person's own templates ("save this agent as a template"), offered in the Create dialog beside starters.ts.
+// Kept in this browser (the API has no templates endpoint yet) and shared by file. Pure apart from `storage`.
 
 import { isObj } from './form/engine.js';
 
@@ -37,8 +34,8 @@ function write(list, storage) {
   }
 }
 
-// What stays when an agent becomes a template: everything that makes it what it is, and nothing that makes it THIS agent. The id, name,
-// version and status are the new agent's own (set when it is created); `created_at`/`updated_at` are the server's. Secrets are only names.
+// A template keeps what makes an agent what it is, not what makes it THIS agent: id, name, version, status and the
+// server's timestamps are dropped. Secrets are only names.
 export function toTemplateConfig(config) {
   const copy = clone(config);
   if (isObj(copy.meta)) ['id', 'name', 'version', 'status', 'created_at', 'updated_at'].forEach((k) => delete copy.meta[k]);
@@ -72,8 +69,8 @@ export function deleteTemplate(id, storage = defaultStorage()) {
   return next;
 }
 
-// A new agent from a template: the draft the server made (it has the right id, version and status) gets the template's contents. The
-// template's own agent name is replaced by the new one wherever it is the persona's name, so "Acme Support" doesn't leak into a new agent.
+// The template's contents on the server's new draft (which has the right id, version and status). The template's agent
+// name is replaced where it is the persona's name, so "Acme Support" doesn't leak into a new agent.
 export function applyTemplate(base, template) {
   const config = clone(template.config);
   config.meta = { ...(isObj(config.meta) ? config.meta : {}), ...(isObj(base?.meta) ? base.meta : {}) };
@@ -83,12 +80,12 @@ export function applyTemplate(base, template) {
   return config;
 }
 
-// ---- files ----------------------------------------------------------------------------------------------------------------------------
+// ---- files ----------------------------------------------------------------------------------------------------------
 export const templateFileName = (template) => `${slug(template.name)}.template.json`;
 export const templateToFile = (template) =>
   `${JSON.stringify({ format: FORMAT, version: 1, name: template.name, description: template.description, sourceName: template.sourceName || '', config: template.config }, null, 2)}\n`;
 
-// A file someone shared -> { template } or { error }. Accepts this app's own file, or a bare configuration (an exported agent).
+// A shared file -> { template } or { error }. Accepts this app's own file or a bare configuration (an exported agent).
 export function parseTemplateFile(text, fileName = '') {
   let value;
   try {

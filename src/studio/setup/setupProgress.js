@@ -1,8 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
-// Where a person is in an agent's setup, kept in this browser per agent: the step they were on, whether they have tried the agent, and whether the setup is
-// finished (put live, or closed for good). Leaving the setup keeps it, so "Continue setup" opens where they stopped. Nothing here is needed to use the agent:
-// with no storage the setup simply starts at the beginning again.
+// Where a person is in an agent's setup, kept in this browser per agent: the step, whether they tried the agent, and
+// whether setup is finished. "Continue setup" opens where they stopped; with no storage the setup just starts again.
 
 const key = (botId) => `weave_setup_${botId}`;
 const listeners = new Set();
@@ -35,12 +34,12 @@ export function saveProgress(botId, patch) {
   listeners.forEach((listener) => listener());
 }
 
-// An agent made with the setup starts it at its second step (the first, its name and starting point, is the create dialog).
+// An agent made with the setup starts at its second step (the first, name and starting point, is the create dialog).
 export const startSetup = (botId) => saveProgress(botId, { step: 'purpose', tried: false, finished: false });
 
-// Whether an agent's next steps are done in the setup: while it is being set up (started here and not finished), and for an agent that was never published
-// (a new one, however it was made). An agent that is already published, and was not set up here, keeps its own pages and panels for each step.
-//   summary: the agent as listed (null while it is read, and then the answer is no, so nothing jumps)
+// Whether an agent's next steps are done in the setup: while it is being set up here, or when it was never published.
+// A published agent that wasn't set up here keeps its own pages for each step.
+//   summary: the agent as listed (null while loading, which reads as no, so nothing jumps)
 export const inSetup = (progress, summary) => !progress?.finished && (!!progress?.known || (!!summary && !summary.latest_version));
 
 const subscribe = (listener) => {
@@ -48,7 +47,7 @@ const subscribe = (listener) => {
   return () => listeners.delete(listener);
 };
 
-// { step, tried, finished, known } for one agent, and a way to change it. `known`: the setup was started for this agent in this browser.
+// { step, tried, finished, known } for one agent, and a setter. `known`: setup was started for it in this browser.
 export function useSetupProgress(botId) {
   const value = useSyncExternalStore(
     subscribe,

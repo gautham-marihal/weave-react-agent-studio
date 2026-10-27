@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { assignBot, patchBot, refreshBots, switchWorkspace, useWorkspaces } from '../agents.js';
 import { envLabel, Modal, Notice, Spinner } from '../ui.jsx';
 import { useAsync } from '../useAsync.js';
@@ -202,8 +202,8 @@ export function ExportDialog({ botId, name, editor, onClose }) {
 }
 
 // ---- Save as a template ---------------------------------------------------------------------------------
-// The agent's contents without what makes it THIS agent (id, name, version): the Create dialog then offers it next to the built-in starting
-// points. Kept in this browser, and exportable to a file, which is how templates are shared until the API has somewhere to keep them.
+// The agent's contents minus what makes it THIS agent (id, name, version), offered in the Create dialog beside the
+// built-in starting points. Kept in this browser and exportable to a file until the API has somewhere to keep them.
 
 export function SaveTemplateDialog({ botId, name, editor, onClose }) {
   const [templateName, setTemplateName] = useState(`${name || botId} template`);

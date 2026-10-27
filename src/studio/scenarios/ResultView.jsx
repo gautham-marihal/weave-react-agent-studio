@@ -1,12 +1,13 @@
 import React from 'react';
+import Fold from '../../ui/Fold.jsx';
 import { Notice } from '../ui.jsx';
 import TraceView from '../trace/TraceView.jsx';
 import { describeExpectation } from './model.js';
 import { nextSteps, resultSummary, tokenWords, tokensOf } from './runResults.js';
 import Icon from '../../ui/Icon.jsx';
 
-// What one scenario did in a run: the verdict in a line, each check with why, what to do about it (an unanswered API request gets an
-// "Add a mock" button), the requests and tool calls, and the trace of what happened. Everything here comes from the server's answer.
+// What one scenario did in a run: the verdict, each check and why, what to do (an unanswered API request gets "Add a
+// mock"), the requests and tool calls, and the trace. Everything here comes from the server's answer.
 
 const MARK = { true: 'check', false: 'close', null: 'minus' };
 const checkClass = (passed) => (passed === true ? 'passed' : passed === false ? 'failed' : 'unchecked');
@@ -152,10 +153,10 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
       )}
 
       {result.events.length > 0 ? (
-        <details className="scDetail" open={result.status === 'failed' || result.status === 'error' || undefined}>
+        <Fold className="scDetail" open={result.status === 'failed' || result.status === 'error'}>
           <summary>The trace ({result.events.length} records)</summary>
           <TraceView records={result.events} compact title="What the runner did" />
-        </details>
+        </Fold>
       ) : (
         result.transcript.length > 0 && (
           <details className="scDetail">

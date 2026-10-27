@@ -1,8 +1,7 @@
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 
-// Saved draft configurations, fetched when a page needs to look inside several agents at once (the telephony
-// simulator checking handoff, for example). Entries are kept for the session and refreshed after 2 minutes, or as soon as the caller knows of a newer
-// revision (the agent list's draft_revision, which changes with every save).
+// Saved drafts, for pages that look inside several agents at once (e.g. the telephony simulator checking handoff).
+// Kept for the session, refreshed after 2 minutes or when the list's draft_revision shows a newer save.
 const TTL_MS = 120000;
 const cache = new Map(); // id -> { config, revision, at }
 const inflight = new Map();
@@ -10,10 +9,6 @@ const inflight = new Map();
 export function getCachedConfig(id) {
   const hit = cache.get(id);
   return hit ? hit.config : undefined;
-}
-
-export function forgetConfig(id) {
-  cache.delete(id);
 }
 
 export async function loadConfig(id, revision) {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildWorkflow, describeWorkflow, enterId, parseNodeId, toolNodeId } from '../src/studio/workflow/workflowModel.js';
+import { EDGE, START_ID, buildWorkflow, describeWorkflow, enterId, parseNodeId, toolNodeId, triggerId } from '../src/studio/workflow/workflowModel.js';
 import { routeEdge, sidesFor } from '../src/studio/workflow/geometry.js';
 import * as ops from '../src/studio/workflow/workflowOps.js';
 import { validateDemo } from '../src/demo/demoValidate.js';
@@ -22,15 +22,25 @@ const overlaps = (nodes) => {
 };
 const errorsOf = (config) => validateDemo(config, 'solo').errors;
 
-test('a single agent is drawn as Start, the agent and what it can do, with Start leading to it', () => {
-  const flow = buildWorkflow(single());
-  assert.equal(flow.nodes[0].type, 'start');
+test('a single agent is drawn as its channels, the subagent and what it can do, each channel leading to it (with no channel, Start)', () => {
+  const config = single();
+  const flow = buildWorkflow(config);
+  assert.equal(flow.nodes[0].type, 'trigger');
   const agents = flow.nodes.filter((n) => n.type === 'agent');
   assert.equal(agents.length, 1);
   assert.ok(agents[0].entry);
   assert.deepEqual(
     flow.edges.filter((e) => e.kind === 'start').map((e) => [e.from, e.to]),
-    [['start', agents[0].id]],
+    config.channels.map((c) => [triggerId(c.id), agents[0].id]),
+  );
+  assert.ok(
+    flow.nodes.every((n) => n.type !== 'trigger' || n.x < agents[0].x),
+    'left to right: where a call comes in, then who answers',
+  );
+  const none = buildWorkflow({ ...config, channels: [] });
+  assert.deepEqual(
+    none.edges.filter((e) => e.kind === 'start').map((e) => [e.from, e.to]),
+    [[START_ID, agents[0].id]],
   );
   assert.equal(flow.empty, false);
   assert.equal(buildWorkflow({ agents: { entry: '', items: [] } }).empty, true);
@@ -128,7 +138,8 @@ test('a place saved for a block is kept; the blocks that go with an agent follow
 });
 
 test('node ids say what they are', () => {
-  assert.deepEqual(parseNodeId('start'), { kind: 'start' });
+  assert.deepEqual(parseNodeId(START_ID), { kind: 'start' });
+  assert.deepEqual(parseNodeId('start'), { kind: 'agent', agent: 'start' }, 'an agent may be called "start"');
   assert.deepEqual(parseNodeId('billing'), { kind: 'agent', agent: 'billing' });
   assert.deepEqual(parseNodeId('a::enter::2'), { agent: 'a', kind: 'enter', index: 2 });
   assert.deepEqual(parseNodeId('a::tool::end_call'), { agent: 'a', kind: 'tool', tool: 'end_call' });
@@ -320,7 +331,7 @@ test('taking things away: a step, a tool block (and the transfer behind it when 
   assert.equal(removed.guardrails.escalation, undefined, 'and so does a safety rule (and a list left empty is not kept)');
   assert.deepEqual(Object.keys(removed.builder.ui.graph_positions), [first], 'its places are forgotten');
   assert.equal(ops.removeNode(single(), single().agents.items[0].id).agents.items.length, 1, 'the last agent cannot be deleted');
-  assert.equal(ops.removeNode(config, 'start'), config);
+  assert.equal(ops.removeNode(config, START_ID), config);
 });
 
 test('places: saved to the file as whole numbers, forgotten on Tidy up with the empty parts removed, and a free spot is found', () => {
@@ -361,7 +372,8 @@ test('every agent in the corpus can be drawn: unique block ids, every arrow join
       assert.equal(new Set(ids).size, ids.length, `${entry.name}: block ids are unique`);
       flow.edges.forEach((e) => assert.ok(ids.includes(e.from) && ids.includes(e.to), `${entry.name}: ${e.id} joins two blocks`));
       assert.deepEqual(overlaps(flow.nodes), [], `${entry.name}: nothing covers anything`);
-      assert.ok(describeWorkflow(flow).length >= flow.edges.length - 0);
+      // every arrow is a sentence, apart from what is plugged in under a subagent (its model, its knowledge)
+      assert.ok(describeWorkflow(flow).length >= flow.edges.filter((e) => e.kind !== 'plug' && !e.stub).length);
     });
   });
 });
@@ -493,4 +505,245 @@ test('Delete: a deleted-agent list is brought back only for the agents it shows,
   const { config: next } = ops.duplicateAgent(config, 'greeter');
   const copy = next.agents.items.at(-1);
   assert.ok(copy.handoffs.every((h) => h.id && h.tool));
+});
+
+test('an agent with the id "start" is an agent, not the Start block; the place of the Start block saved under its old name is still read, then replaced', () => {
+  const config = single();
+  config.agents.items.push({ id: 'start', name: 'Start', kind: 'specialist', instructions: { role: 'Greets.' } });
+  const flow = buildWorkflow(config);
+  assert.equal(flow.nodes.find((n) => n.id === 'start')?.type, 'agent');
+  assert.ok(!flow.edges.some((e) => e.from === e.to));
+  // with no channel, the Start block: its place once saved as "start" is still read
+  const legacy = { ...single(), channels: [] };
+  legacy.builder = { ui: { graph_positions: { start: { x: 300, y: 20 } } } };
+  const at = buildWorkflow(legacy).nodes.find((n) => n.id === START_ID);
+  assert.deepEqual([at.x, at.y], [300, 20]);
+  assert.deepEqual(ops.setPositions(legacy, { [START_ID]: { x: 310, y: 30 } }).builder.ui.graph_positions, { [START_ID]: { x: 310, y: 30 } });
+});
+
+test('a hand-over to an agent that is gone draws no arrow, is no way out, and is listed on its agent to be taken away', () => {
+  const config = single();
+  const first = config.agents.items[0];
+  first.kind = 'router';
+  first.handoffs = [{ id: 'to_b', tool: 'go_to_b', description: 'Billing questions.', to: 'b' }];
+  config.agents.items.push({
+    id: 'b',
+    name: 'B',
+    kind: 'specialist',
+    instructions: { role: 'Helps.' },
+    handoffs: [{ id: 'to_gone', tool: 'go_to_gone', description: 'x', to: 'gone' }],
+    on_enter: [{ type: 'handoff', to: 'gone_too' }],
+  });
+  const flow = buildWorkflow(config);
+  assert.ok(!flow.edges.some((e) => e.to === 'gone' || e.to === 'gone_too'));
+  const b = flow.nodes.find((n) => n.id === 'b');
+  assert.deepEqual(b.broken, [
+    { handoff: 0, to: 'gone' },
+    { enter: 0, to: 'gone_too' },
+  ]);
+  assert.equal(b.deadEnd, true, 'a hand-over to nobody is no way out');
+  const fixed = ops.removeHandoff(ops.removeHandoff(config, 'b', { handoff: 0 }), 'b', { enter: 0 });
+  assert.deepEqual(buildWorkflow(fixed).nodes.find((n) => n.id === 'b').broken, []);
+});
+
+test('nothing is drawn past the top or left edge, and nothing lies on another block, even with an agent saved near the top that has many tools', () => {
+  const flow = buildWorkflow(example());
+  assert.deepEqual(
+    flow.nodes.filter((n) => n.x < EDGE || n.y < EDGE).map((n) => n.id),
+    [],
+  );
+  assert.deepEqual(overlaps(flow.nodes), []);
+});
+
+test('blocks and lines name tools as the Tools page does; a tool that sends something says so; "who answers first" naming nobody is noticed', () => {
+  const config = example();
+  const flow = buildWorkflow(config);
+  const pay = flow.nodes.find((n) => n.id === toolNodeId('billing', 'send_payment_link'));
+  assert.equal(pay.label, 'Send payment link');
+  assert.equal(pay.sub, 'Sends something to your systems');
+  assert.ok(describeWorkflow(flow).includes('Billing can use “Get bill summary”.'));
+  assert.equal(flow.entryUnset, false);
+  config.agents.entry = 'nobody';
+  assert.equal(buildWorkflow(config).entryUnset, true);
+});
+
+test('a step as an agent takes over can run earlier or later; at either end it stays', () => {
+  const config = single();
+  const id = config.agents.items[0].id;
+  config.agents.items[0].on_enter = [
+    { type: 'say', text: 'a' },
+    { type: 'say', text: 'b' },
+  ];
+  const moved = ops.moveEnterStep(config, id, 1, -1);
+  assert.deepEqual(
+    moved.config.agents.items[0].on_enter.map((s) => s.text),
+    ['b', 'a'],
+  );
+  assert.equal(moved.id, enterId(id, 0));
+  assert.equal(ops.moveEnterStep(config, id, 0, -1).config, config);
+  assert.equal(ops.moveEnterStep(config, id, 1, 1).config, config);
+});
+
+test('an item of the agents list that is not an agent does not stop agents and hand-overs being added', () => {
+  const config = single();
+  config.agents.items.push(null);
+  const made = ops.addSubagent(config, config.agents.items[0].id, { name: 'Billing', when: 'Bills.' });
+  assert.ok(made.config.agents.items.some((a) => a?.name === 'Billing'));
+  assert.ok(ops.addAgentTransfer(made.config, made.id, config.agents.items[0].id).agents.items.find((a) => a?.id === made.id).handoffs);
+});
+
+test('Tidy up (no saved places): in columns, nothing covers anything (blocks or the words on arrows), and every arrow has its own route and its own place for its words', async () => {
+  const { labelBox } = await import('../src/studio/workflow/workflowModel.js');
+  [example(), ...corpus().map((e) => e.config)].forEach((given) => {
+    const config = JSON.parse(JSON.stringify(given));
+    delete config.builder;
+    const flow = buildWorkflow(config);
+    const rects = flow.nodes.map((n) => ({ id: n.id, x: n.x, y: n.y, w: n.w, h: n.h }));
+    const drawn = flow.edges.filter((e) => !e.hidden && e.kind !== 'plug' && e.kind !== 'uses');
+    drawn.forEach((e) => {
+      assert.ok(e.points?.length >= 2, `${e.id} has its route`);
+      const words = e.missing ? 'Say when' : e.label && e.kind !== 'start' ? e.full || e.label : '';
+      if (!words) return;
+      assert.ok(e.labelAt, `${e.id} has a place for its words`);
+      const b = labelBox(words);
+      rects.push({ id: `words of ${e.id}`, x: e.labelAt.x - b.width / 2, y: e.labelAt.y - b.height / 2, w: b.width, h: b.height });
+    });
+    assert.deepEqual(overlaps(rects), []);
+    // the subagent that answers first comes after the channels, left to right
+    const entry = flow.nodes.find((n) => n.type === 'agent' && n.entry);
+    flow.nodes.filter((n) => n.type === 'trigger').forEach((t) => assert.ok(t.x + t.w < entry.x));
+  });
+});
+
+test('Tidy up: each line runs level and upright on a lane of its own, from the side of one block to the side of the next; no two share a stretch, and none crosses a block or the words of another', async () => {
+  const { labelBox } = await import('../src/studio/workflow/workflowModel.js');
+  // a subagent that passes callers to six others, two of which pass callers on between them
+  let busy = single();
+  const hub = busy.agents.items[0].id;
+  const ids = ['Orders', 'Returns', 'Billing', 'Repairs', 'Sales', 'After hours'].map((name) => {
+    const made = ops.addSubagent(busy, hub, { name, when: `The caller asks about ${name.toLowerCase()}.` });
+    busy = made.config;
+    return made.id;
+  });
+  busy = ops.addAgentTransfer(ops.addAgentTransfer(busy, ids[0], ids[1]), ids[3], ids[0]);
+  [busy, example(), ...corpus().map((e) => e.config)].forEach((given) => {
+    const config = JSON.parse(JSON.stringify(given));
+    delete config.builder;
+    const flow = buildWorkflow(config);
+    const byId = new Map(flow.nodes.map((n) => [n.id, n]));
+    const drawn = flow.edges.filter((e) => !e.hidden && e.kind !== 'plug' && e.kind !== 'uses');
+    const runs = [];
+    const words = [];
+    drawn.forEach((e) => {
+      const [a, b] = [byId.get(e.from), byId.get(e.to)];
+      const [p, q] = [e.points[0], e.points.at(-1)];
+      assert.ok((p.x === a.x || p.x === a.x + a.w) && p.y > a.y && p.y < a.y + a.h, `${e.id} leaves from a side of ${a.id}`);
+      assert.ok((q.x === b.x || q.x === b.x + b.w) && q.y > b.y && q.y < b.y + b.h, `${e.id} reaches a side of ${b.id}`);
+      e.points.slice(1).forEach((s, i) => {
+        const r = e.points[i];
+        assert.ok(r.x === s.x || r.y === s.y, `${e.id} runs level or upright`);
+        runs.push({ e, x: Math.min(r.x, s.x), y: Math.min(r.y, s.y), w: Math.abs(s.x - r.x), h: Math.abs(s.y - r.y) });
+      });
+      const said = e.missing ? 'Say when' : e.label && e.kind !== 'start' ? e.full || e.label : '';
+      if (!said) return;
+      const lb = labelBox(said);
+      words.push({ e, x: e.labelAt.x - lb.width / 2, y: e.labelAt.y - lb.height / 2, w: lb.width, h: lb.height });
+    });
+    const across = (r, o) => r.x < o.x + o.w - 1 && r.x + r.w > o.x + 1 && r.y < o.y + o.h - 1 && r.y + r.h > o.y + 1;
+    runs.forEach((r) => {
+      flow.nodes.forEach((n) => assert.ok(n.id === r.e.from || n.id === r.e.to || !across(r, n), `${r.e.id} does not cross ${n.id}`));
+      words.forEach((w) => assert.ok(w.e === r.e || !across(r, w), `${r.e.id} does not cross the words of ${w.e.id}`));
+    });
+    runs.forEach((r, i) =>
+      runs.slice(i + 1).forEach((o) => {
+        if (r.e === o.e) return;
+        const upright = !r.w && !o.w && r.x === o.x && Math.min(r.y + r.h, o.y + o.h) - Math.max(r.y, o.y) > 2;
+        const level = !r.h && !o.h && r.y === o.y && Math.min(r.x + r.w, o.x + o.w) - Math.max(r.x, o.x) > 2;
+        assert.ok(!upright && !level, `${r.e.id} and ${o.e.id} do not share a stretch`);
+      }),
+    );
+  });
+});
+
+test('lanes: a fan of lines turns nested, the farthest first, so none cross; points on a side keep their order and their room; corners are rounded', async () => {
+  const { orderLanes, spread, roundedPath } = await import('../src/studio/workflow/edgeLanes.js');
+  // leaving at 0 and 10 for 1000 and 500 up; at 20 and 30 for 500 and 1000 down
+  const order = orderLanes([
+    { a: 10, b: -500 },
+    { a: 0, b: -1000 },
+    { a: 20, b: 500 },
+    { a: 30, b: 1000 },
+  ]);
+  assert.ok(order.indexOf(1) < order.indexOf(0), 'the one going farthest up turns first');
+  assert.ok(order.indexOf(3) < order.indexOf(2), 'the one going farthest down turns first');
+  assert.deepEqual(spread([50, 50, 50], 0, 100), [50, 60, 70]);
+  assert.deepEqual(spread([95, 99], 0, 100), [90, 100]);
+  assert.deepEqual(spread([-20, 500], 0, 100), [0, 100], 'each as near where it heads as the side allows');
+  assert.deepEqual(spread([0, 0, 0], 0, 10), [0, 5, 10], 'spread evenly when the side is too short');
+  assert.equal(
+    roundedPath([
+      { x: 0, y: 0 },
+      { x: 40, y: 0 },
+      { x: 40, y: 40 },
+      { x: 80, y: 40 },
+    ]),
+    'M 0 0 L 32 0 Q 40 0 40 8 L 40 32 Q 40 40 48 40 L 80 40',
+  );
+});
+
+test('no words are cut: a long name or line makes its block taller; the words on an arrow wrap into more lines', async () => {
+  const { labelBox } = await import('../src/studio/workflow/workflowModel.js');
+  const config = single();
+  const id = config.agents.items[0].id;
+  const short = buildWorkflow(config).nodes.find((n) => n.id === id).h;
+  config.agents.items[0].name = 'Front desk for the whole of the customer care team in the evenings and at weekends';
+  config.agents.items[0].instructions.role =
+    'You greet every caller, find out what they need, and pass them on to the right team without making them repeat themselves.';
+  const tall = buildWorkflow(config).nodes.find((n) => n.id === id);
+  assert.ok(tall.h > short, 'taller, not cut');
+  assert.equal(tall.brief, 'You greet every caller, find out what they need, and pass them on to the right team without making them repeat themselves.');
+  const words = labelBox('The caller asks about a bill, charges, a payment, a refund, a direct debit or a late fee');
+  assert.ok(words.lines.length > 1 && words.lines.join(' ') === 'The caller asks about a bill, charges, a payment, a refund, a direct debit or a late fee');
+});
+
+test('a way back to the first subagent is a small block beside the subagent (its arrow kept for the lists, not drawn across the picture)', () => {
+  const flow = buildWorkflow(example());
+  const back = flow.nodes.find((n) => n.type === 'back' && n.agent === 'billing');
+  assert.equal(back.label, 'Back to Front Door');
+  const arrow = flow.edges.find((e) => e.id === back.edge);
+  assert.deepEqual([arrow.kind, arrow.from, arrow.to, arrow.hidden], ['return', 'billing', 'greeter', true]);
+  assert.ok(describeWorkflow(flow).includes('Billing sends the caller back to Front Door (back to the start).'));
+});
+
+test('a way out is a way out wherever it is: a tool whose effects hand over, an on-enter step that ends or transfers', () => {
+  const config = {
+    channels: [{ id: 'chat', type: 'web_chat' }],
+    agents: {
+      entry: 'a',
+      items: [
+        { id: 'a', handoffs: [{ to: 'b' }, { to: 'c' }] },
+        { id: 'b', tools: ['go'] },
+        { id: 'c', on_enter: [{ type: 'end_call' }] },
+      ],
+    },
+    tools: [{ id: 'go', type: 'http', effects: [{ do: [{ type: 'handoff', to: 'a' }] }] }],
+  };
+  const of = (id) => buildWorkflow(config).nodes.find((n) => n.id === id);
+  assert.equal(of('b').deadEnd, false);
+  assert.equal(of('c').deadEnd, false);
+});
+
+test('deleting a "Back to …" block takes it away, as an on-enter step or as a tool, and two End tools switched off together both go', () => {
+  const config = {
+    agents: { entry: 'menu', items: [{ id: 'menu' }, { id: 'billing', tools: ['back', 'end_voice', 'end_chat'], on_enter: [{ type: 'return_to_entry' }] }] },
+    tools: [
+      { id: 'back', type: 'builtin', builtin: 'return_to_entry' },
+      { id: 'end_voice', type: 'builtin', builtin: 'end_call' },
+      { id: 'end_chat', type: 'builtin', builtin: 'end_call' },
+    ],
+  };
+  assert.equal(ops.removeNode(config, 'billing::back::back').agents.items[1].tools.includes('back'), false);
+  assert.equal(ops.removeNode(config, 'billing::back::enter0').agents.items[1].on_enter, undefined);
+  const both = ['end_voice', 'end_chat'].reduce((c, id) => ops.removeNode(c, toolNodeId('billing', id)), config);
+  assert.deepEqual(both.agents.items[1].tools, ['back']);
 });

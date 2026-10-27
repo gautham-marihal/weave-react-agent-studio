@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pickBrowserVoice } from './browserVoice.js';
 
-// Listening to a voice from the library. A voice that has a recorded sample of its own (`previewUrl`: ElevenLabs publishes one for each of its premade voices)
-// plays THAT, so a man and a woman, or two women, really sound different. A voice with none (Cartesia publishes samples only to account holders) is read by the
-// browser's own speech voices, chosen by language and gender, which only gives an idea, and the note says so. Shared by the Voices page and the voice picker.
+// Plays a library voice: its own recorded sample (`previewUrl`) when it has one, so voices really sound different;
+// otherwise a browser speech voice of the same language and gender, which is only approximate and the note says so.
+// Shared by the Voices page and the voice picker.
 export function useVoicePreview() {
   const [playing, setPlaying] = useState('');
   const [note, setNote] = useState('');
@@ -42,7 +42,7 @@ export function useVoicePreview() {
     const utterance = new SpeechSynthesisUtterance(`Hello, I'm ${voice.name}. How can I help you today?`);
     utterance.lang = voice.locale;
     utterance.rate = 0.96;
-    // a female voice is played with a female browser voice and a male one with a male one; when the browser has none of that gender the pitch is nudged
+    // use a browser voice of the same gender; when the browser has none, the pitch is nudged
     const pick = pickBrowserVoice(browserVoices.length ? browserVoices : window.speechSynthesis.getVoices(), voice);
     if (pick.voice) utterance.voice = pick.voice;
     utterance.pitch = pick.pitch;
@@ -77,7 +77,8 @@ export function useVoicePreview() {
       sample.onended = () => {
         if (turn.current === mine) setPlaying('');
       };
-      // a sample that cannot be loaded raises the error event and also rejects play(): the fallback runs once, and only if this is still the voice being played
+      // a sample that cannot be loaded raises the error event and also rejects play(): the fallback runs once, and only
+      // if this is still the voice being played
       const failure = () => {
         if (failed || turn.current !== mine) return;
         failed = true;

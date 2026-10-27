@@ -1,0 +1,23 @@
+{
+  // TypeScript, added gradually: .ts/.tsx files are checked strictly; the .js/.jsx files keep working beside them (allowJs) and are checked only
+  // where they ask for it (// @ts-check). Vite builds both; Node runs the .ts files the unit tests import (type stripping, so erasable syntax only).
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src"]
+}

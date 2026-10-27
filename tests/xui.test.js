@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupKeys, looksLikePhone, looksLikeUrl, orderKeys, readXui, splitAdvanced } from '../src/studio/form/xui.js';
+import { groupKeys, looksLikePhone, looksLikeUrl, orderKeys, readXui, splitAdvanced } from '../src/studio/form/xui.ts';
 
 test('only well-formed hints are read', () => {
   assert.deepEqual(readXui({ 'x-ui': { widget: 'jsonpath', label: ' Path ', help: 'h', group: 'Source', order: 2, advanced: true } }), {

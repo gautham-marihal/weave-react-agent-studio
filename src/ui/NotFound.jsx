@@ -1,8 +1,8 @@
 import React from 'react';
 import Icon from './Icon.jsx';
 
-// Something the address names that isn't there (an agent that was deleted, a page that doesn't exist): what it is, why that may be, and the way
-// back. Drawn like the panel of a page that broke (ui/ErrorBoundary.jsx), with a calmer icon.
+// Something the address names that isn't there (a deleted agent, a missing page): what it is, why, and the way back.
+// Drawn like a broken page's panel (ui/ErrorBoundary.jsx), with a calmer icon.
 export default function NotFound({ title, text, actionLabel, onAction, children = null }) {
   return (
     <div className="pageCrash notFound" role="status">

@@ -4,6 +4,9 @@ import { prettyJson } from '../format.js';
 import { parseJsonStrict } from '../jsonDuplicates.js';
 import Icon from '../../ui/Icon.jsx';
 
+// The form's basic inputs: text, numbers (and a range), a switch, a choice from a list, a list of texts, several
+// choices, raw JSON, and a free value that may be text or JSON. Each takes `value` and calls `onChange(next)`.
+
 export function TextInput({ value, onChange, placeholder, disabled, multiline, invalid, id, mono }) {
   const common = {
     id,
@@ -59,8 +62,8 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
   );
 }
 
-// A number with both ends known (how creative, how fast, a share): a slider beside the box, the box for an exact value. The slider is a second way to
-// change the same number, so it is not in the tab order (the box is the control a screen reader announces).
+// A number with both ends known: a slider beside the box. The slider is a second way to change the same number, so it
+// is out of the tab order (screen readers announce the box).
 export function RangeNumber({ value, onChange, min, max, integer, disabled, invalid, id, placeholder, nullable }) {
   const step = integer ? 1 : Math.max((max - min) / 100, 0.01);
   const shown = typeof value === 'number' ? value : min;
@@ -111,25 +114,16 @@ export function Switch({ checked, onChange, disabled, label, id }) {
   );
 }
 
-// A choice from a list: the browser's own select for a few, a searchable list for many (see SmartSelect). A value that is no longer in the
-// list is still shown, marked "(not found)", so it is never silently changed.
-export function Select({ value, options, onChange, disabled, placeholder, invalid, id, labels, ariaLabel }) {
+// A choice from a list: the browser's own select for a few, a searchable list for many (see SmartSelect). A value that
+// is no longer in the list is still shown, marked "(not found)", so it is never silently changed.
+export function Select({ value, options, onChange, disabled, placeholder, invalid, id, labels }) {
   const known = options.includes(value);
   const list = [
     ...(!known && value !== '' && value !== undefined ? [{ value, label: `${String(value)} (not found)` }] : []),
     ...options.map((option) => ({ value: option, label: labels?.[option] || option })),
   ];
   return (
-    <SmartSelect
-      id={id}
-      value={value ?? ''}
-      options={list}
-      onChange={onChange}
-      placeholder={placeholder || 'Choose…'}
-      disabled={disabled}
-      invalid={invalid}
-      ariaLabel={ariaLabel}
-    />
+    <SmartSelect id={id} value={value ?? ''} options={list} onChange={onChange} placeholder={placeholder || 'Choose…'} disabled={disabled} invalid={invalid} />
   );
 }
 
@@ -175,16 +169,16 @@ export function StringList({ values, onChange, placeholder, disabled, addLabel =
 }
 
 // Pick several of a known set (ids of other things, or an enum). Order is the order of picking.
-export function MultiPick({ options, values, onChange, disabled, emptyText, labels }) {
+export function MultiPick({ options, values, onChange, disabled, emptyText }) {
   const list = Array.isArray(values) ? values : [];
   const left = options.filter((option) => !list.includes(option));
   return (
     <div className="stFPick">
       <div className="stFChips">
-        {list.length === 0 && <span className="stFNone">{emptyText || 'None selected'}</span>}
+        {list.length === 0 && <span className="stFNone">{emptyText}</span>}
         {list.map((item) => (
           <span key={item} className={`stFChip ${options.includes(item) ? '' : 'bad'}`}>
-            {labels?.[item] || item}
+            {item}
             {!options.includes(item) && ' (not found)'}
             <button
               type="button"
@@ -210,7 +204,7 @@ export function MultiPick({ options, values, onChange, disabled, emptyText, labe
           ariaLabel="Add"
           placeholder="Add…"
           disabled={disabled}
-          options={left.map((option) => ({ value: option, label: labels?.[option] || option }))}
+          options={left.map((option) => ({ value: option, label: option }))}
           onChange={(chosen) => {
             if (chosen) onChange([...list, chosen]);
           }}
@@ -220,21 +214,27 @@ export function MultiPick({ options, values, onChange, disabled, emptyText, labe
   );
 }
 
+// Ticks for a set of choices. A value the choices lack (from the JSON view or an older schema) stays shown, ticked and
+// marked "(not found)" like the drop-downs; unticking it is the way to remove it.
 export function CheckGroup({ options, values, onChange, disabled, labels }) {
   const list = Array.isArray(values) ? values : [];
+  const unknown = list.filter((v) => !options.includes(v));
   const id = useId();
   return (
     <div className="stFChecks" role="group">
-      {options.map((option) => (
-        <label key={option} htmlFor={`${id}-${option}`} className={list.includes(option) ? 'on' : ''}>
+      {[...options, ...unknown].map((option, i) => (
+        <label key={`${i}:${String(option)}`} htmlFor={`${id}-${i}`} className={list.includes(option) ? 'on' : ''}>
           <input
-            id={`${id}-${option}`}
+            id={`${id}-${i}`}
             type="checkbox"
             disabled={disabled}
             checked={list.includes(option)}
-            onChange={(event) => onChange(event.target.checked ? options.filter((o) => list.includes(o) || o === option) : list.filter((v) => v !== option))}
+            onChange={(event) =>
+              onChange(event.target.checked ? [...options.filter((o) => list.includes(o) || o === option), ...unknown] : list.filter((v) => v !== option))
+            }
           />
-          {labels?.[option] || option}
+          {labels?.[option] || String(option)}
+          {!options.includes(option) && ' (not found)'}
         </label>
       ))}
     </div>
@@ -242,14 +242,15 @@ export function CheckGroup({ options, values, onChange, disabled, labels }) {
 }
 
 // Raw JSON for values the schema leaves open. Commits only when the text parses.
+// (null is shown as null, a value of its own, not as an empty {})
 export function JsonInput({ value, onChange, disabled, id }) {
-  const [text, setText] = useState(() => prettyJson(value ?? {}));
+  const [text, setText] = useState(() => prettyJson(value === undefined ? {} : value));
   const [error, setError] = useState('');
   const lastCommitted = useRef(value);
   useEffect(() => {
     if (JSON.stringify(value) !== JSON.stringify(lastCommitted.current)) {
       lastCommitted.current = value;
-      setText(prettyJson(value ?? {}));
+      setText(prettyJson(value === undefined ? {} : value));
       setError('');
     }
   }, [value]);
@@ -276,7 +277,7 @@ export function JsonInput({ value, onChange, disabled, id }) {
           }
         }}
         onBlur={() => {
-          if (!error) setText(prettyJson(lastCommitted.current ?? {}));
+          if (!error) setText(prettyJson(lastCommitted.current === undefined ? {} : lastCommitted.current));
         }}
       />
       {error && <small className="stFErr">Not valid JSON yet, so this isn’t applied: {error}</small>}
@@ -284,10 +285,26 @@ export function JsonInput({ value, onChange, disabled, id }) {
   );
 }
 
-// A value that may be any JSON scalar or structure, typed as text: plain text stays a string; true, 12,
-// null, [..] and {..} are read as JSON.
-export function FreeValue({ value, onChange, disabled, id }) {
-  const show = (v) => (typeof v === 'string' ? v : JSON.stringify(v));
+// Any JSON value typed as text: plain text stays a string; true, 12, null, [..] and {..} read as JSON. Quoted text
+// ("1", "true") stays a string and shows quoted, so keypad digits never become numbers.
+const READS_AS_JSON = /^(true|false|null|-?\d+(\.\d+)?)$/;
+const readsAsSomethingElse = (text) => {
+  const t = text.trim();
+  if (READS_AS_JSON.test(t)) return true;
+  if (!/^[[{]/.test(t) && !/^".*"$/.test(t)) return false;
+  try {
+    JSON.parse(t);
+    return true;
+  } catch {
+    return false;
+  }
+};
+// What read() returns for JSON with a repeated key: a symbol key no
+// typed JSON can have (a plain { repeated } could be a real value).
+const REPEATED = Symbol('repeated');
+
+export function FreeValue({ value, onChange, disabled, id, 'aria-label': ariaLabel }) {
+  const show = (v) => (v === undefined ? '' : typeof v === 'string' ? (readsAsSomethingElse(v) ? JSON.stringify(v) : v) : JSON.stringify(v));
   const [text, setText] = useState(show(value));
   const [problem, setProblem] = useState('');
   const lastSent = useRef(value);
@@ -299,11 +316,11 @@ export function FreeValue({ value, onChange, disabled, id }) {
   }, [value]);
   const read = (raw) => {
     const t = raw.trim();
-    if (/^(true|false|null|-?\d+(\.\d+)?)$/.test(t) || /^[[{]/.test(t)) {
+    if (READS_AS_JSON.test(t) || /^[[{]/.test(t) || /^".*"$/.test(t)) {
       try {
         return parseJsonStrict(t);
       } catch (e) {
-        return /appears twice/.test(e.message) ? { repeated: e.message } : raw;
+        return /appears twice/.test(e.message) ? { [REPEATED]: e.message } : raw;
       }
     }
     return raw;
@@ -317,14 +334,15 @@ export function FreeValue({ value, onChange, disabled, id }) {
         spellCheck={false}
         disabled={disabled}
         value={text}
+        aria-label={ariaLabel}
         aria-invalid={!!problem || undefined}
         onChange={(event) => {
           const raw = event.target.value;
           setText(raw);
           const v = read(raw);
           // A repeated key is not applied (it would silently lose a value); the text stays as typed until it is fixed.
-          if (v && typeof v === 'object' && 'repeated' in v && Object.keys(v).length === 1) {
-            setProblem(v.repeated);
+          if (v && typeof v === 'object' && REPEATED in v) {
+            setProblem(v[REPEATED]);
             return;
           }
           setProblem('');

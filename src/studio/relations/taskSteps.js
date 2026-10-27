@@ -1,5 +1,5 @@
-// A multi-step task as a list a person can read: what is asked at each step, how the answer is checked, when a step is skipped, and what happens
-// at the end. The form edits each step's fields; this is the same task read from top to bottom. Pure: no React, no DOM.
+// A multi-step task as a readable list: what each step asks, how the answer is checked, when a step is skipped, and
+// how it ends. Pure: no React, no DOM.
 
 import { isObj } from '../form/engine.js';
 

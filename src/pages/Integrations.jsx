@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import Icon from '../ui/Icon.jsx';
 import FocusBox from '../ui/FocusBox.jsx';
 
+// The Integrations page: the services an agent can connect to, searchable and filtered by kind. Each opens a panel with
+// its connection details (kept in this browser), and can be added to an agent's draft as a connection.
+
 const INTEGRATION_LIBRARY = [
   {
     id: 'webhook',
     name: 'Webhooks',
     category: 'Developer tools',
-    icon: 'swap',
+    icon: 'webhook',
     description: 'Send agent events and receive data from your own services.',
     fields: ['Endpoint URL', 'Secret'],
   },
@@ -140,7 +143,7 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
         <span>
           <b>{filtered.length}</b> integrations
         </span>
-        <span>Connection details are stored in this browser for this workspace</span>
+        <span>Connection details are kept in this browser, for every workspace</span>
       </div>
       <section className="integrationGrid">
         {filtered.map((item) => {

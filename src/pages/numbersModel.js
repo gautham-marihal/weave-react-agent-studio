@@ -1,7 +1,5 @@
-// Phone numbers on the real platform (FRONTEND_GUIDE 10.5): the number is the person's, the API checks it is free and creates the LiveKit SIP trunk and dispatch
-// rule. A number belongs to a bot and an environment, so a call to it is answered by whatever version is deployed there. The list also holds the numbers set up
-// by hand on the phone system, which are read-only here. This module reads the API's rows TOLERANTLY (a missing part is left out, never an error) and says
-// everything in plain words. Pure: no network, no DOM.
+// Phone numbers on the real platform (FRONTEND_GUIDE 10.5). A number belongs to a bot and an environment, so whatever
+// is deployed there answers. Rows are read TOLERANTLY (a missing part is left out, never an error). Pure.
 
 import { formatWhen } from '../studio/format.js';
 
@@ -13,8 +11,8 @@ const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
 export const ENVIRONMENT_WORDS = { development: 'Development', staging: 'Staging', production: 'Production' };
 export const environmentWord = (env) => ENVIRONMENT_WORDS[env] || text(env) || '—';
 
-// Who a dispatch rule sends calls to. The platform lists them as [agent name, metadata] pairs: for a number this builder set up the agent is the builder's
-// runtime and the metadata says which bot and environment ({"bot":"voice-test","ref":"development"}); for one set up by hand it is that agent's own name.
+// Who a dispatch rule sends calls to, from the platform's [agent name, metadata] pairs: for our numbers the builder's
+// runtime with {"bot","ref"} metadata; for hand-made ones that agent's own name.
 export function ruleTarget(entry) {
   const [name, metadata] = Array.isArray(entry) ? entry : [entry, ''];
   const meta = readMetadata(metadata);
@@ -30,7 +28,7 @@ function readMetadata(metadata) {
   }
 }
 
-// ---- a row of the list -------------------------------------------------------------------------------------------------------------------------
+// ---- a row of the list ----------------------------------------------------------------------------------------------
 export function normalizeNumber(raw) {
   const r = isObj(raw) ? raw : {};
   const o = isObj(r.options) ? r.options : {};
@@ -42,7 +40,7 @@ export function normalizeNumber(raw) {
     trunk: isObj(r.trunk) ? { id: text(r.trunk.id), name: text(r.trunk.name) } : null,
     bot: text(r.bot),
     environment: text(r.environment),
-    // `agents`: who the rule sends calls to, by name (the bot, for one of ours); `targets`: the pairs as the platform has them, for the support details
+    // agents: who the rule calls, by name (the bot, for ours); targets: the platform's pairs, for support details
     rule: isObj(r.rule)
       ? {
           id: text(r.rule.id),
@@ -112,7 +110,7 @@ export function lastCallWords(row, nowMs = Date.now()) {
   return `Last call ${when || 'at an unknown time'}${call.caller ? `, from ${call.caller}` : ''}${ending ? ` (${ending})` : ''}`;
 }
 
-// The details support asks for, never needed to set a number up: the trunk and dispatch rule the platform made, with their ids.
+// Details only support needs: the trunk and dispatch rule the platform made, with their ids.
 export function supportDetails(row) {
   const out = [];
   if (row.trunk) out.push({ label: 'Trunk', value: [row.trunk.name, row.trunk.id && `(${row.trunk.id})`].filter(Boolean).join(' ') });
@@ -127,16 +125,17 @@ export function supportDetails(row) {
 // Does this configuration have a phone line that is on? A call to a number is answered only by a version that has one.
 export const hasPhoneChannel = (config) => list(isObj(config) ? config.channels : null).some((c) => isObj(c) && c.type === 'sip_voice' && c.enabled !== false);
 
-// An environment as the picker offers it, short enough for the box: "Production · runs v0.1.1" or "Staging · nothing deployed". `current` is GET
-// deployments' `current`.
+// An environment as the picker shows it: "Production · runs v0.1.1" or "Staging · nothing deployed".
+// `current` is GET deployments' `current`.
 export function environmentOption(env, current) {
   if (!isObj(current)) return environmentWord(env);
   const version = text(current[env]?.version);
   return `${environmentWord(env)} · ${version ? `runs v${version}` : 'nothing deployed'}`;
 }
 
-// What to warn about before a number is set up (or moved) for an agent and an environment: a call to it would not be answered. `deployed` is the version
-// deployed there ('' for none, null while not known); `phone` whether that version has a phone line that is on (null while not known).
+// Warnings before a number is set up (or moved) where its calls would not be answered.
+//   deployed: the version there ('' for none, null while unknown)
+//   phone: whether that version has a phone line on (null while unknown)
 export function setupWarnings({ env, deployed, phone, botName = 'this agent' }) {
   const where = environmentWord(env);
   if (deployed === '')
@@ -150,7 +149,7 @@ export function setupWarnings({ env, deployed, phone, botName = 'this agent' }) 
   return [];
 }
 
-// What a change does, one sentence each, for the person to confirm before it is sent. `body` is what patchBody would send.
+// What a change does, one sentence each, for the person to confirm before sending. `body` is what patchBody sends.
 export function changeWords(before, body) {
   const out = [];
   if (body.environment) out.push(`Move it to ${environmentWord(body.environment)}: calls are then answered by the version deployed there.`);
@@ -165,7 +164,7 @@ export function changeWords(before, body) {
 
 const durationWords = (seconds) => (Math.round(seconds / 60) >= 1 ? `${Math.round((seconds / 60) * 10) / 10} minutes` : `${seconds} seconds`);
 
-// What to say once a number has been set up. Creating is safe to repeat: the second time the platform answers `changed: ["already set up"]`.
+// What to say once a number is set up. Creating is safe to repeat (the platform answers `changed: ["already set up"]`).
 export function setUpWords(result, { number, botName, env }) {
   const changed = list(isObj(result) ? result.changed : null).map(text);
   if (changed.includes('already set up')) return `${number} was already set up for ${botName} in ${environmentWord(env)}. Nothing was changed.`;
@@ -183,7 +182,7 @@ export function optionWords(row) {
   return parts.join(' · ');
 }
 
-// ---- the form: checking a number as it is typed -----------------------------------------------------------------------------------------------------
+// ---- the form: checking a number as it is typed ---------------------------------------------------------------------
 export function normalizeCheck(raw) {
   const r = isObj(raw) ? raw : {};
   const owner = isObj(r.owner) ? r.owner : {};
@@ -220,7 +219,7 @@ export function checkWords(check) {
   }
 }
 
-// ---- the settings the form's hints come from ----------------------------------------------------------------------------------------------------
+// ---- the settings the form's hints come from ------------------------------------------------------------------------
 export function normalizeNumberSettings(raw) {
   const r = isObj(raw) ? raw : {};
   const d = isObj(r.defaults) ? r.defaults : {};
@@ -289,7 +288,7 @@ export function parseMaxDuration(minutes) {
   return { value: seconds, error: '' };
 }
 
-// ---- when something goes wrong ------------------------------------------------------------------------------------------------------------------
+// ---- when something goes wrong --------------------------------------------------------------------------------------
 export function numbersProblem(error) {
   if (!error) return '';
   const detail = text(error.message);
@@ -305,5 +304,5 @@ export function numbersProblem(error) {
 // Does this failure mean "this server has no numbers feature" (so the old preview stays), rather than a real problem?
 export const notSupported = (error) => !!error && (error.status === 404 || error.status === 405 || error.kind === 'not_found');
 
-// Does it mean "this server has no phone-system credentials" (503)? Then the feature is hidden, not shown as an empty list.
+// Does it mean "this server has no phone-system credentials" (503)? Then the feature is hidden, not an empty list.
 export const noPhoneSystem = (error) => !!error && error.status === 503;

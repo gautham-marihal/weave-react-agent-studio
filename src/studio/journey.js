@@ -1,5 +1,5 @@
-// The path an agent takes: build it, test it, release it, watch it, and the page addresses each step had (#/bots/{id}/deploy...). The agent's pages
-// answer to every one of them, so an old link still opens the page that holds it. Pure: no React, no DOM.
+// An agent's stages (build, test, release, watch) and the old page addresses of each (#/bots/{id}/deploy...), so an
+// old link still opens the page that holds it. Pure: no React, no DOM.
 
 export const STAGES = [
   {

@@ -1,13 +1,9 @@
-// Test scenarios: the `tests` section of an agent's configuration is a list of conversations to check: who is talking on which channel
-// (`channel`, `caller`), what the caller says turn by turn (`turns`), and what must hold afterwards (`expect`). A scenario can also carry a
-// `description`, a pretend clock (`now`), starting `state`, answers for the bot's API calls (`http_mocks`) and a `model_script` that
-// replaces the language model so the run is free and repeatable. This module is the editing side: the shapes, labels, sentences and
-// checks for writing them. Running them is the server's job (see api.runTests); runResults.js reads what it answers.
+// Test scenarios, the editing side: shapes, labels, sentences and checks for the `tests` section (channel and caller,
+// `turns`, `expect`, plus optional description, clock `now`, `state`, `http_mocks` and a `model_script` that makes runs
+// free and repeatable). The server runs them (api.runTests); runResults.js reads its answers.
 //
-// A rule this file keeps: the form NEVER blocks saving, and never calls a scenario broken, because of something it does not know. The
-// schema grows (thirteen kinds of expectation today, eight more than the first version of the studio knew), so a part this file doesn't
-// recognise is kept exactly as it is and shown as "edit in JSON"; only what it positively knows to be wrong is a problem.
-// Pure: no network, no DOM.
+// The form NEVER blocks saving, or calls a scenario broken, over something it doesn't know: the schema grows, so
+// unknown parts are kept as they are and shown as "edit in JSON". Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
 
@@ -78,11 +74,10 @@ export const EXPECT_KINDS = [
   },
 ];
 export const kindOfExpectation = (expectation) => (isObj(expectation) ? EXPECT_KINDS.find((kind) => kind.key in expectation)?.key || '' : '');
-export const kindInfo = (key) => EXPECT_KINDS.find((kind) => kind.key === key) || null;
 // An expectation this file doesn't know: kept as it is, never an error.
 export const isUnknownExpectation = (expectation) => isObj(expectation) && !kindOfExpectation(expectation);
 
-// The call limits a `limit_reached` check can name, and what an input rule may have done (the schema's enums), in words.
+// In words: the call limits a `limit_reached` check can name, and what an input rule may have done (schema enums).
 export const LIMIT_CHOICES = [
   { value: 'max_call_duration_s', label: 'The call ran too long' },
   { value: 'max_silence_s', label: 'There was too much silence' },
@@ -112,14 +107,14 @@ export const taskIdsOf = (config) =>
   list(config?.tasks)
     .map((task) => task?.id)
     .filter(Boolean);
-// The outcome names a task can end with: verified / failed / declined, and the names its own on_success / on_failure / on_decline blocks give.
+// A task's outcome names: verified / failed / declined, plus those its on_success / on_failure / on_decline give.
 export function outcomeNamesOf(config, taskId) {
   const task = list(config?.tasks).find((t) => t?.id === taskId);
   const own = ['on_success', 'on_failure', 'on_decline'].map((k) => task?.[k]?.outcome).filter((n) => typeof n === 'string' && n);
   return [...new Set([...TASK_OUTCOME_CHOICES.map((c) => c.value), ...own])];
 }
 
-// ---- turns: what the caller says, or the keys they press (a phone line only) ---------------------------------------------------------------
+// ---- turns: what the caller says, or the keys they press (a phone line only)
 export const KEYS_PATTERN = /^[0-9*#A-Da-d]+$/;
 export const isKeysTurn = (turn) => isObj(turn) && typeof turn.keys === 'string' && turn.say === undefined;
 export const describeTurn = (turn) => (isKeysTurn(turn) ? 'presses keys on the keypad' : `“${isObj(turn) ? (turn.say ?? '') : ''}”`);
@@ -234,11 +229,11 @@ export function newExpectation(kind, config) {
   }
 }
 
-// What the model calls a tool: its `name`, which defaults to its id. A check says "the tool X is called" by THIS name, because it is what the runner records
-// (a voice variant and a chat variant of one tool may share a name while their ids differ).
+// What the model calls a tool: its `name`, defaulting to its id. Checks use this name because the runner records it
+// (a voice and a chat variant of one tool may share a name with different ids).
 export const modelNameOf = (tool) => (isObj(tool) ? String(tool.name || tool.id || '') : '');
 
-// The names a `tool_called` can use: each tool's model-facing name, and the handoff tools of the agents (the schema's `tool_names`).
+// Names a `tool_called` can use: each tool's model-facing name and the agents' handoff tools (schema's `tool_names`).
 export function toolNamesOf(config) {
   const tools = list(config?.tools).map(modelNameOf);
   const handoffs = list(config?.agents?.items).flatMap((a) => list(a?.handoffs).map((h) => h?.tool));
@@ -370,7 +365,8 @@ export function scriptProblem(item, index) {
   return `${where}it must be a message or a tool call.`;
 }
 
-// What is wrong with a scenario, by where: { id, channel, turns, expect: ['…'], now, state, mocks: ['…'], script: ['…'] } (an empty object when fine).
+// What is wrong with a scenario, by where (an empty object when fine):
+// { id, channel, turns, expect: ['…'], now, state, mocks: ['…'], script: ['…'] }
 export function scenarioProblems(scenario, config, others = []) {
   const out = {};
   if (!isObj(scenario)) return { id: 'A scenario is an object.' };
@@ -400,29 +396,50 @@ export function scenarioProblems(scenario, config, others = []) {
   if (scenario.state !== undefined && !isObj(scenario.state)) out.state = 'The starting state must be an object, like {"verified": true}.';
   const mocks = list(scenario.http_mocks).map(mockProblem).filter(Boolean);
   if (mocks.length) out.mocks = mocks;
-  const script = list(scenario.model_script).map(scriptProblem).filter(Boolean);
+  // a script needs at least one reply (the schema's minItems): said here rather than refused by the server
+  const script =
+    scenario.model_script === undefined
+      ? []
+      : !Array.isArray(scenario.model_script)
+        ? ['The model script must be a list of replies.']
+        : !scenario.model_script.length
+          ? ['The model script is empty: add what the model says, or remove the script to run it with a real model.']
+          : scenario.model_script.map(scriptProblem).filter(Boolean);
   if (script.length) out.script = script;
   return out;
 }
 
 export const hasProblems = (problems) => Object.keys(problems).length > 0;
 
-// Pasted JSON -> { scenarios, problems: [string] }. Accepts a list, or an object with a `tests` list. Ids that clash are renamed.
+// Pasted JSON (a list, or an object with `tests`) → { scenarios, problems, rejected: [not added], already: [ids] }.
+// Clashing ids are renamed; a scenario already in the draft (by id or an earlier paste's new id) is not added again.
 export function parseImport(text, config) {
   let value;
   try {
     value = JSON.parse(text);
   } catch (error) {
-    return { scenarios: [], problems: [`That isn’t valid JSON (${error.message}).`] };
+    return { scenarios: [], problems: [`That isn’t valid JSON (${error.message}).`], rejected: null, already: [] };
   }
   const items = Array.isArray(value) ? value : isObj(value) && Array.isArray(value.tests) ? value.tests : isObj(value) ? [value] : null;
-  if (!items) return { scenarios: [], problems: ['Paste a list of scenarios, or one scenario.'] };
+  if (!items) return { scenarios: [], problems: ['Paste a list of scenarios, or one scenario.'], rejected: null, already: [] };
   const taken = [...list(config?.tests)];
   const scenarios = [];
   const problems = [];
+  const rejected = [];
+  const already = [];
   items.forEach((item, index) => {
     if (!isObj(item)) {
       problems.push(`Item ${index + 1} isn’t a scenario.`);
+      rejected.push(item);
+      return;
+    }
+    // the same scenario, or the copy an earlier paste added under a new id ("billing_2" for a pasted "billing")
+    const sameAs = (s) =>
+      isObj(s) &&
+      (JSON.stringify(s) === JSON.stringify(item) ||
+        (String(s.id).startsWith(`${item.id}_`) && JSON.stringify({ ...s, id: item.id }) === JSON.stringify(item)));
+    if (taken.some(sameAs)) {
+      already.push(item.id);
       return;
     }
     const scenario = {
@@ -433,12 +450,13 @@ export function parseImport(text, config) {
     const flat = Object.values(found).flat();
     if (flat.length) {
       problems.push(`${scenario.id}: ${flat.join(' ')}`);
+      rejected.push(item);
       return;
     }
     taken.push(scenario);
     scenarios.push(scenario);
   });
-  return { scenarios, problems };
+  return { scenarios, problems, rejected, already };
 }
 
 // Turns a typed value into the JSON it means (true, 3, null, "text") for a state value.
@@ -465,9 +483,9 @@ export function parseObject(text) {
   }
 }
 
-// ---- mocks ---------------------------------------------------------------------------------------------------------------------------
-// A starting mock for a request the bot made and nothing answered (`unmocked` in a run): the same method and path, answering 200 with an
-// empty JSON object for the author to fill in. Added to the scenario's own list; nothing else about it changes.
+// ---- mocks
+// A starting mock for a request nothing answered (`unmocked` in a run): same method and path, answering 200 with an
+// empty JSON object to fill in. Added to the scenario's own list; nothing else changes.
 export function stubMock(request, existing = []) {
   const mock = { path: String(request?.path || '/'), status: 200, json: {} };
   if (request?.method) mock.method = String(request.method).toUpperCase();
@@ -485,10 +503,9 @@ export function addMockTo(scenario, request) {
   return mock ? { ...scenario, http_mocks: [...list(scenario?.http_mocks), mock] } : scenario;
 }
 
-// ---- turning a test conversation into a scenario (the "Save as scenario" button on a finished Test conversation) ---------------------------
-// `records` are the call's events in order (user_said, agent_said, tool_called, state_changed…), `finalState` the state at the end.
-// It is a starting point the author edits: the caller's turns, a `tool_called` for every tool used, and `state_equals` for the final
-// state. Nothing is invented: only what the conversation shows.
+// ---- turning a Test conversation into a scenario ("Save as scenario")
+// `records`: the call's events in order; `finalState`: the state at the end. A starting point to edit: the caller's
+// turns, a `tool_called` per tool used and `state_equals` for the final state. Nothing is invented.
 export function scenarioFromConversation(config, { id, channel, messages = [], tools = [], finalState = {} } = {}) {
   const turns = messages
     .filter((m) => m.role === 'user' || m.role === 'caller')

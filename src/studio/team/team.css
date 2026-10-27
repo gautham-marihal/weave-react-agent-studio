@@ -25,7 +25,7 @@
   font-size: var(--fs-xs);
   color: var(--muted);
 }
-.tmFilter select {
+.tmFilter :is(select, button:where(.rxSelect)) {
   min-width: 180px;
 }
 .tmCount {
@@ -390,7 +390,7 @@
   display: flex;
   justify-content: flex-end;
 }
-.tmExisting select {
+.tmExisting :is(select, button:where(.rxSelect)) {
   max-width: 420px;
 }
 .tmEmailRow {

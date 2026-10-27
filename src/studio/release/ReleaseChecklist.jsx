@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { api } from '../../api/client.js';
+import { api } from '../../api/client.ts';
 import { navigate, routeHref } from '../route.js';
 import { useAsync } from '../useAsync.js';
 import { useProviders } from '../models/useProviders.js';
@@ -9,9 +9,8 @@ import { POLICY_NOTE, buildChecklist, verdict } from './checklist.js';
 import './release.css';
 import Icon from '../../ui/Icon.jsx';
 
-// "Is it safe to put this live?": one list that answers it from what the studio can see (the validator, the test runs on this exact
-// version, the knowledge indexes, the secrets). It appears on the Deploy tab for a published version and in the Publish dialog for the
-// draft. Each line shows only when it applies. It informs; it can't enforce (see checklist.js).
+// "Is it safe to put this live?" for a published version (Deploy tab) or the draft (Publish dialog).
+// Each line shows only when it applies; it informs and can't enforce (see checklist.js).
 const MARK = { ok: 'check', warn: 'alert', bad: 'close', info: 'info' };
 
 export default function ReleaseChecklist({ botId, config, report, version, environment, target = 'version', refreshKey = 0, compact = false }) {

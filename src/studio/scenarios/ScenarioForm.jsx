@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import Icon from '../../ui/Icon.jsx';
-import { channelLabel } from '../newlayout/rowNames.js';
+import { channelLabel } from '../agent/rowNames.js';
 import {
   EXPECT_KINDS,
   GUARDRAIL_ACTION_CHOICES,
@@ -23,19 +23,19 @@ import {
   taskIdsOf,
   toolChoices,
 } from './model.js';
+import Select from '../../ui/Select.tsx';
 
-// The editor for one scenario. It covers every part the schema has (the caller's turns, thirteen kinds of expectation, a description, a pretend
-// clock, starting state, answers for the bot's API calls, a model script) and "Edit as JSON" for anything else. It never blocks Save for a
-// part it does not know: that part is kept exactly as it is. Only what is positively wrong (a missing id, a channel that isn't there, an
-// invalid pattern) is a problem, and it is said where it is.
+// The editor for one scenario: every part the schema has (turns, thirteen kinds of expectation, clock, state, API
+// mocks, model script) plus "Edit as JSON". Unknown parts are kept as they are and never block Save; only what is
+// positively wrong (a missing id, a missing channel, a bad pattern) is a problem, shown where it is.
 
-// A box for a JSON object or value: keeps what is typed, only passes up what parses, says what is wrong when it doesn't.
+// A box for a JSON object or value: keeps what is typed, passes up only what parses, and says what is wrong if not.
 function JsonBox({ value, onChange, label, rows = 3, placeholder, objectOnly = true, className = '', onValid = null }) {
   const [text, setText] = useState(() => (value === undefined ? '' : JSON.stringify(value, null, 2)));
   const [error, setError] = useState('');
   const boxId = useId();
   const mine = useRef(JSON.stringify(value));
-  // tell the form whether this box holds something that does not parse, so Save can say so instead of silently keeping the old value
+  // tell the form when this box doesn't parse, so Save can say so instead of silently keeping the old value
   useEffect(() => {
     onValid?.(boxId, !error);
     return () => onValid?.(boxId, true);
@@ -93,6 +93,33 @@ function JsonBox({ value, onChange, label, rows = 3, placeholder, objectOnly = t
   );
 }
 
+// A state value box that keeps the typed text ("not paid") and passes up what it means (true, 3, "not paid"). Only
+// overwritten when the value changes from somewhere else.
+function ValueBox({ value, onChange, ...rest }) {
+  const shown = (v) => (v === undefined ? '' : showValue(v));
+  const [text, setText] = useState(() => shown(value));
+  const mine = useRef(JSON.stringify(value));
+  useEffect(() => {
+    if (JSON.stringify(value) !== mine.current) {
+      mine.current = JSON.stringify(value);
+      setText(shown(value));
+    }
+  }, [value]);
+  return (
+    <input
+      {...rest}
+      type="text"
+      value={text}
+      onChange={(event) => {
+        const parsed = parseValue(event.target.value);
+        setText(event.target.value);
+        mine.current = JSON.stringify(parsed);
+        onChange(parsed);
+      }}
+    />
+  );
+}
+
 function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
   const kind = kindOfExpectation(value);
   const tools = toolChoices(config);
@@ -136,7 +163,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
 
   return (
     <li className="scExpect">
-      <select
+      <Select
         className="stFInput small"
         value={kind}
         onChange={(event) => {
@@ -149,7 +176,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
             {k.label}
           </option>
         ))}
-      </select>
+      </Select>
 
       {(kind === 'tool_called' || kind === 'tool_not_called') && pickTool(kind, value[kind])}
 
@@ -177,13 +204,12 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
             options={states}
             onChange={(chosen) => onChange({ state_equals: { ...value.state_equals, state: chosen } })}
           />
-          <input
+          <ValueBox
             className="stFInput small mono"
-            type="text"
-            value={showValue(value.state_equals?.value ?? '')}
+            value={value.state_equals?.value}
             placeholder="value, e.g. true, 3 or paid"
             aria-label={label('value')}
-            onChange={(event) => onChange({ state_equals: { ...value.state_equals, value: parseValue(event.target.value) } })}
+            onChange={(parsed) => onChange({ state_equals: { ...value.state_equals, value: parsed } })}
           />
         </>
       )}
@@ -216,7 +242,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
 
       {(kind === 'http_called' || kind === 'http_not_called') && (
         <>
-          <select
+          <Select
             className="stFInput small"
             value={http.method || ''}
             onChange={(event) => setHttp({ method: event.target.value })}
@@ -228,7 +254,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
                 {m}
               </option>
             ))}
-          </select>
+          </Select>
           <input
             className="stFInput small mono"
             type="text"
@@ -262,7 +288,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
             options={taskIdsOf(config)}
             onChange={(chosen) => onChange({ task_outcome: { ...value.task_outcome, task: chosen } })}
           />
-          <select
+          <Select
             className="stFInput small"
             value={value.task_outcome?.outcome || ''}
             onChange={(event) => {
@@ -281,7 +307,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
                 </option>
               ),
             )}
-          </select>
+          </Select>
         </>
       )}
 
@@ -295,7 +321,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
             options={inputRuleIdsOf(config)}
             onChange={(chosen) => onChange({ guardrail_triggered: { ...value.guardrail_triggered, rule: chosen } })}
           />
-          <select
+          <Select
             className="stFInput small"
             value={value.guardrail_triggered?.action || ''}
             onChange={(event) => {
@@ -312,7 +338,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
                 {c.label}
               </option>
             ))}
-          </select>
+          </Select>
         </>
       )}
 
@@ -328,7 +354,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
       )}
 
       {kind === 'limit_reached' && (
-        <select
+        <Select
           className="stFInput small"
           value={value.limit_reached || ''}
           onChange={(event) => onChange({ limit_reached: event.target.value })}
@@ -340,7 +366,7 @@ function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
               {c.label}
             </option>
           ))}
-        </select>
+        </Select>
       )}
 
       {kind === 'judge' && (
@@ -384,7 +410,7 @@ function MocksEditor({ mocks, onChange, connections, reportBox }) {
           <div className="scGrid">
             <label>
               <span>Method</span>
-              <select
+              <Select
                 className="stFInput small"
                 value={mock.method || ''}
                 onChange={(event) => set(i, { method: event.target.value })}
@@ -396,7 +422,7 @@ function MocksEditor({ mocks, onChange, connections, reportBox }) {
                     {m}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label>
               <span>Path</span>
@@ -437,7 +463,7 @@ function MocksEditor({ mocks, onChange, connections, reportBox }) {
             {connections.length > 0 && (
               <label>
                 <span>Only for connection</span>
-                <select
+                <Select
                   className="stFInput small"
                   value={mock.connection || ''}
                   onChange={(event) => set(i, { connection: event.target.value })}
@@ -449,7 +475,7 @@ function MocksEditor({ mocks, onChange, connections, reportBox }) {
                       {c}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
             <label className="wide">
@@ -530,7 +556,7 @@ function ScriptEditor({ script, onChange, tools, reportBox }) {
           const calls = typeof item === 'object' && item !== null;
           return (
             <li key={i}>
-              <select
+              <Select
                 className="stFInput small"
                 value={calls ? 'tool' : 'say'}
                 aria-label={`Model reply ${i + 1}: what it does`}
@@ -538,7 +564,7 @@ function ScriptEditor({ script, onChange, tools, reportBox }) {
               >
                 <option value="say">Says</option>
                 <option value="tool">Calls a tool</option>
-              </select>
+              </Select>
               {calls ? (
                 <>
                   <SmartSelect
@@ -601,7 +627,7 @@ function ScriptEditor({ script, onChange, tools, reportBox }) {
 
 export default function ScenarioForm({ initial, config, others, onSave, onCancel, isNew }) {
   const formRef = useRef(null);
-  // the keyboard goes to the form's first field when it opens, and back to what opened it when it closes (else it is lost with the form)
+  // focus goes to the form's first field when it opens, and back to its opener when it closes (else it is lost)
   const [opener] = useState(() => (typeof document === 'undefined' ? null : document.activeElement));
   useEffect(() => {
     formRef.current?.querySelector('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])')?.focus();
@@ -617,6 +643,9 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState('');
   const [badBoxes, setBadBoxes] = useState([]); // the JSON boxes that hold something that does not parse
+  // "More" stays as the author left it: open when the scenario uses it, not shut when the last of it is removed
+  const [moreOpen, setMoreOpen] = useState(() => !!(initial?.model_script || initial?.http_mocks || initial?.now || initial?.state));
+  const [blocked, setBlocked] = useState(false); // Save was pressed with something still wrong
   const reportBox = useCallback(
     (name, ok) => setBadBoxes((old) => (ok ? (old.includes(name) ? old.filter((n) => n !== name) : old) : old.includes(name) ? old : [...old, name])),
     [],
@@ -671,6 +700,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
     if (jsonMode) {
       try {
         value = JSON.parse(jsonText);
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('a scenario is an object');
       } catch (e) {
         setJsonError(`Not valid JSON (${e.message}).`);
         return;
@@ -678,9 +708,28 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
     }
     const found = scenarioProblems(value, config, others);
     setTried(true);
-    if (jsonMode) setScenario(value);
-    if (!jsonMode && badBoxes.length) return; // the boxes say what is wrong; nothing is saved behind the author's back
-    if (!hasProblems(found)) onSave(value);
+    if (jsonMode) {
+      setScenario(value);
+      // the form's fields say what is wrong beside each one; here they are not shown, so it is said under the box
+      if (hasProblems(found)) {
+        setJsonError(`It can’t be saved yet. ${Object.values(found).flat().filter(Boolean).join(' ')}`);
+        return;
+      }
+    }
+    if (badBoxes.length || hasProblems(found)) {
+      // the boxes and fields say what is wrong; folded parts open and the first gets focus, so Save is never silent
+      setBlocked(true);
+      window.requestAnimationFrame(() => {
+        const form = formRef.current;
+        if (!form) return;
+        form.querySelectorAll('[aria-invalid="true"], .stFErr').forEach((el) => {
+          for (let d = el.closest('details'); d; d = d.parentElement?.closest('details')) d.open = true;
+        });
+        form.querySelector('[aria-invalid="true"]')?.focus();
+      });
+      return;
+    }
+    onSave(value);
   };
 
   return (
@@ -778,7 +827,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
               {(scenario.turns || []).map((turn, i) => (
                 <li key={i}>
                   {(phoneLine || isKeysTurn(turn)) && (
-                    <select
+                    <Select
                       className="stFInput small"
                       value={isKeysTurn(turn) ? 'keys' : 'say'}
                       onChange={(event) => setTurnKind(i, event.target.value === 'keys')}
@@ -786,7 +835,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
                     >
                       <option value="say">Says</option>
                       <option value="keys">Presses keys</option>
-                    </select>
+                    </Select>
                   )}
                   <input
                     className={`stFInput small${isKeysTurn(turn) ? ' mono' : ''}`}
@@ -842,7 +891,7 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
             </button>
           </fieldset>
 
-          <details className="scMore" open={!!(scenario.model_script || scenario.http_mocks || scenario.now || scenario.state) || undefined}>
+          <details className="scMore" open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)}>
             <summary>Model script, API answers, clock and starting state</summary>
             <fieldset className="scBlock">
               <legend>
@@ -919,6 +968,11 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
         <button type="button" className="quietButton" onClick={onCancel}>
           Cancel
         </button>
+        {blocked && !jsonMode && (badBoxes.length > 0 || hasProblems(problems)) && (
+          <small className="stFErr" role="alert">
+            Not saved: fix what is marked above first.
+          </small>
+        )}
       </div>
     </form>
   );

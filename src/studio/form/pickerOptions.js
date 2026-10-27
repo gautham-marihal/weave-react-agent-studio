@@ -1,7 +1,6 @@
-// What a person can ADD to a list, written as the job it does rather than the kind it is in the file: "Hand over to a person", not
-// "Built-in"; "Look something up in your systems", not "HTTP". Each option says what it is for in a sentence, and the ones the runtime can't run
-// yet say so before anything is built. The options are matched to the schema's own branches, so a branch the schema adds later still appears
-// (under "More", named by the schema) and nothing the schema has is left out. Pure: no network, no DOM.
+// What a person can add to a list, named by the job it does ("Hand over to a person", not "Built-in") with a sentence
+// each; ones the runtime can't run yet say so. Options are matched to the schema's branches, so a branch added later
+// still appears under "More". Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 import { CHANNEL_PRESETS, REACH_WORDS, buildChannel } from './presets.js';
@@ -13,7 +12,7 @@ const NOT_YET = 'Not available in the runtime yet';
 // the plain name when it is free (end_call), else numbered (end_call_2)
 const freeId = (taken, base) => (taken.includes(base) ? uniqueId(taken, base) : base);
 
-// ---- tools ----------------------------------------------------------------------------------------------------------------------------------
+// ---- tools ----------------------------------------------------------------------------------------------------------
 // kind: the schema's `type`; builtin: which built-in action. `seed` is merged over the schema's own starting value.
 const TOOLS = [
   {
@@ -133,7 +132,7 @@ const TOOLS = [
   },
 ];
 
-// ---- guardrails -----------------------------------------------------------------------------------------------------------------------------
+// ---- guardrails -----------------------------------------------------------------------------------------------------
 const GUARDRAILS = {
   input: [
     {
@@ -222,12 +221,12 @@ const GUARDRAILS = {
   ],
 };
 
-// Kinds the schema allows in a list but the runtime does not run there, so Add does not offer them. The real validator (POST /validate, 2026-10-23)
-// lists a prompt-injection check on the agent's own words as unsupported: it looks for tricks in what the caller says.
+// Kinds the schema allows in a list but the runtime does not run there, so Add hides them. POST /validate (2026-10-23)
+// reports a prompt-injection check on the agent's own words as unsupported: it only checks what the caller says.
 const NOT_RUN_THERE = { 'guardrails.output': ['prompt_injection'] };
 
-// The ids a new item of the list at `path` must not take: those of the list itself, and for a list of guardrails those of all three (the checks on
-// what the caller says, on what the agent says, and the hand-over rules), which the server takes as one set: "personal_details" on both lists is refused.
+// Ids a new item at `path` must not take: the list's own, and for guardrails those of all three lists, which the server
+// treats as one set ("personal_details" on two lists is refused).
 export function takenIdsAt(config, path) {
   const at = (p) => p.reduce((v, key) => (v && typeof v === 'object' ? v[key] : undefined), config);
   const idsAt = (p) => {
@@ -303,7 +302,8 @@ const PRONUNCIATION = [
   },
 ];
 
-// The picture on each choice's card, so a long list can be scanned at a glance. One table: a choice has the same id (and picture) wherever it is offered.
+// The picture on each choice's card, so a long list scans at a glance.
+// One table, so a choice has the same picture wherever it is offered.
 const OPTION_ICONS = {
   hand_over: 'phoneTransfer',
   back_to_start: 'undo',
@@ -370,8 +370,9 @@ export const INTRO = {
   pronunciation: 'Pick how some written text should be said aloud. Its details come next.',
 };
 
-// Options for a list, or null when the list should use the plain add control. `collection` is 'tools', 'channels', 'guardrails.input'…
-// `ctx` has what building an item needs: the engine, the ids already taken, the agent's id.
+// Options for a list, or null when the list should use the plain add control.
+//   collection: 'tools', 'channels', 'guardrails.input'…
+//   second argument: what building an item needs (the engine, the branches, the ids already taken, the agent's id)
 export function pickerFor(collection, { engine, branches, takenIds = [], botId = '', channelTypes = null }) {
   if (collection === 'channels') {
     return CHANNEL_PRESETS.map((preset) => ({
@@ -410,7 +411,7 @@ export function pickerFor(collection, { engine, branches, takenIds = [], botId =
       },
     });
   });
-  // a branch the schema has and this table doesn't know: still offered, by the schema's own name (but not one the runtime does not run there)
+  // a branch this table doesn't know is still offered by its schema name (unless the runtime does not run it there)
   branches.forEach((branch, i) => {
     if (covered.has(branch)) return;
     const kind = branchKind(engine, branch);

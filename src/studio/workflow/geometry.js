@@ -1,4 +1,4 @@
-// How an arrow leaves one block and enters another: out of the side or the end that faces the other block, in a smooth curve, and around any block in
+// How an arrow leaves one block and enters another: out of the facing side, in a smooth curve, and around any block in
 // the way rather than behind it. Pure: no React, no DOM.
 
 const DIR = { top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -9,8 +9,8 @@ const port = (n, side) =>
 const CLEAR = 8;
 const AROUND = 30;
 
-// Which side of each block the arrow uses. What goes with an agent (what it does as it takes over, what it can do) sits beside it, so those arrows run
-// sideways as long as the block is still on that side.
+// Which side of each block the arrow uses. An agent's steps and tools sit beside it, so those arrows run sideways while
+// the block is still on that side.
 export function sidesFor(a, b, kind) {
   if ((kind === 'exit' || kind === 'uses') && b.x >= a.x + a.w - 20) return ['right', 'left'];
   if (kind === 'enter' && a.x + a.w <= b.x + 20) return ['right', 'left'];
@@ -19,7 +19,7 @@ export function sidesFor(a, b, kind) {
   return b.x + b.w / 2 >= a.x + a.w / 2 ? ['right', 'left'] : ['left', 'right'];
 }
 
-// One cubic piece: from p1 leaving along d1, to p2 arriving along d2 (d2 points the way the arrow travels as it arrives).
+// One cubic piece: from p1 leaving along d1, to p2 arriving along d2 (d2 points the way the arrow travels on arrival).
 function piece(p1, d1, p2, d2, k) {
   const c1 = [p1[0] + d1[0] * k, p1[1] + d1[1] * k];
   const c2 = [p2[0] - d2[0] * k, p2[1] - d2[1] * k];
@@ -43,7 +43,7 @@ const dist = (p, q) => Math.hypot(q[0] - p[0], q[1] - p[1]);
 // Points along a route, for testing it against the blocks and measuring it.
 const points = (pieces, steps = 24) => pieces.flatMap((p, i) => Array.from({ length: steps + 1 }, (_, s) => p.at(s / steps)).slice(i ? 1 : 0));
 const inside = ([x, y], r, pad) => x > r.x - pad && x < r.x + r.w + pad && y > r.y - pad && y < r.y + r.h + pad;
-// The first block a route runs through (its own two ends only in its middle, where it should be well clear of them), or null.
+// The first block a route runs through, or null (its own end blocks count only in its middle, which should clear them).
 function blocking(pts, obstacles, ends) {
   for (let i = 1; i < pts.length - 1; i += 1) {
     const hit = obstacles.find((r) => inside(pts[i], r, CLEAR));
@@ -55,9 +55,11 @@ function blocking(pts, obstacles, ends) {
 }
 const lengthOf = (pts) => pts.reduce((sum, p, i) => (i ? sum + dist(pts[i - 1], p) : 0), 0);
 
-// `lane` and `lanes` spread arrows that join the same two blocks side by side so they do not lie on top of each other. `obstacles` are the other blocks
-// ({ x, y, w, h }): a route that would run through one is replaced by the shortest one that does not, out of other sides or bent around it.
-export function routeEdge(a, b, { lane = 0, lanes = 1, kind, obstacles = [] } = {}) {
+// Routes an arrow from block a to block b.
+//   lane, lanes: spread arrows between the same two blocks side by side so they don't overlap
+//   fromShift: where the arrow leaves along a's side (each way out of a subagent has its own point)
+//   obstacles: the other blocks ({ x, y, w, h }); a route through one is replaced by the shortest clear one
+export function routeEdge(a, b, { lane = 0, lanes = 1, kind, obstacles = [], fromShift } = {}) {
   if (a.id === b.id) {
     const x = a.x + a.w;
     const y = a.y + a.h / 2;
@@ -67,8 +69,9 @@ export function routeEdge(a, b, { lane = 0, lanes = 1, kind, obstacles = [] } = 
   const ends = (sa, sb) => {
     const p1 = port(a, sa);
     const p2 = port(b, sb);
-    if (sa === 'bottom' || sa === 'top') p1[0] += shift;
-    else p1[1] += shift;
+    const out = fromShift ?? shift;
+    if (sa === 'bottom' || sa === 'top') p1[0] += out;
+    else p1[1] += out;
     if (sb === 'bottom' || sb === 'top') p2[0] += shift;
     else p2[1] += shift;
     return [p1, p2];
@@ -92,7 +95,7 @@ export function routeEdge(a, b, { lane = 0, lanes = 1, kind, obstacles = [] } = 
   const usual = route(sa, sb);
   const others = obstacles.filter((r) => r && r !== a && r !== b && r.id !== a.id && r.id !== b.id);
   const blockEnds = [a, b];
-  // the first block a route runs through: only the blocks near it are looked at
+  // the first block a route runs through, testing only the blocks near it
   const test = (r) =>
     blocking(
       points(r.pieces),
@@ -102,7 +105,7 @@ export function routeEdge(a, b, { lane = 0, lanes = 1, kind, obstacles = [] } = 
   const inTheWay = others.length ? test(usual) : null;
   if (!inTheWay) return finish(usual);
 
-  // the shortest of some routes that runs through nothing: measured roughly, then tested shortest first, so the search stops at the first clear one
+  // the shortest clear route: rough lengths, then tested shortest first so the search stops at the first clear one
   const shortestClear = (list) =>
     list
       .map((r) => ({ r, length: lengthOf(points(r.pieces, 6)) }))

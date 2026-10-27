@@ -15,8 +15,8 @@ export function formatDiffPath(path) {
   }, '');
 }
 
-// When something happened, the same way on every page: "just now", "5 min ago", "3 hours ago", "4 days ago", then the date ("Oct 22", with the year
-// when it is another year's). `days` is how far back it still counts days.
+// "just now", "5 min ago", "4 days ago", then the date ("Oct 22", with the year if not this year), on every page.
+// `days` is how far back it still counts days.
 export function formatWhen(iso, { days = 30, nowMs = Date.now() } = {}) {
   if (!iso) return '';
   const date = new Date(iso);
@@ -33,6 +33,28 @@ export function formatWhen(iso, { days = 30, nowMs = Date.now() } = {}) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
 }
 
+// A day in the reader's own calendar, not UTC's ("2026-10-25"), so a call at 9 pm lands on that day's bar.
+export function localDay(ms) {
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// "The last N days" as the charts draw them, from the first day's midnight, so a page's counts match its chart. Stepped
+// by calendar so a clock change can't skip or repeat a day. -> { startMs, days: ['2026-10-19', ... today] }
+export function periodOf(nowMs, days) {
+  const now = new Date(nowMs);
+  const dayAt = (back) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+  const count = Math.max(1, days);
+  return { startMs: dayAt(count - 1).getTime(), days: Array.from({ length: count }, (_, i) => localDay(dayAt(count - 1 - i).getTime())) };
+}
+
+// A few random letters and digits ("k3x9") to tell apart ids made in the same moment. Uses crypto.getRandomValues,
+// which, unlike crypto.randomUUID, also works on a plain-http address.
+export function randomTag(length = 4) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(length)), (byte) => (byte % 36).toString(36)).join('');
+}
+
 export const slugify = (value) =>
   String(value || '')
     .toLowerCase()
@@ -45,8 +67,8 @@ export const BOT_ID_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 // The folders the runtime writes call data to: the API answers 400 for an agent with one of these ids.
 export const RESERVED_BOT_IDS = ['transcripts', 'metrics', 'logs', 'sessions', 'tmp'];
 
-// The id a new agent gets from its name when nobody typed one: the name in id form ('agent' when nothing of the name can be used, as with a name in
-// another script), made free with -2, -3... when it is taken or reserved. So a person only ever gives a name, and never meets an id problem.
+// A new agent's id from its name ('agent' if nothing is usable, e.g. another script), made free with -2, -3... when
+// taken or reserved, so a person only gives a name and never meets an id problem.
 export function freeBotId(name, existing = []) {
   const base = slugify(name) || 'agent';
   const taken = (id) => existing.includes(id) || RESERVED_BOT_IDS.includes(id);
@@ -106,11 +128,8 @@ export function compareVersions(a, b) {
 
 const BUMP_HINTS = { patch: 'Fixes and small tweaks', minor: 'New features, nothing breaks', major: 'Changes that break existing behaviour' };
 
-// What the Publish dialog offers. A bump is counted from the latest published version (the server refuses one
-// until something has been published). The draft's own number is offered only when it is a different number
-// from every bump and is newer than the latest: the server won't publish a number that already exists, so a
-// draft that is behind is shown switched off, with the reason. A bump that lands on the draft's number says so
-// instead of appearing twice.
+// The Publish dialog's choices. Bumps count from the latest published version (refused before any publish). The
+// draft's own number is offered only if newer and unlike any bump; the server won't reuse one, so an older one is off.
 export function publishOptions(latestVersion, draftVersion) {
   const draftOk = isSemver(draftVersion);
   if (!latestVersion) {

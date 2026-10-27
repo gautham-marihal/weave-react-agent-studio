@@ -1,5 +1,5 @@
-// A schedule (business hours) as a week you can see: seven rows, one bar per day, shaded where the line is open; plus the same thing in words, and the days
-// that are closed or different on purpose (holidays, one-off exceptions). Pure: no React, no DOM.
+// A schedule (business hours) as a week: one bar per day, shaded where the line is open, plus the same in words and
+// the closed or different days (holidays, exceptions). Pure: no React, no DOM.
 
 import { isObj } from '../form/engine.js';
 
@@ -72,7 +72,7 @@ export function exceptions(schedule) {
   return out.sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
 
-// Is the line open at this moment (a Date in the schedule's own time zone is the caller's job: this takes the weekday and minutes)?
+// Is the line open at this weekday and minute? Turning a Date into the schedule's time zone is the caller's job.
 export function openAt(schedule, day, minutes) {
   return (weekWindows(schedule)[day] || []).some(([a, b]) => minutes >= a && minutes < b);
 }

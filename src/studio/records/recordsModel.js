@@ -1,7 +1,6 @@
-// The decisions that sit behind defaults and that a customer should be told about in plain words: where conversations are processed, what is
-// kept about each call and for how long, whether callers are told they may be recorded, and whether sensitive details are hidden. Each is
-// read from the configuration and written back as an ordinary field, so the Simple view, the form, the JSON and the release page agree.
-// The wording follows what the schema says the runtime does; where the schema says something is not applied yet, so does this.
+// The decisions behind defaults that a customer should be told in plain words: where conversations are processed, what
+// is kept and for how long, whether callers hear a recording notice, whether sensitive details are hidden. Each is an
+// ordinary config field, so every page agrees. Wording follows the schema, including what is not applied yet.
 // Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
@@ -17,11 +16,11 @@ function edit(config, change) {
   return same(next, config) ? config : next;
 }
 
-// ---- where conversations are processed ------------------------------------------------------------------------------------------------------
+// ---- where conversations are processed
 const STAGE_WORDS = { stt: 'Listening', llm: 'Thinking', tts: 'Speaking', realtime: 'Speech-to-speech' };
 
-// The AI services a conversation passes through, and one sentence naming them. A stage with no provider chosen uses the server's default,
-// which is said, not hidden.
+// The AI services a conversation passes through, and a sentence naming them. A stage with no provider uses the
+// server's default, which is said, not hidden.
 export function readDataFlow(config) {
   const models = isObj(config?.defaults?.models) ? config.defaults.models : {};
   const stages = [];
@@ -59,8 +58,8 @@ export function readDataFlow(config) {
   return { stages: all, names, lines, sentence: `Conversations are processed by ${joined}.`, chosen: true };
 }
 
-// ---- what is kept about each call -------------------------------------------------------------------------------------------------------------
-// Things in the agent that are sensitive, in the customer's words. Used to warn when nothing hides them in saved records.
+// ---- what is kept about each call
+// Sensitive things in the agent, in the customer's words, to warn when nothing hides them in saved records.
 export function sensitiveThings(config) {
   const found = [];
   Object.entries(isObj(config?.state?.variables) ? config.state.variables : {}).forEach(([name, spec]) => {
@@ -99,16 +98,15 @@ export function readRecords(config) {
   };
 }
 
-// What the server says the runtime cannot do yet (`unsupported` in the validator's answer: [{ feature, where, severity? }]), narrowed to one part of the
-// config. What is said about records has to follow it: a setting the runtime does not apply must never be described as done. It is matched by what the
-// item NAMES, never by its severity, because other, unrelated items can be "security" too (guardrails on a speech-to-speech model, say). A server that
-// enforces the part does not list it, and then nothing here changes.
+// What the server says the runtime can't do yet (`unsupported`: [{ feature, where, severity? }]) for one part of the
+// config, so a setting the runtime doesn't apply is never described as done. Matched by what the item NAMES, never by
+// severity, since unrelated items can be "security" too. A server that enforces the part doesn't list it.
 export const notApplied = (unsupported, pattern) =>
   list(unsupported).filter((item) => isObj(item) && pattern.test(`${item.where || ''} ${item.feature || ''}`));
 const REDACTION = /post_call\.redaction|redaction/i;
 const RECORDING = /post_call\.recording|call recording/i;
 
-// What is kept, as sentences a customer can read, and what is wrong with it (the problems are things to look at, not errors).
+// What is kept, as sentences a customer can read, and what to look at (these problems are not errors).
 // `unsupported`: the validator's list for this config, when there is one.
 export function describeRecords(config, { unsupported = [] } = {}) {
   const r = readRecords(config);
@@ -177,7 +175,7 @@ export function recordingNoticeState(config) {
   return { voice, told, keeps, missing: voice && keeps && !told };
 }
 
-// ---- setters (each returns the same object when nothing would change) -------------------------------------------------------------------------
+// ---- setters (each returns the same object when nothing would change)
 const observability = (next) => {
   next.observability = { ...(isObj(next.observability) ? next.observability : {}) };
   return next.observability;
@@ -200,7 +198,7 @@ export const setLogEnabled = (config, on) =>
 export function setLogDays(config, days) {
   return edit(config, (next) => {
     const log = sessionLog(next);
-    if (days === null || days === undefined || days === '' || !(Number(days) >= 1)) delete log.retention_days;
+    if (days === null || days === undefined || days === '' || Number.isNaN(Number(days)) || Number(days) < 1) delete log.retention_days;
     else log.retention_days = Math.floor(Number(days));
   });
 }
@@ -215,13 +213,13 @@ export const setKeepTranscript = (config, on) =>
 export function setRecordingDays(config, days) {
   return edit(config, (next) => {
     const rec = recording(next);
-    if (days === null || days === undefined || days === '' || !(Number(days) >= 1)) delete rec.retention_days;
+    if (days === null || days === undefined || days === '' || Number.isNaN(Number(days)) || Number(days) < 1) delete rec.retention_days;
     else rec.retention_days = Math.floor(Number(days));
   });
 }
 
-// What the agent already handles that is worth hiding: card numbers, what its Guardrails' personal-details checks look for, and PINs when a value it keeps
-// sensitive is named like one.
+// What the agent already handles that is worth hiding: card numbers, what its Guardrails' personal-details checks look
+// for, and PINs when a value it keeps sensitive is named like one.
 export function sensitiveEntities(config) {
   const entities = new Set(['card_number']);
   ['input', 'output'].forEach((side) =>
@@ -235,7 +233,7 @@ export function sensitiveEntities(config) {
   return [...entities];
 }
 
-// Turns redaction on for what the agent handles. Redaction is a schema 1.2 feature, so the version is raised if it is lower (`raised` says so).
+// Turns redaction on for what the agent handles. Redaction needs schema 1.2, so a lower version is raised (`raised`).
 export function enableRedaction(config) {
   const entities = new Set(sensitiveEntities(config));
   const allowed = ['card_number', 'bank_account', 'national_id', 'phone_number', 'email', 'date_of_birth', 'otp', 'pin'];

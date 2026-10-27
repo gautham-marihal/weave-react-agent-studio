@@ -7,6 +7,7 @@
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge), E2E_HEADED=1 to watch.
 import { chromium } from 'playwright-core';
+import { readJson, writeJson } from './json.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const MIN_SIZE = 12;
@@ -135,14 +136,13 @@ for (const theme of ['light', 'dark']) {
   // set-up, through the JSON editor of the Settings page: a scripted and a live scenario, a published version, and a run, so that the pills have words in them
   await open('#/bots/acme-support/settings', '.nlWorkspace');
   await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
-  const box = page.locator('.nlPage textarea').first();
-  const config = JSON.parse(await box.inputValue());
+  const config = JSON.parse(await readJson(page));
   const channel = (config.channels.find((c) => c.enabled !== false) || config.channels[0]).id;
   config.tests = [
     { id: 'scripted_one', channel, turns: [{ say: 'Hello' }], model_script: ['Hi there.'], expect: [{ said_matches: '.' }] },
     { id: 'live_one', channel, turns: [{ say: 'Hello' }], expect: [{ said_matches: '.' }] },
   ];
-  await box.fill(JSON.stringify(config, null, 2));
+  await writeJson(page, JSON.stringify(config, null, 2));
   await page.waitForTimeout(600);
   await page
     .locator('.nlBar')

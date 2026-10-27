@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import { chromium } from 'playwright-core';
 import { createMockApi, fakeSession } from './mockApi.mjs';
+import { readJson, writeJson } from './json.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5173';
 const MODE = process.env.E2E_MODE === 'live' ? 'live' : 'mock';
@@ -93,8 +94,8 @@ try {
     .getByRole('button', { name: /^\W*Agents/ })
     .first()
     .click();
-  // a fresh server has no agents yet: the list is then the empty state, not rows, and both are a loaded list
-  await page.waitForSelector('.agentRow, .emptyPanel, .agentTable');
+  // a fresh server has no agents yet: the list is then the empty state, not cards or rows, and each is a loaded list
+  await page.waitForSelector('.agentCard, .agentRow, .emptyPanel, .agentTable');
   await page
     .getByRole('button', { name: /Create agent/ })
     .first()
@@ -110,9 +111,7 @@ try {
   await page.waitForSelector('.nlPage');
   step('the agent’s pages carry its name', (await page.locator('.nlBar h1').innerText()).trim() === agentName);
   await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
-  const area = page.locator('.nlPage textarea').first();
-  await area.waitFor();
-  const config = JSON.parse(await area.inputValue());
+  const config = JSON.parse(await readJson(page));
   step(
     'the starter filled in the agent (instructions, goodbye, inactivity)',
     /customer care/i.test(config.agents.items[0].instructions.role) &&
@@ -121,7 +120,7 @@ try {
     JSON.stringify(Object.keys(config)),
   );
   config.persona.tone = tone;
-  await area.fill(JSON.stringify(config, null, 2));
+  await writeJson(page, JSON.stringify(config, null, 2));
   await page
     .locator('.nlBar')
     .getByRole('button', { name: /^Save$/ })

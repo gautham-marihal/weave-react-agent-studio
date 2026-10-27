@@ -15,7 +15,7 @@
   color: var(--dim);
   font-weight: 700;
 }
-.hjHead select {
+.hjHead :is(select, button:where(.rxSelect)) {
   max-width: 180px;
   text-transform: none;
   letter-spacing: 0;
@@ -171,4 +171,9 @@
 /* the workspace's four numbers, under the greeting */
 .dashContent .wsPulse {
   margin: 4px 0 30px;
+}
+
+/* Home's note about the demo's sample agents, spaced like the sections around it */
+.homeSamples {
+  margin-bottom: 16px;
 }

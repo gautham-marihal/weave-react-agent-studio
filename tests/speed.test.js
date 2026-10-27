@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDemoApi, memoryStorage } from '../src/demo/demoApi.js';
-import { ADVICE_AT, sampleOf, seconds, spreadPick, summarize, verdictOf } from '../src/studio/speed/speedModel.js';
+import { ADVICE_AT, sampleOf, seconds, spreadPick, summarize, verdictOf } from '../src/studio/speed/speedModel.ts';
 import { parseWorkspaceHash, workspaceHref } from '../src/pages/helpers.js';
 import { parseRoute } from '../src/studio/route.js';
 

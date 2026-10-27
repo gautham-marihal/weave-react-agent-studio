@@ -1,22 +1,27 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { DropdownMenu, Popover } from 'radix-ui';
+import { afterMenu, keepEscape } from '../ui/layer.ts';
+import Tip from '../ui/Tip.tsx';
+import { SidebarFolded } from '../ui/sidebarFolded.ts';
 import { navigate as studioNavigate, routeHref, useRoute, whenLeaveConfirmed } from '../studio/route.js';
 import { askConfirm, showNotice } from '../ui/dialogs.js';
-import { setApiUser } from '../api/client.js';
+import { setApiUser } from '../api/client.ts';
 import { PageErrorBoundary } from '../ui/ErrorBoundary.jsx';
 import NotFound from '../ui/NotFound.jsx';
-import { ErrorState } from '../studio/ui.jsx';
+import { ErrorState, Notice } from '../studio/ui.jsx';
 import AiOrb from '../studio/preview/AiOrb.jsx';
 import { OfflineBanner, ServerDownBanner, SkipToContent } from '../ui/Connectivity.jsx';
-import { capSameLabel, searchAgent, settingWhere } from '../studio/newlayout/pages.js';
-import { whenPanelKept } from '../studio/newlayout/stagedPanel.js';
-import { PAGE_LABELS, resolvePage } from '../studio/newlayout/pages.js';
+import { AGENT_SEARCH, PAGE_LABELS, capSameLabel, resolvePage, searchAgent, settingWhere } from '../studio/agent/pages.js';
+import { bestFirst } from '../ui/match.ts';
+import { whenPanelKept } from '../studio/agent/stagedPanel.js';
 import { loadSchema } from '../studio/form/useSchema.js';
 import { requestSettingFocus } from '../studio/settingFocus.js';
-import { ownerOf, setWorkspaces as publishWorkspaces, toLegacyAgent, useBots, visibleCount } from '../studio/agents.js';
+import { hideBot, ownerOf, setWorkspaces as publishWorkspaces, toLegacyAgent, useBots, visibleCount } from '../studio/agents.js';
 import AgentPicker from '../studio/AgentPicker.jsx';
 import { queueChange } from '../studio/pendingChange.js';
-// The look of every page is loaded at once, in the order the pages' own imports gave it before their code was split off below (Home and the menu use
-// these styles before any page is opened; a style loaded later would also come after themes.css and win where the two are as specific).
+import { Choice, OneOf } from '../ui/OneOf.tsx';
+// Every page's styles load at once, in the order the pages' imports had before code splitting: Home and the menu use
+// them before any page opens, and a style loaded later would come after themes.css and win at equal specificity.
 import '../studio/smartSelect.css';
 import '../studio/preview/preview.css';
 import '../studio/insights/insights.css';
@@ -32,8 +37,8 @@ import '../studio/calls/calls.css';
 import '../studio/monitoring/monitoring.css';
 import '../studio/team/team.css';
 import '../studio/callers/callers.css';
-import '../studio/newlayout/pickers/pickers.css';
-import '../studio/newlayout/newlayout.css';
+import '../studio/agent/pickers/pickers.css';
+import '../studio/agent/agent.css';
 import '../studio/studio.css';
 import '../studio/form/form.css';
 import '../studio/form/formLook.css';
@@ -41,10 +46,10 @@ import '../studio/live/live.css';
 import '../studio/speed/speed.css';
 import '../studio/setup/setup.css';
 import { openTeam } from '../studio/team/useTeam.js';
-import { isDemoMode } from '../demo/demoMode.js';
+import { isDemoMode, isDemoSample } from '../demo/demoMode.js';
 import { AgentTable } from '../studio/AgentTable.jsx';
 import { describeHealth, useApiHealth } from '../studio/useApiHealth.js';
-import AgentSwitcher from '../studio/newlayout/AgentSwitcher.jsx';
+import AgentSwitcher from '../studio/agent/AgentSwitcher.jsx';
 import AlertBell, { useNewAlertCount } from '../studio/insights/AlertBell.jsx';
 import AgentAlerts from '../studio/insights/AgentAlerts.jsx';
 import { useAlertWatcher } from '../studio/insights/useAlertWatcher.js';
@@ -72,7 +77,7 @@ import {
   ProfileMenu,
   QuickAction,
   SHORTCUT_LABEL,
-  SearchOverlay,
+  searchKey,
   WorkspaceCreateModal,
   WorkspaceRenameModal,
   isTyping,
@@ -86,6 +91,10 @@ import Icon from '../ui/Icon.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import { SkeletonRows } from '../ui/Skeleton.jsx';
 import { revealIn } from '../ui/scrollEdges.js';
+import { randomTag } from '../studio/format.js';
+
+// The search's code (cmdk) arrives the first time it is opened.
+const SearchOverlay = lazy(() => import('./SearchPalette.jsx'));
 
 // Each page's code arrives when the page is first opened, so the first screen loads only what Home needs.
 const named = (load, name) => lazy(() => load().then((m) => ({ default: m[name] })));
@@ -117,10 +126,10 @@ const WORKSPACE_STORAGE_KEY = 'weave_workspaces';
 const CURRENT_WORKSPACE_KEY = 'weave_current_workspace';
 
 function makeWorkspaceId() {
-  return `ws_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  return `ws_${Date.now().toString(36)}_${randomTag(5)}`;
 }
 
-// Records saved with each workspace: test sessions, readiness-check runs (stored as `simulations`, the field's old name) and the activity log.
+// Records saved with each workspace: test sessions, check runs (stored as `simulations`, the old name), activity log.
 function normalizeList(value) {
   return Array.isArray(value) ? value.filter((item) => item && item.id) : [];
 }
@@ -159,6 +168,26 @@ function loadWorkspaces(profile) {
   return [first];
 }
 
+// Opens the first-time setup's workspace by the new person's name (this browser may have had others), making it if none
+// has that name. Run once as setup finishes (on every load it would come back after a rename).
+export function openWorkspaceNamed(name) {
+  const wanted = String(name || '').trim();
+  if (!wanted) return;
+  let stored = [];
+  try {
+    stored = JSON.parse(localStorage.getItem(WORKSPACE_STORAGE_KEY) || '[]');
+  } catch {}
+  if (!Array.isArray(stored) || !stored.length) return; // the first load makes it, with this name
+  let found = stored.find((ws) => ws && ws.name === wanted);
+  try {
+    if (!found) {
+      found = { id: makeWorkspaceId(), name: wanted, createdAt: new Date().toISOString() };
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify([...stored, found]));
+    }
+    localStorage.setItem(CURRENT_WORKSPACE_KEY, found.id);
+  } catch {}
+}
+
 function loadCurrentWorkspaceId(workspaces) {
   try {
     const current = localStorage.getItem(CURRENT_WORKSPACE_KEY);
@@ -176,15 +205,18 @@ function saveWorkspaceState(workspaces, currentId) {
   } catch {}
 }
 
+const RECENT_KEY = 'weave_search_recent';
+const RECENT_KEPT = 8;
+
 export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountOpen }) {
-  // who is signed in, sent with every request as X-User (every page, not only an agent's: phone-number changes are written to an audit file with it). Set
-  // during render, before any child sends its first request.
+  // who is signed in, sent with every request as X-User (phone-number changes are audited with it).
+  // Set during render, before any child sends its first request.
   setApiUser(profile?.fullName, profile?.email);
   const displayName = profile?.fullName || 'there';
   const firstName = displayName.split(' ')[0];
   const initials = getInitials(displayName);
-  // Every page has an address: an agent's (#/bots/...) opens the Agents area, a workspace page's (#/calls, #/telephony/numbers...) opens that page, so
-  // refreshes, bookmarks and Back land where you were.
+  // Every page has an address (#/bots/... opens the Agents area, #/calls... its page),
+  // so refreshes, bookmarks and Back land where you were.
   const [active, setActive] = useState(() => (/^#\/bots/.test(window.location.hash) ? 'agents' : parseWorkspaceHash(window.location.hash)?.id || 'home'));
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [picker, setPicker] = useState(null); // 'which agent?' for voices and integrations
@@ -194,22 +226,25 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   };
   const [workspaceCreateOpen, setWorkspaceCreateOpen] = useState(false);
   const [workspaceNameDraft, setWorkspaceNameDraft] = useState('');
-  const [workspaceActionOpenId, setWorkspaceActionOpenId] = useState(null);
   const [workspaceRenameOpen, setWorkspaceRenameOpen] = useState(false);
   const [workspaceRenameId, setWorkspaceRenameId] = useState(null);
   const [workspaceRenameDraft, setWorkspaceRenameDraft] = useState('');
   const [range, setRange] = useState('Past 7 days');
   const [telephonySection, setTelephonySection] = useState(() => parseWorkspaceHash(window.location.hash)?.section || 'calls');
   const [workspaces, setWorkspaces] = useState(() => loadWorkspaces(profile));
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(null);
+  // the workspace open last time, from the first render (not briefly the first in the list, which an open agent's
+  // address would be checked against)
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(() => loadCurrentWorkspaceId(workspaces));
 
   const currentWorkspace = workspaces.find((ws) => ws.id === currentWorkspaceId) || workspaces[0] || null;
   const workspaceName = currentWorkspace?.name || 'My workspace';
-  // Agents are the Agent Builder API's. Which workspace an agent is in is kept in this browser (see studio/agents.js),
-  // so this is the open workspace's agents. The older pages read them in their own shape.
+  // The open workspace's agents, from the Agent Builder API; which workspace each is in is kept in this browser
+  // (studio/agents.js). The older pages read them in their own shape.
   const { bots, removed: removedBots, all: allBots, refresh: refreshAgents, error: agentsError } = useBots();
   const botList = useMemo(() => bots || [], [bots]);
-  // the team of this workspace is opened here, so the Team page and an agent's Share panel read the same one; "Open the Team page" in a Share panel asks for it
+  const samples = useMemo(() => botList.filter((bot) => isDemoSample(bot.id)), [botList]);
+  // this workspace's team opens here, so the Team page and an agent's Share panel read the same one
+  // ("Open the Team page" in a Share panel asks for it)
   useEffect(() => {
     if (currentWorkspace?.id) openTeam({ workspaceId: currentWorkspace.id, profile, demo: isDemoMode(), agentIds: botList.map((b) => b.id) });
   }, [currentWorkspace?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -223,7 +258,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     window.addEventListener('weave-open-alerts', open);
     return () => window.removeEventListener('weave-open-alerts', open);
   });
-  // Alerts: the recent calls of every agent of this workspace are checked while the studio is open (it only reads them)
+  // Alerts: every agent's recent calls in this workspace are checked (read-only) while the studio is open
   useAlertWatcher({ bots: botList, onOpenAlert: () => window.dispatchEvent(new Event('weave-open-alerts')) });
   const newAlerts = useNewAlertCount();
   const workspaceNav = NAV.map((item) => (item.id === 'alerts' && newAlerts ? { ...item, badge: String(newAlerts), badgeTone: 'bad' } : item));
@@ -237,8 +272,10 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   // Records go to the workspace you are in (a test conversation can finish after you switch pages).
   const workspaceIdRef = useRef(null);
   workspaceIdRef.current = currentWorkspaceId;
-  const updateWorkspaceOfAgent = (_agentId, updater) => {
-    setWorkspaces((items) => items.map((ws) => (ws.id === workspaceIdRef.current ? updater(ws) : ws)));
+  // the agent's own workspace, not the open one: a conversation that ends after a switch still belongs to its agent's
+  const updateWorkspaceOfAgent = (agentId, updater) => {
+    const owner = ownerOf(agentId) || workspaceIdRef.current;
+    setWorkspaces((items) => items.map((ws) => (ws.id === owner ? updater(ws) : ws)));
   };
   const updateTelephony = (updater, activity) => {
     if (!currentWorkspace) return;
@@ -293,6 +330,21 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   useEffect(() => {
     if (currentWorkspaceId) saveWorkspaceState(workspaces, currentWorkspaceId);
   }, [workspaces, currentWorkspaceId]);
+  // workspaces changed in another tab are taken up here, so this tab's next change doesn't restore stale data
+  // (the workspace open in this tab stays this tab's own)
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key !== WORKSPACE_STORAGE_KEY || !event.newValue) return;
+      try {
+        const next = JSON.parse(event.newValue);
+        if (Array.isArray(next) && next.length) setWorkspaces((now) => (JSON.stringify(now) === event.newValue ? now : next));
+      } catch {
+        /* not ours to read: left as it is */
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   // The agent store needs to know the workspaces to say which agents belong to the open one.
   useLayoutEffect(() => {
@@ -301,26 +353,30 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
   // A link to an agent that belongs to another workspace (a bookmark, a shared link) opens that workspace.
   const route = useRoute();
-  const inAgentView = active === 'agents' && route.view === 'bot'; // inside an agent the sidebar shows that agent's menu
+  const inAgentView = active === 'agents' && route.view === 'bot'; // sidebar shows the agent's name
   useEffect(() => {
     if (route.view === 'bot') rememberAgent(route.botId);
   }, [route.view, route.botId]);
-  // An address opened while the app is already running (back/forward, a pasted link) opens its page: an agent's switches to Agents.
+  // inside an agent the sidebar starts folded to icons so the agent's pages get the width; elsewhere it starts open.
+  // The toggle wins until the person moves between the two.
+  useEffect(() => setSidebarCollapsed(inAgentView), [inAgentView]);
+  // An address opened while the app runs (back/forward, a pasted link) opens its page; an agent's switches to Agents.
   useEffect(() => {
     if (/^#\/bots/.test(window.location.hash)) {
-      setActive((value) => (value === 'agents' ? value : 'agents'));
+      setActive('agents');
       return;
     }
     const page = parseWorkspaceHash(window.location.hash);
     if (!page) {
-      // an address that names no page leaves the Agents area, so the "not found" page shows (in place of the workspace's pages)
+      // an address naming no page leaves the Agents area, so the "not found" page shows instead
       if (isUnknownAddress(window.location.hash)) setActive((value) => (value === 'agents' ? 'home' : value));
       return;
     }
     setActive(page.id);
     if (page.section) setTelephonySection(page.section);
   }, [route]);
-  // ...and the address follows the page when it changes by other means (switching workspace goes Home): replaced, so Back does not stop on it twice
+  // ...and the address follows the page when it changes otherwise (a workspace switch goes Home),
+  // replaced so Back doesn't stop on it twice
   useEffect(() => {
     if (active === 'agents' || isUnknownAddress(window.location.hash)) return;
     const want = workspaceHref(active, active === 'telephony' ? telephonySection : undefined);
@@ -337,40 +393,6 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.view, route.botId, allBots]);
 
-  // Close the workspace switcher (and its row menus) on outside click or Escape.
-  useEffect(() => {
-    if (!workspaceOpen && !workspaceActionOpenId) return undefined;
-    const onPointerDown = (event) => {
-      if (event.target.closest?.('.workspaceMenu, .workspaceSwitch')) return;
-      setWorkspaceOpen(false);
-      setWorkspaceActionOpenId(null);
-    };
-    const onKeyDown = (event) => {
-      if (event.key !== 'Escape') return;
-      setWorkspaceOpen(false);
-      setWorkspaceActionOpenId(null);
-      // the keyboard goes back to the switch that opened it, rather than being lost with the panel
-      document.querySelector('.workspaceSwitch')?.focus({ preventScroll: true });
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [workspaceOpen, workspaceActionOpenId]);
-  // opened, the switcher has the keyboard on the workspace in use; a row's own menu, on its first item
-  useEffect(() => {
-    if (workspaceOpen) document.querySelector('.workspaceMenu .workspaceOption.current, .workspaceMenu .workspaceOption')?.focus({ preventScroll: true });
-  }, [workspaceOpen]);
-  useEffect(() => {
-    if (workspaceActionOpenId) document.querySelector('.workspaceRowMenu [role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true });
-  }, [workspaceActionOpenId]);
-
-  useEffect(() => {
-    if (!workspaceOpen) setWorkspaceActionOpenId(null);
-  }, [workspaceOpen]);
-
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -385,7 +407,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const agentCount = botList.length;
   const configuredCount = botList.filter((bot) => bot.latest_version).length;
   const apiHealth = useApiHealth();
-  const health = describeHealth(apiHealth.state);
+  const health = describeHealth(apiHealth.state, apiHealth.latency);
 
   const recentActivity = useMemo(() => {
     const events = [];
@@ -423,8 +445,28 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
 
   const closeSearch = () => setSearchOpen(false);
 
-  // The settings of the agent that is open can be searched by name (what they are called, what they are for, the key the file uses). The index is built
-  // from the schema the first time search is opened on an agent, and not before.
+  // the results opened lately (kept in this browser, the newest first), for the search with nothing typed
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try {
+      const kept = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+      return Array.isArray(kept) ? kept.filter((k) => typeof k === 'string').slice(0, RECENT_KEPT) : [];
+    } catch {
+      return [];
+    }
+  });
+  const rememberSearch = (key) =>
+    setRecentSearches((old) => {
+      const next = [key, ...old.filter((k) => k !== key)].slice(0, RECENT_KEPT);
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      } catch {
+        // a browser that keeps nothing still opens the result
+      }
+      return next;
+    });
+
+  // The open agent's settings are searchable by name, purpose or file key. The index is built from the schema the
+  // first time search opens on an agent, and not before.
   const [settingsIndex, setSettingsIndex] = useState(null);
   const agentOpen = route.view === 'bot';
   useEffect(() => {
@@ -441,7 +483,10 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   }, [searchOpen, agentOpen, settingsIndex]);
 
   const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    // only signs ("+" before a phone number, a "#"): nothing to look for yet, as the matching ignores them (else every
+    // action, number and call is listed)
+    const typed = searchQuery.trim().toLowerCase();
+    const q = /[\p{L}\p{N}]/u.test(typed) ? typed : '';
     const pages = [
       { type: 'page', id: 'home', title: 'Home', description: 'What needs attention, and the next step', icon: 'home' },
       { type: 'page', id: 'agents', title: 'Agents', description: `${botList.length} agent${botList.length === 1 ? '' : 's'}`, icon: 'agent' },
@@ -497,24 +542,57 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         description: `${item.versionLabel}, ${formatRelative(item.startedAt).toLowerCase()}, ${formatDuration(item.durationSec)}`,
         icon: 'clock',
       }));
+    // actions from anywhere, and each agent's most common ones (the open agent's own come first)
+    const actions = [
+      {
+        type: 'action',
+        id: 'create-agent',
+        title: 'Create an agent',
+        description: 'Start from a template, or from a blank agent',
+        words: 'new add make agent',
+        icon: 'plus',
+      },
+      {
+        type: 'action',
+        id: 'theme',
+        title: theme === 'dark' ? 'Light' : 'Dark',
+        description: 'Theme',
+        words: 'theme mode appearance light dark night',
+        icon: theme === 'dark' ? 'sun' : 'moon',
+      },
+      { type: 'action', id: 'help', title: 'Help & shortcuts', description: 'Keyboard shortcuts', words: 'help keyboard keys shortcuts docs', icon: 'help' },
+    ];
+    const todo = AGENT_SEARCH.filter((item) => ['publish', 'test', 'deploy', 'page-calls'].includes(item.id));
+    const agentActions = botList
+      .filter((bot) => !(agentOpen && bot.id === route.botId))
+      .flatMap((bot) =>
+        todo.map((item) => ({
+          type: 'agentAction',
+          id: `${bot.id}:${item.id}`,
+          title: item.title,
+          description: `${bot.name || bot.id} · ${item.description}`,
+          words: `${bot.name || ''} ${bot.id} ${item.words}`,
+          icon: item.icon,
+          botId: bot.id,
+          item,
+        })),
+      );
+    const find = (items) => bestFirst(items, searchQuery, (item) => [item.title, `${item.description} ${item.words || ''}`]);
     const groups = [
       { group: 'Navigate', items: pages },
+      { group: 'Actions', items: actions },
       { group: 'Workspaces', items: workspaceResults },
       { group: 'Agents', items: agentResults },
       ...(q
         ? [
+            { group: 'Actions on an agent', items: agentActions },
             { group: 'Phone numbers', items: numberResults },
             { group: 'Dispatch rules', items: ruleResults },
             { group: 'Calls', items: sessionResults },
           ]
         : []),
     ];
-    const matching = groups
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) => `${item.title} ${item.description}`.toLowerCase().includes(q)),
-      }))
-      .filter((group) => group.items.length);
+    const matching = groups.map((group) => ({ ...group, items: find(group.items) })).filter((group) => group.items.length);
     const settings =
       agentOpen && settingsIndex
         ? capSameLabel(settingsIndex.search(settingsIndex.entries, searchQuery, 24), 2)
@@ -533,16 +611,25 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     const agentItems = agentOpen
       ? searchAgent(searchQuery).map((item) => ({ type: 'agentPage', id: item.id, title: item.title, description: item.description, icon: item.icon, item }))
       : [];
+    // what was opened lately, first, while nothing is typed (the ones that are still there)
+    const known = new Map([...pages, ...actions, ...workspaceResults, ...agentResults, ...agentActions, ...agentItems].map((item) => [searchKey(item), item]));
+    const recent = recentSearches
+      .map((key) => known.get(key))
+      .filter(Boolean)
+      .slice(0, 5);
+    const recentGroup = recent.length ? [{ group: 'Recent', key: 'recent:', items: recent }] : [];
     const withAgent = agentItems.length ? [{ group: 'This agent', items: agentItems }, ...(q ? matching : groups.filter((g) => g.items.length))] : null;
-    if (!q) return withAgent || groups.filter((group) => group.items.length);
+    if (!q) return [...recentGroup, ...(withAgent || groups.filter((group) => group.items.length))];
     const base = withAgent || matching;
     return settings.length ? [...base, { group: 'Settings of this agent', items: settings }] : base;
-  }, [botList, searchQuery, workspaces, currentWorkspace, settingsIndex, agentOpen]);
+  }, [botList, searchQuery, workspaces, currentWorkspace, settingsIndex, agentOpen, route.botId, theme, recentSearches]);
 
   const selectSearchResult = (result) => {
     setSearchOpen(false);
     setSearchQuery('');
-    // a side panel of the new layout with changes not yet put in (no Done pressed) is asked about before a result replaces it, whatever the result opens
+    if (result.type !== 'setting') rememberSearch(searchKey(result));
+    // a side panel of an agent's page with changes not yet put in (no Done pressed) is asked about before a result
+    // replaces it, whatever the result opens
     whenPanelKept(() => openSearchResult(result));
   };
   const openSearchResult = (result) => {
@@ -559,6 +646,17 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     }
     if (result.type === 'workspace') {
       switchWorkspace(result.id, { home: true });
+      return;
+    }
+    if (result.type === 'agentAction') {
+      setActive('agents');
+      studioNavigate(routeHref(result.botId, result.item.tab, result.item.params));
+      return;
+    }
+    if (result.type === 'action') {
+      if (result.id === 'create-agent') openCreateAssistant();
+      else if (result.id === 'theme') onToggleTheme();
+      else if (result.id === 'help') openHelpDialog();
       return;
     }
     if (result.type === 'agent') {
@@ -626,6 +724,16 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       studioNavigate('#/bots?new=1');
     });
 
+  // The workspace dialogs open from the workspace menu, which has closed by the time they close: focus goes back to
+  // the workspace button (only when it would otherwise be on nothing)
+  const backToSwitcher = () =>
+    window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (active && active !== document.body && active.isConnected) return;
+        document.querySelector('.workspaceSwitch')?.focus({ preventScroll: true });
+      }),
+    );
   const openCreateWorkspace = () => {
     setWorkspaceOpen(false);
     setWorkspaceNameDraft('');
@@ -636,8 +744,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const switchWorkspace = (workspaceId, { home = false } = {}) => {
     setWorkspaceOpen(false);
     if (workspaceId === currentWorkspaceId && !home) return;
-    // An open agent belongs to the workspace you are leaving: leave it first, after asking when it has unsaved edits. Nothing moves before the
-    // answer, so Stay keeps everything as it was.
+    // An open agent belongs to the workspace you are leaving: leave it first, asking if it has unsaved edits.
+    // Nothing moves before the answer, so Stay keeps everything as it was.
     whenLeaveConfirmed(() => {
       setCurrentWorkspaceId(workspaceId);
       if (home) {
@@ -661,12 +769,12 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
       setWorkspaces((items) => [...items, nextWorkspace]);
       setCurrentWorkspaceId(nextWorkspace.id);
       setWorkspaceCreateOpen(false);
+      backToSwitcher();
       setWorkspaceNameDraft('');
     });
   };
 
   const openRenameWorkspace = (workspace) => {
-    setWorkspaceActionOpenId(null);
     setWorkspaceRenameId(workspace.id);
     setWorkspaceRenameDraft(workspace.name);
     setWorkspaceRenameOpen(true);
@@ -677,12 +785,12 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     if (!nextName || !workspaceRenameId) return;
     setWorkspaces((items) => items.map((ws) => (ws.id === workspaceRenameId ? { ...ws, name: nextName } : ws)));
     setWorkspaceRenameOpen(false);
+    backToSwitcher();
     setWorkspaceRenameId(null);
     setWorkspaceRenameDraft('');
   };
 
   const deleteWorkspace = async (workspace, confirmedAlready = false) => {
-    setWorkspaceActionOpenId(null);
     if (workspaces.length <= 1) return;
     const confirmed =
       confirmedAlready ||
@@ -692,6 +800,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         confirmLabel: 'Delete workspace',
         tone: 'danger',
       }));
+    backToSwitcher();
     if (!confirmed) return;
     const remaining = workspaces.filter((ws) => ws.id !== workspace.id);
     setWorkspaces(remaining);
@@ -708,7 +817,10 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         <WorkspaceCreateModal
           value={workspaceNameDraft}
           onChange={setWorkspaceNameDraft}
-          onClose={() => setWorkspaceCreateOpen(false)}
+          onClose={() => {
+            setWorkspaceCreateOpen(false);
+            backToSwitcher();
+          }}
           onCreate={createWorkspace}
         />
       )}
@@ -717,31 +829,35 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
         <WorkspaceRenameModal
           value={workspaceRenameDraft}
           onChange={setWorkspaceRenameDraft}
-          onClose={() => setWorkspaceRenameOpen(false)}
+          onClose={() => {
+            setWorkspaceRenameOpen(false);
+            backToSwitcher();
+          }}
           onRename={renameWorkspace}
         />
       )}
 
       {picker && <AgentPicker title={picker.title} subtitle={picker.subtitle} agents={botList} onPick={picker.onPick} onClose={() => setPicker(null)} />}
       {searchOpen && (
-        <SearchOverlay query={searchQuery} onQueryChange={setSearchQuery} groups={searchResults} onSelect={selectSearchResult} onClose={closeSearch} />
+        <Suspense fallback={null}>
+          <SearchOverlay query={searchQuery} onQueryChange={setSearchQuery} groups={searchResults} onSelect={selectSearchResult} onClose={closeSearch} />
+        </Suspense>
       )}
     </>
   );
-  // where you are, for the bar across the top and the browser tab: the page, the agent it belongs to, the part of Telephony
+  // where you are, for the top bar and the browser tab: the page, its agent, the part of Telephony
   const lostAddress = active !== 'agents' && isUnknownAddress(window.location.hash);
-  const inAgent = active === 'agents' && route.view === 'bot';
-  const missingAgent = inAgent && !!allBots && !allBots.some((bot) => bot.id === route.botId);
-  const agentName = inAgent && !missingAgent ? (allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId : '';
+  const missingAgent = inAgentView && !!allBots && !allBots.some((bot) => bot.id === route.botId);
+  const agentName = inAgentView && !missingAgent ? (allBots || []).find((bot) => bot.id === route.botId)?.name || route.botId : '';
   const pageLabel = lostAddress
     ? 'Page not found'
     : missingAgent
       ? 'Agent not found'
-      : inAgent
+      : inAgentView
         ? PAGE_LABELS[resolvePage(route.tab, { bare: route.bare }).page]
         : [...NAV, ...LIBRARY_NAV, ...SETTINGS_NAV].find((item) => item.id === active)?.label || 'Home';
   const sectionLabel = active === 'telephony' && !lostAddress ? TELEPHONY_SECTIONS.find((item) => item.id === telephonySection)?.label : '';
-  // most specific first, so a row of tabs still tells them apart: "Tools · Acme Support · Weave", "Phone numbers · Telephony · Weave"
+  // most specific first, so a row of browser tabs still tells them apart: "Tools · Acme Support · Weave"
   const tabTitle = [sectionLabel, pageLabel, agentName, 'Weave'].filter(Boolean).join(' · ');
   useEffect(() => {
     document.title = tabTitle;
@@ -751,547 +867,585 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     revealIn(document.querySelector('.dashboard > .sidebar > .sideNav:not(.agentSideNav)'), '.sideLink.selected');
   }, [active, lostAddress]);
   return (
-    <div className={`dashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''} ${inAgentView ? 'inAgent' : ''}`}>
-      <SkipToContent target="pageContent" />
-      <aside className="sidebar">
-        <div className="sideBrand">
-          <Logo />
-          <button
-            className="collapse"
-            type="button"
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-expanded={!sidebarCollapsed}
-            onClick={() => setSidebarCollapsed((value) => !value)}
-          >
-            <Icon name="sidebar" size={18} />
-          </button>
-        </div>
-
-        {/* inside an agent the agent is the context: the workspace switch gives way to the agent's own switcher, below */}
-        {!inAgentView && (
-          <button
-            type="button"
-            className="workspaceSwitch"
-            onClick={() => setWorkspaceOpen((value) => !value)}
-            aria-expanded={workspaceOpen}
-            aria-haspopup="dialog"
-          >
-            <span className="workspaceAvatar">{getInitials(workspaceName).slice(0, 1)}</span>
-            <span className="workspaceCopy">
-              <small>Workspace</small>
-              <strong>{workspaceName}</strong>
-            </span>
-            <b className="buttonChevron" aria-hidden="true">
-              <Icon name={workspaceOpen ? 'chevronUp' : 'chevronDown'} size={16} />
-            </b>
-          </button>
-        )}
-        {workspaceOpen && !inAgentView && (
-          <div className="workspaceMenu" role="dialog" aria-label="Your workspaces">
-            <div className="workspaceMenuLabel">Your workspaces</div>
-            <div className="workspaceMenuList">
-              {workspaces.map((workspace) => (
-                <div key={workspace.id} className="workspaceOptionRow">
-                  <button
-                    type="button"
-                    className={`workspaceOption ${workspace.id === currentWorkspaceId ? 'current' : ''}`}
-                    onClick={() => switchWorkspace(workspace.id)}
-                  >
-                    <span className={`tinyDot ${workspace.id === currentWorkspaceId ? 'green' : ''}`} />
-                    <span className="workspaceOptionName">{workspace.name}</span>
-                    <span className="workspaceOptionMeta">
-                      {visibleCount(workspace.id)} {visibleCount(workspace.id) === 1 ? 'agent' : 'agents'}
-                    </span>
-                    {workspace.id === currentWorkspaceId && <Icon name="check" size={15} className="workspaceCheck" />}
-                  </button>
-                  <button
-                    type="button"
-                    className="workspaceActionTrigger"
-                    aria-label={`Actions for ${workspace.name}`}
-                    aria-expanded={workspaceActionOpenId === workspace.id}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setWorkspaceActionOpenId((value) => (value === workspace.id ? null : workspace.id));
-                    }}
-                  >
-                    <Icon name="more" size={16} />
-                  </button>
-                  {workspaceActionOpenId === workspace.id && (
-                    <div className="workspaceRowMenu" role="menu" aria-label={`Actions for ${workspace.name}`}>
-                      <button type="button" role="menuitem" onClick={() => openRenameWorkspace(workspace)}>
-                        Rename workspace
-                      </button>
-                      <button type="button" role="menuitem" className="danger" disabled={workspaces.length <= 1} onClick={() => deleteWorkspace(workspace)}>
-                        Delete workspace
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="workspaceMenuNote">Workspaces group agents in this browser. They don’t control who can see an agent.</p>
-            <button type="button" className="workspaceMenuAction" onClick={openCreateWorkspace}>
-              <span className="tinyDot" /> Create workspace <Icon name="plus" size={15} />
-            </button>
+    <SidebarFolded.Provider value={sidebarCollapsed}>
+      <div className={`dashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''} ${inAgentView ? 'inAgent' : ''}`}>
+        <SkipToContent target="pageContent" />
+        <aside className="sidebar">
+          <div className="sideBrand">
+            <Logo health={health} />
+            <Tip label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} side="right">
+              <button
+                className="collapse"
+                type="button"
+                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-expanded={!sidebarCollapsed}
+                onClick={() => setSidebarCollapsed((value) => !value)}
+              >
+                <Icon name="sidebar" size={18} />
+              </button>
+            </Tip>
           </div>
-        )}
 
-        {inAgentView && (
-          <nav className="sideNav agentSideNav" aria-label="This agent">
-            <button type="button" className="agentBack" title="All agents" onClick={() => studioNavigate('#/bots')}>
-              <Icon name="chevronLeft" size={15} />
-              <span className="agentBackText">All agents</span>
-            </button>
-            {/* the workspace's agents to switch between (all of them, when this agent is listed in another workspace) */}
-            {/* not for an agent that isn't there (the page says so): it would show a made-up card for it */}
-            {!(allBots && !allBots.some((b) => b.id === route.botId)) && (
-              <AgentSwitcher botId={route.botId} bots={botList.some((b) => b.id === route.botId) ? botList : allBots || botList} tab={route.tab} />
-            )}
-            <div id="agentNavSlot" />
-          </nav>
-        )}
-        {/* on an address that leads nowhere, no page is marked as the one open */}
-        <nav className={`sideNav${inAgentView ? ' sideNavWorkspace' : ''}`}>
-          <div className="navLabel">Workspace</div>
-          {workspaceNav.map((item) => (
-            <NavItem key={item.id} item={item} active={!lostAddress && active === item.id} onClick={() => activate(item.id)} />
-          ))}
-          <div className="sideDivider" />
-          <div className="navLabel">Library</div>
-          {LIBRARY_NAV.map((item) => (
-            <NavItem key={item.id} item={item} active={!lostAddress && active === item.id} onClick={() => activate(item.id)} />
-          ))}
-          <div className="sideDivider" />
-          {SETTINGS_NAV.map((item) => (
-            <NavItem key={item.id} item={item} active={!lostAddress && active === item.id} onClick={() => activate(item.id)} />
-          ))}
-        </nav>
-
-        <div className="sideBottom">
-          <button className="sideUtility" type="button" onClick={openSearch} title={`Search (${SHORTCUT_LABEL})`} aria-label="Search">
-            <Icon name="search" size={17} />
-            <span>Search</span>
-            <kbd>{SHORTCUT_LABEL}</kbd>
-          </button>
-          <button className="sideUtility" type="button" onClick={openHelpDialog} title="Help and docs" aria-label="Help and docs">
-            <Icon name="help" size={17} />
-            <span>Help & docs</span>
-            <Icon name="external" size={13} />
-          </button>
-          <ProfileMenu profile={profile} initials={initials} onAccountOpen={() => onAccountOpen?.(workspaceName)} onSignOut={onSignOut} />
-        </div>
-      </aside>
-
-      <main className="dashMain">
-        <div className="dashTopbar">
-          <div className="topbarCrumb">
-            <span>{workspaceName}</span>
-            <b>/</b>
-            {inAgent ? (
-              <>
-                <button type="button" className="crumbLink" onClick={() => studioNavigate('#/bots')}>
-                  Agents
+          {/* inside an agent its own switcher (below) replaces this. A Radix pop-over with focus on the current
+            workspace and a Radix menu per workspace: Escape closes the menu, then the switcher, returning focus */}
+          {!inAgentView && (
+            <Popover.Root open={workspaceOpen} onOpenChange={setWorkspaceOpen}>
+              <Popover.Trigger asChild>
+                <button type="button" className="workspaceSwitch">
+                  <span className="workspaceAvatar">{getInitials(workspaceName).slice(0, 1)}</span>
+                  <span className="workspaceCopy">
+                    <small>Workspace</small>
+                    <strong>{workspaceName}</strong>
+                  </span>
+                  <b className="buttonChevron" aria-hidden="true">
+                    <Icon name={workspaceOpen ? 'chevronUp' : 'chevronDown'} size={16} />
+                  </b>
                 </button>
-                <b>/</b>
-                {!missingAgent && (
-                  <>
-                    <button type="button" className="crumbLink" onClick={() => studioNavigate(`#/bots/${route.botId}`, { guard: false })}>
-                      {agentName}
-                    </button>
-                    <b>/</b>
-                  </>
-                )}
-                <strong>{pageLabel}</strong>
-              </>
-            ) : (
-              <>
-                <strong>{pageLabel}</strong>
-                {sectionLabel && (
-                  <>
-                    <b>/</b>
-                    <strong>{sectionLabel}</strong>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-          <div className="topbarActions">
-            <DemoSlot />
-            {/* a search field, not a button: it says what it finds and how to reach it from the keyboard */}
-            <button className="topSearch" type="button" onClick={openSearch} aria-label={`Search (${SHORTCUT_LABEL})`}>
-              <Icon name="search" size={15} />
-              <span>Search agents, pages, settings…</span>
-              <kbd>{SHORTCUT_LABEL}</kbd>
-            </button>
-            <AlertBell onOpen={() => activate('alerts')} />
-            <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
-            <ProfileMenu profile={profile} initials={initials} compact onAccountOpen={() => onAccountOpen?.(workspaceName)} onSignOut={onSignOut} />
-          </div>
-        </div>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content
+                  className="workspaceMenu rxLayer"
+                  aria-label="Your workspaces"
+                  align="start"
+                  sideOffset={6}
+                  collisionPadding={12}
+                  onEscapeKeyDown={keepEscape}
+                  onOpenAutoFocus={(event) => {
+                    const current = event.currentTarget?.querySelector?.('.workspaceOption.current, .workspaceOption');
+                    if (current) {
+                      event.preventDefault();
+                      current.focus({ preventScroll: true });
+                    }
+                  }}
+                >
+                  <div className="workspaceMenuLabel">Your workspaces</div>
+                  <div className="workspaceMenuList">
+                    {workspaces.map((workspace) => (
+                      <div key={workspace.id} className="workspaceOptionRow">
+                        <button
+                          type="button"
+                          className={`workspaceOption ${workspace.id === currentWorkspaceId ? 'current' : ''}`}
+                          onClick={() => switchWorkspace(workspace.id)}
+                        >
+                          <span className={`tinyDot ${workspace.id === currentWorkspaceId ? 'green' : ''}`} />
+                          <span className="workspaceOptionName">{workspace.name}</span>
+                          <span className="workspaceOptionMeta">
+                            {visibleCount(workspace.id)} {visibleCount(workspace.id) === 1 ? 'agent' : 'agents'}
+                          </span>
+                          {workspace.id === currentWorkspaceId && <Icon name="check" size={15} className="workspaceCheck" />}
+                        </button>
+                        <DropdownMenu.Root modal={false}>
+                          <DropdownMenu.Trigger asChild>
+                            <button type="button" className="workspaceActionTrigger" aria-label={`Actions for ${workspace.name}`}>
+                              <Icon name="more" size={16} />
+                            </button>
+                          </DropdownMenu.Trigger>
+                          <DropdownMenu.Portal>
+                            <DropdownMenu.Content
+                              className="workspaceRowMenu rxLayer"
+                              aria-label={`Actions for ${workspace.name}`}
+                              align="end"
+                              sideOffset={4}
+                              collisionPadding={12}
+                              onEscapeKeyDown={keepEscape}
+                            >
+                              <DropdownMenu.Item asChild onSelect={afterMenu(() => openRenameWorkspace(workspace))}>
+                                <button type="button">Rename workspace</button>
+                              </DropdownMenu.Item>
+                              <DropdownMenu.Item asChild disabled={workspaces.length <= 1} onSelect={afterMenu(() => deleteWorkspace(workspace))}>
+                                <button type="button" className="danger">
+                                  Delete workspace
+                                </button>
+                              </DropdownMenu.Item>
+                            </DropdownMenu.Content>
+                          </DropdownMenu.Portal>
+                        </DropdownMenu.Root>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="workspaceMenuNote">Workspaces group agents in this browser. They don’t control who can see an agent.</p>
+                  <button type="button" className="workspaceMenuAction" onClick={openCreateWorkspace}>
+                    <span className="tinyDot" /> Create workspace <Icon name="plus" size={15} />
+                  </button>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+          )}
 
-        <OfflineBanner />
-        <ServerDownBanner
-          down={apiHealth.state === 'down'}
-          onRetry={() => {
-            apiHealth.recheck();
-            refreshAgents();
-          }}
-        />
-        <div className="dashContent" id="pageContent">
-          {/* a page that breaks says so on its own; the menu and the bar above keep working, and opening another page starts afresh */}
-          <PageErrorBoundary resetKey={`${active}|${route.view}|${route.botId || ''}|${route.tab || ''}`}>
-            <Suspense fallback={<PageLoading />}>
-              {bots === null && !agentsError && ['sessions', 'live', 'monitoring', 'speed', 'alerts'].includes(active) ? (
-                // these pages are about the agents' calls: until the agents are known they can't say "none yet"
-                <PageLoading />
-              ) : bots === null && agentsError && ['sessions', 'live', 'monitoring', 'speed', 'alerts'].includes(active) ? (
-                <div className="agentsUnavailable">
-                  <section className="welcomeBlock">
-                    <div>
-                      <h1>{pageLabel}</h1>
-                    </div>
-                  </section>
-                  <ErrorState error={agentsError} onRetry={refreshAgents} what="your agents" />
-                </div>
-              ) : lostAddress ? (
-                <NotFound
-                  title="Page not found"
-                  text="This address doesn’t lead to a page in Weave. The link may be mistyped or out of date."
-                  actionLabel="Go to Home"
-                  onAction={() => activate('home')}
-                />
-              ) : active === 'telephony' ? (
-                <TelephonyWorkspace
-                  section={telephonySection}
-                  onSectionChange={openTelephonySection}
-                  onNavigate={activate}
-                  telephony={telephony}
-                  onTelephonyChange={updateTelephony}
-                  onRecordSession={recordSession}
-                  agents={agents}
-                />
-              ) : active === 'voices' ? (
-                <VoicesWorkspace
-                  agents={agents}
-                  onAgents={() => activate('agents')}
-                  onUseVoice={(voice) => {
-                    if (!voice || typeof voice !== 'object' || !voice.name) {
-                      activate('agents');
-                      return;
-                    }
-                    setPicker({
-                      title: `Use ${voice.name} in an agent`,
-                      subtitle: 'The voice is set on the agent’s draft. You review it and save.',
-                      onPick: (botId) => {
-                        queueChange(botId, {
-                          kind: 'voice',
-                          provider: String(voice.provider || '').toLowerCase(),
-                          providerLabel: voice.provider,
-                          name: voice.name,
-                          voiceId: voice.voiceId || '',
-                        });
-                        goToAgent(botId);
-                      },
-                    });
-                  }}
-                />
-              ) : active === 'integrations' ? (
-                <IntegrationsWorkspace
-                  onAddToAgent={(connection) => {
-                    if (!/^https?:\/\//i.test(connection.first || '')) {
-                      showNotice({
-                        title: 'This connection needs a web address',
-                        body: 'Add its address (https://…) with Edit, then add it to an agent.',
-                      });
-                      return;
-                    }
-                    setPicker({
-                      title: `Add ${connection.name} to an agent`,
-                      subtitle: 'It is added to the agent’s draft as a connection. You review it and save.',
-                      onPick: (botId) => {
-                        queueChange(botId, { kind: 'connection', name: connection.name, url: connection.first });
-                        goToAgent(botId);
-                      },
-                    });
-                  }}
-                />
-              ) : active === 'monitoring' ? (
-                <MonitoringPage
-                  bots={botList}
-                  top={<AgentAlerts />}
-                  onOpenAgent={(botId, tab, params) =>
-                    whenLeaveConfirmed(() => {
-                      setActive('agents');
-                      studioNavigate(routeHref(botId, tab, params));
-                    })
-                  }
-                  onOpenCall={(botId, callId, view) =>
-                    whenLeaveConfirmed(() => {
-                      setActive('agents');
-                      studioNavigate(routeHref(botId, 'calls', { call: callId, ...(view && view !== 'trace' ? { view } : {}) }));
-                    })
-                  }
-                />
-              ) : active === 'live' ? (
-                <LiveBoardPage
-                  bots={botList}
-                  onOpenCall={(botId, callId) =>
-                    whenLeaveConfirmed(() => {
-                      setActive('agents');
-                      studioNavigate(routeHref(botId, 'calls', { call: callId }));
-                    })
-                  }
-                />
-              ) : active === 'speed' ? (
-                <SpeedPage
-                  bots={botList}
-                  onOpenAgent={(botId, tab, params) =>
-                    whenLeaveConfirmed(() => {
-                      setActive('agents');
-                      studioNavigate(routeHref(botId, tab, params));
-                    })
-                  }
-                  onOpenCall={(botId, callId) =>
-                    whenLeaveConfirmed(() => {
-                      setActive('agents');
-                      studioNavigate(routeHref(botId, 'calls', { call: callId }));
-                    })
-                  }
-                />
-              ) : active === 'alerts' ? (
-                <AlertsPage
-                  bots={botList}
-                  userName={profile?.fullName || ''}
-                  onOpenAgent={(botId, tab, params) =>
-                    whenLeaveConfirmed(() => {
-                      setActive('agents');
-                      studioNavigate(routeHref(botId, tab, params));
-                    })
-                  }
-                  onOpenCall={(botId, callId) =>
-                    whenLeaveConfirmed(() => {
-                      setActive('agents');
-                      studioNavigate(routeHref(botId, 'calls', { call: callId }));
-                    })
-                  }
-                />
-              ) : active === 'sessions' ? (
-                <CallsPage
-                  bots={botList}
-                  onOpenAgent={(id) => {
-                    setActive('agents');
-                    studioNavigate(routeHref(id, 'test'));
-                  }}
-                />
-              ) : active === 'agents' ? (
-                <Studio profile={profile} onRecordSession={recordSession} readinessRuns={readinessRuns} onRecordReadiness={recordReadinessRun} />
-              ) : active === 'team' ? (
-                <TeamPage
-                  agents={botList.map((b) => ({ id: b.id, name: b.name || b.id }))}
-                  agentsLoaded={bots !== null}
-                  workspaceName={workspaceName}
-                  profile={profile}
-                />
-              ) : active === 'settings' ? (
-                <SettingsPage
-                  workspace={currentWorkspace}
-                  workspaceCount={workspaces.length}
-                  bots={botList}
-                  removedCount={removedBots.length}
-                  sessions={sessions}
-                  onRename={(name) => setWorkspaces((items) => items.map((ws) => (ws.id === currentWorkspace.id ? { ...ws, name } : ws)))}
-                  onDelete={() => deleteWorkspace(currentWorkspace, true)}
-                  onOpenAgents={() => {
-                    setActive('agents');
-                  }}
-                />
+          {inAgentView && (
+            <nav className="sideNav agentSideNav" aria-label="This agent">
+              <Tip label={sidebarCollapsed ? 'All agents' : null} side="right">
+                <button type="button" className="agentBack" aria-label="All agents" onClick={() => studioNavigate('#/bots')}>
+                  <Icon name="chevronLeft" size={15} />
+                  <span className="agentBackText">All agents</span>
+                </button>
+              </Tip>
+              {/* agents to switch between (all of them, when this agent is listed in another workspace) */}
+              {/* not for a missing agent (the page says so): it would show a made-up card */}
+              {!missingAgent && (
+                <AgentSwitcher botId={route.botId} bots={botList.some((b) => b.id === route.botId) ? botList : allBots || botList} tab={route.tab} />
+              )}
+              <div id="agentNavSlot" />
+            </nav>
+          )}
+          {/* on an address that leads nowhere, no page is marked as the one open */}
+          <nav className={`sideNav${inAgentView ? ' sideNavWorkspace' : ''}`}>
+            <div className="navLabel">Workspace</div>
+            {workspaceNav.map((item) => (
+              <NavItem key={item.id} item={item} active={!lostAddress && active === item.id} onClick={() => activate(item.id)} />
+            ))}
+            <div className="sideDivider" />
+            <div className="navLabel">Library</div>
+            {LIBRARY_NAV.map((item) => (
+              <NavItem key={item.id} item={item} active={!lostAddress && active === item.id} onClick={() => activate(item.id)} />
+            ))}
+            <div className="sideDivider" />
+            {SETTINGS_NAV.map((item) => (
+              <NavItem key={item.id} item={item} active={!lostAddress && active === item.id} onClick={() => activate(item.id)} />
+            ))}
+          </nav>
+
+          <div className="sideBottom">
+            <Tip label={`Search (${SHORTCUT_LABEL})`} side="top">
+              <button className="sideUtility" type="button" onClick={openSearch} aria-label="Search">
+                <Icon name="search" size={17} />
+                <span>Search</span>
+                <kbd>{SHORTCUT_LABEL}</kbd>
+              </button>
+            </Tip>
+            <Tip label="Help and docs" side="top">
+              <button className="sideUtility" type="button" onClick={openHelpDialog} aria-label="Help and docs">
+                <Icon name="help" size={17} />
+                <span>Help & docs</span>
+                <Icon name="external" size={13} />
+              </button>
+            </Tip>
+            <ProfileMenu profile={profile} initials={initials} onAccountOpen={() => onAccountOpen?.(workspaceName)} onSignOut={onSignOut} />
+          </div>
+        </aside>
+
+        <main className="dashMain">
+          <div className="dashTopbar">
+            <div className="topbarCrumb">
+              <span>{workspaceName}</span>
+              <b>/</b>
+              {inAgentView ? (
+                <>
+                  <button type="button" className="crumbLink" onClick={() => studioNavigate('#/bots')}>
+                    Agents
+                  </button>
+                  <b>/</b>
+                  {!missingAgent && (
+                    <>
+                      <button type="button" className="crumbLink" onClick={() => studioNavigate(`#/bots/${route.botId}`, { guard: false })}>
+                        {agentName}
+                      </button>
+                      <b>/</b>
+                    </>
+                  )}
+                  <strong>{pageLabel}</strong>
+                </>
               ) : (
                 <>
-                  <section className="welcomeBlock">
-                    <div>
-                      <h1>
-                        {greeting}, {firstName}
-                        <span>.</span>
-                      </h1>
-                      <p>
-                        {bots === null
-                          ? ''
-                          : agentCount === 0
-                            ? 'Your workspace is ready. Start by creating an agent.'
-                            : `${agentCount} agent${agentCount === 1 ? '' : 's'} in ${workspaceName}, ${configuredCount} published.`}{' '}
-                        {/* said only when there is something to know: the demo's data, or a server that doesn't answer (a working one goes unsaid) */}
-                        {health.show && (
-                          <span className="homeConnection" title={health.note}>
-                            <span className={`healthSignal ${health.tone}`} aria-hidden="true" />
-                            {health.title}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <button className="primaryCta createButton" type="button" onClick={openCreateAssistant}>
-                      <Icon name="plus" size={16} /> Create agent
-                    </button>
-                  </section>
-
-                  {agentCount > 0 && <WorkspacePulse bots={botList} onOpen={activate} />}
-
-                  <section className="overviewGrid">
-                    <div className="mainColumn">
-                      {bots === null && agentsError ? (
-                        // the list couldn't be read: say so and offer to try again (not "loading" for ever)
-                        <ErrorState error={agentsError} onRetry={refreshAgents} what="your agents" />
-                      ) : bots === null ? (
-                        <p className="stMuted" role="status">
-                          Loading agents…
-                        </p>
-                      ) : agentCount === 0 ? (
-                        <>
-                          <div className="sectionHeader">
-                            <div>
-                              <h2>Start with your first agent</h2>
-                            </div>
-                          </div>
-                          <div className="starterCard">
-                            {/* the studio's own orb (the one a test conversation shows), in the style's colours */}
-                            <div className="starterVisual" aria-hidden="true">
-                              <AiOrb size={136} />
-                            </div>
-                            <div className="starterCopy">
-                              <span className="cardTag">Recommended</span>
-                              <h3>Build an agent from an idea</h3>
-                              <p>Pick a starting point, name your agent, and refine its voice, tools and handoff rules in its config.</p>
-                              <div className="starterActions">
-                                {/* quiet: "Create agent" above is the page's one strong button, and does the same */}
-                                <button className="quietButton compactCta" type="button" onClick={openCreateAssistant}>
-                                  Start building
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="sectionHeader">
-                            <div>
-                              <h2>Your agents</h2>
-                            </div>
-                            <button className="linkButton" type="button" onClick={() => activate('agents')}>
-                              View all
-                            </button>
-                          </div>
-                          <AgentTable bots={botList.slice(0, 4)} onOpen={(bot) => goToAgent(bot.id)} />
-                          {botList.length > 4 && (
-                            <button type="button" className="agentRowMore" onClick={() => activate('agents')}>
-                              Show all {botList.length} agents
-                            </button>
-                          )}
-                        </>
-                      )}
-
-                      <div className="sectionHeader activityHeader">
-                        <div>
-                          <h2>Recent activity</h2>
-                        </div>
-                        <button className="linkButton" type="button" onClick={() => activate('sessions')}>
-                          Open calls
-                        </button>
-                      </div>
-                      <div className="activityCard">
-                        {recentActivity.map((item) => (
-                          <Activity key={item.key} title={item.title} detail={item.detail} time={item.time} icon={item.icon} muted={item.muted} />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="sideColumn">
-                      {!(bots === null && agentsError) && (
-                        <div className="sectionHeader">
-                          <div>
-                            <h2>Next step</h2>
-                          </div>
-                        </div>
-                      )}
-                      {/* without the list of agents there is no next step to name; the error beside it says why */}
-                      {!(bots === null && agentsError) && (
-                        <HomeJourney
-                          bots={bots === null ? null : botList}
-                          onCreate={openCreateAssistant}
-                          onOpenTab={(botId, tab, params) =>
-                            whenLeaveConfirmed(() => {
-                              setActive('agents');
-                              studioNavigate(routeHref(botId, tab, params));
-                            })
-                          }
-                        />
-                      )}
-
-                      <div className="sectionHeader quickHeader">
-                        <div>
-                          <h2>Workspace tools</h2>
-                        </div>
-                      </div>
-                      <div className="quickCard">
-                        <QuickAction icon="voice" title="Explore voices" subtitle="Find a voice that fits" onClick={() => activate('voices')} />
-                        <QuickAction icon="dial" title="Telephony" subtitle="Numbers, routing and trunks" onClick={() => activate('telephony')} />
-                        <QuickAction icon="plug" title="View integrations" subtitle="Connect your stack" onClick={() => activate('integrations')} />
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* the conversations had in the studio's own test panel (the calls themselves are in the numbers at the top): only once there are some,
-                      and named for what they are, so they are never read as the agents' traffic */}
-                  {normalizeList(sessions).length > 0 && (
-                    <section className="insightsSection">
-                      <div className="sectionHeader">
-                        <div>
-                          <h2>Your test conversations</h2>
-                        </div>
-                        <div className="segmented" role="group" aria-label="Time range">
-                          {['Past 7 days', 'Past 30 days'].map((option) => (
-                            <button
-                              key={option}
-                              type="button"
-                              aria-pressed={range === option}
-                              className={range === option ? 'active' : ''}
-                              onClick={() => setRange(option)}
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="insightGrid">
-                        {(() => {
-                          const st = sessionStats(sessionsInRange(sessions, range));
-                          const when = range.toLowerCase();
-                          return (
-                            <>
-                              <Metric title="Conversations" value={String(st.count)} note={st.count ? `In the ${when}` : `None in the ${when}`} />
-                              <Metric
-                                title="Average length"
-                                value={st.count ? formatDuration(st.avgSec) : '—'}
-                                note={st.count ? 'From start to end' : 'No conversation yet'}
-                              />
-                              <Metric
-                                title="Minutes"
-                                value={st.minutes >= 10 ? String(Math.round(st.minutes)) : st.minutes.toFixed(1).replace(/\.0$/, '')}
-                                note="Talking with your agents"
-                              />
-                              <Metric title="Messages" value={String(st.messages)} note="What you said or typed" />
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </section>
+                  <strong>{pageLabel}</strong>
+                  {sectionLabel && (
+                    <>
+                      <b>/</b>
+                      <strong>{sectionLabel}</strong>
+                    </>
                   )}
                 </>
               )}
-            </Suspense>
-          </PageErrorBoundary>
-        </div>
-      </main>
+            </div>
+            <div className="topbarActions">
+              <DemoSlot />
+              {/* looks like a search field: its visible words (what it finds, its shortcut) are its name */}
+              <button className="topSearch" type="button" onClick={openSearch}>
+                <Icon name="search" size={15} />
+                <span>Search agents, pages, settings…</span>
+                <kbd>{SHORTCUT_LABEL}</kbd>
+              </button>
+              <AlertBell onOpen={() => activate('alerts')} />
+              <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
+              <ProfileMenu profile={profile} initials={initials} compact onAccountOpen={() => onAccountOpen?.(workspaceName)} onSignOut={onSignOut} />
+            </div>
+          </div>
 
-      {sharedOverlays}
-    </div>
+          <OfflineBanner />
+          <ServerDownBanner
+            down={apiHealth.state === 'down'}
+            onRetry={() => {
+              apiHealth.recheck();
+              refreshAgents();
+            }}
+          />
+          <div className="dashContent" id="pageContent">
+            {/* a page that breaks says so on its own; the menu and top bar keep working, another page starts afresh */}
+            <PageErrorBoundary resetKey={`${active}|${route.view}|${route.botId || ''}|${route.tab || ''}`}>
+              <Suspense fallback={<PageLoading />}>
+                {bots === null && !agentsError && ['sessions', 'live', 'monitoring', 'speed', 'alerts'].includes(active) ? (
+                  // these pages are about the agents' calls: until the agents are known they can't say "none yet"
+                  <PageLoading />
+                ) : bots === null && agentsError && ['sessions', 'live', 'monitoring', 'speed', 'alerts'].includes(active) ? (
+                  <div className="agentsUnavailable">
+                    <section className="welcomeBlock">
+                      <div>
+                        <h1>{pageLabel}</h1>
+                      </div>
+                    </section>
+                    <ErrorState error={agentsError} onRetry={refreshAgents} what="your agents" />
+                  </div>
+                ) : lostAddress ? (
+                  <NotFound
+                    title="Page not found"
+                    text="This address doesn’t lead to a page in Weave. The link may be mistyped or out of date."
+                    actionLabel="Go to Home"
+                    onAction={() => activate('home')}
+                  />
+                ) : active === 'telephony' ? (
+                  <TelephonyWorkspace
+                    section={telephonySection}
+                    onSectionChange={openTelephonySection}
+                    onNavigate={activate}
+                    telephony={telephony}
+                    onTelephonyChange={updateTelephony}
+                    onRecordSession={recordSession}
+                    agents={agents}
+                  />
+                ) : active === 'voices' ? (
+                  <VoicesWorkspace
+                    agents={agents}
+                    onAgents={() => activate('agents')}
+                    onUseVoice={(voice) => {
+                      if (!voice || typeof voice !== 'object' || !voice.name) {
+                        activate('agents');
+                        return;
+                      }
+                      setPicker({
+                        title: `Use ${voice.name} in an agent`,
+                        subtitle: 'The voice is set on the agent’s draft. You review it and save.',
+                        onPick: (botId) => {
+                          queueChange(botId, {
+                            kind: 'voice',
+                            provider: String(voice.provider || '').toLowerCase(),
+                            providerLabel: voice.provider,
+                            name: voice.name,
+                            voiceId: voice.voiceId || '',
+                          });
+                          goToAgent(botId);
+                        },
+                      });
+                    }}
+                  />
+                ) : active === 'integrations' ? (
+                  <IntegrationsWorkspace
+                    onAddToAgent={(connection) => {
+                      if (!/^https?:\/\//i.test(connection.first || '')) {
+                        showNotice({
+                          title: 'This connection needs a web address',
+                          body: 'Add its address (https://…) with Edit, then add it to an agent.',
+                        });
+                        return;
+                      }
+                      setPicker({
+                        title: `Add ${connection.name} to an agent`,
+                        subtitle: 'It is added to the agent’s draft as a connection. You review it and save.',
+                        onPick: (botId) => {
+                          queueChange(botId, { kind: 'connection', name: connection.name, url: connection.first });
+                          goToAgent(botId);
+                        },
+                      });
+                    }}
+                  />
+                ) : active === 'monitoring' ? (
+                  <MonitoringPage
+                    bots={botList}
+                    top={<AgentAlerts />}
+                    onOpenAgent={(botId, tab, params) =>
+                      whenLeaveConfirmed(() => {
+                        setActive('agents');
+                        studioNavigate(routeHref(botId, tab, params));
+                      })
+                    }
+                    onOpenCall={(botId, callId, view) =>
+                      whenLeaveConfirmed(() => {
+                        setActive('agents');
+                        studioNavigate(routeHref(botId, 'calls', { call: callId, ...(view && view !== 'trace' ? { view } : {}) }));
+                      })
+                    }
+                  />
+                ) : active === 'live' ? (
+                  <LiveBoardPage
+                    bots={botList}
+                    onOpenCall={(botId, callId) =>
+                      whenLeaveConfirmed(() => {
+                        setActive('agents');
+                        studioNavigate(routeHref(botId, 'calls', { call: callId }));
+                      })
+                    }
+                  />
+                ) : active === 'speed' ? (
+                  <SpeedPage
+                    bots={botList}
+                    onOpenAgent={(botId, tab, params) =>
+                      whenLeaveConfirmed(() => {
+                        setActive('agents');
+                        studioNavigate(routeHref(botId, tab, params));
+                      })
+                    }
+                    onOpenCall={(botId, callId) =>
+                      whenLeaveConfirmed(() => {
+                        setActive('agents');
+                        studioNavigate(routeHref(botId, 'calls', { call: callId }));
+                      })
+                    }
+                  />
+                ) : active === 'alerts' ? (
+                  <AlertsPage
+                    bots={botList}
+                    userName={profile?.fullName || ''}
+                    onOpenAgent={(botId, tab, params) =>
+                      whenLeaveConfirmed(() => {
+                        setActive('agents');
+                        studioNavigate(routeHref(botId, tab, params));
+                      })
+                    }
+                    onOpenCall={(botId, callId) =>
+                      whenLeaveConfirmed(() => {
+                        setActive('agents');
+                        studioNavigate(routeHref(botId, 'calls', { call: callId }));
+                      })
+                    }
+                  />
+                ) : active === 'sessions' ? (
+                  <CallsPage
+                    bots={botList}
+                    onOpenAgent={(id) => {
+                      setActive('agents');
+                      studioNavigate(routeHref(id, 'test'));
+                    }}
+                  />
+                ) : active === 'agents' ? (
+                  <Studio profile={profile} onRecordSession={recordSession} readinessRuns={readinessRuns} onRecordReadiness={recordReadinessRun} />
+                ) : active === 'team' ? (
+                  <TeamPage
+                    agents={botList.map((b) => ({ id: b.id, name: b.name || b.id }))}
+                    agentsLoaded={bots !== null}
+                    workspaceName={workspaceName}
+                    profile={profile}
+                  />
+                ) : active === 'settings' ? (
+                  <SettingsPage
+                    workspace={currentWorkspace}
+                    workspaceCount={workspaces.length}
+                    bots={botList}
+                    removedCount={removedBots.length}
+                    sessions={sessions}
+                    onRename={(name) => setWorkspaces((items) => items.map((ws) => (ws.id === currentWorkspace.id ? { ...ws, name } : ws)))}
+                    onDelete={() => deleteWorkspace(currentWorkspace, true)}
+                    onOpenAgents={() => {
+                      setActive('agents');
+                    }}
+                  />
+                ) : (
+                  <>
+                    <section className="welcomeBlock">
+                      <div>
+                        <h1>
+                          {greeting}, {firstName}
+                          <span>.</span>
+                        </h1>
+                        <p>
+                          {bots === null
+                            ? ''
+                            : agentCount === 0
+                              ? 'Your workspace is ready. Start by creating an agent.'
+                              : `${agentCount} agent${agentCount === 1 ? '' : 's'} in ${workspaceName}, ${configuredCount} published.`}{' '}
+                          {/* shown only when there's something to know: demo data, or a server that doesn't answer */}
+                          {health.show && (
+                            <span className="homeConnection" title={health.note}>
+                              <span className={`healthSignal ${health.tone}`} aria-hidden="true" />
+                              {health.title}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <button className="primaryCta createButton" type="button" onClick={openCreateAssistant}>
+                        <Icon name="plus" size={16} /> Create agent
+                      </button>
+                    </section>
+
+                    {/* sample agents, labelled so a new workspace isn't mistaken for someone else's */}
+                    {samples.length > 0 && (
+                      <div className="homeSamples">
+                        <Notice
+                          kind="info"
+                          title={`${samples.length === 1 ? 'This agent is a sample' : `These ${samples.length} agents are samples`}`}
+                          actions={
+                            <button type="button" className="quietButton" onClick={() => samples.forEach((bot) => hideBot(bot.id))}>
+                              Hide the samples
+                            </button>
+                          }
+                        >
+                          They come with demo mode, with made-up calls, so there is something to explore. Hide them to start with an empty workspace; the Agents
+                          page can bring them back.
+                        </Notice>
+                      </div>
+                    )}
+                    {agentCount > 0 && <WorkspacePulse bots={botList} onOpen={activate} />}
+
+                    <section className="overviewGrid">
+                      <div className="mainColumn">
+                        {bots === null && agentsError ? (
+                          // the list couldn't be read: say so and offer to try again (not "loading" for ever)
+                          <ErrorState error={agentsError} onRetry={refreshAgents} what="your agents" />
+                        ) : bots === null ? (
+                          <p className="stMuted" role="status">
+                            Loading agents…
+                          </p>
+                        ) : agentCount === 0 ? (
+                          <>
+                            <div className="sectionHeader">
+                              <div>
+                                <h2>Start with your first agent</h2>
+                              </div>
+                            </div>
+                            <div className="starterCard">
+                              {/* the studio's orb (as in a test conversation), in the style's colours */}
+                              <div className="starterVisual" aria-hidden="true">
+                                <AiOrb size={136} />
+                              </div>
+                              <div className="starterCopy">
+                                <span className="cardTag">Recommended</span>
+                                <h3>Build an agent from an idea</h3>
+                                <p>Describe what it should do in your own words or pick a starting point, try it out, then put it live.</p>
+                                <div className="starterActions">
+                                  {/* quiet: "Create agent" above is the page's one strong button, and does the same */}
+                                  <button className="quietButton compactCta" type="button" onClick={openCreateAssistant}>
+                                    Start building
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="sectionHeader">
+                              <div>
+                                <h2>Your agents</h2>
+                              </div>
+                              <button className="linkButton" type="button" onClick={() => activate('agents')}>
+                                View all
+                              </button>
+                            </div>
+                            <AgentTable bots={botList.slice(0, 4)} onOpen={(bot) => goToAgent(bot.id)} />
+                            {botList.length > 4 && (
+                              <button type="button" className="agentRowMore" onClick={() => activate('agents')}>
+                                Show all {botList.length} agents
+                              </button>
+                            )}
+                          </>
+                        )}
+
+                        <div className="sectionHeader activityHeader">
+                          <div>
+                            <h2>Recent activity</h2>
+                          </div>
+                          <button className="linkButton" type="button" onClick={() => activate('sessions')}>
+                            Open calls
+                          </button>
+                        </div>
+                        <div className="activityCard">
+                          {recentActivity.map((item) => (
+                            <Activity key={item.key} title={item.title} detail={item.detail} time={item.time} icon={item.icon} muted={item.muted} />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="sideColumn">
+                        {!(bots === null && agentsError) && (
+                          <div className="sectionHeader">
+                            <div>
+                              <h2>Next step</h2>
+                            </div>
+                          </div>
+                        )}
+                        {/* without the list of agents there is no next step to name; the error beside it says why */}
+                        {!(bots === null && agentsError) && (
+                          <HomeJourney
+                            bots={bots}
+                            onCreate={openCreateAssistant}
+                            onOpenTab={(botId, tab, params) =>
+                              whenLeaveConfirmed(() => {
+                                setActive('agents');
+                                studioNavigate(routeHref(botId, tab, params));
+                              })
+                            }
+                          />
+                        )}
+
+                        <div className="sectionHeader quickHeader">
+                          <div>
+                            <h2>Workspace tools</h2>
+                          </div>
+                        </div>
+                        <div className="quickCard">
+                          <QuickAction icon="voice" title="Explore voices" subtitle="Find a voice that fits" onClick={() => activate('voices')} />
+                          <QuickAction icon="dial" title="Telephony" subtitle="Numbers, routing and trunks" onClick={() => activate('telephony')} />
+                          <QuickAction icon="plug" title="View integrations" subtitle="Connect your stack" onClick={() => activate('integrations')} />
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* test-panel conversations, shown once there are some and named so they're never
+                      read as the agents' traffic */}
+                    {sessions.length > 0 && (
+                      <section className="insightsSection">
+                        <div className="sectionHeader">
+                          <div>
+                            <h2>Your test conversations</h2>
+                          </div>
+                          <OneOf className="segmented" label="Time range" value={range} onChange={setRange}>
+                            {['Past 7 days', 'Past 30 days'].map((option) => (
+                              <Choice key={option} value={option} className={range === option ? 'active' : ''}>
+                                {option}
+                              </Choice>
+                            ))}
+                          </OneOf>
+                        </div>
+                        <div className="insightGrid">
+                          {(() => {
+                            const st = sessionStats(sessionsInRange(sessions, range));
+                            const when = range.toLowerCase();
+                            return (
+                              <>
+                                <Metric title="Conversations" value={String(st.count)} note={st.count ? `In the ${when}` : `None in the ${when}`} />
+                                <Metric
+                                  title="Average length"
+                                  value={st.count ? formatDuration(st.avgSec) : '—'}
+                                  note={st.count ? 'From start to end' : 'No conversation yet'}
+                                />
+                                <Metric
+                                  title="Minutes"
+                                  value={st.minutes >= 10 ? String(Math.round(st.minutes)) : st.minutes.toFixed(1).replace(/\.0$/, '')}
+                                  note="Talking with your agents"
+                                />
+                                <Metric title="Messages" value={String(st.messages)} note="What you said or typed" />
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                )}
+              </Suspense>
+            </PageErrorBoundary>
+          </div>
+        </main>
+
+        {sharedOverlays}
+      </div>
+    </SidebarFolded.Provider>
   );
 }

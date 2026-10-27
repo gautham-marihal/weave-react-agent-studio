@@ -7,10 +7,9 @@ import PromptExtras from './PromptExtras.jsx';
 import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
 import Icon from '../../ui/Icon.jsx';
 
-// What the model will actually be told, from the server: the exact instructions, every conditional block and whether it is in right now,
-// the tools as the model sees them, and how big it all is. Nothing is built here: the API runs the runtime's own code on what is in the
-// editor (saved or not) and spends nothing. "Preview as…" asks "what if…": which channel the caller is on, what a few state values are,
-// what time it is. If the server can't be asked, an APPROXIMATE copy built in the browser is shown and labelled so.
+// What the model will be told, from the server: the exact instructions, each conditional block and whether it is in,
+// the tools as the model sees them, and the size. The API runs the runtime's code on the editor's config and spends
+// nothing; "Preview as…" sets what-ifs. Without the server, an APPROXIMATE browser copy is shown, labelled so.
 
 function Marked({ text }) {
   const parts = String(text).split(/(‹[^›]*›)/);
@@ -31,15 +30,18 @@ const SOURCE = {
   approximate: { text: 'approximate', title: 'The server could not be asked, so this was built in your browser and its wording and order may differ' },
 };
 
-// `config` is given by a screen that has the whole config in hand (the Simple view); inside the form it is read from the form's store.
+// Inside the form, the config is read from the form's store.
 export function PromptPreviewFromForm({ agentId }) {
   const config = useConfigSelect((c) => c, Object.is);
   return <PromptPreview agentId={agentId} config={config} />;
 }
 
-export default function PromptPreview({ agentId, config }) {
-  const [open, setOpen] = useState(false);
+//   config: given by a screen that has the whole config in hand (the Agent page)
+//   startOpen: drawn open (in its own panel, from the agent's bar), not as a row to open
+export default function PromptPreview({ agentId, config, startOpen = false }) {
+  const [open, setOpen] = useState(startOpen);
   const [exactOpen, setExactOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const what = useWhatIf(config);
   const preview = usePromptPreview({
     config,
@@ -55,7 +57,11 @@ export default function PromptPreview({ agentId, config }) {
   const source = SOURCE[preview.source];
 
   return (
-    <details className="stPromptPreview" onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <details
+      className={`stPromptPreview ${startOpen ? 'standalone' : ''}`}
+      open={startOpen || undefined}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       {/* a row like the setting rows around it: what it is, one grey line, and a chevron that turns when it opens */}
       <summary>
         <span className="nlRowIcon" aria-hidden="true">
@@ -176,15 +182,19 @@ export default function PromptPreview({ agentId, config }) {
                 <button
                   type="button"
                   className="quietButton"
-                  onClick={() => {
+                  onClick={async () => {
+                    // writeText answers later: a blocked clipboard rejects
+                    // then, so it is awaited (as the Alerts page's Copy does)
                     try {
-                      navigator.clipboard.writeText(prompt.instructions);
+                      await navigator.clipboard.writeText(prompt.instructions);
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 1800);
                     } catch {
-                      /* clipboard blocked */
+                      setCopied(false);
                     }
                   }}
                 >
-                  Copy
+                  {copied ? 'Copied' : 'Copy'}
                 </button>
               </details>
             </>

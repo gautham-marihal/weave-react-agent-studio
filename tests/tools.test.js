@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { toolKindCounts, toolMatches, usedByText } from '../src/studio/form/toolInfo.js';
-import { argNamesOf, findTemplates, highlightSegments, insertAt, insertables, scopeAt, templateProblems, templateScope } from '../src/studio/form/templates.js';
+import { argNamesOf, findTemplates, highlightSegments, insertAt, insertables, scopeAt, templateProblems, templateScope } from '../src/studio/form/templates.ts';
 import { describeMatches, evalPath, modelSees, parsePath, samplePaths, validatePath } from '../src/studio/form/jsonPaths.js';
 import { PARAM_KINDS, bodyFromParams, modelView, problems, readParams, writeParams } from '../src/studio/form/paramSchema.js';
 import { BUILTIN_HELP, agentsUsingTool, describeAdvice, kindOfTool, notAvailable, timeoutAdvice, unusedTools } from '../src/studio/form/toolInfo.js';

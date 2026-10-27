@@ -1,15 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import SmartSelect from './SmartSelect.jsx';
 import Icon from '../ui/Icon.jsx';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 import { formatWhen } from './format.js';
 import { DemoNote } from '../demo/DemoBadge.jsx';
-import { PRODUCTION_WORD, mayDeploy, rollbackTarget, splitUnsupported } from './preflight.js';
+import { PRODUCTION_WORD, mayDeploy, rollbackTarget, splitUnsupported } from './preflight.ts';
 import { envLabel, ErrorState, Notice, Spinner } from './ui.jsx';
 import { useAsync } from './useAsync.js';
 import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { normalizePreflightKnowledge } from './release/checklist.js';
 import { AgentNumbers, useLiveNumbers } from '../pages/LiveNumbers.jsx';
+import Select from '../ui/Select.tsx';
+
+// The Deploy page: which version runs in each environment, putting a version live, what the runtime can't run yet
+// (UnsupportedNotices, also shown when publishing), and the deployment history.
 
 const STATUS_TEXT = { active: 'Active', pending: 'Deploying…', failed: 'Failed', replaced: 'Replaced' };
 
@@ -22,8 +26,8 @@ function StatusPill({ status }) {
   );
 }
 
-// Parts of the agent the runtime can't run yet. A security item (a protection that is declared but not enforced) comes
-// first, in red: the agent looks protected and isn't.
+// Parts of the agent the runtime can't run yet. A security item (a protection declared but not enforced) comes first,
+// in red: the agent looks protected and isn't.
 export function UnsupportedNotices({ items }) {
   const { security, advice } = splitUnsupported(items);
   if (!security.length && !advice.length) return null;
@@ -95,7 +99,7 @@ function Preflight({ preflight }) {
 
 export default function DeployTab({ botId, name = '', initialVersion, refreshKey, onDeployed }) {
   const envs = useAsync((signal) => api.environments({ signal }), []);
-  // the agent's phone numbers (when this server has them): each environment card names its own, and they are listed and added below
+  // the agent's phone numbers, if this server has them: each environment card names its own; listed and added below
   const numbers = useLiveNumbers(true, { botId });
   const versions = useAsync((signal) => api.listVersions(botId, { signal }), [botId, refreshKey]);
   const deployments = useAsync((signal) => api.listDeployments(botId, { signal }), [botId, refreshKey]);
@@ -107,8 +111,8 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
   const [deploying, setDeploying] = useState(false);
   const [error, setError] = useState(null);
   const [last, setLast] = useState(null); // { deployment, preflight }
-  const [typed, setTyped] = useState(''); // the word that confirms a production deploy while a security item stands
-  const [notFound, setNotFound] = useState({}); // environment -> secrets the server couldn't find when something was last deployed there
+  const [typed, setTyped] = useState(''); // the word that confirms a production deploy despite a security item
+  const [notFound, setNotFound] = useState({}); // env -> secrets missing at the last deploy there
   const formRef = useRef(null);
   // The validator's view of the chosen version, before anything is deployed.
   const check = useAsync(
@@ -116,10 +120,13 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
       if (!version) return null;
       const record = await api.getVersion(botId, version, { signal });
       const report = await api.validate(record.config, { signal });
-      return { ...report, __record: record };
+      return { ...report, __record: record, __for: version };
     },
     [botId, version],
   );
+  // Only the chosen version's check counts. useAsync keeps the previous answer while loading (and after a failure),
+  // but that is another version's, so it is neither shown nor used to decide what a production deploy asks for.
+  const report = check.data && check.data.__for === version && !check.loading ? check.data : null;
 
   const versionList = useMemo(() => versions.data || [], [versions.data]);
   useEffect(() => {
@@ -171,8 +178,9 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
     }
   };
 
-  const security = splitUnsupported(check.data?.unsupported).security;
-  const allowed = mayDeploy({ environment, security, typed });
+  // Production with a failed check: its protections are unknown, so the confirming word is asked for anyway.
+  const security = report ? splitUnsupported(report.unsupported).security : environment === 'production' && check.error ? ['unchecked'] : [];
+  const allowed = mayDeploy({ environment, security, typed }) && (!!report || !!check.error);
   const onDeployClick = () => {
     if (!allowed) return;
     if (environment === 'production' && !confirming) {
@@ -182,7 +190,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
     deploy();
   };
 
-  // "Roll back" only fills in the form (the version before this one, in this environment); the button still has to be pressed.
+  // "Roll back" only fills in the form with the previous version; the button still has to be pressed.
   const prepareRollback = (env, to) => {
     setVersion(to);
     setEnvironment(env);
@@ -198,7 +206,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
 
   const current = deployments.data?.current || {};
   // The API lists deployments oldest first; show the latest at the top.
-  // newest first; a deployment that went through but has a newer one to the same environment after it is not what runs there any more: "Replaced"
+  // A deployment followed by a newer one to the same environment no longer runs there: "Replaced".
   const history = (() => {
     const seen = new Set();
     return [...(deployments.data?.history || [])].reverse().map((item) => {
@@ -297,7 +305,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
             </label>
             <label>
               <span>Environment</span>
-              <select
+              <Select
                 value={environment}
                 onChange={(event) => {
                   setEnvironment(event.target.value);
@@ -311,7 +319,7 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
                     {envLabel(env)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="wide">
               <span>
@@ -327,19 +335,19 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
             </label>
           </div>
 
-          {check.loading && !check.data && <p className="stMuted">Checking this version…</p>}
-          {check.error && <p className="stMuted">Couldn’t check this version before deploying ({check.error.message}). You can still deploy it.</p>}
-          {check.data && (
+          {!report && !check.error && <p className="stMuted">Checking this version…</p>}
+          {!report && check.error && <p className="stMuted">Couldn’t check this version before deploying ({check.error.message}). You can still deploy it.</p>}
+          {report && (
             <ReleaseChecklist
               botId={botId}
-              config={check.data.__record?.config}
-              report={check.data}
-              version={{ version, checksum: check.data.__record?.checksum }}
+              config={report.__record?.config}
+              report={report}
+              version={{ version, checksum: report.__record?.checksum }}
               environment={environment}
               refreshKey={refreshKey}
             />
           )}
-          {check.data && environment === 'production' && security.length > 0 && (
+          {report && environment === 'production' && security.length > 0 && (
             <p className="stMuted">Because of the protections above, deploying to production asks you to type “{PRODUCTION_WORD}” first.</p>
           )}
           {environment === 'production' && security.length > 0 && (
@@ -430,27 +438,29 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
         ) : (
           <div className="stTable" role="table">
             <div className="stRow head hist" role="row">
-              <span>Version</span>
-              <span>Environment</span>
-              <span>Status</span>
-              <span>When</span>
-              <span>Note</span>
+              <span role="columnheader">Version</span>
+              <span role="columnheader">Environment</span>
+              <span role="columnheader">Status</span>
+              <span role="columnheader">When</span>
+              <span role="columnheader">Note</span>
             </div>
             {history.map((item) => (
               <div className="stRow hist" role="row" key={item.id}>
-                <span>
+                <span role="cell">
                   <strong>{item.version}</strong>
                   {item.previous_version && <small className="stMuted"> from {item.previous_version}</small>}
                 </span>
-                <span>{envLabel(item.environment)}</span>
-                <span>
+                <span role="cell">{envLabel(item.environment)}</span>
+                <span role="cell">
                   <StatusPill status={item.status} />
                 </span>
-                <span title={item.deployed_at}>
+                <span role="cell" title={item.deployed_at}>
                   {formatWhen(item.deployed_at)}
                   {item.deployed_by ? ` · ${item.deployed_by}` : ''}
                 </span>
-                <span className="stNoteCell">{item.note || '—'}</span>
+                <span role="cell" className="stNoteCell">
+                  {item.note || '—'}
+                </span>
               </div>
             ))}
           </div>

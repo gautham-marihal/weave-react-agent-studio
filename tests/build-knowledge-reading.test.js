@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
-import { applyStarter } from '../src/studio/starters.js';
+import { applyStarter } from '../src/studio/starters.ts';
 import { matchWords, normalizeBase, normalizeKnowledge, readingState, sinceRead } from '../src/studio/knowledge/model.js';
 import { KNOWLEDGE_ID, addKnowledgeFile, attachBase, readersInWords, readersOf } from '../src/studio/setup/setupModel.js';
-import { readinessSteps } from '../src/studio/newlayout/readiness.js';
+import { readinessSteps } from '../src/studio/agent/readiness.js';
 import { overview, settle, startBuild, upload } from '../src/demo/demoKnowledge.js';
 
 // How far the agent's documents are from being something it answers from (the Knowledge page's status line and the menu's "Getting it ready"), and the

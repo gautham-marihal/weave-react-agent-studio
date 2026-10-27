@@ -1,23 +1,18 @@
-// Plain words for the settings of an agent: what each is called, what it is for, and how often someone needs it.
-//
-// The schema names things the way the runtime does (`stt`, `timeout_s`, `top_k`, `dnis`), and only some settings carry a description. A customer
-// building an agent shouldn't have to learn those names to make a decision, so the form draws THIS catalogue's words and keeps the technical
-// name one click away ("Show technical names"). Nothing here changes what is saved: the keys in the configuration stay exactly as the schema
-// has them; only the labels and help shown for them change.
-//
+// Plain words for an agent's settings: what each is called, what it is for, and how often someone needs it.
+// The schema uses runtime names (`stt`, `timeout_s`, `dnis`); the form shows these words instead, with technical names
+// one click away. Only labels and help change, never the saved keys.
 // An entry is [label, purpose, level?, example?]:
 //   label    what the setting is called, in words a customer would use
 //   purpose  one sentence: what it does, and when you would change it
-//   level    'guided' (a decision most people make), 'detailed' (for a more complex agent), 'expert' (a technical or operator setting). Default detailed.
+//   level    'guided' (most people decide it), 'detailed' (a more complex agent; default), 'expert' (technical)
 //   example  a value that makes it clear
-// A name that means different things in different places is overridden by "parent.name" (the nearest named container above it).
-// A name with no entry here gets a label made by rule (see ruleLabel) and its schema description (if any) as its purpose; the tests check
-// that every setting the schema has is covered one way or the other.
+// A name meaning different things in different places is overridden by "parent.name" (the nearest named container). A
+// name with no entry gets a rule label (ruleLabel) and its schema description; tests check every setting is covered.
 // Pure: no network, no DOM.
 
 const E = (label, purpose, level = 'detailed', example = '') => ({ label, purpose, level, example });
 
-// ---- every property name -------------------------------------------------------------------------------------------------------------------------
+// ---- every property name --------------------------------------------------------------------------------------------
 export const SETTINGS = {
   // sections
   meta: E('About this agent', 'Its name, description, tags and owner.', 'guided'),
@@ -161,7 +156,8 @@ export const SETTINGS = {
 
   // channels
   entry: E('How callers reach it', 'Notes on how this channel is reached. They depend on the kind of channel; the runtime reads none of them.', 'guided'),
-  // the phone system's own record of the number (telephony.pbx.dnis); a channel's notes of its route are worded in CONTEXT
+  // the phone system's own record of the number (telephony.pbx.dnis);
+  // a channel's notes of its route are worded in CONTEXT
   dnis: E('Phone number it answers', 'The number callers dial to reach this agent. It is written in the call records.', 'guided', '+6561234567'),
   sip_trunk: E('Phone line (trunk)', 'The carrier connection the calls arrive on.', 'expert'),
   dispatch_rule: E('Routing rule', 'The rule that sends a call on this number to this agent.', 'expert'),
@@ -558,15 +554,17 @@ export const SETTINGS = {
   value: E('Value', 'The value.', 'detailed'),
 };
 
-// ---- context overrides: "parent.name" where one name means different things in different places -------------------------------------------
+// ---- context overrides: "parent.name" where one name means different things in different places ---------------------
 export const CONTEXT = {
-  // a phone channel's route is set up by the platform when a number is added (Releases › Deploy): these are only old notes, never asked for
+  // the platform sets up a phone route when a number is added
+  // (Releases › Deploy): these are only old notes, never asked for
   'entry.dnis': E('Phone number (note)', 'A note of the number callers dial. Numbers are added under Releases › Deploy; this note connects nothing.', 'expert'),
   'entry.sip_trunk': E('Phone line (note)', 'A note of the carrier connection. The platform sets up the trunk when a number is added.', 'expert'),
   'entry.dispatch_rule': E('Routing rule (note)', 'A note of the routing rule. The platform sets up the rule when a number is added.', 'expert'),
   'meta.name': E('Name', 'What people see in lists. The agent speaks as this unless the personality sets another name.', 'guided'),
   'persona.name': E('Name it introduces itself by', 'How the agent introduces itself, as in “I’m Sam, from Acme”.', 'guided', 'Sam'),
-  // not the agent's languages (asked once, with the agent): a code the speech service may need of its own, such as "multi" to hear several languages
+  // not the agent's languages (asked once, with the agent): a code the
+  // speech service may need, such as "multi" for several languages
   'stt.language': E(
     'Language code for listening',
     'Only when the speech service needs its own code, such as “multi” to hear several languages. Usually left empty: the agent’s languages are set with the agent.',
@@ -680,7 +678,8 @@ export const CONTEXT = {
   ),
   'input.text': E('The rule', 'The rule, in a sentence.', 'guided'),
   'output.text': E('The rule', 'The rule, in a sentence.', 'guided'),
-  // a check looks for these and acts as its “When it triggers” says (block, deflect, hide in the records): not the redaction's "patterns to hide"
+  // a check looks for these and acts as its “When it triggers” says (block,
+  // deflect, hide in the records); not the redaction's "patterns to hide"
   'input.patterns': E(
     'Patterns to look for',
     'Patterns (regular expressions) to look for in what the caller says. What it does on a match is under “When it triggers”.',
@@ -717,7 +716,7 @@ export const CONTEXT = {
   'fields.type': E('Kind of answer', 'Text, email, phone number, number, choice or tick box.', 'guided'),
 };
 
-// ---- the words used when there is no entry: a label made by rule --------------------------------------------------------------------------------
+// ---- the words used when there is no entry: a label made by rule ----------------------------------------------------
 export const GLOSSARY = {
   stt: 'listening',
   tts: 'speaking',
@@ -760,15 +759,14 @@ export function ruleLabel(name) {
   return `${upperFirst(words.join(' '))}${unit}`;
 }
 
-// The nearest named container above a property, from its path: ['tools', 0, 'timeout_s'] -> 'tools'. A path through a map holds a name the
-// author chose (['connections', 'my_crm', 'type']), which is not a place in the schema, so the form passes the owner it already knows
-// (the property it is drawing, see OwnerCtx) and this is only for callers that have nothing better.
+// The nearest named container above a property: ['tools', 0, 'timeout_s'] -> 'tools'. Only a fallback: a path through a
+// map holds the author's own key, so the form passes the owner it knows (OwnerCtx).
 export const parentOf = (path) => {
   const names = (Array.isArray(path) ? path : []).slice(0, -1).filter((p) => typeof p === 'string');
   return names[names.length - 1] || '';
 };
 
-// What the catalogue says about a setting: the most specific entry wins ('owner.name', then name), else a rule label and the schema's own words.
+// What the catalogue says about a setting: 'owner.name' wins over name, else a rule label and the schema's own words.
 // `owner` is the schema property the setting lives under; without it, it is read from `path`.
 export function describeSetting(name, { owner, path, description } = {}) {
   const parent = owner !== undefined ? owner : parentOf(path);

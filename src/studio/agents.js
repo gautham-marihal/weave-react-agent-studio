@@ -1,13 +1,9 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 
-// One list of agents for the whole app: the Agents page, the Overview, search, Settings, Telephony and
-// Readiness checks all read it, so they can never disagree. It is the Agent Builder API's list (GET /bots) plus two
-// per-browser things the API has no place for:
-//   - a "removed from my list" set (the API has no delete endpoint, so removing only hides an agent here), and
-//   - which workspace each agent belongs to. A workspace is a label kept in this browser, so the owner of an agent
-//     is too. An agent nobody has assigned yet belongs to the first workspace; a new agent belongs to the
-//     workspace it was created in; "Move to workspace" changes it.
+// One list of agents for the whole app, so no two pages can disagree: GET /bots plus two things kept in this browser:
+//   - a "removed from my list" set (the API has no delete endpoint, so removing only hides an agent here)
+//   - each agent's workspace (workspaces are browser-only labels); unassigned agents belong to the first one
 
 const HIDDEN_KEY = 'weave_hidden_agents';
 const OWNERS_KEY = 'weave_agent_workspaces';
@@ -29,7 +25,7 @@ function writeHidden(ids) {
   }
 }
 
-// Ids of agents deleted from the “Removed from your list” section: still on the server (the API cannot delete), but no longer listed anywhere here.
+// Ids deleted from “Removed from your list”: still on the server (the API cannot delete), but no longer listed here.
 function readDismissed() {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(DISMISSED_KEY) || '[]');
@@ -78,6 +74,12 @@ const set = (patch) => {
   state = { ...state, ...patch };
   listeners.forEach((listener) => listener());
 };
+// Follow workspace changes made in another tab, so this tab's next change doesn't undo them.
+if (browser && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === OWNERS_KEY || event.key === null) set({ owners: readOwners() });
+  });
+}
 const subscribe = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -98,8 +100,7 @@ export function refreshBots() {
   return inflight;
 }
 
-// The workspace an agent belongs to: the one it was assigned, else the first workspace. Until the workspaces are
-// known (the first moments of a page load) there is nothing to say.
+// The workspace an agent belongs to: the one it was assigned, else the first. Nothing until the workspaces are known.
 export function ownerOfIn(owners, spaces, botId) {
   if (!spaces.length) return null;
   const assigned = owners[botId];
@@ -125,7 +126,8 @@ export const switchWorkspace = (workspaceId) => {
 };
 
 export function assignBot(botId, workspaceId) {
-  const owners = { ...state.owners, [botId]: workspaceId };
+  // read storage again: another tab may have moved an agent since
+  const owners = { ...state.owners, ...readOwners(), [botId]: workspaceId };
   writeOwners(owners);
   set({ owners });
 }
@@ -148,7 +150,7 @@ export function restoreBot(id) {
   set({ hidden });
 }
 
-// Delete from the removed list: the agent stays on the server and is only forgotten here. Undone together by `undoDismissed`, which puts them back in the removed list.
+// Delete from the removed list: the agent stays on the server and is only forgotten here. `undoDismissed` undoes it.
 export function dismissBot(id) {
   if (state.dismissed.includes(id)) return;
   const dismissed = [...state.dismissed, id];
@@ -213,7 +215,7 @@ export function toLegacyAgent(bot) {
     versions: bot.latest_version ? [{ version, configured: true, createdAt: bot.draft_saved_at }] : [],
     configuration: { format: 'json' },
     createdAt: bot.draft_saved_at,
-    // which save of the draft this is: a page that keeps agents' configurations (Voices) reads one again when it changes
+    // which save of the draft this is: pages that cache configurations (Voices) re-read when it changes
     draftRevision: bot.draft_revision ?? null,
     sessions: 0,
     deployed,

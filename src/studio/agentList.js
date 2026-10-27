@@ -1,8 +1,5 @@
-// The Agents list at scale: an organisation can have hundreds of agents, so the list is searched, filtered by tag, owner and "needs
-// attention", sorted and shown a page at a time. Pure: no network, no DOM.
-//
-// `meta` is what is known about each agent beyond the list the API gives: its tags and owner (from its draft's `meta`), and its health. It is
-// read lazily (see health/useAgentHealth.js), so a filter by tag only covers the agents whose draft has been read, and says so.
+// Search, filter, sort and paging for the Agents list (an organisation can have hundreds). Pure: no network, no DOM.
+// `meta` (tags, owner, health) is read lazily, so a tag filter covers only agents whose draft is read, and says so.
 
 import { compareVersions, currentStage } from './format.js';
 import { needsAttention } from './health/health.js';
@@ -21,6 +18,8 @@ export const SORTS = {
     label: 'Furthest along',
     compare: (a, b) => stageRank(b) - stageRank(a) || compareVersions(b.latest_version || '0.0.0', a.latest_version || '0.0.0'),
   },
+  // the person's own order (agentOrder.js arranges it; nothing is compared)
+  own: { label: 'Your order', compare: () => 0 },
 };
 
 // The tags and owners found so far, each with how many agents have it: [{ value, count }], the most common first.
@@ -33,9 +32,17 @@ export function collectFacets(bots, meta) {
   return { tags: count((m) => m.tags || []), owners: count((m) => (m.owner ? [m.owner] : [])) };
 }
 
-// What is left after the search (words in the name or id, any order), the tag, the owner and "needs attention". An agent whose draft hasn't
-// been read yet has no tags or health: it is left out only by a filter that needs them, and `unknown` counts them so the screen can say so.
-export function filterBots(bots, { query = '', tag = '', owner = '', attention = false } = {}, meta = {}) {
+// The status filter, in the order it is offered.
+export const STATUSES = { all: 'All', attention: 'Needs attention', draft: 'Draft only', published: 'Published', live: 'Live' };
+const IN_STATUS = {
+  draft: (bot) => !bot.latest_version,
+  published: (bot) => Boolean(bot.latest_version),
+  live: (bot) => Object.values(bot.deployed || {}).some(Boolean),
+};
+
+// The agents left after the search (words in name or id, any order), tag, owner and status. An agent whose draft isn't
+// read yet is left out only by a filter that needs its meta; `unknown` counts those so the screen can say so.
+export function filterBots(bots, { query = '', tag = '', owner = '', status = 'all', attention = status === 'attention' } = {}, meta = {}) {
   const words = String(query).toLowerCase().split(/\s+/).filter(Boolean);
   const matched = bots.filter((bot) => {
     if (words.length) {
@@ -46,6 +53,7 @@ export function filterBots(bots, { query = '', tag = '', owner = '', attention =
     if (tag && !(m?.tags || []).includes(tag)) return false;
     if (owner && m?.owner !== owner) return false;
     if (attention && !needsAttention(m?.health)) return false;
+    if (IN_STATUS[status] && !IN_STATUS[status](bot)) return false;
     return true;
   });
   const unknown = tag || owner || attention ? bots.filter((bot) => !meta[bot.id]).length : 0;

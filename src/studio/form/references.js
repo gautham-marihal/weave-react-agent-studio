@@ -1,12 +1,6 @@
-// Where the ids of a config are used, and how to change them safely.
-//
-// An `id` (a channel, an agent, a tool, ...) or a map key (a state variable, a connection, a schedule) is a machine key
-// that other parts of the config point at: in the schema those fields say `x-ref: <collection>`. Renaming one without
-// touching the pointers breaks the config, and deleting one leaves dangling pointers. This walks the config the way the
-// schema describes it, so it finds every pointer, in any depth, without knowing about each section.
-//
-// Pure: no network, no DOM. Takes the form engine (form/engine.js) so $ref / allOf / oneOf are resolved the same way the
-// form resolves them.
+// Where a config's ids are used, and how to rename or delete one without breaking the `x-ref` fields pointing at it.
+// Walks the config by the schema (via the form engine, so $ref / allOf / oneOf resolve as in the form), at any depth.
+// Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 
@@ -56,7 +50,8 @@ export function collectionAt(path) {
 
 // ---- finding every pointer -------------------------------------------------------------------------------------
 
-// visit({ path, collection, value, type: 'value' | 'key', parent: { path, kind: 'object'|'array'|'map', key|index, required } })
+// visit({ path, collection, value, type: 'value' | 'key', parent:
+// { path, kind: 'object'|'array'|'map', key|index, required } })
 function walk(engine, schema, value, path, parent, visit, depth = 0) {
   if (depth > 40 || value === undefined) return;
   let shape;
@@ -98,8 +93,7 @@ function walk(engine, schema, value, path, parent, visit, depth = 0) {
 
 export function allReferences(engine, config) {
   const hits = [];
-  if (!isObj(config)) return hits;
-  Object.keys(config).forEach((key) => {
+  Object.keys(isObj(config) ? config : {}).forEach((key) => {
     const sub = engine.root.properties?.[key];
     if (sub) walk(engine, sub, config[key], [key], { path: [], kind: 'object', key, required: false }, (hit) => hits.push(hit));
   });
@@ -302,8 +296,8 @@ export function deleteItem(config, collection, id) {
 
 // ---- new ids -----------------------------------------------------------------------------------------------------
 
-// "phone", then "phone_2", "phone_3": a base, then a counter only when the base is taken. An id is at most 64 characters (ID_PATTERN), so a long
-// base (a SIP address, a copy of an agent whose id is already long) is cut short, leaving room for the counter.
+// "phone", then "phone_2", "phone_3": a counter only when the base is taken. Ids are at most 64 characters
+// (ID_PATTERN), so a long base (a SIP address, a copied agent's id) is cut short to leave room for the counter.
 const ID_MAX = 64;
 export function freshId(taken, base) {
   const clean =

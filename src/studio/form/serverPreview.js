@@ -1,7 +1,6 @@
-// Reads the API's two preview answers (`POST /preview/prompt`, `POST /preview/result`) into what the screens show, and works out the advice
-// that goes with them. The server runs the real runtime's own code to build them, so they are EXACT; the studio no longer keeps its own copy
-// of the prompt's wording or of the path grammar (the old copies are only a fallback when the server can't be asked, and say "approximate").
-// Reading is tolerant: a field that is missing or new is left out, never an error. Pure: no network, no DOM.
+// Reads the API's preview answers (`POST /preview/prompt`, `/preview/result`) into what the screens show, with advice.
+// The server runs the runtime's own code, so they are exact; the studio's copies are only a fallback marked
+// "approximate". Missing or new fields are left out, never an error. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
 
@@ -14,7 +13,7 @@ const words = (s) =>
       .match(/\S+/g) || []
   ).length;
 
-// ---- the prompt ----------------------------------------------------------------------------------------------------------------------
+// ---- the prompt -----------------------------------------------------------------------------------------------------
 export function normalizePrompt(raw) {
   const r = isObj(raw) ? raw : {};
   const instructions = text(r.instructions);
@@ -57,8 +56,8 @@ export function normalizePrompt(raw) {
   };
 }
 
-// How big is too big. The runtime sends the whole instructions with every model call, so a long prompt costs time and money on every turn,
-// and a model given many tools picks the wrong one more often. These are advice, never errors.
+// How big is too big: the whole instructions go with every model call, so a long prompt costs time and money every
+// turn, and many tools make the model pick wrongly more often. Advice, never errors.
 export const LIMITS = { words: 1500, tools: 15 };
 
 export function promptAdvice(prompt) {
@@ -94,7 +93,8 @@ export function promptRequest({ config, agent, channel, state, now, callerPhone 
   return body;
 }
 
-// A `datetime-local` value ("2026-10-14T03:00") with the browser's own offset, as the API wants a time zone: "2026-10-14T03:00:00+08:00".
+// A `datetime-local` value ("2026-10-14T03:00") with the browser's
+// offset, as the API wants a time zone: "2026-10-14T03:00:00+08:00".
 export function withLocalOffset(local, offsetMinutes = -new Date().getTimezoneOffset()) {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(String(local || ''))) return '';
   const sign = offsetMinutes >= 0 ? '+' : '-';
@@ -103,7 +103,8 @@ export function withLocalOffset(local, offsetMinutes = -new Date().getTimezoneOf
   return `${stamp}${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
 }
 
-// The state variables worth offering as "what if…": a handful of simple ones (true/false, text, numbers), never the sensitive ones.
+// The state variables worth offering as "what if…": a handful of
+// simple ones (true/false, text, numbers), never the sensitive ones.
 export function whatIfVariables(config, max = 6) {
   const vars = isObj(config?.state?.variables) ? config.state.variables : {};
   return Object.entries(vars)
@@ -127,7 +128,7 @@ export function whatIfValue(type, typed) {
   return typed;
 }
 
-// ---- a tool's request and what the model sees of its answer ---------------------------------------------------------------------------
+// ---- a tool's request and what the model sees of its answer ---------------------------------------------------------
 export function normalizeResultPreview(raw) {
   const r = isObj(raw) ? raw : {};
   const request = isObj(r.request) ? r.request : null;
@@ -174,7 +175,8 @@ function taskOfResult(raw) {
   };
 }
 
-// "Starts the task “verify_identity” (3 steps: ask_dob, ask_postcode, check). It would run now." from a result preview's `task`
+// "Starts the task “verify_identity” (3 steps: ask_dob, ask_postcode,
+// check). It would run now." from a result preview's `task`
 export function taskWords(task) {
   if (!task) return '';
   const steps = task.steps.length ? ` (${task.steps.length} step${task.steps.length === 1 ? '' : 's'}: ${task.steps.join(', ')})` : '';
@@ -187,7 +189,8 @@ export function taskWords(task) {
   return `Starts the task “${task.id}”${steps}.${run}`;
 }
 
-// Starting arguments for the "Try it" panel: a value for each parameter the tool takes, from its schema's example, default or type.
+// Starting arguments for the "Try it" panel: a value for each parameter
+// the tool takes, from its schema's example, default or type.
 export function sampleArgs(parameters) {
   const props = isObj(parameters?.properties) ? parameters.properties : {};
   return Object.fromEntries(
@@ -212,7 +215,8 @@ export function sampleArgs(parameters) {
   );
 }
 
-// The studio's own approximate prompt (promptPreview.js) in the same shape as the server's answer, for when the server can't be asked.
+// The studio's own approximate prompt (promptPreview.js) in the same
+// shape as the server's answer, for when the server can't be asked.
 export function fromApproximate(built, config) {
   const sections = built.sections
     .filter((s) => s.id !== 'tools')

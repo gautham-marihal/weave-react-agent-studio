@@ -1,9 +1,8 @@
-// Scroll areas that say there is more: where an area's content goes on past its top or bottom edge, the area is marked data-edges="top bottom"
-// (and --edgeBar, the width of its scrollbar), and saas.css fades that edge, so a line is never sliced by the edge with nothing to say the list goes
-// on. One watcher for the whole app: scrolling, resizing and content that changes mark the areas again. Pure DOM; no React.
+// Scroll areas that show there is more: an area with content past an edge gets data-edges="top bottom" (and --edgeBar,
+// its scrollbar width), and saas.css fades that edge so no line looks sliced. One app-wide watcher; pure DOM, no React.
 
-// The areas that scroll inside a page, a panel, a dialog or a menu. Each is an inner area (no frame of its own: a fade would fade a frame too);
-// a dialog or menu that scrolls as a whole box scrolls an inner area instead. data-scroll-edges marks any other.
+// Areas that scroll inside a page, panel, dialog or menu: each an inner area with no frame (a fade would fade it too);
+// a dialog or menu that scrolls as a whole scrolls an inner area instead. data-scroll-edges marks any other.
 export const SCROLL_AREAS = [
   '[data-scroll-edges]',
   '.dashboard > .sidebar > .sideNav',
@@ -12,6 +11,7 @@ export const SCROLL_AREAS = [
   '.stModalBody',
   '.infoDialogBody',
   '.styleMenuScroll',
+  '[data-radix-menu-content]',
   '.stFSheetBody',
   '.nlDrawerBody',
   '.nlTestDockBody',
@@ -47,7 +47,7 @@ function mark(el) {
   for (const [name, value] of Object.entries(keep)) if (el.style.getPropertyValue(name) !== `${value}px`) el.style.setProperty(name, `${value}px`);
 }
 
-// Brings the item `selector` names (the page that is open, in a menu) into view inside the scroll area, clear of a faded edge.
+// Scrolls the item `selector` names (the open page, in a menu) into view inside the area, clear of a faded edge.
 export const EDGE_FADE = 28; // px, as the fade in saas.css
 export function revealIn(area, selector) {
   const item = area?.querySelector(selector);
@@ -81,7 +81,7 @@ export function watchScrollEdges(doc = document) {
       mark(el);
     });
   };
-  // content that comes, goes, opens or changes its look changes how much an area holds without the area changing size: looked at again once a frame
+  // content that comes, goes or changes look alters what an area holds without resizing it: checked again once a frame
   const later = () => {
     if (queued) return;
     queued = true;

@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { DropdownMenu } from 'radix-ui';
+import { afterMenu, keepEscape } from '../ui/layer.ts';
 import { Logo, openHelpDialog } from './shared.jsx';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
 import AiOrb from '../studio/preview/AiOrb.jsx';
+
+// The page before sign-in: what Weave is, the top bar's menus (Product, Solutions, Resources) and the ways to sign in.
 
 const LANDING_MENUS = {
   Product: [
@@ -24,51 +27,47 @@ const LANDING_MENUS = {
   ],
 };
 
-// Landing navigation: Product, Solutions and Resources open menus. Menus close on outside click and Escape.
+// Product, Solutions and Resources menus (Radix): each opens under its word; arrows move; Escape or a click out closes.
 function LandingNav({ onStart }) {
-  const [open, setOpen] = useState(null);
-  const navRef = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDown = (event) => {
-      if (!navRef.current?.contains(event.target)) setOpen(null);
-    };
-    const onKey = (event) => {
-      if (event.key === 'Escape') setOpen(null);
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-  const choose = (item) => {
-    setOpen(null);
-    if (item.action === 'help') openHelpDialog();
-    else if (item.action === 'link') window.open(item.href, '_blank', 'noopener');
-    else onStart?.();
-  };
+  const choose = (item) =>
+    afterMenu(() => {
+      if (item.action === 'help') openHelpDialog();
+      else if (item.action === 'link') window.open(item.href, '_blank', 'noopener');
+      else onStart?.();
+    });
   return (
-    <nav className="landingLinks" ref={navRef} aria-label="Main">
+    <nav className="landingLinks" aria-label="Main">
       {Object.keys(LANDING_MENUS).map((name) => (
         <div className="landingMenuWrap" key={name}>
-          <button type="button" aria-expanded={open === name} aria-haspopup="true" onClick={() => setOpen((value) => (value === name ? null : name))}>
-            {name} <Icon name="chevronDown" size={14} />
-          </button>
-          {open === name && (
-            <div className="landingMenu" role="menu">
-              {LANDING_MENUS[name].map((item) => (
-                <button key={item.title} type="button" role="menuitem" className="landingMenuItem" onClick={() => choose(item)}>
-                  <strong>
-                    {item.title}
-                    {item.action === 'link' && <Icon name="external" size={13} />}
-                  </strong>
-                  <small>{item.text}</small>
-                </button>
-              ))}
-            </div>
-          )}
+          <DropdownMenu.Root modal={false}>
+            <DropdownMenu.Trigger asChild>
+              <button type="button">
+                {name} <Icon name="chevronDown" size={14} />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className="landingMenu rxLayer"
+                aria-label={name}
+                align="start"
+                sideOffset={8}
+                collisionPadding={12}
+                onEscapeKeyDown={keepEscape}
+              >
+                {LANDING_MENUS[name].map((item) => (
+                  <DropdownMenu.Item key={item.title} asChild onSelect={choose(item)} textValue={item.title}>
+                    <button type="button" className="landingMenuItem">
+                      <strong>
+                        {item.title}
+                        {item.action === 'link' && <Icon name="external" size={13} />}
+                      </strong>
+                      <small>{item.text}</small>
+                    </button>
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
       ))}
     </nav>

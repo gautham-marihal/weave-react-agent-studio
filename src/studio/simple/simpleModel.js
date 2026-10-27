@@ -1,11 +1,9 @@
-// The Simple view reads and writes a handful of everyday settings out of the full agent configuration: who the agent is and what it does
-// (Instructions), the language it speaks and its voice (Voice & Language), and what it is made with and connected to (AI Model,
-// Connections). Everything it writes is an ordinary field of the configuration, so the full form, the JSON and the Simple view always
-// agree. Each setter returns the same object when nothing would change, and never touches a field it doesn't own.
-// Pure: no network, no DOM.
+// The everyday settings the agent's own pages read and write (Instructions, Voice & Language, AI Model, Connections),
+// as ordinary config fields so the form, the JSON and these pages always agree. Each setter returns the same object
+// when nothing changes and never touches a field it doesn't own. Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
-import { baseOf, primaryOf } from '../form/messages.js';
+import { baseOf, primaryOf } from '../form/messages.ts';
 import { speechText } from '../../demo/simulatedAgent.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -19,13 +17,14 @@ function edit(config, change) {
   return same(next, config) ? config : next;
 }
 
-// Whether a channel says something first. An empty line is no greeting (the schema refuses it): the channel waits for the caller, as without one.
+// Whether a channel speaks first. An empty line is no greeting (the schema refuses it), so the channel waits.
 const greets = (channel) => isObj(channel) && isObj(channel.greeting) && channel.greeting.say !== undefined && channel.greeting.say !== '';
 
 export const entryAgentIndex = (config) => {
   const items = list(config?.agents?.items);
-  const index = items.findIndex((agent) => agent?.id === config?.agents?.entry);
-  return index >= 0 ? index : items.length ? 0 : -1;
+  const index = items.findIndex((agent) => isObj(agent) && typeof agent.id === 'string' && agent.id === config?.agents?.entry);
+  // no (or an unknown) entry named: the first real agent, never a null or half-typed one that can't be written into
+  return index >= 0 ? index : items.findIndex(isObj);
 };
 export const entryAgent = (config) => list(config?.agents?.items)[entryAgentIndex(config)] || null;
 
@@ -100,8 +99,8 @@ export function setAgentName(config, name) {
   const value = String(name ?? '');
   return edit(config, (next) => {
     next.meta = { ...(isObj(next.meta) ? next.meta : {}), name: value };
-    // the name it calls itself follows the agent's name while the two were the same. Emptied, it is emptied too, so the name typed next is still
-    // followed (an empty name is a problem either way until one is typed); kept, it would no longer match, and the old name would stay.
+    // persona.name follows the agent's name while they matched. Emptied, it empties too, so the next name typed is
+    // still followed; kept, it would no longer match and the old name would stay.
     if (isObj(next.persona) && (next.persona.name === config.meta?.name || !next.persona.name) && (value || next.persona.name)) next.persona.name = value;
   });
 }
@@ -118,15 +117,23 @@ export function setRole(config, text) {
 }
 
 // ---- what it says first
-// The channels a greeting is written to, each with what it said: { id, index, say }. A page passes the same list for every change while its field is
-// edited, so that emptying the field and typing again writes to the same channels (and a greeting that was one of the messages points at it again).
-// greetingTarget: the channels that say the same as the first channel with a greeting (every channel while none has one); a channel that says
-// something else keeps it.
+// The channels a greeting is written to, each with what it said: { id, index, say }. A page passes the same target
+// while its field is edited, so emptying and retyping writes to the same channels (and re-points a message reference).
+// greetingTarget: channels saying the same as the first with a greeting (every channel while none has one); a channel
+// that says something else keeps it.
 const placeOf = (channel, index) => ({ id: channel.id, index, say: greets(channel) ? clone(channel.greeting.say) : undefined });
 export function greetingTarget(config) {
   const channels = list(config?.channels);
   const first = channels.find(greets);
   return channels.flatMap((c, index) => (isObj(c) && (!first || (greets(c) && same(c.greeting.say, first.greeting.say))) ? [placeOf(c, index)] : []));
+}
+// the channels one channel's own greeting field writes to (the Workflow's channel panel): it, and every other channel
+// that says the same line, so a line several channels share stays one line; just it while it says nothing
+export function channelGreetingTarget(config, index) {
+  const channels = list(config?.channels);
+  const mine = channels[index];
+  if (!isObj(mine)) return [];
+  return channels.flatMap((c, i) => (i === index || (greets(mine) && greets(c) && same(c.greeting.say, mine.greeting.say)) ? [placeOf(c, i)] : []));
 }
 // every channel with a greeting, or every channel while none has one: what is written to when no channels are given
 function everyGreeting(config) {
@@ -134,8 +141,8 @@ function everyGreeting(config) {
   const any = channels.some(greets);
   return channels.flatMap((c, index) => (isObj(c) && (!any || greets(c)) ? [placeOf(c, index)] : []));
 }
-// The channels of a target that are still there (found by id, or by place when it has none). `sameLine`: only those that say the same as the first of
-// them with a greeting, and those that say nothing; one that was changed to say something else meanwhile is left alone.
+// The target's channels still there (by id, or by place without one). `sameLine`: only those saying the same as the
+// first with a greeting, or nothing; one changed meanwhile to say something else is left alone.
 function targetIn(channels, target, sameLine) {
   const found = list(target).flatMap((place) => {
     const channel = typeof place?.id === 'string' && place.id ? channels.find((c) => isObj(c) && c.id === place.id) : channels[place?.index];
@@ -144,17 +151,17 @@ function targetIn(channels, target, sameLine) {
   const first = found.find(({ channel }) => greets(channel));
   return sameLine && first ? found.filter(({ channel }) => !greets(channel) || same(channel.greeting.say, first.channel.greeting.say)) : found;
 }
-// the channels a page's field is for: those of its target, or those of greetingTarget when none of them is left (or it has none yet)
+// the channels a page's field is for: its target's, or greetingTarget's when none is left (or it has none yet)
 function fieldChannels(config, target) {
   const channels = list(config?.channels);
   const given = target ? targetIn(channels, target, true) : [];
   return given.length ? given : targetIn(channels, greetingTarget(config), true);
 }
 
-// The first thing the agent says, on the channels given (by default every channel with a greeting, or every channel while none has one: typing it
-// is then the whole step; giving a greeting to only some channels is the full form's job). A channel whose greeting points at a message gets that
-// message's text changed. An empty line takes the greeting out, and the channel waits for the caller to start (an empty greeting is refused); the
-// message it pointed at is kept, and pointed at again when a line is typed for the same channels.
+// The first thing the agent says, on the given channels (default: every channel with a greeting, or all while none has
+// one; greeting only some channels is the full form's job). A greeting pointing at a message changes that message.
+// An empty line removes the greeting (an empty one is refused) so the channel waits for the caller; the message it
+// pointed at is kept, and pointed at again when a line is typed for the same channels.
 //   target: from greetingTarget, kept by a page while its field is edited
 export function setGreeting(config, text, target = null) {
   const value = String(text ?? '');
@@ -182,8 +189,8 @@ export function setGreeting(config, text, target = null) {
   });
 }
 
-// What a greeting field shows for a target: the line of the first of its channels that has one ('' while none has), whether that line is one of the
-// messages, the channels that say it and those that wait for the caller, what each other channel says instead, and whether it is every channel.
+// What a greeting field shows for a target: the line of its first channel that has one ('' while none has), whether
+// that line is a message, who says it, who waits, what the others say instead, and whether it is every channel.
 //   { text, reference, saying: [name], waiting: [name], others: [{ name, text }], every }
 export function greetingOf(config, target = null) {
   const channels = list(config?.channels);
@@ -201,7 +208,7 @@ export function greetingOf(config, target = null) {
   };
 }
 
-// Every channel that says something else first is given the line of the target's channels (asked for in so many words: "Say this on Phone too").
+// Gives every channel that says something else first the target's line (asked for: "Say this on Phone too").
 // Channels that wait for the caller are left waiting.
 export function shareGreeting(config, target = null) {
   const say = fieldChannels(config, target)
@@ -213,6 +220,16 @@ export function shareGreeting(config, target = null) {
       if (greets(channel)) channel.greeting.say = clone(say);
     }),
   );
+}
+
+// persona.name (the name it calls itself) or persona.company (the business it speaks for); emptied, it goes.
+export function setPersonaField(config, key, text) {
+  const value = String(text ?? '');
+  return edit(config, (next) => {
+    next.persona = { ...(isObj(next.persona) ? next.persona : {}) };
+    if (value) next.persona[key] = value;
+    else delete next.persona[key];
+  });
 }
 
 export function setTone(config, tone) {

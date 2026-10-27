@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { effectiveRules, evaluateAlerts, lookback, reconcile } from './alertsModel.js';
-import { loadCalls, loadFacts, newestFirst } from './callData.js';
+import { loadCalls, loadFacts, newestFirst } from './callData.ts';
 import { getInsights, getLive, setInsights, setLive } from './insightsStore.js';
 
-// Checks every agent's recent calls for alerts while the studio is open: once soon after it opens, then every few minutes, and again when the tab comes
-// back after a while. What it finds goes to the shared store (the bell, the Alerts page, the banners on an agent read it); an alert that is new this time
-// is also shown as a browser notification when the person turned those on. It only reads.
+// Checks every agent's recent calls for alerts while the studio is open: soon after opening, every few minutes, and
+// when the tab returns after a while. Results go to the shared store (bell, Alerts page, agent banners); new alerts
+// also show as browser notifications when turned on. Read-only.
 
 export const CHECK_EVERY_MS = 3 * 60 * 1000;
 const RECORDS_PER_AGENT = 40;
@@ -14,12 +14,16 @@ let checkNowFn = null;
 // Runs the check now (the Alerts page's button); nothing happens when no watcher is running.
 export const checkAlertsNow = () => (checkNowFn ? checkNowFn() : null);
 
+// A stopped check (another workspace opened, the studio closing) settles nothing: what it read is not all there is.
+const stopped = () => new DOMException('The check was stopped.', 'AbortError');
+
 export async function checkAlerts(bots, { nowMs = Date.now(), signal } = {}) {
   const ids = bots.map((b) => b.id);
   const rules = effectiveRules(getInsights().rules);
   const { callsMs, recordsMs } = lookback(rules);
   setLive({ checking: true, watching: ids.length });
   const { calls, errors } = await loadCalls(ids, { sinceMs: nowMs - callsMs, maxPages: 5, signal });
+  if (signal?.aborted) throw stopped();
   const recent = newestFirst(calls.filter((c) => c.status !== 'in_progress' && Date.parse(c.started_at) > nowMs - recordsMs));
   const perAgent = new Map();
   const wanted = recent.filter((c) => {
@@ -27,16 +31,22 @@ export async function checkAlerts(bots, { nowMs = Date.now(), signal } = {}) {
     perAgent.set(c.bot, n + 1);
     return n < RECORDS_PER_AGENT;
   });
-  const { facts } = await loadFacts(wanted, { known: factsSeen, signal });
+  const { facts, failedBots } = await loadFacts(wanted, { known: factsSeen, signal });
+  if (signal?.aborted) throw stopped();
   factsSeen = facts;
-  const alerts = evaluateAlerts({ calls, facts, bots, nowMs, rules });
-  const { state, fired } = reconcile(getInsights(), alerts, nowMs);
+  // Only agents whose calls and records were all read are checked: one whose reading failed keeps its alerts as they
+  // were, rather than having them cleared (and coming back as new) because nothing could be seen.
+  const unread = new Set([...errors.map((e) => e.botId), ...failedBots]);
+  const checked = new Set(ids.filter((id) => !unread.has(id)));
+  const kept = getLive().alerts.filter((a) => unread.has(a.bot));
+  const alerts = [...evaluateAlerts({ calls, facts, bots, nowMs, rules }).filter((a) => checked.has(a.bot)), ...kept];
+  const { state, fired } = reconcile(getInsights(), alerts, nowMs, checked);
   setInsights(state);
   setLive({ alerts, checkedAt: new Date(nowMs).toISOString(), checking: false, errors, watching: ids.length });
   return { alerts, fired };
 }
 
-// A browser notification for each alert that is new this time (and not snoozed), when the person turned them on and the browser allows it.
+// A browser notification for each new, unsnoozed alert, when the person turned them on and the browser allows it.
 export function notify(fired, { onOpen } = {}) {
   const { notify: prefs, acks } = getInsights();
   if (!prefs.browser || typeof window === 'undefined' || !('Notification' in window) || window.Notification.permission !== 'granted') return 0;
@@ -84,6 +94,14 @@ export function useAlertWatcher({ bots = [], enabled = true, everyMs = CHECK_EVE
     job.abort = () => controller.abort();
     return job;
   }, []);
+
+  // Another workspace opened: results for agents not in it are dropped at once (all, if it has none) rather than shown
+  // until its own check is done, and the last-check time resets to "not checked yet"; they return when switching back.
+  const idsKey = bots.map((b) => b.id).join(',');
+  useEffect(() => {
+    const ids = new Set(latest.current.bots.map((b) => b.id));
+    setLive({ alerts: getLive().alerts.filter((a) => ids.has(a.bot)), watching: ids.size, checkedAt: null, errors: [] });
+  }, [idsKey]);
 
   // the Alerts page's "Check now" runs the same check as the timer
   useEffect(() => {

@@ -1,12 +1,10 @@
-import React, { useId, useMemo, useRef, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import '../smartSelect.css';
 import Icon from '../../ui/Icon.jsx';
 
-// A text box with a list of suggestions: pick one from the list, or type anything else. The difference from SmartSelect is that the value is never
-// limited to the list: what is typed is what is saved. Built to the WAI-ARIA combobox pattern like SmartSelect (role=combobox on the input, a listbox
-// of options, aria-activedescendant for the highlighted one), with the same keys: arrows to move, Enter to pick, Escape to close.
-//
-//   options: { value, label?, description? }[]. The list shows everything until something is typed, then narrows to what matches.
+// A text box with suggestions: pick one or type anything; unlike SmartSelect, what is typed is saved.
+// A WAI-ARIA combobox like SmartSelect (listbox, aria-activedescendant), with the same keys: arrows, Enter, Escape.
+//   options: { value, label?, description? }[]; all shown until something is typed, then only the matches
 export default function SuggestInput({
   value,
   onChange,
@@ -28,7 +26,6 @@ export default function SuggestInput({
     if (!typed || !needle) return options;
     return options.filter((o) => `${o.value} ${o.label || ''} ${o.description || ''}`.toLowerCase().includes(needle));
   }, [options, text, typed]);
-  const wrapRef = useRef(null);
 
   const close = () => {
     setOpen(false);
@@ -70,7 +67,6 @@ export default function SuggestInput({
 
   return (
     <div
-      ref={wrapRef}
       className={`stCombo ${disabled ? 'disabled' : ''}`}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) close();

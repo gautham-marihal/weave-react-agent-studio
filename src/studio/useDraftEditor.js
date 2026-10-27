@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../api/client.js';
+import { api } from '../api/client.ts';
 import { prettyJson } from './format.js';
 import { describeDuplicates, findDuplicateKeys } from './jsonDuplicates.js';
 import { lineOf } from './jsonPath.js';
@@ -7,9 +7,8 @@ import { shareStructure } from './shareStructure.js';
 
 const canon = (value) => JSON.stringify(value);
 
-// Everything about editing one bot's draft: the text, live validation, saving with revision
-// locking, and the 409 "someone else saved" case. Lives above the tabs so edits survive tab changes.
-// The JSON text is the single source of truth; the form editor writes into it with setValue().
+// Editing one agent's draft: text, live validation, saving with revision locking and the 409 "someone else saved" case.
+// Lives above the tabs so edits survive tab changes. The JSON text is the source of truth; the form uses setValue().
 export function useDraftEditor(botId) {
   const [status, setStatus] = useState('loading'); // loading | ready | error
   const [loadError, setLoadError] = useState(null);
@@ -28,7 +27,7 @@ export function useDraftEditor(botId) {
   revisionRef.current = revision;
   const textRef = useRef('');
   textRef.current = text;
-  const lastValue = useRef(undefined); // the previous parsed config, so unchanged parts keep their identity (see shareStructure)
+  const lastValue = useRef(undefined); // previous parse, so unchanged parts keep identity (shareStructure)
 
   const applyDraft = useCallback((draft) => {
     setText(prettyJson(draft.config));
@@ -61,8 +60,8 @@ export function useDraftEditor(botId) {
     if (status !== 'ready') return { value: undefined, error: null, duplicates: [] };
     try {
       const value = shareStructure(lastValue.current, JSON.parse(text));
-      // JSON.parse keeps only the last of two equal keys. Treat a repeat like a syntax error, so nothing downstream
-      // (save, validate, publish, the form) ever works from a copy that has silently lost a setting.
+      // JSON.parse keeps only the last of two equal keys. Treat a repeat as a syntax error so nothing downstream works
+      // from a copy that has silently lost a setting.
       const duplicates = findDuplicateKeys(text);
       if (duplicates.length) return { value: undefined, error: describeDuplicates(duplicates, (offset) => lineOf(text, offset)), duplicates };
       lastValue.current = value;
@@ -72,7 +71,7 @@ export function useDraftEditor(botId) {
     }
   }, [text, status]);
 
-  // The configuration as last saved (for comparing with what is being edited).
+  // the configuration as last saved, to compare with the edits
   const savedConfig = useMemo(() => {
     try {
       return savedCanon ? JSON.parse(savedCanon) : undefined;

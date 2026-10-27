@@ -17,8 +17,7 @@ export function useOnline() {
   return online;
 }
 
-// A strip across the top of the workspace while there is no network, so nobody wonders why pages don't load or saves fail; it goes when the
-// network is back.
+// A strip across the workspace while there is no network, so nobody wonders why pages don't load or saves fail.
 export function OfflineBanner() {
   const online = useOnline();
   if (online) return null;
@@ -32,9 +31,8 @@ export function OfflineBanner() {
   );
 }
 
-// A strip across the top of the workspace while the server doesn't answer (the browser has a network, but the studio's server is down or
-// restarting): every page says so in the same place, so an empty list is never mistaken for "nothing there". Try again asks the server now and
-// reloads what the page shows.
+// A strip across the workspace while the server doesn't answer (but the network is up), so an empty list is never
+// mistaken for "nothing there". Try again asks the server now and reloads what the page shows.
 export function ServerDownBanner({ down, onRetry }) {
   const online = useOnline();
   if (!down || !online) return null; // without a network, the offline strip says it

@@ -103,7 +103,7 @@ a.lvStat:hover {
   gap: 10px 18px;
   align-items: center;
 }
-.lvFilters select {
+.lvFilters :is(select, button:where(.rxSelect)) {
   width: auto;
   min-width: 170px;
 }
@@ -354,7 +354,8 @@ a.lvStat:hover {
   font-weight: 600;
 }
 .lvOutcome.good {
-  background: color-mix(in srgb, var(--good-text) 13%, transparent);
+  /* a lighter tint than the red one: the green text on it keeps 4.5:1 */
+  background: color-mix(in srgb, var(--good-text) 9%, transparent);
   color: var(--good-text);
 }
 .lvOutcome.bad {
