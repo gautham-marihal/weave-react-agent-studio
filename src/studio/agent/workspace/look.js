@@ -25,8 +25,6 @@ export const sideItem = (on) =>
     on ? 'tw-bg-accent-soft tw-text-ink' : 'tw-bg-transparent tw-text-ink-soft hover:tw-bg-subtle hover:tw-text-ink',
   );
 
-export const sideHeading = 'tw-m-0 tw-mb-1 tw-mt-5 tw-px-2.5 tw-text-xs tw-font-semibold tw-uppercase tw-tracking-wider tw-text-muted';
-
 // Each stage and part has its own colour so it is found at a glance; HueIcon draws it (colours in agent.css .hueIcon).
 export const HUES = {
   overview: 'slate',

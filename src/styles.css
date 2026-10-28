@@ -899,8 +899,7 @@ small {
   color: #d8e2e4;
   text-align: left;
 }
-.avatar,
-.profileDot {
+.avatar {
   background: #14343a;
   color: #5fe2ed;
   border: 1px solid #24545b;
@@ -976,25 +975,6 @@ small {
   border-radius: 10px;
   padding: 10px 13px;
   font-size: var(--fs-xs);
-}
-.profileDot {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-.profileTrigger .avatar {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  color: inherit;
 }
 .dashContent {
   max-width: 1580px;
@@ -2083,11 +2063,6 @@ body,
   background: #f0f5f6;
   border-color: #becdd1;
 }
-.profileDot {
-  background: #dff3f6;
-  color: #0a7889;
-  border-color: #bfe3e8;
-}
 .starterCard,
 .activityCard,
 .progressCard,
@@ -2622,16 +2597,6 @@ html[data-theme="dark"] .quietButton:hover {
 html[data-theme="light"] .quietButton:hover {
   background: var(--surface2);
   border-color: var(--line2);
-}
-html[data-theme="dark"] .profileDot {
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line2));
-}
-html[data-theme="light"] .profileDot {
-  background: var(--surface2);
-  color: var(--accent-text);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line2));
 }
 html[data-theme="dark"] .welcomeBlock h1,
 html[data-theme="dark"] .sectionHeader h2 {
@@ -3532,16 +3497,6 @@ html[data-theme="dark"] .quietButton:hover {
   border-color: var(--line2);
   color: var(--textStrong);
 }
-html[data-theme="light"] .profileDot {
-  background: var(--surface2);
-  border-color: var(--line2);
-  color: var(--accent-text);
-}
-html[data-theme="dark"] .profileDot {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line2));
-  color: var(--accent-text);
-}
 
 html[data-theme="light"] .welcomeBlock h1 {
   color: var(--textStrong);
@@ -4422,9 +4377,6 @@ html[data-theme="light"] .createModal {
 .profileMenuRoot.compact {
   z-index: 30;
 }
-.profileMenuRoot .profileTrigger {
-  position: relative;
-}
 .profilePopover {
   isolation: isolate;
 }
@@ -4442,9 +4394,6 @@ html[data-theme="light"] .createModal {
 }
 .profileMenuRoot.compact {
   display: inline-flex;
-}
-.profileTrigger {
-  cursor: pointer;
 }
 .profileMenuRoot .userMenu {
   cursor: pointer;
@@ -6810,7 +6759,7 @@ html[data-theme="dark"] .loginCard .fieldError {
   overflow: hidden;
 }
 
-.createOverlay > .createModal:not(.builderVoiceModal) > *:not(.useCaseGroups, .stPickBody, .stModalBody, .infoDialogBody) {
+.createOverlay > .createModal:not(.builderVoiceModal) > *:not(.stPickBody, .stModalBody, .infoDialogBody) {
   flex: 0 0 auto;
 }
 .createModalFooter {

@@ -9,6 +9,7 @@ import { seconds } from '../speed/speedModel.ts'; // a wait is written as Speed 
 import { useMonitoring } from './useMonitoring.ts';
 import Select from '../../ui/Select.tsx';
 import './monitoring.css';
+import Button from '../../ui/Button.tsx';
 
 // The Monitoring page: how the agents' calls went over a period, calls per day, what needs attention, what goes wrong
 // most, per agent and version. With agentOnly it is that one agent. Read-only.
@@ -126,9 +127,9 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
               ))}
             </Select>
           </label>
-          <button type="button" className="quietButton" onClick={data.reload} disabled={data.loading || data.refreshing}>
+          <Button type="button" onClick={data.reload} disabled={data.loading || data.refreshing}>
             {data.loading || data.refreshing ? 'Reading…' : 'Refresh'}
-          </button>
+          </Button>
         </div>
       </section>
       {top}
@@ -155,9 +156,9 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
               : `Once an agent has had calls, this page shows how many, how they went, and where to look when something is off. Trying an agent out makes a call too.`}
           </p>
           {bots[0] && (
-            <button type="button" className="primaryCta compactCta" onClick={() => onOpenAgent(bots[0].id, 'test')}>
+            <Button type="button" variant="primary" size="compact" onClick={() => onOpenAgent(bots[0].id, 'test')}>
               Test {bots[0].name || bots[0].id}
-            </button>
+            </Button>
           )}
         </section>
       )}
@@ -179,12 +180,12 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
                 </small>
               </div>
               <div className="mnAlertActions">
-                <button type="button" className="quietButton" onClick={() => onOpenAgent(a.bot, 'calls')}>
+                <Button type="button" onClick={() => onOpenAgent(a.bot, 'calls')}>
                   See the calls
-                </button>
-                <button type="button" className="secondaryCta" onClick={() => onOpenAgent(a.bot, 'deploy', { version: a.previousVersion })}>
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => onOpenAgent(a.bot, 'deploy', { version: a.previousVersion })}>
                   Roll back to v{a.previousVersion}…
-                </button>
+                </Button>
               </div>
             </article>
           ))}
@@ -269,17 +270,17 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
                         </ul>
                       </div>
                       <div className="mnRowActions">
-                        <button type="button" className="quietButton small" onClick={() => onOpenCall(a.bot, a.callId, 'trace')}>
+                        <Button type="button" size="small" onClick={() => onOpenCall(a.bot, a.callId, 'trace')}>
                           Open
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className="quietButton small"
+                          size="small"
                           onClick={() => onOpenCall(a.bot, a.callId, 'replay')}
                           title="Play the caller’s words to the draft and see what changed"
                         >
                           Replay
-                        </button>
+                        </Button>
                       </div>
                     </li>
                   ))}
@@ -354,9 +355,9 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
                       <td>{seconds(p.waitP50)}</td>
                       <td className={p.toolFailRate > 0.1 ? 'bad' : ''}>{pct(p.toolFailRate)}</td>
                       <td>
-                        <button type="button" className="quietButton small" onClick={() => onOpenAgent(p.bot, 'calls')}>
+                        <Button type="button" size="small" onClick={() => onOpenAgent(p.bot, 'calls')}>
                           Calls
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}

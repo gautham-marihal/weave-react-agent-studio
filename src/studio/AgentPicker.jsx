@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal } from './ui.jsx';
 import { navigate, routeHref } from './route.js';
 import Icon from '../ui/Icon.jsx';
+import Button from '../ui/Button.tsx';
 
 // "Which agent?" for actions that start on another page (use this voice, add this connection).
 export default function AgentPicker({ title, subtitle, agents, onPick, onClose }) {
@@ -26,16 +27,17 @@ export default function AgentPicker({ title, subtitle, agents, onPick, onClose }
       {agents.length === 0 ? (
         <div className="stPickEmpty">
           <p className="stMuted">There are no agents yet.</p>
-          <button
+          <Button
             type="button"
-            className="primaryCta compactCta"
+            variant="primary"
+            size="compact"
             onClick={() => {
               onClose();
               navigate(routeHref(undefined, undefined, { new: '1' }), { guard: false });
             }}
           >
             Create an agent
-          </button>
+          </Button>
         </div>
       ) : (
         <>

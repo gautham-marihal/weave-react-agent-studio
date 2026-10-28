@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
+import Button from '../../ui/Button.tsx';
 
 // How deep a group sits on its screen: depth 0 is drawn in place, deeper groups open in a sheet from the right, so a
 // screen is never more than one box deep. Inside a sheet the count restarts.
 export const DepthCtx = createContext(0);
 // The titles of the sheets open around this one, outermost first: a sheet says where it is ("Conversation flow › When
 // the caller goes quiet") and goes back.
-export const TrailCtx = createContext([]);
+const TrailCtx = createContext([]);
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]';
 
@@ -85,9 +86,9 @@ export default function Sheet({ title, onClose, actions = null, children, pathKe
         </div>
         <footer className="stFSheetFoot">
           <span className="stMuted">Changes are part of the draft as you make them.</span>
-          <button type="button" className="primaryCta compactCta" onClick={() => close.current()}>
+          <Button type="button" variant="primary" size="compact" onClick={() => close.current()}>
             Done
-          </button>
+          </Button>
         </footer>
       </aside>
     </div>,

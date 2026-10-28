@@ -14,6 +14,7 @@ import { useSetupProgress } from './setupProgress.js';
 import { ActionSwitches, KnowledgeBlock, ReachChoices } from './SimpleBlocks.jsx';
 import { PurposeFields, VoiceFields } from './StepFields.jsx';
 import './setup.css';
+import Button from '../../ui/Button.tsx';
 
 // The guided setup: one step per screen, with Next to move on. Every move saves the draft, so "Continue setup"
 // returns to the same step. The side menu opens any step at any time.
@@ -229,15 +230,15 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
         </section>
         {reach.sip_voice && numbers.mode === 'live' && <AgentNumbers live={numbers} botId={botId} botName={name} current={done.current} />}
         <div className="suActionButtons">
-          <button type="button" className="primaryCta" onClick={() => navigate(routeHref(botId, 'home'), { guard: false })}>
+          <Button type="button" variant="primary" onClick={() => navigate(routeHref(botId, 'home'), { guard: false })}>
             Go to the agent
-          </button>
-          <button type="button" className="quietButton" onClick={() => onStep('try')}>
+          </Button>
+          <Button type="button" onClick={() => onStep('try')}>
             Try it again
-          </button>
-          <button type="button" className="quietButton" onClick={() => setAgain(true)}>
+          </Button>
+          <Button type="button" onClick={() => setAgain(true)}>
             Put my latest changes live
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -284,9 +285,9 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
               <li key={`${p.raw}|${i}`}>
                 <span>{p.text}</span>
                 {p.fixes[0] ? (
-                  <button type="button" className="quietButton small" onClick={() => editor.setValue(p.fixes[0].apply(config))}>
+                  <Button type="button" size="small" onClick={() => editor.setValue(p.fixes[0].apply(config))}>
                     {p.fixes[0].label}
-                  </button>
+                  </Button>
                 ) : p.step ? (
                   <button type="button" className="linkButton" onClick={() => onStep(p.step)}>
                     Go to {STEPS[stepIndex(p.step)].label.toLowerCase()}
@@ -326,9 +327,9 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
           {Array.isArray(error.errors) && error.errors.length > 0 && ` (${error.errors.length} problem${error.errors.length === 1 ? '' : 's'} in the agent)`}
         </Notice>
       )}
-      <button type="button" className="primaryCta suGoLive" onClick={goLive} disabled={busy || blocked}>
+      <Button type="button" variant="primary" className="suGoLive" onClick={goLive} disabled={busy || blocked}>
         <Icon name="release" size={16} /> {busy ? 'Putting it live…' : `Put it live ${envOf(environment)[3]}`}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -500,24 +501,24 @@ export default function SetupWizard({
         </p>
       )}
       <footer className="suFoot">
-        <button type="button" className="quietButton" onClick={leave} disabled={moving}>
+        <Button type="button" onClick={leave} disabled={moving}>
           Save and finish later
-        </button>
+        </Button>
         <span className="suFootRight">
           {prev && (
-            <button type="button" className="quietButton" onClick={() => goTo(prev.id)} disabled={moving}>
+            <Button type="button" onClick={() => goTo(prev.id)} disabled={moving}>
               <Icon name="arrowLeft" size={15} /> Back
-            </button>
+            </Button>
           )}
           {next && meta.optional && states[step] !== 'done' && (
-            <button type="button" className="quietButton" onClick={() => goTo(next.id)} disabled={moving}>
+            <Button type="button" onClick={() => goTo(next.id)} disabled={moving}>
               Skip this step
-            </button>
+            </Button>
           )}
           {next && (
-            <button type="button" className="primaryCta" onClick={() => goTo(next.id)} disabled={moving}>
+            <Button type="button" variant="primary" onClick={() => goTo(next.id)} disabled={moving}>
               Next: {next.label} <Icon name="arrowRight" size={15} />
-            </button>
+            </Button>
           )}
         </span>
       </footer>

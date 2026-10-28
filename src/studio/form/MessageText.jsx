@@ -5,6 +5,7 @@ import TemplateField from './TemplateField.jsx';
 import { scopeAt } from './templates.ts';
 import { LANGUAGE_PATTERN, hasLanguage, languageProblem, languageStatus, primaryOf, toLanguages, toPlain, wantedLanguages } from './messages.ts';
 import Icon from '../../ui/Icon.jsx';
+import { Input } from '../../ui/Input.tsx';
 
 // The text of a message: one line for everyone, or one per language. Per language, every language the agent speaks gets
 // a row, so a missing one is plain to see (one click adds it) and the primary can't be left out.
@@ -109,8 +110,8 @@ export default function MessageText({ value, onChange, path, disabled }) {
       )}
       {!disabled && (
         <div className="stFAddKey">
-          <input
-            className="stFInput small"
+          <Input
+            size="small"
             type="text"
             spellCheck={false}
             value={adding}

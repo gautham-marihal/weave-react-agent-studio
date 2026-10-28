@@ -9,7 +9,7 @@ const CodeJsonEditor = lazy(() => import('./json/CodeJsonEditor.tsx'));
 // loads, and kept if it can't load (offline, say). Ctrl/Cmd+S belongs to the workspace, as on every page.
 const LINE_HEIGHT = 20;
 
-export const JsonEditor = forwardRef(function JsonEditor({ text, onChange, errorLines }, ref) {
+const JsonEditor = forwardRef(function JsonEditor({ text, onChange, errorLines }, ref) {
   const areaRef = useRef(null);
   const gutterRef = useRef(null);
   const lineCount = useMemo(() => text.split('\n').length, [text]);

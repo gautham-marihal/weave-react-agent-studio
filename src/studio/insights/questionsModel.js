@@ -111,7 +111,7 @@ const stem = (word) => {
   return SAME[w] || w;
 };
 // the words that carry the meaning of a question, in a stable form
-export const wordsOf = (text) =>
+const wordsOf = (text) =>
   String(text || '')
     .toLowerCase()
     .replace(/[’']/g, '')

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import Icon from './Icon.jsx';
+import Button from './Button.tsx';
 
 // Whether the browser has a network, following it as it changes.
-export function useOnline() {
+function useOnline() {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false));
   useEffect(() => {
     const up = () => setOnline(true);
@@ -43,9 +44,9 @@ export function ServerDownBanner({ down, onRetry }) {
         <strong>Can’t reach the server.</strong> What you see may be out of date, and changes can’t be saved until it answers again. Weave keeps trying.
       </span>
       {onRetry && (
-        <button type="button" className="quietButton" onClick={onRetry}>
+        <Button type="button" onClick={onRetry}>
           Try again
-        </button>
+        </Button>
       )}
     </div>
   );

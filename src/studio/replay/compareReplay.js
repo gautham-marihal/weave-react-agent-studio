@@ -28,7 +28,7 @@ export function similarity(a, b) {
   });
   return (2 * shared) / (x.length + y.length);
 }
-export const SAME_WORDS = 0.8;
+const SAME_WORDS = 0.8;
 
 const names = (tools) =>
   list(tools)

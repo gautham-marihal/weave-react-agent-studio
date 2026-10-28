@@ -667,12 +667,6 @@ html[data-theme] body .workspaceMenu {
 html[data-theme] body .sideDivider {
   background: var(--line);
 }
-html[data-theme] body .profileDot {
-  border: 1px solid var(--line2);
-  border-radius: 10px;
-  background: var(--surface2);
-  color: var(--textStrong);
-}
 html[data-theme] body .dashTopbar .quietButton {
   min-height: 36px;
   border: 1px solid var(--line2);

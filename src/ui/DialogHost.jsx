@@ -3,6 +3,7 @@ import { Dialog } from 'radix-ui';
 import { subscribeDialogs } from './dialogs.js';
 import Icon from './Icon.jsx';
 import { backTo } from './layer.ts';
+import Button from './Button.tsx';
 
 // Draws the decision asked by askConfirm() or showNotice() (dialogs.js) as a Radix dialog above every other layer.
 // While open it alone answers the keyboard: Escape or an outside click declines, Tab stays in its buttons (never a
@@ -64,9 +65,9 @@ function Decision({ dialog }) {
             </div>
             <div className="decisionActions">
               {!notice && (
-                <button ref={cancelRef} type="button" className="quietButton" onClick={decline}>
+                <Button ref={cancelRef} type="button" onClick={decline}>
                   {dialog.cancelLabel}
-                </button>
+                </Button>
               )}
               <button ref={confirmRef} type="button" className={danger ? 'dangerCta' : 'primaryCta'} onClick={accept}>
                 {dialog.confirmLabel}

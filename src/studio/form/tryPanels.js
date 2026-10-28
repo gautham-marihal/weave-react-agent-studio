@@ -10,7 +10,7 @@ const text = (v) => (typeof v === 'string' ? v : v === undefined || v === null ?
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
 // ---- what the rules are called --------------------------------------------------------------------------------------
-export const RULE_WORDS = {
+const RULE_WORDS = {
   currency: 'an amount of money',
   spell: 'spelled out letter by letter',
   digits: 'a long number in groups',
@@ -23,7 +23,7 @@ export const ruleWords = (type) => RULE_WORDS[type] || (type ? String(type).repl
 
 // What a safety rule did, in the words of the scenario checks
 // (kept here so the panels do not import the scenario form).
-export const ACTION_WORDS = {
+const ACTION_WORDS = {
   deflect: 'It declines and answers with a fixed line.',
   redact_in_logs: 'It hides the match in the saved records. The agent still reads the line.',
   rewrite: 'It rewrites the line before the agent reads it.',
@@ -104,7 +104,7 @@ export function redactionVerdict(view) {
 }
 
 // What a found kind is, as a person says it ("a card number").
-export const FOUND_WORDS = {
+const FOUND_WORDS = {
   card_number: 'a card number',
   bank_account: 'a bank account number',
   national_id: 'a national ID number',

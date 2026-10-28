@@ -5,9 +5,9 @@ import { llmOf, makeCall } from './demoCalls.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 
-export const SLOT_MS = 30000; // a new call may begin in every slot
-export const KEEP_MS = 20 * 60 * 1000; // how long a finished call is still listed
-export const CUT_OFF_AFTER_S = 120; // a call that stops writing is "cut off" after this long (the API's own rule)
+const SLOT_MS = 30000; // a new call may begin in every slot
+const KEEP_MS = 20 * 60 * 1000; // how long a finished call is still listed
+const CUT_OFF_AFTER_S = 120; // a call that stops writing is "cut off" after this long (the API's own rule)
 
 // A small stable number from text (FNV-1a).
 function hash(text) {

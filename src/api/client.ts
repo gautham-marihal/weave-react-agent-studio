@@ -57,7 +57,7 @@ export function headerSafe(value: unknown): string {
 //   unavailable 503, e.g. LiveKit not configured
 //   unexpected  an answer of another shape than the studio reads (schemas.ts): the message names the field
 //   server      anything else
-export type ApiErrorKind = 'network' | 'auth' | 'not_found' | 'conflict' | 'invalid' | 'client_bug' | 'unavailable' | 'unexpected' | 'server';
+type ApiErrorKind = 'network' | 'auth' | 'not_found' | 'conflict' | 'invalid' | 'client_bug' | 'unavailable' | 'unexpected' | 'server';
 
 export class ApiError extends Error {
   status: number;
@@ -446,7 +446,7 @@ export function followCall(id: string, callId: string, { onOpen, onRecord, onEnd
   return () => source.close();
 }
 
-export type FlatIssue = { severity: 'error' | 'warning'; path: Array<string | number> | null; message: string };
+type FlatIssue = { severity: 'error' | 'warning'; path: Array<string | number> | null; message: string };
 
 // A validation report (POST /validate, or `validation` in a saved draft) addresses a problem by `path`
 // ([] or null mean "general message"). Turns it into one flat list the editor can show per field.

@@ -267,3 +267,141 @@ html[data-theme] body .clPrivacy > .quietButton {
 .clTableWrap.reading {
   opacity: 0.55;
 }
+
+/* ---- a call as a chat (CallChat.jsx): agents on the left, the caller on the right, hand-overs between ---- */
+.clChat {
+  max-width: 900px;
+}
+.clChat h3 {
+  margin: 0 0 4px;
+  font-size: var(--fs-md);
+  color: var(--textStrong);
+}
+.clChatAgents {
+  margin: 0 0 12px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.clChatList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.clMsg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 78%;
+}
+.clMsg.caller {
+  align-self: flex-end;
+}
+/* each agent of the call keeps its own colour, so a change of agent shows at a glance */
+.clMsg {
+  --hue: var(--accent);
+}
+.clMsg[data-tone="1"] {
+  --hue: #2563eb;
+}
+.clMsg[data-tone="2"] {
+  --hue: #0f766e;
+}
+.clMsg[data-tone="3"] {
+  --hue: #b45309;
+}
+.clMsg[data-tone="4"] {
+  --hue: #e11d48;
+}
+.clMsg[data-tone="5"] {
+  --hue: #4f46e5;
+}
+.clAvatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hue) 14%, var(--surface));
+  color: color-mix(in srgb, var(--hue) 70%, var(--textStrong));
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.clBubble {
+  min-width: 0;
+  padding: 10px 16px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.clMsg.agent .clBubble {
+  border-left: 3px solid color-mix(in srgb, var(--hue) 55%, var(--line));
+}
+.clMsg.caller .clBubble {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+}
+.clBubble header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.clBubble header strong {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.clMsg.caller .clBubble header,
+.clMsg.caller .clBubble header strong {
+  color: color-mix(in srgb, var(--on-accent, #fff) 82%, transparent);
+}
+.clBubble time {
+  font-variant-numeric: tabular-nums;
+}
+.clBubble p {
+  margin: 6px 0 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.clMsg.caller .clBubble p {
+  color: var(--on-accent, #fff);
+}
+.clInterrupted {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.clHandover {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.clHandover::before,
+.clHandover::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--line);
+}
+.clHandover strong {
+  color: var(--textStrong);
+}
+.clHandover time {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 700px) {
+  .clMsg {
+    max-width: 100%;
+  }
+}

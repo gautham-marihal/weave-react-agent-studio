@@ -20,6 +20,7 @@ import { useAsync } from './useAsync.js';
 import { useDraftEditor } from './useDraftEditor.js';
 import AgentLayout from './agent/AgentLayout.jsx';
 import Icon from '../ui/Icon.jsx';
+import Button from '../ui/Button.tsx';
 
 // One agent, open: loads the agent and its draft, and holds what lives across its pages (test conversation, publish
 // panel, changes asked for by other pages, menu actions). AgentLayout.jsx draws the pages.
@@ -175,16 +176,15 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, don
           kind="warn"
           title="Publishing is held until the tests pass"
           actions={
-            <button
+            <Button
               type="button"
-              className="quietButton"
               onClick={() => {
                 onClose();
                 navigate(routeHref(botId, gate.check.action === 'callers' ? 'callers' : 'scenarios'), { guard: false });
               }}
             >
               {gate.check.action === 'callers' ? 'Add tests' : 'Run the tests'}
-            </button>
+            </Button>
           }
         >
           {gate.check.why}
@@ -464,9 +464,9 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
           kind="info"
           title={applied.unchanged ? 'Already set on this draft' : 'Added to this draft, not saved yet'}
           actions={
-            <button type="button" className="quietButton" onClick={() => setApplied(null)}>
+            <Button type="button" onClick={() => setApplied(null)}>
               Dismiss
-            </button>
+            </Button>
           }
         >
           {applied.note} {applied.unchanged ? 'Nothing needed to change.' : 'Check it below, then save the draft.'}
@@ -477,16 +477,15 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
           kind="warn"
           title="This draft was made from your description by the demo assistant"
           actions={
-            <button
+            <Button
               type="button"
-              className="quietButton"
               onClick={() => {
                 dismissNotes(botId);
                 setAssistantNote(null);
               }}
             >
               I’ve read this
-            </button>
+            </Button>
           }
         >
           The demo assistant is rule-based, not an AI model: it picked a starter and filled in what it could from keywords. Read the role and rules, and try the

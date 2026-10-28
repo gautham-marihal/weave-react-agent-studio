@@ -10,6 +10,7 @@ import { compareReplay } from './compareReplay.js';
 import { configWithScenario, factsFromResult, playSimulated, scenarioForReplay } from './replayRun.js';
 import Select from '../../ui/Select.tsx';
 import './replay.css';
+import Button from '../../ui/Button.tsx';
 
 const toolNames = (tools) => tools.map((t) => t.tool).filter(Boolean);
 
@@ -44,7 +45,7 @@ function Tools({ tools, was }) {
 }
 
 // The original call and the replay, turn against turn, with what changed in words above it.
-export function ReplayCompare({ cmp, sourceLabel, targetLabel }) {
+function ReplayCompare({ cmp, sourceLabel, targetLabel }) {
   const { turns, lines, verdict } = cmp;
   return (
     <div className="rpCompare" data-verdict={verdict}>
@@ -263,18 +264,17 @@ export default function ReplayView({ botId, events, editor, onMakeTest, draftLab
                 ))}
               </Select>
             </label>
-            <button type="button" className="primaryCta compactCta" onClick={replayHere} disabled={busy || !editor}>
+            <Button type="button" variant="primary" size="compact" onClick={replayHere} disabled={busy || !editor}>
               Replay in the browser
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="quietButton"
               onClick={replayOnRunner}
               disabled={busy || !editor || (!paid && !demo)}
               title={!demo && !paid ? 'Tick the box below first: this uses the live model' : undefined}
             >
               {busy ? 'Running…' : demo ? 'Replay on the demo runner' : 'Replay on the real runtime'}
-            </button>
+            </Button>
           </div>
           {!demo && (
             <label className="rpPaid">
@@ -332,9 +332,9 @@ export default function ReplayView({ botId, events, editor, onMakeTest, draftLab
           ))}
           {onMakeTest && (
             <div className="rpAfter">
-              <button type="button" className="primaryCta compactCta" onClick={onMakeTest}>
+              <Button type="button" variant="primary" size="compact" onClick={onMakeTest}>
                 Keep this call as a test
-              </button>
+              </Button>
               <small>So the same conversation is checked every time the agent changes.</small>
             </div>
           )}

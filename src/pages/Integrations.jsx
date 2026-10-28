@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Icon from '../ui/Icon.jsx';
 import FocusBox from '../ui/FocusBox.jsx';
+import Button from '../ui/Button.tsx';
 
 // The Integrations page: the services an agent can connect to, searchable and filtered by kind. Each opens a panel with
 // its connection details (kept in this browser), and can be added to an agent's draft as a connection.
@@ -167,20 +168,20 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
                     <span className="connectionHint">
                       Configured as <b>{connection.name}</b>
                     </span>
-                    <button type="button" className="quietButton" onClick={() => openConnect(item)}>
+                    <Button type="button" onClick={() => openConnect(item)}>
                       Edit
-                    </button>
-                    <button type="button" className="quietButton" onClick={() => onAddToAgent?.(connection, item)}>
+                    </Button>
+                    <Button type="button" onClick={() => onAddToAgent?.(connection, item)}>
                       Add to an agent
-                    </button>
+                    </Button>
                     <button type="button" className="dangerButton" onClick={() => disconnect(item.id)}>
                       Disconnect
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="secondaryCta" onClick={() => openConnect(item)}>
+                  <Button type="button" variant="secondary" onClick={() => openConnect(item)}>
                     Connect
-                  </button>
+                  </Button>
                 )}
               </div>
             </article>
@@ -228,12 +229,12 @@ export function IntegrationsWorkspace({ onAddToAgent }) {
               />
             </label>
             <div className="featureModalFooter">
-              <button type="button" className="quietButton" onClick={() => setSelected(null)}>
+              <Button type="button" onClick={() => setSelected(null)}>
                 Cancel
-              </button>
-              <button type="button" className="primaryCta compactCta" disabled={!form.first.trim()} onClick={saveConnection}>
+              </Button>
+              <Button type="button" variant="primary" size="compact" disabled={!form.first.trim()} onClick={saveConnection}>
                 Save connection
-              </button>
+              </Button>
             </div>
           </FocusBox>
         </div>

@@ -6,6 +6,7 @@ import { useConfigSelect, useForm } from './ctx.js';
 import { argNamesOf } from './templates.ts';
 import Icon from '../../ui/Icon.jsx';
 import ChoiceBox from '../../ui/Select.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 // A simple condition ("the caller is verified", "the argument is at least 3") as one readable row instead of a choice
 // of nine object kinds. All / any / not, channels and business hours fall back to the full editor.
@@ -27,7 +28,7 @@ const SOURCE_KEYS = SOURCES.map(([key]) => key);
 const OPERATOR_KEYS = OPERATORS.map(([key]) => key);
 
 // Exactly one thing being tested and one comparison (or nothing chosen yet: a fresh condition).
-export function isSimpleCondition(value) {
+function isSimpleCondition(value) {
   if (!isObj(value)) return false;
   const keys = Object.keys(value);
   const sources = keys.filter((key) => SOURCE_KEYS.includes(key));
@@ -46,8 +47,7 @@ function NumberValue({ value, onChange, disabled }) {
     if (Number(text) !== value || text.trim() === '') setText(shown);
   }
   return (
-    <input
-      className="stFInput"
+    <Input
       type="number"
       step="any"
       value={text}
@@ -125,8 +125,8 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
     if (source === 'arg' && toolIndex !== null && argNames.length)
       return <Select value={subject} options={argNames} onChange={setSubject} disabled={disabled} placeholder="Choose an argument…" />;
     return (
-      <input
-        className="stFInput mono"
+      <Input
+        mono
         type="text"
         spellCheck={false}
         value={subject}

@@ -91,7 +91,7 @@ export const GUARDRAIL_ACTION_CHOICES = [
   { value: 'block', label: 'Not passed to the agent at all' },
   { value: 'end_call', label: 'Ended the call' },
 ];
-export const TASK_OUTCOME_CHOICES = [
+const TASK_OUTCOME_CHOICES = [
   { value: 'verified', label: 'It worked (verified)' },
   { value: 'failed', label: 'It failed' },
   { value: 'declined', label: 'The caller declined' },
@@ -115,7 +115,7 @@ export function outcomeNamesOf(config, taskId) {
 }
 
 // ---- turns: what the caller says, or the keys they press (a phone line only)
-export const KEYS_PATTERN = /^[0-9*#A-Da-d]+$/;
+const KEYS_PATTERN = /^[0-9*#A-Da-d]+$/;
 export const isKeysTurn = (turn) => isObj(turn) && typeof turn.keys === 'string' && turn.say === undefined;
 export const describeTurn = (turn) => (isKeysTurn(turn) ? 'presses keys on the keypad' : `“${isObj(turn) ? (turn.say ?? '') : ''}”`);
 export const channelTypeOf = (config, id) => list(config?.channels).find((c) => c?.id === id)?.type || '';
@@ -268,7 +268,7 @@ export function regexProblem(source) {
 }
 
 // "2026-10-14T03:00:00+08:00": the pattern the schema asks of `now` (a date and time WITH a time zone).
-export const NOW_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+const NOW_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 export const nowProblem = (text) =>
   text && !NOW_PATTERN.test(text) ? 'Write a date and time with a time zone, like 2026-10-14T03:00:00+08:00 or 2026-10-14T03:00Z.' : '';
 
@@ -357,7 +357,7 @@ export function mockProblem(mock, index) {
 }
 
 // What is wrong with a model script item, or ''.
-export function scriptProblem(item, index) {
+function scriptProblem(item, index) {
   const where = `Model reply ${index + 1}: `;
   if (typeof item === 'string') return item.trim() ? '' : `${where}write what the model says.`;
   if (isObj(item))

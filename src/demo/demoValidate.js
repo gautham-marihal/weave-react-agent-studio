@@ -6,7 +6,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 
 export const DEMO_VALIDATOR_NOTE =
   'Demo mode: checked by a few simple rules in your browser, not by the real validator. A real check happens when you use the real API.';
-export const KNOWN_PROVIDERS = ['anthropic', 'assemblyai', 'cartesia', 'deepgram', 'elevenlabs', 'google', 'groq', 'openai', 'openai_compatible', 'silero'];
+const KNOWN_PROVIDERS = ['anthropic', 'assemblyai', 'cartesia', 'deepgram', 'elevenlabs', 'google', 'groq', 'openai', 'openai_compatible', 'silero'];
 const REQUIRED_SECTIONS = ['schema_version', 'meta', 'runtime', 'defaults', 'persona', 'channels', 'agents'];
 // what the real validator reports today (2026-10-16): task, keypad and knowledge tools run
 const UNSUPPORTED_TOOL_KINDS = { mcp: 'MCP server tools', code: 'Custom code tools' };

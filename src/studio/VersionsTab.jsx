@@ -17,6 +17,7 @@ import { changesSince } from './changes/sinceRelease.js';
 import PlainDiff from './compare/PlainDiff.jsx';
 import Menu from './manage/Menu.tsx';
 import { isBookkeeping, plainChanges } from './compare/plainCompare.js';
+import Button from '../ui/Button.tsx';
 
 // The Versions page: published versions, comparing a version with the draft, restoring one into the draft, publishing
 // (the panel AgentWorkspace hands in) and the way from draft to callers (ShipFlow).
@@ -355,13 +356,9 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
                   </span>
                   {/* one thing to do with a version, the rest in its menu */}
                   <span role="cell" className="stRowActions">
-                    <button
-                      type="button"
-                      className="quietButton"
-                      onClick={() => navigate(routeHref(botId, 'deploy', { version: item.version }), { guard: false })}
-                    >
+                    <Button type="button" onClick={() => navigate(routeHref(botId, 'deploy', { version: item.version }), { guard: false })}>
                       Deploy…
-                    </button>
+                    </Button>
                     <Menu
                       label={`More for version ${item.version}`}
                       items={[

@@ -4,13 +4,14 @@ import { Notice } from '../ui.jsx';
 import { Choice, OneOf } from '../../ui/OneOf.tsx';
 import { formatWhen } from '../format.js';
 import TraceView from '../trace/TraceView.jsx';
-import TranscriptView from './TranscriptView.jsx';
+import CallChat from './CallChat.jsx';
 import { channelLabel, countsLine, formatSeconds, ndjson, statusOf } from './callModel.js';
 import { navigate, routeHref } from '../route.js';
 import ReplayView from '../replay/ReplayView.jsx';
 import MakeTestDialog from '../replay/MakeTestDialog.jsx';
 import FixCallDrawer from '../fixcall/FixCallDrawer.jsx';
 import { readCall } from '../replay/callFacts.js';
+import Button from '../../ui/Button.tsx';
 
 // One call: who, when, how it went, and its trace (the same component Test conversations and failed scenarios use).
 // A call in progress is followed live. The records hold what the caller said, so the screen says so.
@@ -114,40 +115,40 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
         </div>
         <div className="clDetailActions">
           {editor && canWork && (
-            <button
+            <Button
               type="button"
-              className="primaryCta compactCta"
+              variant="primary"
+              size="compact"
               onClick={() => setFixing(true)}
               disabled={!editor.parsed?.value}
               title={editor.parsed?.value ? 'See what went wrong, try a change, and put it in the draft' : 'The draft can’t be read right now'}
             >
               Fix this call
-            </button>
+            </Button>
           )}
           {editor && canWork && (
-            <button
+            <Button
               type="button"
-              className="quietButton"
               onClick={() => setMakingTest(true)}
               disabled={!editor.parsed?.value}
               title={editor.parsed?.value ? undefined : 'The draft can’t be read right now: fix its JSON in the agent’s settings first'}
             >
               Keep as a test
-            </button>
+            </Button>
           )}
           {href ? (
             <a className="quietButton" href={href} download>
               Download the log
             </a>
           ) : (
-            <button type="button" className="quietButton" onClick={downloadDemo} disabled={!events.length}>
+            <Button type="button" onClick={downloadDemo} disabled={!events.length}>
               Download the log
-            </button>
+            </Button>
           )}
           {onClose && (
-            <button type="button" className="quietButton" onClick={onClose}>
+            <Button type="button" onClick={onClose}>
               Close
-            </button>
+            </Button>
           )}
         </div>
       </header>
@@ -234,7 +235,9 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
       {!state.loading && !state.error && view === 'trace' && (
         <TraceView records={events} live={live} title="What happened" emptyText="No records were written for this call." />
       )}
-      {!state.loading && !state.error && view === 'conversation' && <TranscriptView botId={botId} callId={callId} />}
+      {!state.loading && !state.error && view === 'conversation' && (
+        <CallChat botId={botId} callId={callId} events={events} config={editor?.parsed?.value ?? null} botName={botName} caller={call?.caller || ''} />
+      )}
       {canWork &&
         view === 'replay' &&
         (editor ? (
@@ -244,9 +247,9 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
             kind="info"
             title="Replay and tests belong to one agent’s draft"
             actions={
-              <button type="button" className="primaryCta compactCta" onClick={() => navigate(routeHref(botId, 'calls', { call: callId }), { guard: true })}>
+              <Button type="button" variant="primary" size="compact" onClick={() => navigate(routeHref(botId, 'calls', { call: callId }), { guard: true })}>
                 Open it in {botName || botId}
-              </button>
+              </Button>
             }
           >
             Open this call from the agent’s own Calls page to play it again against the draft, or to keep it as a test.
@@ -258,22 +261,21 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
           title={`Added the test “${added.id}” to the draft, not saved yet`}
           actions={
             <>
-              <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'scenarios'), { guard: false })}>
+              <Button type="button" onClick={() => navigate(routeHref(botId, 'scenarios'), { guard: false })}>
                 Open Scenarios
-              </button>
-              <button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving || !editor.dirty}>
+              </Button>
+              <Button type="button" onClick={() => editor.save()} disabled={editor.saving || !editor.dirty}>
                 {editor.saving ? 'Saving…' : 'Save draft'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="quietButton"
                 onClick={() => {
                   editor.setValue(added.previous);
                   setAdded(null);
                 }}
               >
                 Undo
-              </button>
+              </Button>
             </>
           }
         >
@@ -286,29 +288,27 @@ export default function CallDetail({ botId, botName, callId, summary, onClose, e
           title={`Changed the draft from this call, not saved yet`}
           actions={
             <>
-              <button
+              <Button
                 type="button"
-                className="quietButton"
                 onClick={() => {
                   setTestExpected(fixed.fixes.map((f) => f.expected).filter(Boolean)[0] || '');
                   setMakingTest(true);
                 }}
               >
                 Keep this call as a test
-              </button>
-              <button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving || !editor.dirty}>
+              </Button>
+              <Button type="button" onClick={() => editor.save()} disabled={editor.saving || !editor.dirty}>
                 {editor.saving ? 'Saving…' : 'Save draft'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="quietButton"
                 onClick={() => {
                   editor.setValue(fixed.previous);
                   setFixed(null);
                 }}
               >
                 Undo
-              </button>
+              </Button>
             </>
           }
         >

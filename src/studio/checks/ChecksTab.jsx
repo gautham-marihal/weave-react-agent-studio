@@ -8,6 +8,7 @@ import Select from '../../ui/Select.tsx';
 import './checks.css';
 import Icon from '../../ui/Icon.jsx';
 import { EmptyState } from '../agent/PageShell.jsx';
+import Button from '../../ui/Button.tsx';
 
 // "Checks": the agent's config read against everyday situations (a greeting, ending the call, reaching a person, a
 // silent caller) before going live; no conversation is run. Runs are kept in this browser: the API has no store.
@@ -78,9 +79,9 @@ export default function ChecksTab({ botId, name, runs = [], onRun }) {
               ))}
             </Select>
           </label>
-          <button type="button" className="primaryCta compactCta" onClick={run} disabled={running}>
+          <Button type="button" variant="primary" size="compact" onClick={run} disabled={running}>
             {running ? 'Checking…' : `Run ${SCENARIOS.length} checks`}
-          </button>
+          </Button>
         </div>
         {error && (
           <Notice kind="error" title="Couldn’t run the checks">

@@ -5,9 +5,9 @@
 import { isObj } from '../studio/form/engine.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-export const DEMO_KNOWLEDGE_NOTE =
+const DEMO_KNOWLEDGE_NOTE =
   'Demo mode: there is no embedding model here. The index is a plain word index kept in your browser, and scores come from the words a passage shares with the question, so real scores will differ.';
-export const BUILD_STEP_MS = 500;
+const BUILD_STEP_MS = 500;
 const STEPS = ['Reading the files', 'Cutting them into passages', 'Indexing the passages', 'Writing the index'];
 const TEXT_EXT = ['.txt', '.md', '.markdown', '.html', '.htm', '.csv', '.json'];
 const STOP = new Set([
@@ -43,7 +43,7 @@ const state = (bot) => {
   return bot.knowledge;
 };
 
-export const isTextFile = (name) => TEXT_EXT.some((ext) => String(name).toLowerCase().endsWith(ext));
+const isTextFile = (name) => TEXT_EXT.some((ext) => String(name).toLowerCase().endsWith(ext));
 
 function stripMarkup(name, content) {
   if (/\.html?$/i.test(name)) return content.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');

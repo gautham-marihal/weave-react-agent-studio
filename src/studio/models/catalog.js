@@ -155,7 +155,7 @@ export const RENAMED_PROVIDERS = {
 
 // The name, in the server's vault, of the secret that holds a provider's key (credentials are never in the
 // configuration, only this name). The server's own list says which one each provider uses; this is the fallback.
-export const SECRET_BY_PROVIDER = Object.fromEntries(
+const SECRET_BY_PROVIDER = Object.fromEntries(
   FALLBACK_PROVIDERS.filter((provider) => provider.default_secret).map((provider) => [provider.name, provider.default_secret]),
 );
 export function secretFor(provider, providers) {
@@ -241,7 +241,7 @@ export const PROVIDER_STAGES = {
 };
 
 // Providers with no list of their own: the model is whatever the service serves, so it is typed.
-export const FREE_TEXT_PROVIDERS = {
+const FREE_TEXT_PROVIDERS = {
   openai_compatible: 'This is any service that speaks the OpenAI API (Mistral, Azure, a local model server…). Type the model id it serves.',
 };
 

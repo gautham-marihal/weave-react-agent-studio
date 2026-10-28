@@ -8,6 +8,7 @@ import { createAndPoint } from '../form/inlineCreate.js';
 import { START_ID, parseNodeId } from './workflowModel.js';
 import { toolNamedElsewhere } from '../form/toolInfo.js';
 import { dropLines } from '../setup/setupModel.js';
+import { BACK_TOOL_DESCRIPTION, dropStaleHandoffRules, withHandoffRules } from './handoffRules.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -61,8 +62,8 @@ export function addSubagent(config, fromId, { name = 'New subagent', when = '', 
   next.agents = { ...(isObj(next.agents) ? next.agents : {}), items: [...items, agent] };
   if (!next.agents.entry) next.agents.entry = id;
   if (from) addHandoffTo(next, from, id, when || `The caller needs ${name}.`);
-  const done = at ? setPositions(next, { [id]: at }) : next;
-  return { config: done, id };
+  const placed = at ? setPositions(next, { [id]: at }) : next;
+  return { config: withHandoffRules(placed), id };
 }
 
 // The hand-overs of an agent that "answers on its own" are ignored (the checks call their target unreachable), so an
@@ -78,10 +79,11 @@ function addHandoffTo(next, from, toId, description) {
   if (from.kind === 'standalone') from.kind = 'router';
   from.handoffs = [...list(from.handoffs), { id, tool: freshId(tools, `go_to_${toId.replace(/-/g, '_')}`), description, to: toId, carry_context: true }];
 }
-// The reverse: a lone router left with no hand-overs answers on its own again.
+// The reverse: a lone router left with no hand-overs answers on its own again, without the hand-over rules.
 function settleKind(next) {
   const items = agentsOf(next);
   if (items.length === 1 && isObj(items[0]) && items[0].kind === 'router' && !list(items[0].handoffs).length) items[0].kind = 'standalone';
+  dropStaleHandoffRules(next);
 }
 
 // "Agent transfer": an arrow from one existing agent to another.
@@ -90,7 +92,7 @@ export function addAgentTransfer(config, fromId, toId, description = '') {
   const next = clone(config);
   const to = agentAt(next, toId);
   addHandoffTo(next, agentAt(next, fromId), toId, description || `The caller needs ${to.name || toId}.`);
-  return next;
+  return withHandoffRules(next);
 }
 
 // Moves an on-enter step earlier (delta -1) or later (+1); the order matters (a line said before a hand-over, say).
@@ -292,10 +294,7 @@ export function addBackToStart(config, agentId) {
   let toolId = existing?.id;
   if (!toolId) {
     toolId = freshId([...list(next.tools).map((t) => t?.id), ...agentsOf(next).flatMap((a) => list(a?.tools))], 'back_to_start');
-    next.tools = [
-      ...list(next.tools),
-      { id: toolId, type: 'builtin', builtin: 'return_to_entry', description: 'The caller needs something this subagent can’t help with.' },
-    ];
+    next.tools = [...list(next.tools), { id: toolId, type: 'builtin', builtin: 'return_to_entry', description: BACK_TOOL_DESCRIPTION }];
   }
   const target = agentAt(next, agentId);
   target.tools = [...list(target.tools), toolId];

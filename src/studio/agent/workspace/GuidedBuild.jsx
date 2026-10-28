@@ -5,6 +5,7 @@ import { ActionSwitches, KnowledgeBlock, ReachChoices } from '../../setup/Simple
 import { PURPOSE } from '../buildSections.js';
 import GuidedSection from './GuidedSection.jsx';
 import IdentityFields from './IdentityFields.jsx';
+import Button from '../../../ui/Button.tsx';
 
 // Build's Guided view: every part of the agent on one page, in build order, each with its plain controls and a link to
 // all its settings. The checks sit beside it (BuildStage).
@@ -64,9 +65,9 @@ export default function GuidedBuild({ botId, config, set, latest, sections, prob
         <p className="tw-m-0 tw-max-w-[520px] tw-text-md tw-leading-relaxed tw-text-ink-soft">
           {g.more || 'Its documents are set up on its own page, with every knowledge base it has.'}
         </p>
-        <button type="button" className="quietButton compactCta tw-inline-flex tw-items-center tw-gap-2" onClick={() => onOpen(g.page)}>
+        <Button type="button" size="compact" className="tw-inline-flex tw-items-center tw-gap-2" onClick={() => onOpen(g.page)}>
           {g.open || 'Open its documents'} <Icon name="arrowRight" size={14} />
-        </button>
+        </Button>
       </div>
     );
   };

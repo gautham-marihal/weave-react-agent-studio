@@ -113,11 +113,16 @@ test('Calls: the calls of an agent, newest first, filters that narrow them, and 
   assert.match(textOf($(detail, '.clCounts')), /^\d+ records?: \d+ from the caller, \d+ from the agent/);
   assert.equal(byText(detail, '.clViews button', 'What happened').getAttribute('aria-checked'), 'true');
   await a.click(byText(detail, '.clViews button', 'Conversation only'));
-  assert.equal(await until(app, () => $$(detail, '.clTurn').length > 0), true, 'the turns arrive');
+  assert.equal(await until(app, () => $$(detail, '.clMsg').length > 0), true, 'the turns arrive');
   assert.equal($(detail, '.trView'), null, 'the trace gives way to the conversation');
-  assert.ok($$(detail, '.clTurn.caller').length >= 1 && $$(detail, '.clTurn.agent').length >= 1, 'caller and agent turns are told apart');
-  assert.match(textOf($(detail, '.clTurn.caller strong')), /^Caller$/);
-  assert.match(textOf($(detail, '.clTurn.agent strong')), /^Agent$/);
+  assert.match(textOf($(detail, '.clChat h3')), /^Conversation transcript \(\d+ turns?\)$/);
+  assert.ok($$(detail, '.clMsg.caller').length >= 1 && $$(detail, '.clMsg.agent').length >= 1, 'caller and agent turns are told apart');
+  // every line names who said it (an agent by its name, not just "Agent") and when
+  const agentLine = $(detail, '.clMsg.agent');
+  assert.ok(textOf($(agentLine, 'strong')).length > 0);
+  assert.notEqual(textOf($(agentLine, 'strong')), 'Agent', 'the agent is named');
+  assert.match(textOf($(agentLine, 'time')), /^\d{2}:\d{2}$/);
+  assert.ok($(agentLine, '.clAvatar'), 'an agent line has its avatar');
   await a.click(byText(detail, '.clViews button', 'What happened'));
   assert.ok($(detail, '.trView'), 'and back');
   await a.click(byText(detail, 'button', 'Close'));

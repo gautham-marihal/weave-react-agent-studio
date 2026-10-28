@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GROUPS, describeRecords, filterRows, groupCounts, traceAsText, traceSummary } from './records.js';
 import './trace.css';
+import Button from '../../ui/Button.tsx';
 
 // What happened in a conversation, for a real call, the Test tab and a failed scenario (all the same records): rows in
 // order, filters by kind, what went wrong marked, raw fields on request. `live` follows a call in progress.
@@ -55,9 +56,9 @@ export default function TraceView({ records, live = false, compact = false, titl
               Following live
             </span>
           )}
-          <button type="button" className="quietButton" onClick={copy} disabled={!rows.length}>
+          <Button type="button" onClick={copy} disabled={!rows.length}>
             {copied ? 'Copied' : 'Copy as text'}
-          </button>
+          </Button>
         </div>
       </header>
 

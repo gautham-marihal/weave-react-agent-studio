@@ -15,6 +15,8 @@ import './scenarios.css';
 import Icon from '../../ui/Icon.jsx';
 import { channelLabel } from '../agent/rowNames.js';
 import { askConfirm } from '../../ui/dialogs.js';
+import Button from '../../ui/Button.tsx';
+import { TextArea } from '../../ui/Input.tsx';
 
 // Test scenarios: written conversations with what must be true afterwards, kept in the draft (`tests`) and run by the
 // server. With a `model_script` a run is scripted (free, repeatable); without, it is live (a real model that costs
@@ -144,9 +146,9 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
           kind="info"
           title="Runs use your edits, saved or not"
           actions={
-            <button type="button" className="quietButton" onClick={() => editor.save()} disabled={editor.saving}>
+            <Button type="button" onClick={() => editor.save()} disabled={editor.saving}>
               {editor.saving ? 'Saving…' : 'Save draft'}
-            </button>
+            </Button>
           }
         >
           The scenarios and everything else you changed are in the draft but not saved. A run tests exactly what is in the editor.
@@ -169,20 +171,20 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
       )}
 
       <div className="scBar">
-        <button type="button" className="primaryCta compactCta" disabled={!scenarios.length || running || starting} onClick={() => go(null)}>
+        <Button type="button" variant="primary" size="compact" disabled={!scenarios.length || running || starting} onClick={() => go(null)}>
           {starting ? 'Starting…' : running ? 'Running…' : `Run all (${scenarios.length})`}
           {paid.live || paid.judge ? ' · uses a paid model' : ''}
           {network ? ' · real requests' : ''}
-        </button>
-        <button type="button" className="quietButton" disabled={!!editing} onClick={() => setEditing({ id: null, scenario: newScenario(config) })}>
+        </Button>
+        <Button type="button" disabled={!!editing} onClick={() => setEditing({ id: null, scenario: newScenario(config) })}>
           <Icon name="plus" size={14} /> New scenario
-        </button>
-        <button type="button" className="quietButton" aria-expanded={importOpen} onClick={() => setImportOpen((v) => !v)}>
+        </Button>
+        <Button type="button" aria-expanded={importOpen} onClick={() => setImportOpen((v) => !v)}>
           Paste scenarios…
-        </button>
-        <button type="button" className="quietButton" onClick={refresh} disabled={saved.loading}>
+        </Button>
+        <Button type="button" onClick={refresh} disabled={saved.loading}>
           Refresh results
-        </button>
+        </Button>
       </div>
 
       <details className="scPaid">
@@ -237,12 +239,12 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
           onClose={() => setConfirm(null)}
           footer={
             <>
-              <button type="button" className="quietButton" onClick={() => setConfirm(null)}>
+              <Button type="button" onClick={() => setConfirm(null)}>
                 Not now
-              </button>
-              <button type="button" className="primaryCta compactCta" onClick={accept}>
+              </Button>
+              <Button type="button" variant="primary" size="compact" onClick={accept}>
                 {confirm === 'live' ? 'Include live scenarios' : 'Grade them'}
-              </button>
+              </Button>
             </>
           }
         >
@@ -259,8 +261,8 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
         <section className="stCard scImport">
           <label>
             <span>Paste a list of scenarios as JSON</span>
-            <textarea
-              className="stFInput mono"
+            <TextArea
+              mono
               rows={6}
               value={importText}
               onChange={(event) => {
@@ -273,9 +275,10 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
             />
           </label>
           <div className="scActions">
-            <button
+            <Button
               type="button"
-              className="primaryCta compactCta"
+              variant="primary"
+              size="compact"
               disabled={!importText.trim()}
               onClick={() => {
                 const result = parseImport(importText, config);
@@ -292,7 +295,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
               }}
             >
               Add them
-            </button>
+            </Button>
           </div>
           {importResult && (
             <div role="status">
@@ -327,9 +330,9 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
           kind={error.kind === 'info' ? 'info' : 'error'}
           title={error.title}
           actions={
-            <button type="button" className="quietButton" onClick={dismissError}>
+            <Button type="button" onClick={dismissError}>
               Dismiss
-            </button>
+            </Button>
           }
         >
           {error.body}
@@ -427,9 +430,9 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
               A scenario is one conversation: what the caller says, and what must be true afterwards (a tool was called, something was said, a state variable
               ended up a certain way, an API request was or wasn’t made).
             </span>
-            <button type="button" className="primaryCta compactCta" onClick={() => setEditing({ id: null, scenario: newScenario(config) })}>
+            <Button type="button" variant="primary" size="compact" onClick={() => setEditing({ id: null, scenario: newScenario(config) })}>
               Write the first one
-            </button>
+            </Button>
           </div>
         ) : (
           <ul className="scList">
@@ -458,17 +461,16 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
                       <span className="scChip idle">Not run</span>
                     )}
                     <span className="scItemActions">
-                      <button type="button" className="quietButton" disabled={running || starting} onClick={() => go([scenario.id])}>
+                      <Button type="button" disabled={running || starting} onClick={() => go([scenario.id])}>
                         Run
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className="quietButton"
                         disabled={!!editing}
                         onClick={() => setEditing({ id: scenario.id, scenario: JSON.parse(JSON.stringify(scenario)) })}
                       >
                         Edit
-                      </button>
+                      </Button>
                       <button
                         type="button"
                         className="stFDel small"
@@ -530,10 +532,10 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
           <ul className="scHistory">
             {headlines.map((h) => (
               <li key={h.id}>
-                <button type="button" className={`quietButton ${run?.id === h.id ? 'on' : ''}`} aria-pressed={run?.id === h.id} onClick={() => open(h.id)}>
+                <Button type="button" className={run?.id === h.id ? 'on' : ''} aria-pressed={run?.id === h.id} onClick={() => open(h.id)}>
                   {formatWhen(h.startedAt)} · {h.ref === 'unsaved' ? 'unsaved edits' : h.ref || 'draft'} ·{' '}
                   {h.status === 'running' ? 'running' : `${h.passed}/${h.total} passed${h.failed ? `, ${h.failed} failed` : ''}`}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

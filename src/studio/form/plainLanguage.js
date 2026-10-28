@@ -717,7 +717,7 @@ export const CONTEXT = {
 };
 
 // ---- the words used when there is no entry: a label made by rule ----------------------------------------------------
-export const GLOSSARY = {
+const GLOSSARY = {
   stt: 'listening',
   tts: 'speaking',
   llm: 'thinking',

@@ -17,7 +17,7 @@ export const checkAlertsNow = () => (checkNowFn ? checkNowFn() : null);
 // A stopped check (another workspace opened, the studio closing) settles nothing: what it read is not all there is.
 const stopped = () => new DOMException('The check was stopped.', 'AbortError');
 
-export async function checkAlerts(bots, { nowMs = Date.now(), signal } = {}) {
+async function checkAlerts(bots, { nowMs = Date.now(), signal } = {}) {
   const ids = bots.map((b) => b.id);
   const rules = effectiveRules(getInsights().rules);
   const { callsMs, recordsMs } = lookback(rules);
@@ -47,7 +47,7 @@ export async function checkAlerts(bots, { nowMs = Date.now(), signal } = {}) {
 }
 
 // A browser notification for each new, unsnoozed alert, when the person turned them on and the browser allows it.
-export function notify(fired, { onOpen } = {}) {
+function notify(fired, { onOpen } = {}) {
   const { notify: prefs, acks } = getInsights();
   if (!prefs.browser || typeof window === 'undefined' || !('Notification' in window) || window.Notification.permission !== 'granted') return 0;
   let shown = 0;

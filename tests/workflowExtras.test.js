@@ -156,7 +156,12 @@ test('Front desk with specialists adds Sales and Support, told what they do, and
 
 test('Back to the first subagent: unavailable with one subagent; otherwise every other subagent can pass callers back, once', () => {
   assert.equal(template('back').unavailable(single()), 'There is only one subagent.');
-  const three = template('specialists').apply(single()).config;
+  // new specialists come with the way back already (workflow/handoffRules.js)
+  const made = template('specialists').apply(single()).config;
+  assert.equal(template('back').unavailable(made), 'Every subagent can already pass callers back.');
+  // with the way back taken from them, the template gives it back
+  const three = JSON.parse(JSON.stringify(made));
+  three.agents.items.slice(1).forEach((a) => (a.tools = (a.tools || []).filter((id) => !id.startsWith('back_to'))));
   assert.equal(template('back').unavailable(three), '');
   const done = template('back').apply(three);
   const [entry, ...rest] = done.config.agents.items;

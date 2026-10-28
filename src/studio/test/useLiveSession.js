@@ -71,6 +71,8 @@ export function useLiveSession({ onFinished } = {}) {
   const [media, setMedia] = useState({ mic: false, camera: false, screen: false });
   const [agentHint, setAgentHint] = useState(false);
   const [reconnecting, setReconnecting] = useState(false); // the connection dropped and LiveKit is trying to restore it
+  // what the agent says it is doing ('listening' | 'thinking' | 'speaking'), from its lk.agent.state attribute; '' until it says
+  const [agentState, setAgentState] = useState('');
 
   const roomRef = useRef(null);
   const lkRef = useRef(null);
@@ -142,6 +144,7 @@ export function useLiveSession({ onFinished } = {}) {
       room.disconnect().catch(() => {});
     }
     setMedia({ mic: false, camera: false, screen: false });
+    setAgentState('');
   }, []);
 
   useEffect(() => {
@@ -313,6 +316,10 @@ export function useLiveSession({ onFinished } = {}) {
         }
       });
       room.on(RoomEvent.ParticipantDisconnected, (p) => log(`${p.identity} left`));
+      room.on(RoomEvent.ParticipantAttributesChanged, (_changed, p) => {
+        const said = p?.attributes?.['lk.agent.state'];
+        if (aliveRef.current && p !== room.localParticipant && said) setAgentState(said);
+      });
       room.on(RoomEvent.Reconnecting, () => {
         setReconnecting(true);
         log('Connection lost, reconnecting…', 'warn');
@@ -471,6 +478,15 @@ export function useLiveSession({ onFinished } = {}) {
     [media, log],
   );
 
+  // How loud the agent is right now, 0 to 1, read many times a second by the voice view (so it is not React state).
+  const agentLevel = useCallback(() => {
+    const room = roomRef.current;
+    if (!room) return 0;
+    let level = 0;
+    for (const p of room.remoteParticipants?.values() || []) level = Math.max(level, p.audioLevel || 0);
+    return level;
+  }, []);
+
   return {
     status,
     info,
@@ -481,6 +497,8 @@ export function useLiveSession({ onFinished } = {}) {
     media,
     agentHint,
     reconnecting,
+    agentState,
+    agentLevel,
     simulated: false,
     audioHostRef,
     localVideoRef,

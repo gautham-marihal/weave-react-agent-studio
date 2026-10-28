@@ -5,6 +5,7 @@ import { openAlertsPage } from './AlertBell.jsx';
 import { withStatus } from './alertsModel.js';
 import { useInsights, useLiveAlerts } from './insightsStore.js';
 import './insights.css';
+import Button from '../../ui/Button.tsx';
 
 const ACTION = {
   tool: (a) => [`Open “${a.action.tool}”`, routeHref(a.bot, 'tools', { tool: a.action.tool })],
@@ -38,9 +39,9 @@ export default function AgentAlerts({ botId = '' }) {
         </p>
       </div>
       {botId && (
-        <button type="button" className="primaryCta compactCta" onClick={() => navigate(href, { guard: false })}>
+        <Button type="button" variant="primary" size="compact" onClick={() => navigate(href, { guard: false })}>
           {label}
-        </button>
+        </Button>
       )}
       <button type="button" className={botId ? 'quietButton' : 'primaryCta compactCta'} onClick={openAlertsPage}>
         {botId ? 'All alerts' : 'See the alerts'}

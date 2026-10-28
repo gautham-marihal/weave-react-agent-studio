@@ -19,7 +19,7 @@ const subscribe = (listener) => {
 const snapshot = () => state;
 
 let inflight = null;
-export function refreshProviders() {
+function refreshProviders() {
   if (inflight) return inflight;
   set({ loading: true });
   inflight = api

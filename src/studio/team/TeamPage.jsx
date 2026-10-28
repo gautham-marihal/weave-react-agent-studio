@@ -21,6 +21,8 @@ import {
   scopeAgents,
 } from './teamModel.js';
 import './team.css';
+import Button from '../../ui/Button.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 const STATUS = { active: { text: 'Active', tone: 'good' }, invited: { text: 'Invited', tone: 'wait' } };
 
@@ -107,16 +109,17 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
           <p>Who can work in {workspaceName || 'this workspace'}. Give each person the whole workspace, or only the agents they need.</p>
         </div>
         <div className="pageHeaderActions">
-          <button
+          <Button
             type="button"
-            className="primaryCta createButton"
+            variant="primary"
+            className="createButton"
             onClick={() => {
               setPanel({ mode: 'invite' });
               setNotice('');
             }}
           >
             <Icon name="plus" size={14} /> Invite people
-          </button>
+          </Button>
         </div>
       </section>
       <Notice kind="info" title="Preview: saved in this browser only">
@@ -135,14 +138,7 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
       )}
 
       <div className="tmTools">
-        <input
-          className="stFInput"
-          type="search"
-          value={query}
-          placeholder="Search people"
-          aria-label="Search people"
-          onChange={(event) => setQuery(event.target.value)}
-        />
+        <Input type="search" value={query} placeholder="Search people" aria-label="Search people" onChange={(event) => setQuery(event.target.value)} />
         <label className="tmFilter">
           <span>Who can open</span>
           <Select className="stFInput" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} aria-label="Who can open">
@@ -204,18 +200,18 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
                 ) : confirming === m.id ? (
                   <>
                     <span className="tmSure">Remove {m.name}?</span>
-                    <button type="button" className="quietButton small danger" onClick={() => remove(m.id)}>
+                    <Button type="button" size="small" className="danger" onClick={() => remove(m.id)}>
                       Remove
-                    </button>
-                    <button type="button" className="quietButton small" onClick={() => setConfirming('')}>
+                    </Button>
+                    <Button type="button" size="small" onClick={() => setConfirming('')}>
                       Keep
-                    </button>
+                    </Button>
                   </>
                 ) : (
                   <>
-                    <button
+                    <Button
                       type="button"
-                      className="quietButton small"
+                      size="small"
                       onClick={() => {
                         setPanel({ mode: 'edit', id: m.id });
                         setNotice('');
@@ -224,10 +220,10 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
                       aria-label={`Change access of ${m.name}`}
                     >
                       Change access
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="quietButton small"
+                      size="small"
                       onClick={() => {
                         setConfirming(m.id);
                         setProblem('');
@@ -235,7 +231,7 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
                       aria-label={`Remove ${m.name}`}
                     >
                       Remove
-                    </button>
+                    </Button>
                   </>
                 )}
               </span>

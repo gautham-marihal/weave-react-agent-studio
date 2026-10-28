@@ -22,6 +22,7 @@ import './form.css';
 import './formLook.css';
 import Icon from '../../ui/Icon.jsx';
 import { hiddenParts } from './hiddenParts.js';
+import Button from '../../ui/Button.tsx';
 
 // Sections whose content depends on something not built yet, said
 // where the author is working (the API's "what is not there yet").
@@ -390,9 +391,9 @@ export default function FormEditor({
         kind="warn"
         title="The JSON has a syntax error"
         actions={
-          <button type="button" className="quietButton" onClick={onShowJson}>
+          <Button type="button" onClick={onShowJson}>
             Open the JSON view
-          </button>
+          </Button>
         }
       >
         The form can’t show a config that isn’t valid JSON. Fix it in the JSON view and the form comes back.
@@ -666,9 +667,9 @@ export default function FormEditor({
             ) : (
               <div className="stFNotSet">
                 <p>This isn’t part of the agent yet.</p>
-                <button type="button" className="primaryCta compactCta" onClick={() => commit(section, engine.defaultFor(sectionSchema))}>
+                <Button type="button" variant="primary" size="compact" onClick={() => commit(section, engine.defaultFor(sectionSchema))}>
                   <Icon name="plus" size={14} /> Add {(part ? humanize(section) : view?.label || humanize(section)).toLowerCase()}
-                </button>
+                </Button>
               </div>
             )}
           </div>

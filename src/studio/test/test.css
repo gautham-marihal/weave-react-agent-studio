@@ -661,3 +661,19 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/* a web voice conversation: the call (VoiceStage) fills the card; the transcript opens under it */
+.stTVoice {
+  min-height: clamp(360px, calc(100vh - 520px), 640px);
+}
+.stTTranscriptToggle {
+  display: block;
+  margin: 0 auto 14px;
+}
+.stTChat > .stNotice {
+  margin: 0 18px 12px;
+}
+.stTMessages.stTTranscript {
+  height: clamp(200px, calc(100vh - 620px), 360px);
+  border-top: 1px solid var(--line);
+}

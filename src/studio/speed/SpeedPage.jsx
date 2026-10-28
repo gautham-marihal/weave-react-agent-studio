@@ -10,6 +10,7 @@ import { PER_AGENT, useSpeedData } from './useSpeedData.ts';
 import { DayChart, StageBars } from './SpeedCharts.jsx';
 import { humanize } from '../agent/rowNames.js';
 import './speed.css';
+import Button from '../../ui/Button.tsx';
 
 const PERIODS = [
   [7, 'Last 7 days'],
@@ -142,9 +143,9 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
             ))}
           </Select>
         </label>
-        <button type="button" className="quietButton" onClick={data.refresh} disabled={data.loading}>
+        <Button type="button" onClick={data.refresh} disabled={data.loading}>
           {data.loading ? 'Reading…' : 'Refresh'}
-        </button>
+        </Button>
       </div>
 
       <DemoNote kind="calls">The calls are made up, and so are their timings.</DemoNote>
@@ -284,22 +285,22 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
                           <div className="csAdviceAgents">
                             <span>{a.action}:</span>
                             {a.agents.map((g) => (
-                              <button key={g.bot} type="button" className="quietButton" onClick={() => openSetting(g.bot, g.path)}>
+                              <Button key={g.bot} type="button" onClick={() => openSetting(g.bot, g.path)}>
                                 {/* named "Choose a faster model for Front Desk 2.4 s": action, then what's seen */}
                                 <span className="srOnly">{a.action} for </span>
                                 {names[g.bot] || g.bot}
                                 <small>{seconds(g.ms)}</small>
                                 <Icon name="arrowRight" size={13} />
-                              </button>
+                              </Button>
                             ))}
                           </div>
                         )}
                       </div>
                       {one && (
-                        <button type="button" className="quietButton" onClick={() => openSetting(one.bot, one.path)}>
+                        <Button type="button" onClick={() => openSetting(one.bot, one.path)}>
                           {a.action}
                           <Icon name="arrowRight" size={14} />
-                        </button>
+                        </Button>
                       )}
                     </li>
                   );

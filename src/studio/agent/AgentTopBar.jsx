@@ -7,6 +7,7 @@ import { agentState } from '../status.js';
 import { formatWhen } from '../format.js';
 import { navigate, routeHref } from '../route.js';
 import { SAVE_LABEL } from '../../pages/shared.jsx';
+import Button from '../../ui/Button.tsx';
 
 // The bar across the top of an agent: name, state, save state and changes since publish on the left; on the right only
 // what any page needs (checks, describe, test, save, publish). Everything else is in the "More" menu.
@@ -82,37 +83,38 @@ export default function AgentTopBar({
           </Tip>
         )}
         <Tip label="Tell the assistant what you need in plain English">
-          <button type="button" className="quietButton nlBtn" onClick={onDescribe}>
+          <Button type="button" className="nlBtn" onClick={onDescribe}>
             <Icon name="sparkle" size={16} />
             Describe
-          </button>
+          </Button>
         </Tip>
         <Tip label={testOpen ? 'Close the test panel' : live ? 'A test conversation is running' : 'Talk to the agent while you edit it'}>
-          <button type="button" className={`quietButton nlBtn ${testOpen ? 'on' : ''}`} aria-pressed={testOpen} onClick={onTest}>
+          <Button type="button" className={`nlBtn ${testOpen ? 'on' : ''}`} aria-pressed={testOpen} onClick={onTest}>
             <Icon name="test" size={16} />
             Test{live ? <i className="nlLive" aria-label="A test conversation is running" /> : null}
-          </button>
+          </Button>
         </Tip>
         {onPreview && (
           <Tip label="See the exact instructions the model is given, as the runtime puts them together">
-            <button type="button" className="quietButton nlBtn" onClick={onPreview}>
+            <Button type="button" className="nlBtn" onClick={onPreview}>
               <Icon name="eye" size={16} />
               Preview prompt
-            </button>
+            </Button>
           </Tip>
         )}
         {canSave || saving ? (
           // a disabled button gets no pointer events, so it keeps the browser's own tip
           <Tip label={`Save the draft (${SAVE_LABEL})`}>
-            <button
+            <Button
               type="button"
-              className="primaryCta compactCta"
+              variant="primary"
+              size="compact"
               onClick={() => editor.save()}
               disabled={!canSave}
               title={!canSave ? `Save the draft (${SAVE_LABEL})` : undefined}
             >
               {saving ? 'Saving…' : 'Save'}
-            </button>
+            </Button>
           </Tip>
         ) : null}
         <Tip label={dirty ? 'Save first: a version is made from the saved draft' : 'Freeze the draft as a version you can put live'}>

@@ -18,7 +18,7 @@ const subscribe = (listener) => {
 const snapshot = () => state;
 
 let inflight = null;
-export function refreshChannelTypes() {
+function refreshChannelTypes() {
   if (inflight) return inflight;
   set({ loading: true });
   inflight = api

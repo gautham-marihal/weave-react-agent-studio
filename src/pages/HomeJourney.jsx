@@ -10,6 +10,7 @@ import StatePill from '../studio/StatePill.jsx';
 import { agentState } from '../studio/status.js';
 import { useAsync } from '../studio/useAsync.js';
 import Select from '../ui/Select.tsx';
+import Button from '../ui/Button.tsx';
 
 // Home's "what now?": the agent you last worked on, how far it is from ready, and the next thing to do.
 // The steps come from readiness.js with the same inputs as the agent's menu and Overview, so they always agree.
@@ -97,9 +98,9 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
           An agent answers calls or chats for you. Pick a starting point, give it a name, and you will be talking to it in a few minutes.
         </p>
         {/* quiet: the page's "Create agent" above is its one strong button, and does the same */}
-        <button type="button" className="quietButton compactCta" onClick={onCreate}>
+        <Button type="button" size="compact" onClick={onCreate}>
           Create an agent
-        </button>
+        </Button>
       </section>
     );
   }
@@ -179,9 +180,9 @@ export default function HomeJourney({ bots, onOpenTab, onCreate }) {
             </p>
           )}
           {ready && (
-            <button type="button" className="primaryCta compactCta hjNext" onClick={() => onOpenTab(bot.id, 'home')}>
+            <Button type="button" variant="primary" size="compact" className="hjNext" onClick={() => onOpenTab(bot.id, 'home')}>
               Open its overview <Icon name="arrowRight" size={15} />
-            </button>
+            </Button>
           )}
         </>
       )}

@@ -1,5 +1,6 @@
 import React from 'react';
 import Icon from '../../../ui/Icon.jsx';
+import Button from '../../../ui/Button.tsx';
 
 // A bar at the end of the agent's page while it is not ready: the next step, with a button that opens it.
 //   plan: the steps to get it ready (readiness.js)
@@ -15,9 +16,9 @@ export default function NextStepBar({ plan, onStep }) {
       <p className="tw-m-0 tw-min-w-0 tw-text-sm tw-text-ink-soft">
         <strong className="tw-text-ink">Next: {next.label}.</strong> {next.text}
       </p>
-      <button type="button" className="quietButton compactCta tw-flex tw-items-center tw-gap-2" onClick={() => onStep(next)}>
+      <Button type="button" size="compact" className="tw-flex tw-items-center tw-gap-2" onClick={() => onStep(next)}>
         {next.label} <Icon name="arrowRight" size={14} />
-      </button>
+      </Button>
     </div>
   );
 }

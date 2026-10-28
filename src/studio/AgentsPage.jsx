@@ -32,6 +32,7 @@ import { ErrorState, Modal, Notice } from './ui.jsx';
 import Icon from '../ui/Icon.jsx';
 import { SkeletonRows } from '../ui/Skeleton.jsx';
 import { askConfirm } from '../ui/dialogs.js';
+import Button from '../ui/Button.tsx';
 
 // a picture for each starting point in the create dialog
 const STARTER_ICONS = { support: 'agent', receptionist: 'home', knowledge: 'records', lead: 'team', appointment: 'flag', feedback: 'quote', blank: 'plus' };
@@ -358,21 +359,21 @@ function RemovedRow({ bot }) {
       {asking ? (
         <span className="stRemovedAsk" role="group" aria-label={`Delete ${label} from this list?`}>
           <span className="stMuted">Delete from this list? It stays on the server.</span>
-          <button type="button" className="quietButton danger" onClick={() => dismissBot(bot.id)}>
+          <Button type="button" className="danger" onClick={() => dismissBot(bot.id)}>
             Delete
-          </button>
-          <button type="button" className="quietButton" onClick={() => setAsking(false)}>
+          </Button>
+          <Button type="button" onClick={() => setAsking(false)}>
             Cancel
-          </button>
+          </Button>
         </span>
       ) : (
         <span className="stRemovedActions">
-          <button type="button" className="quietButton" onClick={() => restoreBot(bot.id)}>
+          <Button type="button" onClick={() => restoreBot(bot.id)}>
             Restore
-          </button>
-          <button type="button" className="quietButton danger" aria-label={`Delete ${label} from this list`} onClick={() => setAsking(true)}>
+          </Button>
+          <Button type="button" className="danger" aria-label={`Delete ${label} from this list`} onClick={() => setAsking(true)}>
             Delete
-          </button>
+          </Button>
         </span>
       )}
     </li>
@@ -497,9 +498,9 @@ export default function AgentsPage({ route }) {
           <p>{list.length ? 'Open an agent to edit its draft, publish versions, deploy them and try them out.' : 'Agents you create appear here.'}</p>
         </div>
         <div className="pageHeaderActions">
-          <button className="primaryCta createButton" type="button" onClick={() => setCreating(true)}>
+          <Button variant="primary" className="createButton" type="button" onClick={() => setCreating(true)}>
             <Icon name="plus" size={14} /> Create agent
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -522,9 +523,9 @@ export default function AgentsPage({ route }) {
               : 'Create one to get a valid starting draft. You can edit everything afterwards.'}
           </p>
           {/* quiet: the page's "Create agent" above is its one strong button, and does the same */}
-          <button className="quietButton compactCta" type="button" onClick={() => setCreating(true)}>
+          <Button size="compact" type="button" onClick={() => setCreating(true)}>
             Create {removed.length ? 'an' : 'your first'} agent
-          </button>
+          </Button>
         </section>
       )}
 
@@ -670,15 +671,15 @@ export default function AgentsPage({ route }) {
           )}
           {paged.pages > 1 && (
             <nav className="stPager" aria-label="Pages of agents">
-              <button type="button" className="quietButton" disabled={paged.page <= 1} onClick={() => setPage(paged.page - 1)}>
+              <Button type="button" disabled={paged.page <= 1} onClick={() => setPage(paged.page - 1)}>
                 Previous
-              </button>
+              </Button>
               <span role="status">
                 {paged.from}–{paged.to} of {paged.total}
               </span>
-              <button type="button" className="quietButton" disabled={paged.page >= paged.pages} onClick={() => setPage(paged.page + 1)}>
+              <Button type="button" disabled={paged.page >= paged.pages} onClick={() => setPage(paged.page + 1)}>
                 Next
-              </button>
+              </Button>
             </nav>
           )}
         </>

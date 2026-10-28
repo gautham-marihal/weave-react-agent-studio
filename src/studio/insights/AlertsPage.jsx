@@ -11,6 +11,8 @@ import { acknowledge, clearHistory, reopen, resetRules, setNotify, setRule, snoo
 import { CHECK_EVERY_MS, checkAlertsNow } from './useAlertWatcher.js';
 import { EmptyState } from '../agent/PageShell.jsx';
 import './insights.css';
+import Button from '../../ui/Button.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 const ACTION_LABEL = {
   tool: (a) => `Open “${a.action.tool}”`,
@@ -71,24 +73,24 @@ export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '' }) {
           {` · ${alert.why}`}
         </small>
         <div className="inActions">
-          <button type="button" className="primaryCta compactCta" onClick={act}>
+          <Button type="button" variant="primary" size="compact" onClick={act}>
             {ACTION_LABEL[alert.action.kind](alert)}
-          </button>
+          </Button>
           {alert.callIds.length > 0 && (
-            <button type="button" className="quietButton" aria-expanded={showCalls} onClick={() => setShowCalls((v) => !v)}>
+            <Button type="button" aria-expanded={showCalls} onClick={() => setShowCalls((v) => !v)}>
               {showCalls ? 'Hide the calls' : `The ${alert.callIds.length === 1 ? 'call' : `${alert.callIds.length} calls`}`}
-            </button>
+            </Button>
           )}
           {/* the housekeeping, quieter and to the right: who is on it, snoozing, sharing */}
           <span className="inMinor">
             {alert.status === 'new' ? (
-              <button type="button" className="quietButton" onClick={() => acknowledge(alert.key, userName)} title="Tell others you are looking into it">
+              <Button type="button" onClick={() => acknowledge(alert.key, userName)} title="Tell others you are looking into it">
                 I’m on it
-              </button>
+              </Button>
             ) : (
-              <button type="button" className="quietButton" onClick={() => reopen(alert.key)}>
+              <Button type="button" onClick={() => reopen(alert.key)}>
                 Mark as new
-              </button>
+              </Button>
             )}
             <ChoiceMenu
               label="Snooze"
@@ -99,9 +101,9 @@ export function AlertCard({ alert, onOpenAgent, onOpenCall, userName = '' }) {
                 ['Until tomorrow, 9:00', () => snooze(alert.key, tomorrowMorning())],
               ]}
             />
-            <button type="button" className="quietButton" onClick={copy} title="Copy it to paste into a chat or an email">
+            <Button type="button" onClick={copy} title="Copy it to paste into a chat or an email">
               <Icon name={copied ? 'check' : 'copy'} size={15} /> {copied ? 'Copied' : 'Copy'}
-            </button>
+            </Button>
           </span>
         </div>
         {showCalls && (
@@ -133,9 +135,9 @@ function RuleNumber({ rule, name, field }) {
     setTyped(String(value));
   };
   return (
-    <input
+    <Input
       type="number"
-      className="stFInput small"
+      size="small"
       min={field.min}
       max={field.max}
       value={typed}
@@ -226,9 +228,9 @@ function Notifications() {
       </p>
       {notify.browser && permission === 'granted' && (
         <p>
-          <button type="button" className="quietButton" onClick={test}>
+          <Button type="button" onClick={test}>
             Send a test notification
-          </button>{' '}
+          </Button>{' '}
           {tested && <span className="stMuted">{tested}</span>}
         </p>
       )}
@@ -276,9 +278,9 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
                 ? `Checked ${formatWhen(live.checkedAt)} · ${live.watching} agent${live.watching === 1 ? '' : 's'}`
                 : 'Not checked yet'}
           </small>
-          <button type="button" className="quietButton" onClick={() => checkAlertsNow()} disabled={live.checking || !bots.length}>
+          <Button type="button" onClick={() => checkAlertsNow()} disabled={live.checking || !bots.length}>
             Check now
-          </button>
+          </Button>
         </div>
       </section>
       <DemoNote kind="calls">These calls are made-up examples, and so is what goes wrong in them. No real caller is involved.</DemoNote>
@@ -320,9 +322,9 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
                   title="Not checked yet"
                   text="Weave checks your agents’ recent calls every few minutes while the studio is open."
                   action={
-                    <button type="button" className="secondaryCta" onClick={() => checkAlertsNow()}>
+                    <Button type="button" variant="secondary" onClick={() => checkAlertsNow()}>
                       Check now
-                    </button>
+                    </Button>
                   }
                 />
               )}
@@ -372,9 +374,9 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
                     ))}
                   </ul>
                   <p>
-                    <button type="button" className="quietButton" onClick={clearHistory}>
+                    <Button type="button" onClick={clearHistory}>
                       Clear this list
-                    </button>
+                    </Button>
                   </p>
                 </>
               )}
@@ -394,9 +396,9 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
               </ul>
               {changedRules && (
                 <p>
-                  <button type="button" className="quietButton" onClick={resetRules}>
+                  <Button type="button" onClick={resetRules}>
                     Back to the recommended settings
-                  </button>
+                  </Button>
                 </p>
               )}
             </section>

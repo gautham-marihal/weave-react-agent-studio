@@ -9,6 +9,7 @@ import { navigate, routeHref } from './route.js';
 import { envLabel } from './ui.jsx';
 import { HUES, cx } from './agent/workspace/look.js';
 import HueIcon from './agent/workspace/HueIcon.jsx';
+import Button from '../ui/Button.tsx';
 
 // The Agents page's "Cards" view. Closed, a card shows the draft, checks and latest version; open, where it runs, the
 // draft's problems and the next pages. Cards are reordered by their handle or the keyboard.
@@ -123,9 +124,9 @@ function AgentCard({ bot, health, pinned, open, onToggle, onPin, menuItems }) {
               <Icon name="pin" size={15} />
             </button>
           </Tip>
-          <button type="button" className="quietButton compactCta tw-inline-flex tw-items-center tw-gap-1.5" onClick={() => go('home')}>
+          <Button type="button" size="compact" className="tw-inline-flex tw-items-center tw-gap-1.5" onClick={() => go('home')}>
             <Icon name="external" size={14} /> Open
-          </button>
+          </Button>
           <Menu label={`Actions for ${name}`} items={menuItems(bot)} />
           <button
             type="button"
@@ -188,9 +189,9 @@ function CardDetails({ id, bot, health, go }) {
                   )}
                 >
                   <span>{part.text.charAt(0).toUpperCase() + part.text.slice(1)}</span>
-                  <button type="button" className="quietButton compactCta" onClick={() => go(part.tab)}>
+                  <Button type="button" size="compact" onClick={() => go(part.tab)}>
                     Fix it
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

@@ -19,6 +19,8 @@ import { RECORDING_NOTICE } from '../../setup/setupModel.js';
 import { describeRecords, readRecords, setLogDays, setLogEnabled } from '../../records/recordsModel.js';
 import { TryRedactionView } from '../../form/TryPanels.jsx';
 import Select from '../../../ui/Select.tsx';
+import Button from '../../../ui/Button.tsx';
+import { Input, TextArea } from '../../../ui/Input.tsx';
 
 // The plain-words top of the After the call page: summary, questions, recording (and the notice), hidden sensitive
 // details. Everything else is in the settings form below, which no longer asks for these.
@@ -42,8 +44,7 @@ export function SummaryBlock({ config, set, unsupported }) {
         <label className="suField">
           <span>What it should cover</span>
           <small>In your own words. Leave it empty for a general summary.</small>
-          <textarea
-            className="stFInput"
+          <TextArea
             rows={3}
             value={summary.prompt}
             placeholder="The reason for the call, what was done, and anything to follow up."
@@ -99,8 +100,7 @@ export function QuestionsBlock({ config, set, unsupported }) {
         <ul className="smQuestions" aria-label="Questions about each call" ref={listRef}>
           {questions.map((q, i) => (
             <li key={`${q.index}:${q.id}`}>
-              <input
-                className="stFInput"
+              <Input
                 value={q.question}
                 placeholder="Type a question about the call"
                 aria-label={`Question ${i + 1}`}
@@ -141,9 +141,9 @@ export function QuestionsBlock({ config, set, unsupported }) {
         </ul>
       )}
       <div className="suActionButtons">
-        <button type="button" className="quietButton" ref={addRef} onClick={() => add({ question: '', type: 'boolean' })}>
+        <Button type="button" ref={addRef} onClick={() => add({ question: '', type: 'boolean' })}>
           Add a question
-        </button>
+        </Button>
         {ideas.map((idea) => (
           <button key={idea.question} type="button" className="suChip" onClick={() => add(idea)}>
             {idea.question}
@@ -226,8 +226,7 @@ export function RecordingBlock({ config, set, unsupported }) {
             ? 'Said at the start of phone and voice calls, before the greeting. Many places require it when calls are kept.'
             : 'Said at the start of phone and voice calls, before the greeting. This agent has none yet, so nothing is said.'}
         </small>
-        <input
-          className="stFInput"
+        <Input
           value={notice}
           placeholder="This call may be recorded to improve our service."
           onChange={(event) => set(setNotice(config, event.target.value))}

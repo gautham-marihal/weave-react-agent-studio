@@ -63,9 +63,9 @@ export const slugify = (value) =>
     .replace(/-+$/, '')
     .slice(0, 64);
 
-export const BOT_ID_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
+const BOT_ID_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 // The folders the runtime writes call data to: the API answers 400 for an agent with one of these ids.
-export const RESERVED_BOT_IDS = ['transcripts', 'metrics', 'logs', 'sessions', 'tmp'];
+const RESERVED_BOT_IDS = ['transcripts', 'metrics', 'logs', 'sessions', 'tmp'];
 
 // A new agent's id from its name ('agent' if nothing is usable, e.g. another script), made free with -2, -3... when
 // taken or reserved, so a person only gives a name and never meets an id problem.
@@ -109,7 +109,7 @@ export function nextVersion(version, bump) {
 }
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
-export const isSemver = (value) => SEMVER.test(String(value || ''));
+const isSemver = (value) => SEMVER.test(String(value || ''));
 
 // -1, 0 or 1. Compares numerically, so 1.10.0 is newer than 1.9.0.
 export function compareVersions(a, b) {

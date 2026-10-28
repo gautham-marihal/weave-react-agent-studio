@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { whatIfValue, whatIfVariables } from './serverPreview.js';
 import Select from '../../ui/Select.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 // "Preview as…": the what-ifs the server's previews take (channel, time, caller number, a few state values). Shared by
 // the prompt preview and "Try it" so both ask the same in the same words; only changes from the defaults are sent.
@@ -60,8 +61,8 @@ export default function WhatIfBar({ config, what, phone = true }) {
       )}
       <label>
         <span>Pretend it is</span>
-        <input
-          className="stFInput small"
+        <Input
+          size="small"
           type="datetime-local"
           value={what.nowLocal}
           onChange={(event) => what.setNowLocal(event.target.value)}
@@ -71,8 +72,8 @@ export default function WhatIfBar({ config, what, phone = true }) {
       {phone && (
         <label>
           <span>Caller’s number</span>
-          <input
-            className="stFInput small"
+          <Input
+            size="small"
             type="text"
             inputMode="tel"
             value={what.callerPhoneText}
@@ -100,8 +101,8 @@ export default function WhatIfBar({ config, what, phone = true }) {
               <option value="false">false</option>
             </Select>
           ) : (
-            <input
-              className="stFInput small"
+            <Input
+              size="small"
               type={v.type === 'number' || v.type === 'integer' ? 'number' : 'text'}
               value={what.typed[v.name] ?? ''}
               placeholder="as it starts"

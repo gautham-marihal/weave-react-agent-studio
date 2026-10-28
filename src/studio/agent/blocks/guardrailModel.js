@@ -7,8 +7,8 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 const strings = (v) => list(v).filter((s) => typeof s === 'string' && s.trim());
 
 // A line's text, or '' when it refers to a fixed message (the field then says which).
-export const sayText = (say) => (typeof say === 'string' ? say : '');
-export const sayRef = (say) => (isObj(say) && typeof say.message === 'string' ? say.message : '');
+const sayText = (say) => (typeof say === 'string' ? say : '');
+const sayRef = (say) => (isObj(say) && typeof say.message === 'string' ? say.message : '');
 
 // Changes `guardrails` on a copy, and takes out what is left empty: an empty part, then an empty `guardrails`.
 function edit(config, change) {

@@ -3,6 +3,7 @@ import { JsonInput, StringList } from './fields.jsx';
 import { PARAM_KINDS, modelView, problems as paramProblems, readParams, writeParams } from './paramSchema.js';
 import Icon from '../../ui/Icon.jsx';
 import Select from '../../ui/Select.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 // A tool's parameters as rows (name, kind, purpose, needed, choices) instead of
 // hand-written JSON Schema. What the rows can't show is written back untouched; "Edit
@@ -46,8 +47,8 @@ export default function ParamsEditor({ value, onChange, toolName, description, d
       {rows.map((row, index) => (
         <div className="stParamRow" key={index} data-param={row.name}>
           <div className="stParamTop">
-            <input
-              className="stFInput mono"
+            <Input
+              mono
               type="text"
               spellCheck={false}
               value={row.name}
@@ -101,8 +102,7 @@ export default function ParamsEditor({ value, onChange, toolName, description, d
           {row.kind === 'advanced' ? (
             <small className="stMuted">This parameter has a structure the list can’t show. Use “Edit as JSON” to change it.</small>
           ) : (
-            <input
-              className="stFInput"
+            <Input
               type="text"
               value={row.description}
               placeholder="What it is for: the model reads this to decide what to fill in"

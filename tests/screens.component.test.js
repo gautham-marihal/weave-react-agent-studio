@@ -314,6 +314,25 @@ test('Preview: the microphone and the picture button appear exactly when the cha
   await app.unmount();
 });
 
+test('Preview: a web voice agent is shown as a call: the orb, what it is doing, and the latest line as captions', async () => {
+  window.localStorage.clear();
+  const config = agent();
+  for (const channel of config.channels) if (channel.type === 'web_chat') channel.type = 'web_voice';
+  const app = await mountScreen('preview', config, { ready: '.pvPanel' });
+  const stage = () => $(app.container, '.pvVoice');
+  assert.equal(stage().getAttribute('data-voice-state'), 'idle');
+  assert.match(textOf(stage()), /Ready to talk/);
+  assert.equal($(stage(), '.vBadge'), null, 'the panel’s header shows the status already');
+  await a.click(byText(stage(), 'button', 'Start a simulated call'));
+  for (let i = 0; i < 60 && !/Hi|Hello|Welcome/i.test(textOf($(app.container, '.vCaptions'))); i += 1) await app.wait(50);
+  assert.equal(stage().getAttribute('data-voice-state'), 'speaking', 'the greeting is being said');
+  assert.match(textOf($(app.container, '.vCaptions')), /^Agent /);
+  assert.equal($(app.container, '.pvLog'), null, 'the transcript waits to be asked for');
+  await a.click(byText($(app.container, '.pvPanel'), 'button', /Show the transcript/));
+  assert.ok($(app.container, '.pvLog .pvMsg.bot'));
+  await app.unmount();
+});
+
 test('Preview: in demo mode the real agent can’t be chosen, and a configuration problem is an error with a way to retry', async () => {
   window.localStorage.clear();
   const locked = await mountScreen('preview', agent(), { ready: '.pvPanel', props: { locked: true } });

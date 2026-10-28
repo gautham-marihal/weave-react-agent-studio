@@ -79,7 +79,7 @@ export const GROUPS = [
 ];
 export const groupOf = (event) => (GROUPS.find((g) => g.kinds.includes(event)) || { id: 'other' }).id;
 
-export const humanize = (name) =>
+const humanize = (name) =>
   String(name || 'event')
     .replace(/_/g, ' ')
     .replace(/^./, (c) => c.toUpperCase());

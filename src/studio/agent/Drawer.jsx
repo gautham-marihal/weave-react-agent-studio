@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
 import { holdStagedPanel } from './stagedPanel.js';
+import Button from '../../ui/Button.tsx';
 
 // Whether another dialog (a confirmation, the search) sits over the panel: the key came from it, or it was added to the
 // page after the panel (dialogs append to the end and draw above what came before).
-export function coveredBy(panel, target) {
+function coveredBy(panel, target) {
   if (!panel) return false;
   const layer = typeof target?.closest === 'function' ? target.closest('[aria-modal="true"]') : null;
   if (layer && layer !== panel) return true;
@@ -135,12 +136,12 @@ export function StagedDrawer({ editor, title, icon, onClose, children, width, do
       panelRef={panel}
       footer={
         <>
-          <button type="button" className="quietButton" onClick={onClose}>
+          <Button type="button" onClick={onClose}>
             Cancel
-          </button>
-          <button type="button" className="primaryCta compactCta" onClick={done}>
+          </Button>
+          <Button type="button" variant="primary" size="compact" onClick={done}>
             {changed ? doneLabel : 'Close'}
-          </button>
+          </Button>
         </>
       }
     >

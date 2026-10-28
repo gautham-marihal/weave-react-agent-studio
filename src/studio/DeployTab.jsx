@@ -11,6 +11,7 @@ import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { normalizePreflightKnowledge } from './release/checklist.js';
 import { AgentNumbers, useLiveNumbers } from '../pages/LiveNumbers.jsx';
 import Select from '../ui/Select.tsx';
+import Button from '../ui/Button.tsx';
 
 // The Deploy page: which version runs in each environment, putting a version live, what the runtime can't run yet
 // (UnsupportedNotices, also shown when publishing), and the deployment history.
@@ -397,9 +398,9 @@ export default function DeployTab({ botId, name = '', initialVersion, refreshKey
               {deploying ? 'Deploying…' : confirming ? `Confirm: deploy ${version} to production` : `Deploy to ${envLabel(environment)}`}
             </button>
             {confirming && (
-              <button type="button" className="quietButton" onClick={() => setConfirming(false)}>
+              <Button type="button" onClick={() => setConfirming(false)}>
                 Cancel
-              </button>
+              </Button>
             )}
           </div>
         </section>

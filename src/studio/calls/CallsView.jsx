@@ -10,6 +10,8 @@ import { usePref } from '../usePref.js';
 import { useCalls } from './useCalls.ts';
 import Select from '../../ui/Select.tsx';
 import './calls.css';
+import Button from '../../ui/Button.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 // An agent's calls (or every agent's): who, when, how long, how it went; selecting one opens its trace.
 // The API lists calls per agent, so "All agents" asks each and merges. The records hold what callers said and the API
@@ -46,9 +48,9 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
             {isDemoMode() ? '' : ' of every agent'}.
             {isDemoMode() && ' In this demo they are made-up examples, plus the conversations you had in the preview; no real caller is involved.'}
           </span>
-          <button type="button" className="quietButton" onClick={() => setNoticeSeen('1')}>
+          <Button type="button" onClick={() => setNoticeSeen('1')}>
             Got it
-          </button>
+          </Button>
         </p>
       )}
 
@@ -107,12 +109,12 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
         </label>
         <label>
           <span>Caller</span>
-          <input className="stFInput small" type="search" value={caller} placeholder="part of a number" onChange={(event) => setCaller(event.target.value)} />
+          <Input size="small" type="search" value={caller} placeholder="part of a number" onChange={(event) => setCaller(event.target.value)} />
         </label>
         <span className="clFilterActions">
-          <button type="button" className="quietButton" onClick={reload} disabled={busy}>
+          <Button type="button" onClick={reload} disabled={busy}>
             Refresh
-          </button>
+          </Button>
           <label className="clAuto">
             <input type="checkbox" checked={auto} onChange={(event) => setAuto(event.target.checked)} /> Every 10 s
           </label>
@@ -205,17 +207,17 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
               {bots.length > 0 && 'Trying an agent out makes a call too.'}
             </p>
             {onOpenAgent && effectiveBot && (
-              <button type="button" className="secondaryCta" onClick={() => onOpenAgent(effectiveBot)}>
+              <Button type="button" variant="secondary" onClick={() => onOpenAgent(effectiveBot)}>
                 Test this agent
-              </button>
+              </Button>
             )}
           </div>
         )}
         {hasMore && (
           <div className="clMore">
-            <button type="button" className="quietButton" onClick={loadMore} disabled={loadingMore}>
+            <Button type="button" onClick={loadMore} disabled={loadingMore}>
               {loadingMore ? 'Loading…' : 'Load more calls'}
-            </button>
+            </Button>
           </div>
         )}
       </div>

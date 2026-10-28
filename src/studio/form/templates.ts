@@ -10,7 +10,7 @@ type AnyConfig = any;
 
 // Roots a template may start with anywhere. Only `state`, `const` and `args` names can be checked here; the server
 // decides the rest (POST /validate, with a path), so findings here are only hints (amber), never errors.
-export const TEMPLATE_ROOTS = ['state', 'const', 'args', 'result', 'form', 'meta', 'call', 'channel', 'caller'];
+const TEMPLATE_ROOTS = ['state', 'const', 'args', 'result', 'form', 'meta', 'call', 'channel', 'caller'];
 
 type Place = { when: (path: string[]) => boolean; roots?: string[]; any?: boolean };
 
@@ -20,7 +20,7 @@ type Place = { when: (path: string[]) => boolean; roots?: string[]; any?: boolea
 //   an event supplies `error`, `reason`, `tool`, `transfer`, `from`, `to` (what happened)
 //   a task step's validation reads `value` (the answer just collected)
 //   a tool's direct delivery (`result.out_of_band`) reads the response's own field names, so any name is fine there
-export const PLACE_ROOTS: Place[] = [
+const PLACE_ROOTS: Place[] = [
   { when: (path) => path.includes('notifications'), roots: ['with'] },
   { when: (path) => path.includes('transfers'), roots: ['pbx', 'target'] },
   { when: (path) => path[0] === 'events' || path.includes('events'), roots: ['error', 'reason', 'tool', 'transfer', 'from', 'to', 'with'] },
@@ -33,7 +33,7 @@ export const TEMPLATE_FILTERS = [
   { name: 'urlencode', snippet: 'urlencode', help: 'Make safe for a web address' },
 ];
 
-export type Template = { start: number; end: number; expr: string; root: string; name: string; text: string };
+type Template = { start: number; end: number; expr: string; root: string; name: string; text: string };
 
 const BLOCK = /\{\{([^{}]*)\}\}/g;
 
@@ -70,7 +70,7 @@ export const RUNTIME_ROOTS = [
   { root: 'form', help: 'What a form collected' },
 ];
 
-export type TemplateScope = {
+type TemplateScope = {
   roots: string[];
   anyRoot: boolean;
   names: { state: string[]; const: string[]; args: string[] | null };
@@ -96,7 +96,7 @@ export function templateScope(
 // The tool's argument names, from its `parameters` JSON Schema.
 export const argNamesOf = (tool: AnyConfig): string[] => (isObj(tool?.parameters?.properties) ? Object.keys(tool.parameters.properties) : []);
 
-export type TemplateProblem = Template & { severity: 'hint'; reason: string };
+type TemplateProblem = Template & { severity: 'hint'; reason: string };
 
 // What looks wrong in a text's templates: a root not available here, or a name the config lacks. Always a hint
 // (`severity: 'hint'`): only the server can say for certain, and does, when the draft is checked.
@@ -129,7 +129,7 @@ export function templateProblems(text: unknown, scope: TemplateScope): TemplateP
   return problems;
 }
 
-export type Segment = { kind: 'plain' | 'tpl' | 'unknown'; text: string };
+type Segment = { kind: 'plain' | 'tpl' | 'unknown'; text: string };
 
 // Cuts the text into plain pieces and templates, marking the ones with a problem, so the screen can colour them.
 export function highlightSegments(text: unknown, scope: TemplateScope): Segment[] {
@@ -164,7 +164,7 @@ export function insertables(scope: TemplateScope): { group: string; label: strin
 }
 
 // Where a string sits in a tool: the arguments only exist inside the tool's own fields.
-export const toolIndexOf = (path: unknown): number | null => (Array.isArray(path) && path[0] === 'tools' && typeof path[1] === 'number' ? path[1] : null);
+const toolIndexOf = (path: unknown): number | null => (Array.isArray(path) && path[0] === 'tools' && typeof path[1] === 'number' ? path[1] : null);
 
 // ---- which plain strings are templates
 // The schema doesn't say which strings the runtime reads as templates: these keys do, plus any text with {{ }} in it.

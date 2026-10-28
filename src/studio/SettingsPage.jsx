@@ -8,6 +8,7 @@ import { useAsync } from './useAsync.js';
 import { DENSITIES, useDensity, useTechnicalNames } from './usePref.js';
 import { StyleCards } from '../ui/StylePicker.jsx';
 import { Choice, OneOf } from '../ui/OneOf.tsx';
+import Button from '../ui/Button.tsx';
 
 // Workspace settings. Workspaces and which agent is in which are kept in this browser; the agents live on the Agent
 // Builder API. The page says what is on the server and what is only local.
@@ -71,9 +72,9 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
                 <span>Workspace name</span>
                 <input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />
               </label>
-              <button type="submit" className="secondaryCta" disabled={!name.trim() || name.trim() === workspace.name}>
+              <Button type="submit" variant="secondary" disabled={!name.trim() || name.trim() === workspace.name}>
                 Save name
-              </button>
+              </Button>
               {savedName && (
                 <span className="settingsSaved" role="status">
                   Saved
@@ -196,9 +197,9 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
                         : health.error?.message || 'The API did not answer. Pages that need it will show an error until it is back.'}
                   </small>
                 </div>
-                <button type="button" className="quietButton" onClick={health.reload}>
+                <Button type="button" onClick={health.reload}>
                   Check again
-                </button>
+                </Button>
               </div>
             </Fold>
           )}

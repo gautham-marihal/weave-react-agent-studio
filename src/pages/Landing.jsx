@@ -5,6 +5,7 @@ import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
 import AiOrb from '../studio/preview/AiOrb.jsx';
+import Button from '../ui/Button.tsx';
 
 // The page before sign-in: what Weave is, the top bar's menus (Product, Solutions, Resources) and the ways to sign in.
 
@@ -108,12 +109,12 @@ export function Landing({ theme, onToggleTheme, onSignIn, onStart }) {
             config underneath.
           </p>
           <div className="heroButtons">
-            <button className="primaryCta heroPrimary" type="button" onClick={onStart}>
+            <Button variant="primary" className="heroPrimary" type="button" onClick={onStart}>
               Create your first agent <Icon name="arrowRight" size={16} />
-            </button>
-            <button className="secondaryCta" onClick={onSignIn}>
+            </Button>
+            <Button variant="secondary" onClick={onSignIn}>
               Sign in
-            </button>
+            </Button>
           </div>
           <div className="heroMeta">
             <span>

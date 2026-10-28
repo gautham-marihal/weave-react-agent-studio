@@ -23,6 +23,7 @@ import {
   stepState,
 } from './tryPanels.js';
 import Select from '../../ui/Select.tsx';
+import { Input, TextArea } from '../../ui/Input.tsx';
 
 // "Try a line": type a sample under a setting and the server's own code shows what the setting does with it
 // (pronunciation, safety rules, redaction, a task). Nothing is called, spent or read from secrets. Each panel asks only
@@ -104,9 +105,8 @@ function LineBox({ id, label, value, onChange, onRun, placeholder, busy, button 
     <div className="stTryRow">
       <label className="stTryArgs" htmlFor={id}>
         <span>{label}</span>
-        <input
+        <Input
           id={id}
-          className="stFInput"
           type="text"
           value={value}
           placeholder={placeholder}
@@ -144,7 +144,7 @@ function Marked({ line, found, label }) {
 }
 
 // ---- pronunciation --------------------------------------------------------------------------------------------------
-export function TrySpeechView({ config, scope = {} }) {
+function TrySpeechView({ config, scope = {} }) {
   const agents = list(config?.agents?.items).filter((a) => a?.id);
   const channels = list(config?.channels).filter((c) => c?.id);
   const [line, setLine] = useState('Your balance is $12.50 and your appointment is at 4:30 PM.');
@@ -262,8 +262,8 @@ export function TrySpeechView({ config, scope = {} }) {
       <details className="stTryWhatIf">
         <summary>Type it as it streams</summary>
         <p className="stFHelp">The AI’s words reach the voice in pieces. Write the pieces with a | between them to see what is spoken as each one arrives.</p>
-        <input
-          className="stFInput mono"
+        <Input
+          mono
           type="text"
           value={pieces}
           placeholder="It is at 4|:30 P|M today"
@@ -345,8 +345,9 @@ export function TryRedactionView({ config }) {
           {sensitive.map((name) => (
             <label key={name} className="stTryArgs">
               <span>{name}</span>
-              <input
-                className="stFInput small mono"
+              <Input
+                size="small"
+                mono
                 type="text"
                 value={values[name] || ''}
                 onChange={(event) => setValues({ ...values, [name]: event.target.value })}
@@ -484,8 +485,8 @@ function JsonState({ value, onChange, label }) {
   return (
     <label className="stTryArgs">
       <span>{label}</span>
-      <textarea
-        className="stFInput mono"
+      <TextArea
+        mono
         rows={2}
         spellCheck={false}
         value={text}
@@ -502,7 +503,7 @@ function JsonState({ value, onChange, label }) {
   );
 }
 
-export function TryTaskView({ config, taskId }) {
+function TryTaskView({ config, taskId }) {
   const channels = list(config?.channels).filter((c) => c?.id);
   const [stateText, setStateText] = useState('');
   const [channel, setChannel] = useState('');

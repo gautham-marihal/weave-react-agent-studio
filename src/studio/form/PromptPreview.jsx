@@ -6,6 +6,7 @@ import { describeWhen } from './promptPreview.js';
 import PromptExtras from './PromptExtras.jsx';
 import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
 import Icon from '../../ui/Icon.jsx';
+import Button from '../../ui/Button.tsx';
 
 // What the model will be told, from the server: the exact instructions, each conditional block and whether it is in,
 // the tools as the model sees them, and the size. The API runs the runtime's code on the editor's config and spends
@@ -179,9 +180,8 @@ export default function PromptPreview({ agentId, config, startOpen = false }) {
               <details className="stPromptExact" open={exactOpen || undefined} onToggle={(event) => setExactOpen(event.currentTarget.open)}>
                 <summary>The exact text the model receives</summary>
                 <pre aria-label="The exact instructions">{prompt.instructions}</pre>
-                <button
+                <Button
                   type="button"
-                  className="quietButton"
                   onClick={async () => {
                     // writeText answers later: a blocked clipboard rejects
                     // then, so it is awaited (as the Alerts page's Copy does)
@@ -195,7 +195,7 @@ export default function PromptPreview({ agentId, config, startOpen = false }) {
                   }}
                 >
                   {copied ? 'Copied' : 'Copy'}
-                </button>
+                </Button>
               </details>
             </>
           )}

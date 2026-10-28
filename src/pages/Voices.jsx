@@ -6,6 +6,7 @@ import { useVoicePreview } from './voicePreview.js';
 import Icon from '../ui/Icon.jsx';
 import { PartPanel, PartRow, Parts } from '../ui/Parts.tsx';
 import Select from '../ui/Select.tsx';
+import Button from '../ui/Button.tsx';
 
 // "English (US)" for "English (United States)", so the language column fits on one line (full name in the tooltip)
 const SHORT_COUNTRIES = { 'United States': 'US', 'United Kingdom': 'UK', 'United Arab Emirates': 'UAE' };
@@ -102,9 +103,9 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
           <h1>Voices</h1>
           <p>Explore provider voices, compare language and style, and choose the right voice for your agent.</p>
         </div>
-        <button className="primaryCta createButton" type="button" onClick={onAgents}>
+        <Button variant="primary" className="createButton" type="button" onClick={onAgents}>
           Open agents <Icon name="arrowRight" size={15} />
-        </button>
+        </Button>
       </section>
       <Parts value={mode} onChange={setMode}>
         <PartRow
@@ -156,9 +157,9 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                 Voice cloning and workspace-managed custom voice uploads are not available yet. You can already use your provider's own voice ID: set it in an
                 agent’s Config, under Models.
               </p>
-              <button className="primaryCta" onClick={onAgents}>
+              <Button variant="primary" onClick={onAgents}>
                 Open agents <Icon name="arrowRight" size={15} />
-              </button>
+              </Button>
             </section>
           ) : (
             <>
@@ -279,9 +280,9 @@ export function VoicesWorkspace({ onAgents, onUseVoice, agents = [] }) {
                             >
                               <Icon name="star" size={15} className={favorites.includes(voice.id) ? 'filled' : ''} />
                             </button>
-                            <button type="button" className="secondaryCta" onClick={() => onUseVoice(voice)}>
+                            <Button type="button" variant="secondary" onClick={() => onUseVoice(voice)}>
                               Use in an agent
-                            </button>
+                            </Button>
                           </div>
                         </td>
                       </tr>

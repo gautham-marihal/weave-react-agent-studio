@@ -728,7 +728,7 @@ html[data-style="premium"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .
   letter-spacing: 0.06em;
 }
 /* the menu: a gold rule beside the page you are on */
-html[data-style="premium"][data-theme] body .sidebar :is(.workspaceSwitch, .sideUtility, .profileTrigger) {
+html[data-style="premium"][data-theme] body .sidebar :is(.workspaceSwitch, .sideUtility) {
   color: var(--text);
 }
 html[data-style="premium"][data-theme] body .sidebar .sideDivider {
@@ -1908,7 +1908,7 @@ html[data-style="professional"][data-theme] body :is(.primaryCta, .topStart):hov
   opacity: 1;
   filter: brightness(0.92);
 }
-html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta, .nlBtn, .profileDot) {
+html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta, .nlBtn) {
   border-radius: 4px;
 }
 html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta):hover:not(:disabled) {

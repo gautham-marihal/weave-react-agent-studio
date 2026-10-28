@@ -146,7 +146,7 @@ const READERS = {
   guardrails: (c) => guardrailsPart(c),
   aftercall: (c) => afterCallPart(c),
 };
-export const BUILD_PAGES = PAGE_GROUPS.find((g) => g.id === 'build').pages;
+const BUILD_PAGES = PAGE_GROUPS.find((g) => g.id === 'build').pages;
 
 // -> [{ id, label, icon, purpose, state: 'done' | 'todo' | 'attention' | 'optional', status }], in the menu's order.
 //   errorsByPage: what the checks found, by page (a page with errors needs attention, whatever it holds)

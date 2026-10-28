@@ -5,6 +5,7 @@ import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
 import Select from '../ui/Select.tsx';
+import Button from '../ui/Button.tsx';
 
 // Signing in (Login) and, the first time, saying who you are (ProfileSetup). There is no real sign-in in the studio:
 // who is signed in is kept in this browser (docs/PRODUCTION.md says what goes in front of it for real).
@@ -152,18 +153,18 @@ export function Login({ theme, onToggleTheme, onLogin, onBack, newcomer = false 
               <strong>Reset your password</strong>
               <p>Sign-in is kept on this device for now, so there’s no password to reset. Continue with your work email and your workspaces open as before.</p>
               <div className="resetActions">
-                <button type="button" className="secondaryCta compactSecondary" disabled={!emailValid} onClick={() => onLogin(email.trim(), keep)}>
+                <Button type="button" variant="secondary" className="compactSecondary" disabled={!emailValid} onClick={() => onLogin(email.trim(), keep)}>
                   {emailValid ? `Continue as ${email.trim()}` : 'Enter your work email above'}
-                </button>
+                </Button>
                 <button type="button" className="textLink" onClick={() => setResetOpen(false)}>
                   Cancel
                 </button>
               </div>
             </div>
           )}
-          <button className="primaryCta full" type="submit">
+          <Button variant="primary" className="full" type="submit">
             {newcomer ? 'Continue' : 'Continue to workspace'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>
@@ -264,9 +265,9 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
             <span>Signed in as</span>
             <b>{email || 'your account'}</b>
           </div>
-          <button className="primaryCta full" type="submit" disabled={!canContinue}>
+          <Button variant="primary" className="full" type="submit" disabled={!canContinue}>
             Continue to my workspace <Icon name="arrowRight" size={16} />
-          </button>
+          </Button>
           <small className="privacyNote">You can change these details later from workspace settings.</small>
         </form>
       </main>

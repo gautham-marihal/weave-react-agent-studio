@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { greetingOf, greetingTarget, readSimple, setGreeting, setPersonaField, setRole, setTone } from '../../simple/simpleModel.js';
 import { isStarterRole } from '../../setup/setupModel.js';
 import { FieldTitle } from '../../setup/StepFields.jsx';
+import { Input, TextArea } from '../../../ui/Input.tsx';
 
 // Who the agent is, in Build's Guided view: company, spoken name, tone, instructions and greeting. "Explain" says
 // more on request. (The name in the agents list is changed with Rename, under "More" in the bar.)
@@ -34,16 +35,11 @@ export default function IdentityFields({ config, set }) {
     <div className="tw-grid tw-items-start tw-gap-x-6 tw-gap-y-6 md:tw-grid-cols-2">
       <label className="suField">
         <FieldTitle label="Company name" explain={EXPLAIN.company} />
-        <input
-          className="stFInput"
-          value={persona.company || ''}
-          placeholder="e.g. Acme"
-          onChange={(event) => set(setPersonaField(config, 'company', event.target.value))}
-        />
+        <Input value={persona.company || ''} placeholder="e.g. Acme" onChange={(event) => set(setPersonaField(config, 'company', event.target.value))} />
       </label>
       <label className="suField">
         <FieldTitle label="Agent’s spoken name" explain={EXPLAIN.spoken} />
-        <input className="stFInput" value={persona.name || ''} onChange={(event) => set(setPersonaField(config, 'name', event.target.value))} />
+        <Input value={persona.name || ''} onChange={(event) => set(setPersonaField(config, 'name', event.target.value))} />
         <small>What it calls itself.</small>
       </label>
 
@@ -61,7 +57,7 @@ export default function IdentityFields({ config, set }) {
 
       <label className="suField md:tw-col-span-2">
         <FieldTitle label="Instructions" explain={EXPLAIN.role} />
-        <textarea className="stFInput" rows={6} value={simple.role} onChange={(event) => set(setRole(config, event.target.value))} />
+        <TextArea rows={6} value={simple.role} onChange={(event) => set(setRole(config, event.target.value))} />
         <small>
           {isStarterRole(simple.role)
             ? 'These are the starting point’s own words: make them yours, with what your business does and what people ask about.'
@@ -71,8 +67,7 @@ export default function IdentityFields({ config, set }) {
 
       <label className="suField md:tw-col-span-2">
         <FieldTitle label="What it says first" explain={EXPLAIN.greeting} />
-        <input
-          className="stFInput"
+        <Input
           value={greeting.text}
           placeholder="Hello! How can I help you today?"
           onChange={(event) => {

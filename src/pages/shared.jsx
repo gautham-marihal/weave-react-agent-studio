@@ -9,6 +9,12 @@ import { whenLeaveConfirmed } from '../studio/route.js';
 import { Dialog, DropdownMenu } from 'radix-ui';
 import { afterMenu, backTo, keepEscape } from '../ui/layer.ts';
 import Tip from '../ui/Tip.tsx';
+import { Input } from '../ui/Input.tsx';
+import Button from '../ui/Button.tsx';
+import Select from '../ui/Select.tsx';
+import { askConfirm } from '../ui/dialogs.js';
+import { ASSIGNABLE_ROLES } from '../studio/team/teamModel.js';
+import { useMyMembership } from '../studio/team/useMyMembership.js';
 import { SidebarFolded } from '../ui/sidebarFolded.ts';
 
 // What the workspace pages share: the logo, profile menu and account dialog, help and shortcuts, "?" tips,
@@ -44,7 +50,7 @@ export function HelpTip({ text, className = 'helpDot' }) {
 
 // App-wide notice dialog (help, features not available in this prototype). Any component can
 // open it with openInfoDialog(); a single host rendered with the dashboard overlays shows it.
-export function openInfoDialog(detail) {
+function openInfoDialog(detail) {
   window.dispatchEvent(new CustomEvent('weave:info', { detail }));
 }
 
@@ -224,29 +230,35 @@ export function Logo({ health = null }) {
 // down from the small avatar. An item opens its dialog after the menu returns focus, so the dialog returns it there.
 export function ProfileMenu({ profile, initials, compact = false, onAccountOpen, onSignOut }) {
   const displayName = profile?.fullName || 'Workspace user';
-  const role = profile?.role || 'Workspace admin';
+  // the role the team gives them (Owner, Admin…), so it reads as on the Team page
+  const role = useMyMembership(profile).role?.label || profile?.role || 'Workspace admin';
   return (
     <div className={`profileMenuRoot ${compact ? 'compact' : ''}`}>
       <DropdownMenu.Root modal={false}>
-        {/* the small avatar shows only initials, so its tip names the person */}
-        <Tip label={compact ? displayName : null} hoverOnly>
-          <DropdownMenu.Trigger asChild>
-            <button className={compact ? 'profileDot profileTrigger' : 'userMenu'} type="button">
-              <span className="avatar">{initials}</span>
-              {!compact && (
-                <span className="userInfo">
-                  <strong>{displayName}</strong>
-                  <small>{role}</small>
-                </span>
-              )}
-              {!compact && (
-                <span className="dots" aria-hidden="true">
-                  <Icon name="more" size={16} />
-                </span>
-              )}
+        <DropdownMenu.Trigger asChild>
+          {compact ? (
+            // the top bar's: who is signed in and their role, beside the avatar
+            <button className="profilePill" type="button">
+              <span className="profilePillAvatar">{initials}</span>
+              <span className="profilePillText">
+                <strong>{displayName}</strong>
+                <small>{role}</small>
+              </span>
+              <Icon name="chevronDown" size={16} className="profilePillChevron" />
             </button>
-          </DropdownMenu.Trigger>
-        </Tip>
+          ) : (
+            <button className="userMenu" type="button">
+              <span className="avatar">{initials}</span>
+              <span className="userInfo">
+                <strong>{displayName}</strong>
+                <small>{role}</small>
+              </span>
+              <span className="dots" aria-hidden="true">
+                <Icon name="more" size={16} />
+              </span>
+            </button>
+          )}
+        </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             className={`profilePopover rxLayer ${compact ? 'compactPopover profilePopoverPortal' : 'profilePopoverWide'}`}
@@ -297,11 +309,48 @@ export function ProfileMenu({ profile, initials, compact = false, onAccountOpen,
   );
 }
 
-export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClose, onSignOut }) {
+//   onSave(nextProfile): keeps a changed name or role (the email and workspace are not changed here)
+export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClose, onSave, onSignOut }) {
   const fullName = profile?.fullName || 'Workspace user';
-  const initials = getInitials(fullName);
-  const role = profile?.role || 'Workspace admin';
   const workspace = workspaceNameProp || profile?.workspaceName || 'My workspace';
+  // the role lives in the workspace's team, so a change here shows on the Team page and back; the owner's is fixed
+  const { role: teamRole, isOwner, changeRole, rename } = useMyMembership(profile);
+  const roleNow = teamRole?.id || ASSIGNABLE_ROLES.find((option) => option.label === profile?.role)?.id || '';
+  const [nameDraft, setNameDraft] = useState(profile?.fullName || '');
+  const [roleDraft, setRoleDraft] = useState(roleNow);
+  const [status, setStatus] = useState('');
+  const changed = nameDraft.trim() !== (profile?.fullName || '') || (!isOwner && roleDraft !== roleNow);
+  const canSave = changed && nameDraft.trim() !== '';
+  const initials = getInitials(nameDraft.trim() || fullName);
+  const chosenRole = ASSIGNABLE_ROLES.find((option) => option.id === roleDraft);
+  // a different role is confirmed before it is chosen; Save then keeps it
+  const chooseRole = async (next) => {
+    if (!next || next === roleDraft) return;
+    const option = ASSIGNABLE_ROLES.find((candidate) => candidate.id === next);
+    const confirmed = await askConfirm({
+      title: `Change your role to ${option.label}?`,
+      body: `${option.blurb}${chosenRole ? ` You are ${chosenRole.label} now.` : ''}`,
+      confirmLabel: `Change to ${option.label}`,
+    });
+    if (!confirmed) return;
+    setRoleDraft(next);
+    setStatus('');
+  };
+  const save = () => {
+    if (!canSave) return;
+    const name = nameDraft.trim();
+    if (!isOwner && roleDraft !== roleNow && teamRole) {
+      const problem = changeRole(roleDraft);
+      if (problem) {
+        setStatus(problem);
+        return;
+      }
+    }
+    if (name !== (profile?.fullName || '')) rename(name);
+    const label = isOwner ? teamRole.label : chosenRole?.label || profile?.role || '';
+    onSave?.({ ...profile, fullName: name, role: label });
+    setStatus('Saved.');
+  };
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -346,11 +395,25 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
           </div>
         </div>
 
-        <div className="accountDetails">
-          <div className="accountDetail">
+        <form
+          className="accountDetails"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+        >
+          <label className="accountDetail accountField">
             <small>Full name</small>
-            <strong>{fullName}</strong>
-          </div>
+            <Input
+              value={nameDraft}
+              onChange={(event) => {
+                setNameDraft(event.target.value);
+                setStatus('');
+              }}
+              autoComplete="name"
+              aria-invalid={nameDraft.trim() === '' || undefined}
+            />
+          </label>
           <div className="accountDetail">
             <small>Email</small>
             <strong>{profile?.email || '—'}</strong>
@@ -359,11 +422,41 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
             <small>Workspace</small>
             <strong>{workspace}</strong>
           </div>
-          <div className="accountDetail">
-            <small>Role</small>
-            <strong>{role}</strong>
+          <div className="accountDetail accountField">
+            <small id="accountRoleLabel">Role</small>
+            {isOwner ? (
+              <>
+                <strong>{teamRole.label}</strong>
+                <p className="accountRoleNote">You own this workspace, so your role can’t be changed.</p>
+              </>
+            ) : (
+              <>
+                <Select
+                  className="stFInput"
+                  value={chosenRole ? roleDraft : ''}
+                  onChange={(event) => chooseRole(event.target.value)}
+                  aria-labelledby="accountRoleLabel"
+                >
+                  {!chosenRole && <option value="">Choose a role</option>}
+                  {ASSIGNABLE_ROLES.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="accountRoleNote">{chosenRole ? chosenRole.blurb : `Now: ${profile?.role || 'no role'}. Choose Admin, Editor or Viewer.`}</p>
+              </>
+            )}
           </div>
-        </div>
+          <div className="accountSaveRow">
+            <span role="status" className="accountSaveNote">
+              {nameDraft.trim() === '' ? 'Enter your name to save.' : status}
+            </span>
+            <Button variant="primary" size="compact" type="submit" disabled={!canSave}>
+              Save
+            </Button>
+          </div>
+        </form>
 
         <div className="accountPanelFooter accountActionsFooter">
           <div>

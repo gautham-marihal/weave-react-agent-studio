@@ -12,7 +12,7 @@ import { periodOf } from '../format.js';
 export const PER_AGENT = 40;
 export const MAX_PAGES = 5; // up to 500 calls of each agent in the period: past that, the numbers rest on the newest
 
-export type SpeedReading = {
+type SpeedReading = {
   errors: { botId: string; message: string }[];
   samples: Sample[];
   totals: Record<string, number>;

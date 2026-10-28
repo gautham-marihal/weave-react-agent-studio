@@ -8,8 +8,8 @@ import { localDay, periodOf } from '../format.js';
 const list = (v) => (Array.isArray(v) ? v : []);
 
 export const MIN_FOR_ALERT = 5; // calls of a version (and of the one before it) before it can be called worse
-export const SLOW_MS = 8000; // an answer slower than this is slow
-export const REGRESSION = { cutOff: 0.15, handoff: 0.2, toolFail: 0.15 }; // how much higher (as a share of calls) a rate must be to raise an alert
+const SLOW_MS = 8000; // an answer slower than this is slow
+const REGRESSION = { cutOff: 0.15, handoff: 0.2, toolFail: 0.15 }; // how much higher (as a share of calls) a rate must be to raise an alert
 
 const rate = (n, of) => (of > 0 ? n / of : null);
 const sum = (xs) => xs.reduce((a, b) => a + b, 0);
@@ -24,7 +24,7 @@ export function percentile(values, p) {
 }
 
 // What was wrong with one call, from its summary and (when its records were read) its facts: [{ kind, severity, text }]
-export const ISSUE_KINDS = {
+const ISSUE_KINDS = {
   cut_off: { label: 'Calls that were cut off', severity: 3 },
   tool_failed: { label: 'A tool failed', severity: 3 },
   error: { label: 'An error was recorded', severity: 3 },

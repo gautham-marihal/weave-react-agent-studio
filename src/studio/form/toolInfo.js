@@ -113,7 +113,7 @@ export const REPLY_CHOICES = [
 ];
 
 // ---- finding a tool in a long list ----------------------------------------------------------------------------------
-export const TOOL_KIND_LABEL = { http: 'HTTP', builtin: 'Built-in', task: 'Task', mcp: 'MCP', knowledge: 'Knowledge', code: 'Code' };
+const TOOL_KIND_LABEL = { http: 'HTTP', builtin: 'Built-in', task: 'Task', mcp: 'MCP', knowledge: 'Knowledge', code: 'Code' };
 
 // How many of each kind there are: [{ kind, label, count }], the most common first.
 export function toolKindCounts(tools) {

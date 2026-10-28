@@ -20,6 +20,8 @@ import { agentLabel, humanize, rowName } from '../rowNames.js';
 import { checkWords, momentOf, ruleWords } from '../blocks/guardrailModel.js';
 import { SENSITIVE } from '../blocks/afterCallModel.js';
 import { speechText } from '../../../demo/simulatedAgent.js';
+import Button from '../../../ui/Button.tsx';
+import { TextArea } from '../../../ui/Input.tsx';
 
 const FormEditor = lazy(() => import('../../form/FormEditor.jsx'));
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -212,13 +214,7 @@ function ToolPlain({ config, set, index, problem }) {
           <label className="nlToolWhen">
             <span>What it says before it hangs up</span>
             <small>Said in full, then the call ends.</small>
-            <textarea
-              className="stFInput"
-              rows={2}
-              value={say || ''}
-              placeholder="Thank you for calling. Goodbye!"
-              onChange={(event) => setGoodbye(event.target.value)}
-            />
+            <TextArea rows={2} value={say || ''} placeholder="Thank you for calling. Goodbye!" onChange={(event) => setGoodbye(event.target.value)} />
           </label>
         ) : (
           <p className="nlHint">
@@ -229,8 +225,7 @@ function ToolPlain({ config, set, index, problem }) {
       <label className="nlToolWhen">
         <span>When it uses it</span>
         <small>The agent reads this to decide when to use the tool. One or two sentences that say when.</small>
-        <textarea
-          className="stFInput"
+        <TextArea
           rows={3}
           value={description}
           placeholder="For example: Use when the caller asks for a person, or you can’t help them."
@@ -464,9 +459,9 @@ export default function ListPage({
                 title={e.start.title}
                 text={e.start.text}
                 action={
-                  <button type="button" className="quietButton" onClick={() => s(e.start.make(c))}>
+                  <Button type="button" onClick={() => s(e.start.make(c))}>
                     {e.start.label}
-                  </button>
+                  </Button>
                 }
               />
             ) : (
@@ -569,16 +564,15 @@ export default function ListPage({
           title={removed.label}
           actions={
             <>
-              <button
+              <Button
                 type="button"
-                className="quietButton"
                 onClick={() => {
                   editor.setValue(removed.previous);
                   setRemoved(null);
                 }}
               >
                 Undo
-              </button>
+              </Button>
               <button type="button" className="linkButton" onClick={() => setRemoved(null)}>
                 Dismiss
               </button>

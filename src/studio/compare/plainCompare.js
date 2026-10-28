@@ -19,7 +19,7 @@ const segment = (part) => {
   const hit = typeof part === 'string' ? /^([a-z_]+)=(.+)$/.exec(part) : null;
   return hit ? { id: hit[2] } : part;
 };
-export const toChange = (c) => ({ path: (c.path || []).map(segment), kind: KINDS[c.op] || 'changed', before: c.before, after: c.after });
+const toChange = (c) => ({ path: (c.path || []).map(segment), kind: KINDS[c.op] || 'changed', before: c.before, after: c.after });
 export const isBookkeeping = (c) => c.path?.[0] === 'meta' && c.path.length === 2 && BOOKKEEPING.has(c.path[1]);
 const isStudioNote = (c) => c.path?.[0] === 'builder';
 

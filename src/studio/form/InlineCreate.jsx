@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useConfigSelect, useForm } from './ctx.js';
 import { CREATABLE, createAndPoint, createProblems } from './inlineCreate.js';
 import Select from '../../ui/Select.tsx';
+import Button from '../../ui/Button.tsx';
+import { Input, TextArea } from '../../ui/Input.tsx';
 
 // "＋ New message / state variable / HTTP connection" under a field that points at one: asks the few things needed,
 // makes it, and points the field at it, all as one change (with Undo).
@@ -36,10 +38,10 @@ export default function InlineCreate({ collection, target, defaultKind, onClose 
               ))}
             </Select>
           ) : field.multiline ? (
-            <textarea className="stFInput" rows={3} value={answers[field.key] ?? ''} onChange={(event) => set(field.key, event.target.value)} autoFocus />
+            <TextArea rows={3} value={answers[field.key] ?? ''} onChange={(event) => set(field.key, event.target.value)} autoFocus />
           ) : (
-            <input
-              className="stFInput small"
+            <Input
+              size="small"
               type="text"
               spellCheck={false}
               value={answers[field.key] ?? ''}
@@ -61,9 +63,9 @@ export default function InlineCreate({ collection, target, defaultKind, onClose 
         <button type="button" className="stAddBtn" onClick={submit}>
           Create{target ? ' and use' : ''}
         </button>
-        <button type="button" className="quietButton small" onClick={onClose}>
+        <Button type="button" size="small" onClick={onClose}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

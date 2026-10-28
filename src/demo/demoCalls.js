@@ -298,7 +298,7 @@ export function seedCalls(botId, config, nowIso, { history = true } = {}) {
 
 // A current problem so Alerts has something to show: a "support" agent's tool fails on the last few calls, a "front"
 // agent's answers this hour are slow, others are fine. Deterministic, relative to `nowIso`.
-export function seedIncident(botId, config, nowIso) {
+function seedIncident(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
   const greeting = typeof web?.greeting?.say === 'string' ? web.greeting.say : 'Hello! How can I help you today?';
@@ -363,7 +363,7 @@ export function seedIncident(botId, config, nowIso) {
 }
 
 // Two weeks of unanswered questions, worded different ways, so "Questions it couldn't answer" has something to group.
-export function seedQuestions(botId, config, nowIso) {
+function seedQuestions(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
   const greeting = typeof web?.greeting?.say === 'string' ? web.greeting.say : 'Hello! How can I help you today?';
@@ -434,7 +434,7 @@ export function seedQuestions(botId, config, nowIso) {
 
 // Two weeks of earlier calls for Monitoring: 0.1.0 doing well, then 0.1.1. "support" agents have a rough 0.1.1 so the
 // version comparison finds something; others have ordinary hiccups. The same agent always gets the same history.
-export function seedHistory(botId, config, nowIso) {
+function seedHistory(botId, config, nowIso) {
   const channels = list(config?.channels);
   const web = channels.find((c) => c?.type === 'web_chat') || channels[0];
   const greeting = typeof web?.greeting?.say === 'string' ? web.greeting.say : 'Hello! How can I help you today?';

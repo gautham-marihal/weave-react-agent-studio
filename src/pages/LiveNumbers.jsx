@@ -27,6 +27,7 @@ import {
   statusWords,
   supportDetails,
 } from './numbersModel.js';
+import Button from '../ui/Button.tsx';
 
 // The platform's real phone numbers (FRONTEND_GUIDE 10.5): the list, a form that checks a number as it is typed, and
 // changing or releasing ours. Those changes alter the phone system, so each is sent only after the person confirms.
@@ -193,15 +194,16 @@ export function LiveNumbersPage({ live, agents }) {
             deployed there. You give the number; the phone line and the rule that routes it are set up for you.
           </p>
         </div>
-        <button
-          className="primaryCta compactCta"
+        <Button
+          variant="primary"
+          size="compact"
           type="button"
           onClick={() => setDialog({ kind: 'add' })}
           disabled={!agents.length}
           title={agents.length ? undefined : 'Create an agent first'}
         >
           <Icon name="plus" size={14} /> Add a number
-        </button>
+        </Button>
       </section>
       {live.settings && !live.settings.livekitConfigured && (
         <p className="telephonyCallout" role="alert">
@@ -284,9 +286,9 @@ export function AgentNumbers({ live, botId, botName, current }) {
             live in the place it is added for (testing, final check or customers).
           </p>
         </div>
-        <button type="button" className="secondaryCta compactCta" onClick={() => setDialog({ kind: 'add' })}>
+        <Button type="button" variant="secondary" size="compact" onClick={() => setDialog({ kind: 'add' })}>
           <Icon name="plus" size={14} /> Add a number
-        </button>
+        </Button>
       </header>
       {live.settings && !live.settings.livekitConfigured && (
         <p className="telephonyCallout" role="alert">
@@ -322,12 +324,12 @@ export function AgentNumbers({ live, botId, botName, current }) {
                   </span>
                   {row.managed && (
                     <span className="agentNumbersActions">
-                      <button type="button" className="quietButton small" onClick={() => setDialog({ kind: 'edit', row })}>
+                      <Button type="button" size="small" onClick={() => setDialog({ kind: 'edit', row })}>
                         Change…
-                      </button>
-                      <button type="button" className="quietButton small dangerText" onClick={() => release(row)}>
+                      </Button>
+                      <Button type="button" size="small" className="dangerText" onClick={() => release(row)}>
                         Release…
-                      </button>
+                      </Button>
                     </span>
                   )}
                 </div>

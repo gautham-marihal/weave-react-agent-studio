@@ -4,14 +4,18 @@ import { Choice, OneOf } from '../../ui/OneOf.tsx';
 import './preview.css';
 import Icon from '../../ui/Icon.jsx';
 import AiOrb from './AiOrb.jsx';
+import VoiceStage from './VoiceStage.jsx';
+import { speaksOnly, withWrittenReplies } from './voiceState.js';
+import { browserChannels } from '../form/channelTypes.js';
 import { inputCapabilities, pictureProblem, useDictation } from './useDictation.js';
 import { randomTag } from '../format.js';
+import Button from '../../ui/Button.tsx';
 
 // The preview beside the agent's settings: talk to the agent while editing it. It is either the REAL agent (LiveKit,
 // on the saved draft) or a SIMULATED one (rules in the browser on current edits); the panel says which, and every
 // simulated reply is tagged "Simulated". States: idle, loading, live, reconnecting, ended, error.
 
-export function previewState(session) {
+function previewState(session) {
   if (session.status === 'error') return 'error';
   if (session.status === 'ended') return 'ended';
   if (session.status === 'idle') return 'idle';
@@ -67,6 +71,18 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
     await session.sendText(text);
   };
   const voice = !simulated && session.info?.channel?.type === 'web_voice';
+  // shown as a call (the orb and captions) when it runs on a web voice channel, or before it starts when every web
+  // channel the agent has is voice; a simulation of one is written out, but still looks like a call
+  const voiceView =
+    session.info && state !== 'idle'
+      ? [session.info.channel?.type, session.info.channel?.realType].includes('web_voice')
+      : browserChannels(editor?.parsed?.value).length > 0 && browserChannels(editor?.parsed?.value).every((c) => c.type === 'web_voice');
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  // the real agent writes no transcript for a voice channel whose replies are only spoken (the saved draft decides)
+  const draftConfig = editor?.parsed?.value;
+  const voiceChannelId = session.info?.channel?.id || browserChannels(draftConfig)[0]?.id;
+  const findChannel = (config) => (Array.isArray(config?.channels) ? config.channels : []).find((c) => c?.id === voiceChannelId);
+  const noCaptions = !simulated && voiceView && speaksOnly(findChannel(editor?.savedConfig || draftConfig));
 
   // What the channel lets a caller send, from the draft's own settings: the microphone, pictures, the camera.
   const can = inputCapabilities(editor?.parsed?.value, session.info?.channel);
@@ -196,13 +212,33 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           </>
         )}
       </p>
+      {noCaptions && (
+        <p className="pvHint warn" role="note">
+          This voice channel only speaks its replies, so there are no captions.{' '}
+          {speaksOnly(findChannel(draftConfig)) ? (
+            <button type="button" className="stLink" onClick={() => editor.setValue(withWrittenReplies(draftConfig, voiceChannelId))}>
+              Write replies out too
+            </button>
+          ) : (
+            'Save the draft to use written replies.'
+          )}
+        </p>
+      )}
       {!simulated && editor?.dirty && state !== 'live' && (
-        <button type="button" className="quietButton pvSave" onClick={() => editor.save()} disabled={editor.saving || !!editor.parsed?.error}>
+        <Button type="button" className="pvSave" onClick={() => editor.save()} disabled={editor.saving || !!editor.parsed?.error}>
           {editor.saving ? 'Saving…' : 'Save draft'}
-        </button>
+        </Button>
       )}
 
-      {state === 'idle' && (
+      {state === 'idle' && voiceView && (
+        <VoiceStage session={session} size="var(--pv-voice-orb, 168px)" badge={false} className="pvVoice">
+          <Button type="button" variant="primary" size="compact" onClick={start}>
+            {simulated ? 'Start a simulated call' : 'Start a call'}
+          </Button>
+        </VoiceStage>
+      )}
+
+      {state === 'idle' && !voiceView && (
         <div className="pvEmpty">
           <div className="pvStage">
             {/* a shortcut for the mouse: the button below is the one for everyone */}
@@ -212,13 +248,22 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           </div>
           <strong>No conversation yet</strong>
           <span>The agent greets you first. Change a setting, save if it is the real agent, and start again to see the difference.</span>
-          <button type="button" className="primaryCta compactCta" onClick={start}>
+          <Button type="button" variant="primary" size="compact" onClick={start}>
             {simulated ? 'Start a simulated chat' : 'Start a conversation'}
-          </button>
+          </Button>
         </div>
       )}
 
-      {state === 'loading' && (
+      {state === 'loading' && voiceView && (
+        <VoiceStage session={session} size="var(--pv-voice-orb, 168px)" badge={false} className="pvVoice">
+          {session.agentHint && <p className="pvHint">The agent hasn’t joined yet. The runtime may not be running for it. You can end this and try again.</p>}
+          <Button type="button" onClick={session.stop}>
+            Cancel
+          </Button>
+        </VoiceStage>
+      )}
+
+      {state === 'loading' && !voiceView && (
         <div className="pvLoading" role="status" aria-live="polite">
           <AiOrb size="var(--pv-orb-small, 96px)" state="thinking" />
           <strong>{LOADING_TEXT[session.status] || 'Connecting…'}</strong>
@@ -227,28 +272,63 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
               ? 'The agent hasn’t joined yet. The runtime may not be running for it. You can end this and try again.'
               : 'This takes a few seconds.'}
           </span>
-          <button type="button" className="quietButton" onClick={session.stop}>
+          <Button type="button" onClick={session.stop}>
             Cancel
-          </button>
+          </Button>
         </div>
       )}
 
-      {state === 'error' && (
+      {state === 'error' && voiceView && (
+        <VoiceStage session={session} size="var(--pv-voice-orb, 168px)" badge={false} className="pvVoice">
+          {session.error?.details && (
+            <details className="stErrDetail">
+              <summary>Details for the person who runs the server</summary>
+              <p>{session.error.details}</p>
+            </details>
+          )}
+          <span className="pvVoiceActions">
+            <Button
+              type="button"
+              variant="primary"
+              size="compact"
+              onClick={() => {
+                session.clearError();
+                start();
+              }}
+            >
+              Try again
+            </Button>
+            {!simulated && !modeLocked && (
+              <Button
+                type="button"
+                size="compact"
+                onClick={() => {
+                  session.clearError();
+                  onMode('simulated');
+                }}
+              >
+                Use the simulated preview
+              </Button>
+            )}
+          </span>
+        </VoiceStage>
+      )}
+
+      {state === 'error' && !voiceView && (
         <div className="pvError">
           <Notice
             kind="error"
             title={session.error?.title || 'The conversation didn’t start'}
             actions={
-              <button
+              <Button
                 type="button"
-                className="quietButton"
                 onClick={() => {
                   session.clearError();
                   start();
                 }}
               >
                 Try again
-              </button>
+              </Button>
             }
           >
             {session.error?.body || 'Something went wrong starting it.'}
@@ -304,30 +384,42 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
 
       {(state === 'live' || state === 'reconnecting' || state === 'ended') && (
         <>
-          {state === 'reconnecting' && (
+          {state === 'reconnecting' && !voiceView && (
             <p className="pvBanner warn" role="status">
               <b>Connection lost.</b> Trying to reconnect…
             </p>
           )}
-          <div className={`pvHud ${state}`} aria-hidden="true">
-            <AiOrb size={26} state={state === 'ended' ? 'rest' : state === 'reconnecting' ? 'thinking' : 'live'} />
-            <span className="pvBars">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
-            <small>{state === 'ended' ? 'Ended' : state === 'reconnecting' ? 'Reconnecting…' : 'Connected'}</small>
-          </div>
-          <ul className="pvLog" aria-label="Conversation" aria-live="polite">
-            {session.messages.map((message) => (
-              <Line key={message.id} message={message} />
-            ))}
-            <li ref={endRef} aria-hidden="true" />
-          </ul>
+          {voiceView && (
+            <>
+              <VoiceStage session={session} size="var(--pv-voice-orb, 168px)" badge={false} announce={!transcriptOpen} className="pvVoice" />
+              <button type="button" className="stLink pvTranscriptToggle" onClick={() => setTranscriptOpen((v) => !v)} aria-expanded={transcriptOpen}>
+                {transcriptOpen ? 'Hide the transcript' : `Show the transcript (${session.messages.length})`}
+              </button>
+            </>
+          )}
+          {!voiceView && (
+            <div className={`pvHud ${state}`} aria-hidden="true">
+              <AiOrb size={26} state={state === 'ended' ? 'rest' : state === 'reconnecting' ? 'thinking' : 'live'} />
+              <span className="pvBars">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+              <small>{state === 'ended' ? 'Ended' : state === 'reconnecting' ? 'Reconnecting…' : 'Connected'}</small>
+            </div>
+          )}
+          {(!voiceView || transcriptOpen) && (
+            <ul className="pvLog" aria-label="Conversation" aria-live="polite">
+              {session.messages.map((message) => (
+                <Line key={message.id} message={message} />
+              ))}
+              <li ref={endRef} aria-hidden="true" />
+            </ul>
+          )}
           {voice && <p className="pvHint">This agent talks by voice. Use Tests › Try it to speak with it; typing here still works.</p>}
           {(note || dictation.error) && (
             <p className="pvHint warn" role="alert">
@@ -337,9 +429,9 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           {state === 'ended' ? (
             <div className="pvEnded" role="status">
               <span>The conversation ended.</span>
-              <button type="button" className="primaryCta compactCta" onClick={start}>
+              <Button type="button" variant="primary" size="compact" onClick={start}>
                 Start again
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="pvComposer">
@@ -358,12 +450,12 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
                   }
                 }}
               />
-              <button type="button" className="primaryCta compactCta" onClick={send} disabled={state !== 'live' || !draft.trim()}>
+              <Button type="button" variant="primary" size="compact" onClick={send} disabled={state !== 'live' || !draft.trim()}>
                 Send
-              </button>
-              <button type="button" className="quietButton" onClick={session.stop}>
+              </Button>
+              <Button type="button" onClick={session.stop}>
                 End
-              </button>
+              </Button>
             </div>
           )}
         </>

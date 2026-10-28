@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
 import { Switch } from '../../form/fields.jsx';
+import Button from '../../../ui/Button.tsx';
+import { Input } from '../../../ui/Input.tsx';
 
 // Small parts shared by the plain-words blocks (Guardrails, After the call), in the setup's look (setup.css).
 
@@ -57,8 +59,7 @@ export function Chips({ label, items, onChange, placeholder, help }) {
         </ul>
       )}
       <div className="suInline">
-        <input
-          className="stFInput"
+        <Input
           value={typed}
           placeholder={placeholder}
           aria-label={`Add to “${label}”`}
@@ -70,9 +71,9 @@ export function Chips({ label, items, onChange, placeholder, help }) {
             }
           }}
         />
-        <button type="button" className="quietButton" onClick={add} disabled={!typed.trim()}>
+        <Button type="button" onClick={add} disabled={!typed.trim()}>
           Add
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -145,12 +146,7 @@ export function SayField({ label, help, value, refId, onChange, placeholder }) {
     <label className="suField">
       <span>{label}</span>
       {help && <small>{help}</small>}
-      <input
-        className="stFInput"
-        value={value}
-        placeholder={refId ? `Says its fixed line “${refId}”` : placeholder}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      <Input value={value} placeholder={refId ? `Says its fixed line “${refId}”` : placeholder} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }

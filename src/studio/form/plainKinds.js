@@ -51,7 +51,7 @@ export const plainKind = (kind) => PLAIN_KIND[kind] || String(kind || '');
 // A web-request tool either reads (GET) or changes something (POST, PUT, PATCH, DELETE), and "Looks something up" is
 // wrong for the second, so the method decides. No method means a read, as before.
 const CHANGES_THINGS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-export const HTTP_WRITES = 'Sends something to your systems';
+const HTTP_WRITES = 'Sends something to your systems';
 export const changesSomething = (tool) => CHANGES_THINGS.has(String(tool?.request?.method || '').toUpperCase());
 
 // What a tool is, in words: a built-in by what it does, any other by its kind.

@@ -14,7 +14,7 @@ export function placeDrop(field, bounds, natural, gap = 6, margin = 8) {
 }
 
 // The area a list opened inside `el` must stay in: the window, less whatever clips el (a panel, a dialog, the top bar).
-export function dropBounds(el) {
+function dropBounds(el) {
   let top = 0;
   let bottom = window.innerHeight;
   for (let box = el?.parentElement; box && box !== document.body; box = box.parentElement) {

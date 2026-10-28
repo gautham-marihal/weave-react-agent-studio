@@ -14,6 +14,7 @@ import Select from '../../ui/Select.tsx';
 import '../calls/calls.css';
 import '../agent/agent.css';
 import './live.css';
+import Button from '../../ui/Button.tsx';
 
 const PRIVATE_KEY = 'weave_live_private';
 const CHANNEL_ICON = { sip_voice: 'phone', web_voice: 'mic', web_chat: 'quote', whatsapp: 'quote', sms: 'quote' };
@@ -86,9 +87,9 @@ function LiveCard({ call, name, hideCaller, onWatch, onOpenCall }) {
         )}
       </ol>
       <footer className="lvCardFoot">
-        <button type="button" className="quietButton" onClick={() => onWatch(call)}>
+        <Button type="button" onClick={() => onWatch(call)}>
           Watch
-        </button>
+        </Button>
         <button type="button" className="linkButton" onClick={() => onOpenCall(call.bot, call.id)}>
           Open in Calls
         </button>
@@ -163,9 +164,9 @@ export default function LiveBoardPage({ bots = [], onOpenCall }) {
             <span className="lvDot" aria-hidden="true" />
             {status}
           </small>
-          <button type="button" className="quietButton" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
+          <Button type="button" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
             <Icon name={paused ? 'play' : 'pause'} size={14} /> {paused ? 'Resume' : 'Pause'}
-          </button>
+          </Button>
         </div>
       </section>
       <DemoNote kind="calls">These calls are made up from the clock: they start, go on and end by themselves. No real caller is involved.</DemoNote>

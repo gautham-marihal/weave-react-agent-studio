@@ -1,6 +1,8 @@
 import React, { useId, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import Select from '../../ui/Select.tsx';
+import Button from '../../ui/Button.tsx';
+import { Input, TextArea } from '../../ui/Input.tsx';
 
 // A form the agent asked for during a conversation. Whether and when it appears is the agent's decision;
 // this only draws it and sends the answers back. The server validates again and may answer with errors.
@@ -72,9 +74,8 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
                   {field.required && <abbr title="Required"> *</abbr>}
                 </label>
                 {field.type === 'textarea' ? (
-                  <textarea
+                  <TextArea
                     id={id}
-                    className="stFInput"
                     rows={3}
                     value={values[field.name]}
                     onChange={(e) => set(field.name, e.target.value)}
@@ -98,9 +99,8 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
                     ))}
                   </Select>
                 ) : (
-                  <input
+                  <Input
                     id={id}
-                    className="stFInput"
                     type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
                     value={values[field.name]}
                     onChange={(e) => set(field.name, e.target.value)}
@@ -116,9 +116,9 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
       })}
       {form.errors?._form && <small className="stFErr">{form.errors._form}</small>}
       <div className="stTFormActions">
-        <button type="submit" className="primaryCta compactCta" disabled={form.busy}>
+        <Button type="submit" variant="primary" size="compact" disabled={form.busy}>
           {form.busy ? 'Sending…' : form.submitLabel}
-        </button>
+        </Button>
       </div>
     </form>
   );

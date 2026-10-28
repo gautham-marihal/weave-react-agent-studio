@@ -38,7 +38,6 @@ import CallersPanel from '../callers/CallersPanel.jsx';
 import GateStrip from '../release/GateStrip.jsx';
 import Drawer from './Drawer.jsx';
 import PageShell, { Section } from './PageShell.jsx';
-import { humanize } from './rowNames.js';
 import { PAGE_LABELS, PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, searchTarget, stageOf, tabFor } from './pages.js';
 import { onSettingFocus, takeSettingFocus } from '../settingFocus.js';
 import AgentPage from './pages/AgentPage.jsx';
@@ -49,10 +48,10 @@ import SectionPage from './pages/SectionPage.jsx';
 import './agent.css';
 import { askConfirm } from '../../ui/dialogs.js';
 import { whenPanelKept } from './stagedPanel.js';
+import { CHANNEL_EXTRAS, CHANNEL_LISTS, GUARDRAIL_LISTS, RELEASE_PARTS, TEST_PARTS, TOOL_EXTRAS, TOOL_LISTS } from './pageLists.js';
 import { useLiveNumbers } from '../../pages/LiveNumbers.jsx';
 import { useKnowledge } from '../knowledge/useKnowledge.js';
-import { describeWeek } from '../relations/scheduleStrip.js';
-import { usedBy } from '../relations/usedBy.js';
+import Button from '../../ui/Button.tsx';
 
 const AssistantTab = lazy(() => import('../assistant/AssistantTab.jsx'));
 const DeployTab = lazy(() => import('../DeployTab.jsx'));
@@ -70,192 +69,11 @@ const SetupWizard = lazy(() => import('../setup/SetupWizard.jsx'));
 // so there is one place to get it ready. Once published, the steps open the agent's own pages.
 const SETUP_STEP = { prompt: 'purpose', hello: 'purpose', voice: 'voice', abilities: 'actions', publish: 'live', deploy: 'live' };
 
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-// "a, b and 2 more": a few names, the rest counted
-const namesInWords = (names) => {
-  const shown = names.filter(Boolean).slice(0, 2);
-  const more = names.filter(Boolean).length - shown.length;
-  return `${shown.join(', ')}${more > 0 ? ` and ${more} more` : ''}`;
-};
-const hostOf = (url) => {
-  try {
-    return new URL(String(url)).host;
-  } catch {
-    return '';
-  }
-};
-// The phone transfers in words: where calls go, or that a number is still to be set
-function transfersInWords(config) {
-  const transfers = (Array.isArray(config?.telephony?.transfers) ? config.telephony.transfers : []).filter((t) => t && typeof t === 'object');
-  if (!transfers.length) return 'None yet. Where a call can be passed to a person.';
-  const numbers = transfers.map((t) => (typeof t.target === 'string' ? t.target.trim() : t.target ? 'a number chosen during the call' : '')).filter(Boolean);
-  const waiting = transfers.length - numbers.length;
-  const parts = [
-    numbers.length ? `Passes calls to ${namesInWords(numbers)}` : '',
-    waiting ? `${plural(waiting, 'transfer')} with no number yet: callers are offered a callback` : '',
-  ];
-  return parts.filter(Boolean).join(' · ');
-}
 // the part of a page that holds its settings form, for a page that has other parts
 const FORM_PART = { workflow: 'settings', knowledge: 'settings', settings: 'settings' };
 // Pages that edit the draft through their own controls; they wait while the draft isn't valid JSON (Agent and Workflow
 // say so themselves; Settings is where the JSON is fixed).
 const READS_THE_DRAFT = new Set(['home', 'build', 'tools', 'channels', 'guardrails', 'aftercall', 'knowledge', 'tests']);
-const TOOL_LISTS = [
-  {
-    id: 'tools',
-    path: ['tools'],
-    kind: 'tools',
-    word: 'tool',
-    pickerKey: 'tools',
-    title: 'All its tools',
-    lead: 'Everything it can use, what the switches above add included. Open one to change how it works.',
-    empty: { title: 'No tools yet', text: 'Tools let the agent do things: end the call, hand over to a person, look something up.' },
-  },
-];
-const TOOL_EXTRAS = [
-  {
-    key: 'telephony',
-    title: 'Phone transfers',
-    icon: 'phoneTransfer',
-    // what is set, not what the section is
-    value: (c) => transfersInWords(c),
-  },
-  {
-    key: 'connections',
-    title: 'Connections',
-    icon: 'plug',
-    value: (c, n) =>
-      n
-        ? `${plural(n, 'connection')}: ${namesInWords(Object.entries(c?.connections || {}).map(([id, x]) => hostOf(x?.base_url) || humanize(id)))}`
-        : 'None yet. A connection is a web service its tools call, such as your billing system.',
-  },
-  {
-    key: 'forms',
-    title: 'Forms',
-    icon: 'records',
-    value: (c, n) =>
-      n
-        ? `${plural(n, 'form')}: ${namesInWords((Array.isArray(c?.forms) ? c.forms : []).map((f) => f?.title || humanize(f?.id || 'form')))}`
-        : 'None yet. A form collects details such as a name and number on screen.',
-  },
-  {
-    key: 'notifications',
-    title: 'Messages it sends',
-    icon: 'mail',
-    value: (c, n) => (n ? `${plural(n, 'message')} it can text or email` : 'None yet. Texts and emails it can send during or after a call.'),
-  },
-  {
-    key: 'tasks',
-    title: 'Multi-step tasks',
-    icon: 'flag',
-    value: (c, n) => (n ? plural(n, 'task') : 'None yet. Walk a caller through several steps, such as checking who they are.'),
-  },
-];
-const CHANNEL_LISTS = [
-  {
-    id: 'channels',
-    path: ['channels'],
-    kind: 'channels',
-    word: 'channel',
-    pickerKey: 'channels',
-    title: 'All channels',
-    lead: 'Each place it can be reached, and what it says first there. Open one for its details.',
-    empty: { title: 'No channels yet', text: 'A channel is where people reach the agent: a phone line, a chat on your website.' },
-  },
-];
-// Business hours in words: one schedule's week and time zone, or the names of several. Hours change nothing on their
-// own (a transfer or rule follows them), so an unused one says so.
-const scheduleWords = (c, n) => {
-  const all = Object.entries(c?.schedules && typeof c.schedules === 'object' ? c.schedules : {});
-  if (!n || !all.length) return 'None yet. Opening hours your hand-overs and rules can follow; on their own they change nothing.';
-  if (all.length === 1) {
-    const [, s] = all[0];
-    return `${describeWeek(s).replace(/[.]$/, '')}${typeof s?.timezone === 'string' && s.timezone ? `, ${s.timezone}` : ''}`;
-  }
-  return `${plural(all.length, 'schedule')}: ${namesInWords(all.map(([id, s]) => (typeof s?.description === 'string' && s.description.trim()) || humanize(id)))}`;
-};
-const localZone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
-};
-const CHANNEL_EXTRAS = [
-  {
-    key: 'schedules',
-    title: 'Business hours',
-    icon: 'clock',
-    value: scheduleWords,
-    status: (c, engine) =>
-      engine && Object.keys(c?.schedules && typeof c.schedules === 'object' ? c.schedules : {}).some((id) => !usedBy(engine, c, 'schedules', id).length)
-        ? { tone: '', text: 'Not used' }
-        : null,
-    start: {
-      title: 'No business hours yet',
-      text: 'A phone transfer or a rule can follow them, for example to pass calls to a person only while someone is there.',
-      label: 'Start with Monday to Friday, 9 to 5',
-      make: (c) => ({
-        ...c,
-        schedules: {
-          business_hours: {
-            description: 'Office hours',
-            timezone: localZone(),
-            weekly: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '09:00', end: '17:00' }],
-          },
-        },
-      }),
-    },
-  },
-  { key: 'identity', title: 'Caller identity', icon: 'user', value: () => 'How the agent knows who is calling' },
-];
-const GUARDRAIL_LISTS = [
-  {
-    id: 'input',
-    path: ['guardrails', 'input'],
-    kind: 'guardrails',
-    word: 'check',
-    pickerKey: 'guardrails.input',
-    title: 'On what the caller says',
-    lead: 'Checks that run on the caller’s words before the agent answers.',
-    empty: {
-      title: 'No checks on the caller yet',
-      text: 'For example: refuse tricks to change the agent’s instructions, or keep card numbers out of the records.',
-    },
-  },
-  {
-    id: 'output',
-    path: ['guardrails', 'output'],
-    kind: 'guardrails',
-    word: 'check',
-    pickerKey: 'guardrails.output',
-    title: 'On what the agent says',
-    lead: 'Checks that run on the agent’s own words before they are spoken.',
-    empty: { title: 'No checks on the agent yet', text: 'For example: block a promise it must not make, or keep secret fields out of everything it says.' },
-  },
-  {
-    id: 'escalation',
-    path: ['guardrails', 'escalation'],
-    kind: 'escalation',
-    word: 'rule',
-    pickerKey: 'guardrails.escalation',
-    title: 'All its hand-over and ending rules',
-    lead: 'The ones switched on above, and any of your own: when a call meets one, it hands over or ends by itself.',
-    empty: { title: 'No rules yet', text: 'Switch one on above, or add one of your own.' },
-  },
-];
-const TEST_PARTS = [
-  { id: 'try', label: 'Try it' },
-  { id: 'callers', label: 'Simulated callers' },
-  { id: 'scenarios', label: 'Scenarios' },
-  { id: 'checks', label: 'Readiness checks' },
-];
-const RELEASE_PARTS = [
-  { id: 'versions', label: 'Versions' },
-  { id: 'deploy', label: 'Deploy' },
-];
-
 // Whether the window is at least this wide (it follows resizing).
 function useWide(query) {
   const [wide, setWide] = useState(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : true));
@@ -791,10 +609,10 @@ export default function AgentLayout({ ws }) {
     // the settings' sections are its tabs; the whole configuration as JSON is one button away
     const p = part('settings', 'settings');
     const toggle = (
-      <button type="button" className="quietButton nlBtn" onClick={() => setPart('settings')(p === 'json' ? 'settings' : 'json')}>
+      <Button type="button" className="nlBtn" onClick={() => setPart('settings')(p === 'json' ? 'settings' : 'json')}>
         <Icon name={p === 'json' ? 'sliders' : 'code'} size={15} />
         {p === 'json' ? 'Back to the settings' : 'Edit as JSON'}
-      </button>
+      </Button>
     );
     body =
       p === 'json' ? (
@@ -900,9 +718,9 @@ export default function AgentLayout({ ws }) {
           kind="warn"
           title="The JSON needs fixing first"
           actions={
-            <button type="button" className="quietButton" onClick={openJson}>
+            <Button type="button" onClick={openJson}>
               Open the JSON
-            </button>
+            </Button>
           }
         >
           This page reads the draft, which isn’t valid JSON right now.
@@ -947,9 +765,9 @@ export default function AgentLayout({ ws }) {
           title="Someone else saved this draft after you opened it"
           actions={
             <>
-              <button type="button" className="quietButton" onClick={editor.reload}>
+              <Button type="button" onClick={editor.reload}>
                 Load theirs (drop my edits)
-              </button>
+              </Button>
               <button type="button" className="dangerButton" onClick={() => editor.save({ overwrite: true })}>
                 Overwrite with mine
               </button>
@@ -964,9 +782,9 @@ export default function AgentLayout({ ws }) {
           kind="error"
           title="Couldn’t save the draft"
           actions={
-            <button type="button" className="quietButton" onClick={editor.dismissSaveError}>
+            <Button type="button" onClick={editor.dismissSaveError}>
               Dismiss
-            </button>
+            </Button>
           }
         >
           {editor.saveError.message}
@@ -1054,19 +872,18 @@ export default function AgentLayout({ ws }) {
           title={`${lastFix.label}.`}
           actions={
             <>
-              <button
+              <Button
                 type="button"
-                className="quietButton"
                 onClick={() => {
                   editor.setValue(lastFix.previous);
                   setLastFix(null);
                 }}
               >
                 Undo
-              </button>
-              <button type="button" className="quietButton" onClick={() => setLastFix(null)}>
+              </Button>
+              <Button type="button" onClick={() => setLastFix(null)}>
                 Dismiss
-              </button>
+              </Button>
             </>
           }
         />

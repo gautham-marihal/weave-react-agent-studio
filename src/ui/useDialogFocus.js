@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 // Keeps the keyboard in an open dialog: focus moves in on open (unless an autoFocus field inside has it), Tab and
 // Shift+Tab cycle its controls instead of the page behind, and focus goes back where it was on close.
 //   ref: the dialog's box   initial: what gets focus first (an element, or a function returning one; else the box)
-export const FOCUSABLE =
+const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function trapTab(event, box) {

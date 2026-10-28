@@ -9,7 +9,7 @@ import { isObj } from '../form/engine.js';
 const list = (v) => (Array.isArray(v) ? v : []);
 
 // A scenario's status in a run, and a run's: running while any is still going.
-export const STATUSES = ['running', 'passed', 'failed', 'error', 'skipped'];
+const STATUSES = ['running', 'passed', 'failed', 'error', 'skipped'];
 export const isFinished = (status) => status !== 'running' && status !== undefined && status !== null && status !== '';
 
 const text = (value) => (typeof value === 'string' ? value : value === undefined || value === null ? '' : JSON.stringify(value));
@@ -22,7 +22,7 @@ export function normalizeCheck(raw) {
 }
 
 // A request no mock answered: { method, path, ... } (the API may send a string such as "GET /orders/1").
-export function normalizeRequest(raw) {
+function normalizeRequest(raw) {
   if (typeof raw === 'string') {
     const m = /^([A-Z]+)\s+(.*)$/.exec(raw.trim());
     return m ? { method: m[1], path: m[2] } : { path: raw };
@@ -134,8 +134,8 @@ export function normalizeScenarioList(raw) {
 }
 
 // ---- what the screens ask
-export const failedChecks = (result) => list(result?.checks).filter((c) => c.passed === false);
-export const unverifiedChecks = (result) => list(result?.checks).filter((c) => c.passed === null);
+const failedChecks = (result) => list(result?.checks).filter((c) => c.passed === false);
+const unverifiedChecks = (result) => list(result?.checks).filter((c) => c.passed === null);
 
 // What a run cost in model use, when the server says: tokens from a result's `usage` or its `call_ended` record. Null
 // when nothing was reported (so a scripted run, which uses no model, shows nothing). Never guessed.

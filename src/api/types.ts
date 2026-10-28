@@ -27,21 +27,15 @@ export type VersionSummary = z.infer<typeof S.VersionSummary>;
 export type Version = z.infer<typeof S.Version>;
 export type Published = z.infer<typeof S.Published>;
 
-export type DiffChange = z.infer<typeof S.DiffChange>;
 export type Diff = z.infer<typeof S.Diff>;
 
-export type DeploymentStatus = z.infer<typeof S.DeploymentStatus>;
 export type Deployment = z.infer<typeof S.Deployment>;
-export type Preflight = z.infer<typeof S.Preflight>;
 export type DeployResult = z.infer<typeof S.DeployResult>;
 export type Deployments = z.infer<typeof S.Deployments>;
 
 /** A model provider the runtime can run (GET /providers). */
 export type Provider = z.infer<typeof S.Provider>;
 export type ProvidersAnswer = z.infer<typeof S.ProvidersAnswer>;
-
-/** A channel as a test conversation joins it. */
-export type SessionChannel = z.infer<typeof S.SessionChannel>;
 
 /** What a browser needs to join a test conversation (POST /bots/{id}/sessions). */
 export type Session = z.infer<typeof S.Session>;

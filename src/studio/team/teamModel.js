@@ -3,7 +3,7 @@
 // Pure: no React, no DOM, no network.
 
 // What each role may do. `workspaceOnly`: runs the workspace (its people), so it can't be limited to some agents.
-export const ROLES = [
+const ROLES = [
   {
     id: 'owner',
     label: 'Owner',
@@ -62,7 +62,7 @@ export function normalizeScope(role, scope) {
 
 // ---- email addresses
 const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/;
-export const isEmail = (text) => EMAIL.test(String(text || '').trim());
+const isEmail = (text) => EMAIL.test(String(text || '').trim());
 // "a@x.com, b@y.com\nc@z.com" -> { emails: [...], invalid: [...] } (lower case, once each)
 export function parseEmails(text) {
   const seen = new Set();
@@ -80,7 +80,7 @@ export function parseEmails(text) {
     });
   return { emails, invalid };
 }
-export const nameFromEmail = (email) =>
+const nameFromEmail = (email) =>
   String(email || '')
     .split('@')[0]
     .replace(/[._-]+/g, ' ')

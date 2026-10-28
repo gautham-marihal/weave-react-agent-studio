@@ -32,7 +32,7 @@ export function retryable(error: unknown): boolean {
 
 export const RETRY_DELAY = (attempt: number): number => Math.min(800 * 2 ** attempt, 6000);
 
-export function makeQueryClient({ retries = 2 }: { retries?: number } = {}): QueryClient {
+function makeQueryClient({ retries = 2 }: { retries?: number } = {}): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {

@@ -7,7 +7,7 @@ import Tip from '../../ui/Tip.tsx';
 // clips it. Escape gives the keyboard back to the button; an item that opens a dialog does so only after that.
 //   icon: "more" (the "⋯"), or "chevronDown" for the second half of a split button ("Open ▾" on the Agents list)
 
-export type MenuItem =
+type MenuItem =
   { divider: true; label?: never } | { label: string; onClick?: () => void; disabled?: boolean; hint?: string; danger?: boolean; divider?: false };
 
 export default function Menu({

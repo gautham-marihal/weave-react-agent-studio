@@ -49,7 +49,7 @@ export function usePref(key, fallback) {
 }
 
 // "Show technical names": on, every setting also shows its configuration name, with copy-path and open-in-JSON.
-export const TECHNICAL_NAMES_KEY = 'weave_tech_names';
+const TECHNICAL_NAMES_KEY = 'weave_tech_names';
 export function useTechnicalNames() {
   const [value, set] = usePref(TECHNICAL_NAMES_KEY, '0');
   const setOn = useCallback((on) => set(on ? '1' : '0'), [set]);
@@ -57,7 +57,7 @@ export function useTechnicalNames() {
 }
 
 // Density: "comfortable" (default) or "compact", applied as a page attribute so tokens.css changes spacing everywhere.
-export const DENSITY_KEY = 'weave_density';
+const DENSITY_KEY = 'weave_density';
 export const DENSITIES = ['comfortable', 'compact'];
 export function useDensity() {
   const [value, set] = usePref(DENSITY_KEY, 'comfortable');
@@ -67,7 +67,7 @@ export function useDensity() {
 
 // The design style on top of light or dark, applied as `data-style` (src/themes.css). index.html applies it before the
 // first paint so nothing flashes.
-export const STYLE_KEY = 'weave_style';
+const STYLE_KEY = 'weave_style';
 export const STYLES = [
   { id: 'studio', label: 'Studio', description: 'Calm and precise: a light grey page, white cards, IBM Plex type, one plum accent.' },
   { id: 'simple', label: 'Simple', description: 'Quiet and neutral: black and white, nothing in the way.' },
@@ -136,7 +136,7 @@ export const ACCENTS = {
     { id: 'berry', label: 'Berry', swatch: ['#9d174d', '#6d28d9'] },
   ],
 };
-export const accentKey = (style) => `weave_accent_${style}`;
+const accentKey = (style) => `weave_accent_${style}`;
 // [the colour option of a style, set]
 export function useAccent(style) {
   const options = ACCENTS[style] || ACCENTS.simple;

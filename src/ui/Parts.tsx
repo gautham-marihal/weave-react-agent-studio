@@ -6,7 +6,7 @@ import { Tabs } from 'radix-ui';
 //   <Parts value onChange>: holds a row and its panel, with no box of its own
 //   <PartRow label items value>: the row (label names it for screen readers; the open part has `on`, or activeClass)
 //   <PartPanel value>: the open part's content (a grid with the page's gap; `flow` for a page that isn't a grid)
-export type Part = { id: string; label: ReactNode; badge?: ReactNode };
+type Part = { id: string; label: ReactNode; badge?: ReactNode };
 
 export function Parts({ value, onChange, children }: { value: string; onChange: (id: string) => void; children: ReactNode }) {
   return (

@@ -31,6 +31,8 @@ import { Notice, Spinner } from '../../ui.jsx';
 import PageShell, { Section, SettingRow } from '../PageShell.jsx';
 import { StagedDrawer } from '../Drawer.jsx';
 import '../../simple/simple.css';
+import Button from '../../../ui/Button.tsx';
+import { Input } from '../../../ui/Input.tsx';
 
 const FormEditor = lazy(() => import('../../form/FormEditor.jsx'));
 
@@ -42,9 +44,8 @@ function BehaviourFields({ config, set }) {
         <span>
           <label htmlFor="nl-tone">Tone</label> <SimpleKey path={['persona', 'tone']} />
         </span>
-        <input
+        <Input
           id="nl-tone"
-          className="stFInput"
           type="text"
           value={read.tone}
           placeholder="e.g. warm, concise, plain language"
@@ -253,9 +254,9 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
           kind="warn"
           title="The JSON needs fixing first"
           actions={
-            <button type="button" className="quietButton" onClick={onShowJson}>
+            <Button type="button" onClick={onShowJson}>
               Open the JSON
-            </button>
+            </Button>
           }
         >
           This page reads the draft, which isn’t valid JSON right now.
@@ -268,8 +269,7 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
       <PageShell title="Agent" lead="Who it is, what it should do, and how it sounds.">
         {notices}
         <Section title="Name" lead="Shown in your list of agents. The name it introduces itself by is under Personality and rules.">
-          <input
-            className="stFInput"
+          <Input
             type="text"
             value={read.name}
             onFocus={() => {
@@ -332,8 +332,7 @@ export default function AgentPage({ editor, onShowJson, onOpenJson, onShowModels
         </Section>
 
         <Section title="What it says first" lead="The first thing a caller hears or reads. Leave it empty and the agent waits for the caller to start.">
-          <input
-            className="stFInput"
+          <Input
             type="text"
             value={greeting.text}
             disabled={read.channels.length === 0}

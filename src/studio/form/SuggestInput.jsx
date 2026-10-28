@@ -1,6 +1,7 @@
 import React, { useId, useMemo, useState } from 'react';
 import '../smartSelect.css';
 import Icon from '../../ui/Icon.jsx';
+import { Input } from '../../ui/Input.tsx';
 
 // A text box with suggestions: pick one or type anything; unlike SmartSelect, what is typed is saved.
 // A WAI-ARIA combobox like SmartSelect (listbox, aria-activedescendant), with the same keys: arrows, Enter, Escape.
@@ -72,9 +73,9 @@ export default function SuggestInput({
         if (!event.currentTarget.contains(event.relatedTarget)) close();
       }}
     >
-      <input
+      <Input
         id={id}
-        className="stFInput stComboInput"
+        className="stComboInput"
         type="text"
         role="combobox"
         aria-expanded={open}

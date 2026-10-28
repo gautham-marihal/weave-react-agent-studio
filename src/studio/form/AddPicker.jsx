@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { filterOptions, groupOptions } from './pickerOptions.js';
 import Icon from '../../ui/Icon.jsx';
 import { trapTab } from '../../ui/useDialogFocus.js';
+import { Input } from '../../ui/Input.tsx';
 
 // "Add…" as a window of job cards (grouped, with a search when there are many) instead of a drop-down of kinds; the
 // page, or the panel holding Add, stays where it was. A choice the runtime can't run yet says so on its card.
@@ -68,8 +69,8 @@ export default function AddPicker({ what, label, intro, options, disabled, onPic
   };
 
   const search = searchable && (
-    <input
-      className="stFInput small"
+    <Input
+      size="small"
       type="search"
       value={query}
       placeholder="Search what it does"

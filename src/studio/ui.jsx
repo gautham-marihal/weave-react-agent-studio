@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { sentenceCase } from '../ui/text.js';
 import Icon from '../ui/Icon.jsx';
 import { trapTab, useDialogFocus } from '../ui/useDialogFocus.js';
+import Button from '../ui/Button.tsx';
 
 // Small shared parts of the agents area: Notice, Modal, Spinner, ErrorState (with Try again), envLabel and EnvSlots.
 
@@ -180,9 +181,9 @@ export function ErrorState({ error, onRetry, what = 'this' }) {
       title={title}
       actions={
         onRetry && (
-          <button type="button" className="quietButton" onClick={onRetry}>
+          <Button type="button" onClick={onRetry}>
             Try again
-          </button>
+          </Button>
         )
       }
     >

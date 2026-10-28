@@ -14,6 +14,7 @@ import { readinessSteps } from '../readiness.js';
 import { tabFor } from '../pages.js';
 import { STEPS, stepIndex } from '../../setup/setupModel.js';
 import { inSetup, useSetupProgress } from '../../setup/setupProgress.js';
+import Button from '../../../ui/Button.tsx';
 
 const MARK = { done: 'check', blocked: 'alert' };
 // a build part drawn as a step of the same list
@@ -168,9 +169,9 @@ export default function HomePage({
                 : 'A few short steps, one screen at a time: what it does, where people reach it, how it sounds, what it knows and can do; then try it and put it live.'}
             </p>
           </div>
-          <button type="button" className="primaryCta" onClick={() => go('setup', setup.step ? { step: setup.step } : undefined)}>
+          <Button type="button" variant="primary" onClick={() => go('setup', setup.step ? { step: setup.step } : undefined)}>
             {setup.known ? 'Continue setup' : 'Start the setup'} <Icon name="arrowRight" size={15} />
-          </button>
+          </Button>
         </section>
       )}
 
@@ -187,9 +188,9 @@ export default function HomePage({
               action={
                 plan.next ? (
                   // quiet: the next step is marked below, and the top bar has the page's one strong button
-                  <button type="button" className="quietButton compactCta" onClick={() => open(plan.next)}>
+                  <Button type="button" size="compact" onClick={() => open(plan.next)}>
                     {plan.next.label}
-                  </button>
+                  </Button>
                 ) : (
                   <button type="button" className="linkButton" onClick={() => setShowSteps((v) => !v)} aria-expanded={showSteps}>
                     {showSteps ? 'Hide the steps' : 'Show the steps'}

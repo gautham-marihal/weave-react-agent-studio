@@ -914,3 +914,19 @@
     margin-bottom: 8px;
   }
 }
+
+/* a web voice conversation in the preview: the call (VoiceStage) instead of the chat lines */
+.pvVoice {
+  --pv-voice-orb: clamp(120px, 22vh, 176px);
+  flex: 1 1 auto;
+  padding-top: 12px;
+}
+.pvVoiceActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.pvTranscriptToggle {
+  align-self: center;
+}

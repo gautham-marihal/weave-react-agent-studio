@@ -154,7 +154,7 @@ export const canKeypad = (types, type) => infoOf(types, type)?.canKeypad ?? true
 export const canForms = (types, type) => infoOf(types, type)?.canForms ?? true;
 
 // ---- settings only a voice channel has, in a channel's `overrides`
-export const VOICE_ONLY = {
+const VOICE_ONLY = {
   conversation: ['sounds', 'speech', 'noise_cancellation', 'ivr_detection'],
   models: ['stt', 'tts', 'realtime', 'vad', 'turn_detector'],
 };

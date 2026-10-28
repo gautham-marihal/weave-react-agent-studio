@@ -91,7 +91,10 @@ import Icon from '../ui/Icon.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import { SkeletonRows } from '../ui/Skeleton.jsx';
 import { revealIn } from '../ui/scrollEdges.js';
-import { randomTag } from '../studio/format.js';
+import Button from '../ui/Button.tsx';
+import { WORKSPACE_STORAGE_KEY, loadCurrentWorkspaceId, loadWorkspaces, makeWorkspaceId, normalizeList, saveWorkspaceState } from './workspaceStore.js';
+
+export { openWorkspaceNamed } from './workspaceStore.js';
 
 // The search's code (cmdk) arrives the first time it is opened.
 const SearchOverlay = lazy(() => import('./SearchPalette.jsx'));
@@ -119,90 +122,6 @@ function PageLoading() {
       <SkeletonRows rows={4} label="Loading the page" />
     </div>
   );
-}
-
-const WORKSPACE_STORAGE_KEY = 'weave_workspaces';
-
-const CURRENT_WORKSPACE_KEY = 'weave_current_workspace';
-
-function makeWorkspaceId() {
-  return `ws_${Date.now().toString(36)}_${randomTag(5)}`;
-}
-
-// Records saved with each workspace: test sessions, check runs (stored as `simulations`, the old name), activity log.
-function normalizeList(value) {
-  return Array.isArray(value) ? value.filter((item) => item && item.id) : [];
-}
-
-function loadWorkspaces(profile) {
-  let stored = [];
-  try {
-    stored = JSON.parse(localStorage.getItem(WORKSPACE_STORAGE_KEY) || '[]');
-  } catch {}
-
-  if (Array.isArray(stored) && stored.length) {
-    return stored.map((ws) => ({
-      id: ws.id || makeWorkspaceId(),
-      name: ws.name || 'My workspace',
-      createdAt: ws.createdAt || new Date().toISOString(),
-      telephony: normalizeTelephony(ws.telephony),
-      sessions: normalizeList(ws.sessions),
-      simulations: normalizeList(ws.simulations),
-      activity: normalizeList(ws.activity),
-      settings: ws.settings && typeof ws.settings === 'object' ? ws.settings : {},
-    }));
-  }
-
-  const first = {
-    id: makeWorkspaceId(),
-    name: profile?.workspaceName || 'My workspace',
-    createdAt: new Date().toISOString(),
-  };
-
-  try {
-    localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify([first]));
-  } catch {}
-  try {
-    localStorage.setItem(CURRENT_WORKSPACE_KEY, first.id);
-  } catch {}
-  return [first];
-}
-
-// Opens the first-time setup's workspace by the new person's name (this browser may have had others), making it if none
-// has that name. Run once as setup finishes (on every load it would come back after a rename).
-export function openWorkspaceNamed(name) {
-  const wanted = String(name || '').trim();
-  if (!wanted) return;
-  let stored = [];
-  try {
-    stored = JSON.parse(localStorage.getItem(WORKSPACE_STORAGE_KEY) || '[]');
-  } catch {}
-  if (!Array.isArray(stored) || !stored.length) return; // the first load makes it, with this name
-  let found = stored.find((ws) => ws && ws.name === wanted);
-  try {
-    if (!found) {
-      found = { id: makeWorkspaceId(), name: wanted, createdAt: new Date().toISOString() };
-      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify([...stored, found]));
-    }
-    localStorage.setItem(CURRENT_WORKSPACE_KEY, found.id);
-  } catch {}
-}
-
-function loadCurrentWorkspaceId(workspaces) {
-  try {
-    const current = localStorage.getItem(CURRENT_WORKSPACE_KEY);
-    if (current && workspaces.some((ws) => ws.id === current)) return current;
-  } catch {}
-  return workspaces[0]?.id || null;
-}
-
-function saveWorkspaceState(workspaces, currentId) {
-  try {
-    localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(workspaces));
-  } catch {}
-  try {
-    if (currentId) localStorage.setItem(CURRENT_WORKSPACE_KEY, currentId);
-  } catch {}
 }
 
 const RECENT_KEY = 'weave_search_recent';
@@ -1270,9 +1189,9 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                           )}
                         </p>
                       </div>
-                      <button className="primaryCta createButton" type="button" onClick={openCreateAssistant}>
+                      <Button variant="primary" className="createButton" type="button" onClick={openCreateAssistant}>
                         <Icon name="plus" size={16} /> Create agent
-                      </button>
+                      </Button>
                     </section>
 
                     {/* sample agents, labelled so a new workspace isn't mistaken for someone else's */}
@@ -1282,9 +1201,9 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                           kind="info"
                           title={`${samples.length === 1 ? 'This agent is a sample' : `These ${samples.length} agents are samples`}`}
                           actions={
-                            <button type="button" className="quietButton" onClick={() => samples.forEach((bot) => hideBot(bot.id))}>
+                            <Button type="button" onClick={() => samples.forEach((bot) => hideBot(bot.id))}>
                               Hide the samples
-                            </button>
+                            </Button>
                           }
                         >
                           They come with demo mode, with made-up calls, so there is something to explore. Hide them to start with an empty workspace; the Agents
@@ -1321,9 +1240,9 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                                 <p>Describe what it should do in your own words or pick a starting point, try it out, then put it live.</p>
                                 <div className="starterActions">
                                   {/* quiet: "Create agent" above is the page's one strong button, and does the same */}
-                                  <button className="quietButton compactCta" type="button" onClick={openCreateAssistant}>
+                                  <Button size="compact" type="button" onClick={openCreateAssistant}>
                                     Start building
-                                  </button>
+                                  </Button>
                                 </div>
                               </div>
                             </div>

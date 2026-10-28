@@ -1,6 +1,7 @@
 import React, { useId, useMemo, useState } from 'react';
 import { ASSIGNABLE_ROLES, WHOLE_WORKSPACE, agentsScope, describeGrant, isWhole, roleOf, scopeAgents, scopeProblem } from './teamModel.js';
 import './team.css';
+import { Input } from '../../ui/Input.tsx';
 
 // Giving access as two card choices: what they may do (the role) and where (the whole workspace or ticked agents),
 // with a sentence saying what the choice gives before anyone confirms it.
@@ -79,14 +80,7 @@ export default function AccessPicker({ role, scope, agents, onChange, fixedAgent
           {!whole && !r.workspaceOnly && (
             <div className="tmAgents">
               {agents.length > 8 && (
-                <input
-                  className="stFInput"
-                  type="search"
-                  value={query}
-                  placeholder="Search agents"
-                  aria-label="Search agents"
-                  onChange={(event) => setQuery(event.target.value)}
-                />
+                <Input type="search" value={query} placeholder="Search agents" aria-label="Search agents" onChange={(event) => setQuery(event.target.value)} />
               )}
               <div className="tmAgentTools">
                 <button type="button" className="linkButton" onClick={() => onChange({ role, scope: agentsScope(agents.map((a) => a.id)) })}>

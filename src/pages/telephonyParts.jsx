@@ -4,6 +4,7 @@ import { sentenceCase } from '../ui/text.js';
 import { Glyph } from './shared.jsx';
 import Icon from '../ui/Icon.jsx';
 import { askConfirm } from '../ui/dialogs.js';
+import Button from '../ui/Button.tsx';
 
 // What the Telephony pages share: a table with search, column choice and row actions, and a dialog frame with fields.
 
@@ -86,9 +87,9 @@ export function TelephonyTablePanel({
               aria-label={`Search ${title.toLowerCase()}`}
             />
           )}
-          <button
+          <Button
             type="button"
-            className={`quietButton iconOnly ${searchOpen ? 'isActive' : ''}`}
+            className={`iconOnly ${searchOpen ? 'isActive' : ''}`}
             aria-label={searchOpen ? 'Close search' : `Search ${title.toLowerCase()}`}
             aria-pressed={searchOpen}
             title="Search"
@@ -99,17 +100,17 @@ export function TelephonyTablePanel({
             }}
           >
             <Icon name="search" size={15} />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={`quietButton iconOnly ${columnsOpen ? 'isActive' : ''}`}
+            className={`iconOnly ${columnsOpen ? 'isActive' : ''}`}
             aria-label="Choose columns"
             aria-expanded={columnsOpen}
             title="Columns"
             onClick={() => setColumnsOpen((value) => !value)}
           >
             <Icon name="sliders" size={15} />
-          </button>
+          </Button>
           {columnsOpen && (
             <div className="tableColumnsMenu" role="dialog" aria-label="Visible columns">
               <div className="tableColumnsTitle">Visible columns</div>
@@ -207,14 +208,14 @@ export function TelephonyTablePanel({
                     <strong>{needle ? `No matches for “${query.trim()}”` : emptyTitle}</strong>
                     {needle ? <span>Try a different search, or clear it to see everything.</span> : emptyText && <span>{emptyText}</span>}
                     {!needle && emptyAction && (
-                      <button type="button" className="secondaryCta compactSecondary" onClick={emptyAction.onClick}>
+                      <Button type="button" variant="secondary" className="compactSecondary" onClick={emptyAction.onClick}>
                         {emptyAction.label}
-                      </button>
+                      </Button>
                     )}
                     {needle && (
-                      <button type="button" className="secondaryCta compactSecondary" onClick={() => setQuery('')}>
+                      <Button type="button" variant="secondary" className="compactSecondary" onClick={() => setQuery('')}>
                         Clear search
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </td>

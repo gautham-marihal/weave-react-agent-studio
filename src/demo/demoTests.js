@@ -10,7 +10,7 @@ import { modelNameOf } from '../studio/scenarios/model.js';
 const list = (v) => (Array.isArray(v) ? v : []);
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
-export const DEMO_RUN_NOTE = 'Demo mode: this result was made by a simple imitation of the runtime, not by the real one.';
+const DEMO_RUN_NOTE = 'Demo mode: this result was made by a simple imitation of the runtime, not by the real one.';
 export const STEP_MS = 400; // time per scenario, so results appear one by one like the real runner's
 
 // A stable fingerprint of a config (keys sorted), so a run names the exact config it tested.

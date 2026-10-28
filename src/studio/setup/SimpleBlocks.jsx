@@ -27,6 +27,8 @@ import {
   setLookup,
   setReach,
 } from './setupModel.js';
+import Button from '../../ui/Button.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 // The setup's simple controls, shared with the agent's own pages, so a choice is made the same way every time.
 
@@ -192,8 +194,7 @@ export function ReachChoices({ config, set, botId, onPage = false, onShowNotice 
         <label className="suField">
           <span>Recording notice</span>
           <small>Said at the start of every call, before the greeting: tell callers the call is recorded. Many places require it.</small>
-          <input
-            className="stFInput"
+          <Input
             value={simple.recordingNotice}
             placeholder="This call may be recorded to improve our service."
             onChange={(event) => set(setRecordingNotice(config, event.target.value))}
@@ -263,21 +264,16 @@ function LookupForm({ config, set, current, onCancel }) {
       <label className="suField">
         <span>The web address it asks</span>
         <small>Put what the person tells it in curly brackets, for example https://shop.example.com/orders/&#123;order number&#125;.</small>
-        <input className="stFInput" value={form.url} placeholder="https://" onChange={(event) => setForm({ ...form, url: event.target.value })} />
+        <Input value={form.url} placeholder="https://" onChange={(event) => setForm({ ...form, url: event.target.value })} />
       </label>
       <div className="suInline">
         <label className="suField grow">
           <span>What it finds</span>
-          <input
-            className="stFInput"
-            value={form.finds}
-            placeholder="an order’s status"
-            onChange={(event) => setForm({ ...form, finds: event.target.value })}
-          />
+          <Input value={form.finds} placeholder="an order’s status" onChange={(event) => setForm({ ...form, finds: event.target.value })} />
         </label>
         <label className="suField grow">
           <span>What it needs from the person</span>
-          <input className="stFInput" value={form.needs} placeholder="order number" onChange={(event) => setForm({ ...form, needs: event.target.value })} />
+          <Input value={form.needs} placeholder="order number" onChange={(event) => setForm({ ...form, needs: event.target.value })} />
         </label>
       </div>
       {problem && (
@@ -288,9 +284,9 @@ function LookupForm({ config, set, current, onCancel }) {
       )}
       {!current.on && (
         <div className="suActionButtons">
-          <button type="button" className="quietButton" onClick={apply}>
+          <Button type="button" onClick={apply}>
             Switch it on
-          </button>
+          </Button>
           {onCancel && (
             <button type="button" className="linkButton" onClick={onCancel}>
               Cancel
@@ -540,9 +536,8 @@ export function KnowledgeBlock({ botId, config, set, latest, onPage = false, onU
       <div className="suInline">
         <label className="suField grow">
           <span>Or a web page</span>
-          <input
+          <Input
             ref={pageInput}
-            className="stFInput"
             value={page}
             placeholder="www.example.com/help"
             onChange={(event) => setPage(event.target.value)}
@@ -555,9 +550,9 @@ export function KnowledgeBlock({ botId, config, set, latest, onPage = false, onU
           />
           {pageProblem && <small className="suWarn">{pageProblem}</small>}
         </label>
-        <button type="button" className="quietButton" onClick={addPage} disabled={!page.trim()}>
+        <Button type="button" onClick={addPage} disabled={!page.trim()}>
           Add the page
-        </button>
+        </Button>
       </div>
       <label className="suCheck suLinked">
         <input type="checkbox" checked={linked} onChange={(event) => setLinked(event.target.checked)} />
