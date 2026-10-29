@@ -4,6 +4,10 @@ import { api } from '../api/client.ts';
 import ReleaseChecklist from './release/ReleaseChecklist.jsx';
 import { useLiveSession } from './test/useLiveSession.js';
 import { useSimulatedSession } from './test/useSimulatedSession.js';
+import { useRehearsalSession } from './banking/useRehearsalSession.ts';
+import { bankDisplayName } from './banking/bankingProfile.ts';
+import { voiceInUse } from './agent/pickers/pickerLogic.js';
+import { readModels } from './models/config.js';
 import { isDemoMode } from '../demo/demoMode.js';
 import { refreshBots, useBots } from './agents.js';
 import { applyChange, takeChange } from './pendingChange.js';
@@ -329,7 +333,13 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
       startedAt: new Date(startedAt).toISOString(),
       endedAt: new Date(endedAt).toISOString(),
       durationSec: Math.max(1, Math.round((endedAt - startedAt) / 1000)),
-      channel: info?.simulated ? 'Test: simulated chat' : info?.channel?.type === 'web_voice' ? 'Test: voice' : 'Test: chat',
+      channel: info?.rehearsal
+        ? 'Test: banking rehearsal'
+        : info?.simulated
+          ? 'Test: simulated chat'
+          : info?.channel?.type === 'web_voice'
+            ? 'Test: voice'
+            : 'Test: chat',
       participants: 2,
       status: 'Completed',
       userMessages: messages.filter((m) => m.role === 'user').length,
@@ -353,7 +363,25 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
     if (!modeLocked || next === 'simulated') setSessionModeState(next);
   };
   const session = sessionMode === 'simulated' ? simSession : realSession;
-  const live = [realSession.status, simSession.status].some((status) => ['starting', 'connecting', 'waiting', 'live'].includes(status));
+  // A banking rehearsal (a draft wired to the banking gateway) is the Test page's third choice; the preview and the
+  // setup keep the real or simulated agent.
+  // the bank's name and the agent's voice, from the draft as it is now (Build → Banking)
+  const draftConfig = editor.parsed.value;
+  const bankingProfile = useMemo(() => {
+    const voice = voiceInUse(readModels(draftConfig).tts);
+    return { bankName: bankDisplayName(draftConfig), voice: voice ? { locale: voice.locale, gender: voice.gender } : null };
+  }, [draftConfig]);
+  const rehearsalSession = useRehearsalSession({ onFinished: handleFinished, profile: bankingProfile });
+  const [rehearsing, setRehearsing] = useState(false);
+  const testMode = rehearsing ? 'rehearsal' : sessionMode;
+  const setTestMode = (next) => {
+    setRehearsing(next === 'rehearsal');
+    if (next !== 'rehearsal') setSessionMode(next);
+  };
+  const testSession = rehearsing ? rehearsalSession : session;
+  const live = [realSession.status, simSession.status, rehearsalSession.status].some((status) =>
+    ['starting', 'connecting', 'waiting', 'live'].includes(status),
+  );
   const publishOpen = tab === 'versions' && params?.publish === '1';
   const closePublish = () => navigate(routeHref(botId, 'versions'), { guard: false });
   // What was just published, kept here while the agent is re-read (which redraws the publish panel); cleared on close.
@@ -542,6 +570,9 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
         sessionMode,
         modeLocked,
         setSessionMode,
+        testSession,
+        testMode,
+        setTestMode,
         realSession,
         manage,
         manageBot,

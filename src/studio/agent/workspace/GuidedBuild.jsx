@@ -17,6 +17,14 @@ import IdentityFields from './IdentityFields.jsx';
 const GUIDED = [
   { id: 'who', page: 'agent', title: 'Personality and instructions', text: 'Who the agent is and what it should do. This shapes every reply.' },
   { id: 'sound', page: 'agent', title: 'Language and voice', text: 'The language it speaks first, any others it answers in, and how it sounds on a call.' },
+  {
+    id: 'banking',
+    page: 'banking',
+    title: 'Banking',
+    text: PURPOSE.banking,
+    open: 'Open Banking',
+    more: 'Name the bank it speaks for, choose its voice, and connect the banking gateway that signs callers in and runs balances, cheques and other requests.',
+  },
   { id: 'knowledge', page: 'knowledge', title: 'What it knows', text: PURPOSE.knowledge },
   { id: 'tools', page: 'tools', title: 'What it can do', text: PURPOSE.tools },
   { id: 'channels', page: 'channels', title: 'Where people reach it', text: PURPOSE.channels },

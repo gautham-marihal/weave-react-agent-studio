@@ -78,8 +78,13 @@ export default [
   },
   // tests and their fake servers: random data, example addresses and an ftp:// link as the wrong kind of address are what they are testing with
   {
-    files: ['tests/**', 'e2e/**'],
+    files: ['tests/**', 'e2e/**', 'services/banking-gateway/mock/**'],
     rules: { 'sonarjs/pseudo-random': 'off', 'sonarjs/no-hardcoded-ip': 'off', 'sonarjs/no-clear-text-protocols': 'off' },
+  },
+  // the banking gateway is a Node service (its own package, tests and type check: services/banking-gateway)
+  {
+    files: ['services/**'],
+    languageOptions: { globals: { ...globals.node } },
   },
   // the Telephony page is left as it is
   {

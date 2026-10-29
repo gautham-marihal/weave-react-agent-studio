@@ -20,6 +20,8 @@
     "mock:bank": "node mock-bank/server.mjs",
     "mock:bank:agents": "node mock-bank/agents/build.mjs --validate",
     "mock:bank:deploy": "node mock-bank/agents/deploy.mjs",
+    "gateway:mock": "node services/banking-gateway/mock/main.ts",
+    "gateway:test": "npm --prefix services/banking-gateway test",
     "types": "node scripts/schemaTypes.mjs",
     "sync-public": "node scripts/schemaCopies.mjs",
     "e2e:typing": "node e2e/typing.mjs",
@@ -37,7 +39,8 @@
     "e2e:fit": "node e2e/fit.mjs",
     "e2e:workflow": "node e2e/workflow.mjs",
     "e2e:a11y": "node e2e/a11y.mjs",
-    "e2e:reorder": "node e2e/reorder.mjs"
+    "e2e:reorder": "node e2e/reorder.mjs",
+    "e2e:banking": "node e2e/banking.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.4",

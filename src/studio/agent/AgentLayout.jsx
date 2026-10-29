@@ -35,6 +35,7 @@ import { QuestionsBlock, RecordingBlock, SensitiveBlock, SummaryBlock } from './
 import { askedAbove } from './blocks/afterCallModel.js';
 import { inSetup, useSetupProgress } from '../setup/setupProgress.js';
 import CallersPanel from '../callers/CallersPanel.jsx';
+import BankingPage from '../banking/BankingPage.tsx';
 import GateStrip from '../release/GateStrip.jsx';
 import Drawer from './Drawer.jsx';
 import PageShell, { Section } from './PageShell.jsx';
@@ -100,7 +101,7 @@ function transfersInWords(config) {
 const FORM_PART = { workflow: 'settings', knowledge: 'settings', settings: 'settings' };
 // Pages that edit the draft through their own controls; they wait while the draft isn't valid JSON (Agent and Workflow
 // say so themselves; Settings is where the JSON is fixed).
-const READS_THE_DRAFT = new Set(['home', 'build', 'tools', 'channels', 'guardrails', 'aftercall', 'knowledge', 'tests']);
+const READS_THE_DRAFT = new Set(['home', 'build', 'banking', 'tools', 'channels', 'guardrails', 'aftercall', 'knowledge', 'tests']);
 const TOOL_LISTS = [
   {
     id: 'tools',
@@ -287,6 +288,9 @@ export default function AgentLayout({ ws }) {
     sessionMode,
     modeLocked,
     setSessionMode,
+    testSession,
+    testMode,
+    setTestMode,
     realSession,
     manage,
     manageBot,
@@ -578,6 +582,19 @@ export default function AgentLayout({ ws }) {
         onShowModels={openModels}
       />
     );
+  } else if (page === 'banking') {
+    body = (
+      <PageShell title="Banking" lead={PAGE_LEAD.banking}>
+        <BankingPage
+          config={config}
+          set={editor.setValue}
+          onTest={() => {
+            setTestMode('rehearsal');
+            go(tabFor('tests', 'try'));
+          }}
+        />
+      </PageShell>
+    );
   } else if (page === 'tools') {
     body = (
       <ListPage
@@ -853,10 +870,10 @@ export default function AgentLayout({ ws }) {
             name={name}
             summary={summary}
             editor={editor}
-            session={session}
-            mode={sessionMode}
+            session={testSession}
+            mode={testMode}
             modeLocked={modeLocked}
-            onMode={setSessionMode}
+            onMode={setTestMode}
           />
         )}
         {p === 'scenarios' && <ScenariosTab botId={botId} name={name} editor={editor} />}

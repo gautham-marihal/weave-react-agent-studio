@@ -4,7 +4,8 @@ import { drawsVoice } from './channels.ts';
 
 // One conversation with an agent over LiveKit: get a join token (POST /sessions), connect, and turn what arrives into
 // messages. Bot text arrives on `lk.transcription`, chat goes out on `lk.chat`, forms use `agent-builder.form` and
-// `agent-builder.form.submit`. The join token is a secret for this session: used to connect, never kept or logged.
+// `agent-builder.form.submit`. The join token is a secret for this session: used to connect and, while in the room,
+// to prove to the banking gateway that the banking panel is this conversation's caller. Never stored or logged.
 
 const TOPIC_TRANSCRIPTION = 'lk.transcription';
 const TOPIC_CHAT = 'lk.chat';
@@ -71,6 +72,9 @@ export function useLiveSession({ onFinished } = {}) {
   const [media, setMedia] = useState({ mic: false, camera: false, screen: false });
   const [agentHint, setAgentHint] = useState(false);
   const [reconnecting, setReconnecting] = useState(false); // the connection dropped and LiveKit is trying to restore it
+  // While in the room: its join token and when it was joined. The banking panel shows the token to the banking gateway
+  // (only there) to prove it is this conversation's caller; it is dropped the moment the room is left.
+  const [joined, setJoined] = useState(null); // { token, at }
 
   const roomRef = useRef(null);
   const lkRef = useRef(null);
@@ -142,6 +146,7 @@ export function useLiveSession({ onFinished } = {}) {
       room.disconnect().catch(() => {});
     }
     setMedia({ mic: false, camera: false, screen: false });
+    setJoined(null);
   }, []);
 
   useEffect(() => {
@@ -358,6 +363,7 @@ export function useLiveSession({ onFinished } = {}) {
       }
       startedRef.current = Date.now();
       recordedRef.current = false;
+      setJoined({ token: session.token, at: startedRef.current });
       log('Connected. Waiting for the agent');
       setStatus((s) => (s === 'connecting' ? 'waiting' : s));
       hintTimerRef.current = window.setTimeout(() => setAgentHint(true), AGENT_JOIN_HINT_MS);
@@ -481,6 +487,8 @@ export function useLiveSession({ onFinished } = {}) {
     media,
     agentHint,
     reconnecting,
+    channelToken: joined?.token ?? null,
+    startedAt: joined?.at ?? null,
     simulated: false,
     audioHostRef,
     localVideoRef,

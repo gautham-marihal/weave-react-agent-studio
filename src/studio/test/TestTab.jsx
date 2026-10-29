@@ -22,9 +22,17 @@ import './test.css';
 import '../preview/preview.css';
 import '../models/models.css';
 import { randomTag } from '../format.js';
+import { usesGateway } from '../banking/gatewayConfig.ts';
+import { useBankingChannel } from '../banking/useBankingChannel.ts';
+import { useGatewayRecords } from '../banking/useGatewayRecords.ts';
+import { mergeRecords } from '../banking/gatewayRecords.ts';
+import CallerPanel from '../banking/CallerPanel.tsx';
+import RehearsalConsole from '../banking/RehearsalConsole.tsx';
 
 // The Test page: a conversation with the draft, by voice in a real session (LiveKit) or with the simulated agent (no
-// server), and what happened in each turn (the trace) beside it.
+// server), and what happened in each turn (the trace) beside it. A draft wired to the banking gateway also gets the
+// caller's banking screen beside a real conversation and the gateway's decisions in its trace, and a third choice,
+// Banking (Weave Studio's banking assistant, by chat or voice, on the banking gateway's test environment).
 
 const STATUS_TEXT = {
   idle: 'Not started',
@@ -131,7 +139,22 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const webChannels = useMemo(() => browserChannels(testConfig), [testConfig]);
   const channelId = webChannels.some((c) => c.id === channelPick) ? channelPick : webChannels[0]?.id || '';
   const simulated = mode === 'simulated';
+  const rehearsal = mode === 'rehearsal';
+  // A draft wired to the banking gateway (its tools or its connection), as the version being tried has it.
+  const banking = usesGateway(testConfig);
   const noWebChannel = !simulated && reach.state === 'none' && !running;
+
+  // A rehearsal needs a banking draft: if the draft stops being one, go back to the real agent (not mid-conversation).
+  useEffect(() => {
+    if (rehearsal && testConfig && !banking && !running) onMode?.('real');
+  }, [rehearsal, testConfig, banking, running, onMode]);
+
+  // A real conversation with a banking draft: the caller's banking screen opens with the room's own join token (the
+  // gateway checks it), and what the gateway decided joins the trace.
+  const realBanking = banking && !simulated && !rehearsal;
+  const bankChannel = useBankingChannel(realBanking ? session.channelToken || null : null);
+  const gatewayRecords = useGatewayRecords(info?.room, session.startedAt, realBanking);
+  const traceRecords = useMemo(() => mergeRecords(trace.records, gatewayRecords), [trace.records, gatewayRecords]);
   const modelsUnsaved = ref === 'draft' && !!config && !!editor.savedConfig && !sameModels(config, editor.savedConfig);
   const shownModels = running || status === 'ended' ? used : testConfig ? summarizeModels(testConfig) : null;
   const openModels = () => {
@@ -188,12 +211,49 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     const made = scenarioFromConversation(config, {
       channel: info?.channel?.id,
       messages,
-      tools: toolsUsedIn(trace.records),
-      finalState: finalStateOf(trace.records),
+      tools: toolsUsedIn(traceRecords),
+      finalState: finalStateOf(traceRecords),
     });
     editor.setValue({ ...config, tests: [...(Array.isArray(config.tests) ? config.tests : []), made] });
     setMadeFrom({ id: made.id, first: messages[0]?.id });
   };
+
+  const modeChoice = onMode && (
+    <OneOf className="pvModes stTMode" label="What to talk to" value={mode} onChange={onMode}>
+      <Choice value="real" disabled={modeLocked || running} title={modeLocked ? 'Demo mode has no real agent to talk to' : undefined}>
+        Real agent
+      </Choice>
+      <Choice value="simulated" disabled={running}>
+        Simulated
+      </Choice>
+      {(banking || rehearsal) && (
+        <Choice value="rehearsal" disabled={running} title="The banking assistant, by chat or voice, on the banking gateway">
+          Banking
+        </Choice>
+      )}
+    </OneOf>
+  );
+
+  // Banking (internally a "rehearsal": the gateway's test environment, no runtime) has its own conversation, by chat or
+  // voice, with the caller's secure banking beside it.
+  if (rehearsal) {
+    return (
+      <div className="stTest">
+        <section className="stCard stTHead">
+          <div className="stTIntro">
+            <h3>Try this agent</h3>
+            <p className="stMuted">
+              <strong>Banking</strong>: talk to the banking assistant by web chat or web voice, as a caller would. It calls the banking gateway’s tools, and the
+              gateway decides sign-in, entitlements and confirmations. A rule-based assistant answers here (no language model); the bank’s name and voice are
+              set on Build → Banking.
+            </p>
+            {modeChoice}
+          </div>
+        </section>
+        <RehearsalConsole session={session} />
+      </div>
+    );
+  }
 
   return (
     <div className="stTest">
@@ -210,16 +270,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
               <>Starts a real conversation with {name} in your browser. It uses the actual runtime, so tools, handoffs and forms really run.</>
             )}
           </p>
-          {onMode && (
-            <OneOf className="pvModes stTMode" label="What to talk to" value={simulated ? 'simulated' : 'real'} onChange={onMode}>
-              <Choice value="real" disabled={modeLocked || running} title={modeLocked ? 'Demo mode has no real agent to talk to' : undefined}>
-                Real agent
-              </Choice>
-              <Choice value="simulated" disabled={running}>
-                Simulated
-              </Choice>
-            </OneOf>
-          )}
+          {modeChoice}
         </div>
         <div className="stTControls">
           {webChannels.length > 1 && (
@@ -443,6 +494,20 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
         </section>
 
         <aside className="stCard stTSide" aria-label="Session">
+          {realBanking && (
+            <div className="tw-mb-4">
+              <CallerPanel
+                channel={bankChannel}
+                onAskForPerson={connected ? () => session.sendText('I would like to speak to a Service Manager.') : undefined}
+                onRequestCallback={connected ? () => session.sendText('Please arrange a call back.') : undefined}
+                onUseAccount={
+                  connected
+                    ? (account) => session.sendText(`Please use my ${account.type.toLowerCase()} ending ${account.ending.replace(/\D/g, '')}.`)
+                    : undefined
+                }
+              />
+            </div>
+          )}
           <section className="stTModels" aria-label="Models">
             <div className="stTModelsHead">
               <h3>{running || status === 'ended' ? 'Models in this conversation' : 'Models for this test'}</h3>
@@ -594,10 +659,10 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
         </aside>
       </div>
 
-      {(status !== 'idle' || trace.records.length > 0) && (
+      {(status !== 'idle' || traceRecords.length > 0) && (
         <section className="stCard stTTrace" aria-label="Trace">
           <TraceView
-            records={trace.records}
+            records={traceRecords}
             live={trace.following}
             title="What happened in this conversation"
             emptyText={running ? 'Waiting for the first record…' : 'Nothing was recorded.'}

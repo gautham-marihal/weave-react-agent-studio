@@ -39,3 +39,5 @@ eslint-report.json
 *.temp
 # Local Vite cache
 .vite/
+
+/Weave Studio/

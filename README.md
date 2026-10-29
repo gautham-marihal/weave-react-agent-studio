@@ -450,6 +450,14 @@ filters by kind and every raw record one click away. A call still in progress is
 not buffer that path). The call log's text currently arrives with the wrong character encoding (`Iâ€™m` for `I’m`); the trace repairs
 that pattern, and the transcript endpoint is fine.
 
+## Banking agents
+
+An agent whose tools call the banking gateway (`services/banking-gateway`) is built on **Build → Banking** (second in the Build menu: the
+bank's name, the agent's voice, the gateway's tools) and tried on **Tests → Banking**, by web chat or web voice, with the caller's secure
+banking screen, scenarios and the trace beside it. A real conversation with a banking agent also gets the caller's banking screen and the
+gateway's decisions in its trace. The gateway currently runs only in its test environment (simulated bank systems, test logins). Handover,
+setup, security and code map: [docs/BANKING.md](docs/BANKING.md).
+
 ## What the model will be told
 
 The prompt preview and the tool "Try it" panel ask the server (`POST /preview/prompt`, `POST /preview/result`), which runs the runtime's
@@ -578,6 +586,8 @@ src/studio/settingsSearch.js  find a setting by name (Ctrl K)
 src/studio/models/          provider and model pickers, and the model catalogue
 src/demo/                   demo mode: the imitation API (agents, test runs, calls, knowledge, previews), its validator, the simulated agent, the draft assistant
 src/studio/test/            LiveKit session hook, Test tab, form prompt
+src/studio/banking/         banking agents: Build → Banking, the caller's banking screen, Tests → Banking (docs/BANKING.md)
+services/banking-gateway/   the banking gateway (its own package: Node service, tests, type check)
 e2e/                        the end-to-end smoke test, the typing-speed budget, the first-run click counter, and the mock API
 scripts/                    sync-fixtures (refresh the schema), schemaTypes (generate the types)
 tests/                      unit and component tests (node:test), the schema/example fixtures, and corpus/ (the configs the conformance tests run over)

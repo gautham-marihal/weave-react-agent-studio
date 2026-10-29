@@ -11,6 +11,7 @@ export const PAGE_GROUPS = [
     label: 'Build',
     pages: [
       { id: 'agent', label: 'Agent', icon: 'agent' },
+      { id: 'banking', label: 'Banking', icon: 'bank' },
       { id: 'knowledge', label: 'Knowledge', icon: 'records' },
       { id: 'tools', label: 'Tools', icon: 'tools' },
       { id: 'workflow', label: 'Workflow', icon: 'workflow' },
@@ -46,7 +47,7 @@ export const PAGES = PAGE_GROUPS.flatMap((g) => g.pages);
 // on its guided view ("build", every part on one page).
 export const STAGES = [
   { id: 'overview', label: 'Overview', pages: ['home'] },
-  { id: 'build', label: 'Build', pages: ['build', 'agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings'] },
+  { id: 'build', label: 'Build', pages: ['build', 'agent', 'banking', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings'] },
   { id: 'test', label: 'Test', pages: ['tests'] },
   { id: 'release', label: 'Release', pages: ['releases'] },
   { id: 'monitor', label: 'Monitor', pages: ['calls', 'monitoring', 'questions', 'speed'] },
@@ -61,6 +62,7 @@ export const EXTRA_PAGE_IDS = [
   'home',
   'build',
   'agent',
+  'banking',
   'tools',
   'channels',
   'guardrails',
@@ -130,6 +132,7 @@ export const sectionsCovered = () => new Set(Object.values(PAGE_SECTIONS).flat()
 
 // What each page is for, in a sentence, under its title.
 export const PAGE_LEAD = {
+  banking: 'The bank this agent speaks for: its name, the voice callers hear, and the banking gateway that signs callers in and runs their requests.',
   tools: 'What the agent can do besides talk: look something up, hand over to a person, end the call.',
   knowledge: 'The documents and sources the agent can look things up in.',
   workflow: 'Who answers first, and how a call moves from one agent to another.',

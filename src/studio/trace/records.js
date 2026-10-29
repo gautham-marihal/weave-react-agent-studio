@@ -4,6 +4,7 @@
 
 import { isObj } from '../form/engine.js';
 import { channelName } from '../simple/simpleModel.js';
+import { GATEWAY_KINDS, describeGatewayRecord } from '../banking/gatewayRecords.ts';
 
 // "web_chat" → "web chat", "sip_voice" → "phone": a channel as a sentence says it
 const channelWords = (type) => {
@@ -76,6 +77,8 @@ export const GROUPS = [
   { id: 'model', label: 'Model', kinds: ['model_request'] },
   { id: 'lifecycle', label: 'Call', kinds: ['call_started', 'agent_entered', 'session_closed', 'call_ended'] },
   { id: 'errors', label: 'Errors', kinds: ['error'] },
+  // what the banking gateway decided, for an agent that uses it (studio/banking/gatewayRecords.ts)
+  { id: 'banking', label: 'Banking gateway', kinds: [...GATEWAY_KINDS] },
 ];
 export const groupOf = (event) => (GROUPS.find((g) => g.kinds.includes(event)) || { id: 'other' }).id;
 
@@ -120,6 +123,8 @@ export function describeRecord(record, index = 0) {
     problem: false,
     raw: r,
   };
+  const gateway = describeGatewayRecord(r);
+  if (gateway) return { ...base, ...gateway };
   switch (kind) {
     case 'user_said':
       return { ...base, tone: 'caller', label: 'Caller', text: fixMojibake(String(r.text ?? '')) };

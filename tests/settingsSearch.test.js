@@ -133,7 +133,8 @@ test('agent pages: a setting found under one name in many places is listed twice
 test('agent pages: the agent’s pages and the things people come to do are found by the words they use, the best match first', async () => {
   const { searchAgent } = await import('../src/studio/agent/pages.js');
   const ids = (q) => searchAgent(q).map((i) => i.id);
-  assert.equal(searchAgent('').length, 15, 'with nothing typed, the pages');
+  assert.equal(searchAgent('').length, 16, 'with nothing typed, the pages');
+  assert.ok(ids('bank').includes('page-banking'), 'the Banking page is found by what it is about');
   assert.equal(ids('deploy')[0], 'deploy');
   assert.equal(ids('roll back')[0], 'rollback');
   assert.equal(ids('publish')[0], 'publish');

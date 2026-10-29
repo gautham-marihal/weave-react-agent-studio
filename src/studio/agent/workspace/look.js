@@ -35,6 +35,7 @@ export const HUES = {
   release: 'blue',
   monitor: 'amber',
   agent: 'violet',
+  banking: 'teal',
   knowledge: 'blue',
   tools: 'amber',
   workflow: 'teal',

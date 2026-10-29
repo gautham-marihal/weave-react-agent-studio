@@ -264,7 +264,7 @@ test('the Overview lists the parts of building it first while it is not live, ea
   const rows = $$(app.container, '.ovBuild li');
   assert.deepEqual(
     rows.map((r) => r.dataset.part),
-    ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall'],
+    ['agent', 'banking', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall'],
   );
   assert.ok($(app.container, '.ovBuild li[data-part="guardrails"][data-state="optional"]'));
   const body = $(app.container, '.ovBody');
@@ -281,7 +281,7 @@ test('Build lists its parts down the side: the open one marked, a done part chec
   const app = await mountScreen('buildstage', config, { ready: 'nav', props: { page: 'tools', sections } });
   assert.deepEqual(
     $$(app.container, 'nav[aria-label="Build"] button[data-page]').map((b) => b.dataset.page),
-    ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings'],
+    ['agent', 'banking', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings'],
   );
   assert.equal($(app.container, 'button[aria-current="page"]').dataset.page, 'tools');
   assert.ok($(app.container, 'button[data-page="workflow"] [aria-label="Done"]'), 'one agent answers: done');
@@ -367,7 +367,7 @@ test('the guided view: every part on one page in order, who it is in plain field
   });
   assert.deepEqual(
     $$(app.container, '[data-guided]').map((s) => s.dataset.guided),
-    ['who', 'sound', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall'],
+    ['who', 'sound', 'banking', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall'],
   );
   const who = $(app.container, '#guided-who');
   assert.deepEqual($$(who, '.suFieldHead > span').map(textOf), ['Company name', 'Agent’s spoken name', 'Tone', 'Instructions', 'What it says first']);

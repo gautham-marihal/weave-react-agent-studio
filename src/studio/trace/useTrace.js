@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { followCall } from '../../api/client.ts';
 
-// The records of the Test tab's (or preview's) conversation. A simulated one makes its own; a real one is followed
-// through the API's live stream of the call (read-only).
+// The records of the Test tab's (or preview's) conversation. A simulated one or a banking rehearsal makes its own
+// (`localTrace`); a real one is followed through the API's live stream of the call (read-only).
 export function useTrace({ botId, session }) {
-  const simulated = !!session.simulated;
+  const simulated = !!session.simulated || !!session.localTrace;
   const room = session.info?.room;
   const [records, setRecords] = useState([]);
   const [following, setFollowing] = useState(false);

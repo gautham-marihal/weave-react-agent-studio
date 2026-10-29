@@ -1,4 +1,4 @@
-// The seven build parts, each with its purpose and state from the draft, for Build's side list and the Overview. It
+// The eight build parts, each with its purpose and state from the draft, for Build's side list and the Overview. It
 // informs and never blocks; readiness.js stays the one answer to "can it go live?". Pure: no React, no DOM.
 
 import { languageName, readSimple } from '../simple/simpleModel.js';
@@ -9,6 +9,7 @@ import { momentsOf, topicsOf } from './blocks/guardrailModel.js';
 import { afterCallOf } from './blocks/afterCallModel.js';
 import { agentLabel } from './rowNames.js';
 import { PAGE_GROUPS } from './pages.js';
+import { bankingPart } from '../banking/bankingProfile.ts';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -20,6 +21,7 @@ const joinAnd = (items) => (items.length > 1 ? `${items.slice(0, -1).join(', ')}
 // What each part is for, in a sentence a newcomer can act on
 export const PURPOSE = {
   agent: 'Who it is, what it should do, what it says first, and its language and voice.',
+  banking: 'The bank it speaks for: the name callers hear, its voice, and the banking gateway that runs their requests.',
   knowledge: 'The documents and web pages it answers from.',
   tools: 'What it can do besides talk, like taking requests or passing people to your team.',
   workflow: 'Who answers first, and how a conversation moves between agents.',
@@ -139,6 +141,7 @@ function afterCallPart(config) {
 
 const READERS = {
   agent: (c) => agentPart(c),
+  banking: (c) => bankingPart(c),
   knowledge: (c, k) => knowledgePart(c, k),
   tools: (c) => toolsPart(c),
   workflow: (c) => workflowPart(c),
