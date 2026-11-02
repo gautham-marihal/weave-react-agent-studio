@@ -1,0 +1,13 @@
+{
+  "name": "banking-gateway",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic banking tool gateway for the Weave Studio agent runtime (auth state machine, tool registry, secure capture).",
+  "scripts": {
+    "start": "node src/main.ts",
+    "start:mock": "node mock/main.ts",
+    "tools:print": "node src/tools/print-agent-tools.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  }
+}

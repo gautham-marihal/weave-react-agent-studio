@@ -1,0 +1,150 @@
+/* @import url() FONT IMPORTS MUST ALWAYS BE AT THE VERY TOP OF THIS FILE, ABOVE THE TAILWIND IMPORTS — DO NOT DELETE THIS COMMENT */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+/* CRITICAL: THE FOLLOWING TAILWIND IMPORTS MUST NEVER BE DELETED OR REORDERED — DO NOT DELETE THIS COMMENT */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+/* the design styles and their colour options (Settings › Appearance, or Theme in the top bar) */
+@import './styles/themes.css';
+
+/* END TAILWIND IMPORTS — ALL OTHER CSS MUST GO BELOW THIS LINE */
+
+:root {
+  --canvas: 246 247 249;
+  --surface: 255 255 255;
+  --subtle: 240 242 245;
+  --ink: 16 24 40;
+  --ink-soft: 52 64 84;
+  --muted: 98 108 128;
+  --line: 228 231 236;
+  --line-strong: 208 213 221;
+  --border: rgb(228 231 236);
+  --border-strong: rgb(208 213 221);
+  --primary: 114 48 143;
+  --primary-strong: 97 41 122;
+  --primary-soft: 245 235 250;
+  --primary-ink: 255 255 255;
+  --accent: 114 48 143;
+  --accent-strong: 97 41 122;
+  --accent-soft: 245 235 250;
+  --accent-ink: 255 255 255;
+  --success: 6 118 71;
+  --success-soft: 230 246 237;
+  --warning: 165 79 8;
+  --warning-soft: 254 244 229;
+  --danger: 180 24 56;
+  --danger-soft: 253 236 239;
+  --danger-ink: 255 255 255;
+  --info: 23 92 211;
+  --info-soft: 235 242 254;
+
+  /* type, corners and shadows: Studio's own; a design style (styles/themes.css) may change them */
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --numbers: normal;
+  --radius-sm: 0.125rem;
+  --radius: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --shadow-panel: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.05);
+  --shadow-overlay: 0 12px 32px rgb(16 24 40 / 0.14), 0 2px 6px rgb(16 24 40 / 0.06);
+}
+
+[data-theme="dark"],
+.dark {
+  --canvas: 15 23 42;
+  --surface: 30 41 59;
+  --subtle: 51 65 85;
+  --ink: 248 250 252;
+  --ink-soft: 203 213 225;
+  --muted: 160 174 193;
+  --line: 51 65 85;
+  --line-strong: 71 85 105;
+  --border: rgb(51 65 85);
+  --border-strong: rgb(71 85 105);
+  --primary: 196 155 237;
+  --primary-strong: 219 187 248;
+  --primary-soft: 76 29 105;
+  --primary-ink: 15 23 42;
+  --accent: 196 155 237;
+  --accent-strong: 219 187 248;
+  --accent-soft: 76 29 105;
+  --accent-ink: 15 23 42;
+  --success: 52 211 153;
+  --success-soft: 6 78 59;
+  --warning: 251 158 82;
+  --warning-soft: 124 45 18;
+  --danger: 248 148 148;
+  --danger-soft: 127 29 29;
+  --danger-ink: 15 23 42;
+  --info: 114 175 250;
+  --info-soft: 30 58 138;
+}
+
+html {
+  scroll-padding-top: 4.5rem;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
+  font-family: var(--font-sans);
+  font-variant-numeric: var(--numbers);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* headings take the style's display type (Studio's is the body type) */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+
+/* A filled accent badge or button written with white text reads on any style: the text takes the accent's own ink.
+   (New code should say `text-accent-ink` / `text-primary-ink` / `text-danger-ink`.) */
+.bg-accent.text-white,
+.hover\:bg-accent.hover\:text-white:hover {
+  color: rgb(var(--accent-ink));
+}
+
+.bg-ink.text-white {
+  color: rgb(var(--canvas));
+}
+
+/* Density tuning */
+[data-density="compact"] input,
+[data-density="compact"] select,
+[data-density="compact"] textarea {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+[data-density="compact"] table th,
+[data-density="compact"] table td {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+  font-size: 0.8125rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

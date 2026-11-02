@@ -1,34 +1,65 @@
-// Tailwind, for the agent workspace's layout (src/studio/agent/workspace/). Kept apart from the rest of the styles:
-//   - every class starts with "tw-", so none can clash with the app's own class names;
-//   - its reset (preflight) is off, so pages written in plain CSS look exactly as before;
-//   - its colours are the app's own tokens, so the six styles and light/dark mode still apply.
+const c = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 
-/** @type {import('tailwindcss').Config} */
 export default {
-  prefix: 'tw-',
-  content: ['./src/**/*.{js,jsx,ts,tsx}'],
-  corePlugins: { preflight: false },
+  // `dark:` follows the app's own light/dark choice (ThemeContext puts `dark` on <html>), not the computer's
+  darkMode: 'class',
+  content: [
+  './index.html',
+  './src/**/*.{js,ts,jsx,tsx}'
+],
   theme: {
     extend: {
       colors: {
-        canvas: 'var(--bg)',
-        surface: 'var(--panel)',
-        subtle: 'var(--panel2)',
-        ink: { DEFAULT: 'var(--textStrong)', soft: 'var(--text)' },
-        muted: 'var(--muted)',
-        line: { DEFAULT: 'var(--line)', strong: 'var(--line2)' },
-        accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', ink: 'var(--accent-text)' },
-        success: 'var(--good-text)',
-        warning: 'var(--warn-text)',
-        danger: 'var(--danger-text)',
+        canvas: c('canvas'),
+        surface: c('surface'),
+        subtle: c('subtle'),
+        ink: { DEFAULT: c('ink'), soft: c('ink-soft') },
+        muted: c('muted'),
+        line: { DEFAULT: c('line'), strong: c('line-strong') },
+        accent: {
+          DEFAULT: c('accent'),
+          strong: c('accent-strong'),
+          soft: c('accent-soft'),
+          ink: c('accent-ink'),
+        },
+        primary: {
+          DEFAULT: c('primary'),
+          strong: c('primary-strong'),
+          soft: c('primary-soft'),
+          ink: c('primary-ink'),
+        },
+        success: { DEFAULT: c('success'), soft: c('success-soft') },
+        warning: { DEFAULT: c('warning'), soft: c('warning-soft') },
+        danger: { DEFAULT: c('danger'), soft: c('danger-soft'), ink: c('danger-ink') },
+        info: { DEFAULT: c('info'), soft: c('info-soft') },
+      },
+      // type, corners and card shadows follow the design style (src/index.css, src/styles/themes.css)
+      fontFamily: {
+        sans: ['var(--font-sans)'],
+        display: ['var(--font-display)'],
+        mono: ['var(--font-mono)'],
       },
       borderRadius: {
-        control: 'var(--r-control, 8px)',
-        card: 'var(--r-card, 12px)',
+        sm: 'var(--radius-sm)',
+        DEFAULT: 'var(--radius)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
+        '2xl': 'var(--radius-2xl)',
+        '3xl': 'var(--radius-3xl)',
       },
-      fontSize: {
-        sm: 'var(--fs-sm)',
-        md: 'var(--fs-md)',
+      boxShadow: {
+        panel: 'var(--shadow-panel)',
+        overlay: 'var(--shadow-overlay)',
+      },
+      keyframes: {
+        breathe: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.04)' },
+        },
+      },
+      animation: {
+        breathe: 'breathe 2.4s ease-in-out infinite',
       },
     },
   },

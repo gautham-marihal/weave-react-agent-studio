@@ -1,0 +1,1063 @@
+/* Design styles (src/models/styles.ts). Each style is a set of Studio's tokens (the rgb triplets in index.css) on
+   html[data-style], in light and in dark, plus its own type, corners and shadows. A colour option of a style
+   (html[data-accent]) changes only the colours that carry its accent. Studio, the default, is index.css itself, so it has
+   no colour block here. Fonts are the ones Studio already loads (IBM Plex) or ones the computer has: no font is fetched.
+   Every text colour reads at least 4.5:1 on the surfaces it sits on (src/styles/themes.test.ts). */
+
+/* ---- type, corners and shadows ---- */
+html[data-style="simple"] {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-display: var(--font-sans);
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+}
+html[data-style="professional"] {
+  --font-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --radius-sm: 2px;
+  --radius: 3px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --radius-3xl: 10px;
+  --numbers: tabular-nums;
+}
+html[data-style="calm"] {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-display: "Avenir Next", Seravek, Candara, "Gill Sans", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 28px;
+}
+html[data-style="premium"] {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --radius-sm: 2px;
+  --radius: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 6px;
+  --radius-3xl: 8px;
+}
+html[data-style="futuristic"] {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-display: Bahnschrift, "DIN Alternate", "D-DIN", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Code", "Cascadia Mono", "SF Mono", ui-monospace, Consolas, monospace;
+  --radius-sm: 1px;
+  --radius: 2px;
+  --radius-md: 2px;
+  --radius-lg: 3px;
+  --radius-xl: 3px;
+  --radius-2xl: 4px;
+  --radius-3xl: 6px;
+  --numbers: tabular-nums;
+}
+html[data-style="vibrant"] {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-display: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+}
+
+/* cards: Premium's soft lift, Futuristic's glow line, Vibrant's coloured shadow, Calm's diffuse one */
+html[data-style="simple"][data-theme="light"] { --shadow-panel: 0 1px 2px rgb(16 16 20 / 0.06), 0 1px 1px rgb(16 16 20 / 0.04); }
+html[data-style="professional"][data-theme="light"] { --shadow-panel: 0 1px 2px rgb(11 21 38 / 0.05), 0 1px 1px rgb(11 21 38 / 0.03); }
+html[data-style="calm"][data-theme="light"] { --shadow-panel: 0 1px 2px rgb(40 60 35 / 0.04), 0 16px 36px -26px rgb(40 60 35 / 0.3); }
+html[data-style="premium"][data-theme="light"] { --shadow-panel: 0 1px 2px rgb(60 40 10 / 0.05), 0 22px 40px -30px rgb(60 40 10 / 0.35); }
+html[data-style="futuristic"][data-theme="light"] { --shadow-panel: 0 1px 2px rgb(6 20 42 / 0.05), 0 16px 34px -26px rgb(8 80 140 / 0.45); }
+html[data-style="vibrant"][data-theme="light"] { --shadow-panel: 0 1px 2px rgb(60 30 140 / 0.05), 0 14px 32px -20px rgb(124 58 237 / 0.35); }
+html:is([data-style="simple"], [data-style="professional"], [data-style="calm"], [data-style="premium"])[data-theme="dark"] {
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.45);
+}
+html:is([data-style="simple"], [data-style="professional"], [data-style="calm"], [data-style="premium"], [data-style="futuristic"], [data-style="vibrant"])[data-theme="dark"] {
+  --shadow-overlay: 0 12px 32px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.35);
+}
+html[data-style="futuristic"][data-theme="dark"] {
+  --shadow-panel: 0 0 0 1px rgb(24 224 255 / 0.06), 0 18px 40px -26px rgb(0 0 0 / 0.95);
+}
+html[data-style="vibrant"][data-theme="dark"] {
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 20px -12px rgb(219 39 119 / 0.3);
+}
+
+/* ---- the colours, day and night, then each colour option (generated from Weave React's palettes) ---- */
+html[data-style="studio"][data-accent="indigo"][data-theme="light"] {
+  --primary: 67 56 202;
+  --primary-strong: 58 48 174;
+  --primary-soft: 238 240 254;
+  --primary-ink: 255 255 255;
+  --accent: 55 48 163;
+  --accent-strong: 55 48 163;
+  --accent-soft: 238 240 254;
+  --accent-ink: 255 255 255;
+}
+html[data-style="studio"][data-accent="teal"][data-theme="light"] {
+  --primary: 15 118 110;
+  --primary-strong: 13 101 95;
+  --primary-soft: 227 245 242;
+  --primary-ink: 255 255 255;
+  --accent: 13 107 99;
+  --accent-strong: 13 107 99;
+  --accent-soft: 227 245 242;
+  --accent-ink: 255 255 255;
+}
+html[data-style="studio"][data-accent="blue"][data-theme="light"] {
+  --primary: 23 92 211;
+  --primary-strong: 20 79 181;
+  --primary-soft: 235 242 254;
+  --primary-ink: 255 255 255;
+  --accent: 24 73 169;
+  --accent-strong: 24 73 169;
+  --accent-soft: 235 242 254;
+  --accent-ink: 255 255 255;
+}
+html[data-style="studio"][data-accent="graphite"][data-theme="light"] {
+  --primary: 16 24 40;
+  --primary-strong: 14 21 34;
+  --primary-soft: 238 240 243;
+  --primary-ink: 255 255 255;
+  --accent: 16 24 40;
+  --accent-strong: 16 24 40;
+  --accent-soft: 238 240 243;
+  --accent-ink: 255 255 255;
+}
+html[data-style="studio"][data-accent="indigo"][data-theme="dark"] {
+  --primary: 165 180 252;
+  --primary-strong: 178 191 252;
+  --primary-soft: 35 37 90;
+  --primary-ink: 11 11 13;
+  --accent: 199 210 254;
+  --accent-strong: 199 210 254;
+  --accent-soft: 35 37 90;
+  --accent-ink: 11 11 13;
+}
+html[data-style="studio"][data-accent="teal"][data-theme="dark"] {
+  --primary: 94 234 212;
+  --primary-strong: 117 237 218;
+  --primary-soft: 17 58 55;
+  --primary-ink: 11 11 13;
+  --accent: 153 246 228;
+  --accent-strong: 153 246 228;
+  --accent-soft: 17 58 55;
+  --accent-ink: 11 11 13;
+}
+html[data-style="studio"][data-accent="blue"][data-theme="dark"] {
+  --primary: 132 173 255;
+  --primary-strong: 149 184 255;
+  --primary-soft: 25 48 92;
+  --primary-ink: 11 11 13;
+  --accent: 178 204 255;
+  --accent-strong: 178 204 255;
+  --accent-soft: 25 48 92;
+  --accent-ink: 11 11 13;
+}
+html[data-style="studio"][data-accent="graphite"][data-theme="dark"] {
+  --primary: 226 232 240;
+  --primary-strong: 230 235 242;
+  --primary-soft: 39 52 73;
+  --primary-ink: 11 11 13;
+  --accent: 248 250 252;
+  --accent-strong: 248 250 252;
+  --accent-soft: 39 52 73;
+  --accent-ink: 11 11 13;
+}
+html[data-style="simple"][data-theme="light"] {
+  --canvas: 255 255 255;
+  --surface: 255 255 255;
+  --subtle: 244 244 245;
+  --ink: 11 11 13;
+  --ink-soft: 63 63 70;
+  --muted: 82 82 91;
+  --line: 236 236 238;
+  --line-strong: 224 224 228;
+  --primary: 11 11 13;
+  --primary-strong: 9 9 11;
+  --primary-soft: 244 244 245;
+  --primary-ink: 255 255 255;
+  --accent: 11 11 13;
+  --accent-strong: 11 11 13;
+  --accent-soft: 244 244 245;
+  --accent-ink: 255 255 255;
+  --success: 6 118 71;
+  --success-soft: 230 241 237;
+  --warning: 165 79 8;
+  --warning-soft: 246 237 230;
+  --danger: 180 24 56;
+  --danger-soft: 248 232 235;
+  --danger-ink: 255 255 255;
+  --info: 23 92 211;
+  --info-soft: 232 239 251;
+  --border: rgb(236 236 238);
+  --border-strong: rgb(224 224 228);
+}
+html[data-style="simple"][data-accent="slate"][data-theme="light"] {
+  --primary: 51 65 85;
+  --primary-strong: 44 56 73;
+  --primary-soft: 238 241 245;
+  --accent: 51 65 85;
+  --accent-strong: 51 65 85;
+  --accent-soft: 238 241 245;
+}
+html[data-style="simple"][data-accent="navy"][data-theme="light"] {
+  --primary: 30 58 138;
+  --primary-strong: 26 50 119;
+  --primary-soft: 232 237 248;
+  --accent: 30 58 138;
+  --accent-strong: 30 58 138;
+  --accent-soft: 232 237 248;
+}
+html[data-style="simple"][data-accent="forest"][data-theme="light"] {
+  --primary: 20 83 45;
+  --primary-strong: 17 71 39;
+  --primary-soft: 230 240 234;
+  --accent: 20 83 45;
+  --accent-strong: 20 83 45;
+  --accent-soft: 230 240 234;
+}
+html[data-style="simple"][data-accent="wine"][data-theme="light"] {
+  --primary: 127 29 29;
+  --primary-strong: 109 25 25;
+  --primary-soft: 250 241 241;
+  --accent: 127 29 29;
+  --accent-strong: 127 29 29;
+  --accent-soft: 250 241 241;
+}
+html[data-style="simple"][data-theme="dark"] {
+  --canvas: 11 11 12;
+  --surface: 17 17 19;
+  --subtle: 27 27 30;
+  --ink: 250 250 250;
+  --ink-soft: 212 212 216;
+  --muted: 161 161 170;
+  --line: 34 34 38;
+  --line-strong: 46 46 51;
+  --primary: 250 250 250;
+  --primary-strong: 251 251 251;
+  --primary-soft: 27 27 30;
+  --primary-ink: 11 11 12;
+  --accent: 250 250 250;
+  --accent-strong: 250 250 250;
+  --accent-soft: 27 27 30;
+  --accent-ink: 11 11 12;
+  --success: 52 211 153;
+  --success-soft: 23 48 40;
+  --warning: 251 146 60;
+  --warning-soft: 54 38 26;
+  --danger: 248 113 113;
+  --danger-soft: 54 32 34;
+  --danger-ink: 11 11 12;
+  --info: 96 165 250;
+  --info-soft: 30 41 56;
+  --border: rgb(34 34 38);
+  --border-strong: rgb(46 46 51);
+}
+html[data-style="simple"][data-accent="slate"][data-theme="dark"] {
+  --primary: 71 85 105;
+  --primary-strong: 61 73 90;
+  --primary-soft: 30 37 48;
+  --primary-ink: 255 255 255;
+  --accent: 203 213 225;
+  --accent-strong: 203 213 225;
+  --accent-soft: 30 37 48;
+}
+html[data-style="simple"][data-accent="navy"][data-theme="dark"] {
+  --primary: 30 64 175;
+  --primary-strong: 26 55 151;
+  --primary-soft: 23 32 56;
+  --primary-ink: 255 255 255;
+  --accent: 165 184 234;
+  --accent-strong: 165 184 234;
+  --accent-soft: 23 32 56;
+}
+html[data-style="simple"][data-accent="forest"][data-theme="dark"] {
+  --primary: 22 101 52;
+  --primary-strong: 19 87 45;
+  --primary-soft: 19 38 27;
+  --primary-ink: 255 255 255;
+  --accent: 159 211 178;
+  --accent-strong: 159 211 178;
+  --accent-soft: 19 38 27;
+}
+html[data-style="simple"][data-accent="wine"][data-theme="dark"] {
+  --primary: 153 27 27;
+  --primary-strong: 132 23 23;
+  --primary-soft: 46 21 21;
+  --primary-ink: 255 255 255;
+  --accent: 240 169 169;
+  --accent-strong: 240 169 169;
+  --accent-soft: 46 21 21;
+}
+html[data-style="professional"][data-theme="light"] {
+  --canvas: 243 245 248;
+  --surface: 255 255 255;
+  --subtle: 235 239 245;
+  --ink: 11 21 38;
+  --ink-soft: 37 50 71;
+  --muted: 71 85 105;
+  --line: 221 227 235;
+  --line-strong: 200 209 221;
+  --primary: 31 95 214;
+  --primary-strong: 27 82 184;
+  --primary-soft: 228 236 251;
+  --primary-ink: 255 255 255;
+  --accent: 26 82 189;
+  --accent-strong: 26 82 189;
+  --accent-soft: 228 236 251;
+  --accent-ink: 255 255 255;
+  --success: 16 107 63;
+  --success-soft: 231 240 236;
+  --warning: 138 75 0;
+  --warning-soft: 243 237 230;
+  --danger: 180 35 24;
+  --danger-soft: 248 233 232;
+  --danger-ink: 255 255 255;
+  --info: 23 92 211;
+  --info-soft: 232 239 251;
+  --border: rgb(221 227 235);
+  --border-strong: rgb(200 209 221);
+}
+html[data-style="professional"][data-accent="teal"][data-theme="light"] {
+  --primary: 15 118 110;
+  --primary-strong: 13 101 95;
+  --primary-soft: 220 243 240;
+  --accent: 13 107 99;
+  --accent-strong: 13 107 99;
+  --accent-soft: 220 243 240;
+}
+html[data-style="professional"][data-accent="indigo"][data-theme="light"] {
+  --primary: 67 56 202;
+  --primary-strong: 58 48 174;
+  --primary-soft: 232 231 252;
+  --accent: 67 56 202;
+  --accent-strong: 67 56 202;
+  --accent-soft: 232 231 252;
+}
+html[data-style="professional"][data-accent="graphite"][data-theme="light"] {
+  --primary: 55 65 81;
+  --primary-strong: 47 56 70;
+  --primary-soft: 236 238 241;
+  --accent: 55 65 81;
+  --accent-strong: 55 65 81;
+  --accent-soft: 236 238 241;
+}
+html[data-style="professional"][data-accent="green"][data-theme="light"] {
+  --primary: 4 120 87;
+  --primary-strong: 3 103 75;
+  --primary-soft: 220 243 234;
+  --accent: 4 105 76;
+  --accent-strong: 4 105 76;
+  --accent-soft: 220 243 234;
+}
+html[data-style="professional"][data-theme="dark"] {
+  --canvas: 11 17 28;
+  --surface: 17 26 40;
+  --subtle: 24 35 54;
+  --ink: 242 246 251;
+  --ink-soft: 200 211 227;
+  --muted: 147 163 186;
+  --line: 31 43 63;
+  --line-strong: 44 59 85;
+  --primary: 37 99 235;
+  --primary-strong: 32 85 202;
+  --primary-soft: 20 40 74;
+  --primary-ink: 255 255 255;
+  --accent: 124 176 255;
+  --accent-strong: 124 176 255;
+  --accent-soft: 20 40 74;
+  --accent-ink: 11 11 13;
+  --success: 52 211 153;
+  --success-soft: 23 56 58;
+  --warning: 251 146 60;
+  --warning-soft: 54 45 43;
+  --danger: 248 113 113;
+  --danger-soft: 54 40 52;
+  --danger-ink: 11 11 13;
+  --info: 96 165 250;
+  --info-soft: 30 48 74;
+  --border: rgb(31 43 63);
+  --border-strong: rgb(44 59 85);
+}
+html[data-style="professional"][data-accent="teal"][data-theme="dark"] {
+  --primary: 15 118 110;
+  --primary-strong: 13 101 95;
+  --primary-soft: 14 47 45;
+  --accent: 94 234 212;
+  --accent-strong: 94 234 212;
+  --accent-soft: 14 47 45;
+}
+html[data-style="professional"][data-accent="indigo"][data-theme="dark"] {
+  --primary: 79 70 229;
+  --primary-strong: 68 60 197;
+  --primary-soft: 31 31 74;
+  --accent: 165 180 252;
+  --accent-strong: 165 180 252;
+  --accent-soft: 31 31 74;
+}
+html[data-style="professional"][data-accent="graphite"][data-theme="dark"] {
+  --primary: 75 85 99;
+  --primary-strong: 65 73 85;
+  --primary-soft: 31 37 48;
+  --accent: 203 213 225;
+  --accent-strong: 203 213 225;
+  --accent-soft: 31 37 48;
+}
+html[data-style="professional"][data-accent="green"][data-theme="dark"] {
+  --primary: 4 120 87;
+  --primary-strong: 3 103 75;
+  --primary-soft: 11 46 34;
+  --accent: 110 231 183;
+  --accent-strong: 110 231 183;
+  --accent-soft: 11 46 34;
+}
+html[data-style="calm"][data-theme="light"] {
+  --canvas: 241 243 236;
+  --surface: 251 252 248;
+  --subtle: 231 236 224;
+  --ink: 21 32 18;
+  --ink-soft: 47 59 44;
+  --muted: 76 90 71;
+  --line: 224 230 216;
+  --line-strong: 205 214 194;
+  --primary: 62 107 74;
+  --primary-strong: 53 92 64;
+  --primary-soft: 225 236 220;
+  --primary-ink: 255 255 255;
+  --accent: 53 95 65;
+  --accent-strong: 53 95 65;
+  --accent-soft: 225 236 220;
+  --accent-ink: 255 255 255;
+  --success: 47 107 61;
+  --success-soft: 231 238 229;
+  --warning: 133 82 15;
+  --warning-soft: 239 235 225;
+  --danger: 165 60 44;
+  --danger-soft: 242 233 228;
+  --danger-ink: 255 255 255;
+  --info: 23 92 211;
+  --info-soft: 228 236 244;
+  --border: rgb(224 230 216);
+  --border-strong: rgb(205 214 194);
+}
+html[data-style="calm"][data-accent="sea"][data-theme="light"] {
+  --canvas: 238 243 243;
+  --surface: 250 252 252;
+  --subtle: 226 235 236;
+  --ink: 18 32 31;
+  --ink-soft: 44 58 61;
+  --muted: 74 91 94;
+  --line: 218 228 229;
+  --line-strong: 196 211 213;
+  --primary: 43 103 119;
+  --primary-strong: 37 89 102;
+  --primary-soft: 220 235 238;
+  --accent: 37 92 107;
+  --accent-strong: 37 92 107;
+  --accent-soft: 220 235 238;
+  --success-soft: 230 238 233;
+  --warning-soft: 238 235 228;
+  --danger-soft: 242 233 231;
+  --info-soft: 227 236 248;
+  --border: rgb(218 228 229);
+  --border-strong: rgb(196 211 213);
+}
+html[data-style="calm"][data-accent="lavender"][data-theme="light"] {
+  --canvas: 242 241 246;
+  --surface: 252 251 254;
+  --subtle: 232 230 240;
+  --ink: 26 23 41;
+  --ink-soft: 52 49 70;
+  --muted: 83 79 104;
+  --line: 226 223 236;
+  --line-strong: 205 200 222;
+  --primary: 95 85 144;
+  --primary-strong: 82 73 124;
+  --primary-soft: 232 229 243;
+  --accent: 85 75 134;
+  --accent-strong: 85 75 134;
+  --accent-soft: 232 229 243;
+  --success-soft: 232 237 235;
+  --warning-soft: 240 234 230;
+  --danger-soft: 243 232 233;
+  --info-soft: 229 235 250;
+  --border: rgb(226 223 236);
+  --border-strong: rgb(205 200 222);
+}
+html[data-style="calm"][data-accent="terracotta"][data-theme="light"] {
+  --canvas: 246 241 236;
+  --surface: 253 251 248;
+  --subtle: 238 229 220;
+  --ink: 33 23 15;
+  --ink-soft: 61 49 41;
+  --muted: 94 80 69;
+  --line: 231 221 211;
+  --line-strong: 216 201 187;
+  --primary: 154 79 48;
+  --primary-strong: 132 68 41;
+  --primary-soft: 244 227 218;
+  --accent: 140 70 41;
+  --accent-strong: 140 70 41;
+  --accent-soft: 244 227 218;
+  --success-soft: 232 237 229;
+  --warning-soft: 241 234 225;
+  --danger-soft: 244 232 228;
+  --info-soft: 230 235 244;
+  --border: rgb(231 221 211);
+  --border-strong: rgb(216 201 187);
+}
+html[data-style="calm"][data-accent="slate"][data-theme="light"] {
+  --canvas: 241 243 245;
+  --surface: 251 252 253;
+  --subtle: 229 233 237;
+  --ink: 20 27 35;
+  --ink-soft: 47 55 64;
+  --muted: 77 88 100;
+  --line: 221 226 231;
+  --line-strong: 201 209 217;
+  --primary: 74 88 102;
+  --primary-strong: 64 76 88;
+  --primary-soft: 227 232 236;
+  --accent: 67 81 96;
+  --accent-strong: 67 81 96;
+  --accent-soft: 227 232 236;
+  --success-soft: 231 238 234;
+  --warning-soft: 239 235 229;
+  --danger-soft: 242 233 232;
+  --info-soft: 228 236 249;
+  --border: rgb(221 226 231);
+  --border-strong: rgb(201 209 217);
+}
+html[data-style="calm"][data-theme="dark"] {
+  --canvas: 14 20 16;
+  --surface: 20 28 22;
+  --subtle: 28 38 30;
+  --ink: 240 245 236;
+  --ink-soft: 210 220 205;
+  --muted: 163 177 157;
+  --line: 35 48 39;
+  --line-strong: 49 65 54;
+  --primary: 156 201 163;
+  --primary-strong: 170 209 176;
+  --primary-soft: 31 51 36;
+  --primary-ink: 11 11 13;
+  --accent: 172 212 177;
+  --accent-strong: 179 216 184;
+  --accent-soft: 31 51 36;
+  --accent-ink: 11 11 13;
+  --success: 156 214 165;
+  --success-soft: 42 58 45;
+  --warning: 232 192 122;
+  --warning-soft: 54 54 38;
+  --danger: 240 160 143;
+  --danger-soft: 55 49 41;
+  --danger-ink: 11 11 13;
+  --info: 96 165 250;
+  --info-soft: 32 50 58;
+  --border: rgb(35 48 39);
+  --border-strong: rgb(49 65 54);
+}
+html[data-style="calm"][data-accent="sea"][data-theme="dark"] {
+  --canvas: 12 20 22;
+  --surface: 18 27 30;
+  --subtle: 26 38 41;
+  --ink: 238 246 247;
+  --ink-soft: 207 220 222;
+  --muted: 159 177 180;
+  --line: 33 48 52;
+  --line-strong: 46 66 71;
+  --primary: 140 196 208;
+  --primary-strong: 156 204 215;
+  --primary-soft: 26 48 54;
+  --accent: 159 208 218;
+  --accent-strong: 159 208 218;
+  --accent-soft: 26 48 54;
+  --success-soft: 40 57 52;
+  --warning-soft: 52 53 45;
+  --danger-soft: 54 48 48;
+  --info-soft: 30 49 65;
+  --border: rgb(33 48 52);
+  --border-strong: rgb(46 66 71);
+}
+html[data-style="calm"][data-accent="lavender"][data-theme="dark"] {
+  --canvas: 17 16 24;
+  --surface: 24 22 31;
+  --subtle: 33 31 43;
+  --ink: 244 242 250;
+  --ink-soft: 216 213 230;
+  --muted: 171 167 192;
+  --line: 42 39 54;
+  --line-strong: 58 54 74;
+  --primary: 184 176 224;
+  --primary-strong: 194 187 228;
+  --primary-soft: 38 35 61;
+  --accent: 198 191 232;
+  --accent-strong: 198 191 232;
+  --accent-soft: 38 35 61;
+  --success-soft: 45 53 52;
+  --warning-soft: 57 49 46;
+  --danger-soft: 59 44 49;
+  --info-soft: 36 45 66;
+  --border: rgb(42 39 54);
+  --border-strong: rgb(58 54 74);
+}
+html[data-style="calm"][data-accent="terracotta"][data-theme="dark"] {
+  --canvas: 21 16 13;
+  --surface: 28 22 18;
+  --subtle: 39 30 24;
+  --ink: 250 243 236;
+  --ink-soft: 226 214 204;
+  --muted: 183 166 151;
+  --line: 51 40 31;
+  --line-strong: 70 56 44;
+  --primary: 227 163 131;
+  --primary-strong: 231 176 148;
+  --primary-soft: 58 36 25;
+  --accent: 235 181 154;
+  --accent-strong: 235 181 154;
+  --accent-soft: 58 36 25;
+  --success-soft: 48 53 42;
+  --warning-soft: 61 49 35;
+  --danger-soft: 62 44 38;
+  --info-soft: 39 45 55;
+  --border: rgb(51 40 31);
+  --border-strong: rgb(70 56 44);
+}
+html[data-style="calm"][data-accent="slate"][data-theme="dark"] {
+  --canvas: 15 19 23;
+  --surface: 21 26 31;
+  --subtle: 29 36 43;
+  --ink: 241 244 247;
+  --ink-soft: 211 218 225;
+  --muted: 163 173 184;
+  --line: 37 46 55;
+  --line-strong: 52 64 75;
+  --primary: 174 188 203;
+  --primary-strong: 185 197 210;
+  --primary-soft: 35 43 51;
+  --accent: 191 203 216;
+  --accent-strong: 191 203 216;
+  --accent-soft: 35 43 51;
+  --success-soft: 43 56 52;
+  --warning-soft: 55 53 46;
+  --danger-soft: 56 47 49;
+  --info-soft: 33 48 66;
+  --border: rgb(37 46 55);
+  --border-strong: rgb(52 64 75);
+}
+html[data-style="premium"][data-theme="light"] {
+  --canvas: 245 240 230;
+  --surface: 255 252 246;
+  --subtle: 239 232 217;
+  --ink: 26 20 13;
+  --ink-soft: 58 49 38;
+  --muted: 93 81 65;
+  --line: 228 218 199;
+  --line-strong: 211 196 167;
+  --primary: 29 23 16;
+  --primary-strong: 25 20 14;
+  --primary-soft: 243 231 204;
+  --primary-ink: 255 255 255;
+  --accent: 122 85 19;
+  --accent-strong: 122 85 19;
+  --accent-soft: 243 231 204;
+  --accent-ink: 255 255 255;
+  --success: 15 103 67;
+  --success-soft: 231 237 228;
+  --warning: 132 84 16;
+  --warning-soft: 243 235 223;
+  --danger: 163 34 43;
+  --danger-soft: 246 230 226;
+  --danger-ink: 255 255 255;
+  --info: 23 92 211;
+  --info-soft: 232 236 243;
+  --border: rgb(228 218 199);
+  --border-strong: rgb(211 196 167);
+}
+html[data-style="premium"][data-accent="rose"][data-theme="light"] {
+  --primary-soft: 246 228 220;
+  --accent: 138 71 51;
+  --accent-strong: 138 71 51;
+  --accent-soft: 246 228 220;
+}
+html[data-style="premium"][data-accent="platinum"][data-theme="light"] {
+  --primary-soft: 233 235 238;
+  --accent: 70 76 85;
+  --accent-strong: 70 76 85;
+  --accent-soft: 233 235 238;
+}
+html[data-style="premium"][data-accent="emerald"][data-theme="light"] {
+  --primary-soft: 220 239 229;
+  --accent: 31 96 68;
+  --accent-strong: 31 96 68;
+  --accent-soft: 220 239 229;
+}
+html[data-style="premium"][data-accent="sapphire"][data-theme="light"] {
+  --primary-soft: 225 232 248;
+  --accent: 43 72 146;
+  --accent-strong: 43 72 146;
+  --accent-soft: 225 232 248;
+}
+html[data-style="premium"][data-theme="dark"] {
+  --canvas: 11 9 7;
+  --surface: 20 17 12;
+  --subtle: 32 26 18;
+  --ink: 251 243 225;
+  --ink-soft: 230 220 200;
+  --muted: 185 171 144;
+  --line: 43 36 25;
+  --line-strong: 61 51 36;
+  --primary: 217 178 100;
+  --primary-strong: 222 189 122;
+  --primary-soft: 42 34 21;
+  --primary-ink: 11 11 13;
+  --accent: 232 199 126;
+  --accent-strong: 232 199 126;
+  --accent-soft: 42 34 21;
+  --accent-ink: 11 9 7;
+  --success: 52 211 153;
+  --success-soft: 25 48 35;
+  --warning: 251 146 60;
+  --warning-soft: 57 38 20;
+  --danger: 248 113 113;
+  --danger-soft: 56 32 28;
+  --danger-ink: 11 9 7;
+  --info: 96 165 250;
+  --info-soft: 32 41 50;
+  --border: rgb(43 36 25);
+  --border-strong: rgb(61 51 36);
+}
+html[data-style="premium"][data-accent="rose"][data-theme="dark"] {
+  --primary: 217 154 132;
+  --primary-strong: 222 168 149;
+  --primary-soft: 46 29 24;
+  --accent: 237 183 165;
+  --accent-strong: 237 183 165;
+  --accent-soft: 46 29 24;
+}
+html[data-style="premium"][data-accent="platinum"][data-theme="dark"] {
+  --primary: 201 204 210;
+  --primary-strong: 209 211 216;
+  --primary-soft: 35 37 42;
+  --accent: 216 219 224;
+  --accent-strong: 216 219 224;
+  --accent-soft: 35 37 42;
+}
+html[data-style="premium"][data-accent="emerald"][data-theme="dark"] {
+  --primary: 111 191 152;
+  --primary-strong: 131 200 166;
+  --primary-soft: 19 42 32;
+  --accent: 143 208 176;
+  --accent-strong: 143 208 176;
+  --accent-soft: 19 42 32;
+}
+html[data-style="premium"][data-accent="sapphire"][data-theme="dark"] {
+  --primary: 127 159 224;
+  --primary-strong: 145 172 228;
+  --primary-soft: 24 34 64;
+  --accent: 162 187 238;
+  --accent-strong: 162 187 238;
+  --accent-soft: 24 34 64;
+}
+html[data-style="futuristic"][data-theme="light"] {
+  --canvas: 237 243 251;
+  --surface: 251 253 255;
+  --subtle: 229 238 249;
+  --ink: 6 20 42;
+  --ink-soft: 29 47 75;
+  --muted: 63 86 119;
+  --line: 207 220 238;
+  --line-strong: 183 203 229;
+  --primary: 14 116 144;
+  --primary-strong: 12 100 124;
+  --primary-soft: 220 242 248;
+  --primary-ink: 255 255 255;
+  --accent: 11 101 128;
+  --accent-strong: 11 107 133;
+  --accent-soft: 220 242 248;
+  --accent-ink: 255 255 255;
+  --success: 4 120 87;
+  --success-soft: 226 240 238;
+  --warning: 138 83 0;
+  --warning-soft: 240 236 230;
+  --danger: 180 35 63;
+  --danger-soft: 244 231 236;
+  --danger-ink: 255 255 255;
+  --info: 23 92 211;
+  --info-soft: 228 237 251;
+  --border: rgb(207 220 238);
+  --border-strong: rgb(183 203 229);
+}
+html[data-style="futuristic"][data-accent="matrix"][data-theme="light"] {
+  --primary: 4 120 87;
+  --primary-strong: 3 103 75;
+  --primary-soft: 215 245 230;
+  --accent: 4 108 78;
+  --accent-strong: 4 108 78;
+  --accent-soft: 215 245 230;
+}
+html[data-style="futuristic"][data-accent="synthwave"][data-theme="light"] {
+  --primary: 190 24 93;
+  --primary-strong: 163 21 80;
+  --primary-soft: 251 227 239;
+  --accent: 163 21 79;
+  --accent-strong: 163 21 79;
+  --accent-soft: 251 227 239;
+}
+html[data-style="futuristic"][data-accent="ice"][data-theme="light"] {
+  --primary: 29 78 216;
+  --primary-strong: 25 67 186;
+  --primary-soft: 224 235 255;
+  --accent: 29 78 216;
+  --accent-strong: 29 78 216;
+  --accent-soft: 224 235 255;
+}
+html[data-style="futuristic"][data-accent="amber"][data-theme="light"] {
+  --primary: 180 83 9;
+  --primary-strong: 155 71 8;
+  --primary-soft: 253 236 210;
+  --accent: 154 74 6;
+  --accent-strong: 154 74 6;
+  --accent-soft: 253 236 210;
+}
+html[data-style="futuristic"][data-theme="dark"] {
+  --canvas: 2 5 12;
+  --surface: 7 16 31;
+  --subtle: 13 26 49;
+  --ink: 239 251 255;
+  --ink-soft: 198 219 245;
+  --muted: 142 169 207;
+  --line: 20 48 82;
+  --line-strong: 31 71 117;
+  --primary: 24 224 255;
+  --primary-strong: 56 228 255;
+  --primary-soft: 6 38 56;
+  --primary-ink: 11 11 13;
+  --accent: 98 236 255;
+  --accent-strong: 108 239 255;
+  --accent-soft: 6 38 56;
+  --accent-ink: 2 5 12;
+  --success: 55 245 166;
+  --success-soft: 15 53 53;
+  --warning: 255 200 87;
+  --warning-soft: 47 45 40;
+  --danger: 255 107 142;
+  --danger-soft: 47 31 49;
+  --danger-ink: 2 5 12;
+  --info: 96 165 250;
+  --info-soft: 21 40 66;
+  --border: rgb(20 48 82);
+  --border-strong: rgb(31 71 117);
+}
+html[data-style="futuristic"][data-accent="matrix"][data-theme="dark"] {
+  --canvas: 2 10 6;
+  --surface: 6 20 13;
+  --subtle: 11 32 22;
+  --ink: 239 255 245;
+  --ink-soft: 196 232 212;
+  --muted: 143 191 165;
+  --line: 18 58 38;
+  --line-strong: 27 82 54;
+  --primary: 61 255 143;
+  --primary-strong: 88 255 159;
+  --primary-soft: 6 48 27;
+  --accent: 109 255 171;
+  --accent-strong: 109 255 171;
+  --accent-soft: 6 48 27;
+  --accent-ink: 2 10 6;
+  --success-soft: 14 56 37;
+  --warning-soft: 46 49 25;
+  --danger-soft: 46 34 34;
+  --danger-ink: 2 10 6;
+  --info-soft: 20 43 51;
+  --border: rgb(18 58 38);
+  --border-strong: rgb(27 82 54);
+}
+html[data-style="futuristic"][data-accent="synthwave"][data-theme="dark"] {
+  --canvas: 12 4 18;
+  --surface: 23 10 34;
+  --subtle: 36 16 51;
+  --ink: 255 242 252;
+  --ink-soft: 234 214 245;
+  --muted: 196 159 214;
+  --line: 58 22 80;
+  --line-strong: 85 32 112;
+  --primary: 255 79 216;
+  --primary-strong: 255 104 221;
+  --primary-soft: 58 11 51;
+  --primary-ink: 26 0 18;
+  --accent: 255 138 230;
+  --accent-strong: 255 138 230;
+  --accent-soft: 58 11 51;
+  --accent-ink: 12 4 18;
+  --success-soft: 28 48 55;
+  --warning-soft: 60 40 42;
+  --danger-soft: 60 26 51;
+  --danger-ink: 12 4 18;
+  --info-soft: 35 35 69;
+  --border: rgb(58 22 80);
+  --border-strong: rgb(85 32 112);
+}
+html[data-style="futuristic"][data-accent="ice"][data-theme="dark"] {
+  --primary: 124 196 255;
+  --primary-strong: 142 204 255;
+  --primary-soft: 11 36 64;
+  --accent: 159 211 255;
+  --accent-strong: 159 211 255;
+  --accent-soft: 11 36 64;
+}
+html[data-style="futuristic"][data-accent="amber"][data-theme="dark"] {
+  --canvas: 10 6 3;
+  --surface: 22 15 7;
+  --subtle: 36 24 10;
+  --ink: 255 248 236;
+  --ink-soft: 240 226 204;
+  --muted: 201 176 138;
+  --line: 58 39 16;
+  --line-strong: 85 57 21;
+  --primary: 255 176 32;
+  --primary-strong: 255 187 63;
+  --primary-soft: 58 38 4;
+  --accent: 255 197 96;
+  --accent-strong: 255 197 96;
+  --accent-soft: 58 38 4;
+  --accent-ink: 10 6 3;
+  --success-soft: 27 52 32;
+  --warning-soft: 59 45 20;
+  --danger-soft: 59 30 29;
+  --danger-ink: 10 6 3;
+  --info-soft: 34 39 46;
+  --border: rgb(58 39 16);
+  --border-strong: rgb(85 57 21);
+}
+html[data-style="vibrant"][data-theme="light"] {
+  --canvas: 251 248 255;
+  --surface: 255 255 255;
+  --subtle: 243 238 255;
+  --ink: 23 18 58;
+  --ink-soft: 47 41 83;
+  --muted: 89 83 127;
+  --line: 236 229 252;
+  --line-strong: 220 210 247;
+  --primary: 124 58 237;
+  --primary-strong: 107 50 204;
+  --primary-soft: 241 234 255;
+  --primary-ink: 255 255 255;
+  --accent: 109 40 217;
+  --accent-strong: 109 40 217;
+  --accent-soft: 241 234 255;
+  --accent-ink: 255 255 255;
+  --success: 15 103 67;
+  --success-soft: 231 240 236;
+  --warning: 154 74 0;
+  --warning-soft: 245 237 230;
+  --danger: 190 18 60;
+  --danger-soft: 249 231 236;
+  --danger-ink: 255 255 255;
+  --info: 23 92 211;
+  --info-soft: 232 239 251;
+  --border: rgb(236 229 252);
+  --border-strong: rgb(220 210 247);
+}
+html[data-style="vibrant"][data-accent="sunset"][data-theme="light"] {
+  --primary: 194 65 12;
+  --primary-strong: 167 56 10;
+  --primary-soft: 255 234 221;
+  --accent: 178 58 10;
+  --accent-strong: 178 58 10;
+  --accent-soft: 255 234 221;
+}
+html[data-style="vibrant"][data-accent="ocean"][data-theme="light"] {
+  --primary: 29 78 216;
+  --primary-strong: 25 67 186;
+  --primary-soft: 224 235 255;
+  --accent: 29 78 216;
+  --accent-strong: 29 78 216;
+  --accent-soft: 224 235 255;
+}
+html[data-style="vibrant"][data-accent="fresh"][data-theme="light"] {
+  --primary: 21 128 61;
+  --primary-strong: 18 110 52;
+  --primary-soft: 220 252 231;
+  --accent: 22 101 52;
+  --accent-strong: 22 101 52;
+  --accent-soft: 220 252 231;
+}
+html[data-style="vibrant"][data-accent="berry"][data-theme="light"] {
+  --primary: 162 28 175;
+  --primary-strong: 139 24 151;
+  --primary-soft: 250 232 255;
+  --accent: 162 28 175;
+  --accent-strong: 162 28 175;
+  --accent-soft: 250 232 255;
+}
+html[data-style="vibrant"][data-theme="dark"] {
+  --canvas: 17 10 36;
+  --surface: 26 17 53;
+  --subtle: 38 26 74;
+  --ink: 251 249 255;
+  --ink-soft: 227 220 255;
+  --muted: 182 172 223;
+  --line: 45 32 88;
+  --line-strong: 62 46 116;
+  --primary: 124 58 237;
+  --primary-strong: 107 50 204;
+  --primary-soft: 46 31 92;
+  --primary-ink: 255 255 255;
+  --accent: 212 200 255;
+  --accent-strong: 221 214 254;
+  --accent-soft: 46 31 92;
+  --accent-ink: 11 11 13;
+  --success: 74 222 128;
+  --success-soft: 34 50 65;
+  --warning: 251 191 36;
+  --warning-soft: 62 45 50;
+  --danger: 251 113 133;
+  --danger-soft: 62 32 66;
+  --danger-ink: 11 11 13;
+  --info: 96 165 250;
+  --info-soft: 37 41 85;
+  --border: rgb(45 32 88);
+  --border-strong: rgb(62 46 116);
+}
+html[data-style="vibrant"][data-accent="sunset"][data-theme="dark"] {
+  --primary: 194 65 12;
+  --primary-strong: 167 56 10;
+  --primary-soft: 61 34 21;
+  --accent: 253 194 143;
+  --accent-strong: 253 194 143;
+  --accent-soft: 61 34 21;
+}
+html[data-style="vibrant"][data-accent="ocean"][data-theme="dark"] {
+  --primary: 29 78 216;
+  --primary-strong: 25 67 186;
+  --primary-soft: 20 38 77;
+  --accent: 165 207 253;
+  --accent-strong: 165 207 253;
+  --accent-soft: 20 38 77;
+}
+html[data-style="vibrant"][data-accent="fresh"][data-theme="dark"] {
+  --primary: 21 128 61;
+  --primary-strong: 18 110 52;
+  --primary-soft: 18 51 31;
+  --accent: 159 245 189;
+  --accent-strong: 159 245 189;
+  --accent-soft: 18 51 31;
+}
+html[data-style="vibrant"][data-accent="berry"][data-theme="dark"] {
+  --primary: 157 23 77;
+  --primary-strong: 135 20 66;
+  --primary-soft: 59 18 64;
+  --accent: 245 194 253;
+  --accent-strong: 245 194 253;
+  --accent-soft: 59 18 64;
+}

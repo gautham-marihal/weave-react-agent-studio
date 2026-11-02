@@ -1,37 +1,41 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Weave Agent Studio: build, test, publish and monitor voice and chat AI agents." />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Weave" />
-    <meta property="og:title" content="Weave · Build, test and run AI agents" />
-    <meta property="og:description" content="Weave Agent Studio: build, test, publish and monitor voice and chat AI agents." />
-    <meta name="twitter:card" content="summary" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b0b0d" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" type="image/png" href="/weave-studio.png" />
-    <title>Weave · Build, test and run AI agents</title>
-    <script>
-      (function () {
-        try {
-          var t = localStorage.getItem('weave_theme');
-          document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
-          var s = localStorage.getItem('weave_style');
-          s = ['studio', 'simple', 'professional', 'calm', 'premium', 'futuristic', 'vibrant'].indexOf(s) >= 0 ? s : 'studio';
-          document.documentElement.dataset.style = s;
-          var a = localStorage.getItem('weave_accent_' + s);
-          if (a) document.documentElement.dataset.accent = a;
-        } catch (_) {
-          document.documentElement.dataset.theme = 'light';
-          document.documentElement.dataset.style = 'studio';
-        }
-      })();
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="/icon.ico" />
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#72308F" />
+  <title>Weave Studio Web Console</title>
+  <script>
+    // Light or dark, the design style and its colour, applied before the first paint so nothing flashes.
+    // The same choices as src/contexts/ThemeContext.tsx; the list of styles matches src/models/styles.ts.
+    (function () {
+      var root = document.documentElement;
+      try {
+        var t = localStorage.getItem('weave_theme');
+        if (t === 'system') t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        t = t === 'dark' ? 'dark' : 'light';
+        root.setAttribute('data-theme', t);
+        if (t === 'dark') root.classList.add('dark');
+        var s = localStorage.getItem('weave_style');
+        s = ['studio', 'simple', 'professional', 'calm', 'premium', 'futuristic', 'vibrant'].indexOf(s) >= 0 ? s : 'studio';
+        root.setAttribute('data-style', s);
+        var a = localStorage.getItem('weave_accent_' + s);
+        if (a) root.setAttribute('data-accent', a);
+      } catch (e) {
+        root.setAttribute('data-theme', 'light');
+        root.setAttribute('data-style', 'studio');
+      }
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+
 </html>

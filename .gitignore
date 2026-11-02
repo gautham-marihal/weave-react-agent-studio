@@ -1,41 +1,48 @@
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-dist-ssr/
-
-# Local environment variables and secrets
-.env
-.env.*
-!.env.example
-!.env.demo
 
 # Logs
-logs/
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# Editor and OS files
-.vscode/
+# Dependencies and build output
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
 .idea/
 .DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating system files
 Thumbs.db
 
-# Test and coverage output
-coverage/
-# the screenshot e2e/smoke.mjs saves when a step fails
-e2e-failure.png
-# the agent configurations mock-bank/agents/build.mjs writes (made from the generators beside it)
-mock-bank/agents/out/
-# SonarQube: the scanner's working folder and the ESLint report it reads
-.scannerwork/
-eslint-report.json
+# TypeScript build info
+*.tsbuildinfo
 
-# Temporary files
-*.tmp
-*.temp
-# Local Vite cache
+# Test and tool output
+coverage/
+test-results/
+playwright-report/
 .vite/
+*.tmp
+
+# Client and reference documents kept on disk only (never pushed)
+docs/**/*.pdf
+docs/evidence/

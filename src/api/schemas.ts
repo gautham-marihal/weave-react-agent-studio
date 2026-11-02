@@ -1,8 +1,9 @@
 import * as z from 'zod/mini';
-import type { AgentConfig } from './agentConfig';
+import type { AgentConfig } from '../types/studio';
 
-// The Agent Builder API's answers, written once in Zod: types.ts is made from these, and client.ts checks each read
-// against them, so an unexpected shape is a clear error naming the field. Fields the server adds pass through.
+// What the studio expects of the Agent Builder API's answers, in Zod: client.ts checks each read against these, so an
+// answer of another shape is a clear error naming the field. Fields the server adds pass through. The types the pages
+// use stay in types.ts; these check only the shape (ported from Weave React's src/api/schemas.ts).
 
 const text = z.string();
 const when = z.string(); // an ISO date and time
@@ -103,7 +104,8 @@ export const CallSummary = z.looseObject({
   duration_s: count,
   caller_turns: count,
   handoffs: count,
-  channel: z.optional(z.nullable(z.looseObject({ id: z.optional(text), type: z.optional(text) }))),
+  // the channel's id alone, or { id, type } (types.ts CallSummaryItem allows both)
+  channel: z.optional(z.nullable(z.union([text, z.looseObject({ id: z.optional(text), type: z.optional(text) })]))),
   version: z.optional(z.nullable(text)),
   ref: z.optional(z.nullable(text)),
 });
