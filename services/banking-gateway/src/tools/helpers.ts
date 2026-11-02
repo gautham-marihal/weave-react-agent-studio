@@ -17,7 +17,7 @@ const TYPE_LABEL: Record<Account['type'], string> = {
 /** What the model may know about an account: an opaque reference, the type and the last four digits. */
 export function describeAccount(ctx: ToolContext, account: Account) {
   const ref = Object.entries(ctx.session.accountRefs).find(([, number]) => number === account.number)?.[0] ?? null;
-  return { account_ref: ref, type: TYPE_LABEL[account.type], ending: maskTail(account.number), currencies: account.currencies };
+  return { account_ref: ref, type: account.product ?? TYPE_LABEL[account.type], ending: maskTail(account.number), currencies: account.currencies };
 }
 
 export const accountRefParam = string({

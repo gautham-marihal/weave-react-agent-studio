@@ -198,6 +198,8 @@ export class Orchestrator {
   /** Access control, decided here from server state. Nothing the model says can change it. */
   #gate(tool: ToolDefinition, session: SessionState): ToolOutcome | null {
     const auth = session.auth;
+    // A service the connected bank does not offer is refused before anything else, public or not.
+    if (tool.service && this.#policy.unavailable?.includes(tool.service)) return declined('not_offered', 'Sorry, this service is not available on this line.', 'continue');
     if (tool.access === 'public') return null;
     if (auth.kind === 'locked') {
       const status = authStatus(session, this.#policy.maxAuthFailures, null);

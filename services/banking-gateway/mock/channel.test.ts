@@ -41,7 +41,7 @@ describe('channel: sign-in from the device', () => {
     h.orchestrator.subscribe(call.sessionId, 'timeline', (e) => timeline.push(e));
     const { result, state } = await h.orchestrator.identifyFromChannel(call.sessionId, { phone_code: '123 4567' });
     expect(result).toMatchObject({ ok: true, status: 'awaiting_pin' });
-    expect(state.auth).toMatchObject({ state: 'awaiting_pin', secure_entry: { purpose: 'pin', min_digits: 6, max_digits: 6 } });
+    expect(state.auth).toMatchObject({ state: 'awaiting_pin', secure_entry: { purpose: 'pin', min_digits: 4, max_digits: 6 } });
     expect(JSON.stringify(state)).not.toMatch(/token/);
     expect(call.keypad().purpose).toBe('pin');
     expect(of(timeline, 'tool')[0]).toMatchObject({ tool: 'start_authentication', origin: 'channel', outcome: 'ok' });

@@ -10,9 +10,21 @@ import type { BankingLine } from './useBankingAssistant';
 
 /**
  * What a banking conversation played in this browser says about itself. `source` is where its banking answers come
- * from. In Live it is a rehearsal on the mock bank, and says so first: the real agent is the other choice there.
+ * from. In Live it is a rehearsal, on the mock bank or (`realBank`) on the bank's real systems, and says which first:
+ * the real agent is the other choice there.
  */
-export function bankingWords(source: string, studio: 'live' | 'sandbox' = 'sandbox'): SandboxConversationWords {
+export function bankingWords(source: string, studio: 'live' | 'sandbox' = 'sandbox', realBank = false): SandboxConversationWords {
+  if (studio === 'live' && realBank)
+    return {
+      replyTag: 'Rehearsal',
+      replyTagTitle: 'Played by simple rules in your browser, not the real agent; the banking facts come from the bank’s real systems',
+      chip: 'Rehearsal · real bank',
+      intro: `Starts a banking rehearsal with your current edits, on the bank’s real systems (${source}): a customer signs in with their own details, and every balance and transaction is theirs. The agent’s turns are played by simple rules in your browser (no language model); every banking answer comes from the banking gateway’s own tools. To talk to the real agent instead, choose it under “Played by”.`,
+      starting: 'Opening a test session on the bank’s real systems…',
+      unsaved: 'It uses your current edits, saved or not: nothing is saved first.',
+      note: 'A rehearsal on the bank’s real systems: the agent’s turns are played by simple rules in your browser, and banking answers are a real customer’s data.',
+      traceNote: 'These records were made by the rehearsal in the same shape a real call has; the gateway rows are the timeline of the gateway on the bank’s real systems.',
+    };
   if (studio === 'live')
     return {
       replyTag: 'Rehearsal',
@@ -91,11 +103,9 @@ export function toChatMessages(callId: string, lines: readonly BankingLine[], he
 }
 
 /** The label a banking test conversation is kept under on the Calls page. */
-export const bankingChannelLabel = (type: string, studio: 'live' | 'sandbox' = 'sandbox') =>
+export const bankingChannelLabel = (type: string, studio: 'live' | 'sandbox' = 'sandbox', realBank = false) =>
   studio === 'live'
-    ? type === 'web_voice'
-      ? 'Test: banking voice (rehearsal, mock bank)'
-      : 'Test: banking chat (rehearsal, mock bank)'
+    ? `Test: banking ${type === 'web_voice' ? 'voice' : 'chat'} (rehearsal, ${realBank ? 'real bank' : 'mock bank'})`
     : type === 'web_voice'
       ? 'Test: banking voice (Sandbox)'
       : 'Test: banking chat (Sandbox)';

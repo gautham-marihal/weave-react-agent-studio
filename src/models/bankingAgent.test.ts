@@ -7,7 +7,7 @@ import { stableJson } from './bankingTools';
 import { reachOf } from './setup';
 
 // The gateway's own generated config (the same code the gateway server runs), so the roles are checked against the
-// real 32 tools and the real per-agent lists.
+// real 33 tools and the real per-agent lists.
 let generated: GeneratedAgentConfig;
 beforeAll(async () => {
   const answer = await createBrowserGateway().request({ method: 'GET', path: '/v1/agent-config' });
@@ -55,7 +55,7 @@ describe('makeBankingAgent', () => {
     const { config, ownRole } = makeBankingAgent(plain(), generated);
     expect(ownRole).toBe('assistant');
     const greeter = role(config, 'greeter')?.handoffs?.map((h: { to: string }) => h.to);
-    expect(greeter).toEqual(['authenticator', 'accounts', 'cheques', 'rates_info', 'appointments', 'assistant']);
+    expect(greeter).toEqual(['authenticator', 'accounts', 'cheques', 'rates_info', 'appointments', 'payments', 'assistant']);
     expect(role(config, 'assistant')?.handoffs?.map((h: { to: string }) => h.to)).toEqual(['greeter']);
     for (const id of BANKING_ROLE_IDS.filter((x) => x !== 'greeter' && x !== 'rates_info')) expect(role(config, id)?.handoffs?.map((h: { to: string }) => h.to)).toContain('greeter');
     // every hand-off points at a role that exists

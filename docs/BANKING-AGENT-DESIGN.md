@@ -110,7 +110,7 @@ flowchart LR
     API[HTTP API]
     OR[Orchestrator<br/>per-session lock]
     FSM[Session state machine]
-    REG[Tool registry<br/>32 tools]
+    REG[Tool registry<br/>33 tools]
     CAP[Secure capture]
     AUD[Hash-chained audit]
   end
@@ -727,7 +727,7 @@ services/banking-gateway/
   src/security/      capture.ts, crypto.ts (tokens, LiveKit JWT check), redact.ts
   src/audit/         audit.ts (hash chain)
   src/session/       store.ts (CAS store), events.ts (bus)
-  src/tools/         32 tools in 7 files, registry.ts, routing.ts
+  src/tools/         33 tools in 8 files, registry.ts, routing.ts
   src/executor/      respond.ts (shaping), response-matrix.ts
   src/orchestrator/  orchestrator.ts
   src/http/          server.ts

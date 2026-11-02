@@ -12,11 +12,11 @@ import { applyGatewayConfig, MAX_AGENT_TOOLS, removeGatewayConfig, stableJson, u
 import { GOODBYE, setEndCall, setReach } from './setup';
 import type { ProvidersAnswer } from '../api/types';
 
-export type BankingRoleId = 'greeter' | 'authenticator' | 'accounts' | 'cheques' | 'rates_info' | 'appointments';
+export type BankingRoleId = 'greeter' | 'authenticator' | 'accounts' | 'cheques' | 'rates_info' | 'appointments' | 'payments';
 
 /** The front desk: the role that answers first in a banking agent. */
 export const BANKING_ENTRY: BankingRoleId = 'greeter';
-export const BANKING_ROLE_IDS: readonly BankingRoleId[] = ['greeter', 'authenticator', 'accounts', 'cheques', 'rates_info', 'appointments'];
+export const BANKING_ROLE_IDS: readonly BankingRoleId[] = ['greeter', 'authenticator', 'accounts', 'cheques', 'rates_info', 'appointments', 'payments'];
 export const isBankingRoleId = (id: unknown): id is BankingRoleId => typeof id === 'string' && (BANKING_ROLE_IDS as readonly string[]).includes(id);
 
 interface Handoff {
@@ -50,6 +50,7 @@ const TO = {
   cheques: handoff('cheques', 'go_to_cheques', 'The caller asks about cheques: deposited cheques, a cheque they issued, cheque books or stopping a cheque.'),
   rates_info: handoff('rates_info', 'go_to_rates_and_info', 'The caller asks about exchange rates, the prime rate, time deposit rates, branches or announcements.'),
   appointments: handoff('appointments', 'go_to_appointments', 'The caller wants to book, check or cancel a branch appointment.'),
+  payments: handoff('payments', 'go_to_transfers', 'The caller wants to move money between their own accounts.'),
   greeter: handoff('greeter', 'back_to_menu', 'The caller wants something you do not handle, has nothing more for you, or wants to end the call.'),
 } as const;
 
@@ -82,7 +83,7 @@ export const BANKING_ROLES: readonly RoleSpec[] = [
     kind: 'router',
     role: 'You answer first for business banking. Call get_caller_context once at the start and greet the caller for the time of day. Find out what they need, offer a short menu from list_services, and hand over to the right specialist. You handle lost or stolen cards (report_lost_card, then transfer), callbacks (request_callback) and requests for a person (prepare_agent_transfer) yourself. Do no account business yourself.',
     writes: false,
-    handoffs: [TO.authenticator, TO.accounts, TO.cheques, TO.rates_info, TO.appointments],
+    handoffs: [TO.authenticator, TO.accounts, TO.cheques, TO.rates_info, TO.appointments, TO.payments],
   },
   {
     id: 'authenticator',
@@ -90,7 +91,7 @@ export const BANKING_ROLES: readonly RoleSpec[] = [
     kind: 'specialist',
     role: 'You verify who the caller is, and nothing else. Ask whether they sign in with their 7-digit Phone Code or their 12-digit business account number, and call start_authentication with the one they give. The caller then keys in their PIN, or their NRIC digits and SMS one-time password, on the secure keypad on their screen. When they say they have finished, call get_auth_status. If the SMS did not arrive, call resend_otp; if they gave the wrong Phone Code or account number, call restart_authentication. Once they are verified, hand over to the specialist for what they asked.',
     writes: false,
-    handoffs: [TO.accounts, TO.cheques, TO.appointments, TO.greeter],
+    handoffs: [TO.accounts, TO.cheques, TO.appointments, TO.payments, TO.greeter],
   },
   {
     id: 'accounts',
@@ -98,7 +99,7 @@ export const BANKING_ROLES: readonly RoleSpec[] = [
     kind: 'specialist',
     role: 'You help a verified caller with their accounts: which accounts they have (list_accounts), balances, incoming funds, recent transactions, statement requests and changing their Phone PIN (start_pin_change). If they have several accounts, ask which one by its ref and last digits.',
     writes: true,
-    handoffs: [TO.authenticator, TO.greeter],
+    handoffs: [TO.authenticator, TO.payments, TO.greeter],
   },
   {
     id: 'cheques',
@@ -123,6 +124,14 @@ export const BANKING_ROLES: readonly RoleSpec[] = [
     role: 'You book and cancel branch appointments for a verified caller: find the branch, offer free slots, book the one they choose, list their appointments and cancel one.',
     writes: true,
     handoffs: [TO.authenticator, TO.greeter],
+  },
+  {
+    id: 'payments',
+    name: 'Transfers',
+    kind: 'specialist',
+    role: 'You move money between a verified caller\'s own accounts, and nothing else: never to anyone else\'s account. Ask how much and between which of their accounts (by ref and last digits; list_accounts and get_balance help), then call prepare_own_transfer with the amount exactly as the caller said it. If it answers choose_from_account or choose_to_account, ask which one. Never round, guess or change an amount.',
+    writes: true,
+    handoffs: [TO.authenticator, TO.accounts, TO.greeter],
   },
 ];
 

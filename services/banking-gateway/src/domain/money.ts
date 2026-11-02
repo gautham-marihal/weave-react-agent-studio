@@ -15,6 +15,7 @@ const CURRENCY_WORDS: Readonly<Record<string, string>> = {
   EUR: 'euros',
   JPY: 'yen',
   IDR: 'rupiah',
+  MYR: 'ringgit',
 };
 
 export interface SpokenAmount {

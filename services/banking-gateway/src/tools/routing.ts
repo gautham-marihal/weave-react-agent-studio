@@ -18,6 +18,7 @@ export const ROUTES: Readonly<Record<ServiceId | 'general' | 'investigation' | '
   account_balance: { skillset: 'bi_single', type: QK, category: 'ACCOUNT SERVICES', subCategory: 'ACCOUNT BALANCES', priority: 'normal' },
   incoming_funds: { skillset: 'bi_single', type: QK, category: 'INWARD REMITTANCE', subCategory: 'STATUS OF INCOMING FUNDS', priority: 'normal' },
   recent_activity: { skillset: 'bi_segment', type: QK, category: 'ACCOUNT SERVICES', subCategory: 'DEBIT/CREDIT TXN', priority: 'normal' },
+  own_transfer: { skillset: 'bi_segment', type: QK, category: 'ACCOUNT SERVICES', subCategory: 'FUND TRANSFER (OWN ACCOUNTS)', priority: 'normal' }, // not in the deck
   statement_request: { skillset: 'bi_segment', type: QK, category: 'ACCOUNT SERVICES', subCategory: 'COPY OF STATEMENT (C/P/I)', priority: 'normal' },
   pin_change: { skillset: 'bi_segment', type: QK, category: 'PHONEBANKING', subCategory: 'T-PIN RESET', priority: 'normal' },
   fd_loan: { skillset: 'bc_fd_loans', type: QK, category: 'FIXED DEPOSIT', subCategory: 'TRANSACTION (NEW)', priority: 'normal' },

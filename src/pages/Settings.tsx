@@ -342,6 +342,7 @@ function BankingGatewaySection() {
   const status = source ? bankingStatus(source) : null;
   const sourceKnown = !!source;
   const [logins, setLogins] = useState<TestLogin[] | null>(null);
+  const [loginsNote, setLoginsNote] = useState('');
   const [loginsError, setLoginsError] = useState('');
 
   useEffect(() => {
@@ -349,7 +350,10 @@ function BankingGatewaySection() {
     const controller = new AbortController();
     gateway.rehearsal
       .testLogins(controller.signal)
-      .then((answer) => setLogins(answer.logins))
+      .then((answer) => {
+        setLogins(answer.logins);
+        setLoginsNote(answer.otp_source);
+      })
       .catch((e: unknown) => {
         if (!controller.signal.aborted) setLoginsError(e instanceof Error ? e.message : 'The test logins could not be read.');
       });
@@ -374,13 +378,18 @@ function BankingGatewaySection() {
       {sourceKnown && (
         <div className="mt-4 rounded-lg border border-line bg-surface p-4 text-[13px]">
           <p className="font-medium text-ink">Test logins</p>
-          <p className="text-xs text-muted">
-            From the mock bank: test data only, never a real customer. They work in every test session Studio starts (Live and Sandbox); secrets are keyed in on the secure keypad.
-          </p>
+          {logins?.length !== 0 && (
+            <p className="text-xs text-muted">
+              From the mock bank: test data only, never a real customer. They work in every test session Studio starts on the mock bank; secrets are keyed in on the secure keypad.
+            </p>
+          )}
           {loginsError ? (
             <p className="mt-2 text-xs text-danger">{loginsError}</p>
           ) : !logins ? (
             <p className="mt-2 text-xs text-muted" role="status">Reading the test logins…</p>
+          ) : logins.length === 0 ? (
+            // A gateway on the bank's real systems that opens test sessions: no test logins, it says how customers sign in.
+            <p className="mt-2 text-xs text-ink">None: Studio’s test sessions run on the bank’s real systems. {loginsNote}</p>
           ) : (
             <dl aria-label="Test logins" className="mt-2 grid gap-x-4 gap-y-1.5 text-xs sm:grid-cols-[minmax(0,200px)_1fr]">
               {logins.map((l) => (

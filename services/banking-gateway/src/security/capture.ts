@@ -15,8 +15,9 @@ import { newToken, sha256 } from './crypto.ts';
 export type CapturePurpose = 'pin' | 'nric' | 'otp' | 'current_pin' | 'new_pin' | 'confirm_new_pin';
 
 export const CAPTURE_FORMAT: Readonly<Record<CapturePurpose, { readonly min: number; readonly max: number; readonly label: string; readonly pattern: RegExp }>> = {
-  pin: { min: 6, max: 6, label: 'six-digit Phone PIN', pattern: /^\d{6}$/ },
-  current_pin: { min: 6, max: 6, label: 'current six-digit Phone PIN', pattern: /^\d{6}$/ },
+  // 4 to 6 digits: some banks' customers (CIMB) have 4-digit passcodes. A new PIN is still six digits (deck p9).
+  pin: { min: 4, max: 6, label: 'Phone PIN (4 to 6 digits)', pattern: /^\d{4,6}$/ },
+  current_pin: { min: 4, max: 6, label: 'current Phone PIN (4 to 6 digits)', pattern: /^\d{4,6}$/ },
   new_pin: { min: 6, max: 6, label: 'new six-digit Phone PIN', pattern: /^\d{6}$/ },
   confirm_new_pin: { min: 6, max: 6, label: 'new Phone PIN again', pattern: /^\d{6}$/ },
   otp: { min: 6, max: 6, label: 'six-digit one-time password from the SMS', pattern: /^\d{6}$/ },

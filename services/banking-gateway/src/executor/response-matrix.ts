@@ -14,12 +14,23 @@ export interface MatrixEntry {
   readonly prompt: string;
 }
 
+const NOT_OFFERED: Omit<MatrixEntry, 'code'> = { message: 'Sorry, this service is not available on this line.', next: 'continue', retryable: false, prompt: '1189' };
+
 const MATRIX: Readonly<Record<string, Omit<MatrixEntry, 'code'>>> = {
   'as400:33': { message: 'Rates for this option are currently unavailable.', next: 'offer_transfer', retryable: false, prompt: '1119' },
   'as400:90': { message: 'No cheque book has been issued for this account.', next: 'continue', retryable: false, prompt: '1061' },
   'as400:192': { message: 'Some or all of these cheques have already been stopped.', next: 'continue', retryable: false, prompt: '1205a' },
   'as400:196': { message: 'Some or all of these cheques have already been presented or cleared, so they cannot be stopped.', next: 'continue', retryable: false, prompt: '1205' },
   'as400:343': { message: 'The cheque range is invalid. It must be fewer than 50 cheques within the same cheque book.', next: 'ask_again', retryable: false, prompt: '1081' },
+  // A service the connected bank's systems do not offer at all (e.g. CIMB has no cheque or statement methods).
+  'as400:not_offered': NOT_OFFERED,
+  'soa:not_offered': NOT_OFFERED,
+  'siebel:not_offered': NOT_OFFERED,
+  'cmm:not_offered': NOT_OFFERED,
+  'otp:not_offered': NOT_OFFERED,
+  'soa:insufficient_funds': { message: 'The account does not have enough available balance for this transfer.', next: 'continue', retryable: false, prompt: '1189' },
+  'soa:transfer_failed': { message: 'The transfer could not be made. No money has moved.', next: 'offer_transfer', retryable: false, prompt: '1189' },
+  'soa:transfer_incomplete': { message: 'We could not confirm whether your transfer went through. Please do not repeat it; a Service Manager can check it for you.', next: 'offer_transfer', retryable: false, prompt: '1189' },
   'otp:locked': { message: 'The one-time password feature has been suspended for this customer.', next: 'offer_transfer', retryable: false, prompt: 'OTP-LOCK' },
 };
 

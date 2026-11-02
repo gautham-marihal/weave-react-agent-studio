@@ -39,6 +39,24 @@ describe('bankingSource', () => {
     expect(await g.rehearsalSource()).toEqual({ kind: 'browser', hosts: 'mock', studio: 'live' });
   });
 
+  it('Live: a gateway on real systems that opens test sessions (CIMB) takes Studio’s rehearsals too', async () => {
+    routes['/health'] = { status: 200, body: { hosts: 'live' } };
+    routes['/dev/test-logins'] = { status: 200, body: { logins: [] } };
+    const g = await load();
+    expect(await g.bankingSource()).toEqual({ kind: 'gateway', hosts: 'live', studio: 'live' });
+    expect(await g.rehearsalSource()).toEqual({ kind: 'gateway', hosts: 'live', studio: 'live' });
+    expect(g.isMockBank(await g.rehearsalSource())).toBe(false);
+  });
+
+  it('Sandbox: never a gateway on real systems, even one that opens test sessions', async () => {
+    sandbox = true;
+    routes['/health'] = { status: 200, body: { hosts: 'live' } };
+    routes['/dev/test-logins'] = { status: 200, body: { logins: [] } };
+    const g = await load();
+    expect(await g.bankingSource()).toEqual({ kind: 'browser', hosts: 'mock', studio: 'sandbox' });
+    expect(await g.rehearsalSource()).toEqual({ kind: 'browser', hosts: 'mock', studio: 'sandbox' });
+  });
+
   it('Live: a mock gateway server that opens test sessions is used, as the mock bank', async () => {
     routes['/health'] = { status: 200, body: { hosts: 'mock' } };
     routes['/dev/test-logins'] = { status: 200, body: { logins: [] } };
@@ -84,8 +102,8 @@ describe('routing with a gateway on the bank’s real systems connected (Live)',
     expect(state.auth.authenticated).toBe(false);
     const services = await g.gateway.rehearsal.runTool(rehearsal.call_id, 'list_services', {});
     expect(services.ok).toBe(true);
-    // none of that reached the server
-    expect(fetched.filter((u) => !u.endsWith('/health'))).toEqual([]);
+    // none of that reached the server (besides asking whether it opens test sessions: it does not)
+    expect(fetched.filter((u) => !u.endsWith('/health') && !u.endsWith('/dev/test-logins'))).toEqual([]);
 
     // the real agent's room token is not a rehearsal's: it goes to the gateway on real systems
     expect(await g.gateway.channel.state('room-token-from-livekit')).toEqual({ from: 'real gateway' });

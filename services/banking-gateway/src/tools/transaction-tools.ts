@@ -5,6 +5,7 @@ import { commitStatement, type Committer } from './account-tools.ts';
 import { commitAppointmentBooking, commitAppointmentCancellation } from './appointment-tools.ts';
 import { commitChequebook, commitStopCheque } from './cheque-tools.ts';
 import { declined, defineTool, ok, type ToolContext, type ToolOutcome } from './define.ts';
+import { commitOwnTransfer } from './transfer-tools.ts';
 
 // Step two of every write. Confirmation is checked in code against the caller's own words, so a model cannot
 // confirm on the caller's behalf by "deciding" they agreed. In chat, the confirmation card's buttons post directly
@@ -16,6 +17,7 @@ export const COMMITTERS: Readonly<Record<PreparedTransaction['service'], Committ
   stop_cheque: commitStopCheque,
   appointment_book: commitAppointmentBooking,
   appointment_cancel: commitAppointmentCancellation,
+  own_transfer: commitOwnTransfer,
 };
 
 const NEGATION = /\b(no|nope|not|don'?t|do not|cancel|stop|wait|hold on|wrong|never)\b|不|别|取消/i;
@@ -50,7 +52,7 @@ export async function executeConfirmed(ctx: ToolContext, confirmationId: string)
 
 export const confirmTransaction = defineTool({
   name: 'confirm_transaction',
-  agents: ['accounts', 'cheques', 'appointments'],
+  agents: ['accounts', 'cheques', 'appointments', 'payments'],
   description: 'Execute a prepared request after the caller explicitly agreed. caller_words must be the caller\'s exact reply to the read-back (for example "yes, go ahead"). Anything but a clear yes is refused.',
   access: 'authenticated',
   service: null,
@@ -72,7 +74,7 @@ export const confirmTransaction = defineTool({
 
 export const cancelTransaction = defineTool({
   name: 'cancel_transaction',
-  agents: ['accounts', 'cheques', 'appointments'],
+  agents: ['accounts', 'cheques', 'appointments', 'payments'],
   description: 'Cancel a prepared request the caller does not want.',
   access: 'authenticated',
   service: null,

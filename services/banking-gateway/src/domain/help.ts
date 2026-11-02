@@ -140,13 +140,14 @@ export interface AuthMethodView {
  */
 export function authMethods(channel: Channel, policy: Policy): AuthMethodView[] {
   const noKeypad = channel === 'sip_voice' ? 'Secure entry is not available on a phone call yet. A Service Manager can help, or use the website or app.' : null;
-  return [
+  const allowed = policy.authMethods ?? ['phonecode_pin', 'account_nric_otp'];
+  const all: AuthMethodView[] = [
     {
       id: 'phonecode_pin',
       label: 'Phone Code and Phone PIN',
-      summary: 'For customers registered for phone banking. You need your 7-digit Phone Code and your 6-digit Phone PIN.',
+      summary: 'For customers registered for phone banking. You need your 7-digit Phone Code and your Phone PIN (4 to 6 digits).',
       identifier: { field: 'phone_code', label: 'Phone Code', digits: 7, reveal_allowed: policy.channel.revealableIdentifiers.includes('phone_code'), help: 'find_phone_code' },
-      secure_steps: [{ purpose: 'pin', label: '6-digit Phone PIN', help: 'forgot_pin' }],
+      secure_steps: [{ purpose: 'pin', label: 'Phone PIN (4 to 6 digits)', help: 'forgot_pin' }],
       available: noKeypad === null,
       unavailable_reason: noKeypad,
       legacy: 'Deck p33 "P + T" route; host codes 50/53/62/83',
@@ -165,4 +166,5 @@ export function authMethods(channel: Channel, policy: Policy): AuthMethodView[] 
       legacy: 'Deck p33/p34 "A + I" route with SMS OTP',
     },
   ];
+  return all.filter((m) => allowed.includes(m.id));
 }

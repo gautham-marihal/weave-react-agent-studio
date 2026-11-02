@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { AccountView } from '../../api/gatewayTypes';
 import {
   askParty,
+  CAPABILITIES,
+  capabilitiesFor,
+  pickAmount,
+  pickTransferAccounts,
   confirmationIntent,
   describeLookup,
   describeRefusal,
@@ -244,5 +248,40 @@ describe('replies', () => {
     expect(greeting('evening', 'SG Investigations')).toBe("Good evening, thank you for calling SG Investigations. I'm your virtual banking assistant. How can I help you today?");
     expect(goodbye('SG Investigations')).toBe('Thank you for calling SG Investigations. Goodbye.');
     expect(goodbye()).toBe('Thank you for calling Weave Demo Bank. Goodbye.');
+  });
+});
+
+describe('transfers and what the bank offers', () => {
+  const accounts = [
+    { account_ref: 'A1', type: 'Savings Account', ending: '•••• 5799', currencies: ['SGD'] },
+    { account_ref: 'A2', type: 'Current Account', ending: '•••• 6099', currencies: ['SGD'] },
+  ] as Parameters<typeof pickTransferAccounts>[1];
+
+  it('understands a transfer and its amount, but not a request for a person or about money received', () => {
+    expect(understand('Transfer 250 from my savings to my current account')).toMatchObject({ topic: 'transfer', amount: '250' });
+    expect(understand('I want to move SGD 1,000.50 between my accounts')).toMatchObject({ topic: 'transfer', amount: '1000.50' });
+    expect(understand('Move money')).toMatchObject({ topic: 'transfer', amount: undefined });
+    expect(understand('transfer me to a service manager')?.topic).toBe('agent');
+    expect(understand('did my transfer arrive? any incoming funds')?.topic).toBe('incoming');
+  });
+
+  it('reads the amount, never an account ending or ref, and refuses more than two decimals', () => {
+    expect(pickAmount('move 75.5 from the account ending 5799')).toBe('75.5');
+    expect(pickAmount('from A1 to A2 please, 300')).toBe('300');
+    expect(pickAmount('1.005')).toBeNull();
+    expect(pickAmount('all of it')).toBeNull();
+  });
+
+  it('finds each side of the transfer by type, ending or position', () => {
+    expect(pickTransferAccounts('I want to transfer 100 from savings to current', accounts)).toEqual({ from: 'A1', to: 'A2' });
+    expect(pickTransferAccounts('move 5 into the account ending 5799', accounts)).toEqual({ from: undefined, to: 'A1' });
+    expect(pickTransferAccounts('transfer 20 from the second one', accounts)).toEqual({ from: 'A2', to: undefined });
+  });
+
+  it('says only what the bank offers, from the gateway’s own menu', () => {
+    expect(capabilitiesFor(null)).toBe(CAPABILITIES);
+    expect(capabilitiesFor({ available: [], needs_verification: ['Account balance', 'Transfer between your own accounts', 'Report a lost card'] })).toBe(
+      'I can help with account balance, transfer between your own accounts and report a lost card, or connect you to a Service Manager. What would you like to do?'
+    );
   });
 });

@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 // Single-command orchestrator for local Weave Studio + Banking Gateway development.
 // Usage: npm run dev
+//
+// Which bank the gateway runs on: CIMB (services/banking-gateway/src/main.ts, the bank's real systems; Live mode uses
+// it, Studio's own Live test sessions included) when CIMB_BASE_URL is set in .env or the environment, otherwise the
+// mock bank (mock/main.ts). Sandbox always uses the mock bank, in the browser.
 
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -79,13 +83,14 @@ async function checkGatewayStatus(url, token) {
     if (!healthRes.ok) return { reachable: true, healthy: false, tokenMatch: false };
     const health = await healthRes.json();
     if (!health || health.ok !== true) return { reachable: true, healthy: false, tokenMatch: false };
+    const hosts = health.hosts === 'live' ? 'live' : 'mock';
 
     // Verify token with /v1/tools
     const toolsRes = await fetch(`${url}/v1/tools`, {
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(1500),
     });
-    return { reachable: true, healthy: true, tokenMatch: toolsRes.ok };
+    return { reachable: true, healthy: true, tokenMatch: toolsRes.ok, hosts };
   } catch {
     return { reachable: false, healthy: false, tokenMatch: false };
   }
@@ -109,6 +114,20 @@ function devGatewayToken() {
   mkdirSync(dirname(tokenPath), { recursive: true });
   writeFileSync(tokenPath, token, 'utf8');
   return token;
+}
+
+/** A KEY=value from the environment, else from .env (no quotes, no expansion). */
+function setting(key) {
+  if (process.env[key]?.trim()) return process.env[key].trim();
+  if (!existsSync(envPath)) return '';
+  const match = new RegExp(String.raw`^\s*${key}\s*=\s*["']?([^"'\r\n#]*)`, 'm').exec(readFileSync(envPath, 'utf8'));
+  return match?.[1]?.trim() ?? '';
+}
+
+/** CIMB settings when the gateway should run on CIMB's systems; null for the mock bank. */
+function cimbSettings() {
+  const baseUrl = setting('CIMB_BASE_URL');
+  return baseUrl ? { CIMB_BASE_URL: baseUrl, CIMB_REGION: setting('CIMB_REGION') || 'DB2' } : null;
 }
 
 const childProcesses = new Set();
@@ -154,6 +173,10 @@ async function main() {
   console.log(`${ANSI.bold}${ANSI.cyan}==================================================================${ANSI.reset}\n`);
 
   const token = devGatewayToken();
+  const cimb = cimbSettings();
+  const wantHosts = cimb ? 'live' : 'mock';
+  const bankName = cimb ? `CIMB Banking Gateway (${cimb.CIMB_BASE_URL}, region ${cimb.CIMB_REGION})` : 'mock Banking Gateway';
+  log('setup', cimb ? `CIMB_BASE_URL is set: the gateway runs on CIMB's systems (Live mode). Sandbox keeps the mock bank.` : 'No CIMB_BASE_URL: the gateway runs on the mock bank.', ANSI.green);
   log('setup', 'Banking gateway settings go to Studio directly; .env needs only AGENT_BUILDER_URL (and its API key).', ANSI.green);
 
   // Check port 8790
@@ -161,8 +184,12 @@ async function main() {
   let gatewayRunning = false;
   if (gatewayPortTaken) {
     const status = await checkGatewayStatus(`http://${GATEWAY_HOST}:${GATEWAY_PORT}`, token);
-    if (status.healthy && status.tokenMatch) {
-      log('gateway', `Existing mock Banking Gateway is already running on port ${GATEWAY_PORT} with matching token. Reusing instance.`, ANSI.green);
+    if (status.healthy && status.tokenMatch && status.hosts !== wantHosts) {
+      console.error(`${ANSI.red}${ANSI.bold}Wrong bank:${ANSI.reset} the Banking Gateway on port ${GATEWAY_PORT} runs on ${status.hosts === 'live' ? 'a real bank' : 'the mock bank'}, but this run wants ${cimb ? 'CIMB' : 'the mock bank'}.`);
+      console.error('Please stop the process on port ' + GATEWAY_PORT + ' and run npm run dev again.');
+      process.exit(1);
+    } else if (status.healthy && status.tokenMatch) {
+      log('gateway', `Existing ${bankName} is already running on port ${GATEWAY_PORT} with matching token. Reusing instance.`, ANSI.green);
       gatewayRunning = true;
     } else if (status.healthy && !status.tokenMatch) {
       console.error(`${ANSI.red}${ANSI.bold}Gateway token mismatch:${ANSI.reset} A Banking Gateway is running on port ${GATEWAY_PORT} but using an old or mismatched token.`);
@@ -176,7 +203,7 @@ async function main() {
   }
 
   if (!gatewayRunning) {
-    log('gateway', `Starting mock Banking Gateway on http://${GATEWAY_HOST}:${GATEWAY_PORT}...`, ANSI.cyan);
+    log('gateway', `Starting ${bankName} on http://${GATEWAY_HOST}:${GATEWAY_PORT}...`, ANSI.cyan);
     const gatewayEnv = {
       ...process.env,
       NODE_ENV: 'development',
@@ -184,9 +211,11 @@ async function main() {
       PORT: String(GATEWAY_PORT),
       HOST: GATEWAY_HOST,
       CHANNEL_ORIGINS: `http://localhost:${STUDIO_PORT}`,
+      // On CIMB: Studio may hold its own banking test conversations on the bank's systems (src/http/test-sessions.ts).
+      ...(cimb ? { ...cimb, STUDIO_TEST_SESSIONS: 'on' } : {}),
     };
 
-    const gatewayProc = spawn(process.execPath, ['mock/main.ts'], {
+    const gatewayProc = spawn(process.execPath, [cimb ? 'src/main.ts' : 'mock/main.ts'], {
       cwd: gatewayDir,
       env: gatewayEnv,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -217,11 +246,11 @@ async function main() {
     }
 
     if (!gatewayRunning) {
-      console.error(`${ANSI.red}Mock Banking Gateway failed to respond on http://${GATEWAY_HOST}:${GATEWAY_PORT} within 15s.${ANSI.reset}`);
+      console.error(`${ANSI.red}The ${bankName} failed to respond on http://${GATEWAY_HOST}:${GATEWAY_PORT} within 15s.${ANSI.reset}`);
       cleanup();
       process.exit(1);
     }
-    log('gateway', 'Mock Banking Gateway is READY.', ANSI.green);
+    log('gateway', `${bankName} is READY.`, ANSI.green);
   }
 
   // Check Studio port
@@ -264,7 +293,12 @@ async function main() {
   console.log(`  ${ANSI.bold}Banking:${ANSI.reset}        any agent → Build › Tools → Make this a banking agent → Test (Live or Sandbox)`);
   console.log(`  ${ANSI.bold}Studio Home:${ANSI.reset}    http://localhost:${STUDIO_PORT}`);
   console.log(`  ${ANSI.bold}Gateway Health:${ANSI.reset} http://${GATEWAY_HOST}:${GATEWAY_PORT}/health\n`);
-  console.log(`${ANSI.bold}Test credentials for demo:${ANSI.reset}`);
+  if (cimb) {
+    console.log(`${ANSI.bold}Banking runs on CIMB (Live mode):${ANSI.reset} sign in with a CIMB customer id as the 7-digit Phone Code and their 6-digit passcode as the PIN.`);
+    console.log(`  Sandbox mode keeps the mock bank in the browser, with the test logins below.
+`);
+  }
+  console.log(`${ANSI.bold}Test credentials for demo${cimb ? ' (mock bank, Sandbox)' : ''}:${ANSI.reset}`);
   console.log(`  1. Phone Code:  ${ANSI.bold}1234567${ANSI.reset}  | PIN: ${ANSI.bold}135790${ANSI.reset} (3 accounts: SGD, Omnibus, EUR/USD)`);
   console.log(`  2. Account OTP: ${ANSI.bold}500000000201${ANSI.reset} | NRIC: ${ANSI.bold}1234567${ANSI.reset} (SMS OTP printed in console logs)`);
   console.log(`  3. Entitlement: ${ANSI.bold}500000000301${ANSI.reset} | NRIC: ${ANSI.bold}7654321${ANSI.reset} (Authorised Contact, balance refused)\n`);

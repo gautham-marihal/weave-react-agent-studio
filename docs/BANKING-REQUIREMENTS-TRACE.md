@@ -19,7 +19,7 @@ Status words used below: **Done** (built and tested at the level stated), **Part
 | Unit | Gateway: state machine, schema, money, security, registry, handoff boundary | `npm --prefix services/banking-gateway test`: 98 tests, 10 files |
 | Unit | Studio: proxy route rules, guidance engine, tool insertion, timeline mapping, SSE parsing | `npm test`: 281 tests (27 new), 26 files |
 | Integration (HTTP, real sockets) | Runtime routes, device routes, rehearsal routes, auth on each | `mock/http.test.ts`, `mock/rehearsal.test.ts` |
-| Integration (call flows) | Every one of the 32 tools, through the real orchestrator on mock hosts | `mock/scenarios.test.ts`, `mock/channel.test.ts`, `mock/coverage.test.ts` |
+| Integration (call flows) | Every one of the 33 tools, through the real orchestrator on mock hosts | `mock/scenarios.test.ts`, `mock/channel.test.ts`, `mock/coverage.test.ts` |
 | Integration (Studio proxy) | Runtime token added server-side to read routes only; sessions and real-call tool runs refused (403) before the gateway | curl against Vite + mock gateway (§8) |
 | Live validator (read-only) | Generated config inserted into a real draft passes `POST /validate` on the shared Agent Builder API, with and without the six specialist agents | `validate-check.mjs` (session scratchpad); no write was sent (the driver blocks every other `/api` write) |
 | Browser | 41-step customer and staff walkthrough (both sign-in routes, eye toggle, wrong PIN, lockout, profile, account picker, confirmation, host hang → outcome unknown, sign-out, storage scan, 390 px width) | Headless Chrome over CDP, `/api` writes blocked; 4 consecutive clean runs; screenshots 01–14 |

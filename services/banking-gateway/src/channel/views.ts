@@ -133,7 +133,7 @@ export function profileView(session: SessionState): ProfileView | null {
   if (auth.kind !== 'authenticated') return null;
   const accounts = Object.entries(session.accountRefs).flatMap(([ref, number]) => {
     const account = auth.customer.accounts.find((a) => a.number === number);
-    return account ? [{ account_ref: ref, type: TYPE_LABEL[account.type] ?? account.type, ending: maskTail(account.number), currencies: account.currencies }] : [];
+    return account ? [{ account_ref: ref, type: account.product ?? TYPE_LABEL[account.type] ?? account.type, ending: maskTail(account.number), currencies: account.currencies }] : [];
   });
   return {
     business_name_masked: maskName(auth.customer.displayName),

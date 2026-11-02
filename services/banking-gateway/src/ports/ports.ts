@@ -52,6 +52,12 @@ export interface CoreBankingPort {
   requestStatement(accountNumber: string, month: string, idempotencyKey: string, signal: AbortSignal): Promise<{ readonly reference: string }>;
   /** Deck p14 "Call SOA For CA Cheque Book Request". */
   requestChequebook(accountNumber: string, delivery: 'same_day' | 'next_day' | 'standard', idempotencyKey: string, signal: AbortSignal): Promise<{ readonly reference: string }>;
+  /**
+   * Not in the deck: moves `amount` between two accounts of the same customer, in one currency. Throws HostError
+   * 'insufficient_funds' when the source cannot cover it, 'transfer_failed' when nothing moved, and
+   * 'transfer_incomplete' when it may have half-run (a Service Manager must check).
+   */
+  transferOwn(fromAccount: string, toAccount: string, amount: Money, idempotencyKey: string, signal: AbortSignal): Promise<{ readonly reference: string }>;
   /** Deck p23 / p26 "Call AS400 Prime Rates / Foreign Exchange Rates". */
   primeRate(signal: AbortSignal): Promise<{ readonly rate: string }>;
   fxRate(currency: string, signal: AbortSignal): Promise<FxRateRecord>;

@@ -7,7 +7,7 @@ import type { CapturePurpose, CaptureRequest } from '../security/capture.ts';
 import type { ServiceRequest } from '../ports/ports.ts';
 
 /** The specialist agent that owns a tool. Mirrors `agents.items` in the generated agent config (≤ 8 tools each). */
-export type AgentGroup = 'greeter' | 'authenticator' | 'accounts' | 'cheques' | 'rates_info' | 'appointments';
+export type AgentGroup = 'greeter' | 'authenticator' | 'accounts' | 'cheques' | 'rates_info' | 'appointments' | 'payments';
 
 /**
  * - public: anyone, any time (rates, branches, callbacks).

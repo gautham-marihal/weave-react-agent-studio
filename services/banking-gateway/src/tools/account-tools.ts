@@ -10,7 +10,7 @@ export type Committer = (ctx: ToolContext, txn: PreparedTransaction) => Promise<
 
 export const listAccounts = defineTool({
   name: 'list_accounts',
-  agents: ['accounts', 'cheques'],
+  agents: ['accounts', 'cheques', 'payments'],
   description: 'List the verified caller\'s accounts as references (A1, A2…), type and last four digits. Use the reference in other tools. Never read out or ask for a full account number.',
   access: 'authenticated',
   service: null,
@@ -28,7 +28,7 @@ export const listAccounts = defineTool({
 
 export const getBalance = defineTool({
   name: 'get_balance',
-  agents: ['accounts'],
+  agents: ['accounts', 'payments'],
   description: 'Current and available balance of a current or foreign currency account. Read `say` to the caller as written; it already follows the bank\'s wording for debit balances, holds and overdraft limits.',
   access: 'entitled',
   service: 'account_balance',

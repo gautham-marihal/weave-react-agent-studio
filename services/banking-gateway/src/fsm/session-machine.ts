@@ -214,10 +214,11 @@ export const currentTxn = (state: SessionState, now: number): TxnState => expire
 
 export type EntitlementResult =
   | { readonly ok: true; readonly customer: CustomerProfile | null; readonly accounts: readonly Account[] }
-  | { readonly ok: false; readonly reason: 'locked' | 'not_authenticated' | 'not_entitled' | 'no_eligible_account' };
+  | { readonly ok: false; readonly reason: 'not_offered' | 'locked' | 'not_authenticated' | 'not_entitled' | 'no_eligible_account' };
 
 /** May this session use this service right now, and with which accounts? Server-side; the UI never decides this. */
 export function entitlement(state: SessionState, service: ServiceId, policy: Policy): EntitlementResult {
+  if (policy.unavailable?.includes(service)) return { ok: false, reason: 'not_offered' };
   const rule = policy.entitlements[service];
   if (rule === 'public') return { ok: true, customer: null, accounts: [] };
   if (state.auth.kind === 'locked') return { ok: false, reason: 'locked' };

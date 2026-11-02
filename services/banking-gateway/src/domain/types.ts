@@ -26,6 +26,8 @@ export interface Money {
 export interface Account {
   readonly number: string; // full 12-digit number; server-side only, never sent to the model
   readonly type: AccountType;
+  /** The host's own product name (e.g. "Savings Account-i"), told to the caller instead of the type's label when set. */
+  readonly product?: string;
   readonly currencies: readonly string[];
   readonly dormant: boolean;
   readonly omnibus: boolean;
@@ -47,6 +49,7 @@ export type ServiceId =
   | 'account_balance' // 11000000
   | 'incoming_funds' // 12000000
   | 'recent_activity' // 13000000
+  | 'own_transfer' // not in the deck: between the caller's own accounts
   | 'statement_request' // 14000000
   | 'pin_change' // 15000000
   | 'fd_loan' // service code 328
@@ -65,7 +68,7 @@ export type ServiceId =
 /** A write the caller must explicitly confirm before it reaches a host system. */
 export interface PreparedTransaction {
   readonly id: string;
-  readonly service: 'statement_request' | 'chequebook_request' | 'stop_cheque' | 'appointment_book' | 'appointment_cancel';
+  readonly service: 'statement_request' | 'chequebook_request' | 'stop_cheque' | 'appointment_book' | 'appointment_cancel' | 'own_transfer';
   /** Plain-language summary the agent reads back. Contains no full account numbers. */
   readonly summary: string;
   readonly charge: Money | null;

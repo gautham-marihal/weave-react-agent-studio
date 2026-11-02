@@ -25,8 +25,8 @@ import { MOCK_TEST_LOGINS } from './fixtures.ts';
 
 export const REHEARSAL_PREFIX = 'rehearsal_';
 const TOKEN_TTL_S = 3600;
-const FAULT_METHODS = ['loginWithPhoneCode', 'verifyAccountAndNric', 'otpSend', 'getBalance', 'incomingFunds', 'recentTransactions', 'chequebooks', 'stopCheques', 'requestStatement', 'requestChequebook', 'primeRate', 'fxRate', 'timeDepositRates'] as const;
-const HANG_METHODS = ['stopCheques', 'requestStatement', 'requestChequebook'];
+const FAULT_METHODS = ['loginWithPhoneCode', 'verifyAccountAndNric', 'otpSend', 'getBalance', 'incomingFunds', 'recentTransactions', 'transferOwn', 'chequebooks', 'stopCheques', 'requestStatement', 'requestChequebook', 'primeRate', 'fxRate', 'timeDepositRates'] as const;
+const HANG_METHODS = ['stopCheques', 'requestStatement', 'requestChequebook', 'transferOwn'];
 
 export interface RehearsalOptions {
   readonly gatewayToken: string;

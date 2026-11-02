@@ -56,6 +56,12 @@ export interface Policy {
     readonly revealableIdentifiers: ReadonlyArray<'phone_code' | 'account_number'>;
   };
   readonly entitlements: Readonly<Record<ServiceId, EntitlementRule | 'public'>>;
+  /** Services the connected bank's systems do not offer at all: refused before any host call, left out of every menu. */
+  readonly unavailable?: readonly ServiceId[];
+  /** Sign-in routes the connected bank can verify. Default: both. */
+  readonly authMethods?: readonly AuthMethod[];
+  /** Transfers between the caller's own accounts. Not in the deck: OPEN DECISION for the business owner. */
+  readonly ownTransfer: { readonly maxMajorUnits: number };
 }
 
 const sgd = (dollars: number): Money => ({ minor: dollars * 100, currency: 'SGD' });
@@ -84,6 +90,7 @@ export const LEGACY_POLICY: Policy = {
     },
   },
   stopCheque: { maxRange: 50, chargeSingle: sgd(15), chargeRange: sgd(30), clearingCutoff: '19:00' },
+  ownTransfer: { maxMajorUnits: 50_000 }, // not in the deck: OPEN DECISION
   lookbackDays: 7,
   pageSize: 9,
   maxRecentTransactions: 15,
@@ -95,6 +102,7 @@ export const LEGACY_POLICY: Policy = {
     account_balance: { anyOf: [P, AS], accountTypes: ['CA', 'ACU', 'ACU_CHQ', 'ACU_CALL'] },
     incoming_funds: { anyOf: [P, AS_AC], accountTypes: ['CA', 'ACU', 'ACU_CHQ', 'ACU_CALL'] },
     recent_activity: { anyOf: [P, AS_AC], accountTypes: ['CA', 'ACU', 'ACU_CHQ', 'ACU_CALL'] },
+    own_transfer: { anyOf: [P, AS], accountTypes: ['CA', 'ACU', 'ACU_CHQ', 'ACU_CALL'] }, // not in the deck: OPEN DECISION
     statement_request: { anyOf: [P, AS], accountTypes: ['CA'] },
     pin_change: { anyOf: [P] },
     fd_loan: { anyOf: [{ method: 'account_nric_otp', roles: ['AS', 'AC'], bizConn: true }] },

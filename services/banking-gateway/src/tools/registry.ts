@@ -6,11 +6,12 @@ import type { AgentGroup, ToolDefinition } from './define.ts';
 import { GREETER_TOOLS } from './greeter-tools.ts';
 import { INFO_TOOLS } from './info-tools.ts';
 import { TRANSACTION_TOOLS } from './transaction-tools.ts';
+import { TRANSFER_TOOLS } from './transfer-tools.ts';
 
 // The tool registry: the single source of truth for what the agent can do. Weave Studio's agent config is
 // generated from it (toAgentConfigTools), so the model-facing schema and the server-side validation can never drift.
 
-export const ALL_TOOLS: readonly ToolDefinition[] = [...AUTH_TOOLS, ...GREETER_TOOLS, ...ACCOUNT_TOOLS, ...CHEQUE_TOOLS, ...INFO_TOOLS, ...APPOINTMENT_TOOLS, ...TRANSACTION_TOOLS];
+export const ALL_TOOLS: readonly ToolDefinition[] = [...AUTH_TOOLS, ...GREETER_TOOLS, ...ACCOUNT_TOOLS, ...CHEQUE_TOOLS, ...INFO_TOOLS, ...APPOINTMENT_TOOLS, ...TRANSFER_TOOLS, ...TRANSACTION_TOOLS];
 
 /** The runtime's builder.lint limit (agent-config-guide §2.1). Handoffs and built-ins also count; keep headroom. */
 export const MAX_TOOLS_PER_AGENT = 8;
@@ -98,7 +99,7 @@ export function toAgentConfigTools(registry: ReadonlyMap<string, ToolDefinition>
     },
   };
   const agents = Object.fromEntries(
-    (['greeter', 'authenticator', 'accounts', 'cheques', 'rates_info', 'appointments'] as const).map((a) => [a, [...registry.values()].filter((t) => t.agents.includes(a)).map((t) => t.name)]),
+    (['greeter', 'authenticator', 'accounts', 'cheques', 'rates_info', 'appointments', 'payments'] as const).map((a) => [a, [...registry.values()].filter((t) => t.agents.includes(a)).map((t) => t.name)]),
   );
   return {
     tools,

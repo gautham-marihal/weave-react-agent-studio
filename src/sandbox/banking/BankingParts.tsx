@@ -60,6 +60,7 @@ export function CustomerDevice({
   channel,
   sms,
   source,
+  realBank = false,
   onUseAccount,
   onAskForPerson,
   onRequestCallback,
@@ -68,6 +69,8 @@ export function CustomerDevice({
   channel: BankingChannel;
   sms: string[];
   source: string;
+  /** The bank's real systems: no mock phone (real SMS reach the customer's own phone) and no test logins. */
+  realBank?: boolean;
   onUseAccount: (account: AccountView) => void;
   onAskForPerson: () => void;
   onRequestCallback: () => void;
@@ -99,8 +102,8 @@ export function CustomerDevice({
           <span>Banking answers: {source}</span>
         </p>
       </div>
-      {token && <MockPhone messages={sms} />}
-      <TestLogins />
+      {token && !realBank && <MockPhone messages={sms} />}
+      <TestLogins realBank={realBank} />
     </div>
   );
 }

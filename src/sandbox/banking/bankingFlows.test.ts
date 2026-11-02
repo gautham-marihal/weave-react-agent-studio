@@ -110,3 +110,21 @@ describe('banking flows on the gateway', () => {
     }
   });
 });
+
+describe('a transfer between the customer’s own accounts, as the rules make it', () => {
+  it('understands it, asks where from, reads back the summary, and moves the money only on confirmation', async () => {
+    const s = await session();
+    await s.device('/v1/channel/identify', { phone_code: '1234567' });
+    expect((await s.key('135790')).accepted).toBe(true);
+    const request = must(understand('Please transfer 1,250.50 to my other account'));
+    expect(request).toMatchObject({ topic: 'transfer', amount: '1250.50' });
+    const ask = await s.tool(must(toolFor(request, null)).tool, must(toolFor(request, null)).args);
+    expect(ask).toMatchObject({ ok: false, error_code: 'choose_from_account' });
+    const call = must(toolFor({ ...request, fromRef: 'A1' }, null));
+    expect(call).toEqual({ tool: 'prepare_own_transfer', args: { amount: '1250.50', from_account_ref: 'A1' } });
+    const prepared = await s.tool(call.tool, call.args);
+    expect(describeSuccess(call.tool, prepared, Date.now()).text).toMatch(/^Transfer SGD 1,250\.50 from your current account ending 0101 to your current account ending 0102\. Shall I go ahead\?/);
+    expect(await s.tool('confirm_transaction', { confirmation_id: prepared.confirmation_id, caller_words: 'yes' })).toMatchObject({ ok: true, done: true });
+    expect(await s.tool('get_balance', { account_ref: 'A1' })).toMatchObject({ available: 'SGD 9,999.90' });
+  });
+});

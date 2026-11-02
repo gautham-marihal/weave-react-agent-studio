@@ -11,7 +11,7 @@ describe('authentication flows (deck p33, p34)', () => {
     const call = h.startCall();
     const start = await call.tool('start_authentication', { phone_code: '1234567' });
     expect(start).toMatchObject({ ok: true, status: 'awaiting_pin', next: 'wait_for_secure_entry' });
-    expect(call.keypad()).toMatchObject({ purpose: 'pin', minDigits: 6, maxDigits: 6 });
+    expect(call.keypad()).toMatchObject({ purpose: 'pin', minDigits: 4, maxDigits: 6 });
     expect(await call.key('135790')).toEqual({ accepted: true, message: 'Thank you. You are verified.' });
     expect(await call.tool('get_auth_status')).toMatchObject({ ok: true, authenticated: true, method: 'phonecode_pin' });
   });

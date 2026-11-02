@@ -54,6 +54,7 @@ export const MENU: ReadonlyArray<{ service: ServiceId; label: string; agent: str
   { service: 'account_balance', label: 'Account balance', agent: 'accounts' },
   { service: 'incoming_funds', label: 'Incoming funds', agent: 'accounts' },
   { service: 'recent_activity', label: 'Recent account activity', agent: 'accounts' },
+  { service: 'own_transfer', label: 'Transfer between your own accounts', agent: 'payments' },
   { service: 'statement_request', label: 'Statement request', agent: 'accounts' },
   { service: 'pin_change', label: 'Change Phone PIN', agent: 'accounts' },
   { service: 'cheque_deposit_status', label: 'Deposited cheques', agent: 'cheques' },

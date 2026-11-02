@@ -5,6 +5,8 @@ import { FlaskConicalIcon } from 'lucide-react';
 import { cn } from '../../utils/styles';
 import type { SandboxNoteKind } from './SandboxNoteSlot';
 import { isSandbox } from '../mode';
+import { isMockBank } from '../../api/gateway';
+import { useBankingSource } from '../../hooks/useBankingSource';
 
 const SANDBOX_NOTES: Record<SandboxNoteKind, { title?: string; text: string }> = {
   test: {
@@ -40,8 +42,23 @@ const LIVE_NOTES: Partial<Record<SandboxNoteKind, { title?: string; text: string
   trace: { text: 'These records were made by the rehearsal, in the same shape a real call has. No runtime wrote them; the gateway rows are the mock bank’s own timeline.' },
 };
 
+/** Live, when the rehearsal runs on the bank's real systems (a gateway on them that opens test sessions, e.g. CIMB). */
+const LIVE_REAL_BANK_NOTES: Partial<Record<SandboxNoteKind, { title?: string; text: string }>> = {
+  banking: {
+    title: 'A banking rehearsal on the bank’s real systems',
+    text: 'Not the real agent: its turns are played by simple rules in your browser, with no language model. Every banking answer comes from the gateway on the bank’s real systems: a customer signs in with their own details on the secure keypad, and the balances and transactions are theirs. Choose “The real agent” under Played by to talk to the agent on the runtime.',
+  },
+  trace: { text: 'These records were made by the rehearsal, in the same shape a real call has. No runtime wrote them; the gateway rows are the timeline of the gateway on the bank’s real systems.' },
+};
+
 export default function SandboxNote({ kind, className }: { kind: SandboxNoteKind; className?: string }) {
-  const note = (!isSandbox() && LIVE_NOTES[kind]) || SANDBOX_NOTES[kind];
+  const live = !isSandbox();
+  const asks = live && kind in LIVE_REAL_BANK_NOTES;
+  const rehearsal = useBankingSource(asks, 'rehearsal');
+  // In Live, nothing until it is known which bank the rehearsal is on: never "mock bank" for a moment on a real one.
+  if (asks && !rehearsal) return null;
+  const realBank = !!rehearsal && !isMockBank(rehearsal);
+  const note = (live && realBank && LIVE_REAL_BANK_NOTES[kind]) || (live && LIVE_NOTES[kind]) || SANDBOX_NOTES[kind];
   return (
     <div
       role="note"

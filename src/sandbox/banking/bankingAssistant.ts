@@ -15,6 +15,7 @@ export type Topic =
   | 'accounts'
   | 'transactions'
   | 'incoming'
+  | 'transfer'
   | 'statement'
   | 'deposited_cheques'
   | 'issued_cheque'
@@ -65,6 +66,12 @@ export interface BankingRequest {
   maxParty?: number;
   /** The booking to cancel (from list_appointments). */
   bookingId?: string;
+  /** A transfer between the customer's own accounts: how much (as said, e.g. "250.50"), and from and to which. */
+  amount?: string;
+  fromRef?: string;
+  toRef?: string;
+  /** The customer's words were already read for the accounts (so a refused one is not picked again). */
+  accountsRead?: boolean;
 }
 
 export const FX_CURRENCIES = ['USD', 'EUR', 'GBP', 'AUD', 'JPY', 'HKD', 'CAD', 'NZD', 'IDR'] as const;
@@ -156,6 +163,12 @@ export function understand(raw: string): BankingRequest | null {
   if (cheque && cheques.length > 0 && !has(t, /\bdeposit/)) return { topic: 'issued_cheque', words, cheques };
   if (cheque && has(t, /\b(issued|wrote|written|presented|cashed)\b/)) return { topic: 'issued_cheque', words, cheques };
   if (cheque && has(t, /\b(deposit\w*|clear\w*|status|pending)\b/)) return { topic: 'deposited_cheques', words, chequeStatus: 'deposited' };
+  if (
+    (has(t, /\b(transfer|move|shift)\b/) || has(t, /\bsend\b.*\bmoney\b/)) &&
+    !has(t, /\b(person|human|agent|service manager|someone|operator|representative|staff|call)\b/) &&
+    !has(t, /\b(received|incoming|came in|arrived)\b/)
+  )
+    return { topic: 'transfer', words, amount: pickAmount(t) ?? undefined };
   if (has(t, /\bstatements?\b/)) return { topic: 'statement', words, period: pickPeriod(t) ?? undefined };
   if (has(t, /\bincoming\b|\b(funds?|money|payments?|transfers?) (received|in|came|arrived|coming)\b|\breceived?\b.*\b(funds?|money|payments?|transfers?)\b|\bgiro\b.*\b(in|received)\b/)) return { topic: 'incoming', words };
   if (has(t, /\btransactions?\b|\bactivit(y|ies)\b|\bhistory\b|\brecent (payments?|debits?|credits?)\b|\bwhat did i (spend|pay)\b/)) return { topic: 'transactions', words };
@@ -197,6 +210,30 @@ const ORDINALS: Array<[RegExp, number]> = [
   [/\b(fourth|4th)\b|\b(number|option|account) (four|4)\b/, 3],
 ];
 
+/**
+ * The amount in what was said, as the gateway takes it ("250.50"): the first number that is not an account ending or
+ * an account ref. Null when there is none, or it has more than two decimal places.
+ */
+export function pickAmount(text: string): string | null {
+  const t = normalise(text).replace(/\bending( in)?\s+[\d -]+/g, ' ').replace(/\ba\d{1,3}\b/g, ' ');
+  const token = /\d[\d,]*(?:\.\d+)?/.exec(t)?.[0];
+  if (!token) return null;
+  const amount = token.replace(/,/g, '');
+  return /^\d{1,9}(\.\d{1,2})?$/.test(amount) ? amount : null;
+}
+
+/** "from my savings to my current account": the accounts named for each side of a transfer, when they are clear. */
+export function pickTransferAccounts(text: string, accounts: readonly AccountView[]): { from?: string; to?: string } {
+  const t = normalise(text).replace(/\d[\d,]*(?:\.\d+)?\s*(?:sgd|myr|rm|dollars?|ringgit)?(?!\d)/g, (m, offset: number, all: string) => (/ending( in)?\s*$/.test(all.slice(0, offset)) ? m : ' '));
+  // Every "from …" and "to …"/"into …" stretch; the last one that names an account wins ("I want to move 5 from A to B").
+  const side = (word: RegExp) => {
+    let found: string | undefined;
+    for (const m of t.matchAll(new RegExp(`\\b(?:${word.source})\\b(.*?)(?=\\b(?:from|to|into)\\b|$)`, 'g'))) found = pickAccount(m[1] ?? '', accounts)?.account_ref ?? found;
+    return found;
+  };
+  return { from: side(/from/), to: side(/to|into/) };
+}
+
 /** Which of the offered accounts the customer means: by last digits, by position, or by a type only one has. */
 export function pickAccount(text: string, accounts: readonly AccountView[]): AccountView | null {
   const t = normalise(text);
@@ -213,6 +250,11 @@ export function pickAccount(text: string, accounts: readonly AccountView[]): Acc
   }
   if (/\b(foreign|usd|eur|currency)\b/.test(t)) {
     const found = accounts.filter((a) => /foreign/i.test(a.type) || a.currencies.some((c) => c !== 'SGD'));
+    if (found.length === 1) return found[0] ?? null;
+  }
+  for (const kind of ['savings', 'current', 'fixed deposit', 'basic']) {
+    if (!t.includes(kind)) continue;
+    const found = accounts.filter((a) => a.type.toLowerCase().includes(kind));
     if (found.length === 1) return found[0] ?? null;
   }
   for (const [re, index] of ORDINALS) if (re.test(t) && accounts[index]) return accounts[index] ?? null;
@@ -233,6 +275,7 @@ export const NEEDS_VERIFICATION: ReadonlySet<Topic> = new Set<Topic>([
   'accounts',
   'transactions',
   'incoming',
+  'transfer',
   'statement',
   'deposited_cheques',
   'issued_cheque',
@@ -250,6 +293,7 @@ export const TOPIC_LABEL: Record<Topic, string> = {
   accounts: 'show your accounts',
   transactions: 'show your recent transactions',
   incoming: 'check your incoming funds',
+  transfer: 'move money between your accounts',
   statement: 'request a statement',
   deposited_cheques: 'check your deposited cheques',
   issued_cheque: 'check that cheque',
@@ -276,11 +320,12 @@ export const TOPIC_LABEL: Record<Topic, string> = {
 };
 
 /** What a request still needs from the customer before its tool can run. */
-export type Missing = 'cheque_number' | 'period' | 'currency' | 'phone' | 'service' | 'party';
+export type Missing = 'cheque_number' | 'period' | 'currency' | 'phone' | 'service' | 'party' | 'amount';
 
 export function missingSlot(request: BankingRequest): Missing | null {
   if ((request.topic === 'issued_cheque' || request.topic === 'stop_cheque') && !request.cheques?.length) return 'cheque_number';
   if (request.topic === 'statement' && !request.period) return 'period';
+  if (request.topic === 'transfer' && !request.amount) return 'amount';
   if (request.topic === 'fx' && !request.currency) return 'currency';
   if (request.topic === 'appointment_book' && !request.service) return 'service';
   if (request.topic === 'appointment_book' && request.slotId && !request.party) return 'party';
@@ -313,6 +358,10 @@ export function toolFor(request: BankingRequest, accountRef: string | null): { t
       return { tool: 'get_recent_transactions', args: account };
     case 'incoming':
       return { tool: 'get_incoming_funds', args: account };
+    case 'transfer':
+      return request.amount
+        ? { tool: 'prepare_own_transfer', args: { amount: request.amount, ...(request.fromRef ? { from_account_ref: request.fromRef } : {}), ...(request.toRef ? { to_account_ref: request.toRef } : {}) } }
+        : null;
     case 'statement':
       return request.period ? { tool: 'prepare_statement_request', args: { ...account, period: request.period } } : null;
     case 'deposited_cheques':
@@ -533,6 +582,7 @@ export function describeSuccess(tool: string, response: ToolResponse, at: number
         card: { kind: 'list', title: 'Your appointments', items: items.map((a) => ({ primary: capitalise(a.service ?? 'Appointment'), secondary: `${a.date ?? ''} · ${a.start ?? ''} to ${a.end ?? ''}`, amount: `For ${a.party_size ?? 1}` })) },
       };
     }
+    case 'prepare_own_transfer':
     case 'prepare_statement_request':
     case 'prepare_stop_cheque':
     case 'prepare_chequebook_request':
@@ -649,6 +699,16 @@ export function describeRefusal(response: ToolResponse): Reply {
       const label: Record<Delivery, string> = { same_day: 'Same day', next_day: 'Next day', standard: 'Standard (about 5 working days)' };
       return { text: `${response.error_message && /cut-off/.test(String(response.error_message)) ? `${message} ` : ''}How would you like to receive it: ${options.map((o) => label[o].toLowerCase()).join(', or ')}?`, card: { kind: 'choices', purpose: 'delivery', options: options.map((o) => ({ id: o, label: label[o] })) } };
     }
+    case 'choose_from_account':
+    case 'choose_to_account': {
+      const accounts = arr<AccountView>(response.accounts);
+      const ask = code === 'choose_from_account' ? 'Which account should the money come from?' : 'Which account should the money go to?';
+      const lead = /^That account/.test(message) ? `${message.split('.')[0]}. ` : '';
+      return {
+        text: `${lead}${ask} ${accounts.map((a, i) => `${i === 0 ? '' : i === accounts.length - 1 ? 'or ' : ''}the ${accountName(a)}`).join(', ')}.`,
+        card: { kind: 'choices', purpose: 'account', options: accounts.map((a) => ({ id: a.account_ref, label: `${capitalise(a.type)} ${a.ending}`, hint: a.currencies.join(' · ') })) },
+      };
+    }
     case 'account_not_eligible':
       return { text: `${message} Please choose one of these accounts.`, card: { kind: 'choices', purpose: 'account', options: arr<AccountView>(response.accounts).map((a) => ({ id: a.account_ref, label: `${capitalise(a.type)} ${a.ending}` })) } };
     case 'not_entitled':
@@ -693,6 +753,8 @@ export function askFor(missing: Missing): Reply {
       return { text: 'What is the appointment for: opening a foreign worker account, Velocity payment training, or Velocity trade training?', card: { kind: 'choices', purpose: 'service', options: APPOINTMENT_SERVICES.map((s) => ({ id: s.id, label: s.label })) } };
     case 'party':
       return { text: 'How many people will attend, or how many accounts will be opened?' };
+    case 'amount':
+      return { text: 'How much would you like to transfer?' };
   }
 }
 
@@ -717,13 +779,24 @@ export function greeting(period: string | null, agentName?: string): string {
 export const goodbye = (agentName?: string): string => `Thank you for calling ${agentName?.trim() || REHEARSAL_BANK}. Goodbye.`;
 
 export const CAPABILITIES =
-  'I can help with your account balance, recent transactions, incoming funds, statements, cheques and cheque books, changing your Phone PIN, exchange and deposit rates, branches and appointments, or connecting you to a Service Manager. What would you like to do?';
+  'I can help with your account balance, recent transactions, incoming funds, transfers between your own accounts, statements, cheques and cheque books, changing your Phone PIN, exchange and deposit rates, branches and appointments, or connecting you to a Service Manager. What would you like to do?';
+
+/**
+ * What the assistant offers, from the gateway's own menu (its services: available and needing sign-in), so a bank
+ * that offers less (CIMB: no cheques, rates or appointments) is never promised more. CAPABILITIES until it is known.
+ */
+export function capabilitiesFor(services: { available: readonly string[]; needs_verification: readonly string[] } | null | undefined): string {
+  const labels = [...new Set([...(services?.available ?? []), ...(services?.needs_verification ?? [])])].map((l) => l.replace(/\s*\(.*\)$/, '').toLowerCase());
+  if (!labels.length) return CAPABILITIES;
+  const list = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+  return `I can help with ${list}, or connect you to a Service Manager. What would you like to do?`;
+}
 
 /** The prompt for each secure-entry step. Secrets are keyed on the secure keypad only, never typed or said here. */
 export function secureEntryPrompt(purpose: string): string {
   switch (purpose) {
     case 'pin':
-      return `Thank you. Now please enter your 6-digit Phone PIN on the secure keypad.`;
+      return `Thank you. Now please enter your Phone PIN on the secure keypad (4 to 6 digits).`;
     case 'nric':
       return `Thank you. Please key in the digits of your NRIC or passport number on the secure keypad.`;
     case 'otp':

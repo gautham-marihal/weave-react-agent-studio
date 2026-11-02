@@ -65,6 +65,9 @@ export const startAuthentication = defineTool({
   async handler(ctx, args) {
     const { phone_code: phoneCode, account_number: accountNumber } = args;
     if (ctx.session.auth.kind === 'authenticated') return ok(authStatus(ctx.session, ctx.policy.maxAuthFailures, null));
+    const methods = ctx.policy.authMethods ?? ['phonecode_pin', 'account_nric_otp'];
+    if (accountNumber && !phoneCode && !methods.includes('account_nric_otp')) return declined('method_not_offered', 'On this line callers verify with their Phone Code and Phone PIN. Ask for the 7-digit Phone Code.', 'ask_again');
+    if (phoneCode && !accountNumber && !methods.includes('phonecode_pin')) return declined('method_not_offered', 'On this line callers verify with their business account number. Ask for it.', 'ask_again');
     let next;
     if (phoneCode && !accountNumber) next = ctx.dispatch({ type: 'IDENTIFIED_BY_PHONECODE', phoneCode });
     else if (accountNumber && !phoneCode) next = ctx.dispatch({ type: 'IDENTIFIED_BY_ACCOUNT', accountNumber });

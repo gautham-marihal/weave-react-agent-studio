@@ -1,12 +1,15 @@
 // Live's test conversation (through components/agent/test/LiveTestSession). For a draft that is not wired to the
 // banking gateway, the real agent and nothing else. For a banking draft, the real agent on the Agent Builder runtime,
-// or a banking rehearsal on the mock bank played in this browser, the same rehearsal Sandbox has, so a banking agent
-// works end to end in Live too. The rehearsal asks nothing of the gateway until the draft is a banking one.
+// or a banking rehearsal played in this browser, the same rehearsal Sandbox has, so a banking agent works end to end
+// in Live too. The rehearsal runs on the bank's real systems when the gateway on them opens test sessions (the CIMB
+// gateway), otherwise on the mock bank (rehearsalSource), and its label says which. The rehearsal asks nothing of the gateway until the draft is a banking one.
 // "Played by" chooses before a conversation starts. The real agent comes first, always: the rehearsal is not the agent
 // (rule-based turns, the browser's voice) and is only played when the person chooses it. A rehearsal is not
 // added to Calls, which in Live lists real calls only; the bell says it ended and why it is not there.
 import React, { useCallback, useState } from 'react';
 import { useStudio } from '../../contexts/StudioContext';
+import { isMockBank } from '../../api/gateway';
+import { useBankingSource } from '../../hooks/useBankingSource';
 import type { DraftEditor } from '../../hooks/useDraftEditor';
 import type { PlayedBy, PlayedByChoice, TestSession } from '../../hooks/useTestSession';
 import { useDraftConfig } from '../test/draftConfig';
@@ -15,13 +18,17 @@ import { useBankingConversation } from './useBankingConversation';
 
 const RUNNING: ReadonlySet<TestSession['status']> = new Set(['connecting', 'waiting', 'live']);
 
-export const PLAYED_BY_OPTIONS: PlayedByChoice['options'] = [
+/** "Played by" choices; the rehearsal's label says which bank it runs on. */
+export const playedByOptions = (realBank: boolean): PlayedByChoice['options'] => [
   { value: 'agent', label: 'The real agent' },
-  { value: 'rehearsal', label: 'Banking rehearsal (mock bank)' },
+  { value: 'rehearsal', label: realBank ? 'Banking rehearsal (bank’s real systems)' : 'Banking rehearsal (mock bank)' },
 ];
+export const PLAYED_BY_OPTIONS = playedByOptions(false);
 
 /** Said in the bell when a Live rehearsal ends. */
-export const REHEARSAL_NOT_IN_CALLS = 'A rehearsal on the mock bank: it is not added to Calls, which lists real calls.';
+export const rehearsalNotInCalls = (realBank: boolean) =>
+  `A rehearsal on ${realBank ? 'the bank’s real systems' : 'the mock bank'}: it is not added to Calls, which lists real calls.`;
+export const REHEARSAL_NOT_IN_CALLS = rehearsalNotInCalls(false);
 
 export interface LiveBankingSessionProps {
   editor: DraftEditor;
@@ -35,6 +42,8 @@ export interface LiveBankingSessionProps {
 export default function LiveBankingSession({ editor, real, banking, children }: LiveBankingSessionProps) {
   const { addNotification } = useStudio();
   const getConfig = useDraftConfig(editor);
+  const rehearsalBank = useBankingSource(banking, 'rehearsal');
+  const realBank = !!rehearsalBank && !isMockBank(rehearsalBank);
   const agentId = editor.agent?.id ?? '';
 
   const onFinished = useCallback(
@@ -46,9 +55,9 @@ export default function LiveBankingSession({ editor, real, banking, children }: 
         versionLabel: versionLabelOf(done.version),
         userMessages: done.lines.filter((m) => m.from === 'user').length,
       });
-      addNotification({ type: 'test', status: 'success', title: line.title, description: `${line.description} ${REHEARSAL_NOT_IN_CALLS}` });
+      addNotification({ type: 'test', status: 'success', title: line.title, description: `${line.description} ${rehearsalNotInCalls(realBank)}` });
     },
-    [addNotification]
+    [addNotification, realBank]
   );
   const rehearsal = useBankingConversation({ agentId, agentName: editor.agent?.name ?? agentId, getConfig, onFinished, wanted: banking, studio: 'live' });
 
@@ -62,6 +71,6 @@ export default function LiveBankingSession({ editor, real, banking, children }: 
   // The agent itself (its own greeting, voice and model) unless the person chose the rehearsal.
   const shown = running ?? chosen ?? 'agent';
   const session = shown === 'agent' ? real : rehearsal;
-  const playedBy: PlayedByChoice = { value: shown, options: PLAYED_BY_OPTIONS, onChange: setChosen };
+  const playedBy: PlayedByChoice = { value: shown, options: playedByOptions(realBank), onChange: setChosen };
   return <>{children({ ...session, playedBy })}</>;
 }

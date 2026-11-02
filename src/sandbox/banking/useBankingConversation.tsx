@@ -9,7 +9,7 @@
 // (Sandbox keeps it as a call; Live's Calls page lists real calls only, so a rehearsal is not added there).
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { bankingSourceLabel, gateway, GatewayError, rehearsalSource } from '../../api/gateway';
+import { bankingSourceLabel, gateway, GatewayError, isMockBank, rehearsalSource } from '../../api/gateway';
 import type { Rehearsal } from '../../api/gatewayTypes';
 import type { AgentConfig, ChannelType } from '../../types/studio';
 import type { ChatMessage, TraceEvent } from '../../types/testConsole';
@@ -23,7 +23,22 @@ import { bankingChannelLabel, bankingWords, bubbleStateOf, messageId, noSpeechNo
 import { CustomerDevice, ReplyExtras, SecureEntryNote } from './BankingParts';
 
 const SMS_POLL_MS = 3_000;
-const SUGGESTIONS = ["What's my balance?", 'Show my recent transactions', 'Did my cheque clear?', 'USD exchange rate', 'Book an appointment', 'Speak to a person'];
+/** Suggestions, each with the gateway menu entry it needs (null: always offered). */
+const SUGGESTIONS: ReadonlyArray<readonly [string, string | null]> = [
+  ["What's my balance?", 'Account balance'],
+  ['Show my recent transactions', 'Recent account activity'],
+  ['Move money between my accounts', 'Transfer between your own accounts'],
+  ['Did my cheque clear?', 'Deposited cheques'],
+  ['USD exchange rate', 'Rates'],
+  ['Book an appointment', 'Branch appointment'],
+  ['Speak to a person', null],
+];
+
+/** The suggestions this bank can answer, from the gateway's own menu once the session has it (all of them before). */
+export function suggestionsFor(services: { available: readonly string[]; needs_verification: readonly string[] } | null | undefined): string[] {
+  const offered = new Set([...(services?.available ?? []), ...(services?.needs_verification ?? [])]);
+  return SUGGESTIONS.filter(([, needs]) => !offered.size || needs === null || offered.has(needs)).map(([text]) => text);
+}
 const SECURE_LABEL: Record<string, string> = { pin: 'Phone PIN', nric: 'NRIC digits', otp: 'one-time password', current_pin: 'current Phone PIN', new_pin: 'new Phone PIN', confirm_new_pin: 'new Phone PIN again' };
 
 export interface BankingConversationOptions {
@@ -56,6 +71,8 @@ export function useBankingConversation({ agentId, agentName, getConfig, onFinish
   const [trace, setTrace] = useState<TraceEvent[]>([]);
   const [sms, setSms] = useState<string[]>([]);
   const [source, setSource] = useState('the banking gateway');
+  // Live only: the rehearsal runs on the bank's real systems (a gateway on them that opens test sessions).
+  const [realBank, setRealBank] = useState(false);
 
   const statusRef = useRef<SessionStatus>('idle');
   const startedRef = useRef<number | null>(null);
@@ -84,7 +101,11 @@ export function useBankingConversation({ agentId, agentName, getConfig, onFinish
   useEffect(() => {
     if (!needSource) return;
     rehearsalSource()
-      .then((s) => aliveRef.current && setSource(bankingSourceLabel(s)))
+      .then((s) => {
+        if (!aliveRef.current) return;
+        setSource(bankingSourceLabel(s));
+        setRealBank(!isMockBank(s));
+      })
       .catch(() => undefined);
   }, [needSource]);
 
@@ -158,7 +179,7 @@ export function useBankingConversation({ agentId, agentName, getConfig, onFinish
         ref: playing?.ref ?? 'draft',
         version: playing?.version ?? 'draft',
         channel: { id: playing?.channelId ?? type, type, input: type === 'web_voice' ? ['audio', 'text'] : ['text'], output: type === 'web_voice' ? ['audio', 'text'] : ['text'] },
-        channelLabel: bankingChannelLabel(type, studio),
+        channelLabel: bankingChannelLabel(type, studio, realBank),
         lines,
         tools: toolsRef.current.map((t) => ({ tool: t.tool, args: t.args })),
         state,
@@ -167,7 +188,7 @@ export function useBankingConversation({ agentId, agentName, getConfig, onFinish
         endedAt: now,
       });
     },
-    [addRecord, agentId, channel.state?.auth.authenticated, studio]
+    [addRecord, agentId, channel.state?.auth.authenticated, studio, realBank]
   );
   const finishRef = useRef(finish);
   finishRef.current = finish;
@@ -343,6 +364,7 @@ export function useBankingConversation({ agentId, agentName, getConfig, onFinish
       channel={channel}
       sms={sms}
       source={source}
+      realBank={realBank}
       onUseAccount={(account) => live && assistant.selectAccount(account)}
       onAskForPerson={() => live && assistant.handle('I would like to speak to a Service Manager.', 'screen')}
       onRequestCallback={() => live && assistant.handle('Please arrange a call back.', 'screen')}
@@ -385,13 +407,13 @@ export function useBankingConversation({ agentId, agentName, getConfig, onFinish
     send,
     toggleMute: async () => voice.toggleMute(),
     submitForm: () => ({}),
-    sandbox: bankingWords(source, studio),
+    sandbox: bankingWords(source, studio, realBank),
     extras: {
       underMessage,
       beside,
       composerNote: assistant.secureStep ? <SecureEntryNote label={SECURE_LABEL[assistant.secureStep] ?? 'code'} /> : null,
       placeholder: assistant.identifierStep === 'phone_code' ? 'Type the 7-digit Phone Code' : assistant.identifierStep === 'account_number' ? 'Type the 12-digit account number' : undefined,
-      suggestions: SUGGESTIONS,
+      suggestions: suggestionsFor(channel.state?.services),
       voice: voice.supported ? { title: VOICE_TITLE, descriptions: VOICE_WORDING } : null,
       voiceMissing: noSpeechNote({ recognition: voice.supported, synthesis: voice.canSpeak }),
       attention: `${assistant.secureStep ?? ''}|${channel.confirmation?.id ?? ''}:${channel.confirmation?.phase ?? ''}|${channel.state?.auth.state ?? ''}`,

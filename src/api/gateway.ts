@@ -8,9 +8,10 @@
 //   Sandbox  always the mock bank.
 // The mock bank is the gateway server when it answers and lets Studio start test sessions; otherwise the same gateway,
 // built from services/banking-gateway, running in this browser on its mock bank (src/sandbox/banking, loaded on use).
-// Test sessions Studio starts itself (rehearsals: the tool runner, a banking rehearsal conversation, test logins) are
-// test data by definition, so they always run on the mock bank, even when a gateway on real systems is connected:
-// their routes, and every call made with a token, call or room a rehearsal handed out, go to rehearsalSource().
+// Test sessions Studio starts itself (rehearsals: the tool runner, a banking rehearsal conversation, test logins) run
+// where rehearsalSource() says: in Live, on the bank's real systems when the gateway on them opens test sessions
+// (STUDIO_TEST_SESSIONS=on, e.g. the CIMB gateway), otherwise on the mock bank; in Sandbox always on the mock bank.
+// Their routes, and every call made with a token, call or room a rehearsal handed out, go to rehearsalSource().
 
 import type {
   AccountDetails,
@@ -85,11 +86,21 @@ export function bankingSource(): Promise<BankingSource> {
 }
 
 /**
- * Where Studio's own test sessions (rehearsals) go: the mock bank, always. The same as bankingSource() unless that is
- * a gateway on the bank's real systems, which never opens test sessions; then the gateway in this browser.
+ * Where Studio's own test sessions (rehearsals) go. The same as bankingSource() on the mock bank. On a gateway on the
+ * bank's real systems (Live only), that gateway when it opens test sessions (its /dev/test-logins answers: the CIMB
+ * gateway with STUDIO_TEST_SESSIONS=on), so a rehearsal signs in a real customer and reads their real accounts;
+ * otherwise the mock bank in this browser.
  */
 export function rehearsalSource(): Promise<BankingSource> {
-  rehearsalPromise ||= bankingSource().then((s): BankingSource => (isMockBank(s) ? s : { kind: 'browser', hosts: 'mock', studio: s.studio }));
+  rehearsalPromise ||= bankingSource().then(async (s): Promise<BankingSource> => {
+    if (isMockBank(s)) return s;
+    try {
+      await fetchCall('GET', '/dev/test-logins');
+      return s;
+    } catch {
+      return { kind: 'browser', hosts: 'mock', studio: s.studio };
+    }
+  });
   return rehearsalPromise;
 }
 
@@ -111,9 +122,12 @@ async function resolveSource(): Promise<BankingSource> {
   if (studio === 'live' && health?.hosts === 'live') return { kind: 'gateway', hosts: 'live', studio };
   if (health) {
     try {
-      // a gateway that lets Studio start its own test sessions (a gateway on real systems never does)
-      await fetchCall('GET', '/dev/test-logins');
-      return studio === 'sandbox' && health.hosts === 'live' ? { kind: 'gateway', hosts: 'live', studio } : { kind: 'gateway', hosts: 'mock', studio };
+      // Sandbox (or a gateway that is not on real systems): a mock gateway server that lets Studio start its own test
+      // sessions. A gateway on real systems is never Sandbox's, even when it opens test sessions.
+      if (health.hosts !== 'live') {
+        await fetchCall('GET', '/dev/test-logins');
+        return { kind: 'gateway', hosts: 'mock', studio };
+      }
     } catch {
       // no test sessions there: the gateway in this browser
     }

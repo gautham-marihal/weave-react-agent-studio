@@ -54,9 +54,14 @@ export function LiveBankingPanel({ session }: { session: TestSession }) {
           <p className="mt-1 text-[13px] text-ink-soft">Sign-in, the secure keypad, accounts and confirmations appear here once the conversation starts.</p>
         </>
       )}
-      {mock && (
+      {mock ? (
         <p className="mt-3 rounded-md bg-warning-soft/60 px-2 py-1.5 text-[12px] text-ink-soft">
           Mock bank: test data only. The device follows this conversation when the agent runtime reaches this gateway at its banking_gateway_url.
+        </p>
+      ) : (
+        <p className="mt-3 rounded-md bg-subtle px-2 py-1.5 text-[12px] text-ink-soft">
+          The device follows this conversation when the agent runtime reaches this gateway at its banking_gateway_url and the gateway shares the runtime’s LiveKit secret. To try the
+          whole banking flow on the bank’s real systems from Studio, choose the banking rehearsal under Played by.
         </p>
       )}
       <p className="mt-3 flex items-center gap-1 border-t border-line pt-2 text-[11px] text-muted">

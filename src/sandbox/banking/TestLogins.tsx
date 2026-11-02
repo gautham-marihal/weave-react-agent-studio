@@ -28,9 +28,9 @@ function Copy({ value, label }: { value: string; label: string }) {
 
 /**
  * The mock bank's documented test logins (services/banking-gateway/README.md "Test logins"), as the gateway lists
- * them. Sandbox only: Live never has test logins.
+ * them. On the bank's real systems (`realBank`) there are none: the gateway says how its customers sign in instead.
  */
-export function TestLogins() {
+export function TestLogins({ realBank = false }: { realBank?: boolean }) {
   const [logins, setLogins] = useState<TestLogin[] | null>(null);
   const [otpSource, setOtpSource] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -53,17 +53,21 @@ export function TestLogins() {
     <details className="group rounded-xl border border-line bg-surface p-4" aria-label="Test logins">
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-ink">
         <KeyRoundIcon className="h-4 w-4 text-muted" aria-hidden />
-        Test logins
+        {realBank ? 'Signing in' : 'Test logins'}
         <span className="ml-auto text-[12px] font-normal text-muted group-open:hidden">Show</span>
       </summary>
-      <p className="mt-1 text-[12px] text-muted">Mock bank systems, test data only. Key the secret on the secure keypad, never in the conversation.</p>
+      <p className="mt-1 text-[12px] text-muted">
+        {realBank
+          ? 'The bank’s real systems: no test logins, real customers only. Key the secret on the secure keypad, never in the conversation.'
+          : 'Mock bank systems, test data only. Key the secret on the secure keypad, never in the conversation.'}
+      </p>
       {error && (
         <p role="alert" className="mt-2 text-[13px] text-danger">
           {error}
         </p>
       )}
       {!logins && !error && <p className="mt-2 text-[13px] text-muted">Loading the test logins…</p>}
-      {logins && (
+      {logins && logins.length > 0 && (
         <ul className="mt-2 divide-y divide-line rounded-lg border border-line">
           {logins.map((l) => (
             <li key={l.id} className="space-y-1 px-3 py-2 text-[13px]">
@@ -84,7 +88,7 @@ export function TestLogins() {
           ))}
         </ul>
       )}
-      {otpSource && <p className="mt-2 text-[11px] text-muted">One-time passwords: {otpSource}</p>}
+      {otpSource && <p className="mt-2 text-[11px] text-muted">{realBank ? otpSource : `One-time passwords: ${otpSource}`}</p>}
     </details>
   );
 }

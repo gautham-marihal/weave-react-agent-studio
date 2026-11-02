@@ -43,7 +43,7 @@ const sandboxDraft = (p, id) =>
     return (await getSandboxApi().handle('GET', `/bots/${bot}/draft`)).body;
   }, id);
 const roleIds = (config) => (config.agents?.items ?? []).map((r) => r.id);
-const BANKING_ROLES = ['greeter', 'authenticator', 'accounts', 'cheques', 'rates_info', 'appointments'];
+const BANKING_ROLES = ['greeter', 'authenticator', 'accounts', 'cheques', 'rates_info', 'appointments', 'payments'];
 
 // ---- Sandbox (its own browser, on Sandbox from the start) ---------------------------------------------------------------
 const sandboxContext = async (theme = 'light') => {
@@ -78,12 +78,12 @@ await step('Sandbox: the sample is a complete banking agent, and its Build › T
   check((await s.getAttribute('data-banking')) === 'on', 'it is a banking agent');
   const text = await s.innerText();
   check(/Sandbox · banking gateway in this browser, mock bank systems/.test(text), `the source is named: ${text}`);
-  check(/6 banking roles, 32 banking tools\. The banking front desk answers first\./.test(text), text);
+  check(/7 banking roles, 33 banking tools\. The banking front desk answers first\./.test(text), text);
   const chips = await s.getByRole('list', { name: 'Banking roles' }).locator('li').allInnerTexts();
-  check(chips.length === 6 && chips.every((c) => Number(/(\d+) tools/.exec(c)?.[1]) <= 8), `six roles, at most 8 tools each: ${chips}`);
+  check(chips.length === 7 && chips.every((c) => Number(/(\d+) tools/.exec(c)?.[1]) <= 8), `seven roles, at most 8 tools each: ${chips}`);
   check(!(await s.getByRole('textbox').count()) && !/Gateway address|Set address|banking_gateway_url/.test(text), 'no address to type: Studio fills it in');
   const draft = await sandboxDraft(sb, 'weave-bank');
-  check(BANKING_ROLES.every((id) => roleIds(draft.config).includes(id)) && draft.config.agents.entry === 'greeter', 'the six roles, the front desk first');
+  check(BANKING_ROLES.every((id) => roleIds(draft.config).includes(id)) && draft.config.agents.entry === 'greeter', 'the seven roles, the front desk first');
   check(draft.config.channels.some((c) => c.type === 'web_chat' && c.enabled) && draft.config.channels.some((c) => c.type === 'web_voice' && c.enabled), 'web chat and web voice');
   await shot(sb, 'build-tools-banking-sandbox-light');
 });
@@ -93,7 +93,7 @@ await step('Sandbox: “Make this a banking agent” makes an existing agent a c
   await openTools(sb, 'bookings');
   check((await section(sb).getAttribute('data-banking')) === 'off', 'Bookings is not a banking agent yet');
   await section(sb).getByRole('button', { name: 'Make this a banking agent' }).click();
-  await section(sb).getByText(/This is now a banking agent: 32 tools added, 6 roles added\./).waitFor();
+  await section(sb).getByText(/This is now a banking agent: 33 tools added, 7 roles added\./).waitFor();
   check((await section(sb).getAttribute('data-banking')) === 'on', 'the section shows the banking agent');
   check(/Bookings takes questions that are not banking/.test(await section(sb).innerText()), 'its own role is kept for the rest');
   await sb.getByRole('button', { name: 'Save', exact: true }).click();
@@ -104,7 +104,7 @@ await step('Sandbox: “Make this a banking agent” makes an existing agent a c
   check(JSON.stringify(config.events.map((e) => e.on)).includes('call_started') && JSON.stringify(config.events.map((e) => e.on)).includes('call_ended'), 'the session events');
   check(!!config.state.variables.call_id, 'the call_id state variable');
   const greeter = config.agents.items.find((r) => r.id === 'greeter');
-  check(greeter.handoffs.map((h) => h.to).join() === `authenticator,accounts,cheques,rates_info,appointments,${before.agents.entry}`, 'the front desk hands off to every specialist and the agent’s own role');
+  check(greeter.handoffs.map((h) => h.to).join() === `authenticator,accounts,cheques,rates_info,appointments,payments,${before.agents.entry}`, 'the front desk hands off to every specialist and the agent’s own role');
   check(greeter.instructions.rules.some((r) => /Never ask for a PIN, NRIC, one-time password/.test(r)) && greeter.instructions.rules.some((r) => /Do what next says/.test(r)), 'the design rules are in its instructions');
   check(config.agents.items.find((r) => r.id === 'cheques').instructions.rules.some((r) => /prepare_ tool, then confirm_transaction/.test(r)), 'writes are prepare then confirm');
 });
@@ -145,7 +145,7 @@ async function tryBankingTool(p, id, sessionLabel) {
   await tryIt.getByRole('button', { name: 'Start a test session' }).click();
   await tryIt.getByText(sessionLabel).waitFor({ timeout: 20_000 });
   const tool = tryIt.getByLabel('Tool', { exact: true });
-  await until(async () => (await tool.locator('option').count()) === 32, 'the 32 tools are offered');
+  await until(async () => (await tool.locator('option').count()) === 33, 'the 33 tools are offered');
   await tool.selectOption('start_authentication');
   await tryIt.getByLabel(/^phone_code/).fill('1234567');
   await tryIt.getByRole('button', { name: 'Run as the agent' }).click();
@@ -199,7 +199,7 @@ await step('Sandbox: the Banking assistant starter creates a banking agent on we
   await sb.waitForURL(/\/agents\/branch-banking\/setup/, { timeout: 30_000 });
   const { config } = await sandboxDraft(sb, 'branch-banking');
   check(config.agents.entry === 'greeter' && BANKING_ROLES.every((id) => roleIds(config).includes(id)), `a banking agent: ${roleIds(config)}`);
-  check((config.tools ?? []).filter((t) => t.connection === 'banking_gateway').length === 32, '32 banking tools');
+  check((config.tools ?? []).filter((t) => t.connection === 'banking_gateway').length === 33, '33 banking tools');
   check(config.channels.some((c) => c.type === 'web_chat' && c.enabled) && config.channels.some((c) => c.type === 'web_voice' && c.enabled), 'web chat and web voice');
 });
 
@@ -234,7 +234,7 @@ await step('Sandbox: “Start the sample data again” brings the sample banking
   await Promise.all([sb.waitForEvent('load', { timeout: 30_000 }).catch(() => undefined), confirm.getByRole('button', { name: /Start again/ }).click()]);
   await until(async () => {
     const draft = await sandboxDraft(sb, 'weave-bank');
-    return (draft.config.tools ?? []).filter((t) => t.connection === 'banking_gateway').length === 32;
+    return (draft.config.tools ?? []).filter((t) => t.connection === 'banking_gateway').length === 33;
   }, 'the sample banking agent is made again');
 });
 
@@ -258,13 +258,13 @@ await step('Live: Build › Tools says the mock bank (test data) and why, and ma
   check(LIVE_MOCK.test(await s.innerText()) && /Mock bank · test data/.test(await s.innerText()), await s.innerText());
   await saysMockBank(s, 'Build › Tools');
   await s.getByRole('button', { name: 'Make this a banking agent' }).click();
-  await s.getByText(/This is now a banking agent: 32 tools added, 6 roles added\./).waitFor();
+  await s.getByText(/This is now a banking agent: 33 tools added, 7 roles added\./).waitFor();
   check((await s.getAttribute('data-banking')) === 'on', 'the section shows the banking agent');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await until(async () => (await liveDraft('acme-support')).agents?.entry === 'greeter', 'the saved Live draft has the front desk first');
   const config = await liveDraft('acme-support');
   check(BANKING_ROLES.every((id) => roleIds(config).includes(id)), `six banking roles: ${roleIds(config)}`);
-  check((config.tools ?? []).filter((t) => t.connection === 'banking_gateway').length === 32, '32 banking tools');
+  check((config.tools ?? []).filter((t) => t.connection === 'banking_gateway').length === 33, '33 banking tools');
   check(config.constants?.banking_gateway_url === 'https://gateway.bank.example', `the address is filled in: ${config.constants?.banking_gateway_url}`);
   check(!(await section(page).getByRole('textbox').count()), 'nothing to type');
   await page.unroute('**/gateway/_studio/address');
@@ -305,7 +305,7 @@ await step('Live: the Banking assistant starter says the mock bank, and creates 
   await page.waitForURL(/\/agents\/live-banking\/setup/, { timeout: 30_000 });
   await until(async () => (await liveDraft('live-banking')).agents?.entry === 'greeter', 'the new agent is a banking agent on the real API');
   const config = await liveDraft('live-banking');
-  check(BANKING_ROLES.every((id) => roleIds(config).includes(id)) && (config.tools ?? []).filter((t) => t.connection === 'banking_gateway').length === 32, 'six roles and 32 tools');
+  check(BANKING_ROLES.every((id) => roleIds(config).includes(id)) && (config.tools ?? []).filter((t) => t.connection === 'banking_gateway').length === 33, 'seven roles and 33 tools');
   check(config.channels.some((c) => c.type === 'web_chat' && c.enabled) && config.channels.some((c) => c.type === 'web_voice' && c.enabled), 'web chat and web voice');
 });
 

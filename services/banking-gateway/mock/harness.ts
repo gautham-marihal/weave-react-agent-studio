@@ -7,17 +7,18 @@ import { createGateway } from '../src/app.ts';
 import type { CaptureRequest } from '../src/security/capture.ts';
 import type { GatewayEvent } from '../src/session/events.ts';
 import type { Channel } from '../src/domain/types.ts';
+import type { Policy } from '../src/domain/policy.ts';
 import { createMockPorts } from './adapters.ts';
 
 /** Tuesday 27 Oct 2026, 09:30 in Singapore: inside office hours and before the same-day cheque book cut-off. */
 export const TUESDAY_0930_SGT = Date.parse('2026-10-27T01:30:00Z');
 
-export function createHarness(start = TUESDAY_0930_SGT) {
+export function createHarness(start = TUESDAY_0930_SGT, policy?: Policy) {
   let now = start;
   const clock = () => now;
   const audit: AuditRecord[] = [];
   const { ports, controls } = createMockPorts(clock);
-  const { orchestrator, registry } = createGateway({ ports, clock, auditSinks: [(r) => audit.push(r)], hosts: 'mock' });
+  const { orchestrator, registry } = createGateway({ ports, clock, policy, auditSinks: [(r) => audit.push(r)], hosts: 'mock' });
   return {
     orchestrator,
     registry,

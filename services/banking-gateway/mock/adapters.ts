@@ -77,6 +77,10 @@ export function createMockPorts(clock: () => number = Date.now, onOtp?: (custome
   const byAccount = (number: string) => MOCK_CUSTOMERS.find((c) => c.profile.accounts.some((a) => a.number === number));
 
   const money = (dollars: number, currency = 'SGD'): Money => ({ minor: Math.round(dollars * 100), currency });
+  // Money moved by transferOwn, in minor units per `${account}:${currency}`, on top of the fixed mock balances.
+  const moved = new Map<string, number>();
+  const shift = (key: string, m: Money): Money => ({ minor: m.minor + (moved.get(key) ?? 0), currency: m.currency });
+  let transfers = 0;
 
   const core: CoreBankingPort = {
     async loginWithPhoneCode(phoneCode, pin, signal) {
@@ -101,7 +105,22 @@ export function createMockPorts(clock: () => number = Date.now, onOtp?: (custome
       const b = MOCK_BALANCES[`${accountNumber}:${currency ?? 'SGD'}`];
       if (!b) throw new HostError('as400', '99', 'no balance record');
       const account = byAccount(accountNumber)?.profile.accounts.find((a) => a.number === accountNumber);
-      return { current: b.current, available: b.available, holdAmount: b.hold, chequesPendingClearance: b.pending, overdraftLimit: b.od, omnibus: account?.omnibus ?? false };
+      const key = `${accountNumber}:${currency ?? 'SGD'}`;
+      return { current: shift(key, b.current), available: shift(key, b.available), holdAmount: b.hold, chequesPendingClearance: b.pending, overdraftLimit: b.od, omnibus: account?.omnibus ?? false };
+    },
+    async transferOwn(fromAccount, toAccount, amount, _idempotencyKey, signal) {
+      latency(signal);
+      maybeFail('transferOwn');
+      await maybeHang('transferOwn', signal);
+      const fromKey = `${fromAccount}:${amount.currency}`;
+      const toKey = `${toAccount}:${amount.currency}`;
+      const source = MOCK_BALANCES[fromKey];
+      if (!source || !MOCK_BALANCES[toKey] || byAccount(fromAccount) !== byAccount(toAccount)) throw new HostError('soa', 'transfer_failed', 'mock: accounts not found or not the same customer');
+      if (shift(fromKey, source.available).minor < amount.minor) throw new HostError('soa', 'insufficient_funds');
+      moved.set(fromKey, (moved.get(fromKey) ?? 0) - amount.minor);
+      moved.set(toKey, (moved.get(toKey) ?? 0) + amount.minor);
+      transfers += 1;
+      return { reference: `TRF${String(transfers).padStart(6, '0')}` };
     },
     async listCurrencies(accountNumber, signal) {
       latency(signal);

@@ -356,6 +356,8 @@ var LEGACY_POLICY = {
     }
   },
   stopCheque: { maxRange: 50, chargeSingle: sgd(15), chargeRange: sgd(30), clearingCutoff: "19:00" },
+  ownTransfer: { maxMajorUnits: 5e4 },
+  // not in the deck: OPEN DECISION
   lookbackDays: 7,
   pageSize: 9,
   maxRecentTransactions: 15,
@@ -368,6 +370,8 @@ var LEGACY_POLICY = {
     account_balance: { anyOf: [P, AS], accountTypes: ["CA", "ACU", "ACU_CHQ", "ACU_CALL"] },
     incoming_funds: { anyOf: [P, AS_AC], accountTypes: ["CA", "ACU", "ACU_CHQ", "ACU_CALL"] },
     recent_activity: { anyOf: [P, AS_AC], accountTypes: ["CA", "ACU", "ACU_CHQ", "ACU_CALL"] },
+    own_transfer: { anyOf: [P, AS], accountTypes: ["CA", "ACU", "ACU_CHQ", "ACU_CALL"] },
+    // not in the deck: OPEN DECISION
     statement_request: { anyOf: [P, AS], accountTypes: ["CA"] },
     pin_change: { anyOf: [P] },
     fd_loan: { anyOf: [{ method: "account_nric_otp", roles: ["AS", "AC"], bizConn: true }] },
@@ -473,13 +477,14 @@ var HELP = {
 };
 function authMethods(channel, policy) {
   const noKeypad = channel === "sip_voice" ? "Secure entry is not available on a phone call yet. A Service Manager can help, or use the website or app." : null;
-  return [
+  const allowed = policy.authMethods ?? ["phonecode_pin", "account_nric_otp"];
+  const all = [
     {
       id: "phonecode_pin",
       label: "Phone Code and Phone PIN",
-      summary: "For customers registered for phone banking. You need your 7-digit Phone Code and your 6-digit Phone PIN.",
+      summary: "For customers registered for phone banking. You need your 7-digit Phone Code and your Phone PIN (4 to 6 digits).",
       identifier: { field: "phone_code", label: "Phone Code", digits: 7, reveal_allowed: policy.channel.revealableIdentifiers.includes("phone_code"), help: "find_phone_code" },
-      secure_steps: [{ purpose: "pin", label: "6-digit Phone PIN", help: "forgot_pin" }],
+      secure_steps: [{ purpose: "pin", label: "Phone PIN (4 to 6 digits)", help: "forgot_pin" }],
       available: noKeypad === null,
       unavailable_reason: noKeypad,
       legacy: 'Deck p33 "P + T" route; host codes 50/53/62/83'
@@ -498,6 +503,7 @@ function authMethods(channel, policy) {
       legacy: 'Deck p33/p34 "A + I" route with SMS OTP'
     }
   ];
+  return all.filter((m2) => allowed.includes(m2.id));
 }
 
 // services/banking-gateway/src/fsm/session-machine.ts
@@ -595,6 +601,7 @@ function expireTxn(txn, now) {
 }
 var currentTxn = (state, now) => expireTxn(state.txn, now);
 function entitlement(state, service, policy) {
+  if (policy.unavailable?.includes(service)) return { ok: false, reason: "not_offered" };
   const rule = policy.entitlements[service];
   if (rule === "public") return { ok: true, customer: null, accounts: [] };
   if (state.auth.kind === "locked") return { ok: false, reason: "locked" };
@@ -611,8 +618,9 @@ function entitlement(state, service, policy) {
 
 // services/banking-gateway/src/security/capture.ts
 var CAPTURE_FORMAT = {
-  pin: { min: 6, max: 6, label: "six-digit Phone PIN", pattern: /^\d{6}$/ },
-  current_pin: { min: 6, max: 6, label: "current six-digit Phone PIN", pattern: /^\d{6}$/ },
+  // 4 to 6 digits: some banks' customers (CIMB) have 4-digit passcodes. A new PIN is still six digits (deck p9).
+  pin: { min: 4, max: 6, label: "Phone PIN (4 to 6 digits)", pattern: /^\d{4,6}$/ },
+  current_pin: { min: 4, max: 6, label: "current Phone PIN (4 to 6 digits)", pattern: /^\d{4,6}$/ },
   new_pin: { min: 6, max: 6, label: "new six-digit Phone PIN", pattern: /^\d{6}$/ },
   confirm_new_pin: { min: 6, max: 6, label: "new Phone PIN again", pattern: /^\d{6}$/ },
   otp: { min: 6, max: 6, label: "six-digit one-time password from the SMS", pattern: /^\d{6}$/ },
@@ -913,6 +921,9 @@ var startAuthentication = defineTool({
   async handler(ctx, args) {
     const { phone_code: phoneCode, account_number: accountNumber } = args;
     if (ctx.session.auth.kind === "authenticated") return ok(authStatus(ctx.session, ctx.policy.maxAuthFailures, null));
+    const methods = ctx.policy.authMethods ?? ["phonecode_pin", "account_nric_otp"];
+    if (accountNumber && !phoneCode && !methods.includes("account_nric_otp")) return declined("method_not_offered", "On this line callers verify with their Phone Code and Phone PIN. Ask for the 7-digit Phone Code.", "ask_again");
+    if (phoneCode && !accountNumber && !methods.includes("phonecode_pin")) return declined("method_not_offered", "On this line callers verify with their business account number. Ask for it.", "ask_again");
     let next;
     if (phoneCode && !accountNumber) next = ctx.dispatch({ type: "IDENTIFIED_BY_PHONECODE", phoneCode });
     else if (accountNumber && !phoneCode) next = ctx.dispatch({ type: "IDENTIFIED_BY_ACCOUNT", accountNumber });
@@ -1178,6 +1189,8 @@ var ROUTES = {
   account_balance: { skillset: "bi_single", type: QK, category: "ACCOUNT SERVICES", subCategory: "ACCOUNT BALANCES", priority: "normal" },
   incoming_funds: { skillset: "bi_single", type: QK, category: "INWARD REMITTANCE", subCategory: "STATUS OF INCOMING FUNDS", priority: "normal" },
   recent_activity: { skillset: "bi_segment", type: QK, category: "ACCOUNT SERVICES", subCategory: "DEBIT/CREDIT TXN", priority: "normal" },
+  own_transfer: { skillset: "bi_segment", type: QK, category: "ACCOUNT SERVICES", subCategory: "FUND TRANSFER (OWN ACCOUNTS)", priority: "normal" },
+  // not in the deck
   statement_request: { skillset: "bi_segment", type: QK, category: "ACCOUNT SERVICES", subCategory: "COPY OF STATEMENT (C/P/I)", priority: "normal" },
   pin_change: { skillset: "bi_segment", type: QK, category: "PHONEBANKING", subCategory: "T-PIN RESET", priority: "normal" },
   fd_loan: { skillset: "bc_fd_loans", type: QK, category: "FIXED DEPOSIT", subCategory: "TRANSACTION (NEW)", priority: "normal" },
@@ -1242,6 +1255,7 @@ var MENU = [
   { service: "account_balance", label: "Account balance", agent: "accounts" },
   { service: "incoming_funds", label: "Incoming funds", agent: "accounts" },
   { service: "recent_activity", label: "Recent account activity", agent: "accounts" },
+  { service: "own_transfer", label: "Transfer between your own accounts", agent: "payments" },
   { service: "statement_request", label: "Statement request", agent: "accounts" },
   { service: "pin_change", label: "Change Phone PIN", agent: "accounts" },
   { service: "cheque_deposit_status", label: "Deposited cheques", agent: "cheques" },
@@ -1402,7 +1416,7 @@ function profileView(session) {
   if (auth.kind !== "authenticated") return null;
   const accounts = Object.entries(session.accountRefs).flatMap(([ref, number]) => {
     const account2 = auth.customer.accounts.find((a) => a.number === number);
-    return account2 ? [{ account_ref: ref, type: TYPE_LABEL[account2.type] ?? account2.type, ending: maskTail(account2.number), currencies: account2.currencies }] : [];
+    return account2 ? [{ account_ref: ref, type: account2.product ?? TYPE_LABEL[account2.type] ?? account2.type, ending: maskTail(account2.number), currencies: account2.currencies }] : [];
   });
   return {
     business_name_masked: maskName(auth.customer.displayName),
@@ -1443,12 +1457,22 @@ function channelStateView(session, policy, hosts, active, now) {
 }
 
 // services/banking-gateway/src/executor/response-matrix.ts
+var NOT_OFFERED = { message: "Sorry, this service is not available on this line.", next: "continue", retryable: false, prompt: "1189" };
 var MATRIX = {
   "as400:33": { message: "Rates for this option are currently unavailable.", next: "offer_transfer", retryable: false, prompt: "1119" },
   "as400:90": { message: "No cheque book has been issued for this account.", next: "continue", retryable: false, prompt: "1061" },
   "as400:192": { message: "Some or all of these cheques have already been stopped.", next: "continue", retryable: false, prompt: "1205a" },
   "as400:196": { message: "Some or all of these cheques have already been presented or cleared, so they cannot be stopped.", next: "continue", retryable: false, prompt: "1205" },
   "as400:343": { message: "The cheque range is invalid. It must be fewer than 50 cheques within the same cheque book.", next: "ask_again", retryable: false, prompt: "1081" },
+  // A service the connected bank's systems do not offer at all (e.g. CIMB has no cheque or statement methods).
+  "as400:not_offered": NOT_OFFERED,
+  "soa:not_offered": NOT_OFFERED,
+  "siebel:not_offered": NOT_OFFERED,
+  "cmm:not_offered": NOT_OFFERED,
+  "otp:not_offered": NOT_OFFERED,
+  "soa:insufficient_funds": { message: "The account does not have enough available balance for this transfer.", next: "continue", retryable: false, prompt: "1189" },
+  "soa:transfer_failed": { message: "The transfer could not be made. No money has moved.", next: "offer_transfer", retryable: false, prompt: "1189" },
+  "soa:transfer_incomplete": { message: "We could not confirm whether your transfer went through. Please do not repeat it; a Service Manager can check it for you.", next: "offer_transfer", retryable: false, prompt: "1189" },
   "otp:locked": { message: "The one-time password feature has been suspended for this customer.", next: "offer_transfer", retryable: false, prompt: "OTP-LOCK" }
 };
 var FALLBACK = {
@@ -1535,7 +1559,8 @@ var CURRENCY_WORDS = {
   GBP: "pounds sterling",
   EUR: "euros",
   JPY: "yen",
-  IDR: "rupiah"
+  IDR: "rupiah",
+  MYR: "ringgit"
 };
 var group = (digits2) => digits2.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 function speakAmount(money) {
@@ -1561,6 +1586,17 @@ function speakAmount(money) {
   }
   return { display, spoken: spoken2, negative };
 }
+function parseDecimal(text2, currency) {
+  const match = /^(-)?(\d+)(?:\.(\d+))?$/.exec(text2.trim());
+  if (!match) throw new RangeError(`Not a decimal amount: ${text2}`);
+  const exp = exponentOf(currency);
+  const fraction = (match[3] ?? "").padEnd(exp, "0");
+  if (fraction.length > exp && /[1-9]/.test(fraction.slice(exp))) {
+    throw new RangeError(`Amount ${text2} has more precision than ${currency} allows`);
+  }
+  const minor = Number(`${match[2]}${fraction.slice(0, exp)}`);
+  return { minor: match[1] ? -minor : minor, currency };
+}
 
 // services/banking-gateway/src/tools/helpers.ts
 var TYPE_LABEL2 = {
@@ -1571,7 +1607,7 @@ var TYPE_LABEL2 = {
 };
 function describeAccount(ctx, account2) {
   const ref = Object.entries(ctx.session.accountRefs).find(([, number]) => number === account2.number)?.[0] ?? null;
-  return { account_ref: ref, type: TYPE_LABEL2[account2.type], ending: maskTail(account2.number), currencies: account2.currencies };
+  return { account_ref: ref, type: account2.product ?? TYPE_LABEL2[account2.type], ending: maskTail(account2.number), currencies: account2.currencies };
 }
 var accountRefParam = string({
   maxLength: 4,
@@ -1632,7 +1668,7 @@ function paginate(items, page, size) {
 // services/banking-gateway/src/tools/account-tools.ts
 var listAccounts = defineTool({
   name: "list_accounts",
-  agents: ["accounts", "cheques"],
+  agents: ["accounts", "cheques", "payments"],
   description: "List the verified caller's accounts as references (A1, A2\u2026), type and last four digits. Use the reference in other tools. Never read out or ask for a full account number.",
   access: "authenticated",
   service: null,
@@ -1649,7 +1685,7 @@ var listAccounts = defineTool({
 });
 var getBalance = defineTool({
   name: "get_balance",
-  agents: ["accounts"],
+  agents: ["accounts", "payments"],
   description: "Current and available balance of a current or foreign currency account. Read `say` to the caller as written; it already follows the bank's wording for debit balances, holds and overdraft limits.",
   access: "entitled",
   service: "account_balance",
@@ -2089,13 +2125,85 @@ var commitStopCheque = async (ctx, txn) => {
 };
 var CHEQUE_TOOLS = [getDepositedCheques, getIssuedChequeStatus, getChequebookStatus, prepareChequebookRequest, prepareStopCheque];
 
+// services/banking-gateway/src/tools/transfer-tools.ts
+var amountParam = string({
+  maxLength: 13,
+  pattern: /^\d{1,9}(\.\d{1,2})?$/,
+  patternHint: "must be an amount such as 250 or 250.50",
+  description: `How much to move, in the accounts' currency, as digits (e.g. "250.50"). Ask the caller; never guess.`
+});
+var listed = (ctx, accounts) => accounts.map((a) => describeAccount(ctx, a));
+var named = (ctx, a) => {
+  const d = describeAccount(ctx, a);
+  return `${d.type} ending ${d.ending.replace(/\D/g, "")}`;
+};
+var prepareOwnTransfer = defineTool({
+  name: "prepare_own_transfer",
+  agents: ["payments"],
+  description: "Prepare a transfer between two of the verified caller's own accounts, in one currency. Nothing moves until the caller confirms via confirm_transaction. Leave out an account_ref the caller has not named: the result lists the choices (choose_from_account / choose_to_account). Transfers to anyone else are not offered.",
+  access: "entitled",
+  service: "own_transfer",
+  effect: "prepare",
+  params: object({ from_account_ref: accountRefParam, to_account_ref: accountRefParam, amount: amountParam }, ["amount"]),
+  llmFields: [...PREPARE_FIELDS],
+  timeoutMs: 8e3,
+  legacy: "Not in the deck: own-account transfer",
+  async handler(ctx, args) {
+    const eligible = ctx.eligibleAccounts("own_transfer").filter((a) => a.currencies.length === 1);
+    if (eligible.length < 2) return declined("no_second_account", "A transfer needs two of the caller's own single-currency accounts; they do not have two.", "continue");
+    const byRef = (ref) => eligible.find((a) => a.number === ctx.session.accountRefs[ref]) ?? null;
+    const from = args.from_account_ref ? byRef(args.from_account_ref) : null;
+    if (args.from_account_ref && !from) return declined("account_not_eligible", "That account cannot be used for a transfer.", "ask_again", { accounts: listed(ctx, eligible) });
+    if (!from) return declined("choose_from_account", "Ask which account the money should come from.", "ask_again", { accounts: listed(ctx, eligible) });
+    const currency = from.currencies[0];
+    const targets = eligible.filter((a) => a.number !== from.number && a.currencies[0] === currency);
+    if (targets.length === 0) return declined("no_matching_account", `The caller has no other ${currency} account to move money to.`, "continue");
+    let to = args.to_account_ref ? byRef(args.to_account_ref) : null;
+    if (args.to_account_ref && (!to || !targets.includes(to))) {
+      return declined("account_not_eligible", `That account cannot receive it: it must be another of the caller's own ${currency} accounts.`, "ask_again", { accounts: listed(ctx, targets) });
+    }
+    if (!to) {
+      if (targets.length > 1) return declined("choose_to_account", "Ask which account the money should go to.", "ask_again", { accounts: listed(ctx, targets) });
+      to = targets[0];
+    }
+    let amount;
+    try {
+      amount = parseDecimal(args.amount, currency);
+    } catch {
+      return declined("bad_amount", `Ask for the amount again: ${currency} allows ${exponentOf(currency)} decimal places.`, "ask_again");
+    }
+    if (amount.minor <= 0) return declined("bad_amount", "The amount must be more than zero. Ask for it again.", "ask_again");
+    const limit = { minor: ctx.policy.ownTransfer.maxMajorUnits * 10 ** exponentOf(currency), currency };
+    if (amount.minor > limit.minor) return declined("over_limit", `The most one transfer can move here is ${spoken(limit).spoken}. Ask for a smaller amount.`, "ask_again");
+    const balance = await ctx.ports.core.getBalance(from.number, currency, ctx.signal);
+    if (balance.available.minor < amount.minor) {
+      return declined("insufficient_funds", `That is more than the available balance of ${spoken(balance.available).spoken} in the ${named(ctx, from)}. Ask for a smaller amount.`, "ask_again");
+    }
+    return prepareTransaction(ctx, {
+      service: "own_transfer",
+      summary: `Transfer ${spoken(amount).display} from your ${named(ctx, from)} to your ${named(ctx, to)}.`,
+      charge: null,
+      payload: { from: from.number, to: to.number, minor: amount.minor, currency }
+    });
+  }
+});
+var commitOwnTransfer = async (ctx, txn) => {
+  const { from, to, minor, currency } = txn.payload;
+  const amount = { minor, currency };
+  const { reference } = await ctx.ports.core.transferOwn(from, to, amount, txn.idempotencyKey, ctx.signal);
+  return ok({ done: true, reference, message: `${capitalised(spoken(amount).spoken)} has been moved between your accounts.` });
+};
+var capitalised = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+var TRANSFER_TOOLS = [prepareOwnTransfer];
+
 // services/banking-gateway/src/tools/transaction-tools.ts
 var COMMITTERS = {
   statement_request: commitStatement,
   chequebook_request: commitChequebook,
   stop_cheque: commitStopCheque,
   appointment_book: commitAppointmentBooking,
-  appointment_cancel: commitAppointmentCancellation
+  appointment_cancel: commitAppointmentCancellation,
+  own_transfer: commitOwnTransfer
 };
 var NEGATION = /\b(no|nope|not|don'?t|do not|cancel|stop|wait|hold on|wrong|never)\b|不|别|取消/i;
 var AFFIRM = /^(?:yes|yeah|yep|yup|sure|ok(?:ay)?|correct|right|confirm(?:ed)?|i confirm|please do|please proceed|proceed|go ahead|do it|1|是的|是|对|好的|好|确认)(?![a-z0-9])/i;
@@ -2121,7 +2229,7 @@ async function executeConfirmed(ctx, confirmationId) {
 }
 var confirmTransaction = defineTool({
   name: "confirm_transaction",
-  agents: ["accounts", "cheques", "appointments"],
+  agents: ["accounts", "cheques", "appointments", "payments"],
   description: `Execute a prepared request after the caller explicitly agreed. caller_words must be the caller's exact reply to the read-back (for example "yes, go ahead"). Anything but a clear yes is refused.`,
   access: "authenticated",
   service: null,
@@ -2142,7 +2250,7 @@ var confirmTransaction = defineTool({
 });
 var cancelTransaction = defineTool({
   name: "cancel_transaction",
-  agents: ["accounts", "cheques", "appointments"],
+  agents: ["accounts", "cheques", "appointments", "payments"],
   description: "Cancel a prepared request the caller does not want.",
   access: "authenticated",
   service: null,
@@ -2414,6 +2522,7 @@ run_fn = async function(tool, ctx, args, controller) {
 /** Access control, decided here from server state. Nothing the model says can change it. */
 gate_fn = function(tool, session) {
   const auth = session.auth;
+  if (tool.service && __privateGet(this, _policy).unavailable?.includes(tool.service)) return declined("not_offered", "Sorry, this service is not available on this line.", "continue");
   if (tool.access === "public") return null;
   if (auth.kind === "locked") {
     const status = authStatus(session, __privateGet(this, _policy).maxAuthFailures, null);
@@ -2751,7 +2860,7 @@ var getAnnouncements = defineTool({
 var INFO_TOOLS = [getFxRate, getPrimeRate, getTimeDepositRates, findBranch, getAnnouncements];
 
 // services/banking-gateway/src/tools/registry.ts
-var ALL_TOOLS = [...AUTH_TOOLS, ...GREETER_TOOLS, ...ACCOUNT_TOOLS, ...CHEQUE_TOOLS, ...INFO_TOOLS, ...APPOINTMENT_TOOLS, ...TRANSACTION_TOOLS];
+var ALL_TOOLS = [...AUTH_TOOLS, ...GREETER_TOOLS, ...ACCOUNT_TOOLS, ...CHEQUE_TOOLS, ...INFO_TOOLS, ...APPOINTMENT_TOOLS, ...TRANSFER_TOOLS, ...TRANSACTION_TOOLS];
 var MAX_TOOLS_PER_AGENT = 8;
 function buildRegistry(tools = ALL_TOOLS) {
   const map = /* @__PURE__ */ new Map();
@@ -2826,7 +2935,7 @@ function toAgentConfigTools(registry, connectionId = "banking_gateway") {
     }
   };
   const agents = Object.fromEntries(
-    ["greeter", "authenticator", "accounts", "cheques", "rates_info", "appointments"].map((a) => [a, [...registry.values()].filter((t) => t.agents.includes(a)).map((t) => t.name)])
+    ["greeter", "authenticator", "accounts", "cheques", "rates_info", "appointments", "payments"].map((a) => [a, [...registry.values()].filter((t) => t.agents.includes(a)).map((t) => t.name)])
   );
   return {
     tools,
@@ -3251,6 +3360,9 @@ function createMockPorts(clock = Date.now, onOtp) {
   const byPhoneCode = (code) => MOCK_CUSTOMERS.find((c) => c.credential.phoneCode === code);
   const byAccount = (number) => MOCK_CUSTOMERS.find((c) => c.profile.accounts.some((a) => a.number === number));
   const money = (dollars, currency = "SGD") => ({ minor: Math.round(dollars * 100), currency });
+  const moved = /* @__PURE__ */ new Map();
+  const shift = (key, m2) => ({ minor: m2.minor + (moved.get(key) ?? 0), currency: m2.currency });
+  let transfers = 0;
   const core = {
     async loginWithPhoneCode(phoneCode, pin, signal) {
       latency(signal);
@@ -3274,7 +3386,22 @@ function createMockPorts(clock = Date.now, onOtp) {
       const b = MOCK_BALANCES[`${accountNumber}:${currency ?? "SGD"}`];
       if (!b) throw new HostError("as400", "99", "no balance record");
       const account2 = byAccount(accountNumber)?.profile.accounts.find((a) => a.number === accountNumber);
-      return { current: b.current, available: b.available, holdAmount: b.hold, chequesPendingClearance: b.pending, overdraftLimit: b.od, omnibus: account2?.omnibus ?? false };
+      const key = `${accountNumber}:${currency ?? "SGD"}`;
+      return { current: shift(key, b.current), available: shift(key, b.available), holdAmount: b.hold, chequesPendingClearance: b.pending, overdraftLimit: b.od, omnibus: account2?.omnibus ?? false };
+    },
+    async transferOwn(fromAccount, toAccount, amount, _idempotencyKey, signal) {
+      latency(signal);
+      maybeFail("transferOwn");
+      await maybeHang("transferOwn", signal);
+      const fromKey = `${fromAccount}:${amount.currency}`;
+      const toKey = `${toAccount}:${amount.currency}`;
+      const source = MOCK_BALANCES[fromKey];
+      if (!source || !MOCK_BALANCES[toKey] || byAccount(fromAccount) !== byAccount(toAccount)) throw new HostError("soa", "transfer_failed", "mock: accounts not found or not the same customer");
+      if (shift(fromKey, source.available).minor < amount.minor) throw new HostError("soa", "insufficient_funds");
+      moved.set(fromKey, (moved.get(fromKey) ?? 0) - amount.minor);
+      moved.set(toKey, (moved.get(toKey) ?? 0) + amount.minor);
+      transfers += 1;
+      return { reference: `TRF${String(transfers).padStart(6, "0")}` };
     },
     async listCurrencies(accountNumber, signal) {
       latency(signal);
@@ -3492,8 +3619,8 @@ function createMockPorts(clock = Date.now, onOtp) {
 // services/banking-gateway/mock/rehearsal.ts
 var REHEARSAL_PREFIX = "rehearsal_";
 var TOKEN_TTL_S = 3600;
-var FAULT_METHODS = ["loginWithPhoneCode", "verifyAccountAndNric", "otpSend", "getBalance", "incomingFunds", "recentTransactions", "chequebooks", "stopCheques", "requestStatement", "requestChequebook", "primeRate", "fxRate", "timeDepositRates"];
-var HANG_METHODS = ["stopCheques", "requestStatement", "requestChequebook"];
+var FAULT_METHODS = ["loginWithPhoneCode", "verifyAccountAndNric", "otpSend", "getBalance", "incomingFunds", "recentTransactions", "transferOwn", "chequebooks", "stopCheques", "requestStatement", "requestChequebook", "primeRate", "fxRate", "timeDepositRates"];
+var HANG_METHODS = ["stopCheques", "requestStatement", "requestChequebook", "transferOwn"];
 function rehearsalRoutes(orchestrator, controls, options) {
   const clock = options.clock ?? Date.now;
   const outboxStart = /* @__PURE__ */ new Map();

@@ -13,14 +13,14 @@ import { AgentToolRunner } from './AgentToolRunner';
 import { BankingSourceNotice } from './BankingSourceNotice';
 import { CustomerChannelPanel } from './CustomerChannelPanel';
 
-const FAULT_METHODS = ['loginWithPhoneCode', 'verifyAccountAndNric', 'otpSend', 'getBalance', 'incomingFunds', 'recentTransactions', 'chequebooks', 'stopCheques', 'requestStatement', 'requestChequebook', 'primeRate', 'fxRate', 'timeDepositRates'];
-const HANG_METHODS = ['stopCheques', 'requestStatement', 'requestChequebook'];
+const FAULT_METHODS = ['loginWithPhoneCode', 'verifyAccountAndNric', 'otpSend', 'getBalance', 'incomingFunds', 'recentTransactions', 'transferOwn', 'chequebooks', 'stopCheques', 'requestStatement', 'requestChequebook', 'primeRate', 'fxRate', 'timeDepositRates'];
+const HANG_METHODS = ['stopCheques', 'requestStatement', 'requestChequebook', 'transferOwn'];
 const SMS_POLL_MS = 3_000;
 
 /**
- * "Try a banking tool": runs any banking tool as the agent runtime would, against a test session on the mock bank
- * (rehearsalSource(): the gateway server when it opens test sessions, or the one in this browser), in Live and in
- * Sandbox alike. The person plays the caller (sign-in, secure keypad, confirmation card) and the agent (tool calls),
+ * "Try a banking tool": runs any banking tool as the agent runtime would, against a test session (rehearsalSource():
+ * in Live the gateway on the bank's real systems when it opens test sessions, else the mock bank, as a gateway server
+ * or in this browser; in Sandbox the mock bank). On real systems there is no mock phone and no staged host faults. The person plays the caller (sign-in, secure keypad, confirmation card) and the agent (tool calls),
  * and sees the gateway's timeline.
  */
 export function RehearsalConsole({ tools, source: given }: { tools: ManifestTool[]; source?: BankingSource | null }) {
@@ -128,10 +128,12 @@ export function RehearsalConsole({ tools, source: given }: { tools: ManifestTool
         </div>
         <AgentToolRunner callId={rehearsal.call_id} tools={tools} defaultAccountRef={defaultAccountRef} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MockPhone messages={sms} />
-        <HostFaults callId={rehearsal.call_id} />
-      </div>
+      {source.hosts !== 'live' && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <MockPhone messages={sms} />
+          <HostFaults callId={rehearsal.call_id} />
+        </div>
+      )}
       <div className="max-h-[480px]">
         <TracePanel trace={timeline} />
       </div>

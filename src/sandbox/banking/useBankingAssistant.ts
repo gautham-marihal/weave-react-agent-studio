@@ -7,7 +7,7 @@ import {
   APPOINTMENT_SERVICES,
   askFor,
   askParty,
-  CAPABILITIES,
+  capabilitiesFor,
   confirmationIntent,
   describeLookup,
   describeRefusal,
@@ -18,6 +18,8 @@ import {
   missingSlot,
   NEEDS_VERIFICATION,
   pickAccount,
+  pickAmount,
+  pickTransferAccounts,
   pickCurrency,
   pickDelivery,
   pickOption,
@@ -91,6 +93,10 @@ const STEP_BACK: Record<string, Partial<BankingRequest>> = {
   branch_not_offering: { branchId: undefined, slotId: undefined, party: undefined },
   slot_unavailable: { slotId: undefined, party: undefined },
   party_too_large: { party: undefined },
+  // a transfer amount the gateway would not take: ask for the amount again
+  bad_amount: { amount: undefined },
+  over_limit: { amount: undefined },
+  insufficient_funds: { amount: undefined },
 };
 
 /** What a picked option fills in on the pending request. */
@@ -229,11 +235,19 @@ export function useBankingAssistant({
         return;
       }
       const lead = request ? `I can help you ${TOPIC_LABEL[request.topic]}. Let's verify your identity first.` : "Sure, let's verify your identity.";
+      // The sign-in routes this bank offers (the gateway's own list): with only one, no need to ask which.
+      const methods = (channelRef.current.state?.methods ?? []).filter((m) => m.available).map((m) => m.id);
+      if (methods.length === 1) {
+        const phone = methods[0] === 'phonecode_pin';
+        setAwaiting({ kind: 'identifier', field: phone ? 'phone_code' : 'account_number' });
+        say(`${lead} ${phone ? 'Please enter your 7-digit Phone Code on the sign-in panel, or type or say it here.' : 'Please enter your 12-digit business account number on the sign-in panel, or type or say it here.'}`);
+        return;
+      }
       say(`${lead} Would you like to use your Phone Code and PIN, or your business account number with your NRIC and a one-time password?`, {
         kind: 'choices',
         purpose: 'method',
         options: [
-          { id: 'phonecode_pin', label: 'Phone Code and PIN', hint: '7-digit Phone Code, then your 6-digit Phone PIN' },
+          { id: 'phonecode_pin', label: 'Phone Code and PIN', hint: '7-digit Phone Code, then your Phone PIN (4 to 6 digits)' },
           { id: 'account_nric_otp', label: 'Account number, NRIC and OTP', hint: '12-digit account number, NRIC digits, then an SMS code' },
         ],
       });
@@ -246,7 +260,7 @@ export function useBankingAssistant({
     async (request: BankingRequest, accountOverride?: string | null): Promise<void> => {
       switch (request.topic) {
         case 'greeting':
-          return say(`Hello! ${CAPABILITIES}`);
+          return say(`Hello! ${capabilitiesFor(channelRef.current.state?.services)}`);
         case 'thanks':
           return say("You're welcome. Is there anything else I can help you with?");
         case 'goodbye':
@@ -311,10 +325,30 @@ export function useBankingAssistant({
       }
 
       const accounts = channelRef.current.state?.profile?.accounts ?? [];
+      if (request.topic === 'transfer') {
+        // Both sides of a transfer: from the customer's words (once), then from what they pick, "from" first.
+        let { fromRef, toRef } = request;
+        if (!request.accountsRead) {
+          // Right after sign-in the device may not have the accounts yet: ask the gateway (the same references).
+          let known: readonly AccountView[] = accounts;
+          if (!known.length) {
+            const listed = await runTool('list_accounts', {});
+            known = listed?.ok ? ((listed.accounts as AccountView[] | undefined) ?? []) : [];
+          }
+          const said = pickTransferAccounts(request.words, known);
+          fromRef ??= said.from;
+          toRef ??= said.to;
+        }
+        if (accountOverride) {
+          if (!fromRef) fromRef = accountOverride;
+          else if (!toRef) toRef = accountOverride;
+        }
+        request = { ...request, fromRef, toRef, accountsRead: true };
+      }
       const named = pickAccount(request.words, accounts);
       const accountRef = accountOverride ?? named?.account_ref ?? ctl.current.selected;
-      const call = toolFor(request, NEEDS_VERIFICATION.has(request.topic) && request.topic !== 'accounts' && request.topic !== 'pin_change' ? accountRef : null);
-      if (!call) return say(CAPABILITIES);
+      const call = toolFor(request, NEEDS_VERIFICATION.has(request.topic) && request.topic !== 'accounts' && request.topic !== 'pin_change' && request.topic !== 'transfer' ? accountRef : null);
+      if (!call) return say(capabilitiesFor(channelRef.current.state?.services));
       const response = await runTool(call.tool, call.args);
       if (!response) return;
 
@@ -339,6 +373,12 @@ export function useBankingAssistant({
       switch (response.error_code) {
         case 'not_authenticated':
           return askVerification(request);
+        case 'choose_from_account':
+        case 'choose_to_account':
+          // the side asked about is the one still to fill (a refused one is cleared, so it is asked again)
+          ctl.current.pending = response.error_code === 'choose_from_account' ? { ...request, fromRef: undefined } : { ...request, toRef: undefined };
+          setAwaiting({ kind: 'choice', purpose: 'account', accounts: (response.accounts as AccountView[] | undefined) ?? [] });
+          break;
         case 'choose_account':
         case 'account_not_eligible':
           ctl.current.pending = request;
@@ -430,7 +470,10 @@ export function useBankingAssistant({
           }
           return; // the keypad prompt follows from the gateway's capture request
         }
-        if (expecting && digits.length > 0) {
+        // Wrong-length digits are a mistyped identifier only when one was asked for, or the words are not a request
+        // ("Move 12.50 to my current account" before signing in is a request with an amount, not a Phone Code).
+        const asked = awaiting.kind === 'identifier' || awaiting.kind === 'method';
+        if (expecting && digits.length > 0 && (asked || !request)) {
           const field = awaiting.kind === 'identifier' ? awaiting.field : digits.length <= 7 ? 'phone_code' : 'account_number';
           setAwaiting({ kind: 'identifier', field });
           return say(field === 'account_number' ? 'Your business account number has 12 digits. Please try again.' : 'Your Phone Code has 7 digits. Please check and try again.');
@@ -504,6 +547,9 @@ export function useBankingAssistant({
           const norm = normalizeDigitSequence(text, { context: 'digit_sequence' });
           const cheques = text.match(/\b\d{6}\b/g) ?? (norm.length === 6 ? [norm] : []);
           if (cheques.length) return resume({ cheques });
+        } else if (awaiting.missing === 'amount') {
+          const amount = pickAmount(text);
+          if (amount) return resume({ amount });
         } else if (awaiting.missing === 'period') {
           const period = pickPeriod(text);
           if (period) return resume({ period });
@@ -529,7 +575,7 @@ export function useBankingAssistant({
       }
 
       // 6. A new request.
-      if (!request) return say(`Sorry, I didn't quite catch that. ${CAPABILITIES}`);
+      if (!request) return say(`Sorry, I didn't quite catch that. ${capabilitiesFor(channelRef.current.state?.services)}`);
       setAwaiting({ kind: 'none' });
       return run(request);
     },
