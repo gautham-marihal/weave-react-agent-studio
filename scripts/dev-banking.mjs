@@ -168,16 +168,10 @@ process.on('exit', () => {
 });
 
 async function main() {
-  console.log(`\n${ANSI.bold}${ANSI.cyan}==================================================================${ANSI.reset}`);
-  console.log(`${ANSI.bold}  Weave Studio + Banking AI Agent - One-Command Local Startup${ANSI.reset}`);
-  console.log(`${ANSI.bold}${ANSI.cyan}==================================================================${ANSI.reset}\n`);
-
   const token = devGatewayToken();
   const cimb = cimbSettings();
   const wantHosts = cimb ? 'live' : 'mock';
-  const bankName = cimb ? `CIMB Banking Gateway (${cimb.CIMB_BASE_URL}, region ${cimb.CIMB_REGION})` : 'mock Banking Gateway';
-  log('setup', cimb ? `CIMB_BASE_URL is set: the gateway runs on CIMB's systems (Live mode). Sandbox keeps the mock bank.` : 'No CIMB_BASE_URL: the gateway runs on the mock bank.', ANSI.green);
-  log('setup', 'Banking gateway settings go to Studio directly; .env needs only AGENT_BUILDER_URL (and its API key).', ANSI.green);
+  const bankName = cimb ? `CIMB (${cimb.CIMB_BASE_URL}, region ${cimb.CIMB_REGION})` : 'mock bank';
 
   // Check port 8790
   const gatewayPortTaken = await isPortInUse(GATEWAY_PORT);
@@ -189,7 +183,6 @@ async function main() {
       console.error('Please stop the process on port ' + GATEWAY_PORT + ' and run npm run dev again.');
       process.exit(1);
     } else if (status.healthy && status.tokenMatch) {
-      log('gateway', `Existing ${bankName} is already running on port ${GATEWAY_PORT} with matching token. Reusing instance.`, ANSI.green);
       gatewayRunning = true;
     } else if (status.healthy && !status.tokenMatch) {
       console.error(`${ANSI.red}${ANSI.bold}Gateway token mismatch:${ANSI.reset} A Banking Gateway is running on port ${GATEWAY_PORT} but using an old or mismatched token.`);
@@ -203,7 +196,6 @@ async function main() {
   }
 
   if (!gatewayRunning) {
-    log('gateway', `Starting ${bankName} on http://${GATEWAY_HOST}:${GATEWAY_PORT}...`, ANSI.cyan);
     const gatewayEnv = {
       ...process.env,
       NODE_ENV: 'development',
@@ -223,7 +215,13 @@ async function main() {
     });
     childProcesses.add(gatewayProc);
 
-    gatewayProc.stdout.on('data', (data) => log('gateway', data.toString(), ANSI.cyan));
+    // The gateway's own startup banner (tool count, tokens, test logins) is noise here: drop its stdout until it is
+    // ready. Errors (stderr) and mock SMS codes always show.
+    let gatewayStarting = true;
+    gatewayProc.stdout.on('data', (data) => {
+      const text = data.toString();
+      if (!gatewayStarting || text.includes('[MOCK SMS]')) log('gateway', text, ANSI.cyan);
+    });
     gatewayProc.stderr.on('data', (data) => log('gateway', data.toString(), ANSI.red));
     gatewayProc.on('exit', (code) => {
       childProcesses.delete(gatewayProc);
@@ -241,6 +239,10 @@ async function main() {
       const status = await checkGatewayStatus(`http://${GATEWAY_HOST}:${GATEWAY_PORT}`, token);
       if (status.healthy) {
         gatewayRunning = true;
+        // the banner is printed on listen, just before /health answers; let it drain before showing gateway output
+        setTimeout(() => {
+          gatewayStarting = false;
+        }, 300);
         break;
       }
     }
@@ -250,7 +252,6 @@ async function main() {
       cleanup();
       process.exit(1);
     }
-    log('gateway', `${bankName} is READY.`, ANSI.green);
   }
 
   // Check Studio port
@@ -263,7 +264,6 @@ async function main() {
   }
 
   // Start Vite Studio frontend
-  log('studio', `Starting Weave Studio frontend on http://localhost:${STUDIO_PORT}...`, ANSI.green);
   const studioEnv = {
     ...process.env,
     BANKING_GATEWAY_URL: `http://localhost:${GATEWAY_PORT}`,
@@ -280,7 +280,15 @@ async function main() {
   });
   childProcesses.add(studioProc);
 
-  studioProc.stdout.on('data', (data) => log('studio', data.toString(), ANSI.green));
+  studioProc.stdout.on('data', (data) => {
+    // Vite's start banner repeats the URL printed below; keep everything else (errors, HMR, ...).
+    const text = data
+      .toString()
+      .split(/\r?\n/)
+      .filter((line) => !/VITE v\d|Local:|Network:|press h/.test(line.replace(/\x1b\[[0-9;]*m/g, '')))
+      .join('\n');
+    if (text.trim()) log('studio', text, ANSI.green);
+  });
   studioProc.stderr.on('data', (data) => log('studio', data.toString(), ANSI.red));
   studioProc.on('exit', (code) => {
     childProcesses.delete(studioProc);
@@ -289,20 +297,12 @@ async function main() {
     }
   });
 
-  console.log(`\n${ANSI.bold}${ANSI.green}✓ All services running!${ANSI.reset}`);
-  console.log(`  ${ANSI.bold}Banking:${ANSI.reset}        any agent → Build › Tools → Make this a banking agent → Test (Live or Sandbox)`);
-  console.log(`  ${ANSI.bold}Studio Home:${ANSI.reset}    http://localhost:${STUDIO_PORT}`);
-  console.log(`  ${ANSI.bold}Gateway Health:${ANSI.reset} http://${GATEWAY_HOST}:${GATEWAY_PORT}/health\n`);
-  if (cimb) {
-    console.log(`${ANSI.bold}Banking runs on CIMB (Live mode):${ANSI.reset} sign in with a CIMB customer id as the 7-digit Phone Code and their 6-digit passcode as the PIN.`);
-    console.log(`  Sandbox mode keeps the mock bank in the browser, with the test logins below.
-`);
-  }
-  console.log(`${ANSI.bold}Test credentials for demo${cimb ? ' (mock bank, Sandbox)' : ''}:${ANSI.reset}`);
-  console.log(`  1. Phone Code:  ${ANSI.bold}1234567${ANSI.reset}  | PIN: ${ANSI.bold}135790${ANSI.reset} (3 accounts: SGD, Omnibus, EUR/USD)`);
-  console.log(`  2. Account OTP: ${ANSI.bold}500000000201${ANSI.reset} | NRIC: ${ANSI.bold}1234567${ANSI.reset} (SMS OTP printed in console logs)`);
-  console.log(`  3. Entitlement: ${ANSI.bold}500000000301${ANSI.reset} | NRIC: ${ANSI.bold}7654321${ANSI.reset} (Authorised Contact, balance refused)\n`);
-  console.log(`${ANSI.dim}Press Ctrl+C to stop all services cleanly.${ANSI.reset}\n`);
+  const b = (text) => `${ANSI.bold}${text}${ANSI.reset}`;
+  console.log(`\n${b('Weave Studio')}   http://localhost:${STUDIO_PORT}`);
+  console.log(`${b('Bank')}           ${bankName}`);
+  if (cimb) console.log(`${b('Live login')}     CIMB customer id (7 digits) + 6-digit passcode`);
+  console.log(`${b(cimb ? 'Sandbox login' : 'Test login   ')}  Phone Code 1234567, PIN 135790`);
+  console.log(`${ANSI.dim}Ctrl+C to stop.${ANSI.reset}\n`);
 }
 
 main().catch((err) => {
