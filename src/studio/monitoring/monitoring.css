@@ -108,6 +108,23 @@
   font-size: var(--fs-xs);
   line-height: 1.4;
 }
+.mnKpi .mnKpiWait {
+  margin-top: 4px;
+}
+.mnTrend {
+  font-weight: 550;
+}
+.mnTrend.good {
+  color: var(--good-text);
+}
+.mnTrend.bad {
+  color: var(--danger-text);
+}
+.mnReading {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
 .mnKpi.bad strong {
   color: var(--danger-text);
 }

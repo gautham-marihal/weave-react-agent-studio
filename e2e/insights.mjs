@@ -130,14 +130,14 @@ await page
   .getByRole('button', { name: /Open “escalate_to_human”/ })
   .click();
 await page.waitForSelector('.nlWorkspace');
-await page.waitForSelector('.nlDrawer', { timeout: 8000 }).catch(() => {});
+const toolCard = page.locator('[data-card="tools.tool"] h2', { hasText: 'Escalate to human' });
+await toolCard.waitFor({ timeout: 8000 }).catch(() => {});
 check(
-  '“Open the tool” goes to the agent’s Tools, with that tool’s panel open',
-  /\/tools\?tool=escalate_to_human/.test(page.url()) && (await page.locator('.nlDrawer').count()) === 1,
+  '“Open the tool” goes to the agent’s Tools, with that tool’s card open',
+  /\/tools\?tool=escalate_to_human/.test(page.url()) && (await toolCard.count()) === 1,
   page.url(),
 );
 await shot('tool');
-await page.keyboard.press('Escape');
 
 await page.evaluate(() => {
   location.hash = '#/bots/acme-support';

@@ -4,7 +4,7 @@ import { useTechnicalNames } from '../usePref.js';
 
 // "Technical names" on the agent's own pages: each setting's path in the config, to copy or open in the JSON.
 // A page's own fields aren't inside the settings form, so the way to open the JSON comes from this context.
-export const JsonOpenerCtx = createContext(null);
+const JsonOpenerCtx = createContext(null);
 
 export default function SimpleKey({ path }) {
   const [technical] = useTechnicalNames();

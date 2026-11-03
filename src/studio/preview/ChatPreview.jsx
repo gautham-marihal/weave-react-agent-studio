@@ -6,6 +6,7 @@ import Icon from '../../ui/Icon.jsx';
 import AiOrb from './AiOrb.jsx';
 import VoiceStage from './VoiceStage.jsx';
 import { speaksOnly, withWrittenReplies } from './voiceState.js';
+import { maskConversation } from '../privacy/maskConfidential.js';
 import { browserChannels } from '../form/channelTypes.js';
 import { inputCapabilities, pictureProblem, useDictation } from './useDictation.js';
 import { randomTag } from '../format.js';
@@ -414,7 +415,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           )}
           {(!voiceView || transcriptOpen) && (
             <ul className="pvLog" aria-label="Conversation" aria-live="polite">
-              {session.messages.map((message) => (
+              {maskConversation(session.messages).map((message) => (
                 <Line key={message.id} message={message} />
               ))}
               <li ref={endRef} aria-hidden="true" />

@@ -6,6 +6,7 @@ import { ACCEPT_ATTRIBUTE, fileTypeProblem, formatBytes } from '../knowledge/mod
 import { useProviders } from '../models/useProviders.js';
 import { useChannelTypes } from '../form/useChannelTypes.js';
 import { agentLabel } from '../agent/rowNames.js';
+import { connectionParts, isWebAddress } from '../connectionParts.js';
 import { readSimple, setRecordingNotice } from '../simple/simpleModel.js';
 import { readModels, voicesFor } from '../models/config.js';
 import { providerLabel } from '../models/catalog.js';
@@ -208,13 +209,15 @@ export function ReachChoices({ config, set, botId, onPage = false, onShowNotice 
 function savedSystems() {
   try {
     const saved = JSON.parse(localStorage.getItem('weave_integrations') || '{}');
-    return Object.values(saved && typeof saved === 'object' ? saved : {}).filter((c) => /^https?:\/\//i.test(String(c?.first || '')));
+    return Object.values(saved && typeof saved === 'object' ? saved : {})
+      .map((c) => ({ name: c?.name, url: connectionParts(c).url }))
+      .filter((c) => isWebAddress(c.url));
   } catch {
     return [];
   }
 }
 
-function LookupForm({ config, set, current, onCancel }) {
+export function LookupForm({ config, set, current, onCancel }) {
   const [form, setFormState] = useState({ url: current.url || '', finds: current.finds || '', needs: current.needs || '' });
   // the form follows the configuration (e.g. a Connections panel change) until typed in: a stale form saved as it is
   // would put the old address back
@@ -248,7 +251,7 @@ function LookupForm({ config, set, current, onCancel }) {
         <p className="suSystems">
           Your connected systems:{' '}
           {systems.map((s) => (
-            <button key={s.first} type="button" className="suChip" onClick={() => setForm((f) => ({ ...f, url: s.first }))}>
+            <button key={s.url} type="button" className="suChip" onClick={() => setForm((f) => ({ ...f, url: s.url }))}>
               {s.name}
             </button>
           ))}

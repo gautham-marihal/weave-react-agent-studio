@@ -1,7 +1,7 @@
 // Typing speed on a big agent, in a real browser. It makes agents with 3, 27 and 100 HTTP tools in demo mode (nothing reaches an API), opens the
-// Tools page (a row per tool) and one tool's panel, types 40 letters into its description, and times each from the keystroke to the second
-// animation frame. A keystroke changes the panel's copy of the whole draft, so the time must not grow with the number of tools: past about
-// 100 ms typing feels sticky.
+// Tools part of Build › Detailed (a chip per tool) with the first tool's card and its Advanced rows open, types 40 letters into when it uses the
+// tool, and times each from the keystroke to the second animation frame. A keystroke changes the whole draft, so the time must not grow with the
+// number of tools: past about 100 ms typing feels sticky.
 //
 //   npm run build -- --mode demo      then      npx vite preview --mode demo --port 4180      then      E2E_BASE=http://localhost:4180 npm run e2e:typing
 //
@@ -100,15 +100,14 @@ async function measure(browser, tools) {
   await page.getByRole('button', { name: /continue to workspace/i }).click();
   await page.waitForSelector('.dashMain');
   await page.goto(`${BASE}/#/bots/big/tools`);
-  await page.waitForSelector('.nlPage .nlRow');
-  // the tool's own panel, over the page with a row for every tool
-  await page.locator('.nlSection', { hasText: 'All its tools' }).locator('.nlRow').first().click();
-  // its settings in full, unfolded (the most a keystroke can make the panel draw again), then type in when it uses the tool, above them
-  await page.locator('.nlDrawer .stFFold > summary').click();
-  await page.waitForSelector('.nlDrawer .stTool');
+  await page.waitForSelector('.dtPage [data-card="tools.tool"] #dt-tools-when');
+  // the first tool's card, beside a chip for every tool; its Advanced rows open (the most a keystroke can make the part draw again), then type in
+  // when it uses the tool, above them
+  await page.locator('[data-card="tools.tool"] .dtAdv > summary').click();
+  await page.waitForSelector('[data-card="tools.tool"] .dtAdvRows');
   await page.waitForTimeout(700);
   const nodes = await page.evaluate(() => document.querySelectorAll('*').length);
-  const target = page.locator('.nlDrawer .nlToolWhen textarea');
+  const target = page.locator('#dt-tools-when');
   await target.scrollIntoViewIfNeeded();
   await target.click();
   const times = await page.evaluate(async () => {

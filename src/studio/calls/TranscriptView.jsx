@@ -3,6 +3,7 @@ import { api } from '../../api/client.ts';
 import { Notice } from '../ui.jsx';
 import { formatWhen } from '../format.js';
 import { useAsync } from '../useAsync.js';
+import { maskConversation } from '../privacy/maskConfidential.js';
 
 // A call as a conversation only: who said what, in order (`GET /bots/{id}/calls/{call}/transcript`).
 // The trace beside it shows everything else (tools, requests, state). It holds what the caller said.
@@ -11,7 +12,8 @@ const speakerOf = (role) => SPEAKER[String(role || '').toLowerCase()] || (role ?
 
 export default function TranscriptView({ botId, callId }) {
   const transcript = useAsync((signal) => api.getTranscript(botId, callId, { signal }), [botId, callId]);
-  const turns = Array.isArray(transcript.data?.turns) ? transcript.data.turns : [];
+  // PINs, codes and ID numbers are shown masked
+  const turns = maskConversation(Array.isArray(transcript.data?.turns) ? transcript.data.turns : []);
   if (transcript.loading && !transcript.data)
     return (
       <p className="stMuted" role="status">

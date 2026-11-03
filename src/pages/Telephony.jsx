@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useFadeOnChange } from '../ui/motion.ts';
 import { getCachedConfig, loadConfigs } from '../studio/configCache.js';
 import { hasHumanHandoff } from '../studio/scenarios.js';
 import { createPortal } from 'react-dom';
@@ -44,6 +45,8 @@ export function TelephonyWorkspace({
 }) {
   // the real phone numbers, when this server has them; otherwise the numbers page is the local preview
   const live = useLiveNumbers(section === 'numbers');
+  const content = useRef(null);
+  useFadeOnChange(content, section || '');
   return (
     <div className="telephonyWorkspace">
       <section className="welcomeBlock pageHeaderBlock">
@@ -70,7 +73,7 @@ export function TelephonyWorkspace({
         ))}
       </div>
 
-      <div className="telephonyContent">
+      <div className="telephonyContent" ref={content}>
         {section === 'numbers' && live.mode === 'unavailable' ? null : section === 'numbers' && live.mode === 'live' ? (
           <div className="telephonyPreview connected" role="note">
             <b>Connected</b>

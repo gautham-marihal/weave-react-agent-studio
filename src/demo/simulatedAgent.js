@@ -52,6 +52,22 @@ const shares = (said, candidates) => {
   return candidates.some((w) => stems.has(w.slice(0, 4)));
 };
 
+// Who would take over from the agent that answers first, for what a caller says, by the same matching the simulated
+// conversation uses: a hand-over whose words the line shares, else a transfer tool's. null when it would answer itself.
+//   -> { kind: 'subagent', to, why } | { kind: 'transfer', tool, why } | null
+export function whoTakesOver(config, said) {
+  const agents = list(config?.agents?.items).filter(isObj);
+  const first = agents.find((a) => a.id === config?.agents?.entry) || agents[0];
+  if (!first || !String(said || '').trim()) return null;
+  const lower = String(said).toLowerCase();
+  const handoff = list(first.handoffs).find((h) => isObj(h) && shares(lower, words(`${h.description} ${h.tool}`)));
+  if (handoff) return { kind: 'subagent', to: handoff.to, why: handoff.description || '' };
+  const tool = list(config?.tools).find(
+    (t) => isObj(t) && list(first.tools).includes(t.id) && t.builtin === 'transfer_or_callback' && shares(lower, words(`${t.description} ${t.id}`)),
+  );
+  return tool ? { kind: 'transfer', tool: tool.id, why: tool.description || '' } : null;
+}
+
 // A message's text: a plain string, or the entry for the primary language (else the first one).
 function textOf(message, config) {
   const text = message?.text;

@@ -45,77 +45,84 @@ export default function WhatIfBar({ config, what, phone = true }) {
   const channels = (Array.isArray(config?.channels) ? config.channels : []).map((channel) => channel?.id).filter(Boolean);
   return (
     <div className="stPromptAs" role="group" aria-label="Preview as">
-      <strong>Preview as…</strong>
-      {channels.length > 0 && (
-        <label>
-          <span>On channel</span>
-          <Select className="stFInput small" value={what.channel} onChange={(event) => what.setChannel(event.target.value)} aria-label="Preview on channel">
-            <option value="">The first enabled one</option>
-            {channels.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </Select>
-        </label>
-      )}
-      <label>
-        <span>Pretend it is</span>
-        <Input
-          size="small"
-          type="datetime-local"
-          value={what.nowLocal}
-          onChange={(event) => what.setNowLocal(event.target.value)}
-          aria-label="Pretend it is this time"
-        />
-      </label>
-      {phone && (
-        <label>
-          <span>Caller’s number</span>
-          <Input
-            size="small"
-            type="text"
-            inputMode="tel"
-            value={what.callerPhoneText}
-            placeholder="as it comes"
-            maxLength={30}
-            onChange={(event) => what.setCallerPhone(event.target.value)}
-            aria-label="Pretend the caller’s number is"
-          />
-        </label>
-      )}
-      {what.variables.map((v) => (
-        <label key={v.name}>
-          <span>
-            If <code>{v.name}</code> were
-          </span>
-          {v.type === 'boolean' ? (
-            <Select
-              className="stFInput small"
-              value={what.typed[v.name] ?? ''}
-              onChange={(event) => what.setTyped((old) => ({ ...old, [v.name]: event.target.value }))}
-              aria-label={`What if ${v.name} were`}
-            >
-              <option value="">as it starts</option>
-              <option value="true">true</option>
-              <option value="false">false</option>
+      <header>
+        <span>
+          <strong>Preview as…</strong>
+          <small>Try another {phone ? 'channel, time or caller' : 'channel or time'}. Nothing here is saved.</small>
+        </span>
+        {what.changed && (
+          <button type="button" className="stLink" onClick={what.reset}>
+            Reset
+          </button>
+        )}
+      </header>
+      <div className="stPromptAsGrid">
+        {channels.length > 0 && (
+          <label>
+            <span>On channel</span>
+            <Select className="stFInput" value={what.channel} onChange={(event) => what.setChannel(event.target.value)} aria-label="Preview on channel">
+              <option value="">The first enabled one</option>
+              {channels.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
             </Select>
-          ) : (
+          </label>
+        )}
+        <label>
+          <span>Pretend it is</span>
+          <Input type="datetime-local" value={what.nowLocal} onChange={(event) => what.setNowLocal(event.target.value)} aria-label="Pretend it is this time" />
+        </label>
+        {phone && (
+          <label>
+            <span>Caller’s number</span>
             <Input
               size="small"
-              type={v.type === 'number' || v.type === 'integer' ? 'number' : 'text'}
-              value={what.typed[v.name] ?? ''}
-              placeholder="as it starts"
-              onChange={(event) => what.setTyped((old) => ({ ...old, [v.name]: event.target.value }))}
-              aria-label={`What if ${v.name} were`}
+              type="text"
+              inputMode="tel"
+              value={what.callerPhoneText}
+              placeholder="as it comes"
+              maxLength={30}
+              onChange={(event) => what.setCallerPhone(event.target.value)}
+              aria-label="Pretend the caller’s number is"
             />
-          )}
-        </label>
-      ))}
-      {what.changed && (
-        <button type="button" className="stLink" onClick={what.reset}>
-          Reset
-        </button>
+          </label>
+        )}
+      </div>
+      {what.variables.length > 0 && (
+        <>
+          <p className="stPromptAsSub">What it remembers</p>
+          <div className="stPromptAsGrid">
+            {what.variables.map((v) => (
+              <label key={v.name}>
+                <span>
+                  If <code>{v.name}</code> were
+                </span>
+                {v.type === 'boolean' ? (
+                  <Select
+                    className="stFInput"
+                    value={what.typed[v.name] ?? ''}
+                    onChange={(event) => what.setTyped((old) => ({ ...old, [v.name]: event.target.value }))}
+                    aria-label={`What if ${v.name} were`}
+                  >
+                    <option value="">as it starts</option>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </Select>
+                ) : (
+                  <Input
+                    type={v.type === 'number' || v.type === 'integer' ? 'number' : 'text'}
+                    value={what.typed[v.name] ?? ''}
+                    placeholder="as it starts"
+                    onChange={(event) => what.setTyped((old) => ({ ...old, [v.name]: event.target.value }))}
+                    aria-label={`What if ${v.name} were`}
+                  />
+                )}
+              </label>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -104,7 +104,7 @@ test('agent pages: a setting opens on the page and panel that hold it, and says 
   // a panel of the Agent page is named as the page names it, and nothing deeper
   const voice = entry('defaults.models.tts.voice_id');
   assert.equal(searchTarget(voice).drawer, 'voice');
-  assert.equal(settingWhere(voice), 'Agent › Voice');
+  assert.equal(settingWhere(voice), 'Agent › Voice and language');
   const recording = entry('post_call.recording');
   assert.equal(searchTarget(recording).page, 'aftercall');
   assert.match(settingWhere(recording), /^After the call › /);
@@ -133,7 +133,8 @@ test('agent pages: a setting found under one name in many places is listed twice
 test('agent pages: the agent’s pages and the things people come to do are found by the words they use, the best match first', async () => {
   const { searchAgent } = await import('../src/studio/agent/pages.js');
   const ids = (q) => searchAgent(q).map((i) => i.id);
-  assert.equal(searchAgent('').length, 15, 'with nothing typed, the pages');
+  assert.equal(searchAgent('').length, 18, 'with nothing typed, the pages (Conversation, Connections and Subagents among them)');
+  assert.ok(ids('hand over').includes('page-subagents'));
   assert.equal(ids('deploy')[0], 'deploy');
   assert.equal(ids('roll back')[0], 'rollback');
   assert.equal(ids('publish')[0], 'publish');
@@ -155,5 +156,5 @@ test('agent pages: an agent’s own instructions open on the Agent page only whe
   assert.equal(searchTarget(role).focus, 'role', 'not knowing the draft, as on one agent');
   const several = searchTarget(role, two);
   assert.equal(several.focus, undefined);
-  assert.equal(several.page, 'workflow', 'with several, the Workflow’s settings, where each agent is');
+  assert.equal(several.page, 'subagents', 'with several, Subagents and hand-overs, where each agent is');
 });

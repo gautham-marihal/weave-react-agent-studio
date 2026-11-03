@@ -16,26 +16,24 @@ import CallsView from '../../src/studio/calls/CallsView.jsx';
 import MonitoringPage from '../../src/studio/monitoring/MonitoringPage.jsx';
 import TraceView from '../../src/studio/trace/TraceView.jsx';
 import { ValidationPanel } from '../../src/studio/ValidationPanel.jsx';
-import AgentPage from '../../src/studio/agent/pages/AgentPage.jsx';
-import ListPage from '../../src/studio/agent/pages/ListPage.jsx';
 import HomePage from '../../src/studio/agent/pages/HomePage.jsx';
 import LanguagePicker from '../../src/studio/agent/pickers/LanguagePicker.jsx';
 import VoicePicker from '../../src/studio/agent/pickers/VoicePicker.jsx';
 import ModelPicker from '../../src/studio/agent/pickers/ModelPicker.jsx';
 import { FALLBACK_PROVIDERS } from '../../src/studio/models/catalog.js';
-import { PAGE_SECTIONS, SETTINGS_ELSEWHERE } from '../../src/studio/agent/pages.js';
 import TeamPage from '../../src/studio/team/TeamPage.jsx';
 import ShareAgentDrawer from '../../src/studio/team/ShareAgentDrawer.jsx';
 import FixCallDrawer from '../../src/studio/fixcall/FixCallDrawer.jsx';
 import CallersPanel from '../../src/studio/callers/CallersPanel.jsx';
-import GateStrip from '../../src/studio/release/GateStrip.jsx';
+import TestHealth, { useTestHealth } from '../../src/studio/test/TestHealth.jsx';
 import StageTabs from '../../src/studio/agent/workspace/StageTabs.jsx';
+import StageViews from '../../src/studio/agent/workspace/StageViews.jsx';
 import BuildStage from '../../src/studio/agent/workspace/BuildStage.jsx';
 import GuidedBuild from '../../src/studio/agent/workspace/GuidedBuild.jsx';
 import AgentTopBar from '../../src/studio/agent/AgentTopBar.jsx';
 import AgentSwitcher from '../../src/studio/agent/AgentSwitcher.jsx';
 import SmartSelect from '../../src/studio/SmartSelect.jsx';
-import { FreeValue } from '../../src/studio/form/fields.jsx';
+import { FreeValue, NumberInput } from '../../src/studio/form/fields.jsx';
 import { useSimulatedSession } from '../../src/studio/test/useSimulatedSession.js';
 import StatePill from '../../src/studio/StatePill.jsx';
 import { agentState } from '../../src/studio/status.js';
@@ -44,6 +42,24 @@ import PageShell from '../../src/studio/agent/PageShell.jsx';
 import { Choice, OneOf } from '../../src/ui/OneOf.tsx';
 import SearchOverlay from '../../src/pages/SearchPalette.jsx';
 import { bestFirst } from '../../src/ui/match.ts';
+import { DetailedPage } from '../../src/studio/agent/detailed/Detailed.jsx';
+import { agentPart } from '../../src/studio/agent/detailed/parts/agentPart.jsx';
+import { conversationPart } from '../../src/studio/agent/detailed/parts/conversationPart.jsx';
+import { knowledgePart } from '../../src/studio/agent/detailed/parts/knowledgePart.jsx';
+import { toolsPart } from '../../src/studio/agent/detailed/parts/toolsPart.jsx';
+import { connectionsPart } from '../../src/studio/agent/detailed/parts/connectionsPart.jsx';
+import { channelsPart } from '../../src/studio/agent/detailed/parts/channelsPart.jsx';
+import { subagentsPart } from '../../src/studio/agent/detailed/parts/subagentsPart.jsx';
+import { guardrailsPart } from '../../src/studio/agent/detailed/parts/guardrailsPart.jsx';
+import { afterCallPart } from '../../src/studio/agent/detailed/parts/afterCallPart.jsx';
+import { enginePart } from '../../src/studio/agent/detailed/parts/enginePart.jsx';
+
+// the parts of Build › Detailed, by page id, for the tests that read their specs
+export const DETAILED_PARTS = Object.fromEntries(
+  [agentPart, conversationPart, knowledgePart, toolsPart, connectionsPart, channelsPart, subagentsPart, guardrailsPart, afterCallPart, enginePart].map(
+    (part) => [part.id, part],
+  ),
+);
 
 // the search (Ctrl K) over a few pages, matched the way the workspace matches them; what is chosen goes into the config, and closing it shows "closed"
 const SEARCH_PAGES = [
@@ -81,6 +97,31 @@ function PreviewScreen({ editor, mode, locked }) {
   return <ChatPreview session={session} mode={mode} modeLocked={locked} onMode={() => {}} botId="x" editor={editor} />;
 }
 
+// "Ready to publish?" as the Test stage draws it, with the facts it is given; the part a tile opens goes into `opened`
+// Build's Guided view with its step kept here, as the app keeps it in the address
+function GuidedScreen({ editor, props }) {
+  const [step, setStep] = useState(props.step || 'who');
+  return (
+    <GuidedBuild
+      botId="x"
+      config={editor.parsed.value}
+      set={editor.setValue}
+      latest={() => editor.parsed.value}
+      problems={props.problems || 0}
+      step={step}
+      onStep={setStep}
+      onOpen={props.onOpen || (() => {})}
+      onTest={props.onTest || (() => {})}
+      onPublish={props.onPublish || (() => {})}
+    />
+  );
+}
+
+function HealthScreen({ editor, props }) {
+  const health = useTestHealth({ botId: 'x', editor, readinessRuns: props.readinessRuns || [], callers: props.callers || null, on: true });
+  return <TestHealth health={health} onOpen={(id) => props.opened?.push(id)} />;
+}
+
 const SCREENS = {
   form: (editor) => <FormEditor editor={editor} onShowJson={() => {}} onShowModels={() => {}} />,
   scenarios: (editor, props) => <ScenariosTab botId="x" name="X" editor={editor} pollMs={props.pollMs} />,
@@ -102,6 +143,13 @@ const SCREENS = {
     />
   ),
   freevalue: (editor) => <FreeValue value={editor.parsed.value.v} aria-label="Value" onChange={(v) => editor.setValue({ v })} />,
+  // a number whose 0 means "not set" (a guardrail limit): what it gives back for 0 is empty
+  numberinput: (editor) => (
+    <label>
+      Limit
+      <NumberInput value={editor.parsed.value.n ?? null} nullable onChange={(n) => editor.setValue({ n: n ? n : undefined })} />
+    </label>
+  ),
   smartselect: (editor, props) => (
     <SmartSelect
       value={editor.parsed.value.picked ?? ''}
@@ -115,9 +163,8 @@ const SCREENS = {
   trace: (editor, props) => <TraceView records={props.records || []} live={!!props.live} />,
   statepill: (editor, props) => <StatePill state={agentState(props.state || {})} />,
   workflow: (editor, props) => <WorkflowTab editor={editor} botId="x" onShowSetting={props.onShowSetting || null} workspace={props.workspace || null} />,
-  agentpage: (editor) => <AgentPage editor={editor} onShowJson={() => {}} onOpenJson={() => {}} />,
-  listpage: (editor, props) => (
-    <ListPage title={props.title || 'Tools'} editor={editor} lists={props.lists} extras={props.extras || []} onShowJson={() => {}} onOpenJson={() => {}} />
+  detailed: (editor, props) => (
+    <DetailedPage part={DETAILED_PARTS[props.part]} editor={editor} extra={props.extra || {}} request={props.request || null} onShowJson={() => {}} />
   ),
   homepage: (editor, props) => (
     <HomePage
@@ -135,7 +182,6 @@ const SCREENS = {
   languagepicker: (editor) => <LanguagePicker config={editor.parsed.value} set={editor.setValue} />,
   voicepicker: (editor) => <VoicePicker config={editor.parsed.value} set={editor.setValue} />,
   modelpicker: (editor, props) => <ModelPicker config={editor.parsed.value} set={editor.setValue} providers={props.providers || FALLBACK_PROVIDERS} live />,
-  settingsform: (editor) => <FormEditor editor={editor} only={PAGE_SECTIONS.settings} {...SETTINGS_ELSEWHERE} embedded />,
   team: (_editor, props) => <TeamPage agents={props.agents || []} workspaceName="Acme" profile={{ fullName: 'Owner', email: 'owner@acme.com' }} />,
   share: () => <ShareAgentDrawer botId="a" name="Acme Support" onClose={() => {}} onOpenTeam={() => {}} />,
   fixcall: (editor, props) => (
@@ -150,25 +196,27 @@ const SCREENS = {
     />
   ),
   callers: (editor) => <CallersPanel botId="x" name="Acme" editor={editor} />,
-  gatestrip: (editor) => <GateStrip botId="x" editor={editor} />,
+  testhealth: (editor, props) => <HealthScreen editor={editor} props={props} />,
   stylecards: () => <StyleCards />,
   stagetabs: (editor, props) => (
     <StageTabs botId="x" page={props.page || 'home'} plan={props.plan || null} problems={props.problems || {}} onStep={props.onStep} />
   ),
-  guidedbuild: (editor, props) => (
-    <GuidedBuild
-      botId="x"
-      config={editor.parsed.value}
-      set={editor.setValue}
-      latest={() => editor.parsed.value}
-      sections={props.sections || []}
-      onOpen={props.onOpen || (() => {})}
-    />
-  ),
+  guidedbuild: (editor, props) => <GuidedScreen editor={editor} props={props} />,
   buildstage: (editor, props) => (
     <BuildStage botId="x" page={props.page || 'agent'} sections={props.sections || []} problems={props.problems || {}} onJson={() => {}}>
       <p className="theOpenPage">the open page</p>
     </BuildStage>
+  ),
+  stageviews: (editor, props) => (
+    <StageViews
+      botId="x"
+      page={props.page}
+      part={props.part || ''}
+      checks={props.checks || null}
+      counts={props.counts || {}}
+      onJson={() => {}}
+      onChecks={() => {}}
+    />
   ),
   topbar: (editor, props) => (
     <AgentTopBar

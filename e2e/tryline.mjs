@@ -124,23 +124,15 @@ await page
   .click();
 await page.waitForTimeout(1000);
 
-// each box is on the page that holds its settings
+// each box is on the part of Build › Detailed that holds its settings
 const goTo = async (hash) => {
   await page.evaluate((h) => (location.hash = h), hash);
-  await page.waitForSelector('.nlPage');
+  await page.waitForSelector('.dtPage');
   await page.waitForTimeout(1200);
 };
 
-// ---- how a line is said: Settings › Conversation flow
-await goTo('#/bots/acme-support/settings');
-// the configuration was written as JSON above: back to the settings themselves
-const back = page.getByRole('button', { name: 'Back to the settings' });
-if (await back.count()) await back.click();
-await page.waitForTimeout(600);
-await page.getByRole('button', { name: 'Conversation flow' }).first().click();
-await page.waitForTimeout(400);
-await page.getByText('How the voice reads things', { exact: true }).first().click();
-await page.waitForTimeout(300);
+// ---- how a line is said: Conversation › How the voice reads things
+await goTo('#/bots/acme-support/conversation');
 let panel = page.locator('section[aria-label="Try how a line is said"]');
 await panel.scrollIntoViewIfNeeded().catch(() => {});
 check('pronunciation: the “Try a line” panel is under the voice settings', (await panel.count()) === 1);
@@ -164,13 +156,9 @@ await page.waitForSelector('section[aria-label="Try how a line is said"] [data-b
 check('pronunciation: the pieces are shown as they arrive', (await panel.locator('[data-block="streaming"] li').count()) >= 2);
 await shot('speech');
 
-// ---- what redaction hides: After the call, in the settings below the cards
+// ---- what redaction hides: After the call › Privacy
 await goTo('#/bots/acme-support/aftercall');
-// opened when it is folded (an agent that hides details has it open already)
-const redaction = page.locator('.stForm .stFGroup[data-path="post_call.redaction"]');
-if (!(await redaction.getAttribute('class')).includes('open')) await redaction.locator('> header .stFGroupToggle').click();
-await page.waitForTimeout(500);
-panel = page.locator('section[aria-label="Try what redaction hides"]');
+panel = page.locator('[data-card="aftercall.privacy"] section[aria-label="Try what redaction hides"]');
 check('redaction: the panel is under the redaction settings', (await panel.count()) === 1);
 await panel.getByLabel('A line a caller might say').fill('My card is 4111 1111 1111 1111 and my email is sam@example.com');
 await panel.getByRole('button', { name: 'Try it' }).click();
@@ -186,24 +174,14 @@ check(
   /Card numbers?|a card number/i.test(await panel.locator('details', { hasText: 'How each kind is recognised' }).innerText()),
 );
 // changing the agent after a try marks the answer as old
-await page.locator('input[value="[X]"]').first().fill('[HIDDEN]');
+await page.locator('#dt-aftercall-replace').fill('[HIDDEN]');
 await page.waitForSelector('[data-stale]');
 check('redaction: once the agent changes, the answer says it may be out of date', /has changed since this was tried/.test(await panel.innerText()));
 await shot('redaction');
 
-// ---- a task: Tools › Multi-step tasks
-await goTo('#/bots/acme-support/tools');
-await page.locator('.nlRow', { hasText: 'Multi-step tasks' }).click();
-await page.waitForSelector('.nlDrawer');
-await page.waitForTimeout(800);
-// each task is a card of the panel: the folded ones are opened (only the tasks themselves, not their parts)
-await page.evaluate(() =>
-  document.querySelectorAll('.nlDrawer .stFGroup:not(.open):not(.drill)').forEach((g) => {
-    if (/^tasks\[\d+\]$/.test(g.dataset.path || '')) g.querySelector(':scope > header .stFGroupToggle')?.click();
-  }),
-);
-await page.waitForTimeout(500);
-panel = page.locator('section[aria-label="Try this task"]');
+// ---- a task: Connections › Multi-step tasks (the first task is the one open)
+await goTo('#/bots/acme-support/connections');
+panel = page.locator('[data-card="connections.tasks"] section[aria-label="Try this task"]');
 check('task: the panel is under the task', (await panel.count()) >= 1);
 await panel.first().getByRole('button', { name: 'Show the steps' }).click();
 await page.waitForSelector('[data-step="ask_dob"]');
@@ -220,11 +198,7 @@ check('task: with the caller already verified, the whole task is skipped', /alre
 await shot('task');
 
 // ---- the safety rules: the Guardrails page has its own box
-await page.locator('.nlDrawer .nlDrawerFoot').getByRole('button', { name: 'Cancel' }).click();
-await page.evaluate(() => {
-  location.hash = '#/bots/acme-support/guardrails';
-});
-await page.waitForSelector('.nlPage');
+await goTo('#/bots/acme-support/guardrails');
 panel = page.locator('section[aria-label="Try the safety rules"]');
 // the page's frame is drawn before the agent's draft is read, and the box with it
 await panel

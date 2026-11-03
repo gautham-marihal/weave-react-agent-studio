@@ -29,7 +29,11 @@ export function TextInput({ value, onChange, placeholder, disabled, multiline, i
 export function NumberInput({ value, onChange, min, max, integer, nullable, disabled, invalid, id, placeholder }) {
   const toText = (v) => (v === null || v === undefined ? '' : String(v));
   const [text, setText] = useState(toText(value));
+  // while someone types, what they typed stays: the value it gives may come back changed (a guardrail limit of 0 is
+  // "no limit", so it comes back empty) and showing that at once would eat the "0" of "0.5". Shown as stored on blur.
+  const typing = useRef(false);
   useEffect(() => {
+    if (typing.current) return;
     const incoming = toText(value);
     setText((current) => (Number(current) === Number(incoming) && (current === '') === (incoming === '') ? current : incoming));
   }, [value]);
@@ -47,6 +51,7 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
       value={text}
       onChange={(event) => {
         const raw = event.target.value;
+        typing.current = true;
         setText(raw);
         // Clearing the box never deletes the field (the × button does that): a nullable number becomes null,
         // any other keeps its last value until a new number is typed, and is shown again on blur.
@@ -57,7 +62,10 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
         const n = Number(raw);
         if (!Number.isNaN(n)) onChange(n);
       }}
-      onBlur={() => setText(toText(value))}
+      onBlur={() => {
+        typing.current = false;
+        setText(toText(value));
+      }}
     />
   );
 }

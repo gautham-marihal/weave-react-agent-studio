@@ -4,6 +4,7 @@ import Icon from '../../ui/Icon.jsx';
 import { pictureProblem } from '../preview/useDictation.js';
 import AiOrb, { orbState } from '../preview/AiOrb.jsx';
 import VoiceStage from '../preview/VoiceStage.jsx';
+import { maskConversation } from '../privacy/maskConfidential.js';
 import { speaksOnly, withWrittenReplies } from '../preview/voiceState.js';
 import PlainIssues from '../validation/PlainIssues.jsx';
 import { envLabel, Notice } from '../ui.jsx';
@@ -89,7 +90,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const [ref, setRef] = useState('draft');
   const [channelPick, setChannelPick] = useState(''); // web channel to try when the agent offers both chat and voice
   const [draftText, setDraftText] = useState('');
-  const [logOpen, setLogOpen] = useState(false);
+  // the side panel's view: what happened in the conversation, its session, or the connection log
+  const [inspect, setInspect] = useState('trace');
   const [transcriptOpen, setTranscriptOpen] = useState(false); // a voice conversation shows captions; the whole of it on request
   const [used, setUsed] = useState(null); // the models this conversation started with
   const endRef = useRef(null);
@@ -97,6 +99,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const stickRef = useRef(true);
   const fileRef = useRef(null);
   const { status, info, messages, events, error, form, media, agentHint } = session;
+  // what is shown has PINs, codes and ID numbers masked; a scenario made from the conversation keeps what was said
+  const shownMessages = useMemo(() => maskConversation(messages), [messages]);
   const trace = useTrace({ botId, session });
   // the scenario just made from a conversation: { id, first: its first line }, so it belongs to that conversation only
   const [madeFrom, setMadeFrom] = useState(null);
@@ -212,75 +216,6 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
   return (
     <div className="stTest">
-      <section className="stCard stTHead">
-        <div className="stTIntro">
-          <h3>Try this agent</h3>
-          <p className="stMuted">
-            {simulated ? (
-              <>
-                Starts a <strong>simulated</strong> conversation with {name} in your browser: made-up replies from simple rules, using your current edits. It is
-                not the agent running, so tools and hand-offs are only imitated.
-              </>
-            ) : (
-              <>Starts a real conversation with {name} in your browser. It uses the actual runtime, so tools, handoffs and forms really run.</>
-            )}
-          </p>
-          {onMode && (
-            <OneOf className="pvModes stTMode" label="What to talk to" value={simulated ? 'simulated' : 'real'} onChange={onMode}>
-              <Choice value="real" disabled={modeLocked || running} title={modeLocked ? 'Demo mode has no real agent to talk to' : undefined}>
-                Real agent
-              </Choice>
-              <Choice value="simulated" disabled={running}>
-                Simulated
-              </Choice>
-            </OneOf>
-          )}
-        </div>
-        <div className="stTControls">
-          {webChannels.length > 1 && (
-            <OneOf className="stTChannels" label="Try it as" value={channelId} onChange={setChannelPick}>
-              <span aria-hidden="true">Try it as</span>
-              {webChannels.map((c) => (
-                <Choice key={c.id} value={c.id} disabled={running}>
-                  {drawsVoice(c) ? 'Web voice' : 'Web chat'}
-                  {webChannels.filter((o) => o.type === c.type).length > 1 ? ` (${c.id})` : ''}
-                </Choice>
-              ))}
-            </OneOf>
-          )}
-          <label>
-            <span>Version to try</span>
-            <Select value={ref} onChange={(event) => setRef(event.target.value)} disabled={running}>
-              {options.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </label>
-          {running ? (
-            <button type="button" className="dangerButton" onClick={session.stop}>
-              End conversation
-            </button>
-          ) : (
-            <Button
-              type="button"
-              variant="primary"
-              size="compact"
-              onClick={start}
-              disabled={noWebChannel}
-              title={noWebChannel ? 'This agent has no web channel to try' : undefined}
-            >
-              {status === 'ended' || status === 'error' ? 'Start again' : 'Start conversation'}
-            </Button>
-          )}
-          <span className={`stTStatus ${status}`} role="status">
-            <i aria-hidden="true" />
-            {STATUS_TEXT[status]}
-          </span>
-        </div>
-      </section>
-
       {noWebChannel && (
         <Notice kind="info" title="This agent can’t be tried in the browser">
           Trying it here talks to the agent over the web, so it needs a web chat or web voice channel
@@ -383,6 +318,72 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
       <div className="stTGrid">
         <section className="stCard stTChat" aria-label="Conversation">
+          {/* what to talk to, how, which version, and start or end: the conversation's own toolbar */}
+          <div className="stTControls stTBar">
+            {onMode && (
+              <OneOf className="pvModes stTMode" label="What to talk to" value={simulated ? 'simulated' : 'real'} onChange={onMode}>
+                <Choice value="real" disabled={modeLocked || running} title={modeLocked ? 'Demo mode has no real agent to talk to' : undefined}>
+                  Real agent
+                </Choice>
+                <Choice value="simulated" disabled={running}>
+                  Simulated
+                </Choice>
+              </OneOf>
+            )}
+            {webChannels.length > 1 && (
+              <OneOf className="stTChannels" label="Try it as" value={channelId} onChange={setChannelPick}>
+                <span aria-hidden="true">Try it as</span>
+                {webChannels.map((c) => (
+                  <Choice key={c.id} value={c.id} disabled={running}>
+                    {drawsVoice(c) ? 'Web voice' : 'Web chat'}
+                    {webChannels.filter((o) => o.type === c.type).length > 1 ? ` (${c.id})` : ''}
+                  </Choice>
+                ))}
+              </OneOf>
+            )}
+            <label>
+              <span>Version</span>
+              <Select value={ref} onChange={(event) => setRef(event.target.value)} disabled={running}>
+                {options.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            {running ? (
+              <button type="button" className="dangerButton" onClick={session.stop}>
+                End conversation
+              </button>
+            ) : (
+              <Button
+                type="button"
+                variant="primary"
+                size="compact"
+                onClick={start}
+                disabled={noWebChannel}
+                title={noWebChannel ? 'This agent has no web channel to try' : undefined}
+              >
+                {status === 'ended' || status === 'error' ? 'Start again' : 'Start conversation'}
+              </Button>
+            )}
+            <span className={`stTStatus ${status}`} role="status">
+              <i aria-hidden="true" />
+              {STATUS_TEXT[status]}
+            </span>
+          </div>
+          {status === 'idle' && (
+            <p className="stMuted stTLead">
+              {simulated ? (
+                <>
+                  Starts a <strong>simulated</strong> conversation with {name} in your browser: made-up replies from simple rules, using your current edits. It
+                  is not the agent running, so tools and hand-offs are only imitated.
+                </>
+              ) : (
+                <>Starts a real conversation with {name} in your browser. It uses the actual runtime, so tools, handoffs and forms really run.</>
+              )}
+            </p>
+          )}
           {voiceView && (
             <>
               <VoiceStage session={session} announce={!transcriptOpen} className="stTVoice" />
@@ -466,7 +467,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                   )}
                 </div>
               )}
-              {messages.map((message) => (
+              {shownMessages.map((message) => (
                 <Bubble key={message.id} message={message} botName={botName} />
               ))}
               {agentHint && status === 'waiting' && (
@@ -501,6 +502,82 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
               </Button>
             </div>
           </div>
+          {/* the conversation's media, and keeping it as a test */}
+          {(isVoice || inputs.includes('video') || inputs.includes('image') || canSave) && (
+            <div className="stTFoot">
+              {(isVoice || inputs.includes('video') || inputs.includes('image')) && (
+                <div className="stTMedia">
+                  {isVoice && (
+                    <button
+                      type="button"
+                      className={`stTMediaBtn ${media.mic ? 'on' : ''}`}
+                      onClick={() => session.toggle('mic')}
+                      disabled={!connected}
+                      aria-pressed={media.mic}
+                    >
+                      <Icon name="mic" size={16} /> {media.mic ? 'Microphone on' : 'Microphone off'}
+                    </button>
+                  )}
+                  {inputs.includes('video') && (
+                    <button
+                      type="button"
+                      className={`stTMediaBtn ${media.camera ? 'on' : ''}`}
+                      onClick={() => session.toggle('camera')}
+                      disabled={!connected}
+                      aria-pressed={media.camera}
+                    >
+                      <Icon name="camera" size={16} /> {media.camera ? 'Camera on' : 'Camera off'}
+                    </button>
+                  )}
+                  {inputs.includes('video') &&
+                    channelCfg?.inputs?.video?.screen_share !== false &&
+                    ref === 'draft' &&
+                    channelCfg?.inputs?.video?.screen_share && (
+                      <button
+                        type="button"
+                        className={`stTMediaBtn ${media.screen ? 'on' : ''}`}
+                        onClick={() => session.toggle('screen')}
+                        disabled={!connected}
+                        aria-pressed={media.screen}
+                      >
+                        <Icon name="monitor" size={16} /> {media.screen ? 'Sharing screen' : 'Share screen'}
+                      </button>
+                    )}
+                  {inputs.includes('image') && (
+                    <>
+                      <button
+                        type="button"
+                        className="stTMediaBtn"
+                        onClick={() => fileRef.current?.click()}
+                        disabled={!connected || !imageCfg}
+                        title={imageCfg ? 'Send a picture' : 'Pictures can be sent when testing the draft'}
+                      >
+                        <Icon name="paperclip" size={16} /> Send a picture
+                      </button>
+                      <input ref={fileRef} type="file" accept={(imageCfg?.accepted_mime || ['image/*']).join(',')} hidden onChange={onFile} />
+                    </>
+                  )}
+                  {pictureNote && (
+                    <p className="stTNote" role="alert">
+                      {pictureNote}
+                    </p>
+                  )}
+                  {media.camera && <video ref={session.localVideoRef} className="stTPreview" autoPlay muted playsInline aria-label="Your camera" />}
+                </div>
+              )}
+              {canSave && (
+                <Button
+                  type="button"
+                  className="stTSaveScenario"
+                  onClick={saveAsScenario}
+                  disabled={!!saved}
+                  title="Turns what you said and what the agent did into a test scenario in the draft"
+                >
+                  {saved ? 'Saved as a scenario' : 'Save as a scenario'}
+                </Button>
+              )}
+            </div>
+          )}
         </section>
 
         <aside className="stCard stTSide" aria-label="Session">
@@ -530,117 +607,82 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
               </p>
             )}
           </section>
-          <h3>Session</h3>
-          {info ? (
-            <dl className="stTDetails">
-              <div>
-                <dt>Room</dt>
-                <dd>
-                  <code>{info.room}</code>
-                </dd>
-              </div>
-              <div>
-                <dt>Version</dt>
-                <dd>
-                  {info.version === 'draft' ? 'Draft' : `v${info.version}`} <span className="stMuted">({info.ref})</span>
-                </dd>
-              </div>
-              <div>
-                <dt>Channel</dt>
-                <dd>
-                  {info.channel?.id}{' '}
-                  <span className="stMuted">
-                    ({info.channel?.realType || info.channel?.type}
-                    {info.channel?.realType && info.channel.realType !== info.channel.type ? ', written out as text' : ''})
-                  </span>
-                </dd>
-              </div>
-              {info.expiresInS && (
-                <div>
-                  <dt>Join window</dt>
-                  <dd>{Math.round(info.expiresInS / 60)} min to connect</dd>
-                </div>
-              )}
-            </dl>
-          ) : (
-            <p className="stMuted">Details appear once a conversation starts.</p>
-          )}
 
-          {(isVoice || inputs.includes('video') || inputs.includes('image')) && (
-            <div className="stTMedia">
-              {isVoice && (
-                <button
-                  type="button"
-                  className={`stTMediaBtn ${media.mic ? 'on' : ''}`}
-                  onClick={() => session.toggle('mic')}
-                  disabled={!connected}
-                  aria-pressed={media.mic}
-                >
-                  <Icon name="mic" size={16} /> {media.mic ? 'Microphone on' : 'Microphone off'}
-                </button>
+          <div className="segmented stTInspect" role="group" aria-label="About this conversation">
+            {[
+              ['trace', 'What happened'],
+              ['session', 'Session'],
+              ['log', `Log (${events.length})`],
+            ].map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={inspect === id} onClick={() => setInspect(id)}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {inspect === 'trace' &&
+            (status !== 'idle' || trace.records.length > 0 ? (
+              <>
+                <TraceView
+                  compact
+                  records={trace.records}
+                  live={trace.following}
+                  title="What happened"
+                  emptyText={running ? 'Waiting for the first record…' : 'Nothing was recorded.'}
+                  note={
+                    session.simulated
+                      ? 'These records were made by the simulated conversation, in the same shape a real call has. No runtime wrote them.'
+                      : undefined
+                  }
+                />
+                {trace.problem && (
+                  <p className="stMuted" role="status">
+                    {trace.problem}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="stMuted">Each step shows here as it happens: what was heard, the tools it used and what it said.</p>
+            ))}
+          {inspect === 'session' && (
+            <>
+              {info ? (
+                <dl className="stTDetails">
+                  <div>
+                    <dt>Room</dt>
+                    <dd>
+                      <code>{info.room}</code>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Version</dt>
+                    <dd>
+                      {info.version === 'draft' ? 'Draft' : `v${info.version}`} <span className="stMuted">({info.ref})</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Channel</dt>
+                    <dd>
+                      {info.channel?.id}{' '}
+                      <span className="stMuted">
+                        ({info.channel?.realType || info.channel?.type}
+                        {info.channel?.realType && info.channel.realType !== info.channel.type ? ', written out as text' : ''})
+                      </span>
+                    </dd>
+                  </div>
+                  {info.expiresInS && (
+                    <div>
+                      <dt>Join window</dt>
+                      <dd>{Math.round(info.expiresInS / 60)} min to connect</dd>
+                    </div>
+                  )}
+                </dl>
+              ) : (
+                <p className="stMuted">Details appear once a conversation starts.</p>
               )}
-              {inputs.includes('video') && (
-                <button
-                  type="button"
-                  className={`stTMediaBtn ${media.camera ? 'on' : ''}`}
-                  onClick={() => session.toggle('camera')}
-                  disabled={!connected}
-                  aria-pressed={media.camera}
-                >
-                  <Icon name="camera" size={16} /> {media.camera ? 'Camera on' : 'Camera off'}
-                </button>
-              )}
-              {inputs.includes('video') && channelCfg?.inputs?.video?.screen_share !== false && ref === 'draft' && channelCfg?.inputs?.video?.screen_share && (
-                <button
-                  type="button"
-                  className={`stTMediaBtn ${media.screen ? 'on' : ''}`}
-                  onClick={() => session.toggle('screen')}
-                  disabled={!connected}
-                  aria-pressed={media.screen}
-                >
-                  <Icon name="monitor" size={16} /> {media.screen ? 'Sharing screen' : 'Share screen'}
-                </button>
-              )}
-              {inputs.includes('image') && (
-                <>
-                  <button
-                    type="button"
-                    className="stTMediaBtn"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={!connected || !imageCfg}
-                    title={imageCfg ? 'Send a picture' : 'Pictures can be sent when testing the draft'}
-                  >
-                    <Icon name="paperclip" size={16} /> Send a picture
-                  </button>
-                  <input ref={fileRef} type="file" accept={(imageCfg?.accepted_mime || ['image/*']).join(',')} hidden onChange={onFile} />
-                </>
-              )}
-              {pictureNote && (
-                <p className="stTNote" role="alert">
-                  {pictureNote}
-                </p>
-              )}
-              {media.camera && <video ref={session.localVideoRef} className="stTPreview" autoPlay muted playsInline aria-label="Your camera" />}
-            </div>
+            </>
           )}
-
-          {canSave && (
-            <Button
-              type="button"
-              className="stTSaveScenario"
-              onClick={saveAsScenario}
-              disabled={!!saved}
-              title="Turns what you said and what the agent did into a test scenario in the draft"
-            >
-              {saved ? 'Saved as a scenario' : 'Save as a scenario'}
-            </Button>
-          )}
-
-          <div className="stTLog">
-            <button type="button" className="stLink" onClick={() => setLogOpen((v) => !v)} aria-expanded={logOpen}>
-              {logOpen ? 'Hide' : 'Show'} connection log ({events.length})
-            </button>
-            {logOpen && (
+          {inspect === 'log' && (
+            <div className="stTLog">
               <ol>
                 {events.length === 0 && <li className="stMuted">Nothing yet.</li>}
                 {events.map((event) => (
@@ -650,29 +692,10 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                   </li>
                 ))}
               </ol>
-            )}
-          </div>
+            </div>
+          )}
         </aside>
       </div>
-
-      {(status !== 'idle' || trace.records.length > 0) && (
-        <section className="stCard stTTrace" aria-label="Trace">
-          <TraceView
-            records={trace.records}
-            live={trace.following}
-            title="What happened in this conversation"
-            emptyText={running ? 'Waiting for the first record…' : 'Nothing was recorded.'}
-            note={
-              session.simulated ? 'These records were made by the simulated conversation, in the same shape a real call has. No runtime wrote them.' : undefined
-            }
-          />
-          {trace.problem && (
-            <p className="stMuted" role="status">
-              {trace.problem}
-            </p>
-          )}
-        </section>
-      )}
     </div>
   );
 }

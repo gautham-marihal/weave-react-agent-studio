@@ -10,6 +10,7 @@ import { Notice } from '../ui.jsx';
 import { usePref } from '../usePref.js';
 import { boardSummary, changesToAnnounce, clock, hiddenWords } from './liveModel.js';
 import { useLiveBoard } from './useLiveBoard.js';
+import { maskConversation } from '../privacy/maskConfidential.js';
 import Select from '../../ui/Select.tsx';
 import '../calls/calls.css';
 import '../agent/agent.css';
@@ -31,7 +32,8 @@ function ago(ms, nowMs) {
 
 // One call going on: who, where, how long, what needs a look, and the last few lines as they are said.
 function LiveCard({ call, name, hideCaller, onWatch, onOpenCall }) {
-  const lines = call.lines.slice(-3);
+  // masked over the whole call, so a caller's answer to a question for their PIN is masked even when the question is off the card
+  const lines = maskConversation(call.lines).slice(-3);
   const who = call.caller || (call.voice ? 'A caller' : 'A web visitor');
   return (
     <article className={`lvCard ${call.attention ? call.worst : ''}`} aria-label={`${name}: call from ${who}, ${clock(call.durationS)}`}>

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { agentLabel, humanize } from '../agent/rowNames.js';
 import { chatOf } from './callChat.js';
+import { maskConversation } from '../privacy/maskConfidential.js';
 import TranscriptView from './TranscriptView.jsx';
 
 // A call as a chat: the agents' lines on the left and the caller's on the right, each with who said it and when, and a
@@ -30,7 +31,7 @@ export default function CallChat({ botId, callId, events, config, botName, calle
       </h3>
       {chat.agents.length > 1 && <p className="clChatAgents">Agents in this call: {chat.agents.map((agent) => nameOf(agent)).join(', ')}</p>}
       <ol className="clChatList">
-        {chat.items.map((item, index) =>
+        {maskConversation(chat.items).map((item, index) =>
           item.type === 'handover' ? (
             <li key={index} className="clHandover">
               <span>

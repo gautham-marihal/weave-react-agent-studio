@@ -1,0 +1,546 @@
+/* Sign-in and first-time setup (Login.jsx), in the public site's look: deep ink or soft paper, a fine grid, a slow
+   aurora, serif headlines over Inter, a glass card and the ink button. Everything is scoped to .authScreen, and the
+   selectors that set fonts and fields start with html[data-theme] body so the studio's styles (themes.css) don't win. */
+
+.authScreen {
+  --a-ground: #07080d;
+  --a-text: #eeecf7;
+  --a-dim: #a4a3bd;
+  --a-faint: #75748f;
+  --a-line: rgba(238, 236, 247, 0.1);
+  --a-glass: rgba(18, 18, 30, 0.62);
+  --a-field: rgba(255, 255, 255, 0.04);
+  --a-violet: #9a7bff;
+  --a-cyan: #45d6f4;
+  --a-ember: #ff9a6a;
+  --a-btn: #f3f0ff;
+  --a-btn-text: #0a0912;
+  --a-accent: linear-gradient(100deg, #b49bff 0%, #6fd9f5 48%, #ffb08a 100%);
+  --a-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.85);
+  --a-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --a-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--a-ground);
+  color: var(--a-text);
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  overflow-x: clip;
+}
+.authScreen.light {
+  --a-ground: #eef0f7;
+  --a-text: #12121c;
+  --a-dim: #4f5068;
+  --a-faint: #6f7089;
+  --a-line: rgba(18, 18, 28, 0.11);
+  --a-glass: rgba(255, 255, 255, 0.72);
+  --a-field: rgba(255, 255, 255, 0.9);
+  --a-violet: #5b3df5;
+  --a-cyan: #0a8fb0;
+  --a-ember: #d4602a;
+  --a-btn: #12121c;
+  --a-btn-text: #f6f5fb;
+  --a-accent: linear-gradient(100deg, #5b3df5 0%, #1f74e0 50%, #b8369a 100%);
+  --a-shadow: 0 40px 100px -50px rgba(40, 30, 90, 0.4);
+}
+
+/* the backdrop: a fine grid that fades out, and three soft lights drifting slowly */
+.authBack {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.authGrid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, var(--a-line) 1px, transparent 1px), linear-gradient(to bottom, var(--a-line) 1px, transparent 1px);
+  background-size: 72px 72px;
+  -webkit-mask-image: radial-gradient(60% 70% at 30% 40%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(60% 70% at 30% 40%, #000 0%, transparent 100%);
+  opacity: 0.6;
+}
+.authAurora i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.4;
+  animation: authDrift 20s ease-in-out infinite alternate;
+}
+.authAurora i:nth-child(1) {
+  left: -6%;
+  top: 8%;
+  width: 44vw;
+  height: 420px;
+  background: var(--a-violet);
+}
+.authAurora i:nth-child(2) {
+  right: -4%;
+  top: 30%;
+  width: 34vw;
+  height: 360px;
+  background: var(--a-cyan);
+  opacity: 0.22;
+  animation-delay: -7s;
+}
+.authAurora i:nth-child(3) {
+  left: 30%;
+  bottom: -14%;
+  width: 30vw;
+  height: 300px;
+  background: var(--a-ember);
+  opacity: 0.14;
+  animation-delay: -13s;
+}
+.authScreen.light .authAurora i {
+  opacity: 0.22;
+}
+.authScreen.light .authAurora i:nth-child(2) {
+  opacity: 0.14;
+}
+.authScreen.light .authAurora i:nth-child(3) {
+  opacity: 0.1;
+}
+@keyframes authDrift {
+  to {
+    transform: translate(5%, 7%) scale(1.12);
+  }
+}
+
+/* the top bar */
+.authTop {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 16px clamp(20px, 4vw, 56px);
+}
+html[data-theme] body .authScreen .authTop :is(.brand, .logo) {
+  color: var(--a-text);
+}
+.authBackBtn {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid var(--a-line);
+  border-radius: 999px;
+  background: var(--a-field);
+  color: var(--a-dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+.authBackBtn:hover {
+  color: var(--a-text);
+  border-color: color-mix(in oklab, var(--a-text) 30%, transparent);
+}
+.authTools {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.authHint {
+  color: var(--a-faint);
+  font-family: var(--a-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* the page: the words on the left, the form on the right */
+.authWrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(380px, 460px);
+  align-items: center;
+  gap: clamp(40px, 7vw, 120px);
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(16px, 3vh, 40px) clamp(20px, 4vw, 56px) 48px;
+}
+.authIntro {
+  display: grid;
+  align-content: center;
+  gap: 22px;
+}
+.authEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--a-dim);
+  font-family: var(--a-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.authEyebrow::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: var(--a-accent);
+}
+html[data-theme] body .authScreen.authScreen :is(h1, h2) {
+  font-family: var(--a-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--a-text);
+}
+html[data-theme] body .authScreen.authScreen h1 {
+  --fs-display: clamp(2.6rem, 4.6vw, 4.6rem);
+  margin: 0;
+  max-width: 13ch;
+  font-size: var(--fs-display);
+  line-height: 1;
+  text-wrap-style: balance;
+}
+.authScreen h1 em {
+  /* the promise, in italic and the accent colours */
+  font-style: italic;
+  background: var(--a-accent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-right: 0.08em;
+}
+.authLead {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--a-dim);
+  font-size: var(--fs-lg);
+  line-height: 1.6;
+}
+.authSteps {
+  display: grid;
+  gap: 0;
+  max-width: 30rem;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.authSteps li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  column-gap: 14px;
+  padding: 0 0 18px;
+}
+.authSteps li:not(:last-child)::before {
+  /* the thread between one step and the next */
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 34px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--a-line);
+}
+.authStepMark {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--a-line);
+  border-radius: 50%;
+  background: var(--a-field);
+  color: var(--a-dim);
+  font-family: var(--a-mono);
+  font-size: var(--fs-xs);
+  transition:
+    background 0.3s,
+    color 0.3s,
+    border-color 0.3s;
+}
+.authSteps b {
+  padding-top: 6px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.authSteps small {
+  color: var(--a-dim);
+  font-size: var(--fs-sm);
+}
+.authSteps li.later {
+  opacity: 0.55;
+}
+.authSteps li.now .authStepMark {
+  border-color: transparent;
+  background: var(--a-violet);
+  color: #fff;
+  box-shadow: 0 0 0 6px color-mix(in oklab, var(--a-violet) 18%, transparent);
+}
+.authSteps li.done .authStepMark {
+  border-color: color-mix(in oklab, var(--a-violet) 50%, transparent);
+  color: var(--a-violet);
+}
+
+/* the card */
+.authCard {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 30px 32px 28px;
+  border: 1px solid var(--a-line);
+  border-radius: 20px;
+  background: var(--a-glass);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: var(--a-shadow);
+}
+.authCard::before {
+  /* a hairline of light along the top edge */
+  content: "";
+  position: absolute;
+  inset: 0 12% auto;
+  height: 1px;
+  background: linear-gradient(to right, transparent, color-mix(in oklab, var(--a-violet) 70%, white), transparent);
+}
+.authCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.authCardLabel {
+  color: var(--a-faint);
+  font-family: var(--a-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.authLock {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--a-violet) 14%, transparent);
+  color: var(--a-violet);
+}
+html[data-theme] body .authScreen.authScreen h2 {
+  margin: -4px 0 0;
+  font-size: var(--fs-3xl);
+  line-height: 1.1;
+}
+.authFormIntro {
+  margin: -8px 0 0;
+  color: var(--a-dim);
+  font-size: var(--fs-sm);
+}
+.authNotice {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--a-ember) 30%, transparent);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--a-ember) 8%, transparent);
+  color: var(--a-dim);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.authNotice svg {
+  margin-top: 1px;
+  color: var(--a-ember);
+}
+.authNotice b {
+  color: var(--a-text);
+}
+.authField {
+  display: grid;
+  gap: 7px;
+}
+.authField > span {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+html[data-theme] body .authScreen .authField :is(input, .rxSelect) {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--a-line);
+  border-radius: 10px;
+  background: var(--a-field);
+  color: var(--a-text);
+  font: inherit;
+  font-size: var(--fs-md);
+  box-shadow: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+html[data-theme] body .authScreen .authField input::placeholder {
+  color: var(--a-faint);
+}
+html[data-theme] body .authScreen .authField :is(input, .rxSelect):hover {
+  border-color: color-mix(in oklab, var(--a-text) 24%, transparent);
+}
+html[data-theme] body .authScreen .authField :is(input, .rxSelect):focus-visible,
+html[data-theme] body .authScreen .authField :is(input, .rxSelect):focus {
+  outline: none;
+  border-color: var(--a-violet);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--a-violet) 20%, transparent);
+}
+html[data-theme] body .authScreen .authField.hasError input {
+  border-color: #e5484d;
+}
+.authError {
+  color: #e5484d;
+  font-size: var(--fs-xs);
+  font-style: normal;
+}
+.authScreen.dark .authError {
+  color: #ff8589;
+}
+.authRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: -4px;
+}
+.authCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--a-dim);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.authCheck input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--a-violet);
+}
+.authLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--a-violet);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.authLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.authReset {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--a-line);
+  border-radius: 12px;
+  background: var(--a-field);
+  font-size: var(--fs-sm);
+}
+.authReset p {
+  margin: 0;
+  color: var(--a-dim);
+  line-height: 1.5;
+}
+.authResetActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* the ink button, with its arrow in a gradient disc (as on the site) */
+.authBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 50px;
+  margin-top: 4px;
+  padding: 0 8px 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--a-btn);
+  color: var(--a-btn-text);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 14px 40px -16px color-mix(in oklab, var(--a-violet) 70%, transparent);
+  transition:
+    transform 0.25s var(--ease-out, ease),
+    box-shadow 0.25s,
+    opacity 0.2s;
+}
+.authBtn > span:first-child {
+  flex: 1;
+  text-align: center;
+  padding-left: 26px;
+}
+.authBtnIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--a-accent);
+  color: #fff;
+  transition: transform 0.3s;
+}
+.authBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 46px -14px color-mix(in oklab, var(--a-violet) 80%, transparent);
+}
+.authBtn:hover:not(:disabled) .authBtnIcon {
+  transform: translateX(2px);
+}
+.authBtn:focus-visible {
+  outline: 2px solid var(--a-cyan);
+  outline-offset: 3px;
+}
+.authBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.authSignedIn {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-block: 1px solid var(--a-line);
+  color: var(--a-dim);
+  font-size: var(--fs-sm);
+}
+.authSignedIn b {
+  color: var(--a-text);
+  font-weight: 500;
+}
+.authSmall {
+  color: var(--a-faint);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .authWrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .authSteps {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .authAurora i {
+    animation: none;
+  }
+}

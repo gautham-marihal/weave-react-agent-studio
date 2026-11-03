@@ -116,15 +116,31 @@ test('Simulated callers: one caller can be kept without running it, and the sele
   await app.unmount();
 });
 
-test('the gate: a switch for the agent, and what it says about the tests now', async () => {
+test('“Ready to publish?”: the gate is a switch for the agent, the verdict says where the tests stand, and each tile opens its part', async () => {
   await seedDemo(agent());
-  const app = await mountScreen('gatestrip', agent(), { ready: '.gateStrip' });
-  assert.match(textOf($(app.container, '.gateStrip')), /Off: the tests inform, and nothing stops a publish/);
-  await a.click($(app.container, 'input[aria-label="Tests must pass before publishing"]'));
-  assert.equal(await until(app, () => /Publishing is held/.test(textOf($(app.container, '.gateStrip')))), true);
-  assert.match(textOf($(app.container, '.gateStrip')), /no tests yet/);
+  const opened = [];
+  const app = await mountScreen('testhealth', agent(), {
+    ready: '.thStrip',
+    props: {
+      opened,
+      callers: { passed: 4, attention: 2, total: 6, names: ['Frustrated', 'Asks for a person'] },
+      readinessRuns: [{ agentId: 'x', passed: 11, total: 12, results: [{ name: 'Caller goes quiet', passed: false }] }],
+    },
+  });
+  const verdict = () => textOf($(app.container, '.thVerdict'));
+  assert.equal(await until(app, () => !/Reading the latest run/.test(verdict())), true);
+  assert.match(verdict(), /Nearly: 2 callers need a look/, 'off: the verdict is what the tests say');
+  assert.match(textOf($(app.container, '[data-tile="callers"]')), /4 of 6 passed.*Frustrated and Asks for a person need a look/);
+  assert.match(textOf($(app.container, '[data-tile="checks"]')), /11 of 12.*To look at: Caller goes quiet/);
+  const gate = () => $(app.container, 'button[role="switch"][aria-label="Tests must pass before publishing"]');
+  assert.equal(gate().getAttribute('aria-checked'), 'false');
+  await a.click(gate());
+  assert.equal(await until(app, () => /publishing is held/.test(verdict())), true, 'on: the gate holds publishing');
+  assert.match(verdict(), /no tests yet/);
   assert.equal(window.localStorage.getItem('weave_gate_x'), '1', 'kept for this agent in this browser');
-  await a.click($(app.container, 'input[aria-label="Tests must pass before publishing"]'));
-  assert.match(textOf($(app.container, '.gateStrip')), /Off:/);
+  await a.click(gate());
+  assert.doesNotMatch(verdict(), /held/);
+  await a.click($(app.container, '[data-tile="scenarios"]'));
+  assert.deepEqual(opened, ['scenarios'], 'a tile opens its part');
   await app.unmount();
 });

@@ -486,6 +486,8 @@ export function useLiveSession({ onFinished } = {}) {
     for (const p of room.remoteParticipants?.values() || []) level = Math.max(level, p.audioLevel || 0);
     return level;
   }, []);
+  // How loud the person testing is, 0 to 1 (their microphone), for the orb while it listens.
+  const userLevel = useCallback(() => roomRef.current?.localParticipant?.audioLevel || 0, []);
 
   return {
     status,
@@ -499,6 +501,7 @@ export function useLiveSession({ onFinished } = {}) {
     reconnecting,
     agentState,
     agentLevel,
+    userLevel,
     simulated: false,
     audioHostRef,
     localVideoRef,

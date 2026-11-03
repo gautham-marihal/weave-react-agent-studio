@@ -53,6 +53,8 @@ function ItemGone({ word, onGone }) {
 //   itemPath: one item of a list (['tools', 2]) without the screens around it, for the panel of a list page
 //   itemWord: names the item ("tool") for its Delete button; onItemGone: called once it has been deleted
 //   fold: { label, open } folds the item's settings under that label; its Delete button stays outside the fold
+//   subtree: itemPath is a group of settings, not a list item (a Detailed part's Advanced): no Delete button, and an
+//     unset group is shown empty, ready to fill
 export default function FormEditor({
   editor,
   focusRequest,
@@ -67,6 +69,7 @@ export default function FormEditor({
   itemWord = 'item',
   onItemGone,
   fold = null,
+  subtree = false,
 }) {
   const { schema, error, loading, reload } = useSchema();
   const config = editor.parsed.value;
@@ -540,9 +543,9 @@ export default function FormEditor({
 
         {itemMode &&
           (() => {
-            const itemSchema = schemaAtPath(engine, schema, itemPath);
+            const itemSchema = schemaAtPath(engine, schema, itemPath, config);
             const value = getAtPath(config, itemPath);
-            const gone = value === undefined || !itemSchema;
+            const gone = !itemSchema || (value === undefined && !subtree);
             const remove = () => {
               const proceed = () => {
                 editor.setValue(removeAtPath(configRef.current, itemPath));
@@ -588,7 +591,7 @@ export default function FormEditor({
                     })()
                   )}
                 </OwnerCtx.Provider>
-                {!gone && (
+                {!gone && !subtree && (
                   <div className="stFItemFoot">
                     <button type="button" className="dangerButton" onClick={remove}>
                       Delete this {itemWord}

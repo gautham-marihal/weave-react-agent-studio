@@ -15,7 +15,7 @@ test('a fresh draft: the agent still to write, the optional parts said to be opt
   const rows = buildSections({ config });
   assert.deepEqual(
     rows.map((r) => r.id),
-    ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall'],
+    ['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall'],
   );
   const s = byId(rows);
   assert.equal(s.agent.state, 'todo');

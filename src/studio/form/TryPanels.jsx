@@ -144,7 +144,7 @@ function Marked({ line, found, label }) {
 }
 
 // ---- pronunciation --------------------------------------------------------------------------------------------------
-function TrySpeechView({ config, scope = {} }) {
+export function TrySpeechView({ config, scope = {} }) {
   const agents = list(config?.agents?.items).filter((a) => a?.id);
   const channels = list(config?.channels).filter((c) => c?.id);
   const [line, setLine] = useState('Your balance is $12.50 and your appointment is at 4:30 PM.');
@@ -503,7 +503,7 @@ function JsonState({ value, onChange, label }) {
   );
 }
 
-function TryTaskView({ config, taskId }) {
+export function TryTaskView({ config, taskId }) {
   const channels = list(config?.channels).filter((c) => c?.id);
   const [stateText, setStateText] = useState('');
   const [channel, setChannel] = useState('');

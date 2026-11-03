@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
 import { holdStagedPanel } from './stagedPanel.js';
 import Button from '../../ui/Button.tsx';
+import { exitThen } from '../../ui/motion.ts';
 
 // Whether another dialog (a confirmation, the search) sits over the panel: the key came from it, or it was added to the
 // page after the panel (dialogs append to the end and draw above what came before).
@@ -15,12 +16,18 @@ function coveredBy(panel, target) {
   return !!top && top !== panel;
 }
 
+// Plays a side panel's exit (it slides back out and its shade fades), then closes it. `panel` is the panel itself; its
+// shade is the element just before it.
+export const leavePanel = (panel, close) => exitThen({ panel, shade: panel?.previousElementSibling }, close);
+
 // A panel that slides in from the right. Focus moves to its close button and Tab stays inside; Escape closes it (an
 // open list or a dialog over it closes first), and closing returns focus to whatever opened it.
 //   panelRef: also given the panel (StagedDrawer returns focus to it)
 export default function Drawer({ title, icon, onClose, children, footer = null, width = 'normal', label, className = '', panelRef }) {
   const own = useRef(null);
   const ref = panelRef || own;
+  // its own ways out (Escape, the shade, the close button) let it slide away first
+  const leave = useCallback(() => leavePanel(ref.current, onClose), [ref, onClose]);
   useEffect(() => {
     const opener = document.activeElement;
     ref.current?.querySelector('.nlDrawerClose')?.focus({ preventScroll: true });
@@ -35,11 +42,11 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
       // a dialog over the panel takes its own Escape; closing the panel too would drop its contents
       if (coveredBy(ref.current, event.target)) return;
       event.preventDefault();
-      onClose();
+      leave();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, ref]);
+  }, [leave, ref]);
   const keepFocusInside = (event) => {
     if (event.key !== 'Tab' || !ref.current) return;
     const items = [...ref.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]')].filter(
@@ -60,7 +67,7 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
     <>
       {/* on click, not press: closing on press would let the release land on what is under the scrim, so one click
           would both close the panel and press that */}
-      <div className="nlScrim" aria-hidden="true" onClick={onClose} />
+      <div className="nlScrim" aria-hidden="true" onClick={leave} />
       <aside
         className={`nlDrawer ${width} ${className}`.trim()}
         role="dialog"
@@ -76,7 +83,7 @@ export default function Drawer({ title, icon, onClose, children, footer = null, 
             </span>
           )}
           <h2>{title}</h2>
-          <button type="button" className="nlDrawerClose" aria-label={`Close ${title}`} onClick={onClose}>
+          <button type="button" className="nlDrawerClose" aria-label={`Close ${title}`} onClick={leave}>
             <Icon name="close" size={18} />
           </button>
         </header>
@@ -136,10 +143,10 @@ export function StagedDrawer({ editor, title, icon, onClose, children, width, do
       panelRef={panel}
       footer={
         <>
-          <Button type="button" onClick={onClose}>
+          <Button type="button" onClick={() => leavePanel(panel.current, onClose)}>
             Cancel
           </Button>
-          <Button type="button" variant="primary" size="compact" onClick={done}>
+          <Button type="button" variant="primary" size="compact" onClick={() => leavePanel(panel.current, done)}>
             {changed ? doneLabel : 'Close'}
           </Button>
         </>

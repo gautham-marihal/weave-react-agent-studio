@@ -68,6 +68,43 @@ export const channelLabel = (channel) => {
 
 export const turnsOf = (call) => `${call?.caller_turns ?? 0} / ${call?.agent_turns ?? 0}`;
 
+// The icon of a call's channel (names from ui/icons.js)
+export const channelIcon = (channel) =>
+  ({ sip_voice: 'phone', web_voice: 'mic', web_chat: 'chat', whatsapp: 'chat', sms: 'chat', email: 'mail' })[channel?.type] || 'globe';
+
+// How long a call was and how many times the agent answered: "1 min 42 s · 6 replies"
+export function lengthOf(call) {
+  const replies = Number(call?.agent_turns) || 0;
+  return `${formatSeconds(call?.duration_s)} · ${replies} ${replies === 1 ? 'reply' : 'replies'}`;
+}
+
+// What a finished call's record adds to its row (from replay/callFacts.js's reading): the caller's first words and how
+// many tool calls failed
+export function peekOf(facts) {
+  const turns = Array.isArray(facts?.turns) ? facts.turns : [];
+  const first = turns.map((t) => String(t?.say || '').trim()).find(Boolean) || '';
+  const failed = turns.reduce((n, t) => n + (Array.isArray(t?.tools) ? t.tools.filter((x) => x?.error).length : 0), 0);
+  return { first, failed };
+}
+
+// One line over the list: how many calls it shows and how they went, and (once every record is read) how many had a
+// tool that failed
+export function summaryOf(rows, peeks = {}) {
+  if (!rows.length) return '';
+  const count = (o) => rows.filter((r) => r.outcome === o).length;
+  const parts = [`${rows.length} ${rows.length === 1 ? 'call' : 'calls'}`];
+  if (count('handled')) parts.push(`${count('handled')} handled`);
+  if (count('handoff')) parts.push(`${count('handoff')} passed to a person`);
+  if (count('cutoff')) parts.push(`${count('cutoff')} cut off`);
+  if (count('progress')) parts.push(`${count('progress')} in progress`);
+  const finished = rows.filter((r) => r.outcome !== 'progress');
+  if (finished.length && finished.every((r) => peeks[`${r.bot}/${r.id}`])) {
+    const failed = finished.filter((r) => peeks[`${r.bot}/${r.id}`].failed > 0).length;
+    if (failed) parts.push(`${failed} with a failed tool`);
+  }
+  return parts.join(' · ');
+}
+
 // One row for the table, with the agent's name when it is known.
 export function rowOf(call, botName) {
   const s = statusOf(call?.status);
@@ -82,6 +119,8 @@ export function rowOf(call, botName) {
     channel: channelLabel(call?.channel),
     duration: formatSeconds(call?.duration_s),
     turns: turnsOf(call),
+    length: lengthOf(call),
+    channelIcon: channelIcon(call?.channel),
     handoffs: call?.handoffs ?? 0,
     statusLabel: s.label,
     tone: s.tone,

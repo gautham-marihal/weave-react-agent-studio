@@ -14,7 +14,7 @@ export const BACK_TOOL_DESCRIPTION =
 // the description the Workflow used to give the tool; replaced by the one above, since a custom one is kept
 const OLD_BACK_DESCRIPTIONS = ['', 'The caller needs something this subagent can’t help with.'];
 
-// how earlier versions of these rules began (the first banking agents were fixed with them), so they are replaced, not
+// how earlier versions of these rules began (the first multi-agent agents were fixed with them), so they are replaced, not
 // joined by a second copy
 const EARLIER_RULE_STARTS = ['Hand the caller to the specialist as soon as', 'When one of your subagents handles', 'Your job is only what your role says.'];
 const isHandoffRule = (rule) => typeof rule === 'string' && EARLIER_RULE_STARTS.some((start) => rule.startsWith(start));

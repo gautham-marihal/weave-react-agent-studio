@@ -4,7 +4,7 @@
 import { languageName, readSimple } from '../simple/simpleModel.js';
 import { readModels } from '../models/config.js';
 import { readingState } from '../knowledge/model.js';
-import { ACTIONS, REACH, actionsOf, reachOf } from '../setup/setupModel.js';
+import { ACTIONS, REACH, actionsOf, handOverCases, reachOf } from '../setup/setupModel.js';
 import { momentsOf, topicsOf } from './blocks/guardrailModel.js';
 import { afterCallOf } from './blocks/afterCallModel.js';
 import { agentLabel } from './rowNames.js';
@@ -26,6 +26,9 @@ export const PURPOSE = {
   channels: 'Where people reach it: by phone, or by chat or talk on your website.',
   guardrails: 'Topics it keeps to or avoids, and when it hands over or ends the call.',
   aftercall: 'What happens when a conversation ends: a summary, questions about it, what is kept.',
+  conversation: 'How it behaves during a call: taking turns, silent callers, what it remembers and reacts to.',
+  connections: 'What its tools reach: the systems it calls, phone transfers, forms, messages and tasks.',
+  subagents: 'Who answers first, what each subagent does, and who passes callers to whom.',
 };
 
 // What a part's documents still need, the worst first (the words of readiness.js)
@@ -75,7 +78,12 @@ function toolsPart(config) {
   const actions = actionsOf(config);
   const said = {
     end_call: 'ends politely',
-    hand_over: actions.hand_over.number ? `passes people to your team (${actions.hand_over.number})` : 'passes people to your team (no number yet)',
+    hand_over:
+      handOverCases(config).length > 1
+        ? `passes people to your team in ${handOverCases(config).length} cases`
+        : actions.hand_over.number
+          ? `passes people to your team (${actions.hand_over.number})`
+          : 'passes people to your team (no number yet)',
     details: 'takes requests',
     lookup: 'looks things up in your system',
   };
@@ -137,8 +145,54 @@ function afterCallPart(config) {
   return { state: 'done', status: `${text.charAt(0).toUpperCase()}${text.slice(1)}.` };
 }
 
+// How it behaves during a call: what is set beyond the defaults.
+function conversationPart(config) {
+  const conv = isObj(config?.defaults?.conversation) ? config.defaults.conversation : {};
+  const variables = isObj(config?.state?.variables) ? Object.keys(config.state.variables).length : 0;
+  const events = list(config?.events).filter(isObj).length;
+  const rules = list(conv.speech?.pronunciation).length;
+  const parts = [
+    conv.inactivity?.enabled && 'nudges silent callers',
+    conv.turn_handling?.interruption?.enabled === false && 'can’t be interrupted',
+    variables && `remembers ${plural(variables, 'value')}`,
+    events && `reacts to ${plural(events, 'event')}`,
+    rules && `${plural(rules, 'pronunciation rule')}`,
+  ].filter(Boolean);
+  if (!parts.length) return { state: 'optional', status: 'Nothing set: the usual way of taking turns.' };
+  const text = parts.join(' · ');
+  return { state: 'done', status: `${text.charAt(0).toUpperCase()}${text.slice(1)}.` };
+}
+
+// What its tools reach: how many of each.
+function connectionsPart(config) {
+  const count = (v) => (Array.isArray(v) ? v.filter(isObj).length : isObj(v) ? Object.keys(v).length : 0);
+  const parts = [
+    [count(config?.connections), 'connection'],
+    [count(config?.telephony?.transfers), 'phone transfer'],
+    [count(config?.forms), 'form'],
+    [count(config?.notifications), 'message'],
+    [count(config?.tasks), 'task'],
+  ]
+    .filter(([n]) => n)
+    .map(([n, word]) => plural(n, word));
+  if (!parts.length) return { state: 'optional', status: 'None yet: its tools reach nothing outside the conversation.' };
+  return { state: 'done', status: `${parts.join(' · ')}.` };
+}
+
+// Who answers and who passes callers on.
+function subagentsPart(config) {
+  const agents = list(config?.agents?.items).filter(isObj);
+  const handoffs = agents.reduce((n, a) => n + list(a.handoffs).length, 0);
+  const first = agents.find((a) => a.id === config?.agents?.entry) || agents[0];
+  if (agents.length <= 1) return { state: 'done', status: `${first ? agentLabel(config, first.id) : 'One agent'} answers every conversation.` };
+  return { state: 'done', status: `${plural(agents.length, 'subagent')} · ${plural(handoffs, 'hand-over')} · ${agentLabel(config, first.id)} answers first.` };
+}
+
 const READERS = {
   agent: (c) => agentPart(c),
+  conversation: (c) => conversationPart(c),
+  connections: (c) => connectionsPart(c),
+  subagents: (c) => subagentsPart(c),
   knowledge: (c, k) => knowledgePart(c, k),
   tools: (c) => toolsPart(c),
   workflow: (c) => workflowPart(c),

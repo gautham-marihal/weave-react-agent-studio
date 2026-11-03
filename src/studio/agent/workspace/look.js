@@ -39,5 +39,8 @@ export const HUES = {
   channels: 'green',
   guardrails: 'rose',
   aftercall: 'indigo',
+  conversation: 'indigo',
+  connections: 'amber',
+  subagents: 'teal',
   settings: 'slate',
 };

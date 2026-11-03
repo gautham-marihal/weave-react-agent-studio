@@ -1,0 +1,276 @@
+{
+  "note": "Indicative test figures for trying the agents, not the bank's published rates. What is listed (rates, forms, numbers, hours, questions) follows the bank's IVR call flows; the figures and addresses are made up.",
+  "rates": {
+    "MY": {
+      "asOf": "2026-11-01",
+      "primeRate": 6.6,
+      "fx": [
+        { "currency": "USD", "buy": 4.42, "sell": 4.49 },
+        { "currency": "EUR", "buy": 4.78, "sell": 4.87 },
+        { "currency": "SGD", "buy": 3.39, "sell": 3.45 },
+        { "currency": "GBP", "buy": 5.61, "sell": 5.72 }
+      ],
+      "depositRates": [
+        { "tenor": "1 month", "rate": 2.25 },
+        { "tenor": "2 months", "rate": 2.3 },
+        { "tenor": "3 months", "rate": 2.35 },
+        { "tenor": "6 months", "rate": 2.45 },
+        { "tenor": "12 months", "rate": 2.6 }
+      ],
+      "foreignCurrencyDepositRates": {
+        "callRates": [
+          { "currency": "USD", "rate": 1.5 },
+          { "currency": "SGD", "rate": 0.8 },
+          { "currency": "AUD", "rate": 1.2 }
+        ],
+        "fixedDepositRates": [
+          { "currency": "USD", "tenor": "3 months", "rate": 3.9 },
+          { "currency": "SGD", "tenor": "3 months", "rate": 2.1 },
+          { "currency": "AUD", "tenor": "3 months", "rate": 3.4 }
+        ]
+      },
+      "islamicBanking": [
+        { "product": "Current Account-i", "rate": 0.25, "note": "Indicative hibah rate, not guaranteed." },
+        { "product": "General Investment Account-i", "rate": 2.4, "note": "Indicative profit rate for 12 months." }
+      ]
+    },
+    "SG": {
+      "asOf": "2026-11-01",
+      "primeRate": 5.25,
+      "timeDeposit": {
+        "currency": "SGD",
+        "minimumDeposit": 5000,
+        "note": "Time deposit rates are for deposits from 5,000 dollars to 20,000 only. Special rates are quoted for deposit amounts above 50,000: please speak to our service manager.",
+        "rates": [
+          { "fromMonths": 1, "toMonths": 2, "rate": 1.8 },
+          { "fromMonths": 3, "toMonths": 5, "rate": 2.1 },
+          { "fromMonths": 6, "toMonths": 11, "rate": 2.25 },
+          { "fromMonths": 12, "toMonths": 12, "rate": 2.4 }
+        ]
+      },
+      "fx": {
+        "against": "SGD",
+        "note": "Indicative, for amounts below SGD 40,000.",
+        "rates": [
+          { "currency": "USD", "name": "US dollar", "unit": 1, "sellingTTOD": 1.3215, "buyingTT": 1.3005, "buyingOD": 1.2961 },
+          { "currency": "CAD", "name": "Canadian dollar", "unit": 1, "sellingTTOD": 0.9541, "buyingTT": 0.9332, "buyingOD": 0.9288 },
+          { "currency": "AUD", "name": "Australian dollar", "unit": 1, "sellingTTOD": 0.8712, "buyingTT": 0.8521, "buyingOD": 0.8479 },
+          { "currency": "NZD", "name": "New Zealand dollar", "unit": 1, "sellingTTOD": 0.7935, "buyingTT": 0.7751, "buyingOD": 0.7712 },
+          { "currency": "HKD", "name": "Hong Kong dollar", "unit": 100, "sellingTTOD": 17.02, "buyingTT": 16.64, "buyingOD": 16.55 },
+          { "currency": "GBP", "name": "Sterling pound", "unit": 1, "sellingTTOD": 1.7215, "buyingTT": 1.6862, "buyingOD": 1.6797 },
+          { "currency": "EUR", "name": "Euro", "unit": 1, "sellingTTOD": 1.4421, "buyingTT": 1.4108, "buyingOD": 1.4053 },
+          { "currency": "JPY", "name": "Japanese yen", "unit": 100, "sellingTTOD": 0.8851, "buyingTT": 0.8622, "buyingOD": 0.8573 },
+          { "currency": "IDR", "name": "Indonesian rupiah", "unit": 100000, "sellingTTOD": 8.42, "buyingTT": 7.91, "buyingOD": 7.85 }
+        ]
+      }
+    }
+  },
+  "branches": {
+    "MY": [
+      {
+        "name": "Menara branch",
+        "area": "Kuala Lumpur",
+        "address": "18 Jalan Tun Perak, 50050 Kuala Lumpur",
+        "hours": "Mon–Fri 9:30 am–4:00 pm",
+        "phone": "+60 3 0000 1001"
+      },
+      {
+        "name": "Petaling Jaya branch",
+        "area": "Petaling Jaya",
+        "address": "12 Jalan Gasing, 46000 Petaling Jaya",
+        "hours": "Mon–Fri 9:30 am–4:00 pm, Sat 9:30 am–12:30 pm",
+        "phone": "+60 3 0000 1002"
+      },
+      {
+        "name": "Penang branch",
+        "area": "George Town",
+        "address": "8 Lebuh Pantai, 10300 George Town",
+        "hours": "Mon–Fri 9:30 am–4:00 pm",
+        "phone": "+60 4 0000 1003"
+      },
+      {
+        "name": "Johor Bahru branch",
+        "area": "Johor Bahru",
+        "address": "25 Jalan Wong Ah Fook, 80000 Johor Bahru",
+        "hours": "Mon–Fri 9:30 am–4:00 pm",
+        "phone": "+60 7 0000 1004"
+      }
+    ],
+    "SG": [
+      {
+        "name": "Raffles Place branch",
+        "area": "Raffles Place",
+        "region": "Central",
+        "address": "65 Chulia Street, Singapore 049513",
+        "hours": "Mon–Fri 9:00 am–4:30 pm",
+        "phone": "+65 6000 1001"
+      },
+      {
+        "name": "Chinatown branch",
+        "area": "Chinatown",
+        "region": "Central",
+        "address": "1 Park Road, Singapore 059108",
+        "hours": "Mon–Fri 9:00 am–4:30 pm",
+        "phone": "+65 6000 1004"
+      },
+      {
+        "name": "Bukit Timah branch",
+        "area": "Bukit Timah",
+        "region": "Central",
+        "address": "10 Jalan Jurong Kechil, Singapore 598600",
+        "hours": "Mon–Fri 9:00 am–4:30 pm",
+        "phone": "+65 6000 1005"
+      },
+      {
+        "name": "Tampines branch",
+        "area": "Tampines",
+        "region": "East",
+        "address": "4 Tampines Central 5, Singapore 529510",
+        "hours": "Mon–Fri 10:00 am–6:00 pm, Sat 10:00 am–2:00 pm",
+        "phone": "+65 6000 1002"
+      },
+      {
+        "name": "Jurong East branch",
+        "area": "Jurong East",
+        "region": "West",
+        "address": "50 Jurong Gateway Road, Singapore 608549",
+        "hours": "Mon–Fri 10:00 am–6:00 pm, Sat 10:00 am–2:00 pm",
+        "phone": "+65 6000 1003"
+      },
+      {
+        "name": "Woodlands branch",
+        "area": "Woodlands",
+        "region": "North",
+        "address": "30 Woodlands Avenue 2, Singapore 738343",
+        "hours": "Mon–Fri 10:00 am–6:00 pm, Sat 10:00 am–2:00 pm",
+        "phone": "+65 6000 1006"
+      },
+      {
+        "name": "HarbourFront branch",
+        "area": "HarbourFront",
+        "region": "South",
+        "address": "1 HarbourFront Walk, Singapore 098585",
+        "hours": "Mon–Fri 10:00 am–6:00 pm",
+        "phone": "+65 6000 1007"
+      }
+    ]
+  },
+  "forms": {
+    "MY": [
+      { "id": "MY-VM", "group": "Velocity", "name": "Velocity maintenance form" },
+      { "id": "MY-VA", "group": "Velocity", "name": "Velocity application form" },
+      { "id": "MY-PB", "group": "Phone banking", "name": "Phone banking application form" }
+    ],
+    "SG": [
+      { "id": "2651", "group": "Account related", "name": "Interbank GIRO application" },
+      { "id": "2652", "group": "Account related", "name": "Interbank GIRO termination" },
+      { "id": "2656", "group": "Account related", "name": "Cheque book request" },
+      { "id": "2655", "group": "Account related", "name": "Business account update" },
+      { "id": "2657", "group": "Account related", "name": "Business card application" },
+      { "id": "2659", "group": "Account related", "name": "Business card maintenance" },
+      { "id": "2654", "group": "Electronic banking services", "name": "Phone banking or eAlerts application" },
+      { "id": "2653", "group": "Electronic banking services", "name": "Phone banking maintenance" },
+      { "id": "2658", "group": "Electronic banking services", "name": "eAlerts maintenance" },
+      { "id": "2661", "group": "Electronic banking services", "name": "Phone banking instruction guide" },
+      { "id": "2662", "group": "Internet banking (Velocity)", "name": "Internet banking application" },
+      { "id": "2660", "group": "Internet banking (Velocity)", "name": "Internet banking maintenance" }
+    ]
+  },
+  "bankCodes": {
+    "MY": { "bank": "Test Bank Malaysia", "swift": "TESTMYKL", "ibgCode": "29" },
+    "SG": { "bank": "Test Bank Singapore", "swift": "TESTSGSG", "giroBankCode": "7339" }
+  },
+  "promotions": {
+    "MY": [
+      {
+        "id": "MY-P1",
+        "category": "Accounts",
+        "title": "Business account opening",
+        "detail": "No minimum balance for the first 6 months.",
+        "until": "2026-12-31"
+      }
+    ],
+    "SG": [
+      {
+        "id": "SG-P1",
+        "category": "Deposits",
+        "title": "SME fixed deposit",
+        "detail": "2.6% for 6 months, from SGD 20,000.",
+        "until": "2026-12-31",
+        "fax": true
+      },
+      {
+        "id": "SG-P2",
+        "category": "Internet banking",
+        "title": "Velocity setup",
+        "detail": "No setup fee for new business internet banking users.",
+        "until": "2026-12-31",
+        "fax": true
+      },
+      {
+        "id": "SG-P3",
+        "category": "Cards",
+        "title": "Business card cashback",
+        "detail": "1% cashback on local spend for the first 3 months.",
+        "until": "2026-12-31",
+        "fax": false
+      }
+    ]
+  },
+  "contacts": {
+    "SG": [
+      { "name": "OCBC Business Banking", "number": "6538 1111" },
+      { "name": "Business Banking VIP line", "number": "6538 2222" },
+      { "name": "Investigations line", "number": "6586 5292" },
+      { "name": "Trade hotline", "number": "6318 7777" },
+      { "name": "Personal banking (for personal, not business, customers)", "number": "1800 363 3333" }
+    ],
+    "MY": [
+      { "name": "OCBC Business Banking (General)", "number": "1300-88-7000" },
+      { "name": "OCBC Al-Amin Business Banking (Islamic)", "number": "1300 88 0255" },
+      { "name": "OCBC Business Banking Premier", "number": "1300-88-7200" },
+      { "name": "OCBC Bank (consumer and iQ)", "number": "1300 88 5000" },
+      { "name": "OCBC Al-Amin (consumer)", "number": "1300 88 0310" }
+    ]
+  },
+  "serviceCodes": {
+    "328": {
+      "name": "Fixed deposit, loans and FX dealing",
+      "needs": "The account number; then the customer is passed to the service manager for the option chosen.",
+      "options": [
+        { "option": "Time deposit and loans", "team": "Fixed deposit and loans team" },
+        { "option": "Funds transfer and remittance", "team": "Business banking service managers" },
+        { "option": "Account enquiries", "team": "Business banking service managers" },
+        { "option": "Confirm receipt of a facsimile transmission", "team": "Business banking service managers" }
+      ]
+    }
+  },
+  "serviceCentre": {
+    "SG": {
+      "name": "Commercial Service Centre",
+      "timeZone": "Asia/Singapore",
+      "days": [1, 2, 3, 4, 5],
+      "opens": "08:30",
+      "closes": "18:00",
+      "hours": "8:30 am to 6:00 pm, Monday to Friday",
+      "publicHolidays": ["2026-11-09", "2026-12-25", "2027-01-01"]
+    }
+  },
+  "surveys": {
+    "scale": [
+      { "value": 1, "label": "Excellent" },
+      { "value": 2, "label": "Satisfactory" },
+      { "value": 3, "label": "Poor" }
+    ],
+    "ivr": [
+      "How would you rate the ease of use of our phone system?",
+      "How well do our phone features help you complete your transaction?",
+      "Please rate your overall experience with PhoneDirect."
+    ],
+    "service_manager": [
+      "How would you rate the officer's greeting and overall manner?",
+      "How well was the officer able to answer your query?",
+      "Please rate your overall experience with your Service Manager."
+    ]
+  }
+}

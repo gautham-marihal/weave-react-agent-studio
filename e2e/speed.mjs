@@ -74,11 +74,11 @@ await page.getByRole('button', { name: /continue to workspace/i }).click();
 await page.waitForSelector('.dashMain');
 
 // ---- Home ---------------------------------------------------------------------------------------------------------------------------------------------
-const answerCard = page.locator('.wsPulse .ovStat', { hasText: 'Answer time' });
+const answerCard = page.locator('.cvKpis .cvKpi', { hasText: 'Answer time' });
 await answerCard.waitFor();
-await page.waitForFunction(() => /\d(\.\d)? s|\d+ ms/.test(document.querySelector('.wsPulse')?.innerText || ''), null, { timeout: 30000 }).catch(() => {});
+await page.waitForFunction(() => /\d(\.\d)? s|\d+ ms/.test(document.querySelector('.cvKpis')?.innerText || ''), null, { timeout: 30000 }).catch(() => {});
 check('Home shows the week’s answer time', /Answer time · last 7 days\s*\d/.test(await answerCard.innerText()), await answerCard.innerText());
-check('Home says nothing of cost', !/Cost ·|\$\d/.test(await page.locator('.wsPulse').innerText()), await page.locator('.wsPulse').innerText());
+check('Home says nothing of cost', !/Cost ·|\$\d/.test(await page.locator('.cvKpis').innerText()), await page.locator('.cvKpis').innerText());
 const homeWait = (await answerCard.innerText()).match(/(\d[\d.]* m?s)\s*Half the answers; 1 in 10 over (\d[\d.]* m?s)/);
 await answerCard.click();
 await page.waitForSelector('.csVerdict h2', { timeout: 60000 });
@@ -162,19 +162,14 @@ const fasterModel = page.getByRole('button', { name: /^Choose a faster model for
 if (await fasterModel.count()) {
   const label = await fasterModel.getAttribute('aria-label');
   await fasterModel.click();
-  await page.waitForSelector('.nlDrawer', { timeout: 20000 }).catch(() => {});
+  // the Agent part, its AI models card, the thinking model's row brought into view and lit
+  const row = page.locator('[data-card="agent.models"] [data-field="agent.llm"].dtFlash');
+  await row.waitFor({ timeout: 20000 }).catch(() => {});
   check(
     '“Choose a faster model” opens that agent’s AI models',
-    /#\/bots\/[^/]+\/agent/.test(page.url()) &&
-      /AI models/.test(
-        await page
-          .locator('.nlDrawer')
-          .innerText()
-          .catch(() => ''),
-      ),
+    /#\/bots\/[^/]+\/agent/.test(page.url()) && (await row.count()) === 1,
     `${label} → ${page.url()}`,
   );
-  await page.keyboard.press('Escape');
   await page.evaluate(() => (location.hash = '#/speed'));
   await page.waitForSelector('section[aria-labelledby="csAgents"] tbody tr', { timeout: 60000 });
 } else check('a suggestion to choose a faster model is offered on the demo', false);
@@ -197,9 +192,9 @@ await page.waitForSelector('.nlWorkspace .csBody:not(.reading)', { timeout: 6000
 await page.waitForTimeout(300);
 const agentWeek = [await statText(0), await statText(1)];
 await page.evaluate(() => (location.hash = '#/bots/front-desk/home'));
-const agentCard = page.locator('.ovStat', { hasText: 'Typical answer time' });
+const agentCard = page.locator('.ovKpiStrip .cvKpi', { hasText: 'Answer time' });
 await agentCard.waitFor({ timeout: 60000 });
-await page.waitForFunction(() => /1 in 10 over/.test(document.querySelector('.ovStats')?.innerText || ''), null, { timeout: 60000 }).catch(() => {});
+await page.waitForFunction(() => /1 in 10 over/.test(document.querySelector('.ovKpiStrip')?.innerText || ''), null, { timeout: 60000 }).catch(() => {});
 const agentHome = (await agentCard.innerText()).match(/(\d[\d.]* m?s)\s*1 in 10 over (\d[\d.]* m?s)/);
 check(
   'an agent’s Home and its Speed page give the same answer time for the week',

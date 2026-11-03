@@ -92,45 +92,41 @@ await page
   .click();
 await page.waitForTimeout(900);
 
-// ---- the channel screens: each channel opens in a panel of its own on the Channels page
+// ---- the channel card: each channel is a chip on the Channels part, and the chosen one opens in the card beside it
 await page.evaluate(() => {
   location.hash = '#/bots/acme-support/channels';
 });
-await page.waitForSelector('.nlSection');
-const rows = page.locator('.nlSection', { hasText: 'All channels' }).locator('.nlRow');
-check('every channel is a row', (await rows.count()) === 7, String(await rows.count()));
-// the panel of the nth channel, open, with its technical details unfolded (its kind, route and what it carries are there); `done` puts its changes in
-// (Done), else it is closed as it is
+await page.waitForSelector('[data-card="channels.channel"] .dtItems');
+const card = page.locator('[data-card="channels.channel"]');
+const rows = card.locator('.dtItems > button[aria-current]');
+check('every channel is a chip', (await rows.count()) === 7, String(await rows.count()));
+// the nth channel's card, its Advanced rows open (its kind, entry fields and what it carries are there); edits go straight into the draft
 const open = async (n) => {
   await rows.nth(n).click();
-  await page.waitForSelector('.nlDrawer .stChannel');
-  const fold = page.locator('.nlDrawer .stChannelTech');
+  await page.waitForTimeout(200);
+  const fold = card.locator('.dtAdv');
   if ((await fold.getAttribute('open')) === null) await fold.locator('> summary').click();
-  return page.locator('.nlDrawer .stChannel');
+  await card.locator('.dtAdvRows').waitFor();
+  return card;
 };
-const close = async ({ done = false } = {}) => {
-  const footer = page.locator('.nlDrawer .nlDrawerFoot');
-  // Cancel leaves the draft as it was; Done (or Close, while nothing changed) puts the panel's changes in
-  await footer
-    .getByRole('button', { name: done ? /^(Done|Close)$/ : 'Cancel', exact: !done })
-    .last()
-    .click();
-  await page.waitForTimeout(300);
-};
+// what it can do: the switches the card offers, by the setting they write
+const CAP = { 'channels.dtmf': 'dtmf', 'channels.person': 'human_transfer', 'channels.forms': 'forms' };
 const caps = async (n) => {
   const channel = await open(n);
-  const found = await channel.locator('[data-capability]').evaluateAll((els) => els.map((e) => e.getAttribute('data-capability')));
-  await close();
-  return found;
+  const fields = await channel.locator('[data-field]').evaluateAll((els) => els.map((e) => e.getAttribute('data-field')));
+  return fields.filter((f) => CAP[f]).map((f) => CAP[f]);
 };
 check('a phone line offers the keypad and a hand-over, and no form switch', JSON.stringify(await caps(0)) === JSON.stringify(['dtmf', 'human_transfer']));
 check('a web chat offers a form and a hand-over, and no keypad', JSON.stringify(await caps(1)) === JSON.stringify(['human_transfer', 'forms']));
-// what a channel carries is a section of its panel: read the choices
+// what a channel carries is its own form under Advanced: read the choices
 const carries = async (n) => {
-  await open(n);
-  const checks = page.locator('.nlDrawer .stFGroup[data-path$="modalities"] .stFChecks');
+  const channel = await open(n);
+  const row = channel.locator('[data-field="channels.modalities"]');
+  await row.getByRole('button', { name: /^Edit / }).click();
+  const checks = row.locator('.stFChecks');
+  await checks.first().waitFor();
   const shown = [await checks.nth(0).locator('label').allInnerTexts(), await checks.nth(1).locator('label').allInnerTexts()];
-  await close();
+  await row.getByRole('button', { name: /^Done / }).click();
   return shown;
 };
 const phone = await carries(0);
@@ -138,14 +134,13 @@ check('a phone line can only carry audio in and out', phone[0].length === 1 && p
 check('a web chat can carry audio, text, images and video in', (await carries(1))[0].length === 4);
 let channel = await open(0);
 check('the kind says what it is, in the server’s words', /A phone call carries audio only/.test(await channel.innerText()));
-await close();
 channel = await open(3);
 check('WhatsApp says nothing connects it yet', /Nothing connects WhatsApp to the runtime yet/.test(await channel.innerText()));
+const kindBox = () => card.locator('[data-field="channels.type"] .rxSelect').first();
 check(
   'WhatsApp is labelled in the kind list',
-  (await choiceTexts(page, channel.locator('.rxSelect').first())).some((t) => /WhatsApp \(not available yet\)/.test(t)),
+  (await choiceTexts(page, kindBox())).some((t) => /WhatsApp \(not available yet\)/.test(t)),
 );
-await close();
 let mislabelled = 0;
 for (let n = 0; n < 7; n += 1) {
   channel = await open(n);
@@ -153,7 +148,6 @@ for (let n = 0; n < 7; n += 1) {
   if (n === 4) check('a web chat that carries audio is called out', here === 1);
   if (n === 1) check('a web chat with only text has no voice-only note', (await channel.locator('[data-note=voice-only]').count()) === 0);
   mislabelled += here;
-  await close();
 }
 check('and the others are not', mislabelled === 1, String(mislabelled));
 // a custom channel may have any entry field: all the known ones are offered
@@ -164,8 +158,7 @@ check(
   ['Phone number', 'Widget id', 'Allowed websites', 'WhatsApp phone number id'].every((t) => customText.includes(t)),
   customText.slice(0, 200),
 );
-await close();
-// a text channel that already holds voice-only settings says so, and one click removes them (and the Undo bar can bring them back)
+// a text channel that already holds voice-only settings says so, and one click removes them (and the Undo notice can bring them back)
 channel = await open(5);
 check(
   'a text channel holding voice-only settings names them',
@@ -174,21 +167,16 @@ check(
 await channel.getByRole('button', { name: 'Remove them' }).click();
 await page.waitForTimeout(400);
 check('one click removes them', (await channel.locator('[data-note=voice-only]').count()) === 0);
-await page.locator('.nlDrawer').getByRole('button', { name: /^Undo/ }).first().click();
+await page.locator('.dtPage').getByRole('button', { name: /^Undo/ }).first().click();
 await page.waitForTimeout(400);
 check('Undo brings them back', (await channel.locator('[data-note=voice-only]').count()) === 1);
 await channel.getByRole('button', { name: 'Remove them' }).click();
 await page.waitForTimeout(300);
 await shot('screens');
-await close({ done: true });
 channel = await open(4);
 await channel.getByRole('button', { name: 'Make it a web voice channel' }).click();
 await page.waitForTimeout(500);
-check(
-  'one click makes it a web voice channel',
-  (await channel.locator('[data-note=mislabelled]').count()) === 0 && (await valueOf(channel.locator('.rxSelect').first())) === 'web_voice',
-);
-await close({ done: true });
+check('one click makes it a web voice channel', (await channel.locator('[data-note=mislabelled]').count()) === 0 && (await valueOf(kindBox())) === 'web_voice');
 
 // ---- the Test tab offers every web channel, side by side
 await page.evaluate(() => {

@@ -105,16 +105,31 @@ export function analyse({ calls = [], samples = {}, bots = [], nowMs = 0, days =
 
   // a bar for every day of the period, including days with nothing
   const byDay = new Map();
-  period.days.forEach((day) => byDay.set(day, { day, calls: 0, cutOff: 0, handoffs: 0 }));
+  period.days.forEach((day) => byDay.set(day, { day, calls: 0, cutOff: 0, handoffs: 0, waits: [], toolCalls: 0, toolFailed: 0 }));
   current.forEach((c) => {
     const row = byDay.get(localDay(at(c)));
     if (row) {
       row.calls += 1;
       if (c.status === 'unfinished') row.cutOff += 1;
       if ((c.handoffs || 0) > 0) row.handoffs += 1;
+      // from the call's record, when it was read: its answers' waits and its tool calls
+      const facts = samples[`${c.bot}/${c.id}`];
+      if (facts) {
+        row.waits.push(...waitsOf(facts).map((w) => w.ms));
+        const tools = list(facts.turns)
+          .flatMap((t) => list(t.tools))
+          .filter((t) => !t.handoff);
+        row.toolCalls += tools.length;
+        row.toolFailed += tools.filter((t) => t.error).length;
+      }
     }
   });
-  const series = [...byDay.values()];
+  // each day's answer time (half the answers) and share of tool calls that failed: null on a day without them
+  const series = [...byDay.values()].map(({ waits, ...row }) => ({
+    ...row,
+    waitP50: percentile(waits, 50),
+    toolFailRate: rate(row.toolFailed, row.toolCalls),
+  }));
 
   const names = Object.fromEntries(list(bots).map((b) => [b.id, b.name || b.id]));
   const botIds = [...new Set([...list(bots).map((b) => b.id), ...current.map((c) => c.bot)])];
@@ -211,5 +226,15 @@ export function changeWords(now, before, period = 'the period before') {
   if (typeof now !== 'number' || typeof before !== 'number' || before === 0) return '';
   if (now === before) return `The same as ${period}`;
   return `${now > before ? 'Up' : 'Down'} from ${before} ${period}`;
+}
+// Which way a number moved since the period before, for a tile: { text: '↑ up from 9%', dir: 'up'|'down'|'same', tone:
+// 'good'|'bad'|'' } or null without a figure before. `show` writes a value as the tile does; when both read the same
+// ("17%" and "17%") it is "about the same". `better`: 'higher' or 'lower' is good; null when neither is (a count of calls).
+export function trendOf(now, before, { show = String, better = null } = {}) {
+  if (typeof now !== 'number' || typeof before !== 'number' || Number.isNaN(now) || Number.isNaN(before)) return null;
+  if (show(now) === show(before)) return { text: '→ about the same', dir: 'same', tone: '' };
+  const dir = now > before ? 'up' : 'down';
+  const tone = !better ? '' : (dir === 'up') === (better === 'higher') ? 'good' : 'bad';
+  return { text: `${dir === 'up' ? '↑ up' : '↓ down'} from ${show(before)}`, dir, tone };
 }
 export const seconds = (ms) => (typeof ms === 'number' ? (ms < 10000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 1000)} s`) : '—');

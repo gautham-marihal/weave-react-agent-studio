@@ -109,7 +109,7 @@ const opened = await page
   .catch(() => false);
 if (!opened) {
   await page
-    .getByRole('button', { name: /Create agent/ })
+    .getByRole('button', { name: /^(New|Create) agent$/ })
     .first()
     .click();
 }

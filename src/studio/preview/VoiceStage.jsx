@@ -1,47 +1,45 @@
 import React, { useEffect, useReducer, useRef } from 'react';
+import { createOrb } from './orbPainter.js';
 import StatusChip from '../../ui/StatusChip.tsx';
 import { captionOf, speakingEndsAt, voiceBadge, voiceStateOf, voiceWords } from './voiceState.js';
+import { maskConversation } from '../privacy/maskConfidential.js';
 import './voice.css';
 
 // A voice conversation as one big orb: the agent's state in the middle (listening, thinking, speaking), what is
 // happening under it, and the latest line as captions. Used by Test and the Preview when the channel is web voice.
 
-const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
-
-// The orb: swirling colour inside a sphere, in the style's orb colours (themes.css). It moves with the agent's voice:
-// getLevel() is read every frame (a real call's loudness); without it, while speaking, it moves as if talking. The
-// level is written straight onto the element as --lvl, so the conversation does not re-render sixty times a second.
-//   state: a voiceState.js state; size: pixels or any CSS length
-function VoiceOrb({ state = 'idle', size = 200, getLevel }) {
-  const ref = useRef(null);
+// The orb: threads of light woven into a turning sphere, with sonar rings, drawn by orbPainter.js in the style's orb colours (themes.css),
+// each state with its own motion; it follows the agent's voice while it speaks (getLevel) and the caller's while it
+// listens (getUserLevel). The painter reads the levels every frame itself, so the conversation does not re-render sixty
+// times a second.
+//   state: a voiceState.js state; size: in pixels (the rings reach past it)
+function VoiceOrb({ state = 'idle', size = 200, getLevel, getUserLevel }) {
+  const canvas = useRef(null);
+  const orb = useRef(null);
+  // the levels are read through refs, so a new session's functions are used without starting the orb again
+  const levels = useRef({ getLevel, getUserLevel });
+  levels.current = { getLevel, getUserLevel };
+  const px = typeof size === 'number' ? size : 200;
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    el.style.setProperty('--lvl', '0');
-    if (state !== 'speaking' || window.matchMedia?.(REDUCED_MOTION).matches) return undefined;
-    const startedAt = performance.now();
-    let smooth = 0;
-    let frame = 0;
-    const tick = (time) => {
-      const seconds = (time - startedAt) / 1000;
-      const raw = getLevel ? Math.min(1, getLevel() * 2.2) : Math.max(0, 0.45 + 0.4 * Math.sin(seconds * 7.3) * Math.sin(seconds * 2.1 + 1));
-      smooth += (raw - smooth) * 0.25;
-      el.style.setProperty('--lvl', smooth.toFixed(3));
-      frame = requestAnimationFrame(tick);
+    // no canvas to draw on in the tests' stand-in for a browser
+    if (!canvas.current || /jsdom/i.test(navigator.userAgent)) return undefined;
+    orb.current = createOrb(canvas.current, {
+      size: px,
+      getLevel: () => (levels.current.getLevel ? levels.current.getLevel() : null),
+      getUserLevel: () => levels.current.getUserLevel?.() || 0,
+    });
+    return () => {
+      orb.current?.destroy();
+      orb.current = null;
     };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [state, getLevel]);
-
+    // made once; its size and state are passed on below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => orb.current?.setSize(px), [px]);
+  useEffect(() => orb.current?.setState(state), [state]);
   return (
-    <span ref={ref} className={`vOrb ${state}`} style={{ '--size': typeof size === 'number' ? `${size}px` : size }} aria-hidden="true">
-      <span className="vOrbGlow" />
-      <span className="vOrbRing" />
-      <span className="vOrbBody">
-        <i />
-        <i />
-        <i />
-      </span>
+    <span className={`vOrb ${state}`} style={{ '--size': `${px}px` }} aria-hidden="true">
+      <canvas ref={canvas} className="vOrbCanvas" />
     </span>
   );
 }
@@ -64,7 +62,7 @@ export default function VoiceStage({ session, size = 200, announce = true, badge
   const state = useVoiceState(session);
   const { title, detail } = voiceWords(state, session);
   const badge = voiceBadge(state);
-  const caption = state === 'idle' ? null : captionOf(session.messages);
+  const caption = state === 'idle' ? null : captionOf(maskConversation(session.messages));
   return (
     <div className={`vStage ${state} ${className}`.trim()} data-voice-state={state}>
       {showBadge && (
@@ -72,7 +70,7 @@ export default function VoiceStage({ session, size = 200, announce = true, badge
           {badge.text}
         </StatusChip>
       )}
-      <VoiceOrb state={state} size={size} getLevel={session.agentLevel} />
+      <VoiceOrb state={state} size={size} getLevel={session.agentLevel} getUserLevel={session.userLevel} />
       <div className="vWords" role="status">
         <strong>{title}</strong>
         {detail && <span>{detail}</span>}

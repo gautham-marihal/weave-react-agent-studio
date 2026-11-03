@@ -1,5 +1,5 @@
-// Dragging the items of a list into another order, in a real browser, on the demo (no backend): the fixed lines (a list of cards, in a side panel) and a
-// tool's rules and the steps of a rule. By mouse, and from the keyboard (Space, the arrows, Space); Escape during either puts the item back and closes
+// Dragging the items of a list into another order, in a real browser, on the demo (no backend): a task's steps (a list of cards, opened in place on
+// Connections) and a tool's rules and the steps of a rule. By mouse, and from the keyboard (Space, the arrows, Space); Escape during either puts the item back and closes
 // nothing else; a click on the handle moves nothing; a screen reader is told what was picked up, by name; what is saved is the new order.
 // Nothing is written anywhere but the demo.
 //
@@ -80,14 +80,19 @@ await page.getByPlaceholder('Enter your password').fill('x12345678');
 await page.getByRole('button', { name: /continue to workspace/i }).click();
 await page.waitForSelector('.dashMain');
 await wait(800);
-// three fixed lines, and a tool with two rules (the first with three steps), in the demo's own data
+// a task with three steps, and a tool with two rules (the first with three steps), in the demo's own data
 await page.evaluate(() => {
   const s = JSON.parse(localStorage.getItem('weave_demo_state'));
   const c = s.bots['acme-support'].config;
-  c.messages = [
-    { id: 'alpha_line', text: 'Alpha.' },
-    { id: 'bravo_line', text: 'Bravo.' },
-    { id: 'charlie_line', text: 'Charlie.' },
+  c.tasks = [
+    {
+      id: 'verify_caller',
+      steps: [
+        { id: 'alpha_line', type: 'collect', ask: 'Alpha?', store_in: 'alpha' },
+        { id: 'bravo_line', type: 'collect', ask: 'Bravo?', store_in: 'bravo' },
+        { id: 'charlie_line', type: 'collect', ask: 'Charlie?', store_in: 'charlie' },
+      ],
+    },
   ];
   c.connections = { ...(c.connections || {}), billing_api: { type: 'http', base_url: 'https://api.example.com' } };
   c.tools = [
@@ -111,14 +116,11 @@ await page.evaluate(() => {
 await page.reload();
 await page.waitForSelector('.dashMain');
 
-// ---- a list of cards: the fixed lines, in their side panel
-await go('#/bots/acme-support/agent');
-await page
-  .getByRole('button', { name: /Fixed lines/ })
-  .first()
-  .click();
-await page.waitForSelector('.nlDrawer .stFCards .dragHandle', { timeout: 20000 });
-const drawer = page.locator('.nlDrawer');
+// ---- a list of cards: a task's steps, opened in place on Connections
+await go('#/bots/acme-support/connections');
+const drawer = page.locator('[data-field="connections.steps"]');
+await drawer.getByRole('button', { name: /^Edit / }).click();
+await page.waitForSelector('[data-field="connections.steps"] .stFCards .dragHandle', { timeout: 20000 });
 const order = () => drawer.locator('.stFCards > .stFGroup > header strong').allInnerTexts();
 const handle = (name) => drawer.getByRole('button', { name: `Drag ${name}` });
 check('every card has a handle to drag it by', (await drawer.locator('.stFCards .dragHandle').count()) === 3);
@@ -148,7 +150,7 @@ await wait(200);
 await page.keyboard.press('Escape');
 await wait(500);
 check('Escape during a keyboard move puts it back', same(await order(), ['charlie_line', 'bravo_line', 'alpha_line']), JSON.stringify(await order()));
-check('and leaves the panel open', (await page.locator('.nlDrawer').count()) === 1);
+check('and leaves the list open', (await drawer.locator('.stFCards').count()) === 1);
 
 const b = await handle('bravo_line').boundingBox();
 await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
@@ -160,14 +162,11 @@ await wait(300);
 await page.mouse.up();
 await wait(400);
 check('Escape during a mouse drag puts it back', same(await order(), ['charlie_line', 'bravo_line', 'alpha_line']), JSON.stringify(await order()));
-check('and leaves the panel open too', (await page.locator('.nlDrawer').count()) === 1);
+check('and leaves the list open too', (await drawer.locator('.stFCards').count()) === 1);
 await handle('bravo_line').click();
 await wait(300);
 check('a click on the handle moves nothing', same(await order(), ['charlie_line', 'bravo_line', 'alpha_line']));
-await drawer
-  .getByRole('button', { name: /^(Done|Close)$/ })
-  .last()
-  .click();
+await drawer.getByRole('button', { name: /^Done / }).click();
 await wait(800);
 await page
   .locator('.nlBar')
@@ -177,21 +176,16 @@ await wait(1200);
 check(
   'and what is saved',
   same(
-    (await draft()).messages.map((m) => m.id),
+    (await draft()).tasks[0].steps.map((m) => m.id),
     ['charlie_line', 'bravo_line', 'alpha_line'],
   ),
-  JSON.stringify((await draft()).messages.map((m) => m.id)),
+  JSON.stringify((await draft()).tasks[0].steps.map((m) => m.id)),
 );
 
-// ---- a tool's rules, and the steps of a rule
-await go('#/bots/acme-support/tools');
-await page
-  .locator('.nlRow', { hasText: /Get bill/ })
-  .first()
-  .click();
-await wait(2000);
-const panel = page.locator('.nlDrawer');
-await panel.locator('summary', { hasText: 'Technical details' }).click();
+// ---- a tool's rules, and the steps of a rule: the tool's card, its "after it runs" opened in place
+await go('#/bots/acme-support/tools?item=tools:get_bill');
+const panel = page.locator('[data-field="tools.effects"]');
+await panel.getByRole('button', { name: /^(Edit|Set it) / }).click();
 await wait(800);
 const rules = () => panel.locator('section.stRule .stRuleSentence').allInnerTexts();
 check(
@@ -209,14 +203,14 @@ await wait(250);
 await page.keyboard.press('Enter');
 await wait(600);
 check('the keyboard moves a rule (Enter drops it too)', same(await rules(), [before[1], before[0]]), JSON.stringify(await rules()));
-check('with its panel still open', (await panel.count()) === 1);
+check('with its rules still open', (await panel.locator('section.stRule').count()) === 2);
 const rule = panel.locator('section.stRule').nth(1);
 const steps = () => rule.locator('.stActionSentence').allInnerTexts();
 const sBefore = await steps();
 await dragTo(rule.locator('.stAction').nth(2).locator('.dragHandle'), rule.locator('.stAction').first(), 'step');
 check('a mouse drag moves a step within its rule', same(await steps(), [sBefore[2], sBefore[0], sBefore[1]]), JSON.stringify(await steps()));
 check('and the step numbers follow', same(await rule.locator('.stActionNo').allInnerTexts(), ['1', '2', '3']));
-await panel.getByRole('button', { name: /^Done$/ }).click();
+await panel.getByRole('button', { name: /^Done / }).click();
 await wait(800);
 await page
   .locator('.nlBar')

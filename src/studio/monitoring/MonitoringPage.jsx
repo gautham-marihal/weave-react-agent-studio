@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { isDemoMode } from '../../demo/demoMode.js';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
-import { Notice, Spinner } from '../ui.jsx';
+import { Notice } from '../ui.jsx';
+import { Skeleton } from '../../ui/Skeleton.jsx';
 import { formatWhen } from '../format.js';
 import { formatSeconds } from '../calls/callModel.js';
-import { analyse, changeWords, pct } from './monitorModel.js';
+import { analyse, changeWords, pct, trendOf } from './monitorModel.js';
 import { seconds } from '../speed/speedModel.ts'; // a wait is written as Speed writes it, so the two show the same number
 import { useMonitoring } from './useMonitoring.ts';
 import Select from '../../ui/Select.tsx';
@@ -20,12 +21,24 @@ const PERIODS = [
   { days: 30, label: 'Past 30 days' },
 ];
 
-function Kpi({ label, value, note, tone = '', title }) {
+// One number: its label, the number (soft placeholders while it is read, so it never shows a false 0), a note, and
+// which way it moved since the period before
+function Kpi({ label, value, note, tone = '', title, loading = false, trend = null }) {
   return (
     <div className={`mnKpi ${tone}`} title={title}>
       <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{note}</small>
+      {loading ? (
+        <>
+          <Skeleton width={56} height={26} className="mnKpiWait" />
+          <Skeleton width="75%" height={10} className="mnKpiWait" />
+        </>
+      ) : (
+        <>
+          <strong>{value}</strong>
+          <small>{note}</small>
+          {trend && <small className={`mnTrend ${trend.tone}`}>{trend.text}</small>}
+        </>
+      )}
     </div>
   );
 }
@@ -102,6 +115,8 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
   const names = Object.fromEntries(bots.map((b) => [b.id, b.name || b.id]));
   const empty = !data.loading && data.calls.length === 0 && data.errors.length === 0;
   const samplesPending = !data.loading && data.calls.length > 0 && Object.keys(data.samples).length === 0;
+  // the first reading: the tiles hold their place with placeholders, instead of showing 0 and dashes
+  const listsPending = data.loading && data.calls.length === 0;
 
   return (
     // while a new reading comes in (another period, or Refresh) the last one stays, dimmed, instead of a blank page
@@ -145,7 +160,11 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
           {agentOnly ? 'The numbers rest on its newest calls.' : 'The numbers rest on the newest calls of each agent.'}
         </Notice>
       )}
-      {data.loading && data.calls.length === 0 && <Spinner label="Reading the calls" />}
+      {data.loading && data.calls.length === 0 && (
+        <p className="mnReading" role="status">
+          Reading the calls of the past {days} days…
+        </p>
+      )}
 
       {empty && (
         <section className="mnEmpty">
@@ -195,35 +214,49 @@ export default function MonitoringPage({ bots = [], onOpenCall, onOpenAgent, age
       {!empty && (
         <>
           <section className="mnKpis" aria-label="The numbers">
-            <Kpi label="Calls" value={totals.calls} note={changeWords(totals.calls, previous.calls) || `in ${days} days`} />
+            <Kpi
+              label="Calls"
+              loading={listsPending}
+              value={totals.calls}
+              note={`in ${days} days`}
+              trend={previous.calls ? trendOf(totals.calls, previous.calls) : null}
+            />
             <Kpi
               label="Handed over"
+              loading={listsPending}
               value={pct(totals.handoffRate)}
               note="of calls went to another agent or a person"
               title="The share of calls in which the agent handed the caller to another agent."
+              trend={previous.calls ? trendOf(totals.handoffRate, previous.handoffRate, { show: pct, better: 'lower' }) : null}
             />
             <Kpi
               label="Cut off"
+              loading={listsPending}
               value={pct(totals.cutOffRate)}
               tone={totals.cutOffRate > 0.1 ? 'bad' : ''}
               note={`${totals.cutOff} ${totals.cutOff === 1 ? 'call' : 'calls'} with no ending`}
+              trend={previous.calls ? trendOf(totals.cutOffRate, previous.cutOffRate, { show: pct, better: 'lower' }) : null}
             />
             <Kpi
               label="Time to answer"
+              loading={listsPending || samplesPending}
               value={seconds(totals.waitP50)}
-              note={totals.waitP90 !== null ? `slowest tenth: ${seconds(totals.waitP90)}` : samplesPending ? 'reading the calls…' : 'not enough calls read'}
+              note={totals.waitP90 !== null ? `slowest tenth: ${seconds(totals.waitP90)}` : 'not enough calls read'}
               tone={totals.waitP90 > 8000 ? 'warn' : ''}
             />
             <Kpi
               label="Tools that failed"
+              loading={listsPending || samplesPending}
               value={pct(totals.toolFailRate)}
               tone={totals.toolFailRate > 0.1 ? 'bad' : ''}
-              note={totals.toolCalls ? `of ${totals.toolCalls} tool calls` : samplesPending ? 'reading the calls…' : 'no tool calls read'}
+              note={totals.toolCalls ? `of ${totals.toolCalls} tool calls` : 'no tool calls read'}
             />
             <Kpi
               label="Average call"
+              loading={listsPending}
               value={formatSeconds(totals.avgDurationS) || '—'}
               note={totals.avgTurns !== null ? `${totals.avgTurns.toFixed(1)} caller turns` : ''}
+              trend={previous.calls ? trendOf(totals.avgDurationS, previous.avgDurationS, { show: (v) => formatSeconds(v) || '—' }) : null}
             />
           </section>
           <p className="mnBasis">

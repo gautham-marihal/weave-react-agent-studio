@@ -4,11 +4,11 @@ import { EnvSlots } from '../../ui.jsx';
 import { formatWhen, periodOf } from '../../format.js';
 import { navigate, routeHref } from '../../route.js';
 import { OUTCOMES, channelLabel, formatSeconds, outcomeOf, statusOf } from '../../calls/callModel.js';
-import { analyse, changeWords } from '../../monitoring/monitorModel.js';
+import { analyse } from '../../monitoring/monitorModel.js';
 import { useMonitoring } from '../../monitoring/useMonitoring.ts';
 import { seconds } from '../../speed/speedModel.ts'; // same wait format as Speed, so both show the same number
 import PageShell, { Section } from '../PageShell.jsx';
-import Stat from '../Stat.jsx';
+import { Kpi, moved, sparkPoints } from '../../../pages/homeKpi.jsx';
 import { Skeleton, SkeletonRows } from '../../../ui/Skeleton.jsx';
 import { readinessSteps } from '../readiness.js';
 import { tabFor } from '../pages.js';
@@ -24,8 +24,6 @@ const pct = (v) => (v === null || v === undefined ? '–' : `${Math.round(v * 10
 const callWord = (n) => `${n} call${n === 1 ? '' : 's'}`;
 
 // This week's calls against the week before, in words ("Down from 12 the week before"), never a bare "-4".
-const comparedWithBefore = (now, before) => changeWords(now, before, 'the week before') || (now ? 'None the week before' : 'None the week before either');
-
 // Calls passed to a person, as a count: two rounded percentages (88% handled, 13% passed on) may not add up to 100.
 function passedOnText(calls, handoffRate) {
   const passed = Math.round((handoffRate || 0) * calls);
@@ -94,37 +92,51 @@ export default function HomePage({
   const live = Object.values(summary?.deployed || {}).some(Boolean);
   const partsDone = sections.filter((s) => s.state === 'done').length;
 
+  // the same number tiles as Home (pages/homeKpi.jsx), in Home's colours
+  const handled = (t) => (typeof t.handoffRate === 'number' ? 1 - t.handoffRate : null);
+  const hadPrevious = previous.calls > 0;
+  const today = series[series.length - 1]?.calls || 0;
   const stats = (
-    <div className="ovStats" role="group" aria-label={`The last ${DAYS} days`}>
-      <Stat
-        label={`Calls · last ${DAYS} days`}
-        loading={reading}
-        value={totals.calls}
-        sub={comparedWithBefore(totals.calls, previous.calls)}
-        series={series}
-        onOpen={() => go('calls')}
-      />
-      <Stat
-        label="Handled without a person"
-        loading={reading}
-        value={totals.calls ? pct(1 - (totals.handoffRate || 0)) : '–'}
-        sub={totals.calls ? passedOnText(totals.calls, totals.handoffRate) : 'No calls yet'}
-        onOpen={() => go('monitoring')}
-      />
-      <Stat
-        label="Typical answer time"
-        loading={reading}
-        value={seconds(totals.waitP50)}
-        sub={totals.waitP90 !== null && totals.waitP90 !== undefined ? `1 in 10 over ${seconds(totals.waitP90)}` : 'No answers timed yet'}
-        onOpen={() => go('speed')}
-      />
-      <Stat
-        label="Cut off"
-        loading={reading}
-        value={totals.calls ? pct(totals.cutOffRate) : '–'}
-        sub={totals.calls ? (totals.cutOff ? `${callWord(totals.cutOff)} stopped without an ending` : 'None stopped without an ending') : 'No calls yet'}
-        onOpen={() => go('monitoring')}
-      />
+    <div className="cvLook ovKpiStrip">
+      <section className="cvKpis" aria-label={`The last ${DAYS} days`}>
+        <Kpi
+          label={`Calls · last ${DAYS} days`}
+          loading={reading}
+          value={totals.calls}
+          note={totals.calls ? `${callWord(today)} today` : 'No calls yet'}
+          spark={sparkPoints(series.map((d) => d.calls))}
+          change={hadPrevious ? moved(totals.calls, previous.calls, String, null) : null}
+          onOpen={() => go('calls')}
+        />
+        <Kpi
+          label="Handled alone"
+          title="Calls the agent finished without passing the caller to a person"
+          loading={reading}
+          value={totals.calls ? pct(handled(totals)) : '–'}
+          note={totals.calls ? passedOnText(totals.calls, totals.handoffRate) : 'No calls yet'}
+          spark={sparkPoints(series.map((d) => (d.calls ? 1 - d.handoffs / d.calls : null)))}
+          change={hadPrevious ? moved(handled(totals), handled(previous), pct, 'up') : null}
+          onOpen={() => go('monitoring')}
+        />
+        <Kpi
+          label="Answer time"
+          loading={reading}
+          value={seconds(totals.waitP50)}
+          note={totals.waitP90 !== null && totals.waitP90 !== undefined ? `1 in 10 over ${seconds(totals.waitP90)}` : 'No answers timed yet'}
+          spark={sparkPoints(series.map((d) => d.waitP50).filter((v) => typeof v === 'number'))}
+          change={typeof previous.waitP50 === 'number' ? moved(totals.waitP50, previous.waitP50, seconds, 'down') : null}
+          onOpen={() => go('speed')}
+        />
+        <Kpi
+          label="Cut off"
+          loading={reading}
+          value={totals.calls ? pct(totals.cutOffRate) : '–'}
+          note={totals.calls ? (totals.cutOff ? `${callWord(totals.cutOff)} stopped without an ending` : 'None stopped without an ending') : 'No calls yet'}
+          spark={sparkPoints(series.map((d) => (d.calls ? d.cutOff / d.calls : null)))}
+          change={hadPrevious ? moved(totals.cutOffRate, previous.cutOffRate, pct, 'down') : null}
+          onOpen={() => go('monitoring')}
+        />
+      </section>
     </div>
   );
 

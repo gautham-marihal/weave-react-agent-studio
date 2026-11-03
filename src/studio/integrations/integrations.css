@@ -1,0 +1,293 @@
+/* the Integrations page: a connected card (its test, what the last change did, how many agents use it), the connection dialog and Choose agents */
+.integrationCheck {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.integrationCheck.good {
+  color: var(--good-text);
+}
+.integrationCheck.bad {
+  color: var(--danger-text);
+}
+.integrationActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.integrationActions > button {
+  justify-content: center;
+  text-align: center;
+}
+/* an odd one out takes the whole row rather than leaving a gap beside it */
+.integrationActions > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+/* a connected card's status, in one box: its check, the last change, and how many agents use it */
+.integrationStatus {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--surface2, var(--surface));
+}
+.integrationUsage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+/* the connection dialog: never taller than the window (its fields scroll inside, Save stays reachable) */
+.connectModal {
+  box-sizing: border-box;
+  max-height: calc(100vh - 44px);
+  overflow-y: auto;
+}
+
+/* the connection dialog: what saving does to the workspace's agents, with its heading */
+.modalNoteBox {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--accent-soft, var(--surface2));
+  color: var(--text);
+}
+.modalNoteBox > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.modalNoteBox p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.modalNoteBox strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+
+/* "Choose agents": every agent of the workspace with a switch (pages/IntegrationAgents.jsx) */
+.integrationAgents {
+  display: flex;
+  flex-direction: column;
+  max-height: min(640px, calc(100vh - 48px));
+}
+.iaTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 16px 0 12px;
+}
+.integrationAgents .iaSearch {
+  flex: 1 1 220px;
+  max-width: none;
+  margin: 0;
+}
+.iaFoot {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.iaFoot > span {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.iaFrame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  margin: 0 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 12px);
+  overflow: hidden;
+}
+.iaList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.iaRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.iaRow:last-child {
+  border-bottom: 0;
+}
+.iaMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface2, var(--surface));
+  color: var(--textStrong);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+}
+.iaText {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.iaText strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  overflow-wrap: anywhere;
+}
+.iaText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.iaProblem {
+  color: var(--danger-text);
+}
+.iaReading,
+.iaEmpty {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.iaEmpty {
+  padding: 14px;
+}
+
+/* the connection dialog's headers (pages/ConnectionHeaders.jsx): name, value, a Secret switch and remove on one row,
+   what is wrong with the row under it */
+.connHeaders {
+  min-width: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+.connHeaders > legend {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.connHeaders > .chLead {
+  display: block;
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.chRows {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.chRow,
+.chHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 52px 32px;
+  align-items: center;
+  gap: 8px;
+}
+.chRow > input {
+  min-width: 0;
+  height: 38px;
+}
+.chRow > input[aria-invalid="true"] {
+  border-color: var(--danger-text);
+}
+.chSecret {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+/* the column says what the switch is; its own On/Off would only repeat it */
+.chSecret .stSwitch > span {
+  display: none;
+}
+.chRemove {
+  width: 32px;
+  height: 32px;
+}
+.chProblem {
+  grid-column: 1 / -1;
+  color: var(--danger-text);
+  font-size: var(--fs-xs);
+}
+.chHead {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+/* a connected card's address, how many headers and secrets it sends */
+.integrationSummary {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+/* the connection dialog's test request: GET, then the path after the address */
+.testRequest {
+  min-width: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+.testRequest > legend {
+  margin-bottom: 7px;
+  padding: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.testRequest > legend > span {
+  color: var(--muted);
+  font-weight: 400;
+}
+.trRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+.trMethod {
+  display: grid;
+  place-items: center;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line2);
+  border-radius: 9px;
+  color: var(--textStrong);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.trRow > input {
+  min-width: 0;
+  height: 38px;
+}
+.dialogTest {
+  margin-top: 14px;
+}

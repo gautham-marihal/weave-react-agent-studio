@@ -4,6 +4,7 @@ import { sentenceCase } from '../ui/text.js';
 import Icon from '../ui/Icon.jsx';
 import { trapTab, useDialogFocus } from '../ui/useDialogFocus.js';
 import Button from '../ui/Button.tsx';
+import { exitThen } from '../ui/motion.ts';
 
 // Small shared parts of the agents area: Notice, Modal, Spinner, ErrorState (with Try again), envLabel and EnvSlots.
 
@@ -28,6 +29,10 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
   const box = useRef(null);
   // focus moves into the dialog on open (unless a field took it) and back where it was on close
   useDialogFocus(box);
+  // its own ways out (Escape, outside, the close button) let it sink away first; the buttons a page gives it close at once
+  const leave = () => exitThen({ panel: box.current, shade: box.current?.parentElement, from: 'below' }, () => onClose?.());
+  const leaveRef = useRef(leave);
+  leaveRef.current = leave;
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -35,7 +40,7 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
     const onKey = (event) => {
       if (event.key === 'Escape' && !busy && !event.defaultPrevented) {
         event.preventDefault();
-        onClose?.();
+        leaveRef.current();
       }
     };
     document.addEventListener('keydown', onKey);
@@ -49,7 +54,7 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
     if (event.key === 'Escape') {
       if (!busy && !event.defaultPrevented) {
         event.preventDefault();
-        onClose?.();
+        leave();
       }
       event.stopPropagation();
     } else if (event.key === 'Tab') {
@@ -64,7 +69,7 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
       aria-modal="true"
       aria-label={title}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose?.();
+        if (event.target === event.currentTarget && !busy) leave();
       }}
       onKeyDown={keys}
     >
@@ -75,7 +80,7 @@ export function Modal({ eyebrow, title, subtitle, onClose, children, footer, wid
             <h2>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          <button type="button" className="modalClose" aria-label="Close" disabled={busy} onClick={onClose}>
+          <button type="button" className="modalClose" aria-label="Close" disabled={busy} onClick={leave}>
             <Icon name="close" size={18} />
           </button>
         </div>

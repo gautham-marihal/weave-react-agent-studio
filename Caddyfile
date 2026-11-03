@@ -1,0 +1,13 @@
+# HTTPS and a password in front of the studio (docker compose --profile https up -d). Caddy gets and renews the
+# certificate itself for STUDIO_DOMAIN, which must point at this server, with ports 80 and 443 open.
+# The person who signs in is passed on as X-User (it replaces anything the browser sends), so the Agent Builder API
+# records who saved, published and deployed. Make the password's hash with:
+#   docker run --rm caddy:2.8-alpine caddy hash-password --plaintext 'the password'
+{$STUDIO_DOMAIN} {
+	encode gzip
+	basic_auth {
+		{$STUDIO_USER} {$STUDIO_PASSWORD_HASH}
+	}
+	request_header X-User {http.auth.user.id}
+	reverse_proxy studio:8080
+}

@@ -239,6 +239,93 @@ export function setHandOver(config, on, { number } = {}) {
   return next;
 }
 
+// The cases in which it passes people to a person: one hand-over tool each, offered by the answering agent. The tool's
+// description says when (the model reads it to choose), and its own phone transfer holds that case's number (empty: the
+// callback line instead). The first is the switch's own; [] when the switch is off.
+export function handOverCases(config) {
+  if (!actionsOf(config).hand_over.on) return [];
+  const transfers = list(config?.telephony?.transfers);
+  return toolsFor(config, 'hand_over')
+    .filter((t) => offered(config, t.id))
+    .map((t) => {
+      const transfer = transfers.find((x) => isObj(x) && x.id === t.params?.transfer);
+      return {
+        id: t.id,
+        when: typeof t.description === 'string' ? t.description : '',
+        number: typeof transfer?.target === 'string' ? transfer.target : '',
+        ...(transfer && transfer.target != null && typeof transfer.target !== 'string' ? { numberElsewhere: true } : {}),
+      };
+    });
+}
+
+// Changes one case: when it applies (`when`) and its number (`number`). A case without its own transfer gets one.
+export function setHandOverCase(config, toolId, { when, number } = {}) {
+  const next = clone(config);
+  const tool = list(next.tools).find((t) => isObj(t) && t.id === toolId);
+  if (!tool) return config;
+  if (when !== undefined) tool.description = String(when);
+  if (number === undefined) return next;
+  tool.params = isObj(tool.params) ? tool.params : {};
+  const telephony = isObj(next.telephony) ? next.telephony : {};
+  const transfers = list(telephony.transfers);
+  if (!tool.params.transfer)
+    tool.params.transfer = freshId(
+      transfers.map((t) => t?.id),
+      TRANSFER_ID,
+    );
+  let transfer = transfers.find((t) => isObj(t) && t.id === tool.params.transfer);
+  if (!transfer) {
+    transfer = { id: tool.params.transfer, description: 'A person to take over this case.', method: 'sip_refer', target: '' };
+    next.telephony = { ...telephony, transfers: [...transfers, transfer] };
+  }
+  if (transfer.target == null || typeof transfer.target === 'string') transfer.target = String(number).trim();
+  return next;
+}
+
+// Adds a case with its own hand-over tool and transfer (switching hand-over on first if it is off). Its fallback is the
+// first case's (the callback line). `when` and `number` are optional.
+export function addHandOverCase(config, { when = '', number = '' } = {}) {
+  const base = actionsOf(config).hand_over.on ? config : setHandOver(config, true);
+  const next = clone(base);
+  const first = toolsFor(next, 'hand_over')[0];
+  const id = freshId(toolIds(next), IDS.hand_over);
+  const telephony = isObj(next.telephony) ? next.telephony : {};
+  const transferId = freshId(
+    list(telephony.transfers).map((t) => t?.id),
+    TRANSFER_ID,
+  );
+  const fallback = Array.isArray(first?.params?.fallback) ? clone(first.params.fallback) : [{ type: 'say', text: { message: CALLBACK_MESSAGE.id } }];
+  next.tools = [
+    ...list(next.tools),
+    { id, type: 'builtin', builtin: 'transfer_or_callback', description: String(when), params: { transfer: transferId, fallback } },
+  ];
+  next.telephony = {
+    ...telephony,
+    transfers: [
+      ...list(telephony.transfers),
+      { id: transferId, description: 'A person to take over this case.', method: 'sip_refer', target: String(number).trim() },
+    ],
+  };
+  return { config: giveTool(next, id), id };
+}
+
+// Removes one case: the answering agent stops offering its tool; the tool and its own transfer leave the configuration
+// once nothing else uses them. The last case is removed with the switch instead.
+export function removeHandOverCase(config, toolId) {
+  if (handOverCases(config).length <= 1) return config;
+  return withEntry(config, (agent, next) => {
+    agent.tools = list(agent.tools).filter((id) => id !== toolId);
+    if (!isOwn(toolId, IDS.hand_over) || usedIn(next, 'tools', toolId).length) return;
+    const tool = list(next.tools).find((t) => t?.id === toolId);
+    next.tools = list(next.tools).filter((t) => t !== tool);
+    dropLines(next, tool);
+    const transfer = tool?.params?.transfer;
+    if (!isOwn(transfer, TRANSFER_ID) || usedIn(next, 'transfers', transfer).length || !isObj(next.telephony)) return;
+    next.telephony.transfers = list(next.telephony.transfers).filter((t) => t?.id !== transfer);
+    if (!next.telephony.transfers.length) delete next.telephony.transfers;
+  });
+}
+
 // A phone call has no screen: the agent asks for the same details in conversation, in this sentence.
 const askInWords = (fields) =>
   `Could you tell me your ${listWords(fields.map((f) => DETAIL_FIELDS.find((d) => d.name === f.name)?.ask || String(f.label || f.name).toLowerCase()))}?`;

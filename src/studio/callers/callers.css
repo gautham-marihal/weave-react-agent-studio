@@ -207,28 +207,3 @@
   margin-top: 8px;
   font-size: var(--fs-sm);
 }
-.gateStrip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-  padding: 10px 14px;
-  border: 1px solid var(--line2);
-  border-radius: 12px;
-  background: var(--surface);
-  font-size: var(--fs-sm);
-}
-.gateStrip label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--textStrong);
-  font-weight: 600;
-  cursor: pointer;
-}
-.gateStrip span {
-  color: var(--muted);
-}
-.gateStrip .bad {
-  color: var(--warn-text);
-}

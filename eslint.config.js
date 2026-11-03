@@ -18,7 +18,9 @@ const sharedRules = {
 const unusedVars = ['warn', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_', caughtErrors: 'none', ignoreRestSiblings: true }];
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', '.vite/**', 'public/**', 'tests/fixtures/**', 'tests/component/.build/**', 'src/api/agentConfig.d.ts'] },
+  {
+    ignores: ['dist/**', 'node_modules/**', '.vite/**', 'public/**', 'tests/fixtures/**', 'tests/component/.build/**', 'src/api/agentConfig.d.ts'],
+  },
   js.configs.recommended,
   {
     files: ['**/*.{js,jsx,mjs}'],
@@ -46,7 +48,7 @@ export default [
     },
   },
   {
-    files: ['tests/**', 'e2e/**', 'scripts/**', 'mock-bank/**', 'vite.config.js', 'llmRoute.js'],
+    files: ['tests/**', 'e2e/**', 'scripts/**', 'mock-api/**', 'server/**', 'vite.config.js', 'llmRoute.js', 'apiPass.js', 'authRoute.js'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   // SonarQube's own analyzer for JavaScript and TypeScript (SonarSource's rules, as SonarQube runs them), with its recommended set. Switched off are the
@@ -73,7 +75,7 @@ export default [
     },
   },
   {
-    files: ['llmRoute.js', 'vite.config.js'],
+    files: ['llmRoute.js', 'vite.config.js', 'apiPass.js', 'authRoute.js'],
     rules: { 'sonarjs/super-linear-regex': 'error' },
   },
   // tests and their fake servers: random data, example addresses and an ftp:// link as the wrong kind of address are what they are testing with

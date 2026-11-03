@@ -21,7 +21,9 @@ const STATE = {
 // Simulated callers: scripted people who phone the draft, plus checks made from what the agent has. Run some on the
 // draft (nothing is saved) and keep the good ones as tests. They are scripted, not played by a model, so what they say
 // doesn't follow the agent's answers; the reviewer checks (calm? on topic?) need the live model.
-export default function CallersPanel({ botId, name, editor }) {
+//   onSummary({ passed, attention, total, names }): a run's result, for the Test stage's "Ready to publish?" (a run saves
+//   nothing, so it lasts this visit)
+export default function CallersPanel({ botId, name, editor, onSummary }) {
   const config = editor.parsed.value;
   const ready = editor.status === 'ready' && editor.isObject && !editor.parsed.error;
   const demo = isDemoMode();
@@ -44,6 +46,13 @@ export default function CallersPanel({ botId, name, editor }) {
   const needsJudge = chosen.some((s) => s.needsJudge);
   const busy = running || starting;
   const canRun = ready && chosen.length > 0 && !busy && (demo || paid);
+  const done = !!run && isFinished(run.status);
+  useEffect(() => {
+    if (!done || !onSummary) return;
+    const statusOf = (s) => run.scenarios.find((r) => r.id === s.scenario.id)?.status;
+    const look = queued.filter((s) => statusOf(s) === 'failed' || statusOf(s) === 'error');
+    onSummary({ passed: queued.filter((s) => statusOf(s) === 'passed').length, attention: look.length, total: queued.length, names: look.map((s) => s.name) });
+  }, [done, run, queued, onSummary]);
 
   if (!ready)
     return (

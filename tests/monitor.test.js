@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyse, changeWords, deltaOf, issuesOf, percentile, pct, seconds, MIN_FOR_ALERT } from '../src/studio/monitoring/monitorModel.js';
+import { analyse, changeWords, deltaOf, issuesOf, percentile, pct, seconds, trendOf, MIN_FOR_ALERT } from '../src/studio/monitoring/monitorModel.js';
 
 const NOW = Date.parse('2026-10-15T12:00:00.000Z');
 const H = 3600 * 1000;
@@ -216,4 +216,13 @@ test('a slow answer does not hold up the others: they all finish while it is sti
     done.push(id);
   });
   assert.deepEqual(done, ['a', 'b', 'c', 'slow']);
+});
+
+test('a tile’s trend: up or down from the period before, good or bad by which way is better, the same when both read alike', () => {
+  assert.deepEqual(trendOf(0.17, 0.09, { show: pct, better: 'lower' }), { text: '↑ up from 9%', dir: 'up', tone: 'bad' });
+  assert.deepEqual(trendOf(0.08, 0.12, { show: pct, better: 'lower' }), { text: '↓ down from 12%', dir: 'down', tone: 'good' });
+  assert.deepEqual(trendOf(36, 24), { text: '↑ up from 24', dir: 'up', tone: '' }, 'a count of calls is neither good nor bad');
+  assert.equal(trendOf(0.171, 0.168, { show: pct }).text, '→ about the same', 'both read 17%');
+  assert.equal(trendOf(0.2, null), null);
+  assert.equal(trendOf(undefined, 3), null);
 });

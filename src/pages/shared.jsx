@@ -18,7 +18,7 @@ import { useMyMembership } from '../studio/team/useMyMembership.js';
 import { SidebarFolded } from '../ui/sidebarFolded.ts';
 
 // What the workspace pages share: the logo, profile menu and account dialog, help and shortcuts, "?" tips,
-// sidebar links, Home's cards (Metric, Activity, QuickAction), and the create/rename workspace dialogs.
+// sidebar links, Home's cards (Metric), and the create/rename workspace dialogs.
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
@@ -632,36 +632,6 @@ export function NavItem({ item, active, onClick }) {
         {item.badge ? <em className={item.badgeTone || undefined}>{item.badge}</em> : null}
       </button>
     </Tip>
-  );
-}
-
-export function Activity({ title, detail, time, icon, muted = false }) {
-  return (
-    <div className={`activityRow ${muted ? 'muted' : ''}`}>
-      <span className="activityIcon">
-        <Glyph icon={icon} size={16} />
-      </span>
-      <div>
-        <strong>{title}</strong>
-        <p>{detail}</p>
-      </div>
-      <time>{time}</time>
-    </div>
-  );
-}
-
-export function QuickAction({ icon, title, subtitle, onClick }) {
-  return (
-    <button className="quickAction" type="button" onClick={onClick}>
-      <span className="quickIcon">
-        <Glyph icon={icon} size={18} />
-      </span>
-      <span>
-        <strong>{title}</strong>
-        <small>{subtitle}</small>
-      </span>
-      <Icon name="arrowRight" size={16} />
-    </button>
   );
 }
 

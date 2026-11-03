@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api, groupIssues } from '../../api/client.ts';
 import Icon from '../../ui/Icon.jsx';
@@ -15,6 +15,8 @@ import { ActionSwitches, KnowledgeBlock, ReachChoices } from './SimpleBlocks.jsx
 import { PurposeFields, VoiceFields } from './StepFields.jsx';
 import './setup.css';
 import Button from '../../ui/Button.tsx';
+import { SidebarFolded } from '../../ui/sidebarFolded.ts';
+import { fadeIn } from '../../ui/motion.ts';
 
 // The guided setup: one step per screen, with Next to move on. Every move saves the draft, so "Continue setup"
 // returns to the same step. The side menu opens any step at any time.
@@ -35,6 +37,8 @@ const liveFrom = (deployed) => {
 // ---- the steps down the side
 function StepList({ step, states, onStep, busy }) {
   const [slot, setSlot] = useState(null);
+  // a sidebar folded to icons has no room for the steps: they stay in the page then, as on a narrow screen
+  const folded = useContext(SidebarFolded);
   useLayoutEffect(() => {
     const wide = window.matchMedia ? window.matchMedia('(min-width: 901px)') : { matches: true, addEventListener() {}, removeEventListener() {} };
     const pick = () => setSlot(wide.matches ? document.getElementById('agentNavSlot') : null);
@@ -80,7 +84,7 @@ function StepList({ step, states, onStep, busy }) {
       </ol>
     </nav>
   );
-  return slot ? createPortal(list, slot) : list;
+  return slot && !folded ? createPortal(list, slot) : list;
 }
 
 // ---- 7. try it
@@ -355,6 +359,13 @@ export default function SetupWizard({
   const [moveError, setMoveError] = useState('');
   const [wentLive, setWentLive] = useState(null); // what the last step put live, while the setup is open
   const mainRef = useRef(null);
+  // a new step's heading and body fade in (not the step list, which stays where it is)
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    mainRef.current?.querySelectorAll(':scope > .suHead, :scope > .suBody').forEach((el) => fadeIn(el));
+  }, [step]);
   const headRef = useRef(null);
   const builtFor = useRef('');
   const config = editor.parsed.value;

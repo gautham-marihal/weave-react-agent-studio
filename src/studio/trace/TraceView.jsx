@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GROUPS, describeRecords, filterRows, groupCounts, traceAsText, traceSummary } from './records.js';
 import './trace.css';
+import { maskTraceRows } from '../privacy/maskConfidential.js';
 import Button from '../../ui/Button.tsx';
 
 // What happened in a conversation, for a real call, the Test tab and a failed scenario (all the same records): rows in
@@ -9,7 +10,8 @@ export default function TraceView({ records, live = false, compact = false, titl
   const [active, setActive] = useState([]);
   const [copied, setCopied] = useState(false);
   const endRef = useRef(null);
-  const rows = useMemo(() => describeRecords(records), [records]);
+  // what was said is shown with PINs, codes and ID numbers masked
+  const rows = useMemo(() => maskTraceRows(describeRecords(records)), [records]);
   const counts = useMemo(() => groupCounts(rows), [rows]);
   const summary = useMemo(() => traceSummary(records), [records]);
   const shown = useMemo(() => filterRows(rows, active), [rows, active]);

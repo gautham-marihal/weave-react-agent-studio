@@ -107,12 +107,24 @@ export default function PromptPreview({ agentId, config, startOpen = false }) {
             )
           ) : (
             <>
-              <p className="stPromptTotal" role="status">
-                <strong>{prompt.stats.words.toLocaleString()}</strong> word{prompt.stats.words === 1 ? '' : 's'} · about{' '}
-                <strong>{prompt.stats.tokens.toLocaleString()}</strong> tokens · <strong>{prompt.stats.toolsOffered}</strong> tool
-                {prompt.stats.toolsOffered === 1 ? '' : 's'} offered
-                {preview.loading && <span className="stMuted"> · updating…</span>}
-              </p>
+              {/* its size at a glance; in its own panel, also whether this is the runtime's exact text */}
+              <div className="stPromptTotal" role="status">
+                <span>
+                  <strong>{prompt.stats.words.toLocaleString()}</strong> word{prompt.stats.words === 1 ? '' : 's'}
+                </span>{' '}
+                <span>
+                  about <strong>{prompt.stats.tokens.toLocaleString()}</strong> tokens
+                </span>{' '}
+                <span>
+                  <strong>{prompt.stats.toolsOffered}</strong> tool{prompt.stats.toolsOffered === 1 ? '' : 's'} offered
+                </span>
+                {startOpen && source && (
+                  <em className={`stTag ${preview.source === 'server' ? 'good' : ''}`} title={source.title}>
+                    {source.text}
+                  </em>
+                )}
+                {preview.loading && <small className="stMuted">updating…</small>}
+              </div>
               {advice.map((item) => (
                 <p key={item.id} className="stFWarn" role="note" data-advice={item.id}>
                   {item.text}
@@ -124,7 +136,7 @@ export default function PromptPreview({ agentId, config, startOpen = false }) {
                 <section key={section.id} className={`stPromptSection ${section.active ? '' : 'conditional off'}`} data-section={section.kind}>
                   <header>
                     <strong>{section.label}</strong>
-                    <small>
+                    <small className={section.active ? (section.when ? 'now' : 'always') : 'off'}>
                       {section.active
                         ? section.when
                           ? `in now · ${describeWhen(section.when)}`

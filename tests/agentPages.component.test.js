@@ -3,24 +3,15 @@ import assert from 'node:assert/strict';
 import { $, $$, actions, byText, setupDom, teardownDom, textOf } from './component/dom.js';
 import { applyStarter } from '../src/studio/starters.ts';
 import { minimalConfig } from '../src/demo/demoApi.js';
-import { humanize } from '../src/studio/agent/rowNames.js';
 import { buildSections } from '../src/studio/agent/buildSections.js';
 
-// An agent's pages, mounted in jsdom with a config in state: the Agent page (text on the page, choices in panels that work on a copy), a list page
-// (rows, a picker to add, a panel for one item), the Home checklist and the menu. Clicks and typing are replayed and the config that comes out is read back.
+// An agent's pages, mounted in jsdom with a config in state: the stage tabs, the Overview, the Build list and the Home checklist. (The parts
+// of Build › Detailed are in detailed.component.test.js.) Clicks and typing are replayed and the config that comes out is read back.
 const { mountScreen, act } = await setupDom();
 const a = actions(act);
 after(() => teardownDom());
 
 const agent = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
-const until = async (app, check, tries = 100) => {
-  for (let i = 0; i < tries && !check(); i += 1) await app.wait(60);
-  return check();
-};
-const drawer = () => $(document.body, '.nlDrawer');
-const TOOL_LISTS = [
-  { id: 'tools', path: ['tools'], kind: 'tools', word: 'tool', pickerKey: 'tools', empty: { title: 'No tools yet', text: 'Tools let the agent do things.' } },
-];
 
 test('the stages are tabs in the order of the work, the open one marked, with a number where the checks found something to fix', async () => {
   const app = await mountScreen('stagetabs', agent(), { ready: 'nav', props: { page: 'tools', problems: { agent: 2, tools: 1, calls: 4 } } });
@@ -30,219 +21,12 @@ test('the stages are tabs in the order of the work, the open one marked, with a 
     ['overview', 'build', 'test', 'release', 'monitor'],
   );
   assert.equal($(app.container, 'button[aria-current="page"]').dataset.stage, 'build', 'Tools is part of Build');
-  assert.match(textOf($(app.container, 'button[data-stage="build"]')), /^Build\s*3/, 'the problems of all of Build');
+  assert.match(
+    textOf($(app.container, 'button[data-stage="build"]')),
+    /^2\s*Build\s*3/,
+    'numbered in the order of the work, with the problems of all of Build',
+  );
   assert.match(textOf($(app.container, 'button[data-stage="monitor"]')), /4/);
-  await app.unmount();
-});
-
-test('the Agent page: the text is on the page, the choices are rows, and a change on the page goes straight into the draft', async () => {
-  const app = await mountScreen('agentpage', agent(), { ready: '.nlPage' });
-  assert.deepEqual($$(app.container, '.nlSection h2').map(textOf), [
-    'Name',
-    'What it should do',
-    'What it says first',
-    'How it sounds',
-    'What it runs on',
-    'More',
-  ]);
-  assert.deepEqual($$(app.container, '.nlRow strong').map(textOf), [
-    'Voice',
-    'Language',
-    'Tone and style',
-    'AI models',
-    'Personality and rules',
-    'Fixed lines',
-  ]);
-  const nameInput = $(app.container, 'input[aria-label="Agent name"]');
-  assert.ok(nameInput, 'the name is a field on the page');
-  await a.type(nameInput, 'Renamed agent');
-  assert.equal(app.config.meta.name, 'Renamed agent');
-  await app.unmount();
-});
-
-test('a panel works on a copy: Cancel and Escape leave the draft alone, Done puts the change in', async () => {
-  const app = await mountScreen('agentpage', agent(), { ready: '.nlPage' });
-  const before = app.config.persona?.tone;
-  await a.click(byText(app.container, '.nlRow', /^Tone and style/));
-  assert.ok(drawer(), 'the panel opens');
-  assert.equal(textOf($(drawer(), '.nlDrawerHead h2')), 'Tone and style');
-  await a.type($(drawer(), 'input[aria-label="Tone"]'), 'curt and formal');
-  assert.equal(app.config.persona?.tone, before, 'nothing has gone into the draft yet');
-  await a.click(byText(drawer(), 'button', 'Cancel'));
-  assert.equal(drawer(), null, 'Cancel closes it');
-  assert.equal(app.config.persona?.tone, before, 'and the draft is as it was');
-  await a.click(byText(app.container, '.nlRow', /^Tone and style/));
-  await a.type($(drawer(), 'input[aria-label="Tone"]'), 'curt and formal');
-  await act(async () => {
-    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  });
-  await app.wait(50);
-  assert.equal(drawer(), null, 'Escape closes it');
-  assert.equal(app.config.persona?.tone, before, 'and the draft is still as it was');
-  await a.click(byText(app.container, '.nlRow', /^Tone and style/));
-  await a.type($(drawer(), 'input[aria-label="Tone"]'), 'curt and formal');
-  await a.click(byText(drawer(), 'button', 'Done'));
-  assert.equal(drawer(), null);
-  assert.equal(app.config.persona.tone, 'curt and formal', 'Done puts the change into the draft');
-  assert.match(textOf(byText(app.container, '.nlRow', /^Tone and style/)), /curt and formal/, 'and the row shows it');
-  await app.unmount();
-});
-
-test('a panel keeps the keyboard: it goes to the close button, and back to the row when the panel closes', async () => {
-  const app = await mountScreen('agentpage', agent(), { ready: '.nlPage' });
-  const row = byText(app.container, '.nlRow', /^Language/);
-  row.focus();
-  await a.click(row);
-  assert.equal(document.activeElement, $(drawer(), '.nlDrawerClose'));
-  await a.click($(drawer(), '.nlDrawerClose'));
-  assert.equal(document.activeElement, row);
-  await app.unmount();
-});
-
-test('a list page shows each item as a row, says what is used or not, and has one place to add', async () => {
-  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(await until(app, () => $$(app.container, '.nlRow').length >= 2), true, 'a row for each tool');
-  assert.ok($(app.container, '.nlPageActions .stAddBtn'), 'one Add, in the page header');
-  assert.equal($$(app.container, '.nlPageActions .stAddBtn').length, 1);
-  // a readable name; the tooltip has what the row says in full (a narrow row cuts it short) and the id. A tool a switch above stands for says so.
-  // With one agent, no "used by" (it is that agent's), and an unused tool says so
-  const first = app.config.tools[0];
-  assert.equal(textOf($(app.container, '.nlRow strong')), humanize(first.id));
-  assert.equal($(app.container, '.nlRow small').textContent, 'Ends the call · switched on above');
-  assert.equal($(app.container, '.nlRow').getAttribute('title'), `Ends the call · switched on above\nId: ${first.id}`);
-  assert.doesNotMatch(textOf($(app.container, '.nlRow')), /used by/i);
-  await app.unmount();
-});
-
-test('with several agents, a tool row says which use it, by name', async () => {
-  const config = agent();
-  const toolId = config.tools[0].id;
-  config.agents.items.push({ id: 'billing', name: 'Billing desk', instructions: { role: 'You answer billing questions.' }, tools: [toolId] });
-  const app = await mountScreen('listpage', config, { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(await until(app, () => $$(app.container, '.nlRow').length >= 2), true);
-  assert.match(textOf($(app.container, '.nlRow')), /used by .*Billing desk/);
-  await app.unmount();
-});
-
-test('a list page opens one item in a panel, and its edits wait for Done', async () => {
-  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(await until(app, () => $$(app.container, '.nlRow').length >= 2), true);
-  const first = app.config.tools[0];
-  await a.click($$(app.container, '.nlRow')[0]);
-  assert.match(textOf($(drawer(), '.nlDrawerHead h2')), new RegExp(humanize(first.id)), 'the panel is named as the row is');
-  assert.equal(await until(app, () => !!$(drawer(), 'textarea')), true, 'the item’s own settings load');
-  await a.type($(drawer(), 'textarea'), 'A new description for this tool.');
-  assert.equal(app.config.tools[0].description, first.description, 'not in the draft yet');
-  await a.click(byText(drawer(), 'button', 'Done'));
-  assert.equal(app.config.tools[0].description, 'A new description for this tool.');
-  assert.equal(app.config.tools.length, 2, 'and nothing else changed');
-  await app.unmount();
-});
-
-test('adding picks a kind, opens a new item in a panel, and Cancel adds nothing while Done does', async () => {
-  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(await until(app, () => !!$(app.container, '.nlPageActions .stAddBtn')), true);
-  const before = app.config.tools.length;
-  await a.click($(app.container, '.nlPageActions .stAddBtn'));
-  const dialog = $(document.body, '.stPickDialog[role="dialog"]');
-  assert.ok(dialog, 'the choices open in a window over the page');
-  assert.equal($(app.container, '.stPickPanel'), null, 'not in place, where they would push the page down');
-  assert.match(textOf($(dialog, 'h2')), /^Add a tool/);
-  assert.ok($$(dialog, '.stPickCard .stPickIcon').length >= 9, 'each choice has its picture');
-  await a.click($(document.body, '.stPickCard[data-option="rules_only"]'));
-  assert.equal($(document.body, '.stPickDialog'), null, 'the window closes once one is picked');
-  assert.match(textOf($(drawer(), '.nlDrawerHead h2')), /^New tool/);
-  await a.click(byText(drawer(), 'button', 'Cancel'));
-  assert.equal(app.config.tools.length, before, 'Cancel adds nothing');
-  await a.click($(app.container, '.nlPageActions .stAddBtn'));
-  await a.click($(document.body, '.stPickCard[data-option="rules_only"]'));
-  await a.click(byText(drawer(), 'button', 'Done'));
-  assert.equal(app.config.tools.length, before + 1, 'Done adds it');
-  assert.equal(new Set(app.config.tools.map((t) => t.id)).size, before + 1, 'with an id of its own');
-  await app.unmount();
-});
-
-test('a kind an agent needs only one of (ending the call) opens the one it has, rather than adding a second that nothing would use', async () => {
-  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(await until(app, () => !!$(app.container, '.nlPageActions .stAddBtn')), true);
-  const before = app.config.tools.length;
-  await a.click($(app.container, '.nlPageActions .stAddBtn'));
-  assert.match(textOf($(document.body, '.stPickCard[data-option="end_call"]')), /It has one already/);
-  await a.click($(document.body, '.stPickCard[data-option="end_call"]'));
-  assert.match(textOf($(drawer(), '.nlDrawerHead h2')), /^Tool “End call”/, 'its own panel opens');
-  await a.click(byText(drawer(), 'button', 'Close'));
-  assert.equal(app.config.tools.length, before, 'and nothing is added');
-  await app.unmount();
-});
-
-test('a new tool is given to the agent that answers first, and its panel asks which agents can use it', async () => {
-  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(await until(app, () => !!$(app.container, '.nlPageActions .stAddBtn')), true);
-  await a.click($(app.container, '.nlPageActions .stAddBtn'));
-  await a.click($(document.body, '.stPickCard[data-option="rules_only"]'));
-  const box = $(drawer(), '.nlToolAgents input[type=checkbox]');
-  assert.ok(box && box.checked, 'ticked for the agent that answers');
-  await a.click(byText(drawer(), 'button', 'Done'));
-  const made = app.config.tools.at(-1).id;
-  assert.ok(app.config.agents.items[0].tools.includes(made), 'and in the draft, it can use it');
-  await app.unmount();
-});
-
-test('the choices window keeps the keyboard: Escape closes it alone (not a panel behind it) and the keyboard goes back to Add', async () => {
-  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(await until(app, () => !!$(app.container, '.nlPageActions .stAddBtn')), true);
-  const add = $(app.container, '.nlPageActions .stAddBtn');
-  await a.click(add);
-  const dialog = $(document.body, '.stPickDialog');
-  assert.equal(document.activeElement, $(dialog, 'input[type=search]'), 'the search takes the keyboard');
-  let reached = 0;
-  const behind = () => {
-    reached += 1;
-  };
-  document.addEventListener('keydown', behind);
-  await act(async () => {
-    document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
-  });
-  assert.ok(document.activeElement.classList.contains('stPickCard'), 'the arrow keys go on to the cards');
-  await act(async () => {
-    document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
-    await new Promise((r) => setTimeout(r, 30));
-  });
-  document.removeEventListener('keydown', behind);
-  assert.equal($(document.body, '.stPickDialog'), null, 'Escape closes the window');
-  assert.equal(reached, 0, 'no key reaches what is behind it, so a panel there stays open');
-  assert.equal(document.activeElement, add, 'and the keyboard is back on Add');
-  await app.unmount();
-});
-
-test('deleting an item from its panel removes it and closes the panel, and Cancel afterwards is not needed', async () => {
-  const app = await mountScreen('listpage', agent(), { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(await until(app, () => $$(app.container, '.nlRow').length >= 2), true);
-  await a.click($(app.container, '.nlPageActions .stAddBtn'));
-  await a.click($(document.body, '.stPickCard[data-option="rules_only"]'));
-  await a.click(byText(drawer(), 'button', 'Done'));
-  const added = app.config.tools.length;
-  await a.click($$(app.container, '.nlRow')[added - 1]);
-  assert.equal(await until(app, () => !!byText(drawer(), 'button', /Delete this tool/)), true);
-  await a.click(byText(drawer(), 'button', /Delete this tool/));
-  // the agent offers it (a new tool is given to the agent that answers), so it asks first
-  assert.equal(await until(app, () => !!byText(document.body, 'button', 'Delete and remove those references')), true);
-  await a.click(byText(document.body, 'button', 'Delete and remove those references'));
-  assert.equal(await until(app, () => app.config.tools.length === added - 1), true, 'the tool is gone from the draft');
-  assert.ok(!app.config.agents.items[0].tools.some((t) => !app.config.tools.some((x) => x.id === t)), 'and from the agent’s tools');
-  assert.equal(await until(app, () => !drawer()), true, 'and the panel has closed');
-  // and it can be put back
-  assert.equal(await until(app, () => !!byText(app.container, 'button', 'Undo')), true, 'an Undo is offered');
-  await a.click(byText(app.container, 'button', 'Undo'));
-  assert.equal(app.config.tools.length, added, 'Undo puts it back');
-  await app.unmount();
-});
-
-test('an empty list says so in one sentence, with the one way to add', async () => {
-  const config = { ...agent(), tools: [] };
-  const app = await mountScreen('listpage', config, { ready: '.nlPage', props: { lists: TOOL_LISTS } });
-  assert.equal(textOf($(app.container, '.nlEmpty strong')), 'No tools yet');
-  assert.ok($(app.container, '.nlPageActions .stAddBtn'));
   await app.unmount();
 });
 
@@ -264,14 +48,14 @@ test('the Overview lists the parts of building it first while it is not live, ea
   const rows = $$(app.container, '.ovBuild li');
   assert.deepEqual(
     rows.map((r) => r.dataset.part),
-    ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall'],
+    ['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall'],
   );
   assert.ok($(app.container, '.ovBuild li[data-part="guardrails"][data-state="optional"]'));
   const body = $(app.container, '.ovBody');
-  assert.equal(body.lastElementChild.className, 'ovStats', 'not live: the numbers last');
+  assert.ok(body.lastElementChild.classList.contains('ovKpiStrip'), 'not live: the numbers last');
   await app.unmount();
   const live = await mountScreen('homepage', config, { ready: '.nlPage', props: { summary: { deployed: { development: '0.1.0' } }, sections } });
-  assert.equal($(live.container, '.ovBody').firstElementChild.className, 'ovStats', 'live: the numbers first');
+  assert.ok($(live.container, '.ovBody').firstElementChild.classList.contains('ovKpiStrip'), 'live: the numbers first');
   await live.unmount();
 });
 
@@ -281,14 +65,44 @@ test('Build lists its parts down the side: the open one marked, a done part chec
   const app = await mountScreen('buildstage', config, { ready: 'nav', props: { page: 'tools', sections } });
   assert.deepEqual(
     $$(app.container, 'nav[aria-label="Build"] button[data-page]').map((b) => b.dataset.page),
-    ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings'],
+    [...['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall'], 'settings'],
   );
   assert.equal($(app.container, 'button[aria-current="page"]').dataset.page, 'tools');
   assert.ok($(app.container, 'button[data-page="workflow"] [aria-label="Done"]'), 'one agent answers: done');
   assert.ok(!$(app.container, 'button[data-page="guardrails"] [role="img"]'), 'nothing set, optional: no mark');
-  assert.ok(byText(app.container, 'button', /JSON/), 'the JSON is one of its views');
+  assert.equal(byText(app.container, 'button', /^JSON$/), null, 'its views are in the bar above it (StageViews), not here');
   assert.equal(textOf($(app.container, '.theOpenPage')), 'the open page');
   await app.unmount();
+});
+
+test('the row under the stage tabs holds the open stage’s views: Build’s four, Test’s parts with their latest result, Monitor’s pages', async () => {
+  const build = await mountScreen('stageviews', agent(), { ready: '.nlViews', props: { page: 'agent', checks: { checked: true, problems: 2 } } });
+  assert.deepEqual(
+    $$(build.container, 'nav[aria-label="How to see the draft"] button').map((b) => b.dataset.view),
+    ['guided', 'detailed', 'workflow', 'json'],
+  );
+  assert.equal($(build.container, 'button[aria-current="page"]').dataset.view, 'detailed');
+  assert.match(textOf($(build.container, '.nlViewsSide [data-checks]')), /2 problems/, 'the checks on the right');
+  await build.unmount();
+  const test = await mountScreen('stageviews', agent(), {
+    ready: '.nlViews',
+    props: { page: 'tests', part: 'scenarios', counts: { scenarios: { text: '2 fail', tone: 'bad' } } },
+  });
+  assert.deepEqual($$(test.container, 'nav[aria-label="Parts of testing"] button').map(textOf), [
+    'Try it',
+    'Simulated callers',
+    'Scenarios2 fail',
+    'Readiness checks',
+  ]);
+  assert.equal($(test.container, 'button[aria-current="page"]').dataset.part, 'scenarios');
+  assert.ok($(test.container, '.nlViewCount.bad'));
+  await test.unmount();
+  const monitor = await mountScreen('stageviews', agent(), { ready: '.nlViews', props: { page: 'speed' } });
+  assert.equal(textOf($(monitor.container, 'nav[aria-label="Monitor"] button[aria-current="page"]')), 'Speed');
+  await monitor.unmount();
+  const overview = await mountScreen('stageviews', agent(), { ready: 'body', props: { page: 'home' } });
+  assert.equal($(overview.container, '.nlViews'), null, 'Overview has no views');
+  await overview.unmount();
 });
 
 test('while the agent is not ready, the tabs say how far along it is and open the next step; a stage with a step to do is marked', async () => {
@@ -302,7 +116,9 @@ test('while the agent is not ready, the tabs say how far along it is and open th
   const plan = { steps, next: steps[1], done: 1, total: 3 };
   const app = await mountScreen('stagetabs', agent(), { ready: 'nav', props: { page: 'home', plan, onStep: (step) => opened.push(step.id) } });
   const card = byText(app.container, 'button', /Getting it ready/);
-  assert.match(textOf(card), /Getting it ready · 1 of 3\s*Next: Pick its language/);
+  assert.match(textOf(card), /Getting it ready\s*1 of 3 · Next: Pick its language/);
+  assert.equal($$(card, '.nlReadyDots > i').length, 3, 'a dot per step');
+  assert.equal($$(card, '.nlReadyDots > i.done').length, 1, 'the done ones filled');
   await a.click(card);
   assert.deepEqual(opened, ['voice'], 'the card opens the next step');
   assert.ok($(app.container, 'button[data-stage="build"] [aria-label="1 step to do"]'), 'a step to do in Build');
@@ -318,19 +134,21 @@ test('the top bar: Publish is the main action, Save shows only when there is som
   const opened = [];
   const app = await mountScreen('topbar', agent(), { ready: '.nlBar', props: { problems: 0, changes: 3, onChanges: () => opened.push('changes') } });
   const buttons = () => $$(app.container, '.nlBarActions > button:not(.stMenuBtn)').map(textOf);
-  assert.deepEqual(buttons(), ['Describe', 'Test', 'Publish'], 'saved: no Save button, no chip');
-  assert.ok($(app.container, '.nlBarActions .primaryCta') && textOf($(app.container, '.nlBarActions .primaryCta')) === 'Publish');
-  await a.click(byText(app.container, '.nlChanges', /3 changes not published/));
-  assert.deepEqual(opened, ['changes']);
+  assert.deepEqual(buttons(), ['Describe', 'Test', 'Publish3 changes not published'], 'saved: no Save button, no chip; Publish counts the changes');
+  assert.equal(textOf($(app.container, '.nlBarActions .primaryCta .nlCount')), '3 changes not published', 'read out in words');
+  assert.equal($(app.container, '.nlChanges'), null, 'the changes are counted on Publish, not in a chip of their own');
   await a.open($(app.container, '.nlBarActions .stMenuBtn'));
   const more = $$(document.body, '.stMenu [role="menuitem"]').map(textOf);
   ['Run the checks', 'What changed since publishing (3)', 'Share…', 'Publish a new version…', 'Deploy a version…', 'Roll back…', 'All versions'].forEach(
     (item) => assert.ok(more.includes(item), `${item} is in More`),
   );
+  await a.pick($$(document.body, '.stMenu [role="menuitem"]').find((el) => textOf(el) === 'What changed since publishing (3)'));
+  assert.deepEqual(opened, ['changes'], 'what changed opens from More');
   await app.unmount();
 
   const dirty = await mountScreen('topbar', agent(), { ready: '.nlBar', props: { dirty: true, problems: 2 } });
   assert.deepEqual($$(dirty.container, '.nlBarActions > button:not(.stMenuBtn)').map(textOf), ['2 problems', 'Describe', 'Test', 'Save', 'Publish']);
+  assert.equal(textOf($(dirty.container, '.nlMono')), 'A', 'the agent’s initials beside its name');
   assert.equal(textOf($(dirty.container, '.nlBarActions .primaryCta')), 'Save', 'with unsaved edits Save is the main action');
   assert.match(textOf($(dirty.container, '.nlSaveState')), /Unsaved changes/);
   await dirty.unmount();
@@ -358,25 +176,57 @@ test('the agent switcher lists the other agents and opens one on the same page; 
   await app.unmount();
 });
 
-test('the guided view: every part on one page in order, who it is in plain fields, the plain controls in place, and a way to every setting', async () => {
+test('the guided view: nine steps down the side, one step at a time with Back and Next, every answer written to the draft', async () => {
   const config = agent();
   const opened = [];
-  const app = await mountScreen('guidedbuild', config, {
-    ready: '[data-guided]',
-    props: { sections: buildSections({ config }), onOpen: (page) => opened.push(page) },
-  });
-  assert.deepEqual(
-    $$(app.container, '[data-guided]').map((s) => s.dataset.guided),
-    ['who', 'sound', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall'],
-  );
-  const who = $(app.container, '#guided-who');
-  assert.deepEqual($$(who, '.suFieldHead > span').map(textOf), ['Company name', 'Agent’s spoken name', 'Tone', 'Instructions', 'What it says first']);
-  assert.equal($$(who, '.suExplain').length, 5, 'each field can be explained');
-  assert.equal($(who, 'input').value, '', 'no company yet');
-  assert.ok(byText(app.container, '#guided-tools *', /End the conversation politely/), 'what it can do, as switches');
-  await a.click(byText(app.container, '#guided-tools button', /More settings for this/));
-  await a.click(byText(app.container, '#guided-guardrails button', /Set its boundaries/));
-  assert.deepEqual(opened, ['tools', 'guardrails']);
-  assert.equal(byText(app.container, '#guided-guardrails button', /More settings for this/), null, 'one way to its page, not two');
+  const app = await mountScreen('guidedbuild', config, { ready: '.gdFlow', props: { onOpen: (page) => opened.push(page) } });
+  const rail = () => $$(app.container, '.gdStep').map((b) => b.dataset.step);
+  const current = () => $(app.container, '.gdStep[aria-current="step"]')?.dataset.step;
+  const answer = (id) => textOf($(app.container, `.gdStep[data-step="${id}"] .gdStepAnswer`));
+  assert.deepEqual(rail(), ['who', 'voice', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall', 'ready']);
+  assert.equal(current(), 'who');
+  assert.equal(textOf($(app.container, '#gd-question')), 'Who is your agent?');
+  assert.ok($(app.container, '.gdNav button').disabled, 'no Back on the first step');
+
+  // 1 · who it is: the tone as cards, written as words the model reads
+  await a.click(byText(app.container, '.gdPick', /^Formal/));
+  assert.equal(app.config.persona.tone, 'formal, polite, precise');
+  assert.equal(byText(app.container, '.gdPick', /^Formal/).getAttribute('aria-checked'), 'true');
+  await a.type($(app.container, '.gdTwo input'), 'Maya');
+  assert.equal(app.config.persona.name, 'Maya');
+  assert.equal(textOf($(app.container, '.gdSoFar .gdWho strong')), 'Maya', 'the card beside says who it is');
+
+  // Next: language and voice; a language card is its main language
+  await a.click($(app.container, '.gdNext'));
+  assert.equal(current(), 'voice');
+  await a.click(byText(app.container, '.gdPick', /^English \(UK\)/));
+  assert.equal(app.config.defaults.language.primary, 'en-GB');
+  assert.match(answer('voice'), /English \(United Kingdom\)/);
+
+  // 6 · a first agent passing people on: a named specialist is a new agent, and one agent can't be chosen back here
+  await a.click($(app.container, '.gdStep[data-step="workflow"]'));
+  await a.click(byText(app.container, '.gdPick', /A first agent passes people on/));
+  await a.type($(app.container, '.gdAddInline input'), 'Billing');
+  await a.click($(app.container, '.gdAddInline button[type="submit"]'));
+  assert.equal(app.config.agents.items.length, 2);
+  assert.ok(byText(app.container, '.gdPick', /One agent answers everything/).disabled);
+  assert.match(answer('workflow'), /2 agents/);
+
+  // 8 · after the call: a common question in one press, and keeping the audio tells callers first
+  await a.click($(app.container, '.gdStep[data-step="aftercall"]'));
+  await a.click(byText(app.container, '.gdChip', /Was the caller’s problem solved/));
+  assert.equal(app.config.post_call.analysis.length, 1);
+  await a.click(byText(app.container, '.gdChip.choice', 'Transcript and audio'));
+  assert.equal(app.config.post_call.recording.audio, true);
+  assert.ok(app.config.persona.disclosures.recording_notice, 'a recording notice is added');
+  await a.click(byText(app.container, '.gdMore button', /Detailed view/));
+  assert.deepEqual(opened, ['aftercall'], 'every step links to all its settings');
+
+  // 9 · ready: every answer with a way back to it
+  await a.click($(app.container, '.gdStep[data-step="ready"]'));
+  assert.equal($$(app.container, '.gdAnswers li').length, 8);
+  assert.equal($(app.container, '.gdAside'), null, 'the agent itself is the step');
+  await a.click(byText(app.container, '.gdAnswers li', /Its boundaries/).querySelector('button'));
+  assert.equal(current(), 'guardrails');
   await app.unmount();
 });

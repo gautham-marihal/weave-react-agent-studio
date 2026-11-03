@@ -13,6 +13,9 @@
   padding: 0 0 72px;
 }
 .clPrivacy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 0;
   padding: 8px 12px;
   border-left: 3px solid var(--warn-text, #d6a53a);
@@ -24,6 +27,53 @@
 }
 .clPrivacy b {
   color: var(--textStrong);
+}
+.clPrivacy > span {
+  flex: 1;
+  min-width: 0;
+}
+.clPrivacy > .wIcon {
+  flex: none;
+  color: var(--muted);
+}
+.clSummary {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+/* the caller, and under it the first thing they said (read from the call's record) */
+.clWho {
+  min-width: 0;
+}
+.clWho strong {
+  display: block;
+  font-weight: 600;
+  color: var(--textStrong);
+}
+.clFirst {
+  display: block;
+  margin-top: 2px;
+  max-width: 46ch;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.clChannel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.clChannel .wIcon {
+  color: var(--muted);
+}
+.clLength {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.clOutcome {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .clFilters {
   display: flex;

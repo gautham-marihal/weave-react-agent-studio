@@ -4,6 +4,7 @@
 
 import { isObj } from '../form/engine.js';
 import { channelName } from '../simple/simpleModel.js';
+import { maskTraceRows } from '../privacy/maskConfidential.js';
 
 // "web_chat" → "web chat", "sip_voice" → "phone": a channel as a sentence says it
 const channelWords = (type) => {
@@ -353,7 +354,7 @@ export function traceSummary(records) {
 
 // Plain text of a trace, for "Copy": one line per record.
 export const traceAsText = (records) =>
-  describeRecords(records)
+  maskTraceRows(describeRecords(records))
     .map((r) => `${r.at.padStart(7)}  ${r.label.padEnd(9)} ${r.text}${r.facts.length ? `  [${r.facts.map(([k, v]) => `${k}: ${v}`).join('; ')}]` : ''}`)
     .join('\n');
 

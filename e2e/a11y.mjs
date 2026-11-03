@@ -34,17 +34,25 @@ const B = '#/bots/acme-support';
 // [name, address, what shows when it is ready]
 const PAGES = [
   ...['home', 'bots', 'calls', 'live', 'monitoring', 'speed', 'alerts', 'voices', 'integrations', 'team', 'settings'].map((p) => [p, `#/${p}`, '.dashMain']),
-  ...['home', 'agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'tests', 'scenarios', 'checks', 'callers']
+  ...['home', 'agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall']
+    .concat(['tests', 'scenarios', 'checks', 'callers'])
     .concat(['versions', 'deploy', 'calls', 'monitoring', 'questions', 'speed', 'settings'])
     .map((p) => [`agent ${p}`, `${B}/${p}`, '.nlWorkspace']),
+  // Build › Guided, each of its nine steps
+  ...['who', 'voice', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall', 'ready'].map((s) => [
+    `guided ${s}`,
+    `${B}/build?step=${s}`,
+    '.gdFlow',
+  ]),
 ];
 // the setup's steps, looked at last: its language step gives an agent with no main language the browser's, as a change to save, so leaving it then asks
 const SETUP = ['purpose', 'reach', 'voice', 'knowledge', 'actions', 'try', 'live'].map((s) => [`setup ${s}`, `${B}/setup?step=${s}`, '.suPage']);
 // what opens over a page: [name, address, the control that opens it, what shows once it is open]
 const OVERLAYS = [
   ['create an agent', '#/bots?new=1', null, '[role=dialog]'],
-  ['a tool’s panel', `${B}/tools`, '.nlRow button, .nlRows button', '.nlDrawer'],
-  ['a channel’s panel', `${B}/channels`, '.nlRow button, .nlRows button', '.nlDrawer'],
+  ['a tool’s Advanced rows', `${B}/tools`, '[data-card="tools.tool"] .dtAdv > summary', '[data-card="tools.tool"] .dtAdvRows'],
+  ['a channel’s Advanced rows', `${B}/channels`, '[data-card="channels.channel"] .dtAdv > summary', '[data-card="channels.channel"] .dtAdvRows'],
+  ['a setting opened in place', `${B}/conversation`, '.dtFormRow button:has-text("Edit")', '.dtFormRow .stForm'],
   ['the test panel', `${B}/home`, '.nlBar button:has-text("Test")', '.nlTestDock'],
   ['Describe', `${B}/home`, '.nlBar button:has-text("Describe")', '.nlDrawer'],
   ['a new scenario', `${B}/scenarios`, 'button:has-text("New scenario")', 'form.scForm'],
@@ -133,8 +141,19 @@ for (const style of STYLES) {
         continue;
       }
       await page.waitForTimeout(600);
+      // opening it scrolled the page; what then sits half under the sticky bar reads to axe as covered, whatever its size, so it is looked at from the
+      // top (axe checks the whole page, in view or not)
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+        document.querySelectorAll('*').forEach((el) => {
+          if (el.scrollTop) el.scrollTop = 0;
+        });
+      });
+      await page.waitForTimeout(200);
       await check(name);
       await page.keyboard.press('Escape');
+      // panels and dialogs slide away as they close (ui/motion.ts): the next screen is looked at once this one has gone
+      await page.waitForSelector(open, { state: 'detached', timeout: 1000 }).catch(() => {});
     }
     for (const [name, hash, ready] of SETUP) {
       await go(hash, ready);

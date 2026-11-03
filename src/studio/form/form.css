@@ -1436,12 +1436,14 @@ textarea.stFInput {
 }
 .stPromptBody {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   margin-top: 10px;
 }
+/* one part of what the model is told: its name, whether it is in right now, and its words in the page's own type */
 .stPromptSection {
   border: 1px solid var(--line, rgba(127, 127, 127, 0.3));
-  border-radius: 8px;
+  border-radius: var(--r-card, 12px);
+  background: var(--panel);
   overflow: hidden;
 }
 .stPromptSection.conditional {
@@ -1450,26 +1452,42 @@ textarea.stFInput {
 .stPromptSection > header {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
-  padding: 6px 10px;
-  background: color-mix(in srgb, var(--text, #fff) 5%, transparent);
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 12px 16px 0;
   font-size: var(--fs-sm);
 }
+.stPromptSection > header strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
 .stPromptSection > header small {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface2);
   color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.stPromptSection > header small.always {
+  background: color-mix(in srgb, var(--good-text, #067647) 12%, transparent);
+  color: var(--good-text, #067647);
+}
+.stPromptSection > header small.now {
+  background: color-mix(in srgb, var(--info-text, #1d4fa8) 12%, transparent);
+  color: var(--info-text, #1d4fa8);
 }
 .stPromptSection pre {
   margin: 0;
-  padding: 10px;
+  padding: 10px 16px 16px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font:
-    var(--fs-sm)/1.55 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Consolas,
-    monospace;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  line-height: 1.65;
 }
 .stPromptHole {
   background: color-mix(in srgb, var(--accent, #22d3ee) 22%, transparent);
@@ -1477,10 +1495,29 @@ textarea.stFInput {
   border-radius: 3px;
   padding: 0 2px;
 }
+/* its size: words, tokens and tools, side by side; then whether it is the runtime's exact text */
 .stPromptTotal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin: 0;
-  font-size: var(--fs-sm);
   color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.stPromptTotal > span {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 8px);
+  background: var(--panel);
+}
+.stPromptTotal > span strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.stPromptTotal > em {
+  font-style: normal;
 }
 
 /* ---- effects: rules and their steps ---- */
@@ -1584,21 +1621,57 @@ textarea.stFInput {
 
 /* ---- the server's prompt preview */
 .stPromptAs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  align-items: flex-end;
-  margin: 4px 0 10px;
+  display: grid;
+  gap: 12px;
+  margin: 4px 0 6px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 12px);
+  background: var(--surface2);
 }
-.stPromptAs > strong {
-  align-self: center;
-  font-size: var(--fs-sm);
+.stPromptAs > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.stPromptAs > header > span {
+  display: grid;
+  gap: 2px;
+}
+.stPromptAs > header strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.stPromptAs > header small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+/* the what-ifs in an even grid: every box the same width, its label above it */
+.stPromptAsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
 }
 .stPromptAs label {
   display: grid;
-  gap: 3px;
-  font-size: var(--fs-sm);
+  gap: 5px;
+  min-width: 0;
   color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.stPromptAs label > :is(input, select, button) {
+  width: 100%;
+  min-width: 0;
+}
+.stPromptAsSub {
+  margin: 4px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
 }
 .stPromptSection.off {
   opacity: 0.7;
@@ -2279,10 +2352,6 @@ textarea.stFInput {
 }
 .stFTech .stFKeyHead:empty {
   display: none;
-}
-.smField > span .stFTech,
-.smField > legend .stFTech {
-  font-weight: 400;
 }
 
 /* ---- an item of a list (a message, a tool, a channel…): one tidy header strip, one clear way to add another ---- */

@@ -1,0 +1,752 @@
+/* Build's Guided view (GuidedBuild.jsx): the steps on the left, one step in the middle, "Your agent so far" on the
+   right. Studio tokens only, so every style and both themes follow. The agent's own card is dark in both themes, so its
+   orb and words stand out the same way everywhere. */
+
+.gdFlow {
+  --gd-ink: color-mix(in srgb, var(--accent) 18%, #0e0b15);
+  --gd-ink-line: color-mix(in srgb, #ffffff 14%, var(--gd-ink));
+  --gd-ink-soft: color-mix(in srgb, #ffffff 8%, var(--gd-ink));
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr) 300px;
+  gap: 28px;
+  align-items: start;
+  scroll-margin-top: calc(var(--under-bar, 0px) + 16px);
+}
+.gdFlow.ready {
+  grid-template-columns: 230px minmax(0, 1fr);
+}
+@media (max-width: 1279px) {
+  .gdFlow {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .gdAside {
+    grid-column: 2;
+  }
+}
+@media (max-width: 899px) {
+  .gdFlow,
+  .gdFlow.ready {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gdAside {
+    grid-column: auto;
+  }
+}
+
+/* ---- the steps ---- */
+.gdRail {
+  position: sticky;
+  top: var(--under-bar, 0);
+}
+.gdRailTitle {
+  margin: 0 0 8px 12px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.gdRail ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gdStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gdStep:hover {
+  background: var(--surface-hover);
+}
+.gdStep[aria-current="step"] {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: var(--panel);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+}
+.gdMark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.gdStep.done .gdMark,
+.gdAnswers li.done .gdMark {
+  background: color-mix(in srgb, var(--good-text) 14%, var(--panel));
+  color: var(--good-text);
+}
+.gdStep.todo .gdMark,
+.gdAnswers li.todo .gdMark {
+  background: color-mix(in srgb, var(--warn-text) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--warn-text) 40%, var(--panel));
+  color: var(--warn-text);
+}
+.gdStep[aria-current="step"] .gdMark {
+  background: var(--accent);
+  box-shadow: none;
+  color: var(--on-accent, #ffffff);
+}
+.gdStepText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gdStepTitle {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.gdStepAnswer {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.gdStep.todo .gdStepAnswer {
+  color: var(--warn-text);
+}
+@media (max-width: 899px) {
+  .gdRail {
+    position: static;
+  }
+  .gdRail ol {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+}
+
+/* ---- the step ---- */
+.gdMain {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.gdCard {
+  display: grid;
+  gap: 20px;
+  padding: 26px 28px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+}
+.gdHead {
+  display: grid;
+  gap: 6px;
+}
+.gdEyebrow {
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+html[data-theme] body .gdHead h1 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  outline: none;
+}
+.gdHead p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+}
+.gdFields {
+  display: grid;
+  gap: 20px;
+}
+.gdTwo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.gdField {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.gdLabel {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.gdSoft,
+.gdCount {
+  color: var(--muted);
+  font-weight: 400;
+}
+.gdCount {
+  margin-left: 6px;
+  font-size: var(--fs-xs);
+}
+.gdCount.warn {
+  color: var(--warn-text);
+}
+.gdHint,
+.gdNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+/* cards to choose from */
+.gdCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.gdCards.five {
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+}
+.gdCards.three {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+.gdCards.two {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.gdPick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gdPick:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.gdPick strong {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.gdPick span {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.gdPick[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 0.5px var(--accent);
+}
+.gdPick[aria-checked="true"] strong {
+  color: var(--accent-text);
+}
+.gdPick:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.gdCards.big .gdPick {
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+}
+.gdPicture {
+  max-width: 100%;
+  height: auto;
+}
+.gdPicture text {
+  fill: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+}
+.gdBox {
+  fill: var(--panel);
+  stroke: var(--line2);
+}
+.gdBoxOn {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.gdWire {
+  fill: none;
+  stroke: var(--line2);
+  stroke-width: 1.2;
+}
+
+/* a voice: play beside its card */
+.gdVoice {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+.gdVoice .gdPick {
+  flex: 1;
+}
+.gdPlay {
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent, #ffffff);
+  cursor: pointer;
+}
+.gdInset {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel2);
+}
+
+/* chips */
+.gdStarts,
+.gdChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.gdStarts > span {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.gdChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+span.gdChip {
+  cursor: default;
+}
+.gdChip.add {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: var(--panel);
+  color: var(--accent-text);
+  font-weight: 500;
+}
+.gdChip.on,
+.gdChip.choice[aria-checked="true"] {
+  border: 1.5px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.gdChip.choice {
+  min-height: 36px;
+  padding: 0 14px;
+  background: var(--panel);
+}
+.gdAddInline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.gdAddInline input {
+  flex: 1 1 260px;
+  min-width: 0;
+  max-width: 420px;
+}
+
+/* switches with their words */
+.gdSwitches {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.gdSwitchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+}
+.gdSwitchRow + .gdSwitchRow {
+  border-top: 1px solid var(--line);
+}
+.gdSwitchRow > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gdSwitchRow strong {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.gdSwitchRow small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.gdElsewhere {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.gdElsewhere p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.gdMore {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.gdLink {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.gdLink:hover {
+  text-decoration: underline;
+}
+
+/* Back and Next */
+.gdNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.gdSaved {
+  flex: 1;
+  min-width: 180px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+.gdNext {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- your agent so far: dark in both themes ---- */
+.gdAside {
+  position: sticky;
+  top: var(--under-bar, 0);
+  display: grid;
+  gap: 12px;
+}
+.gdSoFar,
+.gdReadyCard {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 22px;
+  background: var(--gd-ink);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--gd-ink) 30%, transparent);
+  color: #ffffff;
+}
+.gdSoFarLabel {
+  color: color-mix(in srgb, #ffffff 72%, var(--accent));
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gdWho {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.gdWho > div,
+.gdReadyName {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gdWho strong {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.gdWho span,
+.gdReadyName span {
+  color: #d9cfe4;
+  font-size: var(--fs-xs);
+}
+.gdBubble {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 4px 14px 14px 14px;
+  background: var(--gd-ink-soft);
+  color: #ffffff;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.gdBubble.empty {
+  color: #c9bdd6;
+  font-style: italic;
+}
+.gdSoFar dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.gdSoFar dl div {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 8px;
+}
+.gdSoFar dt {
+  color: #c9bdd6;
+  font-size: var(--fs-xs);
+}
+.gdSoFar dd {
+  margin: 0;
+  color: #ffffff;
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.gdSoFar dl .warn dd {
+  color: #f7c97c;
+}
+.gdTalk,
+.gdGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #160f1d;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.gdGhost {
+  border: 1px solid var(--gd-ink-line);
+  background: transparent;
+  color: #ffffff;
+}
+.gdTalk:focus-visible,
+.gdGhost:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+.gdProgress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+.gdProgress > span {
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-xs);
+}
+.gdProgress strong {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.gdRingBack {
+  fill: none;
+  stroke: var(--surface2);
+  stroke-width: 5;
+}
+.gdRingOn {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+@media (max-width: 1279px) {
+  .gdAside {
+    position: static;
+  }
+}
+
+/* ---- ready to try ---- */
+.gdReady {
+  display: grid;
+  grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 1099px) {
+  .gdReady {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.gdReadyCard {
+  justify-items: center;
+  padding: 28px;
+  text-align: center;
+}
+.gdReadyName strong {
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.gdReadyCard .gdBubble {
+  justify-self: stretch;
+  text-align: left;
+}
+.gdBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gdBadges li {
+  padding: 4px 10px;
+  border: 1px solid var(--gd-ink-line);
+  border-radius: 999px;
+  background: var(--gd-ink-soft);
+  color: #ece4f3;
+  font-size: var(--fs-xs);
+}
+.gdReadyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-self: stretch;
+}
+.gdReadyActions > * {
+  flex: 1;
+}
+.gdReadyList {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.gdTodo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--warn-text) 30%, var(--panel));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--warn-text) 7%, var(--panel));
+}
+.gdTodo > span:first-child {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--warn-text) 15%, var(--panel));
+  color: var(--warn-text);
+  font-weight: 700;
+}
+.gdTodo > span:nth-child(2) {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.gdTodo strong {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.gdTodo small {
+  color: var(--warn-text);
+  font-size: var(--fs-xs);
+}
+.gdAnswers {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  list-style: none;
+}
+.gdAnswers li {
+  display: grid;
+  grid-template-columns: 28px minmax(140px, 200px) minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 18px;
+}
+.gdAnswers li + li {
+  border-top: 1px solid var(--line);
+}
+.gdAnswers strong {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.gdAnswer {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.gdAnswers li.todo .gdAnswer {
+  color: var(--warn-text);
+}
+.gdAnswers .gdLink {
+  font-size: var(--fs-xs);
+}
+@media (max-width: 699px) {
+  .gdAnswers li {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+  }
+  .gdAnswer {
+    grid-column: 2 / -1;
+  }
+}

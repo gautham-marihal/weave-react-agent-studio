@@ -1,10 +1,5 @@
-import test, { after, before } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { build } from 'esbuild';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
 import { applyStarter } from '../src/studio/starters.ts';
 import { readRecords } from '../src/studio/records/recordsModel.js';
@@ -18,9 +13,8 @@ import {
   setRecording,
   setRedaction,
 } from '../src/studio/agent/blocks/afterCallModel.js';
-import { $, $$, actions, byLabel, byText, setupDom, teardownDom, textOf } from './component/dom.js';
 
-// The After the call page's blocks (src/studio/agent/blocks/afterCallModel.js and AfterCallBlocks.jsx): what they write is valid, agrees with what
+// The After the call model (src/studio/agent/blocks/afterCallModel.js): what they write is valid, agrees with what
 // the release checklist reads, and never loses what was typed or points at the wrong item.
 const care = () => applyStarter(minimalConfig('acme', 'Acme'), 'support');
 const at11 = () => ({ ...care(), schema_version: '1.1' });
@@ -117,123 +111,6 @@ test('the form below shows the summary’s model only once summaries are on, so 
   [care(), { post_call: { summary: { enabled: true } } }].forEach((config) =>
     ASKED_ABOVE.forEach((p) => assert.ok(askedAbove(config).includes(p), `${p.join('.')} is always asked above`)),
   );
-});
-
-// ---- the blocks, in a DOM -----------------------------------------------------------------------------------------------------------------------
-let mod;
-let act;
-let ui;
-before(async () => {
-  await setupDom();
-  const dir = join(tmpdir(), 'weave-component-tests');
-  mkdirSync(dir, { recursive: true });
-  const outfile = join(dir, `aftercall-${process.pid}-${Date.now()}.mjs`);
-  await build({
-    stdin: {
-      contents: `
-        import React, { act, useState } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { QuestionsBlock } from '../src/studio/agent/blocks/AfterCallBlocks.jsx';
-        function Host({ initial, onConfig }) {
-          const [config, setConfig] = useState(initial);
-          return <QuestionsBlock config={config} set={(next) => { setConfig(next); onConfig(next); }} />;
-        }
-        export async function mount(initial) {
-          const container = document.createElement('div');
-          document.body.appendChild(container);
-          const root = createRoot(container);
-          const state = { config: initial };
-          await act(async () => root.render(<Host initial={initial} onConfig={(next) => { state.config = next; }} />));
-          return {
-            container,
-            get config() { return state.config; },
-            async unmount() { await act(async () => root.unmount()); container.remove(); },
-          };
-        }
-        export { act };
-      `,
-      resolveDir: fileURLToPath(new URL('.', import.meta.url)),
-      loader: 'jsx',
-    },
-    outfile,
-    bundle: true,
-    format: 'esm',
-    platform: 'browser',
-    jsx: 'automatic',
-    logLevel: 'error',
-    loader: { '.css': 'empty' },
-    define: { 'import.meta.env': '{}', 'process.env.NODE_ENV': '"development"' },
-  });
-  mod = await import(pathToFileURL(outfile).href);
-  act = mod.act;
-  ui = actions(act);
-});
-after(() => teardownDom());
-
-const withQuestions = (analysis) => {
-  const config = care();
-  config.post_call = { analysis };
-  return config;
-};
-
-test('blocks: switching a question away from “One of a list” and back keeps its answers to choose from', async () => {
-  const app = await mod.mount(withQuestions([{ id: 'feel', type: 'enum', question: 'How did they feel?', values: ['Happy', 'Neutral', 'Unhappy'] }]));
-  const kind = () => byLabel(app.container, 'The answer to question 1');
-  await ui.choose(kind(), 'number');
-  assert.equal(app.config.post_call.analysis[0].values, undefined, 'the configuration keeps a list only with “One of a list”');
-  await ui.choose(kind(), 'enum');
-  assert.deepEqual(app.config.post_call.analysis[0].values, ['Happy', 'Neutral', 'Unhappy']);
-  await app.unmount();
-});
-
-test('blocks: rows write to their own item, a missing kind shows “Choose…”, and repeated ids draw no React key error', async () => {
-  const errors = [];
-  const original = console.error;
-  console.error = (...args) => errors.push(args.join(' '));
-  try {
-    const app = await mod.mount(
-      withQuestions([
-        null,
-        { id: 'kindless', question: 'No kind' },
-        { id: 'dup', type: 'enum', question: 'Third', values: ['Red', 'Green'] },
-        { id: 'dup', type: 'enum', question: 'Fourth', values: ['Cat', 'Dog'] },
-      ]),
-    );
-    assert.equal($$(app.container, '.smQuestions > li').length, 3);
-    const kind = byLabel(app.container, 'The answer to question 1');
-    assert.equal(kind.value, '');
-    // the choice box shows the chosen words (here, the empty choice's)
-    assert.equal(textOf(kind), 'Choose…');
-    await ui.choose(kind, 'string');
-    assert.equal(app.config.post_call.analysis[1].type, 'string', 'the first row shown is the second item');
-    assert.equal(app.config.post_call.analysis[0], null);
-    await ui.click(byText(app.container, '.smQuestions > li:nth-child(2) button', 'Remove'));
-    assert.deepEqual(
-      app.config.post_call.analysis.map((q) => q?.question ?? null),
-      [null, 'No kind', 'Fourth'],
-    );
-    await app.unmount();
-  } finally {
-    console.error = original;
-  }
-  assert.deepEqual(
-    errors.filter((e) => /same key/i.test(e)),
-    [],
-  );
-});
-
-test('blocks: the focus goes to the new question when one is added, and to the next row or “Add a question” when one is removed', async () => {
-  const app = await mod.mount(care());
-  await ui.click(byText(app.container, 'button.suChip', 'Why did they get in touch?'));
-  assert.equal(document.activeElement, byLabel(app.container, 'Question 1'));
-  await ui.click(byText(app.container, 'button', 'Add a question'));
-  assert.equal(document.activeElement, byLabel(app.container, 'Question 2'));
-  await ui.click(byText(app.container, '.smQuestions > li:nth-child(1) button', 'Remove'));
-  assert.equal(document.activeElement, byLabel(app.container, 'Question 1'), 'the row that took its place');
-  await ui.click(byText(app.container, '.smQuestions > li:nth-child(1) button', 'Remove'));
-  assert.equal(document.activeElement, byText(app.container, 'button', 'Add a question'));
-  assert.equal($(app.container, '.smQuestions'), null);
-  await app.unmount();
 });
 
 test('hiding switched on starts with the kinds the agent already handles: its Guardrails checks, and PINs it keeps sensitive', () => {

@@ -9,7 +9,8 @@
 // too): a real one needs a LiveKit server and an agent, and the API would answer 503 without LiveKit credentials. Every other call goes to the real API.
 //
 // Environment: E2E_BASE (default http://localhost:5173), E2E_BROWSER (path to Chrome or Edge; else the installed Chrome or Edge is used),
-// E2E_HEADED=1 to watch.
+// E2E_HEADED=1 to watch, E2E_EMAIL and E2E_PASSWORD to sign in (a line of the server's credentials file; the default is one of
+// e2e/credentials.txt, which `npm run dev:demo` reads; with `npm run dev`, give a line of ../credentials.txt).
 import fs from 'node:fs';
 import { chromium } from 'playwright-core';
 import { createMockApi, fakeSession } from './mockApi.mjs';
@@ -38,14 +39,18 @@ async function launch() {
   throw new Error('No Chrome or Edge found. Set E2E_BROWSER to the path of one.');
 }
 
+// who signs in; the profile below is theirs, so they open the workspace rather than the first-time setup
+const EMAIL = process.env.E2E_EMAIL || 'e2e@example.com';
+const PASSWORD = process.env.E2E_PASSWORD || 'any-password';
+
 const browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1360, height: 900 } });
-await context.addInitScript(() => {
+await context.addInitScript((email) => {
   if (sessionStorage.getItem('e2e-seeded')) return;
   sessionStorage.setItem('e2e-seeded', '1');
   localStorage.setItem('weave_tech_names', '1'); // the raw JSON view is offered with technical names
-  localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E Tester', email: 'e2e@example.com', workspaceName: 'E2E', role: 'dev' }));
-});
+  localStorage.setItem('weave_profile', JSON.stringify({ fullName: 'E2E Tester', email, workspaceName: 'E2E', role: 'dev' }));
+}, EMAIL);
 const page = await context.newPage();
 const problems = [];
 page.on('console', (m) => {
@@ -83,8 +88,8 @@ try {
     .getByRole('button', { name: /sign in|get started|start/i })
     .first()
     .click();
-  await page.getByPlaceholder('you@company.com').fill('e2e@example.com');
-  await page.getByPlaceholder('Enter your password').fill('any-password');
+  await page.getByPlaceholder('you@company.com').fill(EMAIL);
+  await page.getByPlaceholder('Enter your password').fill(PASSWORD);
   await page.getByRole('button', { name: /continue to workspace/i }).click();
   await page.waitForSelector('.dashMain');
   step('signs in and reaches the workspace', true);
@@ -97,7 +102,7 @@ try {
   // a fresh server has no agents yet: the list is then the empty state, not cards or rows, and each is a loaded list
   await page.waitForSelector('.agentCard, .agentRow, .emptyPanel, .agentTable');
   await page
-    .getByRole('button', { name: /Create agent/ })
+    .getByRole('button', { name: /^(New|Create) agent$/ })
     .first()
     .click();
   await page.getByPlaceholder('e.g. Acme Support').fill(agentName);
@@ -108,7 +113,7 @@ try {
 
   // ---- the starter is in the draft; edit a field as JSON (Settings) and save
   await page.evaluate((id) => (location.hash = `#/bots/${id}/settings`), agentId);
-  await page.waitForSelector('.nlPage');
+  await page.waitForSelector('.dtPage'); // Engine and details, a part of Build › Detailed
   step('the agent’s pages carry its name', (await page.locator('.nlBar h1').innerText()).trim() === agentName);
   await page.locator('.nlPageActions button', { hasText: 'Edit as JSON' }).click();
   const config = JSON.parse(await readJson(page));

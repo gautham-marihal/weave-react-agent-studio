@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
+import { SkeletonRows } from '../../ui/Skeleton.jsx';
 import { PartPanel, PartRow, Parts } from '../../ui/Parts.tsx';
 import ChoiceMenu from '../../ui/ChoiceMenu.tsx';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
@@ -380,7 +381,7 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
         <PartPanel value={tab}>
           {tab === 'open' &&
             (loading && !at ? (
-              <p className="stMuted">Finding the questions callers asked that it didn’t answer…</p>
+              <SkeletonRows rows={3} label="Finding the questions callers asked that it didn’t answer" square={false} />
             ) : open.length === 0 ? (
               <div className="inEmpty">
                 <strong>{groups.length ? 'All caught up' : read ? 'Every question was answered' : 'No calls yet'}</strong>
