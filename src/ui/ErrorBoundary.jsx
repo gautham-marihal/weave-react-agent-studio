@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import Icon from './Icon.jsx';
+import Button from './Button.tsx';
 
 // A page that breaks while drawing says so and offers a way on; the menu and top bar keep working. A page whose
 // files are gone (a newer studio was released while the tab was open) asks for a reload, since a retry can't help.
 //   resetKey: when it changes (another page is opened), the page is drawn again
 
 const STALE = /dynamically imported module|Importing a module script failed|Loading chunk|Failed to fetch/i;
-export const isStaleBuild = (error) => STALE.test(String(error?.message || error || ''));
+const isStaleBuild = (error) => STALE.test(String(error?.message || error || ''));
 
-export function CrashPanel({ error, onRetry, full = false }) {
+function CrashPanel({ error, onRetry, full = false }) {
   const [copied, setCopied] = useState(false);
   const stale = isStaleBuild(error);
   const details = `${error?.name || 'Error'}: ${error?.message || String(error)}\n${window.location.href}\n${new Date().toISOString()}`;
@@ -35,23 +36,22 @@ export function CrashPanel({ error, onRetry, full = false }) {
       </p>
       <div className="pageCrashActions">
         {stale || full ? (
-          <button type="button" className="primaryCta" onClick={() => window.location.reload()}>
+          <Button type="button" variant="primary" onClick={() => window.location.reload()}>
             Reload
-          </button>
+          </Button>
         ) : (
           <>
-            <button type="button" className="primaryCta" onClick={onRetry}>
+            <Button type="button" variant="primary" onClick={onRetry}>
               Try again
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="quietButton"
               onClick={() => {
                 window.location.hash = '#/home';
               }}
             >
               Go to Home
-            </button>
+            </Button>
           </>
         )}
       </div>
@@ -59,10 +59,10 @@ export function CrashPanel({ error, onRetry, full = false }) {
         <details className="pageCrashDetails">
           <summary>Details for support</summary>
           <pre>{details}</pre>
-          <button type="button" className="quietButton" onClick={copy}>
+          <Button type="button" onClick={copy}>
             <Icon name={copied ? 'check' : 'copy'} size={14} />
             {copied ? 'Copied' : 'Copy details'}
-          </button>
+          </Button>
         </details>
       )}
     </div>

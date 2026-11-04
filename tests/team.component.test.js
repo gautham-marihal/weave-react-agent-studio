@@ -113,18 +113,24 @@ test('access can be changed after the invitation, and a person can be removed af
   await a.click($(drawer(), 'input[aria-label="Viewer"]'));
   await a.click(byText(drawer(), 'button', /Send invitation/));
   assert.match(textOf(rowOf(app, 'sam@acme.com')), /Viewer.*Whole workspace/);
-  await a.click($(rowOf(app, 'sam@acme.com'), 'button[aria-label="Change access of Sam"]'));
+  // the row's actions are in its ··· menu
+  const action = async (item) => {
+    await a.open($(rowOf(app, 'sam@acme.com'), 'button[aria-label="Actions for Sam"]'));
+    await a.pick($$(document.body, '.stMenu [role="menuitem"]').find((el) => textOf(el) === item));
+  };
+  await action('Change access');
   assert.ok($(drawer(), '.primaryCta').disabled, 'nothing to save until something changes');
   await a.click($(drawer(), 'input[aria-label="Only some agents"]'));
   await a.click($(drawer(), 'input[aria-label="Billing"]'));
   await a.click($(drawer(), 'input[aria-label="Editor"]'));
   await a.click(byText(drawer(), 'button', 'Save access'));
   assert.match(textOf(rowOf(app, 'sam@acme.com')), /Editor.*Billing/);
-  await a.click($(rowOf(app, 'sam@acme.com'), 'button[aria-label="Remove Sam"]'));
+  await action('Remove from team');
   assert.match(textOf(rowOf(app, 'sam@acme.com')), /Remove Sam\?/);
+  assert.equal(document.activeElement?.textContent, 'Keep', 'the keyboard is on the safe answer');
   await a.click(byText(rowOf(app, 'sam@acme.com'), 'button', 'Keep'));
   assert.ok(rowOf(app, 'sam@acme.com'), 'Keep leaves them');
-  await a.click($(rowOf(app, 'sam@acme.com'), 'button[aria-label="Remove Sam"]'));
+  await action('Remove from team');
   await a.click(byText(rowOf(app, 'sam@acme.com'), 'button', 'Remove'));
   assert.equal(rowOf(app, 'sam@acme.com'), null);
   await app.unmount();

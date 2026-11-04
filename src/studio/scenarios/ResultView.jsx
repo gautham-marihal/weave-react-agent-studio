@@ -5,6 +5,8 @@ import TraceView from '../trace/TraceView.jsx';
 import { describeExpectation } from './model.js';
 import { nextSteps, resultSummary, tokenWords, tokensOf } from './runResults.js';
 import Icon from '../../ui/Icon.jsx';
+import Button from '../../ui/Button.tsx';
+import { maskConversation } from '../privacy/maskConfidential.js';
 
 // What one scenario did in a run: the verdict, each check and why, what to do (an unanswered API request gets "Add a
 // mock"), the requests and tool calls, and the trace. Everything here comes from the server's answer.
@@ -37,9 +39,9 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
                 <li key={`${key}-${i}`}>
                   <code>{key.trim()}</code>
                   {onAddMock && (
-                    <button type="button" className="quietButton" disabled={added} onClick={() => onAddMock(request)}>
+                    <Button type="button" disabled={added} onClick={() => onAddMock(request)}>
                       {added ? 'Mock added: run it again' : 'Add a mock'}
-                    </button>
+                    </Button>
                   )}
                 </li>
               );
@@ -162,7 +164,7 @@ export default function ResultView({ result, scenario, onAddMock, mockAdded = []
           <details className="scDetail">
             <summary>The conversation ({result.transcript.length} messages)</summary>
             <ol className="scTranscriptList">
-              {result.transcript.map((m, i) => (
+              {maskConversation(result.transcript).map((m, i) => (
                 <li key={i} className={m.role}>
                   <b>{m.role === 'user' || m.role === 'caller' ? 'Caller' : 'Agent'}</b> {m.text}
                 </li>

@@ -1,5 +1,6 @@
 import React from 'react';
 import Icon from './Icon.jsx';
+import Button from './Button.tsx';
 
 // Something the address names that isn't there (a deleted agent, a missing page): what it is, why, and the way back.
 // Drawn like a broken page's panel (ui/ErrorBoundary.jsx), with a calmer icon.
@@ -12,9 +13,9 @@ export default function NotFound({ title, text, actionLabel, onAction, children 
       <h1>{title}</h1>
       {text && <p>{text}</p>}
       <div className="pageCrashActions">
-        <button type="button" className="primaryCta" onClick={onAction}>
+        <Button type="button" variant="primary" onClick={onAction}>
           {actionLabel}
-        </button>
+        </Button>
         {children}
       </div>
     </div>

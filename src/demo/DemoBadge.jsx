@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { askConfirm } from '../ui/dialogs.js';
 import { DEMO_NOTE, demoIsForced, isDemoMode, setDemoMode } from './demoMode.js';
+import Button from '../ui/Button.tsx';
 
 // The tag sits first in the screen's top bar (each has a DemoSlot) so it never covers a button;
 // screens without a top bar (landing, sign-in) show it in the corner.
@@ -83,13 +84,13 @@ export function DemoBadge() {
             <li>“Deployed” only means a record in this demo. No phone, widget or server is involved.</li>
           </ul>
           <div className="demoActions">
-            <button type="button" className="quietButton" onClick={reset} disabled={busy}>
+            <Button type="button" onClick={reset} disabled={busy}>
               Start the demo again
-            </button>
+            </Button>
             {!demoIsForced() && (
-              <button type="button" className="primaryCta compactCta" onClick={() => setDemoMode(false)}>
+              <Button type="button" variant="primary" size="compact" onClick={() => setDemoMode(false)}>
                 Use the real API
-              </button>
+              </Button>
             )}
           </div>
           {demoIsForced() && <small>This copy of Weave is a demo, so it always uses demo data.</small>}

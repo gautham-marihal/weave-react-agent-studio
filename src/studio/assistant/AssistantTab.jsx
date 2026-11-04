@@ -16,6 +16,8 @@ import { askAssistant, loadStatus, postToModel } from './engine.js';
 import Select from '../../ui/Select.tsx';
 import './assistant.css';
 import { askConfirm } from '../../ui/dialogs.js';
+import Button from '../../ui/Button.tsx';
+import { TextArea } from '../../ui/Input.tsx';
 
 // "Describe it": say in plain English what the agent should be and do, and the AI makes the settings. Nothing changes
 // behind anyone's back: the answer is a proposal, checked by the same validator as a hand-made draft, that enters the
@@ -218,9 +220,9 @@ export default function AssistantTab({ editor, botId, name, onShowSetting = null
         kind="warn"
         title="The draft can’t be changed yet"
         actions={
-          <button type="button" className="quietButton" onClick={() => onShowJson?.()}>
+          <Button type="button" onClick={() => onShowJson?.()}>
             Open the JSON
-          </button>
+          </Button>
         }
       >
         {editor.parsed?.error ? 'The JSON has a syntax error. Fix it in Settings › Edit as JSON first.' : 'The draft could not be read.'}
@@ -290,9 +292,9 @@ export default function AssistantTab({ editor, botId, name, onShowSetting = null
           kind="info"
           title="Before you use the AI"
           actions={
-            <button type="button" className="primaryCta compactCta" onClick={() => setConsent('1')}>
+            <Button type="button" variant="primary" size="compact" onClick={() => setConsent('1')}>
               I understand, continue
-            </button>
+            </Button>
           }
         >
           What you write, and this draft, are sent to the AI service (Anthropic) using the key kept on this server. Secrets are never part of a draft (it holds
@@ -365,10 +367,9 @@ export default function AssistantTab({ editor, botId, name, onShowSetting = null
             <label htmlFor="as-input" className="srOnly">
               What do you need?
             </label>
-            <textarea
+            <TextArea
               id="as-input"
               ref={inputRef}
-              className="stFInput"
               rows={3}
               value={text}
               disabled={busy}
@@ -384,18 +385,19 @@ export default function AssistantTab({ editor, botId, name, onShowSetting = null
             <div className="asComposerRow">
               <small>{ai ? 'Sent to the AI with the current draft. Ctrl+Enter to send.' : 'Read by simple rules in this browser. Ctrl+Enter to send.'}</small>
               {busy ? (
-                <button type="button" className="quietButton" onClick={cancel}>
+                <Button type="button" onClick={cancel}>
                   Stop
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   type="submit"
-                  className="primaryCta compactCta"
+                  variant="primary"
+                  size="compact"
                   disabled={!canSend}
                   title={!canSend && text.trim().length < (ai ? 4 : MIN_DESCRIPTION) ? 'Write a little more first' : undefined}
                 >
                   <Icon name="sparkle" size={15} /> {ai ? (empty ? 'Build it' : 'Send') : 'Make a first draft'}
-                </button>
+                </Button>
               )}
             </div>
           </form>
@@ -500,9 +502,9 @@ function Ledger({ applied, dirty, saving, onSave }) {
             <Icon name="check" size={14} /> Saved
           </span>
         )}
-        <button type="button" className="quietButton" onClick={() => onSave()} disabled={!dirty || saving}>
+        <Button type="button" onClick={() => onSave()} disabled={!dirty || saving}>
           {saving ? 'Saving…' : 'Save draft'}
-        </button>
+        </Button>
       </div>
     </section>
   );
@@ -654,12 +656,12 @@ function Answer({ turn, phase, onApply, onUndo, onDiscard, go, draftNow, canUndo
       {!turn.discarded && !done && (
         <div className="asActions">
           {changed && <p className="asWarn">The draft has been changed since this was made. Applying replaces it with this version.</p>}
-          <button type="button" className="primaryCta compactCta" onClick={onApply} disabled={counts.total === 0 && !r.replaces}>
+          <Button type="button" variant="primary" size="compact" onClick={onApply} disabled={counts.total === 0 && !r.replaces}>
             {changed ? 'Apply anyway' : 'Apply to the draft'}
-          </button>
-          <button type="button" className="quietButton" onClick={onDiscard}>
+          </Button>
+          <Button type="button" onClick={onDiscard}>
             Not this
-          </button>
+          </Button>
           {errors.length > 0 && <small>You can apply it and fix the rest by hand.</small>}
         </div>
       )}
@@ -671,12 +673,12 @@ function Answer({ turn, phase, onApply, onUndo, onDiscard, go, draftNow, canUndo
               <b>Settings</b>
               <span>{r.where.sections.join(', ') || 'No setting changed'}</span>
               <span className="asRow">
-                <button type="button" className="quietButton" onClick={() => openIn('form', r.where.path)}>
+                <Button type="button" onClick={() => openIn('form', r.where.path)}>
                   Show me
-                </button>
-                <button type="button" className="quietButton" onClick={() => openIn('json', r.where.path)}>
+                </Button>
+                <Button type="button" onClick={() => openIn('json', r.where.path)}>
                   Open in JSON
-                </button>
+                </Button>
               </span>
             </li>
             <li>
@@ -685,9 +687,9 @@ function Answer({ turn, phase, onApply, onUndo, onDiscard, go, draftNow, canUndo
                 {r.where.agents} agent{r.where.agents === 1 ? '' : 's'}, {r.where.handovers} hand-over{r.where.handovers === 1 ? '' : 's'}
               </span>
               <span className="asRow">
-                <button type="button" className="quietButton" onClick={() => go('workflow')}>
+                <Button type="button" onClick={() => go('workflow')}>
                   See the workflow
-                </button>
+                </Button>
               </span>
             </li>
           </ul>
@@ -699,16 +701,16 @@ function Answer({ turn, phase, onApply, onUndo, onDiscard, go, draftNow, canUndo
       {done && (
         <div className="asActions applied">
           <span className="asWarnText">{dirty ? 'Not saved yet' : 'Saved'}</span>
-          <button type="button" className="primaryCta compactCta" onClick={() => onSave()} disabled={!dirty || saving}>
+          <Button type="button" variant="primary" size="compact" onClick={() => onSave()} disabled={!dirty || saving}>
             {saving ? 'Saving…' : 'Save draft'}
-          </button>
-          <button type="button" className="quietButton" onClick={() => go('test')}>
+          </Button>
+          <Button type="button" onClick={() => go('test')}>
             Test it
-          </button>
+          </Button>
           {canUndo && (
-            <button type="button" className="quietButton" onClick={onUndo}>
+            <Button type="button" onClick={onUndo}>
               Undo
-            </button>
+            </Button>
           )}
         </div>
       )}

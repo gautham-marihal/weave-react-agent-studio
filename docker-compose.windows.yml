@@ -1,0 +1,71 @@
+# Weave Studio in Windows containers (a Windows host with Docker in Windows-containers mode: Windows Server, or Windows
+# 11 Pro/Enterprise). The images (weave-studio:windows and the rest) are built on a Linux engine with
+#   ./run.sh export-windows        (or .\run.cmd export-windows on Docker Desktop in its usual Linux mode)
+# and started on the Windows host with
+#   .\run.cmd import               (loads docker-images\windows\*.tar, then starts with this file)
+# The same services, ports and profiles as docker-compose.yml. Two Windows differences: a container can't mount a
+# single file, so the project folder is mounted read-only at C:\host (credentials.txt and the Caddyfile are read from
+# there); and nothing is built here.
+
+services:
+  studio:
+    image: weave-studio:windows
+    env_file:
+      - path: .env.docker
+        required: false
+    environment:
+      CREDENTIALS_FILE: 'C:\host\credentials.txt'
+    volumes:
+      - type: bind
+        source: .
+        target: 'C:\host'
+        read_only: true
+    ports:
+      # if this Windows version refuses a host address here, write '${STUDIO_PORT:-5173}:8080' and keep the port
+      # closed in Windows Firewall instead
+      - '127.0.0.1:${STUDIO_PORT:-5173}:8080'
+    restart: unless-stopped
+
+  studio-demo:
+    profiles: [demo]
+    image: weave-studio-demo:windows
+    environment:
+      CREDENTIALS_FILE: 'C:\host\credentials.txt'
+    volumes:
+      - type: bind
+        source: .
+        target: 'C:\host'
+        read_only: true
+    ports:
+      - '127.0.0.1:${STUDIO_DEMO_PORT:-8090}:8080'
+    restart: unless-stopped
+
+  mock-api:
+    profiles: [mock]
+    image: weave-mock-api:windows
+    ports:
+      - '127.0.0.1:${MOCK_API_PORT:-4400}:4400'
+    restart: unless-stopped
+
+  caddy:
+    profiles: [https]
+    image: caddy-nano:windows
+    depends_on: [studio]
+    env_file:
+      - path: .env.docker
+        required: false
+    volumes:
+      - type: bind
+        source: .
+        target: 'C:\host'
+        read_only: true
+      - caddy_data:C:\data
+      - caddy_config:C:\config
+    ports:
+      - '80:80'
+      - '443:443'
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -22,7 +22,7 @@ function read(botId) {
   return value;
 }
 
-export function saveProgress(botId, patch) {
+function saveProgress(botId, patch) {
   if (!botId) return;
   const next = { ...read(botId), ...patch, known: true };
   cache.set(botId, next);

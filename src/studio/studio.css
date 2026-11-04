@@ -23,8 +23,7 @@
 .stNotice code,
 .stModal code,
 .stCard code,
-.stValidation code,
-.agentRow code {
+.stValidation code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -819,9 +818,6 @@ em.stTag {
 }
 
 /* Agent menu (Rename, Export, Remove) */
-.agentRow.withMenu {
-  grid-template-columns: minmax(0, 1fr) auto auto;
-}
 .stMenuBtn {
   width: 38px;
   height: 38px;
@@ -840,54 +836,6 @@ em.stTag {
 .stMenuBtn[aria-expanded="true"] {
   border-color: var(--accent);
   color: var(--textStrong);
-}
-.agentRowMenu {
-  align-self: center;
-}
-/* the pin, and in the person's own order the handle to drag the agent by, at the end of an Agents row before its menu: quiet until the row is
-   pointed at, and filled while it is pinned */
-.agentRowTools {
-  display: inline-flex;
-  align-items: center;
-  align-self: center;
-  gap: 4px;
-}
-.agentRowPin {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  opacity: 0.55;
-}
-.agentRow:hover .agentRowPin,
-.agentRowPin:focus-visible {
-  opacity: 1;
-}
-.agentRowPin:hover {
-  background: var(--surface2);
-  color: var(--textStrong);
-}
-.agentRowPin.on {
-  opacity: 1;
-  color: var(--accent-text);
-}
-.agentRowPin.on svg {
-  fill: currentColor;
-}
-
-@media (max-width: 720px) {
-  /* The agent opens full width on its own line; Open and the menu sit under it. */
-  .agentRow.withMenu {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .agentRow.withMenu .agentRowMain {
-    grid-column: 1 / -1;
-  }
 }
 .stMenu {
   position: fixed;
@@ -1234,126 +1182,11 @@ em.stTag {
   }
 }
 
-/* At-a-glance counts */
-.stAgentSummary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--ds-radius-card, 14px);
-  background: var(--panel);
-  box-shadow: var(--ds-card-shadow, none);
-}
-.stAgentSummary > div {
-  display: grid;
-  gap: 4px;
-  padding: 14px 18px;
-  min-width: 0;
-}
-.stAgentSummary > div + div {
-  border-left: 1px solid var(--line);
-}
-.stAgentSummary span {
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-.stAgentSummary strong {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--textStrong);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Search and sort */
-.stListTools {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-.stListTools .inlineSearch {
-  flex: 1 1 280px;
-  max-width: 420px;
-  margin: 0;
-}
-.stSort {
+/* a menu opened by a button with words (Menu's text) */
+.stMenuText {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: var(--fs-sm);
-  color: var(--muted);
-}
-.stSort :is(select, button:where(.rxSelect)) {
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--line2);
-  border-radius: var(--ds-radius-control, 10px);
-  background: var(--surface);
-  color: var(--textStrong);
-  font: inherit;
-  font-size: var(--fs-sm);
-}
-
-/* Column headings line up with the row layout below */
-.stAgentHead,
-.stAgentRow .agentRowMain {
-  display: grid;
-  grid-template-columns: 44px minmax(160px, 1.4fr) minmax(220px, 1.3fr) minmax(120px, 0.8fr);
-  align-items: center;
-  gap: 14px;
-}
-.stAgentHead {
-  padding: 0 calc(24px + 38px + 76px + 18px) 6px 18px;
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-.stAgentHead > span:first-child {
-  grid-column: 1 / span 2;
-}
-.stAgentRow .agentRowMain {
-  text-align: left;
-}
-.stAgentRow .agentRowCopy {
-  min-width: 0;
-}
-.stAgentRow .agentRowCopy strong {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.stAgentRow .agentRowCopy small code {
-  font-size: var(--fs-xs);
-}
-.stRowFacts {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.stRowVersion {
-  font-size: var(--fs-md);
-  font-weight: 700;
-  color: var(--textStrong);
-  font-variant-numeric: tabular-nums;
-}
-.stRowVersion.none {
-  font-weight: 600;
-  color: var(--dim);
-}
-.stRowFacts small {
-  font-size: var(--fs-xs);
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  gap: 6px;
 }
 
 /* Environment slots (rows and header) */
@@ -1425,46 +1258,9 @@ button.stEnvSlot:focus-visible {
 
 /* Header: description and environments */
 
-@media (max-width: 1100px) {
-  .stAgentHead {
-    display: none;
-  }
-  .stAgentRow .agentRowMain {
-    grid-template-columns: 44px minmax(0, 1fr);
-  }
-  .stAgentRow .stEnvSlots,
-  .stAgentRow .stRowFacts {
-    grid-column: 2;
-  }
-  .stAgentSummary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .stAgentSummary > div:nth-child(3) {
-    border-left: 0;
-  }
-  .stAgentSummary > div:nth-child(n + 3) {
-    border-top: 1px solid var(--line);
-  }
-}
-
 /* Rows adapt to the space they're given (the Overview's column is narrower than the Agents page). */
 .agentRowList {
   container-type: inline-size;
-}
-@container (max-width: 820px) {
-  .stAgentRow .agentRowMain {
-    grid-template-columns: 44px minmax(0, 1fr);
-    row-gap: 8px;
-  }
-  .stAgentRow .stEnvSlots,
-  .stAgentRow .stRowFacts {
-    grid-column: 2;
-  }
-  .stAgentRow .stRowFacts {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
 }
 
 /* Deploy: the check before deploying, and the word that confirms a production deploy */
@@ -1646,34 +1442,6 @@ button.stEnvSlot:focus-visible {
   text-transform: uppercase;
 }
 
-/* The sign-in is a demo and says so */
-.demoNotice {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  flex-wrap: wrap;
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, #e0a83b 55%, var(--line2));
-  background: color-mix(in srgb, #e0a83b 10%, var(--panel));
-  font-size: var(--fs-xs);
-  line-height: 1.5;
-  color: var(--text);
-  text-align: left;
-}
-.demoNotice b {
-  color: var(--warn-text, #e0a83b);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.demoNotice span {
-  flex: 1 1 220px;
-  min-width: 0;
-}
-
 .stEnvSecrets {
   display: block;
   margin-top: 4px;
@@ -1759,49 +1527,6 @@ button.stEnvSlot:focus-visible {
 .stTestChip.failed {
   color: var(--danger-text, #ef6b6b);
   border-color: currentColor;
-}
-
-/* ---- the Agents list at scale: tags, health, a pager */
-.stAgentTag {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 7px;
-  border: 1px solid var(--line2);
-  border-radius: 999px;
-  font-size: var(--fs-xs);
-  color: var(--muted);
-}
-.stHealth {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 3px;
-  font-size: var(--fs-xs);
-}
-.stHealthPart {
-  padding: 0 8px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  font-weight: 600;
-}
-.stHealthPart.bad {
-  color: var(--danger-text, #ef6b6b);
-}
-.stHealthPart.warn {
-  color: var(--warn-text, #d6a53a);
-}
-.stListNote {
-  margin: 6px 2px;
-  font-size: var(--fs-sm);
-}
-.stPager {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  margin: 14px 0;
-  font-size: var(--fs-sm);
-  color: var(--muted);
 }
 
 .stTemplatesHead {
@@ -1917,14 +1642,6 @@ button.stEnvSlot:focus-visible {
   flex-wrap: wrap;
   border-top: 1px solid var(--line);
   padding-top: 12px;
-}
-
-.stRowTitle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0;
 }
 
 /* The agent's page: a calm header, one stepper, one toolbar. */
@@ -2187,160 +1904,26 @@ html[data-theme] body .agentTable :is(.stAgentHead, .agentRowMain) {
   align-items: center;
   gap: 14px;
 }
-/* each part in its own column (an older rule for narrow lists moved them under the name) */
-html[data-theme] body .agentTable .agentRowMain > :is(.stEnvSlots, .stRowCalls, .stRowFacts) {
-  grid-column: auto;
-}
 /* the environments wrap inside their column (an agent in all three can need two lines); nothing spills into the next column */
 html[data-theme] body .agentTable .stEnvSlots {
   flex-wrap: wrap;
   row-gap: 4px;
   min-width: 0;
 }
-html[data-theme] body .agentTable .agentRowMain > * {
-  min-width: 0;
-}
-html[data-theme] body .agentTable .stAgentHead {
-  padding: 9px 8px 9px 16px;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface2) 55%, transparent);
-}
-html[data-theme] body .agentTable:has(.agentRowMenu) .stAgentHead {
-  padding-right: 58px;
-}
-/* and room for the pin, and the handle too in the person's own order, so the headings stay over their columns */
-html[data-theme] body .agentTable:has(.agentRowTools) .stAgentHead {
-  padding-right: 98px;
-}
-html[data-theme] body .agentTable:has(.agentRowTools .dragHandle) .stAgentHead {
-  padding-right: 134px;
-}
-html[data-theme] body .agentTable .stAgentHead > span:first-child {
-  grid-column: 1 / span 2;
-}
-html[data-theme] body .agentTable .agentRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 0;
-  padding: 0 8px 0 0;
-  border: 0;
-  border-top: 1px solid var(--line);
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-  transform: none;
-}
-html[data-theme] body .agentTable .stAgentHead + .agentRow {
-  border-top: 0;
-}
-html[data-theme] body .agentTable .agentRow:hover,
-html[data-theme] body .agentTable .agentRow:focus-within {
-  background: color-mix(in srgb, var(--surface2) 70%, transparent);
-  box-shadow: none;
-  transform: none;
-}
-html[data-theme] body .agentTable .agentRowMain {
-  flex: 1;
-  min-width: 0;
-  padding: 12px 8px 12px 16px;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-html[data-theme] body .agentTable .agentRowMain:hover {
-  background: none;
-}
-html[data-theme] body .agentTable .agentRowMain:focus-visible {
-  outline: 2px solid var(--focus, var(--accent));
-  outline-offset: -2px;
-}
 html[data-theme] body .agentTable .agentRowAvatar {
   width: 36px;
   height: 36px;
   border-radius: 9px;
-}
-html[data-theme] body .agentTable .agentRowMain > svg {
-  color: var(--dim);
-}
-html[data-theme] body .agentTable .agentRowMenu {
-  flex: none;
-}
-/* calls in the last days, as a number and small bars; an alert that holds for the agent beside them */
-.stRowCalls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  min-width: 0;
-}
-.stRowCalls strong {
-  min-width: 2ch;
-  color: var(--textStrong);
-  font-size: var(--fs-md);
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-.stRowSpark {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  width: 56px;
-  height: 20px;
-}
-.stRowSpark i {
-  flex: 1;
-  border-radius: 1px;
-  background: color-mix(in srgb, var(--accent) 35%, var(--surface2));
-}
-.stRowSpark i.today {
-  background: color-mix(in srgb, var(--accent) 75%, var(--surface2));
-}
-.stRowAlert {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--warn, #d6a53a) 14%, transparent);
-  color: var(--warn-text);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-}
-.stRowAlert.critical {
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
-  color: var(--danger-text);
 }
 /* a narrower place (Home's column): the version goes, then the columns stack */
 @container (max-width: 860px) {
   html[data-theme] body .agentTable :is(.stAgentHead, .agentRowMain) {
     grid-template-columns: 36px minmax(140px, 1.3fr) minmax(240px, 1.1fr) minmax(110px, 0.6fr) 16px;
   }
-  html[data-theme] body .agentTable .stRowFacts,
-  html[data-theme] body .agentTable .stAgentHead > span:nth-child(4) {
-    display: none;
-  }
 }
 @container (max-width: 640px) {
-  html[data-theme] body .agentTable .stAgentHead {
-    display: none;
-  }
-  html[data-theme] body .agentTable .agentRowMain {
-    grid-template-columns: 36px minmax(0, 1fr) 16px;
-    row-gap: 8px;
-  }
-  html[data-theme] body .agentTable .agentRowMain > :is(.stEnvSlots, .stRowCalls) {
-    grid-column: 2;
-  }
   html[data-theme] body .agentTable .stEnvSlots {
     flex-wrap: wrap;
-  }
-  html[data-theme] body .agentTable .agentRowMain > svg {
-    grid-column: 3;
-    grid-row: 1;
   }
 }
 

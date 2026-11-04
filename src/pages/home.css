@@ -1,0 +1,19 @@
+/* Home: where the agents come from, said under the title */
+.homeConnection {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.homeConnection .healthSignal {
+  width: 8px;
+  height: 8px;
+}
+
+/* Home's note about the demo's sample agents, spaced like the sections around it */
+.homeSamples {
+  margin-bottom: 16px;
+}

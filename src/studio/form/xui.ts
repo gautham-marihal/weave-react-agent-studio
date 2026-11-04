@@ -11,12 +11,12 @@
 
 import { isObj } from './engine.js';
 
-export const AUDIENCES = ['guided', 'detailed', 'expert'] as const;
-export const XUI_WIDGETS = ['textarea', 'template', 'jsonpath', 'phone', 'url', 'duration', 'secret-picker'] as const;
+const AUDIENCES = ['guided', 'detailed', 'expert'] as const;
+const XUI_WIDGETS = ['textarea', 'template', 'jsonpath', 'phone', 'url', 'duration', 'secret-picker'] as const;
 
-export type Audience = (typeof AUDIENCES)[number];
-export type XuiWidget = (typeof XUI_WIDGETS)[number];
-export type Xui = {
+type Audience = (typeof AUDIENCES)[number];
+type XuiWidget = (typeof XUI_WIDGETS)[number];
+type Xui = {
   widget?: XuiWidget;
   label?: string;
   help?: string;

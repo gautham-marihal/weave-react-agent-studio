@@ -1,0 +1,843 @@
+/* Build › Detailed, as designed (docs: memory project_build_redesign): a part's header with its number in the part's
+   colour, two columns of cards, rows with the label on the left and the control on the right, and "Advanced" folded at
+   each card's foot. Built on the studio's tokens, so every style and both themes draw it in their own colours. */
+
+.dtPart {
+  /* each part's colour, from the design; a style can set its own */
+  --hue-agent: #72308f;
+  --hue-conversation: #1d4fa8;
+  --hue-knowledge: #0a8fb0;
+  --hue-tools: #d4602a;
+  --hue-connections: #8a4b0b;
+  --hue-channels: #0f7a4a;
+  --hue-workflow: #3b6fe0;
+  --hue-subagents: #0e7490;
+  --hue-guardrails: #a3122a;
+  --hue-aftercall: #6941c6;
+  --hue-settings: #344054;
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* ---- the header ---- */
+.dtHead {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.dtNum {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--dt-hue);
+  color: #fff;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+}
+.dtHeadText {
+  flex: 1;
+  min-width: 260px;
+}
+.dtEyebrow {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+html[data-theme] body .dtPart h1 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dtQuestion {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+.dtCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dtCounts li {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+.dtCounts li.req {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--danger-text) 10%, var(--panel));
+  color: var(--danger-text);
+}
+.dtCounts li.adv {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* ---- the columns and cards ---- */
+.dtPart {
+  /* one card below the other, in the order of the design's two columns: a readable width, not the whole screen */
+  max-width: 1000px;
+}
+.dtCols {
+  display: grid;
+  gap: 24px;
+}
+.dtCol {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.dtCard {
+  min-width: 0;
+  padding: 20px 24px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.dtCardHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html[data-theme] body .dtCard h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.dtLead {
+  margin: 4px 0 6px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+/* ---- a row: the label on the left, the control on the right ---- */
+.dtRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 16px 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+.dtLabel {
+  flex: none;
+  width: 34%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dtLabel label {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.dtLabel small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+.dtTag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 5px;
+  font-size: var(--fs-xs);
+  vertical-align: 1px;
+}
+.dtTag.req {
+  padding: 0;
+  color: var(--danger-text);
+  font-weight: 500;
+}
+.dtTag.tryout {
+  background: var(--surface2);
+  color: var(--muted);
+}
+.dtTag.moved {
+  background: color-mix(in srgb, var(--info-text) 12%, var(--panel));
+  color: var(--info-text);
+}
+.dtTag.idea {
+  background: color-mix(in srgb, var(--warn-text, #8a4b0b) 12%, var(--panel));
+  color: var(--warn-text, #8a4b0b);
+}
+.dtControl {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.dtNote {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+.dtCases {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.dtCase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 200px) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 12px);
+}
+.dtCaseField {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.dtCaseField > span {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.dtCaseRemove {
+  align-self: end;
+}
+@media (max-width: 720px) {
+  .dtCase {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dtCaseRemove {
+    justify-self: start;
+  }
+}
+.dtNoteValue {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.dtNum2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dtNum2 .stFInput {
+  width: 96px;
+}
+.dtUnit {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.dtSw {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+}
+
+/* choices as pills: the chosen one in the accent */
+.dtPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+.dtPills button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.dtPills button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.dtPills button.on {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--accent-text);
+  font-weight: 500;
+}
+.dtPills button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* a list as chips, and a box to add one */
+.dtChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+}
+.dtChips ul {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dtChips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 2px 4px 2px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.dtChips li button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.dtChips li button:hover {
+  background: color-mix(in srgb, var(--textStrong) 8%, transparent);
+  color: var(--textStrong);
+}
+.dtChipAdd .stFInput {
+  width: auto;
+  min-width: 150px;
+  max-width: 100%;
+  border-style: dashed;
+}
+
+/* an embedded settings form (a group of settings the schema draws) */
+.dtForm .stForm.embedded {
+  margin: 0;
+}
+
+/* ---- Advanced, at the card's foot ---- */
+.dtAdv {
+  margin: 4px -18px 0;
+  border-top: 1px dashed var(--line);
+  border-radius: 0 0 var(--r-card, 14px) var(--r-card, 14px);
+  background: color-mix(in srgb, var(--surface2) 55%, var(--panel));
+}
+.dtAdv > summary {
+  display: grid;
+  gap: 8px;
+  padding: 10px 18px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.dtAdv > summary::-webkit-details-marker {
+  display: none;
+}
+.dtAdvTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--textStrong);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.dtAdvTitle svg {
+  transition: transform 0.15s ease;
+}
+.dtAdv[open] .dtAdvTitle svg {
+  transform: rotate(90deg);
+}
+.dtAdvNames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dtAdvNames span {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.dtAdvRows {
+  padding: 0 18px 6px;
+}
+
+/* ---- a list of items (tools, channels…) as chips; the chosen one is opened in its card below ---- */
+.dtItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 2px;
+}
+.dtItems button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.dtItems button[aria-current="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  color: var(--accent-text);
+  font-weight: 500;
+}
+.dtItemFoot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0 8px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+
+/* the hand-over strip (Subagents and hand-overs) */
+.dtStrip {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+}
+.dtStripHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dtStripHead span {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.dtLanes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.dtLane {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--textStrong);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.dtLane[aria-current="true"] {
+  border: 1.5px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+.dtLane b {
+  font-weight: 600;
+}
+.dtLaneKind {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.dtLaneKind.subagent {
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--accent-text);
+}
+.dtLaneKind.agent {
+  background: color-mix(in srgb, var(--info-text) 12%, var(--panel));
+  color: var(--info-text);
+}
+.dtLaneKind.person {
+  background: color-mix(in srgb, var(--good-text) 12%, var(--panel));
+  color: var(--good-text);
+}
+
+/* a field reached from "show me" or search glows for a moment */
+.dtRow.dtFlash {
+  animation: dtFlash 1.6s ease-out;
+}
+@keyframes dtFlash {
+  0%,
+  30% {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dtRow.dtFlash {
+    animation: none;
+    outline: 2px solid var(--accent);
+  }
+}
+
+/* a picker shown as a select-like button; the full picker opens under it */
+.dtPickBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line2, var(--line));
+  border-radius: var(--r-control, 8px);
+  background: var(--panel);
+  color: var(--textStrong);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.dtPickBtn:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.dtPickEmpty {
+  color: var(--muted);
+}
+.dtPickPanel {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 8px);
+  background: var(--surface2);
+}
+.dtPage {
+  display: grid;
+  gap: 16px;
+}
+.dtBroken {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+}
+.dtBroken p {
+  margin: 0;
+  color: var(--muted);
+}
+.dtEmpty {
+  margin: 6px 0 10px;
+}
+.dtInlineItem {
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 8px);
+  background: color-mix(in srgb, var(--surface2) 45%, var(--panel));
+}
+.dtPerService {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.dtPerService label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.dtFormRow {
+  display: grid;
+  gap: 8px;
+}
+.dtFormSummary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dtBriefs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 0 0;
+  list-style: none;
+}
+.dtBriefs li {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.dtInline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dtInline .stFInput {
+  flex: 1;
+  min-width: 0;
+}
+.dtDrop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px dashed var(--line2, var(--line));
+  border-radius: var(--r-control, 8px);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.dtDrop:focus-within,
+.dtDrop.over {
+  border-color: var(--accent);
+  color: var(--textStrong);
+}
+.dtFound {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+}
+.dtFound li {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.dtFound li.left {
+  opacity: 0.7;
+}
+.dtFound p {
+  margin: 2px 0 0;
+  color: var(--text);
+}
+.dtCardAction {
+  padding: 4px 0 8px;
+}
+.dtStack {
+  display: grid;
+  gap: 10px;
+}
+.dtSub {
+  display: grid;
+  gap: 4px;
+}
+.dtSubLabel {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.dtAddLane {
+  flex-wrap: wrap;
+}
+html[data-theme] body .dtStrip h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+/* what doesn't fit a channel, each with its one-click fix */
+.dtFit {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dtFit li {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--warn-text);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+/* ---- adding to a list: one clear button, named for what it adds ("Add a tool"), at the top of its card; an empty
+   list says so with the button inside it */
+.dtCardHead {
+  justify-content: space-between;
+}
+.dtCardAdd {
+  display: flex;
+  flex: none;
+}
+.dtAddBtn,
+.dtAddPicker .stAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  border-radius: var(--r-control, 8px);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  color: var(--accent-text, var(--accent));
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.dtAddBtn:hover,
+.dtAddPicker .stAddBtn:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}
+.dtAddBtn:focus-visible,
+.dtAddPicker .stAddBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dtEmptyList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: var(--r-control, 8px);
+  background: color-mix(in srgb, var(--accent) 3%, transparent);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+/* a card whose list is empty is short: its title, a line, and the way to add */
+.dtCard.empty .dtRow {
+  padding-top: 10px;
+}
+
+/* the part's cards by name, kept in view under the agent's bar on a long part */
+.dtJumps {
+  position: sticky;
+  top: var(--under-bar, 140px);
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 4px;
+  padding: 8px 0;
+  background: var(--page, var(--bg));
+}
+.dtJumps button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+.dtJumps button:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  color: var(--textStrong);
+}
+.dtJumps button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dtJumpDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger-text, #b42318);
+}
+.dtCard {
+  scroll-margin-top: calc(var(--under-bar, 140px) + 52px);
+}
+.dtCard h2:focus {
+  outline: none;
+}
+
+/* a card waiting for something else first: its name and why */
+.dtCard.waiting {
+  padding-bottom: 16px;
+}
+.dtCard.waiting .dtLead {
+  margin: 0;
+}
+
+/* a try-out: under its name, the whole width of the card, in its own tinted box */
+.dtRow.tryout {
+  flex-direction: column;
+  gap: 10px;
+}
+.dtRow.tryout .dtLabel {
+  width: auto;
+}
+.dtRow.tryout .dtControl {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--r-control, 8px);
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface2));
+  box-sizing: border-box;
+}
+.dtNarrow {
+  max-width: 120px;
+}
+
+/* the Add buttons, over the studio's own button look */
+html[data-theme] body .dtAddBtn,
+html[data-theme] body .dtAddPicker .stAddBtn {
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  color: var(--accent-text, var(--accent));
+  font-weight: 600;
+}
+html[data-theme] body .dtAddBtn:hover,
+html[data-theme] body .dtAddPicker .stAddBtn:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}

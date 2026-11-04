@@ -15,6 +15,10 @@ const inflight = new Set();
 const failed = new Map(); // `${id}@${revision}` -> when it failed
 const RETRY_AFTER_MS = 60_000;
 const BLANK = { tags: [], owner: '', health: { state: 'unknown', parts: [], checked: [] }, failed: true };
+// Every page using this, told when any answer lands: a page that asks for an agent another page is already reading
+// (Home after an agent's page) waits on that read, and must redraw when it ends, not only the page that started it.
+const listeners = new Set();
+const answered = () => listeners.forEach((listener) => listener());
 
 async function read(bot) {
   const draft = await api.getDraft(bot.id);
@@ -33,8 +37,11 @@ export function useAgentHealth(visibleBots, { enabled = true } = {}) {
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
+    const redraw = () => setTick((n) => n + 1);
+    listeners.add(redraw);
     return () => {
       alive.current = false;
+      listeners.delete(redraw);
     };
   }, []);
 
@@ -60,7 +67,7 @@ export function useAgentHealth(visibleBots, { enabled = true } = {}) {
         .finally(() => {
           inflight.delete(key);
           running.current -= 1;
-          if (alive.current) setTick((n) => n + 1);
+          answered();
           pump();
         });
     }

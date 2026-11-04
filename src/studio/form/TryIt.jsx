@@ -5,6 +5,7 @@ import { useResultPreview } from './usePreview.js';
 import { sampleArgs, taskWords } from './serverPreview.js';
 import WhatIfBar, { useWhatIf } from './WhatIfBar.jsx';
 import { PREVIEW_SOURCE } from './tryPanels.js';
+import { TextArea } from '../../ui/Input.tsx';
 
 // "Try it" for one tool, answered by the server: type the model's arguments and a sample API answer, then see the
 // request, whether preconditions hold, what the model is shown, what goes to state or the caller, and which effects
@@ -46,8 +47,8 @@ export default function TryIt({ toolId, parameters, sample, sampleError, hasSamp
       </p>
       <label className="stTryArgs">
         <span>The arguments the model gives</span>
-        <textarea
-          className="stFInput mono"
+        <TextArea
+          mono
           rows={3}
           spellCheck={false}
           value={argsText}

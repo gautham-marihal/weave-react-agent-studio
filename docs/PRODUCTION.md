@@ -5,8 +5,9 @@ Agent Builder API. **That something has to do two jobs the app can't do for itse
 
 ## 1. Real sign-in
 
-The sign-in screen in the app is a demo: it accepts any email and password and keeps them in the browser, so it protects
-nothing. Put real sign-in in front of the whole site (SSO / OIDC, for example oauth2-proxy, Caddy or nginx with auth) so
+The sign-in screen checks the email and password against `credentials.txt` on the server (`authRoute.js`), then keeps
+who signed in in the browser. It guards the screens, not the requests: `/api` is not behind it, so it is not enough on
+its own. Put real sign-in in front of the whole site (SSO / OIDC, for example oauth2-proxy, Caddy or nginx with auth) so
 that no request reaches the app or `/api` without a verified user.
 
 ## 2. The proxy adds the key and the identity
@@ -55,6 +56,13 @@ Build with `npm run build`; serve `dist/`. Don't use `vite preview` in productio
 
 `npm run dev` forwards `/api` with the key from `.env.local` and the user from `AGENT_BUILDER_USER`. That is a convenience:
 anyone who can open the dev server can use the key through it. Keep it on your own machine.
+
+## The API test pass-through (`/api-pass`)
+
+Integrations › Test connection calls a connected API, and most APIs refuse calls from web pages (CORS). In development `apiPass.js` takes the browser's
+`GET /api-pass` with the address to call in `X-Api-Url` and the connection's headers in `X-Api-Headers`, and makes the call: only a GET, only to the addresses in
+`API_PASS_TARGETS`, with only the connection's own headers. In production the proxy does the same, behind sign-in, with the same allow-list; or the API allows
+the Studio's address itself. The agents don't use it: they call the API from the Agent Builder server.
 
 ## The Describe assistant's route (`/llm`)
 

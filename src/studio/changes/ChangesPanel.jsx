@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal } from '../ui.jsx';
 import './changes.css';
+import Button from '../../ui/Button.tsx';
 
 // "What have I changed?": the draft against the newest published version, by part, each with a way back.
 export default function ChangesPanel({ changes, version, onRevert, onClose }) {
@@ -28,9 +29,9 @@ export default function ChangesPanel({ changes, version, onRevert, onClose }) {
               <h3>
                 {group.section} <span className="chgCount">{group.items.length}</span>
               </h3>
-              <button type="button" className="quietButton small" onClick={() => onRevert(group.key, group.section)}>
+              <Button type="button" size="small" onClick={() => onRevert(group.key, group.section)}>
                 Put back as published
-              </button>
+              </Button>
             </header>
             <ul>
               {group.items.map((item, index) => (

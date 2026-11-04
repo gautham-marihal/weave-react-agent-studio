@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
+import { SkeletonRows } from '../../ui/Skeleton.jsx';
 import { PartPanel, PartRow, Parts } from '../../ui/Parts.tsx';
 import ChoiceMenu from '../../ui/ChoiceMenu.tsx';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
@@ -11,6 +12,8 @@ import { REASONS, addAnswer, addTest, answerInDraft, askedSince, closeness, remo
 import { useQuestions } from './useQuestions.js';
 import Select from '../../ui/Select.tsx';
 import './insights.css';
+import Button from '../../ui/Button.tsx';
+import { TextArea } from '../../ui/Input.tsx';
 
 const PERIODS = [
   [7, 'Last 7 days'],
@@ -124,9 +127,8 @@ function AnswerForm({ group, agents, defaultAgent, initial = '', onCancel, onSav
       <label htmlFor={id}>
         <span>What should it say?</span>
       </label>
-      <textarea
+      <TextArea
         id={id}
-        className="stFInput"
         autoFocus
         value={answer}
         placeholder="For example: We deliver Monday to Saturday. Sunday delivery isn’t available yet, but next-day delivery on Saturday is."
@@ -162,12 +164,12 @@ function AnswerForm({ group, agents, defaultAgent, initial = '', onCancel, onSav
         </p>
       )}
       <div className="inActions">
-        <button type="submit" className="primaryCta compactCta" disabled={!ready}>
+        <Button type="submit" variant="primary" size="compact" disabled={!ready}>
           {changing ? 'Change the answer' : 'Add to the draft'}
-        </button>
-        <button type="button" className="quietButton" onClick={onCancel}>
+        </Button>
+        <Button type="button" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -270,9 +272,9 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
         </div>
         {answering !== group.key && (
           <div className="inActions">
-            <button type="button" className="secondaryCta compactCta" disabled={!canEdit} onClick={() => setAnswering(group.key)} data-answer-for={group.key}>
+            <Button type="button" variant="secondary" size="compact" disabled={!canEdit} onClick={() => setAnswering(group.key)} data-answer-for={group.key}>
               Answer it
-            </button>
+            </Button>
             <DismissMenu onPick={(reason) => decideQuestion(botId, { words: group.words, text: group.text, kind: 'dismissed', reason })} />
           </div>
         )}
@@ -323,9 +325,9 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
               </option>
             ))}
           </Select>
-          <button type="button" className="quietButton" onClick={refresh} disabled={loading}>
+          <Button type="button" onClick={refresh} disabled={loading}>
             Refresh
-          </button>
+          </Button>
         </div>
       </div>
       {error && (
@@ -350,13 +352,13 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
           actions={
             <>
               {done.testId && (
-                <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, 'scenarios'), { guard: false })}>
+                <Button type="button" onClick={() => navigate(routeHref(botId, 'scenarios'), { guard: false })}>
                   See the test
-                </button>
+                </Button>
               )}
-              <button type="button" className="quietButton" onClick={() => undo(done.decision)}>
+              <Button type="button" onClick={() => undo(done.decision)}>
                 Undo
-              </button>
+              </Button>
             </>
           }
         >
@@ -379,7 +381,7 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
         <PartPanel value={tab}>
           {tab === 'open' &&
             (loading && !at ? (
-              <p className="stMuted">Finding the questions callers asked that it didn’t answer…</p>
+              <SkeletonRows rows={3} label="Finding the questions callers asked that it didn’t answer" square={false} />
             ) : open.length === 0 ? (
               <div className="inEmpty">
                 <strong>{groups.length ? 'All caught up' : read ? 'Every question was answered' : 'No calls yet'}</strong>
@@ -434,18 +436,13 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
                         {answering !== key && (
                           <div className="inActions">
                             {group && canEdit && (
-                              <button type="button" className="quietButton" onClick={() => setAnswering(key)} data-answer-for={key}>
+                              <Button type="button" onClick={() => setAnswering(key)} data-answer-for={key}>
                                 Change the answer
-                              </button>
+                              </Button>
                             )}
-                            <button
-                              type="button"
-                              className="quietButton"
-                              onClick={() => undo(decision)}
-                              title="Take the answer (and its test) out of the draft"
-                            >
+                            <Button type="button" onClick={() => undo(decision)} title="Take the answer (and its test) out of the draft">
                               Undo
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -499,9 +496,9 @@ export default function QuestionsPage({ botId, editor, onOpenCall }) {
                         </p>
                       </div>
                       <div className="inActions">
-                        <button type="button" className="quietButton" onClick={() => undoQuestion(botId, decision.text)}>
+                        <Button type="button" onClick={() => undoQuestion(botId, decision.text)}>
                           Bring it back
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </li>

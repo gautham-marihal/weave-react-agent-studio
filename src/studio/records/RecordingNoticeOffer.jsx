@@ -1,9 +1,10 @@
 import React from 'react';
+import Button from '../../ui/Button.tsx';
 
 // Asked when a voice channel is added and callers aren't told anything yet. A recording notice is a legal matter in
 // many places and calls are recorded unless turned off, so it is raised when it matters, not left to a default.
 //   onAdd: writes the notice; onDone: closes the question either way
-export const DEFAULT_RECORDING_NOTICE = 'This call may be recorded to improve our service.';
+const DEFAULT_RECORDING_NOTICE = 'This call may be recorded to improve our service.';
 
 export default function RecordingNoticeOffer({ onAdd, onDone }) {
   return (
@@ -13,19 +14,20 @@ export default function RecordingNoticeOffer({ onAdd, onDone }) {
         to be told.
       </p>
       <div className="stFOfferActions">
-        <button
+        <Button
           type="button"
-          className="primaryCta compactCta"
+          variant="primary"
+          size="compact"
           onClick={() => {
             onAdd(DEFAULT_RECORDING_NOTICE);
             onDone();
           }}
         >
           Add a notice
-        </button>
-        <button type="button" className="quietButton" onClick={onDone}>
+        </Button>
+        <Button type="button" onClick={onDone}>
           Not now
-        </button>
+        </Button>
       </div>
     </div>
   );

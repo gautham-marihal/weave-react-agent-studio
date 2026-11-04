@@ -4,7 +4,7 @@
 
 import { isObj } from './engine.js';
 
-export const PARAM_NAME = /^[a-z][a-z0-9_]*$/;
+const PARAM_NAME = /^[a-z][a-z0-9_]*$/;
 export const PARAM_KINDS = [
   { id: 'string', label: 'Text' },
   { id: 'number', label: 'Number' },
@@ -47,7 +47,7 @@ export function readParams(schema) {
   return { rows, rest, canEdit: true };
 }
 
-export function writeProperty(row) {
+function writeProperty(row) {
   if (row.kind === 'advanced') return row.raw ?? { ...row.extra };
   const out = {};
   out.type = row.kind === 'choice' ? 'string' : row.kind;

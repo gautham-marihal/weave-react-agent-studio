@@ -8,7 +8,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
-export const BASELINE_DAYS = 7;
+const BASELINE_DAYS = 7;
 
 // The rules, in words, with the numbers in them a person can change. `sentence` is drawn with the numbers as boxes.
 export const RULES = [
@@ -80,7 +80,7 @@ export const RULES = [
     why: 'A change made the agent worse. Rolling back is one click away.',
   },
 ];
-export const RULE = Object.fromEntries(RULES.map((r) => [r.id, r]));
+const RULE = Object.fromEntries(RULES.map((r) => [r.id, r]));
 const SEVERITY_RANK = { critical: 2, warning: 1 };
 
 // The rules with a person's changes laid over the defaults: { id: { enabled, params } }
@@ -270,8 +270,8 @@ export function lookback(rules = effectiveRules()) {
 
 // ---- what a person did about alerts, and what happened to them (kept in this browser)
 
-export const HISTORY_DAYS = 30;
-export const HISTORY_MAX = 200;
+const HISTORY_DAYS = 30;
+const HISTORY_MAX = 200;
 
 // Updates the record with the alerts that hold now: new ones are logged as fired, gone ones as cleared (and their
 // acknowledgement forgotten, so a return counts as new), and expired snoozes end. Returns { state, fired: [new ones] }.

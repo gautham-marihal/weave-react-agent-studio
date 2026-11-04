@@ -5,6 +5,7 @@ import { envLabel, Modal, Notice, Spinner } from '../ui.jsx';
 import { useAsync } from '../useAsync.js';
 import { configToText, copyText, downloadText, exportFileName } from './exportConfig.js';
 import { saveTemplate, templateFileName, templateToFile } from '../savedTemplates.js';
+import Button from '../../ui/Button.tsx';
 
 // ---- Rename ---------------------------------------------------------------------------------------------
 // The display name is meta.name in the draft. The id is permanent (links and calls use it), and published
@@ -148,9 +149,9 @@ export function ExportDialog({ botId, name, editor, onClose }) {
           <button type="button" className="modalCancel" onClick={onClose} disabled={!!busy}>
             Close
           </button>
-          <button type="button" className="quietButton" onClick={() => run('copy')} disabled={!!busy || versions.loading}>
+          <Button type="button" onClick={() => run('copy')} disabled={!!busy || versions.loading}>
             {busy === 'copy' ? 'Copying…' : 'Copy JSON'}
-          </button>
+          </Button>
           <button type="button" className="modalCreate" onClick={() => run('download')} disabled={!!busy || versions.loading}>
             {busy === 'download' ? 'Preparing…' : 'Download'}
           </button>

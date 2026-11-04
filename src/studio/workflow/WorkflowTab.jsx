@@ -31,6 +31,7 @@ import {
   setPositions,
   whyKeepAgent,
 } from './workflowOps.js';
+import { handoffGaps, withHandoffRules } from './handoffRules.js';
 import { TEMPLATES } from './workflowTemplates.js';
 import { useWorkspaceAgents } from './useWorkspaceAgents.js';
 import { NOTE_SIZE, newNote, readNotes, writeNotes } from './notes.js';
@@ -38,6 +39,7 @@ import { resetMeasure } from './textMeasure.js';
 import { navigate, routeHref } from '../route.js';
 import Select from '../../ui/Select.tsx';
 import './workflow.css';
+import Button from '../../ui/Button.tsx';
 
 // An agent's Workflow tab: an editable picture of how a call moves from where it starts to where it ends. Blocks are
 // dragged (places kept in the draft) and added with the ＋; each change is an ordinary draft edit, with undo and redo.
@@ -552,9 +554,9 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
         kind="warn"
         title="The draft can’t be drawn yet"
         actions={
-          <button type="button" className="quietButton" onClick={() => onShowJson?.()}>
+          <Button type="button" onClick={() => onShowJson?.()}>
             Open the JSON
-          </button>
+          </Button>
         }
       >
         {editor.parsed?.error ? 'The JSON has a syntax error. Fix it in Settings › Edit as JSON and the workflow comes back.' : 'The draft could not be read.'}
@@ -638,9 +640,9 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
               <strong>“{n.label}” can’t be deleted</strong>
               <p>{keepReason}</p>
               <div className="wfRow">
-                <button type="button" className="quietButton" onClick={closeConfirm}>
+                <Button type="button" onClick={closeConfirm}>
                   Close
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -656,9 +658,9 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
                 <button type="button" className="dangerButton" onClick={() => remove(n.id)}>
                   Delete
                 </button>
-                <button type="button" className="quietButton" onClick={closeConfirm}>
+                <Button type="button" onClick={closeConfirm}>
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -739,9 +741,9 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
       {deleted && (
         <div className="wfHint" role="status">
           <span>Deleted “{deleted.label}”.</span>
-          <button type="button" className="quietButton" onClick={undo} disabled={!hist.past.length}>
+          <Button type="button" onClick={undo} disabled={!hist.past.length}>
             Undo
-          </button>
+          </Button>
         </div>
       )}
       {!flow.empty &&
@@ -751,18 +753,35 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
               “{flow.stranded[i]}” can’t be reached: nothing passes the caller to it from Start. Let an agent pass callers to it, or make it answer first.
             </span>
             {flow.entry && (
-              <button type="button" className="quietButton" onClick={() => reach(id)}>
+              <Button type="button" onClick={() => reach(id)}>
                 Let {entryName} pass callers to it
-              </button>
+              </Button>
             )}
           </div>
         ))}
+      {!flow.empty && handoffGaps(config).length > 0 && (
+        <div className="wfHint warn" role="note">
+          <span>
+            Hand-overs may go wrong: {handoffGaps(config).length === 1 ? 'one subagent is' : `${handoffGaps(config).length} subagents are`} missing the rules
+            that keep them reliable. The first agent should hand over at once, and each specialist should send the caller back for anything outside its role.
+          </span>
+          <Button
+            type="button"
+            onClick={() => {
+              note('Added the hand-over rules. Each subagent’s rules list them first.');
+              apply(withHandoffRules(config));
+            }}
+          >
+            Add the hand-over rules
+          </Button>
+        </div>
+      )}
       {!flow.empty && !flow.stranded.length && flow.crowded && hasSavedPositions(config) && (
         <div className="wfHint" role="note">
           <span>Some blocks sit close together because the saved layout has no room for them.</span>
-          <button type="button" className="quietButton" onClick={tidy}>
+          <Button type="button" onClick={tidy}>
             Tidy up
-          </button>
+          </Button>
         </div>
       )}
 
@@ -788,9 +807,10 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
               <Icon name="subagent" size={28} />
               <h3>No subagents yet</h3>
               <p>A subagent answers the caller. Add the first one and build the flow from there.</p>
-              <button
+              <Button
                 type="button"
-                className="primaryCta compactCta"
+                variant="primary"
+                size="compact"
                 onClick={() => {
                   const r = addSubagent(config, '', { name: 'Front desk' });
                   pendingSelect.current = { type: 'node', id: r.id };
@@ -798,7 +818,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
                 }}
               >
                 <Icon name="plus" size={14} /> Add the first subagent
-              </button>
+              </Button>
             </div>
           ) : (
             <WorkflowCanvas

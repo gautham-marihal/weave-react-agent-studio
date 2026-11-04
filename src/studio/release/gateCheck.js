@@ -1,4 +1,4 @@
-import { coveredOnlySome, coveredOnlyText } from '../scenarios/runResults.js';
+import { coveredOnlySome, coveredOnlyText, passedRunText } from '../scenarios/runResults.js';
 
 // "Tests must pass before publishing": while on, publishing holds until the newest test run passed and nothing changed
 // since. "Publish anyway" still works: the studio informs, a person decides. Pure: no React, no network.
@@ -23,5 +23,5 @@ export function gateCheck({ enabled = false, scenarioCount = 0, latestRun = null
   if (dirty) return { ok: false, why: 'The draft has changes the last run did not see. Run the tests again.', action: 'scenarios' };
   if (!Number.isNaN(ran) && !Number.isNaN(saved) && saved > ran + 1000)
     return { ok: false, why: 'The draft was saved after the last run. Run the tests again.', action: 'scenarios' };
-  return { ok: true, why: `The latest run passed (${latestRun.passed ?? 0} of ${latestRun.total ?? 0}).`, action: '' };
+  return { ok: true, why: passedRunText(latestRun, 0), action: '' };
 }

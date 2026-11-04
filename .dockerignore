@@ -1,0 +1,19 @@
+# What the image never takes: dependencies (installed fresh), builds, secrets, test output and local tools
+node_modules
+**/node_modules
+dist
+.env
+.env.*
+!.env.example
+.vercel
+**/.vercel
+.git
+.claude
+.vscode
+coverage
+e2e-failure.png
+**/*.log
+playwright-report
+test-results
+# exported images (./run.sh export): gigabytes, never part of a build
+docker-images

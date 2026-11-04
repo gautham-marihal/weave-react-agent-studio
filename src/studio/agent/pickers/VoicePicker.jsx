@@ -11,6 +11,7 @@ import { languageName, readSimple } from '../../simple/simpleModel.js';
 import { filterVoices, voiceFilters, voiceHue, voiceInUse } from './pickerLogic.js';
 import Select from '../../../ui/Select.tsx';
 import './pickers.css';
+import { Input } from '../../../ui/Input.tsx';
 
 // An agent's voice, chosen from a list: search, filter, listen and pick. Picking a voice also sets its engine (and that
 // engine's model), noted under the list. The list opens filtered to the main language, with the voice in use on top.
@@ -208,9 +209,9 @@ export default function VoicePicker({ config, set, speech = true }) {
         <summary>A voice from your own account</summary>
         <div className="pkOwnBody">
           <label htmlFor={voiceIdBox}>Voice id</label>
-          <input
+          <Input
             id={voiceIdBox}
-            className="stFInput mono"
+            mono
             type="text"
             spellCheck={false}
             value={tts.voiceId}

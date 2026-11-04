@@ -9,7 +9,7 @@ const channelsOf = (config: unknown): Channel[] => {
   return Array.isArray(channels) ? channels.filter((channel): channel is Channel => !!channel && typeof channel === 'object') : [];
 };
 
-export type Testability = { state: 'none' | 'off' | 'ok' | 'unknown'; phone: string[] };
+type Testability = { state: 'none' | 'off' | 'ok' | 'unknown'; phone: string[] };
 
 // 'none': no web channel (the server refuses a test); 'off': web channels all switched off; 'ok' otherwise;
 // 'unknown': configuration not loaded yet.

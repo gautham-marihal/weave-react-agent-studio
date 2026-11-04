@@ -6,23 +6,6 @@
   gap: 16px;
   min-width: 0;
 }
-.stCard.stTHead {
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-.stTIntro {
-  flex: 1 1 320px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.stTIntro .stTMode {
-  align-self: flex-start;
-}
 .stTControls {
   display: flex;
   align-items: flex-end;
@@ -435,9 +418,6 @@
 .stTest .stCard {
   position: relative;
 }
-.stTIntro h3 {
-  letter-spacing: 0.02em;
-}
 
 /* the controls */
 .stTControls :is(select, button:where(.rxSelect)) {
@@ -660,4 +640,216 @@
 .stTChannels button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* a web voice conversation: the call (VoiceStage) fills the card; the transcript opens under it */
+.stTVoice {
+  min-height: clamp(360px, calc(100vh - 520px), 640px);
+}
+.stTTranscriptToggle {
+  display: block;
+  margin: 0 auto 14px;
+}
+.stTChat > .stNotice {
+  margin: 0 18px 12px;
+}
+.stTMessages.stTTranscript {
+  height: clamp(200px, calc(100vh - 620px), 360px);
+  border-top: 1px solid var(--line);
+}
+
+/* ---- "Ready to publish?" (TestHealth.jsx): the verdict, with the publishing gate, then a tile per kind of test */
+.thStrip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 1100px) {
+  .thStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.thVerdict {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+  border-radius: var(--r-card, 14px);
+  background: color-mix(in srgb, var(--accent) 20%, #110b17);
+  color: #ffffff;
+}
+.thVerdict .thEyebrow {
+  color: color-mix(in srgb, var(--accent) 30%, #ffffff);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.thVerdict strong {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.thDetail {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.thGate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: var(--fs-sm);
+}
+.thTile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 14px);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.thTile:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+.thTile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.thTileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.thChip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.thChip.good {
+  background: color-mix(in srgb, var(--good-text, #067647) 12%, transparent);
+  color: var(--good-text, #067647);
+}
+.thChip.warn {
+  background: color-mix(in srgb, var(--warn-text, #8a4b0b) 14%, transparent);
+  color: var(--warn-text, #8a4b0b);
+}
+.thChip.bad {
+  background: color-mix(in srgb, var(--danger-text, #b42318) 12%, transparent);
+  color: var(--danger-text, #b42318);
+}
+.thBig {
+  color: var(--textStrong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.thBig small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.thBars {
+  display: flex;
+  gap: 3px;
+}
+.thBars > i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line2, var(--line));
+}
+.thBars > i.pass {
+  background: var(--good-text, #067647);
+}
+.thBars > i.fail {
+  background: var(--danger-text, #b42318);
+}
+.thBars > i.skip {
+  background: var(--warn-text, #8a4b0b);
+}
+.thNote {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+/* ---- Try it: the conversation's own toolbar, its footer, and the side panel's three views */
+.stTGrid {
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+.stTBar {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.stTBar > label {
+  flex-direction: row;
+  align-items: center;
+}
+.stTLead {
+  margin: 0;
+  padding: 12px 18px 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.stTFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+}
+.stTFoot .stTMedia {
+  margin: 0;
+}
+.stTFoot .stTSaveScenario {
+  margin-left: auto;
+}
+.stTInspect {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}
+.stTInspect button {
+  flex: 1;
+}
+.stTSide .trView.compact {
+  max-height: clamp(260px, calc(100vh - 420px), 620px);
+}
+.stTBar .stTMode {
+  width: auto;
+  flex: none;
+  order: 0;
+}
+.stTBar :is(select, button:where(.rxSelect)) {
+  min-width: 200px;
+  min-height: 38px;
+}
+.stTBar .stTStatus {
+  margin-left: auto;
+  min-height: 38px;
 }

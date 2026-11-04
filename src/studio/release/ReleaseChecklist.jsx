@@ -8,6 +8,7 @@ import { normalizeHeadline } from '../scenarios/runResults.js';
 import { POLICY_NOTE, buildChecklist, verdict } from './checklist.js';
 import './release.css';
 import Icon from '../../ui/Icon.jsx';
+import Button from '../../ui/Button.tsx';
 
 // "Is it safe to put this live?" for a published version (Deploy tab) or the draft (Publish dialog).
 // Each line shows only when it applies; it informs and can't enforce (see checklist.js).
@@ -68,9 +69,9 @@ export default function ReleaseChecklist({ botId, config, report, version, envir
               )}
             </div>
             {item.action && (
-              <button type="button" className="quietButton" onClick={() => navigate(routeHref(botId, item.action.tab, item.action.params), { guard: false })}>
+              <Button type="button" onClick={() => navigate(routeHref(botId, item.action.tab, item.action.params), { guard: false })}>
                 {item.action.label}
-              </button>
+              </Button>
             )}
           </li>
         ))}

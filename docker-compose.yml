@@ -1,0 +1,65 @@
+# Weave Studio in Docker.
+#   1. cp .env.docker.example .env.docker   and fill it in (the Agent Builder address and key)
+#   2. docker compose up --build -d          → http://localhost:5173 (the same address as the dev server, so the
+#      browser keeps your sign-in and settings; stop the dev server first, or set STUDIO_PORT to another port)
+# Extras:
+#   docker compose --profile demo up --build -d   → the demo studio (sample data, no key) on http://localhost:8090
+#   docker compose --profile mock up --build -d   → the mock bank services on http://localhost:4400
+# The ports listen on this computer only (127.0.0.1): anyone who can open the studio can use its key. On a server,
+# either reach it through an SSH tunnel, or put HTTPS and a password in front (see DEPLOY.md):
+#   docker compose --profile https up --build -d → https://STUDIO_DOMAIN, signed in with STUDIO_USER / its password
+
+services:
+  studio:
+    build: .
+    image: weave-studio:latest
+    env_file:
+      - path: .env.docker
+        required: false
+    ports:
+      - '127.0.0.1:${STUDIO_PORT:-5173}:8080'
+    # who may sign in: edit credentials.txt here and the next sign-in uses it, no rebuild needed
+    volumes:
+      - ./credentials.txt:/app/credentials.txt:ro
+    restart: unless-stopped
+
+  studio-demo:
+    profiles: [demo]
+    build:
+      context: .
+      args:
+        VITE_DEMO_MODE: 'true'
+    image: weave-studio-demo:latest
+    ports:
+      - '127.0.0.1:${STUDIO_DEMO_PORT:-8090}:8080'
+    volumes:
+      - ./credentials.txt:/app/credentials.txt:ro
+    restart: unless-stopped
+
+  mock-api:
+    profiles: [mock]
+    build: ./mock-api
+    image: weave-mock-api:latest
+    ports:
+      - '127.0.0.1:${MOCK_API_PORT:-4400}:4400'
+    restart: unless-stopped
+
+  caddy:
+    profiles: [https]
+    image: caddy:2.8-alpine
+    depends_on: [studio]
+    env_file:
+      - path: .env.docker
+        required: false
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

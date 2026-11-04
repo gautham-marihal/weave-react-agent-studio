@@ -239,9 +239,13 @@ const ROUTES = [
   ...[
     'home',
     'agent',
+    'conversation',
+    'knowledge',
     'tools',
-    'workflow',
+    'connections',
     'channels',
+    'workflow',
+    'subagents',
     'guardrails',
     'aftercall',
     'tests',
@@ -252,6 +256,8 @@ const ROUTES = [
     'speed',
     'settings',
   ].map((p) => `#/bots/acme-support/${p}`),
+  // Build › Guided, each of its nine steps
+  ...['who', 'voice', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall', 'ready'].map((s) => `#/bots/acme-support/build?step=${s}`),
   // the guided setup, step by step (last: moving between its steps saves nothing, so nothing is asked before the next style)
   ...['purpose', 'reach', 'voice', 'knowledge', 'actions', 'try', 'live'].map((s) => `#/bots/front-desk/setup?step=${s}`),
 ];

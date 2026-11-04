@@ -4,10 +4,11 @@ import Tip from '../../ui/Tip.tsx';
 import { matchScore, SHOWN } from '../../ui/match.ts';
 import { isBuiltin } from './workflowOps.js';
 import { toolName, toolTitle } from './workflowModel.js';
+import Button from '../../ui/Button.tsx';
 
 // The "Add a step after <subagent>" side panel: every step, grouped (subagents, other agents, a person's number, steps
 // as it takes over, tools, ending), with a search. Most add at once; a new subagent or a number asks one thing first.
-export const PHONE_PATTERN = /^(\+?\d[\d\s().-]{2,}|sips?:\S+)$/i;
+const PHONE_PATTERN = /^(\+?\d[\d\s().-]{2,}|sips?:\S+)$/i;
 
 //   workspace: the workspace's other agents and their numbers (useWorkspaceAgents)
 //   botId: this agent, which is not offered
@@ -231,12 +232,12 @@ export default function AddMenu({ agentId, flow, config, onPick, onClose, worksp
                 : 'Then write what it should do in the panel beside the picture.'}
             </small>
             <div className="wfMenuActions">
-              <button type="submit" className="primaryCta compactCta">
+              <Button type="submit" variant="primary" size="compact">
                 Add the subagent
-              </button>
-              <button type="button" className="quietButton" onClick={() => setView('menu')}>
+              </Button>
+              <Button type="button" onClick={() => setView('menu')}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         )}
@@ -263,12 +264,12 @@ export default function AddMenu({ agentId, flow, config, onPick, onClose, worksp
                 : 'The subagent can hand the caller to this number when they ask for a person.'}
             </small>
             <div className="wfMenuActions">
-              <button type="submit" className="primaryCta compactCta">
+              <Button type="submit" variant="primary" size="compact">
                 Add the transfer
-              </button>
-              <button type="button" className="quietButton" onClick={() => setView('menu')}>
+              </Button>
+              <Button type="button" onClick={() => setView('menu')}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         )}

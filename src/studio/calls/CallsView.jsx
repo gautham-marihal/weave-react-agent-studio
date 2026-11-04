@@ -5,11 +5,15 @@ import { Notice } from '../ui.jsx';
 import { SkeletonRows } from '../../ui/Skeleton.jsx';
 import { formatWhen } from '../format.js';
 import CallDetail from './CallDetail.jsx';
-import { ALL_AGENTS_LIMIT, OUTCOMES, RANGES, channelsIn, rowOf } from './callModel.js';
+import { ALL_AGENTS_LIMIT, OUTCOMES, RANGES, channelsIn, rowOf, summaryOf } from './callModel.js';
+import { useCallPeeks } from './useCallPeeks.ts';
+import Icon from '../../ui/Icon.jsx';
 import { usePref } from '../usePref.js';
 import { useCalls } from './useCalls.ts';
 import Select from '../../ui/Select.tsx';
 import './calls.css';
+import Button from '../../ui/Button.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 // An agent's calls (or every agent's): who, when, how long, how it went; selecting one opens its trace.
 // The API lists calls per agent, so "All agents" asks each and merges. The records hold what callers said and the API
@@ -36,19 +40,22 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
   const rows = useMemo(() => calls.map((c) => rowOf(c, names[c.bot])).filter((row) => !outcome || row.outcome === outcome), [calls, names, outcome]);
   const channels = useMemo(() => channelsIn(calls), [calls]);
   const showAgent = !effectiveBot;
+  // each finished call's first words and failed tools, read from its record once the list is in
+  const peeks = useCallPeeks(rows);
+  const summary = summaryOf(rows, peeks);
 
   return (
     <div className="clView">
       {noticeSeen !== '1' && (
         <p className="clPrivacy" role="note">
+          <Icon name="lock" size={16} />
           <span>
-            <b>These records contain what callers said.</b> The studio can’t limit who reads them yet: anyone who can open it can read every call
-            {isDemoMode() ? '' : ' of every agent'}.
-            {isDemoMode() && ' In this demo they are made-up examples, plus the conversations you had in the preview; no real caller is involved.'}
+            <b>These records contain what callers said</b>, and anyone who can open the studio can read every call{isDemoMode() ? '' : ' of every agent'}.
+            {isDemoMode() && ' In this demo they are made-up examples.'}
           </span>
-          <button type="button" className="quietButton" onClick={() => setNoticeSeen('1')}>
+          <Button type="button" onClick={() => setNoticeSeen('1')}>
             Got it
-          </button>
+          </Button>
         </p>
       )}
 
@@ -107,12 +114,17 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
         </label>
         <label>
           <span>Caller</span>
-          <input className="stFInput small" type="search" value={caller} placeholder="part of a number" onChange={(event) => setCaller(event.target.value)} />
+          <Input size="small" type="search" value={caller} placeholder="part of a number" onChange={(event) => setCaller(event.target.value)} />
         </label>
         <span className="clFilterActions">
-          <button type="button" className="quietButton" onClick={reload} disabled={busy}>
+          {summary && (
+            <span className="clSummary" role="status">
+              {summary}
+            </span>
+          )}
+          <Button type="button" onClick={reload} disabled={busy}>
             Refresh
-          </button>
+          </Button>
           <label className="clAuto">
             <input type="checkbox" checked={auto} onChange={(event) => setAuto(event.target.checked)} /> Every 10 s
           </label>
@@ -150,10 +162,9 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
             <tr>
               <th>Started</th>
               {showAgent && <th>Agent</th>}
-              <th>Caller</th>
+              <th>Caller and what they asked</th>
               <th>Channel</th>
-              <th>Duration</th>
-              <th title="from the caller / from the agent">Turns</th>
+              <th>Length</th>
               <th>Outcome</th>
               <th>Version</th>
             </tr>
@@ -172,13 +183,27 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
               >
                 <td>{formatWhen(row.startedAt)}</td>
                 {showAgent && <td>{row.botName}</td>}
-                <td>{row.caller || <span className="stMuted">{row.callerHint}</span>}</td>
-                <td>{row.channel}</td>
-                <td>{row.duration}</td>
-                <td>{row.turns}</td>
+                <td className="clWho">
+                  <strong>{row.caller || row.callerHint}</strong>
+                  {peeks[`${row.bot}/${row.id}`]?.first && <span className="clFirst">“{peeks[`${row.bot}/${row.id}`].first}”</span>}
+                </td>
                 <td>
-                  <span className={`clStatus ${row.outcomeTone}`} title={row.outcomeHint}>
-                    {row.outcomeLabel}
+                  <span className="clChannel">
+                    <Icon name={row.channelIcon} size={16} />
+                    {row.channel}
+                  </span>
+                </td>
+                <td className="clLength">{row.length}</td>
+                <td>
+                  <span className="clOutcome">
+                    <span className={`clStatus ${row.outcomeTone}`} title={row.outcomeHint}>
+                      {row.outcomeLabel}
+                    </span>
+                    {peeks[`${row.bot}/${row.id}`]?.failed > 0 && (
+                      <span className="clStatus bad" title="A tool the agent called answered with an error.">
+                        {peeks[`${row.bot}/${row.id}`].failed === 1 ? '1 tool failed' : `${peeks[`${row.bot}/${row.id}`].failed} tools failed`}
+                      </span>
+                    )}
                   </span>
                 </td>
                 <td>
@@ -205,17 +230,17 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
               {bots.length > 0 && 'Trying an agent out makes a call too.'}
             </p>
             {onOpenAgent && effectiveBot && (
-              <button type="button" className="secondaryCta" onClick={() => onOpenAgent(effectiveBot)}>
+              <Button type="button" variant="secondary" onClick={() => onOpenAgent(effectiveBot)}>
                 Test this agent
-              </button>
+              </Button>
             )}
           </div>
         )}
         {hasMore && (
           <div className="clMore">
-            <button type="button" className="quietButton" onClick={loadMore} disabled={loadingMore}>
+            <Button type="button" onClick={loadMore} disabled={loadingMore}>
               {loadingMore ? 'Loading…' : 'Load more calls'}
-            </button>
+            </Button>
           </div>
         )}
       </div>

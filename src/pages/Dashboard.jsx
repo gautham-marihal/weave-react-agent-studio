@@ -4,7 +4,7 @@ import { afterMenu, keepEscape } from '../ui/layer.ts';
 import Tip from '../ui/Tip.tsx';
 import { SidebarFolded } from '../ui/sidebarFolded.ts';
 import { navigate as studioNavigate, routeHref, useRoute, whenLeaveConfirmed } from '../studio/route.js';
-import { askConfirm, showNotice } from '../ui/dialogs.js';
+import { askConfirm } from '../ui/dialogs.js';
 import { setApiUser } from '../api/client.ts';
 import { PageErrorBoundary } from '../ui/ErrorBoundary.jsx';
 import NotFound from '../ui/NotFound.jsx';
@@ -47,7 +47,6 @@ import '../studio/speed/speed.css';
 import '../studio/setup/setup.css';
 import { openTeam } from '../studio/team/useTeam.js';
 import { isDemoMode, isDemoSample } from '../demo/demoMode.js';
-import { AgentTable } from '../studio/AgentTable.jsx';
 import { describeHealth, useApiHealth } from '../studio/useApiHealth.js';
 import AgentSwitcher from '../studio/agent/AgentSwitcher.jsx';
 import AlertBell, { useNewAlertCount } from '../studio/insights/AlertBell.jsx';
@@ -70,12 +69,10 @@ import {
   workspaceHref,
 } from './helpers.js';
 import {
-  Activity,
   Logo,
   Metric,
   NavItem,
   ProfileMenu,
-  QuickAction,
   SHORTCUT_LABEL,
   searchKey,
   WorkspaceCreateModal,
@@ -83,15 +80,22 @@ import {
   isTyping,
   openHelpDialog,
 } from './shared.jsx';
-import HomeJourney, { rememberAgent } from './HomeJourney.jsx';
-import WorkspacePulse from './WorkspacePulse.jsx';
-import './homeJourney.css';
+import { rememberAgent } from './HomeJourney.jsx';
+import HomeOverview, { HOME_PERIODS } from './HomeOverview.jsx';
+import { usePref } from '../studio/usePref.js';
+import './canvasLook.css';
+import './home.css';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import Icon from '../ui/Icon.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import { SkeletonRows } from '../ui/Skeleton.jsx';
 import { revealIn } from '../ui/scrollEdges.js';
-import { randomTag } from '../studio/format.js';
+import Button from '../ui/Button.tsx';
+import { useDetailsMotion, useSettleOnChange } from '../ui/motion.ts';
+import { useSlidingMarks } from '../ui/slideMarks.ts';
+import { WORKSPACE_STORAGE_KEY, loadCurrentWorkspaceId, loadWorkspaces, makeWorkspaceId, normalizeList, saveWorkspaceState } from './workspaceStore.js';
+
+export { openWorkspaceNamed } from './workspaceStore.js';
 
 // The search's code (cmdk) arrives the first time it is opened.
 const SearchOverlay = lazy(() => import('./SearchPalette.jsx'));
@@ -121,90 +125,6 @@ function PageLoading() {
   );
 }
 
-const WORKSPACE_STORAGE_KEY = 'weave_workspaces';
-
-const CURRENT_WORKSPACE_KEY = 'weave_current_workspace';
-
-function makeWorkspaceId() {
-  return `ws_${Date.now().toString(36)}_${randomTag(5)}`;
-}
-
-// Records saved with each workspace: test sessions, check runs (stored as `simulations`, the old name), activity log.
-function normalizeList(value) {
-  return Array.isArray(value) ? value.filter((item) => item && item.id) : [];
-}
-
-function loadWorkspaces(profile) {
-  let stored = [];
-  try {
-    stored = JSON.parse(localStorage.getItem(WORKSPACE_STORAGE_KEY) || '[]');
-  } catch {}
-
-  if (Array.isArray(stored) && stored.length) {
-    return stored.map((ws) => ({
-      id: ws.id || makeWorkspaceId(),
-      name: ws.name || 'My workspace',
-      createdAt: ws.createdAt || new Date().toISOString(),
-      telephony: normalizeTelephony(ws.telephony),
-      sessions: normalizeList(ws.sessions),
-      simulations: normalizeList(ws.simulations),
-      activity: normalizeList(ws.activity),
-      settings: ws.settings && typeof ws.settings === 'object' ? ws.settings : {},
-    }));
-  }
-
-  const first = {
-    id: makeWorkspaceId(),
-    name: profile?.workspaceName || 'My workspace',
-    createdAt: new Date().toISOString(),
-  };
-
-  try {
-    localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify([first]));
-  } catch {}
-  try {
-    localStorage.setItem(CURRENT_WORKSPACE_KEY, first.id);
-  } catch {}
-  return [first];
-}
-
-// Opens the first-time setup's workspace by the new person's name (this browser may have had others), making it if none
-// has that name. Run once as setup finishes (on every load it would come back after a rename).
-export function openWorkspaceNamed(name) {
-  const wanted = String(name || '').trim();
-  if (!wanted) return;
-  let stored = [];
-  try {
-    stored = JSON.parse(localStorage.getItem(WORKSPACE_STORAGE_KEY) || '[]');
-  } catch {}
-  if (!Array.isArray(stored) || !stored.length) return; // the first load makes it, with this name
-  let found = stored.find((ws) => ws && ws.name === wanted);
-  try {
-    if (!found) {
-      found = { id: makeWorkspaceId(), name: wanted, createdAt: new Date().toISOString() };
-      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify([...stored, found]));
-    }
-    localStorage.setItem(CURRENT_WORKSPACE_KEY, found.id);
-  } catch {}
-}
-
-function loadCurrentWorkspaceId(workspaces) {
-  try {
-    const current = localStorage.getItem(CURRENT_WORKSPACE_KEY);
-    if (current && workspaces.some((ws) => ws.id === current)) return current;
-  } catch {}
-  return workspaces[0]?.id || null;
-}
-
-function saveWorkspaceState(workspaces, currentId) {
-  try {
-    localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(workspaces));
-  } catch {}
-  try {
-    if (currentId) localStorage.setItem(CURRENT_WORKSPACE_KEY, currentId);
-  } catch {}
-}
-
 const RECENT_KEY = 'weave_search_recent';
 const RECENT_KEPT = 8;
 
@@ -219,7 +139,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   // so refreshes, bookmarks and Back land where you were.
   const [active, setActive] = useState(() => (/^#\/bots/.test(window.location.hash) ? 'agents' : parseWorkspaceHash(window.location.hash)?.id || 'home'));
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
-  const [picker, setPicker] = useState(null); // 'which agent?' for voices and integrations
+  const [picker, setPicker] = useState(null); // 'which agent?' for voices
   const goToAgent = (botId) => {
     setActive('agents');
     studioNavigate(`#/bots/${botId}`);
@@ -230,6 +150,9 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const [workspaceRenameId, setWorkspaceRenameId] = useState(null);
   const [workspaceRenameDraft, setWorkspaceRenameDraft] = useState('');
   const [range, setRange] = useState('Past 7 days');
+  // Home's period, kept in this browser (as the Monitoring page's)
+  const [savedHomeDays, setHomeDays] = usePref('weave_home_days', 7);
+  const homeDays = HOME_PERIODS.includes(Number(savedHomeDays)) ? Number(savedHomeDays) : 7;
   const [telephonySection, setTelephonySection] = useState(() => parseWorkspaceHash(window.location.hash)?.section || 'calls');
   const [workspaces, setWorkspaces] = useState(() => loadWorkspaces(profile));
   // the workspace open last time, from the first render (not briefly the first in the list, which an open agent's
@@ -266,7 +189,6 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   const telephony = normalizeTelephony(currentWorkspace?.telephony);
   const sessions = normalizeList(currentWorkspace?.sessions);
   const readinessRuns = normalizeList(currentWorkspace?.simulations);
-  const activityLog = normalizeList(currentWorkspace?.activity);
   const withActivity = (ws, entry) =>
     entry ? { ...ws, activity: [{ id: makeRecordId('ACT'), at: new Date().toISOString(), ...entry }, ...normalizeList(ws.activity)].slice(0, 120) } : ws;
   // Records go to the workspace you are in (a test conversation can finish after you switch pages).
@@ -354,12 +276,21 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   // A link to an agent that belongs to another workspace (a bookmark, a shared link) opens that workspace.
   const route = useRoute();
   const inAgentView = active === 'agents' && route.view === 'bot'; // sidebar shows the agent's name
+  // a new page settles in; an agent's own pages settle inside it (AgentLayout), under its header
+  const pageRef = useRef(null);
+  useSettleOnChange(pageRef, inAgentView ? `agent|${route.botId}` : active);
+  // any section someone opens fades its content in
+  useDetailsMotion();
+  // the chosen tab's, switch's and side item's highlight slides to the next one chosen
+  const shellRef = useRef(null);
+  useSlidingMarks(shellRef);
   useEffect(() => {
     if (route.view === 'bot') rememberAgent(route.botId);
   }, [route.view, route.botId]);
-  // inside an agent the sidebar starts folded to icons so the agent's pages get the width; elsewhere it starts open.
-  // The toggle wins until the person moves between the two.
-  useEffect(() => setSidebarCollapsed(inAgentView), [inAgentView]);
+  // inside an agent the sidebar starts folded to icons so the agent's pages get the width; elsewhere it starts open, and
+  // so does the guided setup, whose steps are listed in it. The toggle wins until the person moves between them.
+  const inSetup = inAgentView && route.tab === 'setup';
+  useEffect(() => setSidebarCollapsed(inAgentView && !inSetup), [inAgentView, inSetup]);
   // An address opened while the app runs (back/forward, a pasted link) opens its page; an agent's switches to Agents.
   useEffect(() => {
     if (/^#\/bots/.test(window.location.hash)) {
@@ -405,37 +336,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     if (active === 'home' || active === 'agents') refreshAgents();
   }, [active, refreshAgents]); // refreshAgents is one function for the life of the page
   const agentCount = botList.length;
-  const configuredCount = botList.filter((bot) => bot.latest_version).length;
   const apiHealth = useApiHealth();
   const health = describeHealth(apiHealth.state, apiHealth.latency);
-
-  const recentActivity = useMemo(() => {
-    const events = [];
-    botList.forEach((bot) => {
-      if (bot.draft_saved_at) {
-        const envs = Object.entries(bot.deployed || {}).map(([env, version]) => `${env} v${version}`);
-        events.push({
-          key: `${bot.id}:draft`,
-          at: bot.draft_saved_at,
-          title: `${bot.name || bot.id} draft saved`,
-          detail: `${bot.latest_version ? `Latest version ${bot.latest_version}` : 'Not published yet'}${envs.length ? `, running in ${envs.join(', ')}` : ''}.`,
-          icon: 'pencil',
-        });
-      }
-    });
-    activityLog.forEach((entry) => events.push({ key: entry.id, at: entry.at, title: entry.title, detail: entry.detail, icon: entry.icon || 'info' }));
-    events.sort((a, b) => new Date(b.at) - new Date(a.at));
-    const list = events.slice(0, 6).map((event) => ({ ...event, time: formatRelative(event.at) }));
-    list.push({
-      key: 'workspace',
-      title: 'Workspace created',
-      detail: `${workspaceName} is ready to use.`,
-      time: formatRelative(currentWorkspace?.createdAt),
-      icon: 'home',
-      muted: list.length > 0,
-    });
-    return list;
-  }, [botList, workspaceName, currentWorkspace?.createdAt, activityLog]);
 
   const openSearch = () => {
     setWorkspaceOpen(false);
@@ -868,7 +770,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
   }, [active, lostAddress]);
   return (
     <SidebarFolded.Provider value={sidebarCollapsed}>
-      <div className={`dashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''} ${inAgentView ? 'inAgent' : ''}`}>
+      <div ref={shellRef} className={`dashboard ${sidebarCollapsed ? 'sidebarCollapsed' : ''} ${inAgentView ? 'inAgent' : ''}`}>
         <SkipToContent target="pageContent" />
         <aside className="sidebar">
           <div className="sideBrand">
@@ -1024,7 +926,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           </div>
         </aside>
 
-        <main className="dashMain">
+        {/* Home and Agents are drawn in their canvas design's colours (canvasLook.css) */}
+        <main className={`dashMain ${!inAgentView && (active === 'home' || active === 'agents') ? 'cvLook' : ''}`}>
           <div className="dashTopbar">
             <div className="topbarCrumb">
               <span>{workspaceName}</span>
@@ -1079,7 +982,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
               refreshAgents();
             }}
           />
-          <div className="dashContent" id="pageContent">
+          <div className="dashContent" id="pageContent" ref={pageRef}>
             {/* a page that breaks says so on its own; the menu and top bar keep working, another page starts afresh */}
             <PageErrorBoundary resetKey={`${active}|${route.view}|${route.botId || ''}|${route.tab || ''}`}>
               <Suspense fallback={<PageLoading />}>
@@ -1138,25 +1041,7 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                     }}
                   />
                 ) : active === 'integrations' ? (
-                  <IntegrationsWorkspace
-                    onAddToAgent={(connection) => {
-                      if (!/^https?:\/\//i.test(connection.first || '')) {
-                        showNotice({
-                          title: 'This connection needs a web address',
-                          body: 'Add its address (https://…) with Edit, then add it to an agent.',
-                        });
-                        return;
-                      }
-                      setPicker({
-                        title: `Add ${connection.name} to an agent`,
-                        subtitle: 'It is added to the agent’s draft as a connection. You review it and save.',
-                        onPick: (botId) => {
-                          queueChange(botId, { kind: 'connection', name: connection.name, url: connection.first });
-                          goToAgent(botId);
-                        },
-                      });
-                    }}
-                  />
+                  <IntegrationsWorkspace />
                 ) : active === 'monitoring' ? (
                   <MonitoringPage
                     bots={botList}
@@ -1249,132 +1134,42 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                   />
                 ) : (
                   <>
-                    <section className="welcomeBlock">
-                      <div>
-                        <h1>
-                          {greeting}, {firstName}
-                          <span>.</span>
-                        </h1>
-                        <p>
-                          {bots === null
-                            ? ''
-                            : agentCount === 0
-                              ? 'Your workspace is ready. Start by creating an agent.'
-                              : `${agentCount} agent${agentCount === 1 ? '' : 's'} in ${workspaceName}, ${configuredCount} published.`}{' '}
-                          {/* shown only when there's something to know: demo data, or a server that doesn't answer */}
-                          {health.show && (
-                            <span className="homeConnection" title={health.note}>
-                              <span className={`healthSignal ${health.tone}`} aria-hidden="true" />
-                              {health.title}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <button className="primaryCta createButton" type="button" onClick={openCreateAssistant}>
-                        <Icon name="plus" size={16} /> Create agent
-                      </button>
-                    </section>
-
-                    {/* sample agents, labelled so a new workspace isn't mistaken for someone else's */}
-                    {samples.length > 0 && (
-                      <div className="homeSamples">
-                        <Notice
-                          kind="info"
-                          title={`${samples.length === 1 ? 'This agent is a sample' : `These ${samples.length} agents are samples`}`}
-                          actions={
-                            <button type="button" className="quietButton" onClick={() => samples.forEach((bot) => hideBot(bot.id))}>
-                              Hide the samples
-                            </button>
-                          }
-                        >
-                          They come with demo mode, with made-up calls, so there is something to explore. Hide them to start with an empty workspace; the Agents
-                          page can bring them back.
-                        </Notice>
-                      </div>
-                    )}
-                    {agentCount > 0 && <WorkspacePulse bots={botList} onOpen={activate} />}
-
-                    <section className="overviewGrid">
-                      <div className="mainColumn">
-                        {bots === null && agentsError ? (
-                          // the list couldn't be read: say so and offer to try again (not "loading" for ever)
-                          <ErrorState error={agentsError} onRetry={refreshAgents} what="your agents" />
-                        ) : bots === null ? (
-                          <p className="stMuted" role="status">
-                            Loading agents…
-                          </p>
-                        ) : agentCount === 0 ? (
-                          <>
-                            <div className="sectionHeader">
-                              <div>
-                                <h2>Start with your first agent</h2>
-                              </div>
-                            </div>
-                            <div className="starterCard">
-                              {/* the studio's orb (as in a test conversation), in the style's colours */}
-                              <div className="starterVisual" aria-hidden="true">
-                                <AiOrb size={136} />
-                              </div>
-                              <div className="starterCopy">
-                                <span className="cardTag">Recommended</span>
-                                <h3>Build an agent from an idea</h3>
-                                <p>Describe what it should do in your own words or pick a starting point, try it out, then put it live.</p>
-                                <div className="starterActions">
-                                  {/* quiet: "Create agent" above is the page's one strong button, and does the same */}
-                                  <button className="quietButton compactCta" type="button" onClick={openCreateAssistant}>
-                                    Start building
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="sectionHeader">
-                              <div>
-                                <h2>Your agents</h2>
-                              </div>
-                              <button className="linkButton" type="button" onClick={() => activate('agents')}>
-                                View all
-                              </button>
-                            </div>
-                            <AgentTable bots={botList.slice(0, 4)} onOpen={(bot) => goToAgent(bot.id)} />
-                            {botList.length > 4 && (
-                              <button type="button" className="agentRowMore" onClick={() => activate('agents')}>
-                                Show all {botList.length} agents
-                              </button>
-                            )}
-                          </>
-                        )}
-
-                        <div className="sectionHeader activityHeader">
-                          <div>
-                            <h2>Recent activity</h2>
+                    {(() => {
+                      // what Home says of the server, when there is something to know: demo data, or a server that doesn't answer
+                      const connection = health.show ? (
+                        <span className="homeConnection" title={health.note}>
+                          <span className={`healthSignal ${health.tone}`} aria-hidden="true" />
+                          {health.title}
+                        </span>
+                      ) : null;
+                      // sample agents, labelled so a new workspace isn't mistaken for someone else's
+                      const notice =
+                        samples.length > 0 ? (
+                          <div className="homeSamples">
+                            <Notice
+                              kind="info"
+                              title={`${samples.length === 1 ? 'This agent is a sample' : `These ${samples.length} agents are samples`}`}
+                              actions={
+                                <Button type="button" onClick={() => samples.forEach((bot) => hideBot(bot.id))}>
+                                  Hide the samples
+                                </Button>
+                              }
+                            >
+                              They come with demo mode, with made-up calls, so there is something to explore. Hide them to start with an empty workspace; the
+                              Agents page can bring them back.
+                            </Notice>
                           </div>
-                          <button className="linkButton" type="button" onClick={() => activate('sessions')}>
-                            Open calls
-                          </button>
-                        </div>
-                        <div className="activityCard">
-                          {recentActivity.map((item) => (
-                            <Activity key={item.key} title={item.title} detail={item.detail} time={item.time} icon={item.icon} muted={item.muted} />
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="sideColumn">
-                        {!(bots === null && agentsError) && (
-                          <div className="sectionHeader">
-                            <div>
-                              <h2>Next step</h2>
-                            </div>
-                          </div>
-                        )}
-                        {/* without the list of agents there is no next step to name; the error beside it says why */}
-                        {!(bots === null && agentsError) && (
-                          <HomeJourney
-                            bots={bots}
+                        ) : null;
+                      if (bots !== null && agentCount > 0)
+                        return (
+                          <HomeOverview
+                            bots={botList}
+                            days={homeDays}
+                            onDays={setHomeDays}
+                            onOpen={activate}
                             onCreate={openCreateAssistant}
+                            connection={connection}
+                            notice={notice}
                             onOpenTab={(botId, tab, params) =>
                               whenLeaveConfirmed(() => {
                                 setActive('agents');
@@ -1382,20 +1177,62 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                               })
                             }
                           />
-                        )}
-
-                        <div className="sectionHeader quickHeader">
-                          <div>
-                            <h2>Workspace tools</h2>
-                          </div>
-                        </div>
-                        <div className="quickCard">
-                          <QuickAction icon="voice" title="Explore voices" subtitle="Find a voice that fits" onClick={() => activate('voices')} />
-                          <QuickAction icon="dial" title="Telephony" subtitle="Numbers, routing and trunks" onClick={() => activate('telephony')} />
-                          <QuickAction icon="plug" title="View integrations" subtitle="Connect your stack" onClick={() => activate('integrations')} />
-                        </div>
-                      </div>
-                    </section>
+                        );
+                      return (
+                        <>
+                          <section className="welcomeBlock">
+                            <div>
+                              <h1>
+                                {greeting}, {firstName}
+                                <span>.</span>
+                              </h1>
+                              <p>
+                                {bots === null ? '' : 'Your workspace is ready. Start by creating an agent.'} {connection}
+                              </p>
+                            </div>
+                            <Button variant="primary" className="createButton" type="button" onClick={openCreateAssistant}>
+                              <Icon name="plus" size={16} /> Create agent
+                            </Button>
+                          </section>
+                          {notice}
+                          {bots === null && agentsError ? (
+                            // the list couldn't be read: say so and offer to try again (not "loading" for ever)
+                            <ErrorState error={agentsError} onRetry={refreshAgents} what="your agents" />
+                          ) : bots === null ? (
+                            <p className="stMuted" role="status">
+                              Loading agents…
+                            </p>
+                          ) : (
+                            <section className="overviewGrid">
+                              <div className="mainColumn">
+                                <div className="sectionHeader">
+                                  <div>
+                                    <h2>Start with your first agent</h2>
+                                  </div>
+                                </div>
+                                <div className="starterCard">
+                                  {/* the studio's orb (as in a test conversation), in the style's colours */}
+                                  <div className="starterVisual" aria-hidden="true">
+                                    <AiOrb size={136} />
+                                  </div>
+                                  <div className="starterCopy">
+                                    <span className="cardTag">Recommended</span>
+                                    <h3>Build an agent from an idea</h3>
+                                    <p>Describe what it should do in your own words or pick a starting point, try it out, then put it live.</p>
+                                    <div className="starterActions">
+                                      {/* quiet: "Create agent" above is the page's one strong button, and does the same */}
+                                      <Button size="compact" type="button" onClick={openCreateAssistant}>
+                                        Start building
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </section>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {/* test-panel conversations, shown once there are some and named so they're never
                       read as the agents' traffic */}

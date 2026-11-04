@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { RUNTIME_ROOTS, TEMPLATE_FILTERS, highlightSegments, insertAt, insertables, templateProblems, wordCount } from './templates.ts';
 import { humanize } from './engine.js';
+import { Input, TextArea } from '../../ui/Input.tsx';
 
 // A text box for a runtime template ({{state.x}}, {{const.x}}): a click inserts a value at the caret. A name that may
 // point at nothing is hinted in amber, never red: names depend on where the text sits, so the server's check decides.
@@ -62,13 +63,13 @@ export default function TemplateField({
   return (
     <div className="stTpl">
       {multiline ? (
-        <textarea
-          className={`stFInput ${mono ? 'mono' : ''}`}
+        <TextArea
+          mono={mono}
           rows={rows || Math.min(10, Math.max(3, text.split('\n').reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / 90)), 0) + 1))}
           {...common}
         />
       ) : (
-        <input className={`stFInput ${mono ? 'mono' : ''}`} type="text" {...common} />
+        <Input mono={mono} type="text" {...common} />
       )}
       {text.includes('{{') && (
         <div className="stTplPreview" aria-label="Template preview">

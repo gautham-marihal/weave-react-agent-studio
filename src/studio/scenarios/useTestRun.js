@@ -6,7 +6,7 @@ import { isFinished, normalizeHeadline, normalizeRun } from './runResults.js';
 // One run per agent: if the server says one is going (409) this follows it instead, so another tab or a refresh shows
 // the same run. Reading a run changes nothing on the server.
 const POLL_MS = 1000;
-export const MAX_POLL_MS = 10 * 60 * 1000; // stop following an endless run after 10 minutes (it stays on the server)
+const MAX_POLL_MS = 10 * 60 * 1000; // stop following an endless run after 10 minutes (it stays on the server)
 
 export function useTestRun(botId, { scenarios = [], onFinished, pollMs = POLL_MS } = {}) {
   const [run, setRun] = useState(null);

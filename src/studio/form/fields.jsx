@@ -3,6 +3,7 @@ import SmartSelect from '../SmartSelect.jsx';
 import { prettyJson } from '../format.js';
 import { parseJsonStrict } from '../jsonDuplicates.js';
 import Icon from '../../ui/Icon.jsx';
+import { Input, TextArea } from '../../ui/Input.tsx';
 
 // The form's basic inputs: text, numbers (and a range), a switch, a choice from a list, a list of texts, several
 // choices, raw JSON, and a free value that may be text or JSON. Each takes `value` and calls `onChange(next)`.
@@ -19,23 +20,26 @@ export function TextInput({ value, onChange, placeholder, disabled, multiline, i
   };
   if (multiline) {
     const rows = Math.min(14, Math.max(3, String(value ?? '').split('\n').length + 1));
-    return <textarea className={`stFInput ${mono ? 'mono' : ''}`} rows={rows} {...common} />;
+    return <TextArea mono={mono} rows={rows} {...common} />;
   }
-  return <input className={`stFInput ${mono ? 'mono' : ''}`} type="text" {...common} />;
+  return <Input mono={mono} type="text" {...common} />;
 }
 
 // Keeps what you type ("1.", "-") while the stored value is a number.
 export function NumberInput({ value, onChange, min, max, integer, nullable, disabled, invalid, id, placeholder }) {
   const toText = (v) => (v === null || v === undefined ? '' : String(v));
   const [text, setText] = useState(toText(value));
+  // while someone types, what they typed stays: the value it gives may come back changed (a guardrail limit of 0 is
+  // "no limit", so it comes back empty) and showing that at once would eat the "0" of "0.5". Shown as stored on blur.
+  const typing = useRef(false);
   useEffect(() => {
+    if (typing.current) return;
     const incoming = toText(value);
     setText((current) => (Number(current) === Number(incoming) && (current === '') === (incoming === '') ? current : incoming));
   }, [value]);
   return (
-    <input
+    <Input
       id={id}
-      className="stFInput"
       type="number"
       inputMode={integer ? 'numeric' : 'decimal'}
       step={integer ? 1 : 'any'}
@@ -47,6 +51,7 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
       value={text}
       onChange={(event) => {
         const raw = event.target.value;
+        typing.current = true;
         setText(raw);
         // Clearing the box never deletes the field (the × button does that): a nullable number becomes null,
         // any other keeps its last value until a new number is typed, and is shown again on blur.
@@ -57,7 +62,10 @@ export function NumberInput({ value, onChange, min, max, integer, nullable, disa
         const n = Number(raw);
         if (!Number.isNaN(n)) onChange(n);
       }}
-      onBlur={() => setText(toText(value))}
+      onBlur={() => {
+        typing.current = false;
+        setText(toText(value));
+      }}
     />
   );
 }
@@ -134,8 +142,7 @@ export function StringList({ values, onChange, placeholder, disabled, addLabel =
     <div className="stFList">
       {list.map((item, index) => (
         <div className="stFListRow" key={index}>
-          <input
-            className="stFInput"
+          <Input
             type="text"
             spellCheck={false}
             value={item}
@@ -256,9 +263,9 @@ export function JsonInput({ value, onChange, disabled, id }) {
   }, [value]);
   return (
     <div className="stFJson">
-      <textarea
+      <TextArea
         id={id}
-        className="stFInput mono"
+        mono
         rows={Math.min(14, Math.max(3, text.split('\n').length + 1))}
         spellCheck={false}
         value={text}
@@ -327,9 +334,8 @@ export function FreeValue({ value, onChange, disabled, id, 'aria-label': ariaLab
   };
   return (
     <>
-      <input
+      <Input
         id={id}
-        className="stFInput"
         type="text"
         spellCheck={false}
         disabled={disabled}

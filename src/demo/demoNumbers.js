@@ -8,7 +8,7 @@ const ok = (body, status = 200) => ({ status, body });
 const fail = (status, detail) => ({ status, body: { detail } });
 
 // Numbers "set up by hand" on the imaginary phone system: listed, but not changeable from here.
-export const HAND_MADE = [
+const HAND_MADE = [
   {
     number: '+6563001000',
     trunk: { id: 'ST_demo1', name: 'singtel poc' },
@@ -21,7 +21,7 @@ export const HAND_MADE = [
   },
 ];
 
-export const numberSettings = () => ({
+const numberSettings = () => ({
   number_pattern: PATTERN,
   environments: ENVIRONMENTS,
   defaults: { record_audio: true, krisp: false, allowed_addresses: [] },
@@ -32,7 +32,7 @@ export const numberSettings = () => ({
 
 const clean = (value) => String(value ?? '').trim();
 
-export function checkNumber(state, value) {
+function checkNumber(state, value) {
   const number = clean(value);
   // eslint-disable-next-line sonarjs/concise-regex -- the server's own pattern, word for word, as it sends it
   if (!new RegExp(PATTERN).test(number))
@@ -54,7 +54,7 @@ export function checkNumber(state, value) {
 const ruleAgents = (record) => [['agent-builder-runtime', JSON.stringify({ bot: record.bot, ref: record.environment })]];
 
 // The row for one number: the guide's fields, with the status worked out from what is deployed to its environment.
-export function rowOf(state, record) {
+function rowOf(state, record) {
   const bot = state.bots?.[record.bot];
   const version = bot?.deployed?.[record.environment] || null;
   const config = version ? bot.versions.find((v) => v.version === version)?.config : null;

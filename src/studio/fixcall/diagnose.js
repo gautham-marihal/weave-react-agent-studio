@@ -13,8 +13,8 @@ const clip = (text, n = 90) => {
   return t.length > n ? `${t.slice(0, n - 1)}…` : t;
 };
 
-export const SLOW_MS = 4000; // the caller waits this long or more for the first words of an answer
-export const LONG_WORDS = 45; // a spoken answer longer than this is a lot to listen to
+const SLOW_MS = 4000; // the caller waits this long or more for the first words of an answer
+const LONG_WORDS = 45; // a spoken answer longer than this is a lot to listen to
 const REPEAT = 0.85; // how alike two lines are to count as the same
 
 const REPEATING = /\b(i (already|just) (said|told|gave|answered)|i said|as i said|again|like i said|did you hear)\b/i;

@@ -415,7 +415,7 @@ test('the prompt preview asks the server: its exact text, which blocks are in no
     assert.match(textOf($(details, '[data-section="role"] pre')), /Help with bills on the basic plan\./);
     assert.match(textOf($(details, '[data-section="conditional"] header')), /not in right now · only the office is closed/);
     assert.match(textOf($(details, '[data-section="role"] header')), /in the prompt/);
-    assert.match(textOf($(details, '.stPromptTotal')), /2,100 words · about 2,800 tokens · 18 tools offered/);
+    assert.match(textOf($(details, '.stPromptTotal')), /2,100 words about 2,800 tokens 18 tools offered/);
     assert.ok(
       $(details, '[data-advice="long"]') && $(details, '[data-advice="tools"]') && $(details, '[data-advice="dropped"]'),
       'too long, too many tools, a tool dropped',

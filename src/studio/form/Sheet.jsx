@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
+import Button from '../../ui/Button.tsx';
+import { exitThen } from '../../ui/motion.ts';
 
 // How deep a group sits on its screen: depth 0 is drawn in place, deeper groups open in a sheet from the right, so a
 // screen is never more than one box deep. Inside a sheet the count restarts.
 export const DepthCtx = createContext(0);
 // The titles of the sheets open around this one, outermost first: a sheet says where it is ("Conversation flow › When
 // the caller goes quiet") and goes back.
-export const TrailCtx = createContext([]);
+const TrailCtx = createContext([]);
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]';
 
@@ -18,6 +20,8 @@ export default function Sheet({ title, onClose, actions = null, children, pathKe
   const ref = useRef(null);
   const close = useRef(onClose);
   close.current = onClose;
+  // every way out lets the sheet slide away first (its shade is the element just before it)
+  const leave = () => exitThen({ panel: ref.current, shade: ref.current?.previousElementSibling }, () => close.current());
   useEffect(() => {
     const opener = document.activeElement;
     ref.current?.querySelector('.stFSheetBack, .stFSheetClose')?.focus({ preventScroll: true });
@@ -31,7 +35,7 @@ export default function Sheet({ title, onClose, actions = null, children, pathKe
       if (event.defaultPrevented) return;
       event.preventDefault();
       event.stopPropagation();
-      close.current();
+      leave();
       return;
     }
     if (event.key !== 'Tab' || !ref.current) return;
@@ -54,11 +58,11 @@ export default function Sheet({ title, onClose, actions = null, children, pathKe
   const level = trail.length;
   return createPortal(
     <div className="stFSheetLayer" style={{ zIndex: 5600 + level * 2 }} onKeyDown={onKeyDown}>
-      <div className="stFSheetScrim" aria-hidden="true" onMouseDown={() => close.current()} />
+      <div className="stFSheetScrim" aria-hidden="true" onMouseDown={() => leave()} />
       <aside className="stFSheet" role="dialog" aria-modal="true" aria-label={title} ref={ref} data-sheet={pathKey}>
         <header className="stFSheetHead">
           {parent ? (
-            <button type="button" className="stFSheetBack" onClick={() => close.current()} aria-label={`Back to ${parent}`}>
+            <button type="button" className="stFSheetBack" onClick={() => leave()} aria-label={`Back to ${parent}`}>
               <Icon name="chevronRight" size={16} className="flip" />
               <span>{parent}</span>
             </button>
@@ -73,7 +77,7 @@ export default function Sheet({ title, onClose, actions = null, children, pathKe
           </div>
           <div className="stFSheetActions">
             {actions}
-            <button type="button" className="stFSheetClose" aria-label={`Close ${title}`} onClick={() => close.current()}>
+            <button type="button" className="stFSheetClose" aria-label={`Close ${title}`} onClick={() => leave()}>
               <Icon name="close" size={18} />
             </button>
           </div>
@@ -85,9 +89,9 @@ export default function Sheet({ title, onClose, actions = null, children, pathKe
         </div>
         <footer className="stFSheetFoot">
           <span className="stMuted">Changes are part of the draft as you make them.</span>
-          <button type="button" className="primaryCta compactCta" onClick={() => close.current()}>
+          <Button type="button" variant="primary" size="compact" onClick={() => leave()}>
             Done
-          </button>
+          </Button>
         </footer>
       </aside>
     </div>,

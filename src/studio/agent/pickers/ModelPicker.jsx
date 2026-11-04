@@ -5,6 +5,8 @@ import { modelLabel, modelStatus, providerLabel } from '../../models/catalog.js'
 import { readModels, setModel, setProvider, slotProblem } from '../../models/config.js';
 import { modelRows, providerChips } from './pickerLogic.js';
 import './pickers.css';
+import Button from '../../../ui/Button.tsx';
+import { Input } from '../../../ui/Input.tsx';
 
 // The three parts of a call, in the order people think of them: what thinks (language model), listens (speech-to-text)
 // and speaks (text-to-speech). Each card shows the choice; "Change" opens a searchable list, filterable by provider.
@@ -113,9 +115,9 @@ function ModelList({ part, config, set, providers }) {
       <div className="pkOther">
         <label htmlFor={`pk-other-${part.id}`}>Another model id</label>
         <div>
-          <input
+          <Input
             id={`pk-other-${part.id}`}
-            className="stFInput mono"
+            mono
             type="text"
             spellCheck={false}
             value={other}
@@ -128,9 +130,9 @@ function ModelList({ part, config, set, providers }) {
               }
             }}
           />
-          <button type="button" className="quietButton" disabled={!other.trim()} onClick={chooseOther}>
+          <Button type="button" disabled={!other.trim()} onClick={chooseOther}>
             Use it
-          </button>
+          </Button>
         </div>
         <small>The server doesn’t check model ids; a wrong one fails when a call starts.</small>
       </div>
@@ -169,15 +171,9 @@ function PartCard({ part, config, set, providers, open, onToggle, speech = true 
             <small>{notNeeded ? 'Choose one for phone calls or talking on your website.' : 'Choose a model to use for this part of the call.'}</small>
           </span>
         )}
-        <button
-          type="button"
-          className="quietButton"
-          aria-expanded={open}
-          aria-label={`${open ? 'Close the list of' : 'Change'} ${part.title} models`}
-          onClick={onToggle}
-        >
+        <Button type="button" aria-expanded={open} aria-label={`${open ? 'Close the list of' : 'Change'} ${part.title} models`} onClick={onToggle}>
           {open ? 'Done choosing' : slot.provider ? 'Change' : 'Choose'}
-        </button>
+        </Button>
       </div>
       {problem && <p className="pkWarn">{problem.text}</p>}
       {status && ['custom', 'free', 'empty'].includes(status.state) ? <p className={`pkStatus ${status.state}`}>{status.text}</p> : null}

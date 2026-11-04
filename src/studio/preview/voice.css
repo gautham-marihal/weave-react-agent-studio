@@ -1,0 +1,124 @@
+/* The voice view (VoiceStage.jsx): a big orb that shows what the agent is doing, in the style's orb colours
+   (--orb-1…4, --orb-base, --orb-deep from themes.css), drawn by orbPainter.js; its words and captions under it. */
+
+.vStage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 16px;
+  padding: 34px 20px 20px;
+  text-align: center;
+  min-width: 0;
+}
+.vBadge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+/* ---- the orb: threads of light woven into a sphere, with sonar rings, drawn on a canvas by orbPainter.js, which reads the colours below.
+   The orb keeps its own size in the layout; the canvas is bigger, centred over it, so the rings reach past it without
+   moving anything. */
+.vOrb {
+  --size: 200px;
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) * 0.08);
+}
+.vOrbCanvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  pointer-events: none;
+}
+/* a problem: the orb turns red */
+.vOrb.error {
+  --orb-1: #ef4444;
+  --orb-2: #dc2626;
+  --orb-3: #f87171;
+  --orb-4: #fca5a5;
+  --orb-base: #fee2e2;
+  --orb-deep: #f87171;
+}
+[data-theme="dark"] .vOrb.error {
+  --orb-base: #5c1414;
+  --orb-deep: #1f0606;
+}
+/* ended: it stops and fades (the painter drains its colour) */
+.vOrb.ended {
+  opacity: 0.75;
+}
+
+@keyframes vDim {
+  50% {
+    opacity: 0.72;
+  }
+}
+
+/* ---- the words and the captions */
+.vWords {
+  display: grid;
+  gap: 4px;
+  max-width: 46ch;
+}
+.vWords strong {
+  color: var(--textStrong, var(--text));
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.vWords span {
+  color: var(--muted);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.vStage.error .vWords strong {
+  color: var(--danger-text, var(--danger));
+}
+.vCaptions {
+  width: min(560px, 100%);
+  min-height: 56px;
+  max-height: 120px;
+  overflow: auto;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface2, var(--surface));
+  color: var(--text);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  text-align: center;
+}
+.vCaptions p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.vCaptions b {
+  color: var(--muted);
+  font-weight: 600;
+}
+.vCaptionsEmpty {
+  color: var(--muted);
+  font-style: italic;
+}
+.vCaret {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  margin-left: 3px;
+  vertical-align: -2px;
+  background: var(--accent);
+  animation: vDim 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vCaret {
+    animation: none !important;
+  }
+}

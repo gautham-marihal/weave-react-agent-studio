@@ -297,11 +297,6 @@ html[data-theme] body .nlHint {
 }
 
 /* rows that open a panel: one box, hairlines between */
-html[data-theme] body .nlRows {
-  border: 1px solid var(--line2);
-  border-radius: 14px;
-  background: var(--panel);
-}
 html[data-theme] body .nlRow {
   gap: 14px;
   min-height: 60px;
@@ -478,15 +473,12 @@ html[data-theme] body .asCard h3,
 html[data-theme] body .asFacts dt,
 html[data-theme] body .asWho,
 html[data-theme] body .callFacts dt,
-html[data-theme] body .hjHead,
 html[data-theme] body .infoDialogGroup h3,
 html[data-theme] body .integrationCategory,
 html[data-theme] body .pvHud small,
 html[data-theme] body .pvPanel > header strong,
 html[data-theme] body .ruleSection legend,
 html[data-theme] body .settingsFacts dt,
-html[data-theme] body .stAgentHead,
-html[data-theme] body .stAgentSummary span,
 html[data-theme] body .stChangeBody small,
 html[data-theme] body .stChannelBlock legend,
 html[data-theme] body .stComboGroup,
@@ -511,18 +503,11 @@ html[data-theme] body .wfSection h4 {
 }
 html[data-theme] body .accountDetail small,
 html[data-theme] body .accountFooterLabel,
-html[data-theme] body .cardEyebrow,
 html[data-theme] body .createEyebrow,
 html[data-theme] body .eyebrow,
-html[data-theme] body .headerHint,
-html[data-theme] body .landingBottom,
-html[data-theme] body .loginHighlights span,
 html[data-theme] body .metricTop,
-html[data-theme] body .miniHeading,
-html[data-theme] body .miniStep span,
 html[data-theme] body .navLabel,
 html[data-theme] body .searchGroup [cmdk-group-heading],
-html[data-theme] body .showcaseHeader,
 html[data-theme] body .sideLink em,
 html[data-theme] body .telephonyStatLabel,
 html[data-theme] body .telephonyTable th,
@@ -667,12 +652,6 @@ html[data-theme] body .workspaceMenu {
 html[data-theme] body .sideDivider {
   background: var(--line);
 }
-html[data-theme] body .profileDot {
-  border: 1px solid var(--line2);
-  border-radius: 10px;
-  background: var(--surface2);
-  color: var(--textStrong);
-}
 html[data-theme] body .dashTopbar .quietButton {
   min-height: 36px;
   border: 1px solid var(--line2);
@@ -794,17 +773,6 @@ html[data-theme] body :is(.loginCard input:not([type="checkbox"]), .profileCard 
 html[data-theme] body input[type="checkbox"],
 html[data-theme] body input[type="radio"] {
   accent-color: var(--ink);
-}
-html[data-theme] body .topStart {
-  border: 1px solid var(--ink);
-  border-radius: 10px;
-  background: var(--ink);
-  color: var(--on-ink);
-  box-shadow: none;
-}
-html[data-theme] body .topStart:hover {
-  opacity: 0.88;
-  filter: none;
 }
 
 /* ---- while something is read: shapes where it will be (src/ui/Skeleton.jsx) ---------------------------------------------------------------------- */

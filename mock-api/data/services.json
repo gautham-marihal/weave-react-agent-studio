@@ -1,0 +1,2354 @@
+{
+  "cheques": [
+    {
+      "accountId": "480311686099",
+      "chequeNo": "225170",
+      "payee": "Sunrise Printing",
+      "amount": 9346.27,
+      "currency": "SGD",
+      "issuedOn": "2026-10-05",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-08"
+    },
+    {
+      "accountId": "480311686099",
+      "chequeNo": "225171",
+      "payee": "Kedai Runcit Maju",
+      "amount": 1573.21,
+      "currency": "SGD",
+      "issuedOn": "2026-10-09",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-12"
+    },
+    {
+      "accountId": "480311686099",
+      "chequeNo": "225172",
+      "payee": "Kedai Runcit Maju",
+      "amount": 4452.57,
+      "currency": "SGD",
+      "issuedOn": "2026-10-13",
+      "status": "NOT_PRESENTED"
+    },
+    {
+      "accountId": "480311686099",
+      "chequeNo": "225173",
+      "payee": "Sunrise Printing",
+      "amount": 4310.85,
+      "currency": "SGD",
+      "issuedOn": "2026-10-17",
+      "status": "STOPPED",
+      "stoppedOn": "2026-10-21",
+      "stopReason": "Lost in the post"
+    },
+    {
+      "accountId": "480311686099",
+      "chequeNo": "225174",
+      "payee": "Lim Hardware Trading",
+      "amount": 2249.05,
+      "currency": "SGD",
+      "issuedOn": "2026-10-21",
+      "status": "RETURNED",
+      "returnedOn": "2026-10-27",
+      "returnReason": "Insufficient funds"
+    },
+    {
+      "accountId": "480311686099",
+      "chequeNo": "225175",
+      "payee": "Kedai Runcit Maju",
+      "amount": 1302.86,
+      "currency": "SGD",
+      "issuedOn": "2026-10-25",
+      "status": "PRESENTED",
+      "presentedOn": "2026-10-31"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "116306",
+      "payee": "Harbour Freight Services",
+      "amount": 9332.96,
+      "currency": "MYR",
+      "issuedOn": "2026-10-05",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-08"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "116307",
+      "payee": "Ah Seng Logistics",
+      "amount": 8857.25,
+      "currency": "MYR",
+      "issuedOn": "2026-10-09",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-12"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "116308",
+      "payee": "Ah Seng Logistics",
+      "amount": 147.17,
+      "currency": "MYR",
+      "issuedOn": "2026-10-13",
+      "status": "NOT_PRESENTED"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "116309",
+      "payee": "Green Valley Supplies",
+      "amount": 5065.98,
+      "currency": "MYR",
+      "issuedOn": "2026-10-17",
+      "status": "STOPPED",
+      "stoppedOn": "2026-10-21",
+      "stopReason": "Lost in the post"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "116310",
+      "payee": "Lim Hardware Trading",
+      "amount": 1207.16,
+      "currency": "MYR",
+      "issuedOn": "2026-10-21",
+      "status": "RETURNED",
+      "returnedOn": "2026-10-27",
+      "returnReason": "Insufficient funds"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "116311",
+      "payee": "Green Valley Supplies",
+      "amount": 5356.61,
+      "currency": "MYR",
+      "issuedOn": "2026-10-25",
+      "status": "PRESENTED",
+      "presentedOn": "2026-10-31"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "851695",
+      "payee": "Sunrise Printing",
+      "amount": 7022,
+      "currency": "MYR",
+      "issuedOn": "2026-10-05",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-08"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "851696",
+      "payee": "Harbour Freight Services",
+      "amount": 5320.55,
+      "currency": "MYR",
+      "issuedOn": "2026-10-09",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-12"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "851697",
+      "payee": "Ah Seng Logistics",
+      "amount": 5700.49,
+      "currency": "MYR",
+      "issuedOn": "2026-10-13",
+      "status": "NOT_PRESENTED"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "851698",
+      "payee": "Ah Seng Logistics",
+      "amount": 698.65,
+      "currency": "MYR",
+      "issuedOn": "2026-10-17",
+      "status": "STOPPED",
+      "stoppedOn": "2026-10-21",
+      "stopReason": "Lost in the post"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "851699",
+      "payee": "Ah Seng Logistics",
+      "amount": 1425.35,
+      "currency": "MYR",
+      "issuedOn": "2026-10-21",
+      "status": "RETURNED",
+      "returnedOn": "2026-10-27",
+      "returnReason": "Insufficient funds"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "851700",
+      "payee": "Kedai Runcit Maju",
+      "amount": 6174.76,
+      "currency": "MYR",
+      "issuedOn": "2026-10-25",
+      "status": "PRESENTED",
+      "presentedOn": "2026-10-31"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "583922",
+      "payee": "Lim Hardware Trading",
+      "amount": 4336.79,
+      "currency": "MYR",
+      "issuedOn": "2026-10-05",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-08"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "583923",
+      "payee": "Harbour Freight Services",
+      "amount": 2408.61,
+      "currency": "MYR",
+      "issuedOn": "2026-10-09",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-12"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "583924",
+      "payee": "Green Valley Supplies",
+      "amount": 4481.36,
+      "currency": "MYR",
+      "issuedOn": "2026-10-13",
+      "status": "NOT_PRESENTED"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "583925",
+      "payee": "Green Valley Supplies",
+      "amount": 7812.68,
+      "currency": "MYR",
+      "issuedOn": "2026-10-17",
+      "status": "STOPPED",
+      "stoppedOn": "2026-10-21",
+      "stopReason": "Lost in the post"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "583926",
+      "payee": "Sunrise Printing",
+      "amount": 3172.39,
+      "currency": "MYR",
+      "issuedOn": "2026-10-21",
+      "status": "RETURNED",
+      "returnedOn": "2026-10-27",
+      "returnReason": "Insufficient funds"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "583927",
+      "payee": "Green Valley Supplies",
+      "amount": 395.91,
+      "currency": "MYR",
+      "issuedOn": "2026-10-25",
+      "status": "PRESENTED",
+      "presentedOn": "2026-10-31"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "772661",
+      "payee": "Harbour Freight Services",
+      "amount": 6208.8,
+      "currency": "SGD",
+      "issuedOn": "2026-10-05",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-08"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "772662",
+      "payee": "Ah Seng Logistics",
+      "amount": 8244.54,
+      "currency": "SGD",
+      "issuedOn": "2026-10-09",
+      "status": "CLEARED",
+      "clearedOn": "2026-10-12"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "772663",
+      "payee": "Lim Hardware Trading",
+      "amount": 4365.71,
+      "currency": "SGD",
+      "issuedOn": "2026-10-13",
+      "status": "NOT_PRESENTED"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "772664",
+      "payee": "Lim Hardware Trading",
+      "amount": 3955.83,
+      "currency": "SGD",
+      "issuedOn": "2026-10-17",
+      "status": "STOPPED",
+      "stoppedOn": "2026-10-21",
+      "stopReason": "Lost in the post"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "772665",
+      "payee": "Lim Hardware Trading",
+      "amount": 6722.08,
+      "currency": "SGD",
+      "issuedOn": "2026-10-21",
+      "status": "RETURNED",
+      "returnedOn": "2026-10-27",
+      "returnReason": "Insufficient funds"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "772666",
+      "payee": "Lim Hardware Trading",
+      "amount": 5547.12,
+      "currency": "SGD",
+      "issuedOn": "2026-10-25",
+      "status": "PRESENTED",
+      "presentedOn": "2026-10-31"
+    }
+  ],
+  "chequeBooks": [
+    {
+      "accountId": "480311686099",
+      "from": "225170",
+      "to": "225219",
+      "sentOn": "2026-09-22",
+      "delivery": "Courier to the registered address"
+    },
+    {
+      "accountId": "575504605600",
+      "from": "116306",
+      "to": "116355",
+      "sentOn": "2026-09-22",
+      "delivery": "Courier to the registered address"
+    },
+    {
+      "accountId": "960274304111",
+      "from": "851695",
+      "to": "851744",
+      "sentOn": "2026-09-22",
+      "delivery": "Collected at the branch"
+    },
+    {
+      "accountId": "212163107464",
+      "from": "583922",
+      "to": "583971",
+      "sentOn": "2026-09-22",
+      "delivery": "Collected at the branch"
+    },
+    {
+      "accountId": "897350869921",
+      "from": "772661",
+      "to": "772710",
+      "sentOn": "2026-09-22",
+      "delivery": "Collected at the branch"
+    }
+  ],
+  "chequeDeposits": [
+    {
+      "accountId": "480311686099",
+      "chequeNo": "654554",
+      "drawerBank": "Standard Chartered",
+      "amount": 14041.15,
+      "currency": "SGD",
+      "daysAgo": 4,
+      "status": "CLEARED"
+    },
+    {
+      "accountId": "480311686099",
+      "chequeNo": "647940",
+      "drawerBank": "Standard Chartered",
+      "amount": 10708.64,
+      "currency": "SGD",
+      "daysAgo": 0,
+      "status": "CLEARING"
+    },
+    {
+      "accountId": "480311686099",
+      "chequeNo": "567539",
+      "drawerBank": "UOB",
+      "amount": 3539.26,
+      "currency": "SGD",
+      "daysAgo": 2,
+      "status": "RETURNED",
+      "returnReason": "Post-dated"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "258718",
+      "drawerBank": "CIMB Bank",
+      "amount": 11820.32,
+      "currency": "MYR",
+      "daysAgo": 4,
+      "status": "CLEARED"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "591833",
+      "drawerBank": "Public Bank",
+      "amount": 6868.92,
+      "currency": "MYR",
+      "daysAgo": 0,
+      "status": "CLEARING"
+    },
+    {
+      "accountId": "575504605600",
+      "chequeNo": "283175",
+      "drawerBank": "Public Bank",
+      "amount": 756.88,
+      "currency": "MYR",
+      "daysAgo": 2,
+      "status": "RETURNED",
+      "returnReason": "Payment stopped by the drawer"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "493857",
+      "drawerBank": "RHB Bank",
+      "amount": 8657.9,
+      "currency": "MYR",
+      "daysAgo": 4,
+      "status": "CLEARED"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "525141",
+      "drawerBank": "RHB Bank",
+      "amount": 13320.05,
+      "currency": "MYR",
+      "daysAgo": 0,
+      "status": "CLEARING"
+    },
+    {
+      "accountId": "960274304111",
+      "chequeNo": "215189",
+      "drawerBank": "CIMB Bank",
+      "amount": 687.5,
+      "currency": "MYR",
+      "daysAgo": 2,
+      "status": "RETURNED",
+      "returnReason": "Post-dated"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "401425",
+      "drawerBank": "Maybank",
+      "amount": 2638.37,
+      "currency": "MYR",
+      "daysAgo": 4,
+      "status": "CLEARED"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "752960",
+      "drawerBank": "CIMB Bank",
+      "amount": 1683.02,
+      "currency": "MYR",
+      "daysAgo": 0,
+      "status": "CLEARING"
+    },
+    {
+      "accountId": "212163107464",
+      "chequeNo": "742164",
+      "drawerBank": "RHB Bank",
+      "amount": 445.28,
+      "currency": "MYR",
+      "daysAgo": 2,
+      "status": "RETURNED",
+      "returnReason": "Payment stopped by the drawer"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "481136",
+      "drawerBank": "Maybank Singapore",
+      "amount": 7987.51,
+      "currency": "SGD",
+      "daysAgo": 4,
+      "status": "CLEARED"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "669924",
+      "drawerBank": "Maybank Singapore",
+      "amount": 7464.39,
+      "currency": "SGD",
+      "daysAgo": 0,
+      "status": "CLEARING"
+    },
+    {
+      "accountId": "897350869921",
+      "chequeNo": "376007",
+      "drawerBank": "Maybank Singapore",
+      "amount": 2174.69,
+      "currency": "SGD",
+      "daysAgo": 2,
+      "status": "RETURNED",
+      "returnReason": "Post-dated"
+    }
+  ],
+  "cards": [
+    {
+      "cardId": "C7984789D",
+      "customerId": "7984789",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "7881",
+      "status": "ACTIVE",
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C7984789V",
+      "customerId": "7984789",
+      "kind": "Credit",
+      "name": "Visa Infinite",
+      "last4": "8787",
+      "status": "NOT_ACTIVATED",
+      "creditLimit": 5000,
+      "amountDue": 1551.21,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 250,
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C9909155D",
+      "customerId": "9909155",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "6360",
+      "status": "ACTIVE",
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C4312568D",
+      "customerId": "4312568",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "9312",
+      "status": "ACTIVE",
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C4312568V",
+      "customerId": "4312568",
+      "kind": "Credit",
+      "name": "Visa Infinite",
+      "last4": "1045",
+      "status": "NOT_ACTIVATED",
+      "creditLimit": 20000,
+      "amountDue": 3603.28,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 196.2,
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C2220125D",
+      "customerId": "2220125",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "9490",
+      "status": "ACTIVE",
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C2052007D",
+      "customerId": "2052007",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "9019",
+      "status": "ACTIVE",
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C6702857D",
+      "customerId": "6702857",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "7858",
+      "status": "ACTIVE",
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C6702857V",
+      "customerId": "6702857",
+      "kind": "Credit",
+      "name": "Mastercard World",
+      "last4": "7041",
+      "status": "ACTIVE",
+      "creditLimit": 12000,
+      "amountDue": 1061.11,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 196.2,
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C1449287D",
+      "customerId": "1449287",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "1786",
+      "status": "ACTIVE",
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C1449287V",
+      "customerId": "1449287",
+      "kind": "Credit",
+      "name": "Visa Platinum",
+      "last4": "4737",
+      "status": "ACTIVE",
+      "creditLimit": 5000,
+      "amountDue": 350.31,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 250,
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C2223009D",
+      "customerId": "2223009",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "6796",
+      "status": "ACTIVE",
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C2223009V",
+      "customerId": "2223009",
+      "kind": "Credit",
+      "name": "Mastercard World",
+      "last4": "2830",
+      "status": "NOT_ACTIVATED",
+      "creditLimit": 20000,
+      "amountDue": 5063,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 250,
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C7643604D",
+      "customerId": "7643604",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "7904",
+      "status": "ACTIVE",
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C8143082D",
+      "customerId": "8143082",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "7183",
+      "status": "ACTIVE",
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C8143082V",
+      "customerId": "8143082",
+      "kind": "Credit",
+      "name": "Mastercard World",
+      "last4": "5435",
+      "status": "ACTIVE",
+      "creditLimit": 5000,
+      "amountDue": 1868.52,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 196.2,
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C5912900D",
+      "customerId": "5912900",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "2290",
+      "status": "ACTIVE",
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C5912900V",
+      "customerId": "5912900",
+      "kind": "Credit",
+      "name": "Visa Infinite",
+      "last4": "3808",
+      "status": "ACTIVE",
+      "creditLimit": 5000,
+      "amountDue": 1723.05,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 250,
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C5563332D",
+      "customerId": "5563332",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "7089",
+      "status": "ACTIVE",
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C6114873D",
+      "customerId": "6114873",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "5924",
+      "status": "ACTIVE",
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C5409881D",
+      "customerId": "5409881",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "2068",
+      "status": "ACTIVE",
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C5409881V",
+      "customerId": "5409881",
+      "kind": "Credit",
+      "name": "Visa Platinum",
+      "last4": "5751",
+      "status": "NOT_ACTIVATED",
+      "creditLimit": 20000,
+      "amountDue": 3817.25,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 196.2,
+      "currency": "SGD"
+    },
+    {
+      "cardId": "C4987754D",
+      "customerId": "4987754",
+      "kind": "Debit",
+      "name": "Debit Mastercard",
+      "last4": "1136",
+      "status": "ACTIVE",
+      "currency": "MYR"
+    },
+    {
+      "cardId": "C4987754V",
+      "customerId": "4987754",
+      "kind": "Credit",
+      "name": "Mastercard World",
+      "last4": "6227",
+      "status": "ACTIVE",
+      "creditLimit": 8000,
+      "amountDue": 1172.83,
+      "minimumDue": 50,
+      "dueOn": "2026-11-18",
+      "annualFee": 250,
+      "currency": "MYR"
+    }
+  ],
+  "cardTransactions": [
+    {
+      "cardId": "C7984789V",
+      "merchant": "Shopee",
+      "amount": 196.54,
+      "currency": "MYR",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C7984789V",
+      "merchant": "Grab",
+      "amount": 379.24,
+      "currency": "MYR",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C7984789V",
+      "merchant": "AEON Mall",
+      "amount": 224.16,
+      "currency": "MYR",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C7984789V",
+      "merchant": "Grab",
+      "amount": 141.33,
+      "currency": "MYR",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C7984789V",
+      "merchant": "Grab",
+      "amount": 432.43,
+      "currency": "MYR",
+      "postedOn": "2026-10-10"
+    },
+    {
+      "cardId": "C4312568V",
+      "merchant": "Courts",
+      "amount": 37.22,
+      "currency": "SGD",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C4312568V",
+      "merchant": "FairPrice",
+      "amount": 306.77,
+      "currency": "SGD",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C4312568V",
+      "merchant": "Shopee",
+      "amount": 382.27,
+      "currency": "SGD",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C4312568V",
+      "merchant": "Shopee",
+      "amount": 165.66,
+      "currency": "SGD",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C4312568V",
+      "merchant": "Shopee",
+      "amount": 270.75,
+      "currency": "SGD",
+      "postedOn": "2026-10-10"
+    },
+    {
+      "cardId": "C6702857V",
+      "merchant": "FairPrice",
+      "amount": 168.71,
+      "currency": "SGD",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C6702857V",
+      "merchant": "FairPrice",
+      "amount": 46.32,
+      "currency": "SGD",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C6702857V",
+      "merchant": "Shell",
+      "amount": 216.87,
+      "currency": "SGD",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C6702857V",
+      "merchant": "Shopee",
+      "amount": 152.08,
+      "currency": "SGD",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C6702857V",
+      "merchant": "FairPrice",
+      "amount": 389.12,
+      "currency": "SGD",
+      "postedOn": "2026-10-10"
+    },
+    {
+      "cardId": "C1449287V",
+      "merchant": "Grab",
+      "amount": 186.43,
+      "currency": "MYR",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C1449287V",
+      "merchant": "Grab",
+      "amount": 105.19,
+      "currency": "MYR",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C1449287V",
+      "merchant": "Shopee",
+      "amount": 394.86,
+      "currency": "MYR",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C1449287V",
+      "merchant": "Shopee",
+      "amount": 21.27,
+      "currency": "MYR",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C1449287V",
+      "merchant": "Petronas",
+      "amount": 73.12,
+      "currency": "MYR",
+      "postedOn": "2026-10-10"
+    },
+    {
+      "cardId": "C2223009V",
+      "merchant": "Petronas",
+      "amount": 378.52,
+      "currency": "MYR",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C2223009V",
+      "merchant": "AEON Mall",
+      "amount": 136.45,
+      "currency": "MYR",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C2223009V",
+      "merchant": "Petronas",
+      "amount": 15.53,
+      "currency": "MYR",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C2223009V",
+      "merchant": "Mydin",
+      "amount": 271.14,
+      "currency": "MYR",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C2223009V",
+      "merchant": "Grab",
+      "amount": 301.03,
+      "currency": "MYR",
+      "postedOn": "2026-10-10"
+    },
+    {
+      "cardId": "C8143082V",
+      "merchant": "Shopee",
+      "amount": 292.25,
+      "currency": "SGD",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C8143082V",
+      "merchant": "Courts",
+      "amount": 129.53,
+      "currency": "SGD",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C8143082V",
+      "merchant": "FairPrice",
+      "amount": 102.38,
+      "currency": "SGD",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C8143082V",
+      "merchant": "Shell",
+      "amount": 102.04,
+      "currency": "SGD",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C8143082V",
+      "merchant": "Courts",
+      "amount": 361.44,
+      "currency": "SGD",
+      "postedOn": "2026-10-10"
+    },
+    {
+      "cardId": "C5912900V",
+      "merchant": "Grab",
+      "amount": 384.69,
+      "currency": "MYR",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C5912900V",
+      "merchant": "Grab",
+      "amount": 361.44,
+      "currency": "MYR",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C5912900V",
+      "merchant": "Mydin",
+      "amount": 15.42,
+      "currency": "MYR",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C5912900V",
+      "merchant": "Shopee",
+      "amount": 21.79,
+      "currency": "MYR",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C5912900V",
+      "merchant": "AEON Mall",
+      "amount": 136.48,
+      "currency": "MYR",
+      "postedOn": "2026-10-10"
+    },
+    {
+      "cardId": "C5409881V",
+      "merchant": "Shopee",
+      "amount": 78.67,
+      "currency": "SGD",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C5409881V",
+      "merchant": "Courts",
+      "amount": 398.17,
+      "currency": "SGD",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C5409881V",
+      "merchant": "FairPrice",
+      "amount": 154.65,
+      "currency": "SGD",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C5409881V",
+      "merchant": "FairPrice",
+      "amount": 310.75,
+      "currency": "SGD",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C5409881V",
+      "merchant": "Courts",
+      "amount": 340.17,
+      "currency": "SGD",
+      "postedOn": "2026-10-10"
+    },
+    {
+      "cardId": "C4987754V",
+      "merchant": "AEON Mall",
+      "amount": 173.82,
+      "currency": "MYR",
+      "postedOn": "2026-10-30"
+    },
+    {
+      "cardId": "C4987754V",
+      "merchant": "Mydin",
+      "amount": 398.95,
+      "currency": "MYR",
+      "postedOn": "2026-10-25"
+    },
+    {
+      "cardId": "C4987754V",
+      "merchant": "AEON Mall",
+      "amount": 438.41,
+      "currency": "MYR",
+      "postedOn": "2026-10-20"
+    },
+    {
+      "cardId": "C4987754V",
+      "merchant": "Mydin",
+      "amount": 111.06,
+      "currency": "MYR",
+      "postedOn": "2026-10-15"
+    },
+    {
+      "cardId": "C4987754V",
+      "merchant": "Petronas",
+      "amount": 346.12,
+      "currency": "MYR",
+      "postedOn": "2026-10-10"
+    }
+  ],
+  "payees": [
+    {
+      "customerId": "7984789",
+      "payees": [
+        {
+          "id": "L7984789",
+          "type": "LOAN",
+          "name": "Home loan",
+          "instalment": 3167.02,
+          "arrears": 0,
+          "currency": "MYR"
+        },
+        {
+          "id": "PC7984789V",
+          "type": "CREDIT_CARD",
+          "name": "Visa Infinite ending 8787",
+          "amountDue": 1551.21,
+          "minimumDue": 50,
+          "currency": "MYR"
+        },
+        {
+          "id": "B79847891",
+          "type": "BILL",
+          "name": "Tenaga Nasional (electricity)",
+          "accountRef": "17566457",
+          "currency": "MYR"
+        },
+        {
+          "id": "B79847892",
+          "type": "BILL",
+          "name": "Air Selangor (water)",
+          "accountRef": "69743960",
+          "currency": "MYR"
+        },
+        {
+          "id": "G7984789",
+          "type": "OTHER_BANK",
+          "name": "Harbour Freight Services",
+          "bank": "Maybank",
+          "accountEnding": "4546",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "9909155",
+      "payees": [
+        {
+          "id": "B99091551",
+          "type": "BILL",
+          "name": "SP Group (utilities)",
+          "accountRef": "77372862",
+          "currency": "SGD"
+        },
+        {
+          "id": "B99091552",
+          "type": "BILL",
+          "name": "Singtel (mobile)",
+          "accountRef": "38899206",
+          "currency": "SGD"
+        },
+        {
+          "id": "G9909155",
+          "type": "OTHER_BANK",
+          "name": "Green Valley Supplies",
+          "bank": "Standard Chartered",
+          "accountEnding": "9142",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "4312568",
+      "payees": [
+        {
+          "id": "PC4312568V",
+          "type": "CREDIT_CARD",
+          "name": "Visa Infinite ending 1045",
+          "amountDue": 3603.28,
+          "minimumDue": 50,
+          "currency": "SGD"
+        },
+        {
+          "id": "B43125681",
+          "type": "BILL",
+          "name": "SP Group (utilities)",
+          "accountRef": "73037507",
+          "currency": "SGD"
+        },
+        {
+          "id": "B43125682",
+          "type": "BILL",
+          "name": "Singtel (mobile)",
+          "accountRef": "54458384",
+          "currency": "SGD"
+        },
+        {
+          "id": "G4312568",
+          "type": "OTHER_BANK",
+          "name": "Sunrise Printing",
+          "bank": "Maybank Singapore",
+          "accountEnding": "1069",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "2220125",
+      "payees": [
+        {
+          "id": "L2220125",
+          "type": "LOAN",
+          "name": "Home loan",
+          "instalment": 1604.21,
+          "arrears": 0,
+          "currency": "MYR"
+        },
+        {
+          "id": "B22201251",
+          "type": "BILL",
+          "name": "Tenaga Nasional (electricity)",
+          "accountRef": "92520575",
+          "currency": "MYR"
+        },
+        {
+          "id": "B22201252",
+          "type": "BILL",
+          "name": "Air Selangor (water)",
+          "accountRef": "21448902",
+          "currency": "MYR"
+        },
+        {
+          "id": "G2220125",
+          "type": "OTHER_BANK",
+          "name": "Harbour Freight Services",
+          "bank": "Public Bank",
+          "accountEnding": "9494",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "2052007",
+      "payees": [
+        {
+          "id": "L2052007",
+          "type": "LOAN",
+          "name": "Car loan",
+          "instalment": 785.07,
+          "arrears": 551.73,
+          "currency": "SGD"
+        },
+        {
+          "id": "B20520071",
+          "type": "BILL",
+          "name": "SP Group (utilities)",
+          "accountRef": "31880677",
+          "currency": "SGD"
+        },
+        {
+          "id": "B20520072",
+          "type": "BILL",
+          "name": "Singtel (mobile)",
+          "accountRef": "65692561",
+          "currency": "SGD"
+        },
+        {
+          "id": "G2052007",
+          "type": "OTHER_BANK",
+          "name": "Lim Hardware Trading",
+          "bank": "DBS Bank",
+          "accountEnding": "5129",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "6702857",
+      "payees": [
+        {
+          "id": "L6702857",
+          "type": "LOAN",
+          "name": "Home loan",
+          "instalment": 1672.28,
+          "arrears": 0,
+          "currency": "SGD"
+        },
+        {
+          "id": "PC6702857V",
+          "type": "CREDIT_CARD",
+          "name": "Mastercard World ending 7041",
+          "amountDue": 1061.11,
+          "minimumDue": 50,
+          "currency": "SGD"
+        },
+        {
+          "id": "B67028571",
+          "type": "BILL",
+          "name": "SP Group (utilities)",
+          "accountRef": "20272633",
+          "currency": "SGD"
+        },
+        {
+          "id": "B67028572",
+          "type": "BILL",
+          "name": "Singtel (mobile)",
+          "accountRef": "43768068",
+          "currency": "SGD"
+        },
+        {
+          "id": "G6702857",
+          "type": "OTHER_BANK",
+          "name": "Kedai Runcit Maju",
+          "bank": "DBS Bank",
+          "accountEnding": "9283",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "1449287",
+      "payees": [
+        {
+          "id": "L1449287",
+          "type": "LOAN",
+          "name": "Business term loan",
+          "instalment": 1202,
+          "arrears": 781.55,
+          "currency": "MYR"
+        },
+        {
+          "id": "PC1449287V",
+          "type": "CREDIT_CARD",
+          "name": "Visa Platinum ending 4737",
+          "amountDue": 350.31,
+          "minimumDue": 50,
+          "currency": "MYR"
+        },
+        {
+          "id": "B14492871",
+          "type": "BILL",
+          "name": "Tenaga Nasional (electricity)",
+          "accountRef": "90095163",
+          "currency": "MYR"
+        },
+        {
+          "id": "B14492872",
+          "type": "BILL",
+          "name": "Air Selangor (water)",
+          "accountRef": "53128006",
+          "currency": "MYR"
+        },
+        {
+          "id": "G1449287",
+          "type": "OTHER_BANK",
+          "name": "Harbour Freight Services",
+          "bank": "Public Bank",
+          "accountEnding": "8886",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "2223009",
+      "payees": [
+        {
+          "id": "L2223009",
+          "type": "LOAN",
+          "name": "Car loan",
+          "instalment": 924.17,
+          "arrears": 0,
+          "currency": "MYR"
+        },
+        {
+          "id": "PC2223009V",
+          "type": "CREDIT_CARD",
+          "name": "Mastercard World ending 2830",
+          "amountDue": 5063,
+          "minimumDue": 50,
+          "currency": "MYR"
+        },
+        {
+          "id": "B22230091",
+          "type": "BILL",
+          "name": "Tenaga Nasional (electricity)",
+          "accountRef": "59061740",
+          "currency": "MYR"
+        },
+        {
+          "id": "B22230092",
+          "type": "BILL",
+          "name": "Air Selangor (water)",
+          "accountRef": "13049804",
+          "currency": "MYR"
+        },
+        {
+          "id": "G2223009",
+          "type": "OTHER_BANK",
+          "name": "Kedai Runcit Maju",
+          "bank": "CIMB Bank",
+          "accountEnding": "8231",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "7643604",
+      "payees": [
+        {
+          "id": "B76436041",
+          "type": "BILL",
+          "name": "SP Group (utilities)",
+          "accountRef": "16993896",
+          "currency": "SGD"
+        },
+        {
+          "id": "B76436042",
+          "type": "BILL",
+          "name": "Singtel (mobile)",
+          "accountRef": "71521569",
+          "currency": "SGD"
+        },
+        {
+          "id": "G7643604",
+          "type": "OTHER_BANK",
+          "name": "Sunrise Printing",
+          "bank": "UOB",
+          "accountEnding": "5872",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "8143082",
+      "payees": [
+        {
+          "id": "L8143082",
+          "type": "LOAN",
+          "name": "Business term loan",
+          "instalment": 892.86,
+          "arrears": 0,
+          "currency": "SGD"
+        },
+        {
+          "id": "PC8143082V",
+          "type": "CREDIT_CARD",
+          "name": "Mastercard World ending 5435",
+          "amountDue": 1868.52,
+          "minimumDue": 50,
+          "currency": "SGD"
+        },
+        {
+          "id": "B81430821",
+          "type": "BILL",
+          "name": "SP Group (utilities)",
+          "accountRef": "48631403",
+          "currency": "SGD"
+        },
+        {
+          "id": "B81430822",
+          "type": "BILL",
+          "name": "Singtel (mobile)",
+          "accountRef": "37692309",
+          "currency": "SGD"
+        },
+        {
+          "id": "G8143082",
+          "type": "OTHER_BANK",
+          "name": "Lim Hardware Trading",
+          "bank": "UOB",
+          "accountEnding": "7109",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "5912900",
+      "payees": [
+        {
+          "id": "L5912900",
+          "type": "LOAN",
+          "name": "Home loan",
+          "instalment": 2389.56,
+          "arrears": 0,
+          "currency": "MYR"
+        },
+        {
+          "id": "PC5912900V",
+          "type": "CREDIT_CARD",
+          "name": "Visa Infinite ending 3808",
+          "amountDue": 1723.05,
+          "minimumDue": 50,
+          "currency": "MYR"
+        },
+        {
+          "id": "B59129001",
+          "type": "BILL",
+          "name": "Tenaga Nasional (electricity)",
+          "accountRef": "50244743",
+          "currency": "MYR"
+        },
+        {
+          "id": "B59129002",
+          "type": "BILL",
+          "name": "Air Selangor (water)",
+          "accountRef": "88281335",
+          "currency": "MYR"
+        },
+        {
+          "id": "G5912900",
+          "type": "OTHER_BANK",
+          "name": "Harbour Freight Services",
+          "bank": "Maybank",
+          "accountEnding": "2809",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "5563332",
+      "payees": [
+        {
+          "id": "L5563332",
+          "type": "LOAN",
+          "name": "Home loan",
+          "instalment": 663.19,
+          "arrears": 0,
+          "currency": "MYR"
+        },
+        {
+          "id": "B55633321",
+          "type": "BILL",
+          "name": "Tenaga Nasional (electricity)",
+          "accountRef": "39644706",
+          "currency": "MYR"
+        },
+        {
+          "id": "B55633322",
+          "type": "BILL",
+          "name": "Air Selangor (water)",
+          "accountRef": "55067128",
+          "currency": "MYR"
+        },
+        {
+          "id": "G5563332",
+          "type": "OTHER_BANK",
+          "name": "Harbour Freight Services",
+          "bank": "Public Bank",
+          "accountEnding": "7869",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "6114873",
+      "payees": [
+        {
+          "id": "B61148731",
+          "type": "BILL",
+          "name": "Tenaga Nasional (electricity)",
+          "accountRef": "35780252",
+          "currency": "MYR"
+        },
+        {
+          "id": "B61148732",
+          "type": "BILL",
+          "name": "Air Selangor (water)",
+          "accountRef": "20493905",
+          "currency": "MYR"
+        },
+        {
+          "id": "G6114873",
+          "type": "OTHER_BANK",
+          "name": "Sunrise Printing",
+          "bank": "CIMB Bank",
+          "accountEnding": "2287",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "5409881",
+      "payees": [
+        {
+          "id": "L5409881",
+          "type": "LOAN",
+          "name": "Home loan",
+          "instalment": 2167.93,
+          "arrears": 0,
+          "currency": "SGD"
+        },
+        {
+          "id": "PC5409881V",
+          "type": "CREDIT_CARD",
+          "name": "Visa Platinum ending 5751",
+          "amountDue": 3817.25,
+          "minimumDue": 50,
+          "currency": "SGD"
+        },
+        {
+          "id": "B54098811",
+          "type": "BILL",
+          "name": "SP Group (utilities)",
+          "accountRef": "35077698",
+          "currency": "SGD"
+        },
+        {
+          "id": "B54098812",
+          "type": "BILL",
+          "name": "Singtel (mobile)",
+          "accountRef": "86798357",
+          "currency": "SGD"
+        },
+        {
+          "id": "G5409881",
+          "type": "OTHER_BANK",
+          "name": "Harbour Freight Services",
+          "bank": "DBS Bank",
+          "accountEnding": "1509",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "4987754",
+      "payees": [
+        {
+          "id": "L4987754",
+          "type": "LOAN",
+          "name": "Business term loan",
+          "instalment": 1313.96,
+          "arrears": 0,
+          "currency": "MYR"
+        },
+        {
+          "id": "PC4987754V",
+          "type": "CREDIT_CARD",
+          "name": "Mastercard World ending 6227",
+          "amountDue": 1172.83,
+          "minimumDue": 50,
+          "currency": "MYR"
+        },
+        {
+          "id": "B49877541",
+          "type": "BILL",
+          "name": "Tenaga Nasional (electricity)",
+          "accountRef": "45410182",
+          "currency": "MYR"
+        },
+        {
+          "id": "B49877542",
+          "type": "BILL",
+          "name": "Air Selangor (water)",
+          "accountRef": "38695946",
+          "currency": "MYR"
+        },
+        {
+          "id": "G4987754",
+          "type": "OTHER_BANK",
+          "name": "Kedai Runcit Maju",
+          "bank": "Maybank",
+          "accountEnding": "7313",
+          "currency": "MYR"
+        }
+      ]
+    }
+  ],
+  "fpxDirectDebits": [
+    {
+      "id": "FPX-3760-1",
+      "accountId": "932905623760",
+      "merchant": "Great Eastern Life (insurance premium)",
+      "amount": 320,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-05",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-3760-2",
+      "accountId": "932905623760",
+      "merchant": "Public Mutual (unit trust)",
+      "amount": 500,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-15",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-5600-1",
+      "accountId": "575504605600",
+      "merchant": "Great Eastern Life (insurance premium)",
+      "amount": 320,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-05",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-5600-2",
+      "accountId": "575504605600",
+      "merchant": "Public Mutual (unit trust)",
+      "amount": 500,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-15",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-8741-1",
+      "accountId": "473747358741",
+      "merchant": "Great Eastern Life (insurance premium)",
+      "amount": 320,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-05",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-8741-2",
+      "accountId": "473747358741",
+      "merchant": "Public Mutual (unit trust)",
+      "amount": 500,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-15",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-4111-1",
+      "accountId": "960274304111",
+      "merchant": "Great Eastern Life (insurance premium)",
+      "amount": 320,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-05",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-4111-2",
+      "accountId": "960274304111",
+      "merchant": "Public Mutual (unit trust)",
+      "amount": 500,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-15",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-1586-1",
+      "accountId": "751837691586",
+      "merchant": "Great Eastern Life (insurance premium)",
+      "amount": 320,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-05",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-1586-2",
+      "accountId": "751837691586",
+      "merchant": "Public Mutual (unit trust)",
+      "amount": 500,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-15",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-2405-1",
+      "accountId": "124050322405",
+      "merchant": "Great Eastern Life (insurance premium)",
+      "amount": 320,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-05",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-2405-2",
+      "accountId": "124050322405",
+      "merchant": "Public Mutual (unit trust)",
+      "amount": 500,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-15",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-7464-1",
+      "accountId": "212163107464",
+      "merchant": "Great Eastern Life (insurance premium)",
+      "amount": 320,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-05",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-7464-2",
+      "accountId": "212163107464",
+      "merchant": "Public Mutual (unit trust)",
+      "amount": 500,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-15",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-0705-1",
+      "accountId": "566581720705",
+      "merchant": "Great Eastern Life (insurance premium)",
+      "amount": 320,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-05",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "FPX-0705-2",
+      "accountId": "566581720705",
+      "merchant": "Public Mutual (unit trust)",
+      "amount": 500,
+      "currency": "MYR",
+      "frequency": "Monthly",
+      "nextOn": "2026-11-15",
+      "status": "ACTIVE"
+    }
+  ],
+  "cardApplications": [
+    {
+      "applicantId": "900101145566",
+      "name": "Applicant A",
+      "card": "Visa Platinum",
+      "status": "APPROVED",
+      "note": "The card is sent by courier within 7 working days."
+    },
+    {
+      "applicantId": "880512106789",
+      "name": "Applicant B",
+      "card": "Mastercard World",
+      "status": "IN_REVIEW",
+      "note": "More documents may be asked for; a decision usually takes 5 working days."
+    },
+    {
+      "applicantId": "920830087123",
+      "name": "Applicant C",
+      "card": "Visa Infinite",
+      "status": "DECLINED",
+      "note": "The income requirement is not met."
+    }
+  ],
+  "cases": [
+    {
+      "caseId": "INV-2026-0418",
+      "accountId": "932905623760",
+      "summary": "Card payment the customer does not recognise",
+      "openedOn": "2026-10-29",
+      "status": "IN_PROGRESS",
+      "handler": "Investigations team",
+      "updatedOn": "2026-10-31"
+    }
+  ],
+  "identities": [
+    {
+      "customerId": "7984789",
+      "idType": "IC",
+      "idNumber": "780511586888",
+      "keyCode": "22698900",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "9909155",
+      "idType": "NRIC",
+      "idNumber": "S9769408Z",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "4312568",
+      "idType": "NRIC",
+      "idNumber": "S8748297H",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "2220125",
+      "idType": "IC",
+      "idNumber": "820814903889",
+      "keyCode": "77046976",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "2052007",
+      "idType": "NRIC",
+      "idNumber": "S3816408C",
+      "customerType": "personal",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "6702857",
+      "idType": "NRIC",
+      "idNumber": "S1232397Z",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": ["210149811012"]
+    },
+    {
+      "customerId": "1449287",
+      "idType": "IC",
+      "idNumber": "850512023052",
+      "keyCode": "43151571",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "2223009",
+      "idType": "IC",
+      "idNumber": "780211792803",
+      "keyCode": "95984671",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "7643604",
+      "idType": "NRIC",
+      "idNumber": "S4613071D",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "8143082",
+      "idType": "NRIC",
+      "idNumber": "S7967579C",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "5912900",
+      "idType": "IC",
+      "idNumber": "850717188350",
+      "keyCode": "33916585",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "5563332",
+      "idType": "IC",
+      "idNumber": "820916324629",
+      "keyCode": "27977061",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "6114873",
+      "idType": "IC",
+      "idNumber": "780914747258",
+      "keyCode": "57295297",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "5409881",
+      "idType": "NRIC",
+      "idNumber": "S1261095Z",
+      "customerType": "business",
+      "bizconn": true,
+      "dormantAccounts": []
+    },
+    {
+      "customerId": "4987754",
+      "idType": "IC",
+      "idNumber": "780212885524",
+      "keyCode": "75251029",
+      "customerType": "business",
+      "bizconn": false,
+      "dormantAccounts": []
+    }
+  ],
+  "balanceDetails": [
+    {
+      "accountId": "932905623760",
+      "holdAmount": 139.45,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "195166925799",
+      "holdAmount": 0,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "480311686099",
+      "holdAmount": 0,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "386950317134",
+      "holdAmount": 0,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "575504605600",
+      "holdAmount": 0,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "613247909222",
+      "holdAmount": 0,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "210149811012",
+      "holdAmount": 0,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "473747358741",
+      "holdAmount": 681.14,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "960274304111",
+      "holdAmount": 0,
+      "pendingClearance": 851.16,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "502493100998",
+      "holdAmount": 0,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "565636835058",
+      "holdAmount": 108.39,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "751837691586",
+      "holdAmount": 589.38,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "124050322405",
+      "holdAmount": 0,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "212163107464",
+      "holdAmount": 311.58,
+      "pendingClearance": 1527.56,
+      "overdraftLimit": 5000,
+      "omnibus": false
+    },
+    {
+      "accountId": "897350869921",
+      "holdAmount": 0,
+      "pendingClearance": 2468.56,
+      "overdraftLimit": 20000,
+      "omnibus": false
+    },
+    {
+      "accountId": "923253456169",
+      "holdAmount": 539.07,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    },
+    {
+      "accountId": "566581720705",
+      "holdAmount": 563.73,
+      "pendingClearance": 0,
+      "overdraftLimit": 0,
+      "omnibus": false
+    }
+  ],
+  "incomingFunds": [
+    {
+      "accountId": "195166925799",
+      "type": "Local transfer",
+      "from": "Pacific Trading Pte Ltd",
+      "amount": 3800.24,
+      "currency": "SGD",
+      "daysAgo": 1,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "195166925799",
+      "type": "GIRO",
+      "from": "Pacific Trading Pte Ltd",
+      "amount": 11066.15,
+      "currency": "SGD",
+      "daysAgo": 5,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "195166925799",
+      "type": "Overseas transfer",
+      "from": "Pacific Trading Pte Ltd",
+      "amount": 7196.15,
+      "currency": "SGD",
+      "daysAgo": 5,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "195166925799",
+      "type": "GIRO",
+      "from": "Orchid Foods Pte Ltd",
+      "amount": 8240.01,
+      "currency": "SGD",
+      "daysAgo": 1,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "480311686099",
+      "type": "Overseas transfer",
+      "from": "Pacific Trading Pte Ltd",
+      "amount": 10545.84,
+      "currency": "SGD",
+      "daysAgo": 5,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "386950317134",
+      "type": "Overseas transfer",
+      "from": "Pacific Trading Pte Ltd",
+      "amount": 2125.46,
+      "currency": "SGD",
+      "daysAgo": 5,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "613247909222",
+      "type": "Local transfer",
+      "from": "Lotus Imports Ltd",
+      "amount": 7978.88,
+      "currency": "SGD",
+      "daysAgo": 4,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "613247909222",
+      "type": "Overseas transfer",
+      "from": "Lotus Imports Ltd",
+      "amount": 9389.75,
+      "currency": "SGD",
+      "daysAgo": 1,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "210149811012",
+      "type": "Overseas transfer",
+      "from": "Pacific Trading Pte Ltd",
+      "amount": 10212.64,
+      "currency": "SGD",
+      "daysAgo": 3,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "210149811012",
+      "type": "Local transfer",
+      "from": "Northstar Logistics",
+      "amount": 8975.51,
+      "currency": "SGD",
+      "daysAgo": 4,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "210149811012",
+      "type": "Overseas transfer",
+      "from": "Lotus Imports Ltd",
+      "amount": 465.07,
+      "currency": "SGD",
+      "daysAgo": 0,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "565636835058",
+      "type": "Local transfer",
+      "from": "Orchid Foods Pte Ltd",
+      "amount": 8889.86,
+      "currency": "SGD",
+      "daysAgo": 3,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "565636835058",
+      "type": "Local transfer",
+      "from": "Lotus Imports Ltd",
+      "amount": 5843.54,
+      "currency": "SGD",
+      "daysAgo": 0,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "565636835058",
+      "type": "GIRO",
+      "from": "Orchid Foods Pte Ltd",
+      "amount": 4637.41,
+      "currency": "SGD",
+      "daysAgo": 1,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "897350869921",
+      "type": "GIRO",
+      "from": "Northstar Logistics",
+      "amount": 7093.11,
+      "currency": "SGD",
+      "daysAgo": 6,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "897350869921",
+      "type": "GIRO",
+      "from": "Northstar Logistics",
+      "amount": 11339.19,
+      "currency": "SGD",
+      "daysAgo": 6,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "897350869921",
+      "type": "Overseas transfer",
+      "from": "Pacific Trading Pte Ltd",
+      "amount": 1956.14,
+      "currency": "SGD",
+      "daysAgo": 2,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "923253456169",
+      "type": "GIRO",
+      "from": "Northstar Logistics",
+      "amount": 4047.67,
+      "currency": "SGD",
+      "daysAgo": 5,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "923253456169",
+      "type": "Local transfer",
+      "from": "Northstar Logistics",
+      "amount": 199.78,
+      "currency": "SGD",
+      "daysAgo": 0,
+      "status": "CREDITED"
+    },
+    {
+      "accountId": "923253456169",
+      "type": "Local transfer",
+      "from": "Northstar Logistics",
+      "amount": 1616.44,
+      "currency": "SGD",
+      "daysAgo": 6,
+      "status": "CREDITED"
+    }
+  ],
+  "serviceManagers": [
+    {
+      "id": "SM01",
+      "name": "Rachel Tan",
+      "group": "SME Group A",
+      "busy": false
+    },
+    {
+      "id": "SM02",
+      "name": "David Lim",
+      "group": "SME Group A",
+      "busy": false
+    },
+    {
+      "id": "SM03",
+      "name": "Aisha Rahman",
+      "group": "SME Group B",
+      "busy": true
+    },
+    {
+      "id": "SM04",
+      "name": "Kevin Ong",
+      "group": "SME Group B",
+      "busy": false
+    }
+  ],
+  "lastServiceManagers": [
+    {
+      "accountId": "195166925799",
+      "serviceManagerId": "SM02"
+    },
+    {
+      "accountId": "480311686099",
+      "serviceManagerId": "SM03"
+    },
+    {
+      "accountId": "386950317134",
+      "serviceManagerId": "SM04"
+    },
+    {
+      "accountId": "613247909222",
+      "serviceManagerId": "SM01"
+    },
+    {
+      "accountId": "210149811012",
+      "serviceManagerId": "SM03"
+    },
+    {
+      "accountId": "502493100998",
+      "serviceManagerId": "SM01"
+    },
+    {
+      "accountId": "565636835058",
+      "serviceManagerId": "SM02"
+    },
+    {
+      "accountId": "897350869921",
+      "serviceManagerId": "SM02"
+    },
+    {
+      "accountId": "923253456169",
+      "serviceManagerId": "SM03"
+    }
+  ],
+  "vip": [
+    {
+      "mobile": "+6590081145",
+      "customerId": "9909155",
+      "name": "Goh Kian Hock",
+      "vipType": "account",
+      "language": "en",
+      "serviceManagerId": "SM01"
+    },
+    {
+      "mobile": "+6596342218",
+      "customerId": "4312568",
+      "name": "Lee Siew Lan",
+      "vipType": "phone_code",
+      "language": "zh",
+      "serviceManagerId": "SM02"
+    },
+    {
+      "mobile": "+6591857723",
+      "customerId": "7643604",
+      "name": "Priya d/o Ramasamy",
+      "vipType": "default",
+      "language": "en",
+      "serviceManagerId": "SM03"
+    }
+  ]
+}

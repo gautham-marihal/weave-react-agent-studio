@@ -728,7 +728,7 @@ html[data-style="premium"][data-theme] body :is(.stPill, .nlPill, .lvFlags li, .
   letter-spacing: 0.06em;
 }
 /* the menu: a gold rule beside the page you are on */
-html[data-style="premium"][data-theme] body .sidebar :is(.workspaceSwitch, .sideUtility, .profileTrigger) {
+html[data-style="premium"][data-theme] body .sidebar :is(.workspaceSwitch, .sideUtility) {
   color: var(--text);
 }
 html[data-style="premium"][data-theme] body .sidebar .sideDivider {
@@ -1563,71 +1563,12 @@ html[data-theme] body .landing {
     radial-gradient(circle at 72% 22%, color-mix(in srgb, var(--accent) 9%, transparent) 0%, transparent 28%),
     radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--accent2, var(--accent)) 6%, transparent) 0%, transparent 24%), var(--page);
 }
-html[data-theme] body .loginScreen {
-  background: var(--page);
-}
-html[data-theme] body .loginBackdropA {
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 10%, transparent), transparent 66%);
-}
-html[data-theme] body .loginBackdropB {
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent2, var(--accent)) 8%, transparent), transparent 67%);
-}
-html[data-theme] body .announcement {
-  border-bottom-color: var(--line);
-  background: var(--surface2);
-}
 html[data-theme] body :is(.landingNav, .simpleHeader) {
   border-bottom-color: var(--line);
 }
 html[data-theme] body :is(.loginCard, .profileCard) {
   border-color: var(--line2);
   background: var(--panel);
-}
-
-/* ---- the landing page's preview follows the style ----------------------------------------------------------------------------------------------- */
-html[data-style="premium"][data-theme] body .assistantFace {
-  background: radial-gradient(circle at 45% 35%, var(--metal-face), var(--metal) 28%, var(--metal-deep) 72%);
-  box-shadow: 0 18px 40px -16px rgba(176, 132, 51, 0.6);
-}
-html[data-style="premium"][data-theme] body .waveform i {
-  background: var(--gold);
-}
-html[data-style="futuristic"][data-theme] body .assistantFace {
-  background: radial-gradient(circle at 45% 35%, var(--readout), var(--ink) 26%, var(--orb-deep) 74%);
-  box-shadow: 0 0 40px -6px var(--glow);
-}
-html[data-style="futuristic"][data-theme] body .waveform i {
-  background: linear-gradient(180deg, var(--ink), var(--ink2));
-  box-shadow: 0 0 8px -1px var(--glow);
-}
-html[data-style="vibrant"][data-theme] body .assistantFace {
-  background: radial-gradient(circle at 45% 35%, #ffd6f2, #c026d3 32%, #4c1d95 74%);
-  box-shadow: 0 18px 40px -14px var(--glow);
-}
-html[data-style="vibrant"][data-theme] body .waveform i:nth-child(3n + 1) {
-  background: var(--hue-1);
-}
-html[data-style="vibrant"][data-theme] body .waveform i:nth-child(3n + 2) {
-  background: var(--hue-2);
-}
-html[data-style="vibrant"][data-theme] body .waveform i:nth-child(3n) {
-  background: var(--hue-3);
-}
-html[data-style="premium"][data-theme] body .showcaseCard {
-  border-radius: 4px;
-}
-html[data-style="futuristic"][data-theme] body .showcaseCard {
-  border-radius: 3px;
-  border-color: var(--hud-dim);
-  background:
-    linear-gradient(var(--hud), var(--hud)) left top / 14px 1px no-repeat,
-    linear-gradient(var(--hud), var(--hud)) left top / 1px 14px no-repeat,
-    linear-gradient(var(--hud), var(--hud)) right bottom / 14px 1px no-repeat,
-    linear-gradient(var(--hud), var(--hud)) right bottom / 1px 14px no-repeat,
-    var(--card-fill);
-}
-html[data-style="vibrant"][data-theme] body .showcaseCard {
-  border-radius: 22px;
 }
 
 /* ---- Premium: what sits inside the espresso sidebar keeps to it ------------------------------------------------------------------------------- */
@@ -1908,7 +1849,7 @@ html[data-style="professional"][data-theme] body :is(.primaryCta, .topStart):hov
   opacity: 1;
   filter: brightness(0.92);
 }
-html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta, .nlBtn, .profileDot) {
+html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta, .nlBtn) {
   border-radius: 4px;
 }
 html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta):hover:not(:disabled) {
@@ -1953,12 +1894,6 @@ html[data-style="professional"][data-theme] body :is(.agentRowAvatar, .workspace
 html[data-style="professional"][data-theme] body .workspaceAvatar {
   background: var(--ink);
   color: var(--on-ink);
-}
-html[data-style="professional"][data-theme] body .assistantFace {
-  background: radial-gradient(circle at 45% 35%, #cfe0ff, #3b82f6 30%, #0f1f3d 74%);
-}
-html[data-style="professional"][data-theme] body .waveform i {
-  background: var(--accent);
 }
 
 /* ============================================================================================================================================== */
@@ -2209,12 +2144,6 @@ html[data-style="calm"][data-theme] body :is(.dashboard .dashTopbar.dashTopbar, 
 html[data-style="calm"][data-theme] body .sidebar {
   background: color-mix(in srgb, var(--sidebar) 88%, transparent);
   backdrop-filter: blur(12px);
-}
-html[data-style="calm"][data-theme] body .assistantFace {
-  background: radial-gradient(circle at 45% 35%, #e9f3e3, #8cb895 30%, #2f4b36 74%);
-}
-html[data-style="calm"][data-theme] body .waveform i {
-  background: var(--accent);
 }
 /* everything moves slowly and softly; the live dot breathes */
 @media (prefers-reduced-motion: no-preference) {
@@ -2779,6 +2708,19 @@ html[data-style="studio"] {
 }
 html[data-style="studio"][data-theme] body {
   font-family: var(--font-display);
+}
+/* a faint light at the top of every page, as on the public site: plum from the right, a cool blue from the left; it
+   scrolls away with the page, so only the top of each page has it */
+html[data-style="studio"][data-theme] body {
+  background-image:
+    radial-gradient(900px 420px at 84% -40px, color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%),
+    radial-gradient(720px 380px at 34% -80px, color-mix(in srgb, #3b6fe0 7%, transparent), transparent 70%);
+  background-repeat: no-repeat;
+}
+html[data-style="studio"][data-theme="dark"] body {
+  background-image:
+    radial-gradient(900px 420px at 84% -40px, color-mix(in srgb, var(--accent) 15%, transparent), transparent 70%),
+    radial-gradient(720px 380px at 34% -80px, color-mix(in srgb, #4f7df0 10%, transparent), transparent 70%);
 }
 /* titles: semibold and a little tight, never shouting */
 html[data-style="studio"][data-theme] body :is(h1, h2, h3) {

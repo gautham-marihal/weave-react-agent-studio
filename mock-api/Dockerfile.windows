@@ -1,0 +1,24 @@
+# The mock bank services for Windows containers: Nano Server with only node.exe added (see ../Dockerfile.windows).
+# Built on a Linux engine with buildx (../run.sh export-windows); WINDOWS_VERSION and NODE_VERSION as there.
+ARG WINDOWS_VERSION=ltsc2022
+
+# node.exe from nodejs.org, checked against its published checksum
+FROM --platform=$BUILDPLATFORM alpine:3.24 AS node-windows
+ARG NODE_VERSION=22.23.4
+RUN apk add --no-cache unzip >/dev/null \
+ && wget -q https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-win-x64.zip https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt \
+ && grep " node-v${NODE_VERSION}-win-x64.zip\$" SHASUMS256.txt | sha256sum -c - \
+ && unzip -q -j node-v${NODE_VERSION}-win-x64.zip node-v${NODE_VERSION}-win-x64/node.exe -d /out
+
+FROM mcr.microsoft.com/windows/nanoserver:${WINDOWS_VERSION}
+COPY --from=node-windows /out/node.exe C:/node/node.exe
+ENV PATH="C:\\node;C:\\Windows\\System32;C:\\Windows"
+WORKDIR C:/app
+ENV PORT=4400
+COPY package.json server.mjs ./
+COPY src ./src
+COPY data ./data
+USER ContainerUser
+EXPOSE 4400
+HEALTHCHECK --interval=30s --timeout=5s CMD ["C:\\node\\node.exe", "-e", "fetch('http://127.0.0.1:4400/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+CMD ["C:\\node\\node.exe", "server.mjs"]

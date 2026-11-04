@@ -6,6 +6,7 @@ import { plainChanges } from '../compare/plainCompare.js';
 import { diagnoseCall, headline } from './diagnose.js';
 import { applyFixes, fixesFor } from './fixes.js';
 import './fixcall.css';
+import Button from '../../ui/Button.tsx';
 
 const SEVERITY = { high: 'Serious', medium: 'Worth fixing', low: 'Worth knowing' };
 
@@ -58,12 +59,12 @@ export default function FixCallDrawer({ botId, facts, call, events, editor, onCl
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="quietButton" onClick={onClose}>
+          <Button type="button" onClick={onClose}>
             Cancel
-          </button>
-          <button type="button" className="primaryCta compactCta" onClick={apply} disabled={picked.length === 0}>
+          </Button>
+          <Button type="button" variant="primary" size="compact" onClick={apply} disabled={picked.length === 0}>
             {picked.length > 1 ? `Put these ${picked.length} changes in the draft` : 'Put this change in the draft'}
-          </button>
+          </Button>
         </>
       }
     >
@@ -142,9 +143,9 @@ export default function FixCallDrawer({ botId, facts, call, events, editor, onCl
               </p>
             )}
             {!trying ? (
-              <button type="button" className="quietButton" onClick={() => setTrying(true)}>
+              <Button type="button" onClick={() => setTrying(true)}>
                 Replay the call with these changes
-              </button>
+              </Button>
             ) : (
               <ReplayView key={JSON.stringify(candidate)} botId={botId} events={events} editor={candidateEditor} draftLabel="The draft with these changes" />
             )}

@@ -55,9 +55,13 @@ test('a phone transfer added on the canvas fills in the hand-over still waiting 
 });
 
 test('a subagent a call can reach but never leave is flagged, and giving it the end of the call clears it', () => {
-  const { config, id } = withSubagent();
+  const { config: added, id } = withSubagent();
   const flagged = (c) => buildWorkflow(c).nodes.find((n) => n.id === id)?.deadEnd;
-  assert.equal(flagged(config), true, 'a new subagent has no way out');
+  assert.equal(flagged(added), false, 'a new subagent can always send the caller back, so it is never a dead end');
+  // one whose way back was taken away has no way out
+  const config = JSON.parse(JSON.stringify(added));
+  config.agents.items.find((a) => a.id === id).tools = [];
+  assert.equal(flagged(config), true, 'a subagent with no way out is flagged');
   assert.equal(buildWorkflow(config).nodes.find((n) => n.entry)?.deadEnd, false, 'the agent that answers first is never flagged');
   assert.equal(flagged(addEnd(config, id).config), false);
 });

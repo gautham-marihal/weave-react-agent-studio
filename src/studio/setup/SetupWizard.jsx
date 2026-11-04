@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api, groupIssues } from '../../api/client.ts';
 import Icon from '../../ui/Icon.jsx';
@@ -6,6 +6,8 @@ import { askConfirm } from '../../ui/dialogs.js';
 import { AgentNumbers, useLiveNumbers } from '../../pages/LiveNumbers.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
 import { useGateStatus } from '../release/gate.js';
+import { DeploySecrets } from '../release/Preflight.jsx';
+import { failureReason, useDeploymentWatch } from '../release/deployWatch.js';
 import { navigate, replaceRoute, routeHref } from '../route.js';
 import { Notice, envLabel } from '../ui.jsx';
 import { describeIssue } from '../validation/issues.js';
@@ -14,6 +16,9 @@ import { useSetupProgress } from './setupProgress.js';
 import { ActionSwitches, KnowledgeBlock, ReachChoices } from './SimpleBlocks.jsx';
 import { PurposeFields, VoiceFields } from './StepFields.jsx';
 import './setup.css';
+import Button from '../../ui/Button.tsx';
+import { SidebarFolded } from '../../ui/sidebarFolded.ts';
+import { fadeIn } from '../../ui/motion.ts';
 
 // The guided setup: one step per screen, with Next to move on. Every move saves the draft, so "Continue setup"
 // returns to the same step. The side menu opens any step at any time.
@@ -25,6 +30,8 @@ const ENVIRONMENTS = [
   ['production', 'Live for customers', 'everyone who calls or chats', 'for customers'],
 ];
 const envOf = (id) => ENVIRONMENTS.find((e) => e[0] === id) || ENVIRONMENTS[0];
+
+const PlainIssues = lazy(() => import('../validation/PlainIssues.jsx')); // problems named by label, not path
 // the most public place it is live (after a reload the setup knows only what the server says is deployed)
 const liveFrom = (deployed) => {
   const env = ['production', 'staging', 'development'].find((id) => deployed?.[id]);
@@ -34,6 +41,8 @@ const liveFrom = (deployed) => {
 // ---- the steps down the side
 function StepList({ step, states, onStep, busy }) {
   const [slot, setSlot] = useState(null);
+  // a sidebar folded to icons has no room for the steps: they stay in the page then, as on a narrow screen
+  const folded = useContext(SidebarFolded);
   useLayoutEffect(() => {
     const wide = window.matchMedia ? window.matchMedia('(min-width: 901px)') : { matches: true, addEventListener() {}, removeEventListener() {} };
     const pick = () => setSlot(wide.matches ? document.getElementById('agentNavSlot') : null);
@@ -79,7 +88,7 @@ function StepList({ step, states, onStep, busy }) {
       </ol>
     </nav>
   );
-  return slot ? createPortal(list, slot) : list;
+  return slot && !folded ? createPortal(list, slot) : list;
 }
 
 // ---- 7. try it
@@ -109,8 +118,9 @@ function TryStep({ botId, editor, session, sessionMode, modeLocked, setSessionMo
 }
 
 // ---- 8. go live
-//   done: what was put live, { version, environment, status, current }; kept by the setup because the agent is
-//   read again after going live, which redraws this step
+//   done: what was put live, { version, environment, status, current, deployment?, preflight? }; kept by the setup
+//   because the agent is read again after going live, which redraws this step. A "pending" one is followed here until
+//   it is active or failed, and each change goes back through onLive.
 function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, bump }) {
   const config = editor.parsed.value;
   const [environment, setEnvironment] = useState('development');
@@ -120,6 +130,19 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
   const [again, setAgain] = useState(false);
   const gate = useGateStatus(botId, editor);
   const numbers = useLiveNumbers(!!done && reachOf(config).sip_voice, { botId });
+  // A version published here whose deploy couldn't be asked for (the deploy call itself failed): see goLive.
+  const [unplaced, setUnplaced] = useState(null);
+  const watch = useDeploymentWatch(botId, done?.deployment, (deployment) => {
+    const next = { ...done, deployment, status: deployment.status };
+    onLive(next);
+    if (deployment.status === 'pending') return;
+    bump?.();
+    // what runs where has changed: read again for the phone numbers below
+    api.listDeployments(botId).then(
+      (deployments) => onLive({ ...next, current: deployments?.current || null }),
+      () => {},
+    );
+  });
   const problems = useMemo(
     () =>
       groupIssues(editor.report)
@@ -129,6 +152,8 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
   );
   const missing = STEPS.filter((s) => !s.optional && !['start', 'try', 'live'].includes(s.id) && states[s.id] !== 'done');
   const blocked = problems.length > 0 || (gate.enabled && !gate.check.ok);
+  // The deployment failed: the version before keeps answering, and the form is shown again with why.
+  const failed = done?.status === 'failed';
 
   const goLive = async () => {
     if (environment === 'production') {
@@ -142,17 +167,36 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
     setBusy(true);
     setError(null);
     try {
-      if (editor.dirty) {
-        const saved = await editor.save();
-        if (!saved) throw new Error('The draft couldn’t be saved, so nothing was put live.');
+      // A version published here that isn't live (its deploy failed, or couldn't be asked for) is put live again as it
+      // is, as the API guide has it (a failed deploy changes nothing), rather than publishing another. Edits made since
+      // are published as usual.
+      let version = editor.dirty ? null : failed ? done.version : unplaced;
+      if (!version) {
+        if (editor.dirty) {
+          const saved = await editor.save();
+          if (!saved) throw new Error('The draft couldn’t be saved, so nothing was put live.');
+        }
+        version = (await api.publish(botId)).version;
+        setUnplaced(version);
+        // read again straight away, without leaving this step: publishing moved the draft on to the next version
+        // number, and a deploy that then fails must not leave the editor on the old revision (its next save would
+        // look like someone else's)
+        await editor.reloadQuietly();
+        bump?.();
       }
-      const published = await api.publish(botId);
-      const result = await api.deploy(botId, { version: published.version, environment, note: 'Put live from the setup' });
+      const result = await api.deploy(botId, { version, environment, note: 'Put live from the setup' });
+      setUnplaced(null);
+      const status = result?.deployment?.status || 'active';
       const deployments = await api.listDeployments(botId).catch(() => null);
-      onLive({ version: published.version, environment, status: result?.deployment?.status || 'active', current: deployments?.current || null });
+      onLive({
+        version,
+        environment,
+        status,
+        deployment: result?.deployment || null,
+        preflight: result?.preflight || null,
+        current: deployments?.current || null,
+      });
       setAgain(false);
-      // read again: publishing moved the draft on to the next version number
-      editor.reload();
       bump?.();
     } catch (e) {
       setError(e);
@@ -161,7 +205,8 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
     }
   };
 
-  if (done && !again) {
+  if (done && !again && !failed) {
+    const pending = done.status === 'pending';
     const reach = reachOf(config);
     const widgets = (config.channels || []).filter((c) => c?.enabled !== false && ['web_chat', 'web_voice'].includes(c.type));
     return (
@@ -171,16 +216,28 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
             <Icon name="check" size={22} />
           </span>
           <div>
-            <strong>
-              {name} is live {envOf(done.environment)[3]}
-            </strong>
+            <strong>{pending ? `${name} is being put live ${envOf(done.environment)[3]}` : `${name} is live ${envOf(done.environment)[3]}`}</strong>
             <p>
               Version {done.version}
-              {done.status === 'pending' ? ' is being set up; the one before keeps answering until it is ready.' : ' answers from now on.'}{' '}
+              {pending ? ' is being set up; the one before keeps answering until it is ready.' : ' answers from now on.'}{' '}
               <span className="suEnvName">({envLabel(done.environment)})</span>
             </p>
           </div>
         </div>
+        {pending && watch.checkError && (
+          <Notice
+            kind="warn"
+            title="Couldn’t check how it is going"
+            actions={
+              <Button type="button" onClick={watch.retry}>
+                Check again
+              </Button>
+            }
+          >
+            {watch.checkError.message} The Releases page shows it once it is ready.
+          </Notice>
+        )}
+        {done.preflight && <DeploySecrets preflight={done.preflight} missingOnly />}
         {/* what each way of reaching it still needs: nothing here pretends a channel works before it does */}
         <section className="suReach" aria-labelledby="suReachTitle">
           <h3 id="suReachTitle">How people reach it</h3>
@@ -229,15 +286,15 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
         </section>
         {reach.sip_voice && numbers.mode === 'live' && <AgentNumbers live={numbers} botId={botId} botName={name} current={done.current} />}
         <div className="suActionButtons">
-          <button type="button" className="primaryCta" onClick={() => navigate(routeHref(botId, 'home'), { guard: false })}>
+          <Button type="button" variant="primary" onClick={() => navigate(routeHref(botId, 'home'), { guard: false })}>
             Go to the agent
-          </button>
-          <button type="button" className="quietButton" onClick={() => onStep('try')}>
+          </Button>
+          <Button type="button" onClick={() => onStep('try')}>
             Try it again
-          </button>
-          <button type="button" className="quietButton" onClick={() => setAgain(true)}>
+          </Button>
+          <Button type="button" onClick={() => setAgain(true)}>
             Put my latest changes live
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -284,9 +341,9 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
               <li key={`${p.raw}|${i}`}>
                 <span>{p.text}</span>
                 {p.fixes[0] ? (
-                  <button type="button" className="quietButton small" onClick={() => editor.setValue(p.fixes[0].apply(config))}>
+                  <Button type="button" size="small" onClick={() => editor.setValue(p.fixes[0].apply(config))}>
                     {p.fixes[0].label}
-                  </button>
+                  </Button>
                 ) : p.step ? (
                   <button type="button" className="linkButton" onClick={() => onStep(p.step)}>
                     Go to {STEPS[stepIndex(p.step)].label.toLowerCase()}
@@ -320,15 +377,25 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
       {summary?.deployed?.[environment] && (
         <p className="suNote">Version {summary.deployed[environment]} is live there now. Going live again puts your latest changes there.</p>
       )}
+      {failed && !again && (
+        <Notice kind="error" title={`Version ${done.version} couldn’t be put live`}>
+          {failureReason(done.deployment) ? `${failureReason(done.deployment)} ` : ''}The deployment failed, so the version before keeps answering. Try again
+          below.
+        </Notice>
+      )}
       {error && (
         <Notice kind="error" title="It couldn’t be put live">
           {error.message}
-          {Array.isArray(error.errors) && error.errors.length > 0 && ` (${error.errors.length} problem${error.errors.length === 1 ? '' : 's'} in the agent)`}
+          {Array.isArray(error.errors) && error.errors.length > 0 && (
+            <Suspense fallback={null}>
+              <PlainIssues issues={error.errors} severity="error" config={config} />
+            </Suspense>
+          )}
         </Notice>
       )}
-      <button type="button" className="primaryCta suGoLive" onClick={goLive} disabled={busy || blocked}>
+      <Button type="button" variant="primary" className="suGoLive" onClick={goLive} disabled={busy || blocked}>
         <Icon name="release" size={16} /> {busy ? 'Putting it live…' : `Put it live ${envOf(environment)[3]}`}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -354,6 +421,13 @@ export default function SetupWizard({
   const [moveError, setMoveError] = useState('');
   const [wentLive, setWentLive] = useState(null); // what the last step put live, while the setup is open
   const mainRef = useRef(null);
+  // a new step's heading and body fade in (not the step list, which stays where it is)
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    mainRef.current?.querySelectorAll(':scope > .suHead, :scope > .suBody').forEach((el) => fadeIn(el));
+  }, [step]);
   const headRef = useRef(null);
   const builtFor = useRef('');
   const config = editor.parsed.value;
@@ -406,8 +480,9 @@ export default function SetupWizard({
     }
     readWhatItKnows();
     setMoving(false);
-    // coming back to the last step after changing something offers to put it live again
-    if (step === 'live') setWentLive(null);
+    // coming back to the last step after changing something offers to put it live again; a deploy still under way is
+    // kept, so coming back follows it rather than offering the form
+    if (step === 'live' && wentLive?.status !== 'pending') setWentLive(null);
     setStep(target);
     // the address names the step, so a reload or a copied link opens this step, not the one the setup was opened at
     replaceRoute(routeHref(botId, 'setup', { step: target }));
@@ -468,7 +543,8 @@ export default function SetupWizard({
         done={wentLive || (progress.finished ? liveFrom(summary?.deployed) : null)}
         onLive={(result) => {
           setWentLive(result);
-          update({ finished: true });
+          // finished once it answers: not while it is still being set up, nor when that failed
+          if (result.status === 'active') update({ finished: true });
         }}
         bump={bump}
       />
@@ -500,24 +576,24 @@ export default function SetupWizard({
         </p>
       )}
       <footer className="suFoot">
-        <button type="button" className="quietButton" onClick={leave} disabled={moving}>
+        <Button type="button" onClick={leave} disabled={moving}>
           Save and finish later
-        </button>
+        </Button>
         <span className="suFootRight">
           {prev && (
-            <button type="button" className="quietButton" onClick={() => goTo(prev.id)} disabled={moving}>
+            <Button type="button" onClick={() => goTo(prev.id)} disabled={moving}>
               <Icon name="arrowLeft" size={15} /> Back
-            </button>
+            </Button>
           )}
           {next && meta.optional && states[step] !== 'done' && (
-            <button type="button" className="quietButton" onClick={() => goTo(next.id)} disabled={moving}>
+            <Button type="button" onClick={() => goTo(next.id)} disabled={moving}>
               Skip this step
-            </button>
+            </Button>
           )}
           {next && (
-            <button type="button" className="primaryCta" onClick={() => goTo(next.id)} disabled={moving}>
+            <Button type="button" variant="primary" onClick={() => goTo(next.id)} disabled={moving}>
               Next: {next.label} <Icon name="arrowRight" size={15} />
-            </button>
+            </Button>
           )}
         </span>
       </footer>

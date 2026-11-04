@@ -1,629 +1,18 @@
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import Icon from '../../ui/Icon.jsx';
 import { channelLabel } from '../agent/rowNames.js';
-import {
-  EXPECT_KINDS,
-  GUARDRAIL_ACTION_CHOICES,
-  HTTP_METHODS,
-  LIMIT_CHOICES,
-  channelTypeOf,
-  hasProblems,
-  inputRuleIdsOf,
-  isKeysTurn,
-  isUnknownExpectation,
-  kindOfExpectation,
-  newExpectation,
-  outcomeNamesOf,
-  parseObject,
-  parseValue,
-  regexProblem,
-  scenarioProblems,
-  showValue,
-  taskIdsOf,
-  toolChoices,
-} from './model.js';
+import { channelTypeOf, hasProblems, isKeysTurn, newExpectation, scenarioProblems, toolChoices } from './model.js';
 import Select from '../../ui/Select.tsx';
+import Button from '../../ui/Button.tsx';
+import { Input, TextArea } from '../../ui/Input.tsx';
+import { JsonBox } from './JsonBox.jsx';
+import ExpectRow from './ExpectRow.jsx';
+import { MocksEditor, ScriptEditor } from './MocksAndScript.jsx';
 
 // The editor for one scenario: every part the schema has (turns, thirteen kinds of expectation, clock, state, API
 // mocks, model script) plus "Edit as JSON". Unknown parts are kept as they are and never block Save; only what is
 // positively wrong (a missing id, a missing channel, a bad pattern) is a problem, shown where it is.
-
-// A box for a JSON object or value: keeps what is typed, passes up only what parses, and says what is wrong if not.
-function JsonBox({ value, onChange, label, rows = 3, placeholder, objectOnly = true, className = '', onValid = null }) {
-  const [text, setText] = useState(() => (value === undefined ? '' : JSON.stringify(value, null, 2)));
-  const [error, setError] = useState('');
-  const boxId = useId();
-  const mine = useRef(JSON.stringify(value));
-  // tell the form when this box doesn't parse, so Save can say so instead of silently keeping the old value
-  useEffect(() => {
-    onValid?.(boxId, !error);
-    return () => onValid?.(boxId, true);
-  }, [error, boxId, onValid]);
-  useEffect(() => {
-    // the value changed from somewhere else (another mock, a reset): show it, unless it is what was just typed
-    if (JSON.stringify(value) !== mine.current) {
-      mine.current = JSON.stringify(value);
-      setText(value === undefined ? '' : JSON.stringify(value, null, 2));
-      setError('');
-    }
-  }, [value]);
-  const change = (next) => {
-    setText(next);
-    if (!next.trim()) {
-      setError('');
-      mine.current = JSON.stringify(undefined);
-      onChange(undefined);
-      return;
-    }
-    if (objectOnly) {
-      const parsed = parseObject(next);
-      if (parsed.error) {
-        setError(parsed.error);
-        return;
-      }
-      setError('');
-      mine.current = JSON.stringify(parsed.value);
-      onChange(parsed.value);
-    } else {
-      try {
-        const parsed = JSON.parse(next);
-        setError('');
-        mine.current = JSON.stringify(parsed);
-        onChange(parsed);
-      } catch (e) {
-        setError(`Not valid JSON (${e.message}).`);
-      }
-    }
-  };
-  return (
-    <span className="scField">
-      <textarea
-        className={`stFInput small mono ${className}`}
-        rows={rows}
-        value={text}
-        placeholder={placeholder}
-        aria-label={label}
-        aria-invalid={!!error || undefined}
-        spellCheck={false}
-        onChange={(event) => change(event.target.value)}
-      />
-      {error && <small className="stFErr">{error}</small>}
-    </span>
-  );
-}
-
-// A state value box that keeps the typed text ("not paid") and passes up what it means (true, 3, "not paid"). Only
-// overwritten when the value changes from somewhere else.
-function ValueBox({ value, onChange, ...rest }) {
-  const shown = (v) => (v === undefined ? '' : showValue(v));
-  const [text, setText] = useState(() => shown(value));
-  const mine = useRef(JSON.stringify(value));
-  useEffect(() => {
-    if (JSON.stringify(value) !== mine.current) {
-      mine.current = JSON.stringify(value);
-      setText(shown(value));
-    }
-  }, [value]);
-  return (
-    <input
-      {...rest}
-      type="text"
-      value={text}
-      onChange={(event) => {
-        const parsed = parseValue(event.target.value);
-        setText(event.target.value);
-        mine.current = JSON.stringify(parsed);
-        onChange(parsed);
-      }}
-    />
-  );
-}
-
-function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
-  const kind = kindOfExpectation(value);
-  const tools = toolChoices(config);
-  const states = Object.keys(config?.state?.variables || {});
-  const agents = (Array.isArray(config?.agents?.items) ? config.agents.items : []).map((a) => a?.id).filter(Boolean);
-  const label = (what) => `Expectation ${index + 1}: ${what}`;
-  const unknown = isUnknownExpectation(value);
-
-  if (unknown || !value || typeof value !== 'object') {
-    return (
-      <li className="scExpect unknown">
-        <span className="scField">
-          <small className="stMuted">This check isn’t one the form can edit, so it is kept exactly as it is. Use “Edit as JSON” to change it.</small>
-          <code className="scUnknownCode">{JSON.stringify(value)}</code>
-        </span>
-        <button type="button" className="stIconBtn danger" aria-label={`Delete expectation ${index + 1}`} onClick={onRemove}>
-          <Icon name="close" size={14} />
-        </button>
-      </li>
-    );
-  }
-
-  const pickTool = (key, current) => (
-    <SmartSelect
-      className="stFInput small"
-      value={current || ''}
-      placeholder="Choose a tool…"
-      ariaLabel={label('tool')}
-      options={tools}
-      onChange={(chosen) => onChange(key === 'tool_called_with' ? { tool_called_with: { ...value.tool_called_with, tool: chosen } } : { [key]: chosen })}
-    />
-  );
-  const http = value[kind] || {};
-  const setHttp = (patch) => {
-    const next = { ...http, ...patch };
-    Object.keys(next).forEach((k) => {
-      if (next[k] === '' || next[k] === undefined) delete next[k];
-    });
-    onChange({ [kind]: next });
-  };
-
-  return (
-    <li className="scExpect">
-      <Select
-        className="stFInput small"
-        value={kind}
-        onChange={(event) => {
-          if (event.target.value !== kind) onChange(newExpectation(event.target.value, config));
-        }}
-        aria-label={label('what to check')}
-      >
-        {EXPECT_KINDS.map((k) => (
-          <option key={k.key} value={k.key}>
-            {k.label}
-          </option>
-        ))}
-      </Select>
-
-      {(kind === 'tool_called' || kind === 'tool_not_called') && pickTool(kind, value[kind])}
-
-      {kind === 'tool_called_with' && (
-        <>
-          {pickTool('tool_called_with', value.tool_called_with?.tool)}
-          <JsonBox
-            onValid={reportBox}
-            value={value.tool_called_with?.args ?? {}}
-            label={label('arguments it must include')}
-            rows={2}
-            placeholder='{ "order_id": "NB-1003" }'
-            onChange={(args) => onChange({ tool_called_with: { ...value.tool_called_with, args: args ?? {} } })}
-          />
-        </>
-      )}
-
-      {kind === 'state_equals' && (
-        <>
-          <SmartSelect
-            className="stFInput small"
-            value={value.state_equals?.state || ''}
-            placeholder="Choose a variable…"
-            ariaLabel={label('state variable')}
-            options={states}
-            onChange={(chosen) => onChange({ state_equals: { ...value.state_equals, state: chosen } })}
-          />
-          <ValueBox
-            className="stFInput small mono"
-            value={value.state_equals?.value}
-            placeholder="value, e.g. true, 3 or paid"
-            aria-label={label('value')}
-            onChange={(parsed) => onChange({ state_equals: { ...value.state_equals, value: parsed } })}
-          />
-        </>
-      )}
-
-      {kind === 'said_matches' && (
-        <span className="scField">
-          <input
-            className="stFInput small mono"
-            type="text"
-            value={value.said_matches || ''}
-            placeholder="a pattern, e.g. refund|money back"
-            aria-label={label('pattern')}
-            aria-invalid={!!regexProblem(value.said_matches || '') || undefined}
-            onChange={(event) => onChange({ said_matches: event.target.value })}
-          />
-          {regexProblem(value.said_matches || '') && <small className="stFErr">Not a valid pattern: {regexProblem(value.said_matches)}</small>}
-        </span>
-      )}
-
-      {kind === 'agent_is' && (
-        <SmartSelect
-          className="stFInput small"
-          value={value.agent_is || ''}
-          placeholder="Choose an agent…"
-          ariaLabel={label('agent')}
-          options={agents}
-          onChange={(chosen) => onChange({ agent_is: chosen })}
-        />
-      )}
-
-      {(kind === 'http_called' || kind === 'http_not_called') && (
-        <>
-          <Select
-            className="stFInput small"
-            value={http.method || ''}
-            onChange={(event) => setHttp({ method: event.target.value })}
-            aria-label={label('method')}
-          >
-            <option value="">Any method</option>
-            {HTTP_METHODS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </Select>
-          <input
-            className="stFInput small mono"
-            type="text"
-            value={http.path || ''}
-            placeholder="/orders/* (a * matches anything)"
-            aria-label={label('path')}
-            onChange={(event) => setHttp({ path: event.target.value })}
-          />
-          {kind === 'http_called' && (
-            <input
-              className="stFInput small"
-              type="number"
-              min="1"
-              step="1"
-              value={http.times ?? ''}
-              placeholder="times (empty: at least once)"
-              aria-label={label('how many times')}
-              onChange={(event) => setHttp({ times: event.target.value === '' ? undefined : Number(event.target.value) })}
-            />
-          )}
-        </>
-      )}
-
-      {kind === 'task_outcome' && (
-        <>
-          <SmartSelect
-            className="stFInput small"
-            value={value.task_outcome?.task || ''}
-            placeholder="Choose a task…"
-            ariaLabel={label('task')}
-            options={taskIdsOf(config)}
-            onChange={(chosen) => onChange({ task_outcome: { ...value.task_outcome, task: chosen } })}
-          />
-          <Select
-            className="stFInput small"
-            value={value.task_outcome?.outcome || ''}
-            onChange={(event) => {
-              const next = { ...value.task_outcome };
-              if (event.target.value) next.outcome = event.target.value;
-              else delete next.outcome;
-              onChange({ task_outcome: next });
-            }}
-            aria-label={label('how it ended')}
-          >
-            <option value="">Any way it ends</option>
-            {[...new Set([...outcomeNamesOf(config, value.task_outcome?.task), ...(value.task_outcome?.outcome ? [value.task_outcome.outcome] : [])])].map(
-              (name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ),
-            )}
-          </Select>
-        </>
-      )}
-
-      {kind === 'guardrail_triggered' && (
-        <>
-          <SmartSelect
-            className="stFInput small"
-            value={value.guardrail_triggered?.rule || ''}
-            placeholder="Choose a safety rule…"
-            ariaLabel={label('safety rule')}
-            options={inputRuleIdsOf(config)}
-            onChange={(chosen) => onChange({ guardrail_triggered: { ...value.guardrail_triggered, rule: chosen } })}
-          />
-          <Select
-            className="stFInput small"
-            value={value.guardrail_triggered?.action || ''}
-            onChange={(event) => {
-              const next = { ...value.guardrail_triggered };
-              if (event.target.value) next.action = event.target.value;
-              else delete next.action;
-              onChange({ guardrail_triggered: next });
-            }}
-            aria-label={label('what the rule did')}
-          >
-            <option value="">Whatever it did</option>
-            {GUARDRAIL_ACTION_CHOICES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </Select>
-        </>
-      )}
-
-      {kind === 'guardrail_not_triggered' && (
-        <SmartSelect
-          className="stFInput small"
-          value={value.guardrail_not_triggered || ''}
-          placeholder="Choose a safety rule…"
-          ariaLabel={label('safety rule')}
-          options={inputRuleIdsOf(config)}
-          onChange={(chosen) => onChange({ guardrail_not_triggered: chosen })}
-        />
-      )}
-
-      {kind === 'limit_reached' && (
-        <Select
-          className="stFInput small"
-          value={value.limit_reached || ''}
-          onChange={(event) => onChange({ limit_reached: event.target.value })}
-          aria-label={label('which limit')}
-        >
-          {!LIMIT_CHOICES.some((c) => c.value === value.limit_reached) && <option value="">Choose a limit…</option>}
-          {LIMIT_CHOICES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
-      )}
-
-      {kind === 'judge' && (
-        <textarea
-          className="stFInput small"
-          rows={2}
-          value={value.judge || ''}
-          placeholder="e.g. the agent stays polite and does not promise a refund"
-          aria-label={label('criterion')}
-          onChange={(event) => onChange({ judge: event.target.value })}
-        />
-      )}
-      <button type="button" className="stIconBtn danger" aria-label={`Delete expectation ${index + 1}`} onClick={onRemove}>
-        <Icon name="close" size={14} />
-      </button>
-    </li>
-  );
-}
-
-// The answers for the bot's API calls.
-function MocksEditor({ mocks, onChange, connections, reportBox }) {
-  const list = Array.isArray(mocks) ? mocks : [];
-  const set = (i, patch) => onChange(list.map((m, k) => (k === i ? cleaned({ ...m, ...patch }) : m)));
-  const cleaned = (m) => {
-    const out = { ...m };
-    Object.keys(out).forEach((k) => {
-      if (out[k] === undefined || out[k] === '') delete out[k];
-    });
-    return out;
-  };
-  return (
-    <div className="scMocks">
-      {list.length === 0 && (
-        <p className="stMuted">
-          No mocks. A scenario never calls a real API: a request nothing answers gets a 404 and is listed in the result, with a button to add the mock.
-        </p>
-      )}
-      {list.map((mock, i) => (
-        <fieldset className="scMock" key={i}>
-          <legend>Mock {i + 1}</legend>
-          <div className="scGrid">
-            <label>
-              <span>Method</span>
-              <Select
-                className="stFInput small"
-                value={mock.method || ''}
-                onChange={(event) => set(i, { method: event.target.value })}
-                aria-label={`Mock ${i + 1}: method`}
-              >
-                <option value="">Any</option>
-                {HTTP_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label>
-              <span>Path</span>
-              <input
-                className="stFInput small mono"
-                type="text"
-                value={mock.path || ''}
-                placeholder="/orders/*"
-                aria-label={`Mock ${i + 1}: path`}
-                onChange={(event) => set(i, { path: event.target.value })}
-              />
-            </label>
-            <label>
-              <span>Answers with status</span>
-              <input
-                className="stFInput small"
-                type="number"
-                min="100"
-                max="599"
-                value={mock.status ?? ''}
-                placeholder="200"
-                aria-label={`Mock ${i + 1}: status`}
-                onChange={(event) => set(i, { status: event.target.value === '' ? undefined : Number(event.target.value) })}
-              />
-            </label>
-            <label>
-              <span>Only this many times</span>
-              <input
-                className="stFInput small"
-                type="number"
-                min="1"
-                value={mock.times ?? ''}
-                placeholder="every time"
-                aria-label={`Mock ${i + 1}: times`}
-                onChange={(event) => set(i, { times: event.target.value === '' ? undefined : Number(event.target.value) })}
-              />
-            </label>
-            {connections.length > 0 && (
-              <label>
-                <span>Only for connection</span>
-                <Select
-                  className="stFInput small"
-                  value={mock.connection || ''}
-                  onChange={(event) => set(i, { connection: event.target.value })}
-                  aria-label={`Mock ${i + 1}: connection`}
-                >
-                  <option value="">Any</option>
-                  {connections.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            )}
-            <label className="wide">
-              <span>The JSON it answers with</span>
-              <JsonBox
-                onValid={reportBox}
-                value={mock.json}
-                objectOnly={false}
-                rows={3}
-                label={`Mock ${i + 1}: the JSON it answers with`}
-                placeholder='{ "found": true }'
-                onChange={(json) => set(i, { json })}
-              />
-            </label>
-          </div>
-          <details className="scMore">
-            <summary>More: plain-text answer, query, body</summary>
-            <div className="scGrid">
-              <label>
-                <span>Or a plain-text answer</span>
-                <input
-                  className="stFInput small"
-                  type="text"
-                  value={mock.text || ''}
-                  aria-label={`Mock ${i + 1}: text answer`}
-                  onChange={(event) => set(i, { text: event.target.value })}
-                />
-              </label>
-              <label>
-                <span>The request must have these query values</span>
-                <JsonBox
-                  onValid={reportBox}
-                  value={mock.query}
-                  rows={2}
-                  label={`Mock ${i + 1}: query`}
-                  placeholder='{ "status": "open" }'
-                  onChange={(query) => set(i, { query })}
-                />
-              </label>
-              <label>
-                <span>The JSON body must contain</span>
-                <JsonBox
-                  onValid={reportBox}
-                  value={mock.body_contains}
-                  rows={2}
-                  label={`Mock ${i + 1}: body contains`}
-                  placeholder='{ "reason": "late" }'
-                  onChange={(body_contains) => set(i, { body_contains })}
-                />
-              </label>
-            </div>
-          </details>
-          <button type="button" className="stFDel small" onClick={() => onChange(list.filter((_, k) => k !== i))}>
-            Delete mock {i + 1}
-          </button>
-        </fieldset>
-      ))}
-      <button type="button" className="stAddBtn" onClick={() => onChange([...list, { method: 'GET', path: '', status: 200, json: {} }])}>
-        <Icon name="plus" size={14} /> Add a mock
-      </button>
-    </div>
-  );
-}
-
-// The model's replies, one per item: what it says, or the tool it calls.
-function ScriptEditor({ script, onChange, tools, reportBox }) {
-  const list = Array.isArray(script) ? script : [];
-  const set = (i, item) => onChange(list.map((x, k) => (k === i ? item : x)));
-  return (
-    <div className="scScript">
-      <p className="stMuted">
-        With a script, the language model is replaced: each item is one reply. It runs the real runtime (prompts, tools, preconditions, effects, handoffs)
-        without a model, so it is free and the same every time. Without a script the scenario is <strong>live</strong>: it uses a real model, costs money, and
-        can differ from run to run.
-      </p>
-      <ol className="scScriptList">
-        {list.map((item, i) => {
-          const calls = typeof item === 'object' && item !== null;
-          return (
-            <li key={i}>
-              <Select
-                className="stFInput small"
-                value={calls ? 'tool' : 'say'}
-                aria-label={`Model reply ${i + 1}: what it does`}
-                onChange={(event) => set(i, event.target.value === 'tool' ? { tool: tools[0]?.value || '' } : '')}
-              >
-                <option value="say">Says</option>
-                <option value="tool">Calls a tool</option>
-              </Select>
-              {calls ? (
-                <>
-                  <SmartSelect
-                    className="stFInput small"
-                    value={item.tool || ''}
-                    placeholder="Choose a tool…"
-                    ariaLabel={`Model reply ${i + 1}: tool`}
-                    options={tools}
-                    onChange={(chosen) => set(i, { ...item, tool: chosen })}
-                  />
-                  <JsonBox
-                    onValid={reportBox}
-                    value={item.args}
-                    rows={1}
-                    label={`Model reply ${i + 1}: arguments`}
-                    placeholder='arguments, e.g. { "order_id": "NB-1003" }'
-                    onChange={(args) => {
-                      const next = { ...item };
-                      if (args === undefined) delete next.args;
-                      else next.args = args;
-                      set(i, next);
-                    }}
-                  />
-                </>
-              ) : (
-                <input
-                  className="stFInput small"
-                  type="text"
-                  value={item}
-                  placeholder="What the model says"
-                  aria-label={`Model reply ${i + 1}: what it says`}
-                  onChange={(event) => set(i, event.target.value)}
-                />
-              )}
-              <button
-                type="button"
-                className="stIconBtn danger"
-                aria-label={`Delete model reply ${i + 1}`}
-                onClick={() => onChange(list.filter((_, k) => k !== i))}
-              >
-                <Icon name="close" size={14} />
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-      <div className="scActions">
-        <button type="button" className="stAddBtn" onClick={() => onChange([...list, ''])}>
-          <Icon name="plus" size={14} /> Add a reply
-        </button>
-        {list.length > 0 && (
-          <button type="button" className="stLink" onClick={() => onChange(undefined)}>
-            Remove the script (make it live)
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function ScenarioForm({ initial, config, others, onSave, onCancel, isNew }) {
   const formRef = useRef(null);
@@ -749,8 +138,8 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
       {jsonMode ? (
         <label className="scJson">
           <span>The scenario as JSON</span>
-          <textarea
-            className="stFInput mono"
+          <TextArea
+            mono
             rows={16}
             value={jsonText}
             spellCheck={false}
@@ -768,8 +157,9 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
           <div className="scGrid">
             <label>
               <span>Id</span>
-              <input
-                className="stFInput small mono"
+              <Input
+                size="small"
+                mono
                 type="text"
                 value={scenario.id}
                 onChange={(event) => set({ id: event.target.value })}
@@ -799,8 +189,8 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
               <span>
                 What this scenario shows <em>(optional)</em>
               </span>
-              <input
-                className="stFInput small"
+              <Input
+                size="small"
                 type="text"
                 value={scenario.description || ''}
                 placeholder="e.g. A billing question reaches billing and a ticket is raised."
@@ -811,8 +201,8 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
               <span>
                 Who is calling <em>(optional)</em>
               </span>
-              <input
-                className="stFInput small"
+              <Input
+                size="small"
                 type="text"
                 value={scenario.caller?.persona || ''}
                 placeholder="e.g. an impatient customer who was double charged"
@@ -837,8 +227,8 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
                       <option value="keys">Presses keys</option>
                     </Select>
                   )}
-                  <input
-                    className={`stFInput small${isKeysTurn(turn) ? ' mono' : ''}`}
+                  <Input
+                    className={`small${isKeysTurn(turn) ? ' mono' : ''}`}
                     type="text"
                     value={(isKeysTurn(turn) ? turn.keys : turn.say) ?? ''}
                     placeholder={isKeysTurn(turn) ? 'Keys, e.g. 4821#' : 'What they say'}
@@ -926,8 +316,9 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
                 <span>
                   Pretend it is <em>(a date and time with a time zone)</em>
                 </span>
-                <input
-                  className="stFInput small mono"
+                <Input
+                  size="small"
+                  mono
                   type="text"
                   value={scenario.now || ''}
                   placeholder="2026-10-14T03:00:00+08:00"
@@ -962,12 +353,12 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
       )}
 
       <div className="scActions">
-        <button type="submit" className="primaryCta compactCta">
+        <Button type="submit" variant="primary" size="compact">
           {isNew ? 'Add the scenario' : 'Save the scenario'}
-        </button>
-        <button type="button" className="quietButton" onClick={onCancel}>
+        </Button>
+        <Button type="button" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
         {blocked && !jsonMode && (badBoxes.length > 0 || hasProblems(problems)) && (
           <small className="stFErr" role="alert">
             Not saved: fix what is marked above first.

@@ -180,6 +180,14 @@ export function App() {
           profile={profile}
           workspaceName={accountWorkspace || profile?.workspaceName}
           onClose={() => setAccountOpen(false)}
+          onSave={(nextProfile) => {
+            try {
+              localStorage.setItem('weave_profile', JSON.stringify(nextProfile));
+            } catch {
+              // a browser that keeps nothing still shows the new name and role until it is closed
+            }
+            setProfile(nextProfile);
+          }}
           // asks first when an open agent has unsaved edits, as the profile menu's Sign out does
           onSignOut={() =>
             whenLeaveConfirmed(() => {

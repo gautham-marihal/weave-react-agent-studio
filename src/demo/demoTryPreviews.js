@@ -17,7 +17,7 @@ const demo = (body) => ({ status: 200, body: { demo: true, note: DEMO_PREVIEW_NO
 const refuse = (detail) => ({ status: 422, body: { detail } });
 
 // ---- what redaction can find ----------------------------------------------------------------------------------------
-export const DEMO_ENTITIES = [
+const DEMO_ENTITIES = [
   { kind: 'card_number', how: 'A run of 13 to 19 digits, which may have spaces or dashes between them.', re: /\b\d(?:[ -]?\d){12,18}\b/g },
   { kind: 'bank_account', how: 'A run of 8 to 12 digits.', re: /\b\d{8,12}\b/g },
   { kind: 'national_id', how: 'A letter and 7 digits, or 9 digits written in groups.', re: /\b[A-Z]\d{7}\b|\b\d{3}-\d{2}-\d{4}\b/g },

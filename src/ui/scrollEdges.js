@@ -3,7 +3,7 @@
 
 // Areas that scroll inside a page, panel, dialog or menu: each an inner area with no frame (a fade would fade it too);
 // a dialog or menu that scrolls as a whole scrolls an inner area instead. data-scroll-edges marks any other.
-export const SCROLL_AREAS = [
+const SCROLL_AREAS = [
   '[data-scroll-edges]',
   '.dashboard > .sidebar > .sideNav',
   '.searchResults',
@@ -48,7 +48,7 @@ function mark(el) {
 }
 
 // Scrolls the item `selector` names (the open page, in a menu) into view inside the area, clear of a faded edge.
-export const EDGE_FADE = 28; // px, as the fade in saas.css
+const EDGE_FADE = 28; // px, as the fade in saas.css
 export function revealIn(area, selector) {
   const item = area?.querySelector(selector);
   if (!item) return;

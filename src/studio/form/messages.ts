@@ -4,8 +4,6 @@
 
 import { isObj } from './engine.js';
 
-/** A message's text: one line, or the line per language code. */
-export type MessageText = string | Record<string, string>;
 type LanguageConfig = { defaults?: { language?: { primary?: unknown; speaks?: unknown } } } | null | undefined;
 const textMap = (value: unknown): value is Record<string, string> => isObj(value);
 
@@ -41,7 +39,7 @@ export function wantedLanguages(config: unknown): string[] {
 // Does a text map have an entry for this language (an exact code, or one with the same base)?
 export const hasLanguage = (map: unknown, code: string): boolean => textMap(map) && Object.keys(map).some((key) => baseOf(key) === baseOf(code));
 
-export type LanguageStatus = { kind: 'plain' | 'languages'; have: string[]; missing: string[]; primaryMissing: boolean };
+type LanguageStatus = { kind: 'plain' | 'languages'; have: string[]; missing: string[]; primaryMissing: boolean };
 
 // What a message's text covers: { kind: 'plain' | 'languages', have: [codes], missing: [codes], primaryMissing: bool }.
 export function languageStatus(text: unknown, config: unknown): LanguageStatus {

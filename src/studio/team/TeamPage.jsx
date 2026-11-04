@@ -21,6 +21,9 @@ import {
   scopeAgents,
 } from './teamModel.js';
 import './team.css';
+import Button from '../../ui/Button.tsx';
+import { Input } from '../../ui/Input.tsx';
+import Menu from '../manage/Menu.tsx';
 
 const STATUS = { active: { text: 'Active', tone: 'good' }, invited: { text: 'Invited', tone: 'wait' } };
 
@@ -99,6 +102,11 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
     update(() => result.members);
   };
 
+  // asked whether to remove someone: the question is where the keyboard goes, on its safe answer
+  useEffect(() => {
+    if (confirming) document.querySelector(`.tmRow[data-member-id="${confirming}"] .tmKeep`)?.focus();
+  }, [confirming]);
+
   return (
     <div className="tmPage">
       <section className="welcomeBlock pageHeaderBlock">
@@ -107,21 +115,21 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
           <p>Who can work in {workspaceName || 'this workspace'}. Give each person the whole workspace, or only the agents they need.</p>
         </div>
         <div className="pageHeaderActions">
-          <button
+          <Button
             type="button"
-            className="primaryCta createButton"
+            variant="primary"
+            className="createButton"
             onClick={() => {
               setPanel({ mode: 'invite' });
               setNotice('');
             }}
           >
             <Icon name="plus" size={14} /> Invite people
-          </button>
+          </Button>
         </div>
       </section>
       <Notice kind="info" title="Preview: saved in this browser only">
-        The team and its access are kept here for now. No emails are sent and the server does not check them yet, so this does not limit anyone in practice. It
-        is ready for when the server can.
+        No emails are sent, and the server doesn’t check this access yet.
       </Notice>
       {notice && (
         <p className="tmDone" role="status">
@@ -135,14 +143,10 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
       )}
 
       <div className="tmTools">
-        <input
-          className="stFInput"
-          type="search"
-          value={query}
-          placeholder="Search people"
-          aria-label="Search people"
-          onChange={(event) => setQuery(event.target.value)}
-        />
+        <label className="tmFilter tmSearch">
+          <span>Person</span>
+          <Input type="search" value={query} placeholder="Search people" onChange={(event) => setQuery(event.target.value)} />
+        </label>
         <label className="tmFilter">
           <span>Who can open</span>
           <Select className="stFInput" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} aria-label="Who can open">
@@ -173,7 +177,7 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
         {shown.map((m) => {
           const can = agentsOf(m, agents);
           return (
-            <div key={m.id} className="tmRow" role="row" data-member={m.email}>
+            <div key={m.id} className="tmRow" role="row" data-member={m.email} data-member-id={m.id}>
               <span className="tmPerson" role="cell">
                 <span className="tmAvatar" style={{ '--hue': hueOf(m.email) }} aria-hidden="true">
                   {initialsOf(m)}
@@ -204,39 +208,36 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
                 ) : confirming === m.id ? (
                   <>
                     <span className="tmSure">Remove {m.name}?</span>
-                    <button type="button" className="quietButton small danger" onClick={() => remove(m.id)}>
+                    <Button type="button" size="small" className="danger" onClick={() => remove(m.id)}>
                       Remove
-                    </button>
-                    <button type="button" className="quietButton small" onClick={() => setConfirming('')}>
+                    </Button>
+                    <Button type="button" size="small" className="tmKeep" onClick={() => setConfirming('')}>
                       Keep
-                    </button>
+                    </Button>
                   </>
                 ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="quietButton small"
-                      onClick={() => {
-                        setPanel({ mode: 'edit', id: m.id });
-                        setNotice('');
-                        setProblem('');
-                      }}
-                      aria-label={`Change access of ${m.name}`}
-                    >
-                      Change access
-                    </button>
-                    <button
-                      type="button"
-                      className="quietButton small"
-                      onClick={() => {
-                        setConfirming(m.id);
-                        setProblem('');
-                      }}
-                      aria-label={`Remove ${m.name}`}
-                    >
-                      Remove
-                    </button>
-                  </>
+                  // the row's actions in its ··· menu, as on the Agents list
+                  <Menu
+                    label={`Actions for ${m.name}`}
+                    items={[
+                      {
+                        label: 'Change access',
+                        onClick: () => {
+                          setPanel({ mode: 'edit', id: m.id });
+                          setNotice('');
+                          setProblem('');
+                        },
+                      },
+                      {
+                        label: 'Remove from team',
+                        danger: true,
+                        onClick: () => {
+                          setConfirming(m.id);
+                          setProblem('');
+                        },
+                      },
+                    ]}
+                  />
                 )}
               </span>
             </div>

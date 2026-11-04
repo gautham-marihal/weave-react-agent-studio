@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Notice } from '../ui.jsx';
 import { COLLECTIONS, ID_PATTERN, describeUsage, findUsage } from './references.js';
+import Button from '../../ui/Button.tsx';
 
 // What the form shows for machine keys that other parts of the config point at (an id, or a map key):
 //   IdChip: the key, read-only, with a Rename… action (typing in it would break every pointer)
@@ -20,9 +21,9 @@ export function IdChip({ id, onRename, disabled }) {
       </div>
       <div className="stFIdBox">
         <code className="stFIdChip">{id}</code>
-        <button type="button" className="quietButton small" disabled={disabled} onClick={onRename}>
+        <Button type="button" size="small" disabled={disabled} onClick={onRename}>
           Rename…
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -130,16 +131,15 @@ export function DeleteDialog({ engine, config, collection, id, onClose, onDelete
           <button type="button" className="modalCancel" onClick={onClose}>
             Cancel
           </button>
-          <button
+          <Button
             type="button"
-            className="quietButton"
             onClick={() => {
               onDeleteOnly();
               onClose();
             }}
           >
             Delete anyway
-          </button>
+          </Button>
           <button
             type="button"
             className="dangerButton"

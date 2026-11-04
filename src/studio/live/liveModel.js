@@ -5,10 +5,10 @@
 import { HANDOFF_TOOL, WANTS_A_PERSON, closeness } from '../insights/questionsModel.js';
 import { fixMojibake } from '../trace/records.js';
 
-export const WAITING_S = 8; // a caller who has waited this long for an answer is waiting
-export const QUIET_S = 45; // nothing written for this long, in a call that is going on
-export const SLOW_ANSWER_S = 5; // an answer that took this long, earlier in the call
-export const LONG_S = 10 * 60; // a call this long is worth knowing about
+const WAITING_S = 8; // a caller who has waited this long for an answer is waiting
+const QUIET_S = 45; // nothing written for this long, in a call that is going on
+const SLOW_ANSWER_S = 5; // an answer that took this long, earlier in the call
+const LONG_S = 10 * 60; // a call this long is worth knowing about
 export const RECENT_MS = 10 * 60 * 1000; // how long a call that ended stays on the board
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -29,7 +29,7 @@ export function maskCaller(caller) {
   return `${country}•••• ${digits.slice(-4)}`;
 }
 
-export const isVoice = (channel) => /voice|sip|phone|call/.test(String(channel?.type || ''));
+const isVoice = (channel) => /voice|sip|phone|call/.test(String(channel?.type || ''));
 
 // How a duration reads on a card: "45 s", "2:05", "1:02:10".
 export function clock(seconds) {

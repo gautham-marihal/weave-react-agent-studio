@@ -8,7 +8,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v));
 
 // The kinds of file a knowledge base can read (the API refuses others with a 400).
-export const ACCEPTED_EXTENSIONS = ['.txt', '.md', '.markdown', '.html', '.htm', '.pdf', '.csv', '.json'];
+const ACCEPTED_EXTENSIONS = ['.txt', '.md', '.markdown', '.html', '.htm', '.pdf', '.csv', '.json'];
 export const ACCEPT_ATTRIBUTE = ACCEPTED_EXTENSIONS.join(',');
 export const fileTypeProblem = (name) =>
   ACCEPTED_EXTENSIONS.some((ext) =>

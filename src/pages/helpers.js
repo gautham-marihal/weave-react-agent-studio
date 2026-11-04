@@ -132,7 +132,7 @@ export function formatRelative(value) {
 
 export const RANGE_MS = { 'Past 24 hours': 86400000, 'Past 7 days': 7 * 86400000, 'Past 30 days': 30 * 86400000, 'Past 90 days': 90 * 86400000 };
 
-export const AGENT_LIFECYCLE = [
+const AGENT_LIFECYCLE = [
   { status: 'draft', label: 'Draft', environment: 'development', place: 'Development', note: 'Still being built and tested.', tone: 'draft' },
   { status: 'staging', label: 'In review', environment: 'staging', place: 'Staging', note: 'Being checked before it goes live.', tone: 'review' },
   { status: 'published', label: 'Live', environment: 'production', place: 'Production', note: 'Serving real callers.', tone: 'live' },

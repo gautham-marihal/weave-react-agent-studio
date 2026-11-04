@@ -1,0 +1,220 @@
+{
+  "source": "http://16.79.174.151:3322 (Region DB2)",
+  "customers": [
+    {
+      "customerId": "7984789",
+      "name": "Ahmad Faizal bin Ismail",
+      "phone": "+60193827746",
+      "country": "MY",
+      "accounts": [
+        {
+          "accountId": "742381492921",
+          "accountType": "Fixed Deposit-i",
+          "currency": "MYR"
+        },
+        {
+          "accountId": "932905623760",
+          "accountType": "Savings Account-i",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "9909155",
+      "name": "Goh Kian Hock",
+      "phone": "+6590081145",
+      "country": "SG",
+      "accounts": [
+        {
+          "accountId": "195166925799",
+          "accountType": "Savings Account",
+          "currency": "SGD"
+        },
+        {
+          "accountId": "480311686099",
+          "accountType": "Current Account",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "4312568",
+      "name": "Lee Siew Lan",
+      "phone": "+6596342218",
+      "country": "SG",
+      "accounts": [
+        {
+          "accountId": "107796363034",
+          "accountType": "Fixed Deposit",
+          "currency": "SGD"
+        },
+        {
+          "accountId": "386950317134",
+          "accountType": "Savings Account",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "2220125",
+      "name": "Lim Chee Keong",
+      "phone": "+60167892345",
+      "country": "MY",
+      "accounts": [
+        {
+          "accountId": "575504605600",
+          "accountType": "Current Account",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "2052007",
+      "name": "Maria Cristina Santos",
+      "phone": "+6587239914",
+      "country": "SG",
+      "accounts": [
+        {
+          "accountId": "613247909222",
+          "accountType": "Savings Account",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "6702857",
+      "name": "Muhammad Hafiz bin Rahman",
+      "phone": "+6582174456",
+      "country": "SG",
+      "accounts": [
+        {
+          "accountId": "210149811012",
+          "accountType": "Savings Account",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "1449287",
+      "name": "Nur Aisyah binti Ahmad",
+      "phone": "+60123456789",
+      "country": "MY",
+      "accounts": [
+        {
+          "accountId": "473747358741",
+          "accountType": "Savings Account-i",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "2223009",
+      "name": "Nur Farhana binti Zulkifli",
+      "phone": "+60139925486",
+      "country": "MY",
+      "accounts": [
+        {
+          "accountId": "960274304111",
+          "accountType": "Current Account-i",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "7643604",
+      "name": "Priya d/o Ramasamy",
+      "phone": "+6591857723",
+      "country": "SG",
+      "accounts": [
+        {
+          "accountId": "502493100998",
+          "accountType": "Savings Account",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "8143082",
+      "name": "Rajesh Kumar s/o Murugan",
+      "phone": "+6588462031",
+      "country": "SG",
+      "accounts": [
+        {
+          "accountId": "565636835058",
+          "accountType": "Savings Account",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "5912900",
+      "name": "Ravi a/l Subramaniam",
+      "phone": "+60167734409",
+      "country": "MY",
+      "accounts": [
+        {
+          "accountId": "751837691586",
+          "accountType": "Savings Account",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "5563332",
+      "name": "Siti Hajar binti Mohd Noor",
+      "phone": "+60137419052",
+      "country": "MY",
+      "accounts": [
+        {
+          "accountId": "124050322405",
+          "accountType": "Basic Savings",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "6114873",
+      "name": "Tan Mei Ling",
+      "phone": "+60125568120",
+      "country": "MY",
+      "accounts": [
+        {
+          "accountId": "212163107464",
+          "accountType": "Current Account",
+          "currency": "MYR"
+        }
+      ]
+    },
+    {
+      "customerId": "5409881",
+      "name": "Tan Wei Ming",
+      "phone": "+6591234567",
+      "country": "SG",
+      "accounts": [
+        {
+          "accountId": "897350869921",
+          "accountType": "Current Account",
+          "currency": "SGD"
+        },
+        {
+          "accountId": "923253456169",
+          "accountType": "Savings Account",
+          "currency": "SGD"
+        }
+      ]
+    },
+    {
+      "customerId": "4987754",
+      "name": "Wong Kok Wai",
+      "phone": "+60124498317",
+      "country": "MY",
+      "accounts": [
+        {
+          "accountId": "566581720705",
+          "accountType": "Savings Account",
+          "currency": "MYR"
+        }
+      ]
+    }
+  ]
+}

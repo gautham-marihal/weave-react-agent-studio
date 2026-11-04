@@ -4,6 +4,7 @@
 
 import { isObj } from '../form/engine.js';
 import { channelName } from '../simple/simpleModel.js';
+import { maskTraceRows } from '../privacy/maskConfidential.js';
 
 // "web_chat" → "web chat", "sip_voice" → "phone": a channel as a sentence says it
 const channelWords = (type) => {
@@ -15,8 +16,10 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const first = (...values) => values.find((v) => v !== undefined && v !== null && v !== '');
 
 // ---- text
-// The API's call log holds UTF-8 read back as Windows-1252 ("Iâ€™m" for "I’m"); the transcript endpoint has it right.
-// This fixes a string only when it has that unmistakable pattern, so correct text is never touched.
+// Text that was UTF-8 read back as Windows-1252 ("Iâ€™m" for "I’m") was once seen in a call log. The backend could not
+// reproduce it (UI review 3b: every API path writes and reads UTF-8), so the cause may be outside the API, such as a
+// config that was already garbled when saved. This fixes a string only when it has that unmistakable pattern, so
+// correct text is never touched.
 const CP1252 = {
   0x20ac: 0x80,
   0x201a: 0x82,
@@ -79,7 +82,7 @@ export const GROUPS = [
 ];
 export const groupOf = (event) => (GROUPS.find((g) => g.kinds.includes(event)) || { id: 'other' }).id;
 
-export const humanize = (name) =>
+const humanize = (name) =>
   String(name || 'event')
     .replace(/_/g, ' ')
     .replace(/^./, (c) => c.toUpperCase());
@@ -353,7 +356,7 @@ export function traceSummary(records) {
 
 // Plain text of a trace, for "Copy": one line per record.
 export const traceAsText = (records) =>
-  describeRecords(records)
+  maskTraceRows(describeRecords(records))
     .map((r) => `${r.at.padStart(7)}  ${r.label.padEnd(9)} ${r.text}${r.facts.length ? `  [${r.facts.map(([k, v]) => `${k}: ${v}`).join('; ')}]` : ''}`)
     .join('\n');
 

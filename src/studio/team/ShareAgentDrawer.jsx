@@ -5,6 +5,8 @@ import { useTeam } from './useTeam.js';
 import { addMembers, agentsScope, checkInvite, grantAgent, hueOf, initialsOf, makeMember, peopleWithAccess, revokeAgent, roleOf } from './teamModel.js';
 import Select from '../../ui/Select.tsx';
 import './team.css';
+import Button from '../../ui/Button.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 const VIA = { workspace: 'Whole workspace', agent: 'This agent only' };
 
@@ -62,9 +64,9 @@ export default function ShareAgentDrawer({ botId, name, onClose, onOpenTeam }) {
       width="wide"
       onClose={onClose}
       footer={
-        <button type="button" className="primaryCta compactCta" onClick={onClose}>
+        <Button type="button" variant="primary" size="compact" onClick={onClose}>
           Done
-        </button>
+        </Button>
       }
     >
       <div className="tmDrawer">
@@ -89,9 +91,9 @@ export default function ShareAgentDrawer({ botId, name, onClose, onOpenTeam }) {
                 <span className={`tmRole ${r}`}>{roleOf(r).label}</span>
                 <span className="tmVia">{VIA[via]}</span>
                 {via === 'agent' ? (
-                  <button type="button" className="quietButton small" onClick={() => stop(member)} aria-label={`Stop sharing with ${member.name}`}>
+                  <Button type="button" size="small" onClick={() => stop(member)} aria-label={`Stop sharing with ${member.name}`}>
                     Remove
-                  </button>
+                  </Button>
                 ) : (
                   <span className="tmViaNote">{member.role === 'owner' ? 'Owner' : 'Change on Team'}</span>
                 )}
@@ -107,9 +109,8 @@ export default function ShareAgentDrawer({ botId, name, onClose, onOpenTeam }) {
           </header>
           <div className="tmField">
             <label htmlFor="tm-share-emails">Email addresses</label>
-            <input
+            <Input
               id="tm-share-emails"
-              className="stFInput"
               type="text"
               value={text}
               placeholder="name@company.com"
@@ -141,9 +142,9 @@ export default function ShareAgentDrawer({ botId, name, onClose, onOpenTeam }) {
             onChange={(next) => setRole(next.role)}
           />
           <div className="tmShareActions">
-            <button type="button" className="primaryCta compactCta" onClick={share} disabled={!text.trim()}>
+            <Button type="button" variant="primary" size="compact" onClick={share} disabled={!text.trim()}>
               Share {name}
-            </button>
+            </Button>
           </div>
           {others.length > 0 && (
             <div className="tmField">

@@ -1,4 +1,5 @@
-import type { KeyboardEvent, ReactNode } from 'react';
+import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useFadeOnChange } from './motion.ts';
 import { Tabs } from 'radix-ui';
 
 // A page's parts to switch between (Radix Tabs): one Tab stop, arrows move (and wrap), Home and End go to the ends, and
@@ -6,7 +7,7 @@ import { Tabs } from 'radix-ui';
 //   <Parts value onChange>: holds a row and its panel, with no box of its own
 //   <PartRow label items value>: the row (label names it for screen readers; the open part has `on`, or activeClass)
 //   <PartPanel value>: the open part's content (a grid with the page's gap; `flow` for a page that isn't a grid)
-export type Part = { id: string; label: ReactNode; badge?: ReactNode };
+type Part = { id: string; label: ReactNode; badge?: ReactNode };
 
 export function Parts({ value, onChange, children }: { value: string; onChange: (id: string) => void; children: ReactNode }) {
   return (
@@ -71,8 +72,11 @@ export function PartRow({
 }
 
 export function PartPanel({ value, className = '', children }: { value: string; className?: string; children: ReactNode }) {
+  // the part that has just been opened fades in
+  const panel = useRef<HTMLDivElement>(null);
+  useFadeOnChange(panel, value);
   return (
-    <Tabs.Content value={value} className={`rxPartPanel ${className}`}>
+    <Tabs.Content ref={panel} value={value} className={`rxPartPanel ${className}`}>
       {children}
     </Tabs.Content>
   );

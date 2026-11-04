@@ -9,12 +9,16 @@ export const PAGE_GROUPS = [
   {
     id: 'build',
     label: 'Build',
+    // the parts of Build › Detailed, in the order the design numbers them (1 Agent … 10 After the call; 11 is Settings)
     pages: [
       { id: 'agent', label: 'Agent', icon: 'agent' },
+      { id: 'conversation', label: 'Conversation', icon: 'chat' },
       { id: 'knowledge', label: 'Knowledge', icon: 'records' },
       { id: 'tools', label: 'Tools', icon: 'tools' },
-      { id: 'workflow', label: 'Workflow', icon: 'workflow' },
+      { id: 'connections', label: 'Connections', icon: 'plug' },
       { id: 'channels', label: 'Channels', icon: 'dial' },
+      { id: 'workflow', label: 'Workflow', icon: 'workflow' },
+      { id: 'subagents', label: 'Subagents and hand-overs', icon: 'team' },
       { id: 'guardrails', label: 'Guardrails', icon: 'shield' },
       { id: 'aftercall', label: 'After the call', icon: 'flag' },
     ],
@@ -37,7 +41,8 @@ export const PAGE_GROUPS = [
       { id: 'speed', label: 'Speed', icon: 'gauge' },
     ],
   },
-  { id: 'manage', label: 'Settings', bare: true, pages: [{ id: 'settings', label: 'Settings', icon: 'sliders' }] },
+  // the rest of Settings, once everything else moved to the part it changes (its address stays /settings)
+  { id: 'manage', label: 'Settings', bare: true, pages: [{ id: 'settings', label: 'Engine and details', icon: 'sliders' }] },
 ];
 
 export const PAGES = PAGE_GROUPS.flatMap((g) => g.pages);
@@ -46,7 +51,11 @@ export const PAGES = PAGE_GROUPS.flatMap((g) => g.pages);
 // on its guided view ("build", every part on one page).
 export const STAGES = [
   { id: 'overview', label: 'Overview', pages: ['home'] },
-  { id: 'build', label: 'Build', pages: ['build', 'agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall', 'settings'] },
+  {
+    id: 'build',
+    label: 'Build',
+    pages: ['build', 'agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall', 'settings'],
+  },
   { id: 'test', label: 'Test', pages: ['tests'] },
   { id: 'release', label: 'Release', pages: ['releases'] },
   { id: 'monitor', label: 'Monitor', pages: ['calls', 'monitoring', 'questions', 'speed'] },
@@ -61,8 +70,11 @@ export const EXTRA_PAGE_IDS = [
   'home',
   'build',
   'agent',
+  'conversation',
   'tools',
+  'connections',
   'channels',
+  'subagents',
   'guardrails',
   'aftercall',
   'settings',
@@ -101,11 +113,15 @@ export const tabFor = (page, part) => (PART_TAB[page] && PART_TAB[page][part]) |
 
 // The top-level config sections each page edits, so every part of the schema is reachable (a test checks this).
 // `only` limits the page's settings form; the Agent page's rows and the Workflow canvas cover their own sections too.
+// Key order matters to `locate`: the first page (after the Agent page) whose list has the key is where it is shown.
 export const PAGE_SECTIONS = {
   agent: ['meta', 'persona', 'messages', 'defaults'],
-  tools: ['tools', 'connections', 'forms', 'notifications', 'tasks', 'telephony'],
+  conversation: ['state', 'events'],
+  tools: ['tools'],
+  connections: ['connections', 'forms', 'notifications', 'tasks', 'telephony'],
   knowledge: ['knowledge'],
-  workflow: ['agents', 'state', 'events'],
+  subagents: ['agents'],
+  workflow: ['agents'],
   channels: ['channels', 'identity', 'schedules'],
   guardrails: ['guardrails'],
   aftercall: ['post_call', 'wrapups', 'observability'],
@@ -113,31 +129,20 @@ export const PAGE_SECTIONS = {
   settings: ['meta', 'runtime', 'constants', 'builder', 'defaults'],
 };
 
-// What Settings leaves out because another page asks for it (name, languages, models, voice), so each thing is asked
-// once. What remains is only Settings': description, tags, owner, model keys and addresses, turns, engine.
-export const SETTINGS_ELSEWHERE = {
-  skipViews: ['defaults.language'], // all of the language is asked on the Agent page
-  hide: [
-    ['meta', 'name'],
-    ...['stt', 'llm', 'tts'].flatMap((stage) => [
-      ['defaults', 'models', stage, 'provider'],
-      ['defaults', 'models', stage, 'model'],
-    ]),
-    ['defaults', 'models', 'tts', 'voice_id'],
-  ],
-};
 export const sectionsCovered = () => new Set(Object.values(PAGE_SECTIONS).flat());
 
 // What each page is for, in a sentence, under its title.
 export const PAGE_LEAD = {
+  conversation: 'How it behaves during a call: taking turns, silences, what it remembers and reacts to.',
   tools: 'What the agent can do besides talk: look something up, hand over to a person, end the call.',
+  connections: 'What its tools reach: connections, phone transfers, forms, messages and multi-step tasks.',
+  subagents: 'Who answers, what each subagent does, and who passes callers to whom.',
   knowledge: 'The documents and sources the agent can look things up in.',
   workflow: 'Who answers first, and how a call moves from one agent to another.',
   channels: 'Where people reach the agent, and when.',
   guardrails: 'Boundaries for what the agent will say and do.',
   aftercall: 'What happens when a call ends: the summary, the closing message, what is kept.',
-  settings:
-    'The rest of the agent’s configuration: its description and owner, the keys and addresses of its models, how turns are taken, the engine. Its name, languages, models and voice are on the Agent page.',
+  settings: 'What runs it underneath: its version and status, the engine, fixed values and the studio’s own checks.',
   tests: 'Check that the agent behaves: try it, run the conversations it must always get right, and run the readiness checks.',
   releases: 'Publish a version, and choose what is live where.',
   calls: 'Every conversation this agent has had.',
@@ -162,13 +167,20 @@ export function locate(path) {
   if (key === 'defaults' && sub === 'language') return { page: 'agent', drawer: 'language' };
   if (key === 'defaults' && sub === 'models') {
     if (third === 'tts' && fourth === 'voice_id') return { page: 'agent', drawer: 'voice' };
-    // the models as a whole ("Open Models") are the AI models panel too
+    // voice detection and the end-of-turn model are part of taking turns
+    if (third === 'vad' || third === 'turn_detector') return { page: 'conversation' };
+    // the models as a whole ("Open Models") are the AI models row; a model's other settings are rows of their own
     return third === undefined || (['stt', 'llm', 'tts'].includes(third) && [undefined, 'provider', 'model'].includes(fourth))
       ? { page: 'agent', drawer: 'models' }
-      : { page: 'settings' };
+      : { page: 'agent' };
   }
+  // taking turns, silences, sounds and failing services are the Conversation part
+  if (key === 'defaults' && (sub === 'conversation' || sub === 'reliability')) return { page: 'conversation' };
   if (key === 'defaults') return { page: 'settings' };
-  if (key === 'meta' && sub === 'name') return { page: 'agent' };
+  // the name, description, tags and owner are the Agent part's; the rest of `meta` is Engine and details
+  if (key === 'meta' && ['name', 'description', 'tags', 'owner'].includes(sub)) return { page: 'agent' };
+  // how many times a call may move between agents is asked with the hand-overs
+  if (key === 'guardrails' && sub === 'limits' && third === 'max_handoffs_per_call') return { page: 'subagents' };
   if (key === 'tests') return { page: 'tests', part: 'scenarios' };
   const page = Object.keys(PAGE_SECTIONS).find((id) => id !== 'agent' && PAGE_SECTIONS[id].includes(key));
   return { page: page || 'settings' };
@@ -177,12 +189,12 @@ export function locate(path) {
 // ---- the search (Ctrl K) on an agent's pages
 // The panels of the Agent page, by the id `locate` gives, as the page names them.
 const AGENT_PANELS = {
-  voice: 'Voice',
-  language: 'Language',
+  voice: 'Voice and language',
+  language: 'Voice and language',
   models: 'AI models',
-  behaviour: 'Tone and style',
-  persona: 'Personality and rules',
-  messages: 'Fixed lines',
+  behaviour: 'What it says',
+  persona: 'Name and introduction',
+  messages: 'What it says',
 };
 
 // Where a search result is shown: `locate` for its openable path, or the Agent page field for greeting and role.
@@ -228,7 +240,10 @@ export function capSameLabel(entries, max = 2) {
 // The words people would type to find each page, besides its name.
 const PAGE_WORDS = {
   home: 'overview home dashboard status ready next',
-  agent: 'instructions prompt role greeting hello voice language model persona name tone',
+  agent: 'instructions prompt role greeting hello voice language model persona name tone description tags owner',
+  conversation: 'turns interrupt interruption silence quiet nudge pronunciation sounds variables state events reliability',
+  connections: 'connection api transfer phone forms messages sms email tasks verification',
+  subagents: 'subagent agents hand over handover hand-off transfer specialist multi entry first',
   knowledge: 'documents files faq website pages answers sources',
   tools: 'actions abilities lookup hand over end call integrations api forms connections',
   workflow: 'agents handover hand-off canvas flow specialist multi',
@@ -241,7 +256,7 @@ const PAGE_WORDS = {
   monitoring: 'health dashboard stats handoffs cut off',
   questions: 'unanswered gaps asked faq',
   speed: 'latency slow fast answer time',
-  settings: 'description owner tags engine keys json reliability',
+  settings: 'engine version status environment constants fixed values json runtime',
 };
 
 // What search offers on an agent besides settings: its pages and common tasks, by the words people would type.

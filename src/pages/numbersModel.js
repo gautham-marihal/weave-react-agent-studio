@@ -8,7 +8,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v));
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
-export const ENVIRONMENT_WORDS = { development: 'Development', staging: 'Staging', production: 'Production' };
+const ENVIRONMENT_WORDS = { development: 'Development', staging: 'Staging', production: 'Production' };
 export const environmentWord = (env) => ENVIRONMENT_WORDS[env] || text(env) || '—';
 
 // Who a dispatch rule sends calls to, from the platform's [agent name, metadata] pairs: for our numbers the builder's

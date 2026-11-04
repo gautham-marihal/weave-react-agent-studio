@@ -4,6 +4,8 @@ import AccessPicker from './AccessPicker.jsx';
 import { WHOLE_WORKSPACE, agentsScope, checkInvite, describeScope, hueOf, initialsOf, normalizeScope, roleOf, scopeProblem } from './teamModel.js';
 import './team.css';
 import Icon from '../../ui/Icon.jsx';
+import Button from '../../ui/Button.tsx';
+import { Input } from '../../ui/Input.tsx';
 
 // One panel to invite people or change someone's access. Nothing changes until the bottom button is pressed;
 // Cancel and Escape leave the team as it was.
@@ -59,12 +61,12 @@ export default function MemberDrawer({ mode, member = null, members, agents, sta
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="quietButton" onClick={onClose}>
+          <Button type="button" onClick={onClose}>
             Cancel
-          </button>
-          <button type="button" className="primaryCta compactCta" onClick={submit} disabled={editing ? !!problem || unchanged : !!problem || total === 0}>
+          </Button>
+          <Button type="button" variant="primary" size="compact" onClick={submit} disabled={editing ? !!problem || unchanged : !!problem || total === 0}>
             {actionLabel}
-          </button>
+          </Button>
         </>
       }
     >
@@ -97,9 +99,8 @@ export default function MemberDrawer({ mode, member = null, members, agents, sta
               </ul>
             )}
             <div className="tmEmailRow">
-              <input
+              <Input
                 id="tm-email"
-                className="stFInput"
                 type="email"
                 autoComplete="off"
                 value={text}
@@ -117,9 +118,9 @@ export default function MemberDrawer({ mode, member = null, members, agents, sta
                   }
                 }}
               />
-              <button type="button" className="quietButton" onClick={addTyped} disabled={!text.trim()}>
+              <Button type="button" onClick={addTyped} disabled={!text.trim()}>
                 Add
-              </button>
+              </Button>
             </div>
             <small>
               {emails.length ? 'Press Enter to add another person.' : 'Press Enter to add it, then add more people if you like.'} Everyone added gets the same

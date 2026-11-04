@@ -11,7 +11,7 @@ export function getCachedConfig(id) {
   return hit ? hit.config : undefined;
 }
 
-export async function loadConfig(id, revision) {
+async function loadConfig(id, revision) {
   const hit = cache.get(id);
   const current = revision === undefined || revision === null || hit?.revision === revision;
   if (hit && current && Date.now() - hit.at < TTL_MS) return hit.config;

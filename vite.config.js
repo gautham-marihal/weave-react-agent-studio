@@ -1,6 +1,8 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { llmPlugin } from './llmRoute.js';
+import { apiPassPlugin } from './apiPass.js';
+import { authPlugin } from './authRoute.js';
 
 // The browser only ever talks to /api. The dev/preview server forwards it to the Agent Builder
 // API and adds the bearer key itself, so the key never reaches the browser bundle (and CORS is moot).
@@ -32,6 +34,10 @@ export default defineConfig(({ mode }) => {
       },
     },
   };
-  // /llm: the Describe assistant's way to an AI model, with the key added here (see llmRoute.js)
-  return { plugins: [react(), llmPlugin(env)], server: { proxy }, preview: { proxy } };
+  // /llm: the Describe assistant's way to an AI model, with the key added here (see llmRoute.js); /api-pass: the Integrations
+  // page's way to test a connected API that refuses calls from web pages (see apiPass.js)
+  // /auth: sign-in against credentials.txt (see authRoute.js)
+  // the dev server hands out any file in the folder, so credentials.txt is denied (with Vite's own defaults kept)
+  const fs = { deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', 'credentials.txt'] };
+  return { plugins: [react(), llmPlugin(env), apiPassPlugin(env), authPlugin(env)], server: { proxy, fs }, preview: { proxy } };
 });

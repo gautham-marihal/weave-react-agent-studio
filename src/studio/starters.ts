@@ -6,7 +6,7 @@ import type { AgentConfig } from '../api/types.ts';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a draft is edited as plain JSON here; the result is still an AgentConfig
 type Loose = any;
 
-export type Starter = {
+type Starter = {
   id: string;
   label: string;
   blurb: string;

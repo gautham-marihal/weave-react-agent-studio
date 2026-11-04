@@ -914,3 +914,34 @@
     margin-bottom: 8px;
   }
 }
+
+/* a web voice conversation in the preview: the call (VoiceStage) instead of the chat lines */
+.pvVoice {
+  --pv-voice-orb: clamp(120px, 22vh, 176px);
+  flex: 1 1 auto;
+  padding-top: 12px;
+}
+.pvVoiceActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.pvTranscriptToggle {
+  align-self: center;
+}
+
+/* the woven sphere (AiOrb.jsx, drawn by orbPainter.js): keeps the orb's size in the layout, its canvas centred over it so the
+   rings reach past it; none of the lit sphere's own glow */
+.aiOrb.globe::before,
+.aiOrb.globe::after {
+  content: none;
+  animation: none;
+}
+.aiOrbCanvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  pointer-events: none;
+}

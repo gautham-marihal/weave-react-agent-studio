@@ -22,14 +22,15 @@ import {
   CircleUserRound,
   Clock,
   CodeXml,
-  CornerDownLeft,
   Copy,
+  CornerDownLeft,
+  createLucideIcon,
   Ellipsis,
   ExternalLink,
   Eye,
   FileText,
-  FlaskConical,
   Flag,
+  FlaskConical,
   Gauge,
   Globe,
   Grip,
@@ -39,6 +40,7 @@ import {
   House,
   Info,
   KeyRound,
+  LayoutGrid,
   LayoutTemplate,
   List,
   Lock,
@@ -91,7 +93,6 @@ import {
   Zap,
   ZoomIn,
   ZoomOut,
-  createLucideIcon,
 } from 'lucide-react';
 
 // stop: a solid square, as on any player (Lucide's outline square beside a play button reads as a box to tick)
@@ -197,6 +198,7 @@ export const ICONS = {
   // the Agents list's two views: rows that open, and a table
   list: List,
   table: Table2,
+  grid: LayoutGrid,
   // keeps an agent at the top of the Agents list
   pin: Pin,
   // see what something comes to (the prompt the model is given)

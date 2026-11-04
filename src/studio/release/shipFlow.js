@@ -3,7 +3,7 @@
 // the publish panel). Pure: no network, no DOM.
 
 import { gateCheck } from './gateCheck.js';
-import { coveredOnlySome, coveredOnlyText } from '../scenarios/runResults.js';
+import { coveredOnlySome, coveredOnlyText, passedRunText } from '../scenarios/runResults.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 
@@ -71,8 +71,7 @@ export function shipSteps({
     add({ id: 'tested', label: 'Tested', state: 'todo', text: 'The scenarios have not been run.', action: { label: 'Run the scenarios', tab: 'scenarios' } });
   else if (latestRun.status === 'passed' && coveredOnlySome(latestRun, scenarioCount))
     add({ id: 'tested', label: 'Tested', state: 'todo', text: coveredOnlyText(latestRun, scenarioCount), action: { label: 'Run them all', tab: 'scenarios' } });
-  else if (latestRun.status === 'passed')
-    add({ id: 'tested', label: 'Tested', state: 'done', text: `The latest run passed (${latestRun.passed} of ${latestRun.total}).` });
+  else if (latestRun.status === 'passed') add({ id: 'tested', label: 'Tested', state: 'done', text: passedRunText(latestRun, scenarioCount) });
   else
     add({
       id: 'tested',

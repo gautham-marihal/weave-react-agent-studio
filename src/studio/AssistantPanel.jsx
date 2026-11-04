@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ASSISTANT } from '../demo/draftAssistant.js';
 import { readSimple } from './simple/simpleModel.js';
+import { Input, TextArea } from '../ui/Input.tsx';
 
 // "Describe the agent" in the Create dialog: describe what it should do, get a draft to review. The assistant is the
 // rule-based demo one (demo/draftAssistant.js); the panel says so, with what it assumed and left to you.
@@ -29,9 +30,8 @@ export default function AssistantPanel({ description, onDescription, tried, tooS
       <label className="workspaceField">
         <span>Describe the agent</span>
         <small>Who it talks to, what it helps with, how it should sound, anything it must never do. A few sentences are enough.</small>
-        <textarea
+        <TextArea
           ref={box}
-          className="stFInput"
           rows={5}
           value={description}
           onChange={(event) => onDescription(event.target.value)}
@@ -80,8 +80,7 @@ export default function AssistantPanel({ description, onDescription, tried, tooS
           </dl>
           <label className="workspaceField">
             <span>What it is told to do (its role)</span>
-            <textarea
-              className="stFInput"
+            <TextArea
               rows={6}
               value={edits.role}
               onChange={(event) => onEdits({ ...edits, role: event.target.value })}
@@ -91,8 +90,7 @@ export default function AssistantPanel({ description, onDescription, tried, tooS
           </label>
           <label className="workspaceField">
             <span>What it says first</span>
-            <input
-              className="stFInput"
+            <Input
               type="text"
               value={edits.greeting}
               onChange={(event) => onEdits({ ...edits, greeting: event.target.value })}

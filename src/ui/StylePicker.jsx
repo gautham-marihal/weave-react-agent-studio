@@ -5,6 +5,7 @@ import { keepEscape } from './layer.ts';
 import Tip from './Tip.tsx';
 import { Choice, OneOf } from './OneOf.tsx';
 import { ACCENTS, STYLES, useAccent, useStyle } from '../studio/usePref.js';
+import Button from './Button.tsx';
 
 // The design styles as cards, each previewed in the current mode (light or dark). Picking one restyles the whole site.
 export function StyleCards({ onPicked }) {
@@ -92,9 +93,9 @@ export function StyleMenu({ theme, onToggleTheme }) {
       <Popover.Root>
         <Tip label="Change how the studio looks" hoverOnly>
           <Popover.Trigger asChild>
-            <button type="button" className="quietButton">
+            <Button type="button">
               <Icon name="sparkle" size={15} /> Theme
-            </button>
+            </Button>
           </Popover.Trigger>
         </Tip>
         <Popover.Portal>

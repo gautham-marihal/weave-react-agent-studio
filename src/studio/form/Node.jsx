@@ -1,15 +1,13 @@
-import React, { useContext, useEffect, useId, useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import Fold from '../../ui/Fold.jsx';
 import Icon from '../../ui/Icon.jsx';
 import { DragHandle, SortableList, useSortableItem } from '../../ui/Sortable.jsx';
-import Sheet, { DepthCtx } from './Sheet.jsx';
 import { cardsThatMayOpen } from './cardSize.js';
-import { humanize, isObj } from './engine.js';
+import { isObj } from './engine.js';
 import { PLAIN_KIND } from './plainKinds.js';
 import { keysNotOffered, modalityChoices } from './channelTypes.js';
 import {
   OwnerCtx,
-  isUnder,
   keyOf,
   omit,
   orderedSet,
@@ -31,9 +29,7 @@ import { CheckGroup, FreeValue, JsonInput, MultiPick, NumberInput, RangeNumber, 
 import ChannelBody from './ChannelBody.jsx';
 import ConditionBuilder from './ConditionBuilder.jsx';
 import MessageText from './MessageText.jsx';
-import TemplateField from './TemplateField.jsx';
 import { PathInput } from './RequestResponse.jsx';
-import InlineCreate from './InlineCreate.jsx';
 import ToolBody from './ToolBody.jsx';
 import { PromptPreviewFromForm } from './PromptPreview.jsx';
 import AddPicker from './AddPicker.jsx';
@@ -44,317 +40,22 @@ import ScheduleStrip from '../relations/ScheduleStrip.jsx';
 import TaskSteps from '../relations/TaskSteps.jsx';
 import { TryGuardrails, TryRedaction, TrySpeech, TryTask } from './TryPanels.jsx';
 import UsedBy from '../relations/UsedBy.jsx';
-import { CREATABLE } from './inlineCreate.js';
 import { UNSUPPORTED_BUILTINS, UNSUPPORTED_KINDS, agentsUsingTool, toolKindCounts, toolMatches, unusedTools, usedByText } from './toolInfo.js';
 import { IdChip } from './IdTools.jsx';
 import { collectionAt, COLLECTIONS, lockedIdCollection } from './references.js';
 import { arrayStyle, carryOver, isActionList, isComplex, isRuleList, matchesDiscriminator, summarize } from './cardLogic.js';
 import EffectsEditor, { ActionSteps } from './EffectsEditor.jsx';
-import { isPromptPath, isTemplateString, scopeAt, scopeSignature } from './templates.ts';
+import { isPromptPath, isTemplateString } from './templates.ts';
 import { languageHint } from './messages.ts';
 import { describeSetting } from './plainLanguage.js';
 import { TechName } from './TechName.jsx';
-import { groupKeys, looksLikePhone, looksLikeUrl, orderKeys, readXui, splitAdvanced } from './xui.ts';
-
-// What "this collection lives in" for the hint under an empty reference list, and where Go there leads.
-const REF_TARGET = {
-  agents: ['agents', 'Agents'],
-  tools: ['tools', 'Tools'],
-  tool_names: ['tools', 'Tools'],
-  tasks: ['tasks', 'Tasks'],
-  knowledge: ['knowledge', 'Knowledge'],
-  forms: ['forms', 'Forms'],
-  wrapups: ['wrapups', 'Wrap-ups'],
-  messages: ['messages', 'Messages'],
-  notifications: ['notifications', 'Notifications'],
-  channels: ['channels', 'Channels'],
-  transfers: ['telephony', 'Telephony'],
-  input_guardrails: ['guardrails', 'Safety rules'],
-  schedules: ['schedules', 'Schedules'],
-  state_vars: ['state', 'State'],
-  http_connections: ['connections', 'Connections'],
-  mcp_connections: ['connections', 'Connections'],
-  notifiers: ['connections', 'Connections'],
-};
-const REF_WORD = {
-  agents: 'agents',
-  tools: 'tools',
-  tool_names: 'tools',
-  tasks: 'tasks',
-  knowledge: 'knowledge bases',
-  forms: 'forms',
-  wrapups: 'closing messages',
-  messages: 'fixed lines',
-  notifications: 'notifications',
-  channels: 'channels',
-  transfers: 'transfers',
-  input_guardrails: 'safety rules',
-  schedules: 'schedules',
-  state_vars: 'state variables',
-  http_connections: 'HTTP connections',
-  mcp_connections: 'MCP connections',
-  notifiers: 'SMS/email connections',
-};
-
-// What "Add …" calls one item where its key's own word would read oddly ("Add notification" for the messages it sends).
-const ADD_WORDS = {
-  notifications: 'message',
-  wrapups: 'closing message',
-  artifacts: 'file to save',
-  variables: 'variable',
-  constants: 'value',
-  http: 'connection',
-  mcp: 'MCP connection',
-  notifiers: 'SMS or email connection',
-};
-
-// The last word of a text and the rest, so the "i" can stay on the line of the last word.
-const lastWord = (text) => {
-  const t = String(text).trimEnd();
-  const i = t.lastIndexOf(' ');
-  return i < 0 ? ['', t] : [t.slice(0, i + 1), t.slice(i + 1)];
-};
-
-// The "i" that shows a setting's technical detail. Drawn with CSS, not an SVG: there is one beside nearly every
-// setting, and hundreds of SVGs slow typing on a long screen.
-function InfoButton({ shown, onToggle, moreLabel = 'Technical detail' }) {
-  return (
-    <button
-      type="button"
-      className={`stFInfo ${shown ? 'on' : ''}`}
-      aria-expanded={shown}
-      aria-label={shown ? `Hide the ${moreLabel.toLowerCase()}` : moreLabel}
-      title={shown ? 'Hide' : moreLabel}
-      onClick={onToggle}
-    >
-      <span className="stFInfoMark" aria-hidden="true">
-        i
-      </span>
-    </button>
-  );
-}
-// the technical description of a setting, when it says more than the plain words
-const moreOf = (words) => (words.full && words.full.trim() && words.full.trim() !== words.lead ? words.full.trim() : '');
-
-// What a setting is for, in plain words with an example; the schema's technical description is one click away (open
-// with technical names on).
-//   shown: when given, the row draws the "i" beside the name and says here whether the detail is open; else the "i"
-//   ends the help line
-function Help({ lead, example, full, moreLabel = 'Technical detail', open: startOpen = false, shown: shownFromRow }) {
-  const [open, setOpen] = useState(false);
-  const more = moreOf({ full, lead });
-  const inline = shownFromRow === undefined;
-  const shown = inline ? open || (startOpen && !!more) : shownFromRow;
-  if (!lead && !example && !(more && (inline || shown))) return null;
-  const info = more && inline ? <InfoButton shown={shown} onToggle={() => setOpen((v) => !v)} moreLabel={moreLabel} /> : null;
-  // the "i" goes with the last word, in a piece that does not wrap, so it never sits alone on a line
-  const [leadHead, leadLast] = lead ? lastWord(lead) : ['', ''];
-  const [exHead, exLast] = example ? lastWord(example) : ['', ''];
-  return (
-    <p className="stFHelp">
-      {lead &&
-        (info && !example ? (
-          <span>
-            {leadHead}
-            <span className="stFTail">
-              {leadLast} {info}
-            </span>
-          </span>
-        ) : (
-          <span>{lead} </span>
-        ))}
-      {example && (
-        <span className="stFExample">
-          {info && exHead ? (
-            <>
-              For example: <em>{exHead}</em>
-              <span className="stFTail">
-                <em>{exLast}</em> {info}
-              </span>
-            </>
-          ) : info ? (
-            <span className="stFTail">
-              For example: <em>{exLast}</em> {info}
-            </span>
-          ) : (
-            <>
-              For example: <em>{example}</em>
-            </>
-          )}{' '}
-        </span>
-      )}
-      {!lead && !example && info}
-      {more && shown && <span className="stFMore">{more}</span>}
-    </p>
-  );
-}
-
-// The words a setting is drawn with: the server's own hint when
-// it sends one, else the catalogue, else a label made by rule.
-function useSettingWords(name, shape, label) {
-  const owner = useOwner();
-  const hints = readXui(shape);
-  const info = describeSetting(name, { owner, description: shape.description });
-  return {
-    title: label || hints.label || info.label,
-    lead: hints.help || info.purpose,
-    example: hints.example || info.example,
-    level: hints.audience || info.level,
-    full: shape.description,
-    moreLabel: info.curated || hints.help ? 'Technical detail' : 'More',
-  };
-}
-
-// What is wrong with a field, in plain words, with a fix button where one is certain. The server's own sentence is in
-// the tooltip, and shown with technical names on.
-function Issues({ pathKey, deep = false }) {
-  const { exact, issuesUnder, describe, applyFix, technical } = useForm();
-  const list = deep ? issuesUnder(pathKey) : exact.get(pathKey);
-  if (!list?.length) return null;
-  return list.map((issue, index) => {
-    const d = describe(issue);
-    return (
-      <small
-        key={index}
-        className={`stFIssue ${issue.severity === 'error' ? 'stFErr' : 'stFWarn'}`}
-        title={d.recognised ? `The server said: ${issue.message}` : undefined}
-      >
-        {d.text}
-        {technical && d.recognised && <span className="stFRawIssue"> ({issue.message})</span>}
-        {d.fixes.map((fix) => (
-          <button type="button" key={fix.id} className="vxFix small" onClick={() => applyFix(fix)}>
-            {fix.label}
-          </button>
-        ))}
-      </small>
-    );
-  });
-}
-
-// The bin button beside a setting or a group: an icon, with the words for a screen reader and a tooltip.
-function DeleteButton({ what, onClick, disabled, small = false }) {
-  return (
-    <button
-      type="button"
-      className={`stFDel stFDelIcon ${small ? 'small' : ''}`}
-      aria-label={`Delete ${what}`}
-      title={`Delete ${what}`}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <Icon name="trash" size={small ? 15 : 16} />
-    </button>
-  );
-}
-
-// A focus request opens what holds it only while it is fresh: a sheet that was closed by hand does not open again when
-// its screen is drawn again later.
-const FRESH_FOCUS_MS = 2500;
-
-// A group of settings: a folding section on the screen itself (depth 0), deeper a row opening a sheet (no nested boxes).
-//   sub: the line under a row's title when it has no hint of its own
-//   sortable: where a drag puts it, when the group is a list item that can be reordered (useSortableItem)
-function Group({ pathKey, title, hint, sub, tooltip, count, onRemove, defaultOpen = true, actions, children, flat = false, sortable = null }) {
-  const { focus, countUnder } = useForm();
-  const depth = useContext(DepthCtx);
-  const drill = !flat && depth >= 1;
-  const [open, setOpen] = useState(drill ? false : defaultOpen);
-  useEffect(() => {
-    if (focus && isUnder(focus.key, pathKey) && (!drill || !focus.nonce || Date.now() - focus.nonce < FRESH_FOCUS_MS)) setOpen(true);
-  }, [focus, pathKey, drill]);
-  const c = countUnder(pathKey);
-  // a problem inside is never left behind a closed section (a row that opens a sheet shows the count instead)
-  useEffect(() => {
-    if (!drill && c.errors > 0) setOpen(true);
-  }, [c.errors, drill]);
-  const dots = (
-    <>
-      {c.errors > 0 && (
-        <b className="stFDot err" title={`${c.errors} error${c.errors === 1 ? '' : 's'} inside`}>
-          {c.errors}
-        </b>
-      )}
-      {c.errors === 0 && c.warnings > 0 && (
-        <b className="stFDot warn" title={`${c.warnings} warning${c.warnings === 1 ? '' : 's'} inside`}>
-          {c.warnings}
-        </b>
-      )}
-    </>
-  );
-  const remove = onRemove ? <DeleteButton what={title} onClick={onRemove} /> : null;
-  if (drill) {
-    const line = hint || sub;
-    return (
-      <section
-        ref={sortable?.ref}
-        style={sortable?.style}
-        className={`stFGroup drill ${c.errors ? 'hasErr' : ''} ${sortable?.dragging ? 'isDragging' : ''}`}
-        data-path={pathKey}
-      >
-        <header>
-          <button
-            type="button"
-            className="stFGroupToggle"
-            aria-expanded={open}
-            aria-haspopup="dialog"
-            title={tooltip || undefined}
-            onClick={() => setOpen(true)}
-          >
-            <span className="stFDrillText">
-              <strong>{title}</strong>
-              {line && <span className="stFHint">{line}</span>}
-            </span>
-            {count != null && <em>{count}</em>}
-            {dots}
-            <Icon name="chevronRight" size={16} className="stFChev" />
-          </button>
-          {(actions || remove) && (
-            <div className="stFGroupActions">
-              {actions}
-              {remove}
-            </div>
-          )}
-        </header>
-        {open && (
-          <Sheet title={title} pathKey={pathKey} onClose={() => setOpen(false)} actions={remove}>
-            <Issues pathKey={pathKey} />
-            {children}
-          </Sheet>
-        )}
-      </section>
-    );
-  }
-  return (
-    <section
-      ref={sortable?.ref}
-      style={sortable?.style}
-      className={`stFGroup ${c.errors ? 'hasErr' : ''} ${flat ? 'flat' : ''} ${open ? 'open' : ''} ${sortable?.dragging ? 'isDragging' : ''}`}
-      data-path={pathKey}
-    >
-      <header>
-        <button type="button" className="stFGroupToggle" aria-expanded={open} title={tooltip || undefined} onClick={() => setOpen((v) => !v)}>
-          <Icon name="chevronRight" size={16} className="stFChev" />
-          <strong>{title}</strong>
-          {hint && <span className="stFHint">{hint}</span>}
-          {count != null && <em>{count}</em>}
-          {dots}
-        </button>
-        {(actions || remove) && (
-          <div className="stFGroupActions">
-            {actions}
-            {remove}
-          </div>
-        )}
-      </header>
-      {(open || flat) && (
-        <div className="stFGroupBody">
-          <Issues pathKey={pathKey} />
-          <DepthCtx.Provider value={flat ? depth : depth + 1}>{children}</DepthCtx.Provider>
-        </div>
-      )}
-    </section>
-  );
-}
+import { groupKeys, orderKeys, readXui, splitAdvanced } from './xui.ts';
+import { Input } from '../../ui/Input.tsx';
+import { ADD_WORDS, REF_TARGET, REF_WORD } from './node/refWords.js';
+import { Help, InfoButton, moreOf, useSettingWords } from './node/Help.jsx';
+import { DeleteButton, Group, Issues } from './node/Group.jsx';
+import { ContactInput, FieldNote, RefSelect, ScopedTemplateField, SecretInput, ShieldIcon } from './node/ValueFields.jsx';
+import { AddKey, KeyInput } from './node/MapKeys.jsx';
 
 // ---- the recursive value editor --------------------------------------------------------------
 
@@ -527,185 +228,6 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
     default:
       return <JsonInput id={id} value={value} onChange={onChange} disabled={disabled} />;
   }
-}
-
-// A template box whose scope (the names a template may use here) comes from the config in the form's store, so it only
-// re-renders when those names change, not on every keystroke elsewhere.
-function ScopedTemplateField({ path, ...props }) {
-  const { store } = useForm();
-  const signature = useConfigSelect((c) => scopeSignature(c, path), Object.is);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope changes exactly when its signature does
-  const scope = useMemo(() => scopeAt(store.get(), path), [signature, keyOf(path), store]);
-  // text written to the agent about a channel (its extra instructions)
-  // gets the plain menu, as the Agent page's instructions do
-  const plain = path[0] === 'channels' && path[path.length - 1] === 'instructions_append';
-  return <TemplateField {...props} scope={scope} plain={plain} />;
-}
-
-// What a field points at, by name: an agent by its name, anything else by its id in words ("escalate_to_human" →
-// "Escalate to human"). Two that read the same keep their ids beside them; technical names show the ids.
-function refLabels(name, options, config) {
-  const agents = Array.isArray(config?.agents?.items) ? config.agents.items.filter(isObj) : [];
-  const words = (id) => {
-    if (name === 'agents') {
-      const agent = agents.find((a) => a.id === id);
-      if (typeof agent?.name === 'string' && agent.name.trim()) return agent.name.trim();
-      if (agent && agents.length === 1 && typeof config?.meta?.name === 'string' && config.meta.name.trim()) return config.meta.name.trim();
-    }
-    return humanize(String(id));
-  };
-  const first = options.map(words);
-  return Object.fromEntries(options.map((id, i) => [id, first.indexOf(first[i]) !== first.lastIndexOf(first[i]) ? `${first[i]} (${id})` : first[i]]));
-}
-
-function RefSelect({ shape, value, onChange, disabled, id, invalid, path }) {
-  const { refOptions, goTo, technical, store } = useForm();
-  const [creating, setCreating] = useState(false);
-  const name = shape['x-ref'];
-  const options = refOptions[name] || [];
-  const labels = technical ? undefined : refLabels(name, options, store.get());
-  const [target, label] = REF_TARGET[name] || [];
-  // Some of what a field points at can be made right here: the new thing is added and the field points at it.
-  const spec = !disabled ? CREATABLE[name] : null;
-  const newButton = spec && (
-    <button type="button" className="stLink stNewBtn" onClick={() => setCreating((v) => !v)}>
-      <Icon name="plus" size={14} /> New {spec.word}
-    </button>
-  );
-  const form = creating && (
-    <InlineCreate
-      collection={name}
-      target={path}
-      defaultKind={path && path[path.length - 1] === 'count_attempts_in' ? 'integer' : undefined}
-      onClose={() => setCreating(false)}
-    />
-  );
-  if (!options.length && !value) {
-    return (
-      <div className="stFRefRow">
-        <p className="stFEmpty">
-          There are no {REF_WORD[name] || name} yet.
-          {newButton ? (
-            <> {newButton}</>
-          ) : (
-            target && (
-              <>
-                {' '}
-                Add one in{' '}
-                <button type="button" className="stLink" onClick={() => goTo(target)}>
-                  {label}
-                </button>{' '}
-                first.
-              </>
-            )
-          )}
-        </p>
-        {form}
-      </div>
-    );
-  }
-  return (
-    <div className="stFRefRow">
-      <Select
-        id={id}
-        value={value}
-        options={options}
-        labels={labels}
-        onChange={onChange}
-        disabled={disabled}
-        invalid={invalid}
-        placeholder={`Choose from ${REF_WORD[name] || name}…`}
-      />
-      {newButton}
-      {form}
-    </div>
-  );
-}
-
-// A phone number or a web address: an ordinary box that says so
-// when what is typed doesn't look like one (it isn't refused).
-function ContactInput({ kind, id, value, onChange, placeholder, disabled, invalid }) {
-  const text = typeof value === 'string' ? value : '';
-  const ok = !text || (kind === 'phone' ? looksLikePhone(text) : looksLikeUrl(text));
-  return (
-    <>
-      <input
-        id={id}
-        className="stFInput mono"
-        type={kind === 'phone' ? 'tel' : 'url'}
-        inputMode={kind === 'phone' ? 'tel' : 'url'}
-        spellCheck={false}
-        value={text}
-        disabled={disabled}
-        placeholder={placeholder || (kind === 'phone' ? '+14155550100' : 'https://…')}
-        aria-invalid={invalid || !ok || undefined}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {!ok && (
-        <small className="stFWarn">
-          {kind === 'phone'
-            ? 'This doesn’t look like a phone number. Use digits, with a + and the country code.'
-            : 'This doesn’t look like a web address. Start it with https://'}
-        </small>
-      )}
-    </>
-  );
-}
-
-function ShieldIcon() {
-  return <Icon name="sensitive" size={14} className="stShieldIcon" />;
-}
-
-// A note under a field that needs more than the schema's description says.
-function FieldNote({ path, value }) {
-  const ctx = useForm();
-  if (path[0] === 'state' && path[path.length - 1] === 'sensitive') {
-    return (
-      <p className={`stFNote ${value ? 'shield' : ''}`}>
-        <ShieldIcon />{' '}
-        {value
-          ? 'Kept out of prompts, spoken lines and logs, and meant to be entered by keypad. The runtime doesn’t enforce this yet, so don’t rely on it for real PINs or card numbers.'
-          : 'Turn this on for a PIN, one-time code or card number. It is then meant to be kept out of prompts and logs and entered by keypad (the runtime doesn’t enforce that yet).'}
-        {value === true && ctx.raiseVersion && (
-          <>
-            {' '}
-            Sensitive variables need schema version 1.2.{' '}
-            <button type="button" className="stLink" onClick={ctx.raiseVersion}>
-              Use 1.2
-            </button>
-          </>
-        )}
-      </p>
-    );
-  }
-  return null;
-}
-
-function SecretInput({ value, onChange, disabled, id }) {
-  const { secretNames } = useForm();
-  const listId = useId();
-  const name = isObj(value) && typeof value.secret === 'string' ? value.secret : '';
-  return (
-    <div className="stFSecret">
-      <Icon name="key" size={15} className="stFSecretIcon" />
-      <input
-        id={id}
-        className="stFInput mono"
-        type="text"
-        spellCheck={false}
-        list={listId}
-        value={name}
-        disabled={disabled}
-        placeholder="SECRET_NAME"
-        onChange={(event) => onChange({ secret: event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_') })}
-      />
-      <datalist id={listId}>
-        {secretNames.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-    </div>
-  );
 }
 
 // ---- objects ---------------------------------------------------------------------------------
@@ -1346,8 +868,8 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
     <div className="stFCards">
       {searchable && (
         <div className="stFFind" role="search" aria-label="Search the tools">
-          <input
-            className="stFInput small"
+          <Input
+            size="small"
             type="search"
             value={find.query}
             placeholder="Find a tool by name or what it does"
@@ -1459,120 +981,6 @@ function CardList({ shape, items, list, path, onChange, disabled }) {
 }
 
 // ---- maps ------------------------------------------------------------------------------------
-
-function AddKey({ existing, onAdd, pattern, options, disabled, label = 'entry' }) {
-  const [text, setText] = useState('');
-  const [error, setError] = useState('');
-  const taken = new Set(existing);
-  const commit = (raw) => {
-    const key = raw.trim();
-    if (!key) return;
-    if (taken.has(key)) {
-      setError(`“${key}” already exists.`);
-      return;
-    }
-    if (pattern && !new RegExp(pattern).test(key)) {
-      setError(`Use the form ${pattern}`);
-      return;
-    }
-    setError('');
-    setText('');
-    onAdd(key);
-  };
-  if (options) {
-    const left = options.filter((o) => !taken.has(o));
-    return (
-      <SmartSelect
-        action
-        className="stFInput small"
-        disabled={disabled || left.length === 0}
-        ariaLabel={`Add ${label}`}
-        placeholder={left.length ? `Add ${label}…` : `No more ${label}s to add`}
-        options={left}
-        onChange={(o) => {
-          if (o) onAdd(o);
-        }}
-      />
-    );
-  }
-  return (
-    <div className="stFAddKey">
-      <input
-        className="stFInput small"
-        type="text"
-        spellCheck={false}
-        value={text}
-        disabled={disabled}
-        placeholder={`New ${label} name`}
-        aria-label={`New ${label} name`}
-        onChange={(event) => {
-          setText(event.target.value);
-          setError('');
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            commit(text);
-          }
-        }}
-      />
-      <button type="button" className="stAddBtn" disabled={disabled || !text.trim()} onClick={() => commit(text)}>
-        <Icon name="plus" size={14} /> Add
-      </button>
-      {error && <small className="stFErr">{error}</small>}
-    </div>
-  );
-}
-
-// A key that is renamed when you leave the box, so typing doesn't re-key the object on every letter.
-function KeyInput({ value, taken, pattern, onRename, disabled }) {
-  const [text, setText] = useState(value);
-  const [error, setError] = useState('');
-  useEffect(() => setText(value), [value]);
-  const commit = () => {
-    const key = text.trim();
-    if (key === value) {
-      setError('');
-      return;
-    }
-    if (!key) {
-      setText(value);
-      return;
-    }
-    if (taken.includes(key)) {
-      setError(`“${key}” already exists.`);
-      return;
-    }
-    if (pattern && !new RegExp(pattern).test(key)) {
-      setError(`Use the form ${pattern}`);
-      return;
-    }
-    setError('');
-    onRename(key);
-  };
-  return (
-    <div className="stFKeyBox">
-      <input
-        className="stFInput mono"
-        type="text"
-        spellCheck={false}
-        value={text}
-        disabled={disabled}
-        aria-label={value ? `Name of “${value}”` : 'Name'}
-        aria-invalid={!!error || undefined}
-        onChange={(event) => setText(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            event.target.blur();
-          }
-        }}
-      />
-      {error && <small className="stFErr">{error}</small>}
-    </div>
-  );
-}
 
 function MapBody({ shape, value, path, onChange, disabled }) {
   const { engine, refOptions, markDelete, requestDelete, renameDirect } = useForm();

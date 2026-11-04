@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Fold from '../ui/Fold.jsx';
-import SmartSelect from './SmartSelect.jsx';
 import { api } from '../api/client.ts';
 import { assignBot, dismissBot, refreshBots, restoreBot, undoDismissed, useBots, useWorkspaces } from './agents.js';
 import { queueChange } from './pendingChange.js';
+import { withIntegrations } from './workspaceIntegrations.js';
 import AssistantPanel from './AssistantPanel.jsx';
-import Select from '../ui/Select.tsx';
 import './preview/preview.css';
 import { rememberNotes } from './assistantNotes.js';
 import { MIN_DESCRIPTION, generateDraft } from '../demo/draftAssistant.js';
@@ -17,21 +16,25 @@ import { botIdProblem, formatWhen, freeBotId } from './format.js';
 import { applyTemplate, deleteTemplate, loadTemplates, parseTemplateFile, saveTemplate } from './savedTemplates.js';
 import { PAGE_SIZE, SORTS, STATUSES, collectFacets, filterBots, paginate } from './agentList.js';
 import { OWN_ORDER, arrange, moveInOrder, useAgentOrder } from './agentOrder.js';
-import { SortableItem, SortableList } from '../ui/Sortable.jsx';
 import { usePref } from './usePref.js';
 import { knownMeta, useAgentHealth } from './health/useAgentHealth.js';
 import { useAgentActivity } from './health/useAgentActivity.js';
 import { useAlertsByAgent } from './insights/AlertBell.jsx';
-import { BotRow } from './AgentTable.jsx';
-import AgentCards from './AgentCards.jsx';
+import { AgentTableView, AgentTilesView } from './AgentList.jsx';
+import Menu from './manage/Menu.tsx';
+import { useMonitoring } from './monitoring/useMonitoring.ts';
+import { analyse } from './monitoring/monitorModel.js';
+import AgentBulkBar from './AgentBulkBar.jsx';
 import { useManage } from './manage/useManage.jsx';
 import { navigate, replaceRoute, routeHref } from './route.js';
 import { startSetup } from './setup/setupProgress.js';
+import { fadeIn } from '../ui/motion.ts';
 import { withMainLanguage } from './setup/setupModel.js';
 import { ErrorState, Modal, Notice } from './ui.jsx';
 import Icon from '../ui/Icon.jsx';
 import { SkeletonRows } from '../ui/Skeleton.jsx';
 import { askConfirm } from '../ui/dialogs.js';
+import Button from '../ui/Button.tsx';
 
 // a picture for each starting point in the create dialog
 const STARTER_ICONS = { support: 'agent', receptionist: 'home', knowledge: 'records', lead: 'team', appointment: 'flag', feedback: 'quote', blank: 'plus' };
@@ -98,7 +101,8 @@ function CreateBotDialog({ existingIds, onClose }) {
       // Every new agent starts with the browser's language as its main language, whichever setup step opens first.
       // A template or description that names a language keeps its own.
       const languages = typeof navigator === 'undefined' ? [] : navigator.languages || [navigator.language];
-      const withLanguage = (config) => withMainLanguage(config, languages);
+      // ...and with every integration connected on the Integrations page, as every agent in the workspace has
+      const withLanguage = (config) => withIntegrations(withMainLanguage(config, languages));
       if (described) {
         // Built on the real new draft (so its id and version are right), with the review's edits applied.
         const made = generateDraft(description, draft.config, { name: name.trim(), company });
@@ -118,7 +122,7 @@ function CreateBotDialog({ existingIds, onClose }) {
           try {
             await api.saveDraft(effectiveId, withLanguage(applyTemplate(draft.config, template)), draft.revision);
           } catch {
-            queueChange(effectiveId, { kind: 'assistant', config: applyTemplate(draft.config, template) });
+            queueChange(effectiveId, { kind: 'template', config: withLanguage(applyTemplate(draft.config, template)) });
           }
         }
       } else if (starter !== 'blank') {
@@ -130,8 +134,13 @@ function CreateBotDialog({ existingIds, onClose }) {
           queueChange(effectiveId, { kind: 'starter', starter });
         }
       } else {
-        // blank: only the language, which the setup would otherwise ask for first
-        await api.saveDraft(effectiveId, withLanguage(draft.config), draft.revision).catch(() => {});
+        // blank: only the language, which the setup would otherwise ask for first; queued, unsaved, if saving fails
+        const config = withLanguage(draft.config);
+        try {
+          await api.saveDraft(effectiveId, config, draft.revision);
+        } catch {
+          queueChange(effectiveId, { kind: 'blank', config });
+        }
       }
       refreshBots();
       onClose();
@@ -358,21 +367,21 @@ function RemovedRow({ bot }) {
       {asking ? (
         <span className="stRemovedAsk" role="group" aria-label={`Delete ${label} from this list?`}>
           <span className="stMuted">Delete from this list? It stays on the server.</span>
-          <button type="button" className="quietButton danger" onClick={() => dismissBot(bot.id)}>
+          <Button type="button" className="danger" onClick={() => dismissBot(bot.id)}>
             Delete
-          </button>
-          <button type="button" className="quietButton" onClick={() => setAsking(false)}>
+          </Button>
+          <Button type="button" onClick={() => setAsking(false)}>
             Cancel
-          </button>
+          </Button>
         </span>
       ) : (
         <span className="stRemovedActions">
-          <button type="button" className="quietButton" onClick={() => restoreBot(bot.id)}>
+          <Button type="button" onClick={() => restoreBot(bot.id)}>
             Restore
-          </button>
-          <button type="button" className="quietButton danger" aria-label={`Delete ${label} from this list`} onClick={() => setAsking(true)}>
+          </Button>
+          <Button type="button" className="danger" aria-label={`Delete ${label} from this list`} onClick={() => setAsking(true)}>
             Delete
-          </button>
+          </Button>
         </span>
       )}
     </li>
@@ -390,10 +399,20 @@ export default function AgentsPage({ route }) {
   const [owner, setOwner] = useState('');
   const [status, setStatus] = useState('all');
   // cards or table, kept in this browser
-  const [savedView, setView] = usePref('weave_agents_view', 'cards');
-  const view = savedView === 'table' ? 'table' : 'cards';
+  // a new name for the canvas design's list: it opens on the table, whatever the old list was last left on
+  const [savedView, setView] = usePref('weave_agents_layout', 'table');
+  const view = savedView === 'cards' ? 'cards' : 'table';
   const [page, setPage] = useState(1);
   const wantsNew = route.params?.new === '1';
+  // the list fades in when what it shows changes by a choice (cards or table, a filter, the sort, a page); not while
+  // typing a search, where it would flicker on every key
+  const shownKey = `${view}|${tag}|${owner}|${status}|${sort}|${page}`;
+  const lastShown = useRef(shownKey);
+  useEffect(() => {
+    if (lastShown.current === shownKey) return;
+    lastShown.current = shownKey;
+    fadeIn(document.querySelector('.agentTable'));
+  }, [shownKey]);
   const [creating, setCreating] = useState(wantsNew);
   // #/bots?new=1 (the "Create agent" buttons elsewhere in the app) opens the dialog.
   useEffect(() => {
@@ -422,13 +441,7 @@ export default function AgentsPage({ route }) {
     const next = to && moveInOrder(inOwnOrder, pinned, id, to);
     if (next) setOrder(next);
   };
-  // a drop makes the list as shown the person's own order, with that one move made
-  const dropOnto = (id, to) => {
-    const next = moveInOrder(ownOrder ? inOwnOrder : arrange(list, { sort, pinned, order }), pinned, id, to);
-    if (!next) return;
-    setOrder(next);
-    if (!ownOrder) setSort(OWN_ORDER);
-  };
+
   // the agent just above (-1) or below (1), only within the same group (pinned or not)
   const neighbour = (id, step) => {
     const other = visible[visible.findIndex((bot) => bot.id === id) + step];
@@ -453,33 +466,79 @@ export default function AgentsPage({ route }) {
   useEffect(() => {
     setPage(1);
   }, [filter, tag, owner, status, sort]);
-  const counts = useMemo(
-    () => ({
-      total: list.length,
-      published: list.filter((bot) => bot.latest_version).length,
-      production: list.filter((bot) => bot.deployed?.production).length,
-      draftOnly: list.filter((bot) => !bot.latest_version).length,
-    }),
-    [list],
-  );
+  // agents picked for an action on several at once (the table's boxes); one that leaves the list leaves the pick
+  const [picked, setPicked] = useState(() => new Set());
+  const togglePick = (id) =>
+    setPicked((now) => {
+      const next = new Set(now);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const pickAll = (ids, on) =>
+    setPicked((now) => {
+      const next = new Set(now);
+      ids.forEach((id) => (on ? next.add(id) : next.delete(id)));
+      return next;
+    });
+  const clearPicks = () => setPicked(new Set());
+  // what the last action on picked agents did, said in a line that stays (a screen reader hears it as it changes)
+  const [bulkNote, setBulkNote] = useState('');
+  const bulkDone = (words) => {
+    setBulkNote(words);
+    clearPicks();
+  };
+  useEffect(() => {
+    setPicked((now) => {
+      const kept = [...now].filter((id) => list.some((bot) => bot.id === id));
+      return kept.length === now.size ? now : new Set(kept);
+    });
+  }, [list]);
+  const names = useMemo(() => Object.fromEntries(list.map((bot) => [bot.id, bot.name || bot.id])), [list]);
   // the count beside each status filter (needs attention: of the agents checked so far)
   const statusCounts = useMemo(
     () => Object.fromEntries(Object.keys(STATUSES).map((key) => [key, filterBots(list, { status: key }, known).matched.length])),
     [list, known],
   );
 
-  const row = (bot, movable) => (
-    <BotRow
-      bot={bot}
-      menuItems={rowMenu}
-      health={known[bot.id]?.health}
-      tags={known[bot.id]?.tags}
-      activity={activity.byBot[bot.id]}
-      alerts={alertsByAgent[bot.id]}
-      pinned={pinned.includes(bot.id)}
-      onPin={togglePin}
-      movable={movable}
+  // each agent's answer time, as Home and Speed measure it (the same read as Home's, so the numbers agree)
+  const monitored = useMemo(() => list.map((bot) => ({ id: bot.id, name: bot.name || bot.id, deployed: bot.deployed || {} })), [list]);
+  const watched = useMonitoring({ bots: monitored, days: 7 });
+  const answers = useMemo(() => {
+    const report = analyse({ calls: watched.calls, samples: watched.samples, bots: monitored, nowMs: watched.nowMs, days: 7 });
+    return Object.fromEntries(report.perAgent.filter((a) => a.waitP50 !== null).map((a) => [a.bot, a.waitP50]));
+  }, [watched.calls, watched.samples, watched.nowMs, monitored]);
+  const facetMenu = (label, value, values, set, anyWords) => (
+    <Menu
+      text={value ? `${label}: ${value}` : `+ ${label}`}
+      label={`Filter by ${label.toLowerCase()}`}
+      className={value ? 'cvBtn' : 'cvBtn dashed'}
+      items={[
+        { label: anyWords, onClick: () => set('') },
+        { divider: true },
+        ...values.map((v) => ({ label: `${v.value} (${v.count})`, onClick: () => set(v.value) })),
+      ]}
     />
+  );
+  const emptyWords = filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.';
+  const pager = (
+    <nav className="cvFoot" aria-label="Pages of agents">
+      <span role="status">
+        Showing{' '}
+        <b>
+          {paged.from}–{paged.to}
+        </b>{' '}
+        of {paged.total} {paged.total === 1 ? 'agent' : 'agents'}
+      </span>
+      <span className="cvActions">
+        <button type="button" className="cvBtn small" disabled={paged.page <= 1} onClick={() => setPage(paged.page - 1)}>
+          Previous
+        </button>
+        <button type="button" className="cvBtn small" disabled={paged.page >= paged.pages} onClick={() => setPage(paged.page + 1)}>
+          Next
+        </button>
+      </span>
+    </nav>
   );
 
   // Replace #/bots?new=1 rather than push, so Back goes to the previous page, not into the dialog again.
@@ -491,14 +550,24 @@ export default function AgentsPage({ route }) {
 
   return (
     <>
-      <section className="welcomeBlock pageHeaderBlock">
+      <section className="cvHead">
         <div>
-          <h1>Agents</h1>
-          <p>{list.length ? 'Open an agent to edit its draft, publish versions, deploy them and try them out.' : 'Agents you create appear here.'}</p>
+          <h1>Agents {list.length > 0 && <span className="cvCount">{list.length}</span>}</h1>
+          <p>
+            {!list.length
+              ? 'Agents you create appear here.'
+              : statusCounts.attention
+                ? `Build, test and put your agents live. ${statusCounts.attention} ${statusCounts.attention === 1 ? 'needs' : 'need'} attention.`
+                : 'Build, test and put your agents live.'}
+          </p>
         </div>
-        <div className="pageHeaderActions">
-          <button className="primaryCta createButton" type="button" onClick={() => setCreating(true)}>
-            <Icon name="plus" size={14} /> Create agent
+        <div className="cvActions">
+          {/* a file of an agent or a template comes in through the same dialog ("Import a file…") */}
+          <button type="button" className="cvBtn" onClick={() => setCreating(true)}>
+            Import
+          </button>
+          <button type="button" className="cvBtn primary" onClick={() => setCreating(true)}>
+            <Icon name="plus" size={14} /> New agent
           </button>
         </div>
       </section>
@@ -522,97 +591,50 @@ export default function AgentsPage({ route }) {
               : 'Create one to get a valid starting draft. You can edit everything afterwards.'}
           </p>
           {/* quiet: the page's "Create agent" above is its one strong button, and does the same */}
-          <button className="quietButton compactCta" type="button" onClick={() => setCreating(true)}>
+          <Button size="compact" type="button" onClick={() => setCreating(true)}>
             Create {removed.length ? 'an' : 'your first'} agent
-          </button>
+          </Button>
         </section>
       )}
 
       {list.length > 0 && (
         <>
-          <section className="stAgentSummary" aria-label="Agents at a glance">
-            <div>
-              <span>Agents</span>
-              <strong>{counts.total}</strong>
-            </div>
-            <div>
-              <span>Published</span>
-              <strong>{counts.published}</strong>
-            </div>
-            <div>
-              <span>Live in production</span>
-              <strong>{counts.production}</strong>
-            </div>
-            <div>
-              <span>Not published yet</span>
-              <strong>{counts.draftOnly}</strong>
-            </div>
-          </section>
           {list.length > 1 && (
-            <div className="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
-              <div className="segmented" role="group" aria-label="Show agents">
-                {Object.entries(STATUSES).map(([key, label]) => (
-                  <button key={key} type="button" aria-pressed={status === key} onClick={() => setStatus(key)}>
-                    {label} <span className="tw-ml-1 tw-text-muted">{statusCounts[key]}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="segmented" role="group" aria-label="View">
-                <button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>
-                  <Icon name="list" size={14} /> Cards
+            <div className="cvTabs" role="group" aria-label="Show agents">
+              {Object.entries(STATUSES).map(([key, label]) => (
+                <button key={key} type="button" aria-pressed={status === key} onClick={() => setStatus(key)}>
+                  {label} <span className="cvTabCount">{statusCounts[key]}</span>
                 </button>
-                <button type="button" aria-pressed={view === 'table'} onClick={() => setView('table')}>
-                  <Icon name="table" size={14} /> Table
-                </button>
-              </div>
+              ))}
             </div>
           )}
           {list.length > 1 && (
-            <div className="stListTools">
-              <label className="inlineSearch">
-                <Icon name="search" size={15} />
-                <input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search by name or id" aria-label="Search agents" />
+            <div className="cvTools">
+              <label className="cvFilter">
+                <Icon name="search" size={14} />
+                <input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter by name or id" aria-label="Search agents" />
               </label>
-              <label className="stSort">
-                <span>Sort by</span>
-                <Select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort agents">
-                  {Object.entries(SORTS).map(([key, item]) => (
-                    <option key={key} value={key}>
-                      {item.label}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              {facets.tags.length > 0 && (
-                <label className="stSort">
-                  <span>Tag</span>
-                  <SmartSelect
-                    className=""
-                    value={tag}
-                    ariaLabel="Filter by tag"
-                    placeholder="Any"
-                    options={[{ value: '', label: 'Any' }, ...facets.tags.map((t) => ({ value: t.value, label: `${t.value} (${t.count})` }))]}
-                    onChange={setTag}
-                  />
-                </label>
-              )}
-              {facets.owners.length > 0 && (
-                <label className="stSort">
-                  <span>Owner</span>
-                  <SmartSelect
-                    className=""
-                    value={owner}
-                    ariaLabel="Filter by owner"
-                    placeholder="Anyone"
-                    options={[{ value: '', label: 'Anyone' }, ...facets.owners.map((o) => ({ value: o.value, label: `${o.value} (${o.count})` }))]}
-                    onChange={setOwner}
-                  />
-                </label>
-              )}
+              {facets.tags.length > 0 && facetMenu('Tag', tag, facets.tags, setTag, 'Any tag')}
+              {facets.owners.length > 0 && facetMenu('Owner', owner, facets.owners, setOwner, 'Anyone')}
+              <span className="cvGap" />
+              <Menu
+                text={`Sort: ${SORTS[sort].label}`}
+                label="Sort agents"
+                className="cvBtn"
+                items={Object.entries(SORTS).map(([key, item]) => ({ label: item.label, onClick: () => setSort(key) }))}
+              />
+              <span className="cvSeg" role="group" aria-label="Layout">
+                <button type="button" aria-pressed={view === 'table'} aria-label="Table" onClick={() => setView('table')}>
+                  <Icon name="list" size={14} />
+                </button>
+                <button type="button" aria-pressed={view === 'cards'} aria-label="Cards" onClick={() => setView('cards')}>
+                  <Icon name="grid" size={14} />
+                </button>
+              </span>
             </div>
           )}
           {(unknown > 0 || (!everything && !wantAll && unread > 0) || health.pending > 0) && (
-            <p className="stMuted stListNote" role="status">
+            <p className="cvBulkNote" role="status">
               {unknown > 0 && (
                 <>
                   {unknown} agent{unknown === 1 ? ' hasn’t' : 's haven’t'} been checked yet, so the tag, owner and attention filters don’t cover{' '}
@@ -631,55 +653,41 @@ export default function AgentsPage({ route }) {
               {health.pending > 0 && <>Checking… {health.pending} left.</>}
             </p>
           )}
-          {view === 'cards' && (
+          {view === 'table' && picked.size > 0 && <AgentBulkBar ids={[...picked]} names={names} onDone={bulkDone} onClear={clearPicks} />}
+          <p className={bulkNote ? 'cvBulkNote' : 'srOnly'} role="status">
+            {bulkNote}
+          </p>
+          {visible.length === 0 ? (
+            <p className="cvEmpty">{emptyWords}</p>
+          ) : view === 'table' ? (
+            <AgentTableView
+              bots={visible}
+              known={known}
+              activity={activity.byBot}
+              answers={answers}
+              alerts={alertsByAgent}
+              picked={picked}
+              onPick={togglePick}
+              onPickAll={pickAll}
+              menuItems={rowMenu}
+              pinned={pinned}
+              onPin={togglePin}
+              footer={pager}
+            />
+          ) : (
             <>
-              <AgentCards bots={visible} known={known} pinned={pinned} onPin={togglePin} menuItems={rowMenu} onMove={dropOnto} />
-              {visible.length === 0 && (
-                <div className="agentRowEmpty">{filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.'}</div>
-              )}
+              <AgentTilesView
+                bots={visible}
+                known={known}
+                activity={activity.byBot}
+                answers={answers}
+                alerts={alertsByAgent}
+                menuItems={rowMenu}
+                pinned={pinned}
+                onPin={togglePin}
+              />
+              {paged.pages > 1 && pager}
             </>
-          )}
-          {view === 'table' && (
-            <div className="agentRowList agentTable">
-              <div className="stAgentHead" aria-hidden="true">
-                <span>Agent</span>
-                <span>Where it runs</span>
-                <span>Calls · 7 days</span>
-                <span>Latest version</span>
-              </div>
-              {ownOrder ? (
-                <SortableList
-                  ids={visible.map((bot) => bot.id)}
-                  nameOf={(id) => visible.find((bot) => bot.id === id)?.name || id}
-                  label="the agents"
-                  onMove={(from, to) => move(visible[from].id, visible[to].id)}
-                >
-                  {visible.map((bot) => (
-                    <SortableItem key={bot.id} id={bot.id}>
-                      {row(bot, true)}
-                    </SortableItem>
-                  ))}
-                </SortableList>
-              ) : (
-                visible.map((bot) => <React.Fragment key={bot.id}>{row(bot, false)}</React.Fragment>)
-              )}
-              {visible.length === 0 && (
-                <div className="agentRowEmpty">{filter.trim() ? `No agents match “${filter.trim()}”.` : 'No agents match these filters.'}</div>
-              )}
-            </div>
-          )}
-          {paged.pages > 1 && (
-            <nav className="stPager" aria-label="Pages of agents">
-              <button type="button" className="quietButton" disabled={paged.page <= 1} onClick={() => setPage(paged.page - 1)}>
-                Previous
-              </button>
-              <span role="status">
-                {paged.from}–{paged.to} of {paged.total}
-              </span>
-              <button type="button" className="quietButton" disabled={paged.page >= paged.pages} onClick={() => setPage(paged.page + 1)}>
-                Next
-              </button>
-            </nav>
           )}
         </>
       )}

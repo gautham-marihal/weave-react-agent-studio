@@ -174,10 +174,11 @@ test('after the call: hiding sensitive details is on once it is set and not swit
   assert.ok(ASKED_ABOVE.some((p) => p.join('.') === 'post_call.recording'));
 });
 
-test('each input in one place: phone transfers are on Tools, beside the hand-over that uses them', () => {
-  assert.ok(PAGE_SECTIONS.tools.includes('telephony'));
+test('each input in one place: phone transfers are on Connections, with the other places it sends people and data', () => {
+  assert.ok(PAGE_SECTIONS.connections.includes('telephony'));
+  assert.ok(!PAGE_SECTIONS.tools.includes('telephony'));
   assert.ok(!PAGE_SECTIONS.channels.includes('telephony'));
-  assert.equal(locate(['telephony', 'transfers', 0, 'target']).page, 'tools');
+  assert.equal(locate(['telephony', 'transfers', 0, 'target']).page, 'connections');
 });
 
 test('a check on what is said, in words: what it does when it finds something, and how it is enforced', () => {

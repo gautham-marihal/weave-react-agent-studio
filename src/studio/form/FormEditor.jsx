@@ -22,6 +22,7 @@ import './form.css';
 import './formLook.css';
 import Icon from '../../ui/Icon.jsx';
 import { hiddenParts } from './hiddenParts.js';
+import Button from '../../ui/Button.tsx';
 
 // Sections whose content depends on something not built yet, said
 // where the author is working (the API's "what is not there yet").
@@ -52,6 +53,8 @@ function ItemGone({ word, onGone }) {
 //   itemPath: one item of a list (['tools', 2]) without the screens around it, for the panel of a list page
 //   itemWord: names the item ("tool") for its Delete button; onItemGone: called once it has been deleted
 //   fold: { label, open } folds the item's settings under that label; its Delete button stays outside the fold
+//   subtree: itemPath is a group of settings, not a list item (a Detailed part's Advanced): no Delete button, and an
+//     unset group is shown empty, ready to fill
 export default function FormEditor({
   editor,
   focusRequest,
@@ -66,6 +69,7 @@ export default function FormEditor({
   itemWord = 'item',
   onItemGone,
   fold = null,
+  subtree = false,
 }) {
   const { schema, error, loading, reload } = useSchema();
   const config = editor.parsed.value;
@@ -390,9 +394,9 @@ export default function FormEditor({
         kind="warn"
         title="The JSON has a syntax error"
         actions={
-          <button type="button" className="quietButton" onClick={onShowJson}>
+          <Button type="button" onClick={onShowJson}>
             Open the JSON view
-          </button>
+          </Button>
         }
       >
         The form can’t show a config that isn’t valid JSON. Fix it in the JSON view and the form comes back.
@@ -539,9 +543,9 @@ export default function FormEditor({
 
         {itemMode &&
           (() => {
-            const itemSchema = schemaAtPath(engine, schema, itemPath);
+            const itemSchema = schemaAtPath(engine, schema, itemPath, config);
             const value = getAtPath(config, itemPath);
-            const gone = value === undefined || !itemSchema;
+            const gone = !itemSchema || (value === undefined && !subtree);
             const remove = () => {
               const proceed = () => {
                 editor.setValue(removeAtPath(configRef.current, itemPath));
@@ -587,7 +591,7 @@ export default function FormEditor({
                     })()
                   )}
                 </OwnerCtx.Provider>
-                {!gone && (
+                {!gone && !subtree && (
                   <div className="stFItemFoot">
                     <button type="button" className="dangerButton" onClick={remove}>
                       Delete this {itemWord}
@@ -666,9 +670,9 @@ export default function FormEditor({
             ) : (
               <div className="stFNotSet">
                 <p>This isn’t part of the agent yet.</p>
-                <button type="button" className="primaryCta compactCta" onClick={() => commit(section, engine.defaultFor(sectionSchema))}>
+                <Button type="button" variant="primary" size="compact" onClick={() => commit(section, engine.defaultFor(sectionSchema))}>
                   <Icon name="plus" size={14} /> Add {(part ? humanize(section) : view?.label || humanize(section)).toLowerCase()}
-                </button>
+                </Button>
               </div>
             )}
           </div>

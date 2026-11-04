@@ -36,7 +36,7 @@ function withOverride(agent, path, value) {
 // ---- the AI model: "provider|model", '' for the default. The runtime merges it over the default (own settings such
 // as a temperature are kept). A new provider brings its key and drops the old key, endpoint and options (as on Models).
 const modelLabel = (stage, provider, model) => MODEL_OPTIONS[stage]?.[provider]?.find((m) => m.id === model)?.label || model;
-export const providerName = (provider) => PROVIDER_LABELS[provider] || provider;
+const providerName = (provider) => PROVIDER_LABELS[provider] || provider;
 const PROVIDER_KEYS = ['provider', 'api_key', 'base_url', 'options'];
 const without = (slot, keys) => {
   const next = { ...slot };

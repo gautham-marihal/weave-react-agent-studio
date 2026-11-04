@@ -167,6 +167,12 @@ export function undoDismissed(ids) {
 export const visibleCount = (workspaceId = state.current) =>
   (state.bots || []).filter((bot) => !state.hidden.includes(bot.id) && inScope(bot, workspaceId)).length;
 
+// The ids of the agents the open workspace shows, once the list has loaded (it is fetched first when it hasn't).
+export async function workspaceBotIds() {
+  if (!state.bots) await refreshBots();
+  return (state.bots || []).filter((bot) => !state.hidden.includes(bot.id) && inScope(bot, state.current)).map((bot) => bot.id);
+}
+
 // The agents of the open workspace. `all` is every agent the API has, whichever workspace it is in.
 export function useBots() {
   const s = useSyncExternalStore(subscribe, snapshot, snapshot);

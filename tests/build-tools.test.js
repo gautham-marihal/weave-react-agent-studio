@@ -2,7 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { minimalConfig } from '../src/demo/minimalConfig.js';
 import { applyStarter } from '../src/studio/starters.ts';
-import { actionsOf, numberProblem, setDetails, setEndCall, setHandOver, setLookup, switchOf } from '../src/studio/setup/setupModel.js';
+import {
+  actionsOf,
+  addHandOverCase,
+  handOverCases,
+  numberProblem,
+  removeHandOverCase,
+  setDetails,
+  setEndCall,
+  setHandOver,
+  setHandOverCase,
+  setLookup,
+  switchOf,
+} from '../src/studio/setup/setupModel.js';
 import { setMoment } from '../src/studio/agent/blocks/guardrailModel.js';
 import { unusedTools } from '../src/studio/form/toolInfo.js';
 
@@ -87,6 +99,38 @@ test('the hand-over number: a missing transfer is made again, and a number chose
   const after = setHandOver(chosen, true, { number: '+1' });
   assert.deepEqual(after.telephony.transfers[0].target, { from_state: 'team_number' });
   assert.equal(actionsOf(after).hand_over.numberElsewhere, true);
+});
+
+test('hand-over cases: each case is its own tool and transfer, with its own number; the first is the switch’s own', () => {
+  const config = support();
+  assert.equal(handOverCases(config).length, 1);
+  assert.equal(handOverCases(setHandOver(config, false)).length, 0, 'none while the switch is off');
+  const { config: two, id } = addHandOverCase(config, { when: 'The caller reports a lost or stolen card', number: '+6563187777' });
+  const cases = handOverCases(two);
+  assert.equal(cases.length, 2);
+  assert.deepEqual([cases[1].id, cases[1].when, cases[1].number], [id, 'The caller reports a lost or stolen card', '+6563187777']);
+  assert.ok(entryTools(two).includes(id), 'the answering agent offers it');
+  const tool = two.tools.find((t) => t.id === id);
+  assert.equal(tool.builtin, 'transfer_or_callback');
+  assert.notEqual(tool.params.transfer, config.tools.find((t) => t.id === cases[0].id).params.transfer, 'its own transfer');
+  assert.ok(tool.params.fallback.length, 'it falls back to the call back line like the first');
+  // changing one case leaves the other as it is
+  const changed = setHandOverCase(two, id, { number: '+6561112222', when: 'Lost card' });
+  assert.deepEqual(
+    handOverCases(changed).map((c) => c.number),
+    [cases[0].number, '+6561112222'],
+  );
+  assert.equal(handOverCases(changed)[1].when, 'Lost card');
+  // removing it takes its tool and transfer away; the last case stays (the switch turns it off)
+  const removed = removeHandOverCase(changed, id);
+  assert.equal(handOverCases(removed).length, 1);
+  assert.ok(!ids(removed).includes(id));
+  assert.ok(!removed.telephony.transfers.some((t) => t.id === tool.params.transfer));
+  assert.equal(removeHandOverCase(removed, handOverCases(removed)[0].id), removed, 'the last case is not removed here');
+  // adding a case with the switch off switches it on
+  const fresh = addHandOverCase(setHandOver(config, false), { when: 'Trade enquiries' }).config;
+  assert.equal(actionsOf(fresh).hand_over.on, true);
+  assert.equal(handOverCases(fresh).length, 2);
 });
 
 test('the lookup form: saving it unchanged changes nothing, and a new address keeps the connection’s sign-in', () => {

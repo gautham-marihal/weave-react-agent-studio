@@ -26,13 +26,16 @@ export const BotSummary = z.looseObject({
   // an agent without a name is shown by its id
   name: z.optional(z.nullable(text)),
   draft_revision: z.nullable(z.number()),
-  draft_saved_at: z.nullable(when),
+  // not in the API guide's list of what a summary holds: read when sent, never required
+  draft_saved_at: z.optional(z.nullable(when)),
   latest_version: z.nullable(text),
   deployed: z.record(text, text),
 });
 export const BotList = z.array(BotSummary);
 
-export const Draft = z.looseObject({ bot_id: text, revision: z.number(), saved_at: when, saved_by: text, config });
+// The guide's draft is { revision, saved_at, saved_by, config }: `bot_id` is read when sent, and `saved_by` may be empty
+// when a save named no one (the X-User header is optional).
+export const Draft = z.looseObject({ bot_id: z.optional(text), revision: z.number(), saved_at: when, saved_by: z.optional(z.nullable(text)), config });
 export const SavedDraft = z.looseObject({ draft: Draft, validation: ValidationReport });
 
 export const VersionSummary = z.looseObject({ version: text, published_at: when, published_by: text, checksum: text });

@@ -154,7 +154,7 @@ export const canKeypad = (types, type) => infoOf(types, type)?.canKeypad ?? true
 export const canForms = (types, type) => infoOf(types, type)?.canForms ?? true;
 
 // ---- settings only a voice channel has, in a channel's `overrides`
-export const VOICE_ONLY = {
+const VOICE_ONLY = {
   conversation: ['sounds', 'speech', 'noise_cancellation', 'ivr_detection'],
   models: ['stt', 'tts', 'realtime', 'vad', 'turn_detector'],
 };
@@ -225,6 +225,21 @@ export function browserChannels(config) {
   return list(config?.channels)
     .filter((c) => isObj(c) && c.id && (c.type === 'web_chat' || c.type === 'web_voice') && c.enabled !== false)
     .map((c) => ({ id: c.id, type: c.type, input: list(c.modalities?.input), output: list(c.modalities?.output) }));
+}
+
+// The browser channels to offer, once the server has said which (`channels` in its answer to POST /sessions, ids or
+// channel objects): the server's list wins, in its order, each with what the config says of it. No list yet: `local`.
+export function offeredChannels(local, offered) {
+  const ids = list(offered)
+    .map((c) => (typeof c === 'string' ? c : isObj(c) ? c.id : ''))
+    .filter(Boolean);
+  if (!ids.length) return local;
+  return ids.map((id) => {
+    const known = list(local).find((c) => c.id === id);
+    if (known) return known;
+    const told = list(offered).find((c) => isObj(c) && c.id === id) || { id };
+    return { id, type: told.type || 'web_chat', input: list(told.input), output: list(told.output) };
+  });
 }
 
 // A setting named the way the form draws it, for sentences (a confirmation lists these).

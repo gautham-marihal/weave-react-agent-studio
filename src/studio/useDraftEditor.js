@@ -18,6 +18,8 @@ export function useDraftEditor(botId) {
   const [savedCanon, setSavedCanon] = useState('');
   const [report, setReport] = useState(null);
   const [validating, setValidating] = useState(false);
+  const [checkError, setCheckError] = useState(null); // why the last check couldn't run (then there is no report)
+  const [checkRound, setCheckRound] = useState(0); // recheck(): the same draft checked again
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [conflict, setConflict] = useState(false);
@@ -28,6 +30,7 @@ export function useDraftEditor(botId) {
   const textRef = useRef('');
   textRef.current = text;
   const lastValue = useRef(undefined); // previous parse, so unchanged parts keep identity (shareStructure)
+  const dirtyRef = useRef(false); // unsaved edits, for reloadQuietly (which must never drop them)
 
   const applyDraft = useCallback((draft) => {
     setText(prettyJson(draft.config));
@@ -51,8 +54,20 @@ export function useDraftEditor(botId) {
     }
   }, [botId, applyDraft]);
 
+  // The draft as the server has it now, without the loading state (pages stay as they are): for after a publish, which
+  // moves the draft on to the next version number. Only when nothing is unsaved; a failed read changes nothing.
+  const reloadQuietly = useCallback(async () => {
+    if (dirtyRef.current) return;
+    try {
+      applyDraft(await api.getDraft(botId));
+    } catch {
+      /* the next save says if the revision is behind */
+    }
+  }, [botId, applyDraft]);
+
   useEffect(() => {
     setReport(null);
+    setCheckError(null);
     load();
   }, [load]);
 
@@ -82,11 +97,15 @@ export function useDraftEditor(botId) {
 
   const isObject = !!parsed.value && typeof parsed.value === 'object' && !Array.isArray(parsed.value);
   const dirty = status === 'ready' && (parsed.error ? true : canon(parsed.value) !== savedCanon);
+  dirtyRef.current = dirty;
 
-  // Validate 500 ms after the last edit.
+  // Validate 500 ms after the last edit. A check that can't run leaves no report rather than the previous one, which
+  // was for other contents: what reads the report (Publish, the problems) then waits, and the pages say why.
   useEffect(() => {
     if (status !== 'ready' || parsed.error || !isObject) {
+      // nothing to check (loading, or the JSON doesn't read): an earlier failure to check no longer applies
       setValidating(false);
+      setCheckError(null);
       return undefined;
     }
     const controller = new AbortController();
@@ -95,10 +114,14 @@ export function useDraftEditor(botId) {
       api.validate(parsed.value, { signal: controller.signal }).then(
         (result) => {
           setReport(result);
+          setCheckError(null);
           setValidating(false);
         },
         (error) => {
-          if (error?.name !== 'AbortError') setValidating(false);
+          if (error?.name === 'AbortError' || controller.signal.aborted) return;
+          setReport(null);
+          setCheckError(error);
+          setValidating(false);
         },
       );
     }, 500);
@@ -106,7 +129,7 @@ export function useDraftEditor(botId) {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [parsed, isObject, status]);
+  }, [parsed, isObject, status, checkRound]);
 
   const save = useCallback(
     async ({ overwrite = false } = {}) => {
@@ -123,7 +146,12 @@ export function useDraftEditor(botId) {
         setSavedName(saved.config?.meta?.name || '');
         // The server may hand back a normalized copy. Show it, unless more was typed while the save was running.
         if (canon(saved.config) !== canon(parsed.value) && textRef.current === textAtStart) setText(prettyJson(saved.config));
-        if (result.validation) setReport(result.validation);
+        // the save's own check is of what was saved: kept only if nothing was typed meanwhile (else the check of the
+        // newer contents, already done or under way, is the one that counts)
+        if (result.validation && textRef.current === textAtStart) {
+          setReport(result.validation);
+          setCheckError(null);
+        }
         setConflict(false);
         setSavedTick((n) => n + 1);
         return saved;
@@ -153,6 +181,8 @@ export function useDraftEditor(botId) {
     savedName,
     report,
     validating,
+    checkError,
+    recheck: () => setCheckRound((n) => n + 1),
     parsed,
     isObject,
     dirty,
@@ -162,6 +192,7 @@ export function useDraftEditor(botId) {
     savedTick,
     save,
     reload: load,
+    reloadQuietly,
     dismissSaveError: () => setSaveError(null),
   };
 }

@@ -1,4 +1,4 @@
-// A change another page asks for on an agent's draft ("use this voice", "add this connection"). Queued, applied when
+// A change another page asks for on an agent's draft ("use this voice", "apply this starter"). Queued, applied when
 // the agent's Config tab opens, and left unsaved so the person reviews it first.
 
 import { applyStarter, starterById } from './starters.ts';
@@ -27,13 +27,6 @@ export function takeChange(botId) {
 }
 
 const TTS_DEFAULT_MODEL = { elevenlabs: 'eleven_multilingual_v2', cartesia: 'sonic-3', openai: 'gpt-4o-mini-tts' };
-const slug = (value) =>
-  String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^[^a-z]+/, '')
-    .replace(/_+$/, '')
-    .slice(0, 60) || 'connection';
 
 // Returns { config, note, where } or null when there is nothing to change.
 export function applyChange(config, change) {
@@ -46,10 +39,16 @@ export function applyChange(config, change) {
       where: ['agents'],
     };
   }
-  if (change.kind === 'assistant' && change.config && typeof change.config === 'object') {
+  // a whole draft made when the agent was created: from a description, from your template, or blank (its language only)
+  const MADE = {
+    assistant: 'The draft made from your description is applied to this agent.',
+    template: 'Your template is applied to this agent.',
+    blank: 'The agent’s main language is set on this draft.',
+  };
+  if (MADE[change.kind] && change.config && typeof change.config === 'object') {
     return {
       config: change.config,
-      note: 'The draft made from your description is applied to this agent. It couldn’t be saved when the agent was created.',
+      note: `${MADE[change.kind]} It couldn’t be saved when the agent was created.`,
       where: ['agents'],
     };
   }
@@ -67,21 +66,6 @@ export function applyChange(config, change) {
       config: { ...config, defaults: { ...(config.defaults || {}), models } },
       note: `Voice “${change.name}” (${change.providerLabel || provider}) is set on this draft.`,
       where: ['defaults', 'models', 'tts'],
-    };
-  }
-  if (change.kind === 'connection') {
-    const connections = { ...(config.connections || {}) };
-    let id = slug(change.name);
-    let n = 2;
-    while (id in connections) {
-      id = `${slug(change.name)}_${n}`;
-      n += 1;
-    }
-    connections[id] = { type: 'http', base_url: change.url, timeout_s: 10 };
-    return {
-      config: { ...config, connections },
-      note: `Connection “${id}” (${change.url}) is added to this draft. Tools and events can now use it.`,
-      where: ['connections', id],
     };
   }
   return null;

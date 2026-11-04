@@ -8,10 +8,10 @@ import { percentile } from '../monitoring/monitorModel.js';
 import { humanize } from '../agent/rowNames.js';
 import { localDay, periodOf } from '../format.js';
 
-export type StageId = 'listen' | 'think' | 'systems' | 'reply' | 'other';
-export type Stage = { id: StageId; label: string; about: string; voice?: boolean };
-export type Stages = Partial<Record<StageId, number>>;
-export type Answer = { ms: number; say: string; stages: Stages };
+type StageId = 'listen' | 'think' | 'systems' | 'reply' | 'other';
+type Stage = { id: StageId; label: string; about: string; voice?: boolean };
+type Stages = Partial<Record<StageId, number>>;
+type Answer = { ms: number; say: string; stages: Stages };
 export type Sample = {
   bot: string;
   id: string;
@@ -161,7 +161,7 @@ export function spreadPick<C extends { started_at?: string | null }>(calls: C[],
   return calls.filter((c) => picked.has(c));
 }
 
-export type Verdict = 'few' | 'good' | 'ok' | 'slow';
+type Verdict = 'few' | 'good' | 'ok' | 'slow';
 
 // How the calls did against the target: good (9 in 10 within it), ok (3 in 4), slow, or few (too few answers to say).
 export function verdictOf(within: number | null, answers: number): Verdict {
@@ -172,8 +172,8 @@ export function verdictOf(within: number | null, answers: number): Verdict {
 }
 
 type FullAnswer = Answer & { bot: string; callId: string; startedAt: string | null; channel: string; voice: boolean };
-export type StageAverages = { answers: number; wait: number | null; avg: Partial<Record<StageId, { ms: number; n: number }>> };
-export type StagesByKind = { voice?: StageAverages; chat?: StageAverages };
+type StageAverages = { answers: number; wait: number | null; avg: Partial<Record<StageId, { ms: number; n: number }>> };
+type StagesByKind = { voice?: StageAverages; chat?: StageAverages };
 
 // The parts of a wait, averaged over the answers that recorded each, for voice calls and chats apart (voice has more).
 function stagesOf(answers: FullAnswer[]): StagesByKind {
@@ -191,7 +191,7 @@ function stagesOf(answers: FullAnswer[]): StagesByKind {
   return out;
 }
 
-export type SystemRow = { kind: 'tool' | 'request'; name: string; label: string; n: number; p50: number; max: number; failed: number; retried: number };
+type SystemRow = { kind: 'tool' | 'request'; name: string; label: string; n: number; p50: number; max: number; failed: number; retried: number };
 
 // The tools and the business's own systems the answers waited on: how often, how long (typically and at worst), how
 // often they failed or had to retry.
@@ -215,7 +215,7 @@ function systemsOf(samples: Sample[]): SystemRow[] {
     .sort((a, b) => b.p50 - a.p50);
 }
 
-export type Advice = {
+type Advice = {
   id: string;
   ms: number;
   title: string;
@@ -304,9 +304,9 @@ const causeOf = (stages: Stages): Stage | null => {
   return id ? STAGES.find((s) => s.id === id) || null : null;
 };
 
-export type DayPoint = { day: string; n: number; p50: number | null; p90: number | null };
-export type SlowAnswer = { ms: number; say: string; bot: string; callId: string; channel: string; voice: boolean; cause: Stage | null };
-export type Summary = {
+type DayPoint = { day: string; n: number; p50: number | null; p90: number | null };
+type SlowAnswer = { ms: number; say: string; bot: string; callId: string; channel: string; voice: boolean; cause: Stage | null };
+type Summary = {
   sampled: number;
   totalCalls: number;
   verdict: Verdict;

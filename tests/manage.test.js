@@ -69,15 +69,9 @@ test('a voice is put on the draft without disturbing anything else', () => {
   assert.equal(applyChange(result.config, { ...change, provider: 'cartesia', providerLabel: 'Cartesia' }).config.defaults.models.tts.model, 'sonic-3');
 });
 
-test('a connection is added under a unique, valid id', () => {
-  const change = { kind: 'connection', name: 'My CRM (Prod)', url: 'https://crm.example.test' };
-  const first = applyChange(starter, change);
-  assert.deepEqual(first.config.connections, { my_crm_prod: { type: 'http', base_url: 'https://crm.example.test', timeout_s: 10 } });
-  const second = applyChange(first.config, change);
-  assert.deepEqual(Object.keys(second.config.connections), ['my_crm_prod', 'my_crm_prod_2']);
-  assert.ok(Object.keys(second.config.connections).every((id) => /^[a-z][a-z0-9_-]{0,63}$/.test(id)));
+test('a change of an unknown kind, or with no draft, changes nothing', () => {
   assert.equal(applyChange(starter, { kind: 'nope' }), null);
-  assert.equal(applyChange(null, change), null);
+  assert.equal(applyChange(null, { kind: 'voice', name: 'Rachel' }), null);
 });
 
 test('a queued change is handed over once, and only to the agent it was for', () => {

@@ -4,6 +4,8 @@ import { toolNamesOf } from '../scenarios/model.js';
 import { addScenario, buildScenario, hasPersonalData, suggestTest, testProblems } from './callToTest.js';
 import Select from '../../ui/Select.tsx';
 import './replay.css';
+import Button from '../../ui/Button.tsx';
+import { Input, TextArea } from '../../ui/Input.tsx';
 
 // "Keep this call as a test": the caller's words (editable), the checks to keep, and what should have happened. The
 // test is added to the draft like any other edit: nothing is saved until the draft is, and it can be undone.
@@ -56,7 +58,7 @@ export default function MakeTestDialog({ facts, config, call, onAdd, onClose, ex
         <div className="rpFields">
           <label>
             <span>Name</span>
-            <input className="stFInput mono" value={id} onChange={(event) => setId(event.target.value)} aria-label="Test name" spellCheck={false} />
+            <Input mono value={id} onChange={(event) => setId(event.target.value)} aria-label="Test name" spellCheck={false} />
           </label>
           <label>
             <span>Channel</span>
@@ -72,7 +74,7 @@ export default function MakeTestDialog({ facts, config, call, onAdd, onClose, ex
         </div>
         <label className="rpWide">
           <span>Why it is kept</span>
-          <input className="stFInput" value={description} onChange={(event) => setDescription(event.target.value)} aria-label="Why it is kept" />
+          <Input value={description} onChange={(event) => setDescription(event.target.value)} aria-label="Why it is kept" />
         </label>
 
         <fieldset className="rpSet">
@@ -81,21 +83,21 @@ export default function MakeTestDialog({ facts, config, call, onAdd, onClose, ex
           {turns.map((text, index) => (
             <div key={index} className="rpTurnEdit">
               <span>{index + 1}</span>
-              <input
-                className="stFInput small"
+              <Input
+                size="small"
                 value={text}
                 aria-label={`Caller turn ${index + 1}`}
                 onChange={(event) => setTurns(turns.map((t, i) => (i === index ? event.target.value : t)))}
               />
-              <button
+              <Button
                 type="button"
-                className="quietButton small"
+                size="small"
                 aria-label={`Remove turn ${index + 1}`}
                 onClick={() => setTurns(turns.filter((_, i) => i !== index))}
                 disabled={turns.length === 1}
               >
                 Remove
-              </button>
+              </Button>
             </div>
           ))}
         </fieldset>
@@ -122,8 +124,7 @@ export default function MakeTestDialog({ facts, config, call, onAdd, onClose, ex
           <span>
             What should have happened? <em>(optional)</em>
           </span>
-          <textarea
-            className="stFInput"
+          <TextArea
             rows={2}
             value={expectedText}
             onChange={(event) => setExpectedText(event.target.value)}

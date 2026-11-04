@@ -7,6 +7,7 @@ import { useTestRun } from '../scenarios/useTestRun.js';
 import { isFinished } from '../scenarios/runResults.js';
 import { expectationLines, suggestions } from './personas.js';
 import './callers.css';
+import Button from '../../ui/Button.tsx';
 
 const DEFAULT_CALLERS = ['caller_direct', 'caller_frustrated', 'caller_wants_person', 'caller_off_topic'];
 const STATE = {
@@ -20,7 +21,9 @@ const STATE = {
 // Simulated callers: scripted people who phone the draft, plus checks made from what the agent has. Run some on the
 // draft (nothing is saved) and keep the good ones as tests. They are scripted, not played by a model, so what they say
 // doesn't follow the agent's answers; the reviewer checks (calm? on topic?) need the live model.
-export default function CallersPanel({ botId, name, editor }) {
+//   onSummary({ passed, attention, total, names }): a run's result, for the Test stage's "Ready to publish?" (a run saves
+//   nothing, so it lasts this visit)
+export default function CallersPanel({ botId, name, editor, onSummary }) {
   const config = editor.parsed.value;
   const ready = editor.status === 'ready' && editor.isObject && !editor.parsed.error;
   const demo = isDemoMode();
@@ -43,6 +46,13 @@ export default function CallersPanel({ botId, name, editor }) {
   const needsJudge = chosen.some((s) => s.needsJudge);
   const busy = running || starting;
   const canRun = ready && chosen.length > 0 && !busy && (demo || paid);
+  const done = !!run && isFinished(run.status);
+  useEffect(() => {
+    if (!done || !onSummary) return;
+    const statusOf = (s) => run.scenarios.find((r) => r.id === s.scenario.id)?.status;
+    const look = queued.filter((s) => statusOf(s) === 'failed' || statusOf(s) === 'error');
+    onSummary({ passed: queued.filter((s) => statusOf(s) === 'passed').length, attention: look.length, total: queued.length, names: look.map((s) => s.name) });
+  }, [done, run, queued, onSummary]);
 
   if (!ready)
     return (
@@ -139,15 +149,15 @@ export default function CallersPanel({ botId, name, editor }) {
                   )}
                 </span>
                 <span className="cpActions">
-                  <button type="button" className="quietButton small" aria-expanded={open === s.key} onClick={() => setOpen(open === s.key ? '' : s.key)}>
+                  <Button type="button" size="small" aria-expanded={open === s.key} onClick={() => setOpen(open === s.key ? '' : s.key)}>
                     {/* what is seen, then whose: "What it says: Frustrated" (open or shut is said by aria-expanded) */}
                     {result ? 'Details' : 'What it says'}
                     <span className="srOnly">: {s.name}</span>
-                  </button>
+                  </Button>
                   {!isKept(s) && (
-                    <button type="button" className="quietButton small" onClick={() => keep([s])}>
+                    <Button type="button" size="small" onClick={() => keep([s])}>
                       Keep as a test<span className="srOnly">: {s.name}</span>
-                    </button>
+                    </Button>
                   )}
                 </span>
                 {open === s.key && (
@@ -196,9 +206,9 @@ export default function CallersPanel({ botId, name, editor }) {
 
       <section className="cpRun" aria-label="Run">
         <div className="cpRunRow">
-          <button type="button" className="primaryCta compactCta" onClick={go} disabled={!canRun}>
+          <Button type="button" variant="primary" size="compact" onClick={go} disabled={!canRun}>
             {starting ? 'Starting…' : running ? 'Running…' : `Try ${chosen.length} on the draft`}
-          </button>
+          </Button>
           <button type="button" className="linkButton" onClick={() => setPicked(new Set(all.map((s) => s.key)))} disabled={busy}>
             Select all
           </button>
@@ -249,9 +259,9 @@ export default function CallersPanel({ botId, name, editor }) {
             {counts.skipped ? `, ${counts.skipped} not run` : ''}. Open Details on a caller to see what it said and why.
           </span>
           {queued.some((s) => resultOf(s)?.status === 'passed' && !isKept(s)) && (
-            <button type="button" className="quietButton" onClick={() => keep(queued.filter((s) => resultOf(s)?.status === 'passed'))}>
+            <Button type="button" onClick={() => keep(queued.filter((s) => resultOf(s)?.status === 'passed'))}>
               Keep the ones that passed as tests
-            </button>
+            </Button>
           )}
         </section>
       )}

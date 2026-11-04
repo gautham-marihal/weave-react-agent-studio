@@ -1,0 +1,15 @@
+{
+  "name": "weave-mock-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mock bank services for the Weave agents: what the bank database doesn't have yet (cheques, cards, payments, appointments, call-backs, cases, one-time passwords, surveys). Test data only.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "sync": "node scripts/sync-customers.mjs",
+    "seed": "node scripts/build-seed.mjs"
+  }
+}

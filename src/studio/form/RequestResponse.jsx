@@ -13,6 +13,7 @@ import TemplateField from './TemplateField.jsx';
 import { TechKey } from './TechName.jsx';
 import Icon from '../../ui/Icon.jsx';
 import ChoiceBox from '../../ui/Select.tsx';
+import { Input, TextArea } from '../../ui/Input.tsx';
 
 // A tool's HTTP call in the form: the request (RequestEditor: connection, method, path, query, headers, body), a path
 // field that offers what can go in it (PathInput), and what is done with the answer (ResponsePanel).
@@ -44,8 +45,9 @@ function KeyValueRows({ value, onChange, scope, disabled, keyLabel, warnCredenti
     <div className="stKV">
       {rows.map((row, index) => (
         <div className="stKVRow" key={index}>
-          <input
-            className="stFInput small mono"
+          <Input
+            size="small"
+            mono
             type="text"
             spellCheck={false}
             value={row.key}
@@ -261,8 +263,8 @@ export function PathInput({ value, onChange, sample, disabled, label, placeholde
   const match = sample !== undefined && check.ok ? describeMatches(sample, value) : null;
   return (
     <div className="stPathBox">
-      <input
-        className="stFInput mono"
+      <Input
+        mono
         type="text"
         spellCheck={false}
         value={value ?? ''}
@@ -409,8 +411,8 @@ export function ResponsePanel({ path: toolPath = [], result, onChange, outOfBand
           Paste an example of what the API sends back. It is only used on this screen to pick fields and check paths. <strong>It is never saved</strong>, but
           don’t paste real customer data anyway.
         </p>
-        <textarea
-          className="stFInput mono"
+        <TextArea
+          mono
           rows={6}
           value={sampleText}
           spellCheck={false}

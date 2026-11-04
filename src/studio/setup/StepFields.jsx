@@ -6,6 +6,7 @@ import { greetingOf, greetingTarget, languageName, readSimple, setAgentName, set
 import { baseOf } from '../form/messages.ts';
 import { starterById } from '../starters.ts';
 import { isStarterRole, linesToTranslate, setTranslation, usesVoice, withMainLanguage } from './setupModel.js';
+import { Input, TextArea } from '../../ui/Input.tsx';
 
 // Who the agent is (name, purpose, first line) and how it sounds (language, voice): the same fields over the same draft
 // in the guided setup and in Build's guided view.
@@ -62,12 +63,12 @@ export function PurposeFields({ config, set }) {
       <label className="suField">
         <FieldTitle label="Its name" explain={EXPLAIN.name} />
         <small>What you and your team see in the list of agents.</small>
-        <input className="stFInput" value={config?.meta?.name || ''} onChange={(event) => set(setAgentName(config, event.target.value))} />
+        <Input value={config?.meta?.name || ''} onChange={(event) => set(setAgentName(config, event.target.value))} />
       </label>
       <label className="suField">
         <FieldTitle label="What it should do" explain={EXPLAIN.role} />
         <small>Who it helps, what it does for them, and anything it must never do. Plain sentences are best.</small>
-        <textarea className="stFInput" rows={8} value={simple.role} onChange={(event) => set(setRole(config, event.target.value))} />
+        <TextArea rows={8} value={simple.role} onChange={(event) => set(setRole(config, event.target.value))} />
         <span className="suFieldFoot">
           <small className={words(simple.role) < 8 ? 'suWarn' : ''}>
             {words(simple.role)} word{words(simple.role) === 1 ? '' : 's'}
@@ -89,8 +90,7 @@ export function PurposeFields({ config, set }) {
       <label className="suField">
         <FieldTitle label="The first thing it says" explain={EXPLAIN.greeting} />
         <small>When someone opens the chat or the call is answered.</small>
-        <input
-          className="stFInput"
+        <Input
           value={greeting.text}
           placeholder="Hello! How can I help you today?"
           onChange={(event) => {
@@ -157,8 +157,7 @@ function FixedLinesIn({ config, set }) {
                 In {languageName(main)}: “{line.text[main]}”
               </small>
             )}
-            <input
-              className="stFInput"
+            <Input
               value={line.text[code] || ''}
               placeholder={`Write it in ${languageName(code)}`}
               onChange={(event) => set(setTranslation(config, line.key, code, event.target.value))}

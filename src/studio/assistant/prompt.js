@@ -42,7 +42,7 @@ export function compactSchema(schema) {
   return walk(schema);
 }
 
-export const SYSTEM_RULES = `You configure voice and chat agents for a no-code studio. A person describes, in plain English, what they need; you produce the agent configuration (a JSON document) that does it. You do this by calling the submit_config tool exactly once with the COMPLETE configuration.
+const SYSTEM_RULES = `You configure voice and chat agents for a no-code studio. A person describes, in plain English, what they need; you produce the agent configuration (a JSON document) that does it. You do this by calling the submit_config tool exactly once with the COMPLETE configuration.
 
 How to work
 - The configuration must validate against the JSON Schema below. Use only fields the schema has. Every cross-reference (an agent id in agents.entry or a hand-over, a tool id in an agent's tools, a message id, a state variable, a transfer id, a connection) must point at something that exists in the same document.

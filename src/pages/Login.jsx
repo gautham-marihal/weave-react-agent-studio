@@ -1,13 +1,90 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import '@fontsource/instrument-serif/400.css';
+import '@fontsource/instrument-serif/400-italic.css';
 import { Logo } from './shared.jsx';
 import { isDemoMode } from '../demo/demoMode.js';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
 import Select from '../ui/Select.tsx';
+import { useRiseInOnce } from '../ui/motion';
+import './auth.css';
 
-// Signing in (Login) and, the first time, saying who you are (ProfileSetup). There is no real sign-in in the studio:
-// who is signed in is kept in this browser (docs/PRODUCTION.md says what goes in front of it for real).
+// Signing in (Login) and, the first time, saying who you are (ProfileSetup). The email and password are checked by the
+// server against credentials.txt (authRoute.js); who is signed in is then kept in this browser.
+// Both wear the public site's look (deep ink or soft paper, a fine grid, a slow aurora, serif headlines), so the step
+// from the site into the studio feels like one place. Their words, fields and buttons are the studio's own.
+
+// The frame both screens share: the top bar, the backdrop, the words on the left and the form on the right.
+//   hint: what the top bar says this screen is   steps: the three steps on the left, `at` the one in hand (or none)
+function AuthShell({ theme, onToggleTheme, onBack, hint, eyebrow, title, lead, steps, at, children }) {
+  const intro = useRef(null);
+  const card = useRef(null);
+  useRiseInOnce(intro, true);
+  useRiseInOnce(card, true);
+  return (
+    <div className={`authScreen ${theme === 'dark' ? 'dark' : 'light'}`}>
+      <div className="authBack" aria-hidden="true">
+        <div className="authGrid" />
+        <div className="authAurora">
+          <i />
+          <i />
+          <i />
+        </div>
+      </div>
+      <header className="authTop">
+        <button type="button" className="authBackBtn" onClick={onBack}>
+          <Icon name="arrowLeft" size={15} /> Back
+        </button>
+        <Logo />
+        <div className="authTools">
+          <span className="authHint">{hint}</span>
+          <DemoSlot />
+          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
+        </div>
+      </header>
+      <main className="authWrap">
+        <section className="authIntro" ref={intro}>
+          <p className="authEyebrow">{eyebrow}</p>
+          <h1>{title}</h1>
+          <p className="authLead">{lead}</p>
+          <ol className="authSteps">
+            {steps.map(([name, line], i) => (
+              <li key={name} className={at === undefined ? '' : i === at ? 'now' : i < at ? 'done' : 'later'}>
+                <span className="authStepMark" aria-hidden="true">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <b>{name}</b>
+                <small>{line}</small>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <div className="authCardWrap" ref={card}>
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// Asks the server whether this email and password may sign in: { ok: true } or { ok: false, error }.
+async function checkSignIn(email, password) {
+  try {
+    const res = await fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) return { ok: true };
+    const body = await res.json().catch(() => ({}));
+    // only a 401 is a "no"; anything else (no sign-in route, a proxy's error page) is the server not checking
+    if (res.status === 401) return { ok: false, error: body.error || 'That email and password don’t match.' };
+    return { ok: false, error: body.error || `Couldn’t check your sign-in (the server answered ${res.status}). Try again in a moment.` };
+  } catch {
+    return { ok: false, error: 'Couldn’t reach the server to check your sign-in. Try again in a moment.' };
+  }
+}
 
 //   newcomer: came to start (a "Create…" button) and never set up here, so greeted as new, not "welcome back"
 export function Login({ theme, onToggleTheme, onLogin, onBack, newcomer = false }) {
@@ -16,6 +93,8 @@ export function Login({ theme, onToggleTheme, onLogin, onBack, newcomer = false 
   const [password, setPassword] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [refused, setRefused] = useState('');
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const emailError = submitted && !emailValid ? (email.trim() ? 'Enter a valid email address, like you@company.com.' : 'Enter your work email.') : '';
   const passwordError = submitted && !password.trim() ? 'Enter your password.' : '';
@@ -23,150 +102,131 @@ export function Login({ theme, onToggleTheme, onLogin, onBack, newcomer = false 
   const demo = isDemoMode();
 
   return (
-    <div className="loginScreen">
-      <div className="loginBackdrop loginBackdropA" />
-      <div className="loginBackdrop loginBackdropB" />
-      <header className="simpleHeader">
-        <button className="backButton" onClick={onBack}>
-          <Icon name="arrowLeft" size={15} /> Back
-        </button>
-        <Logo />
-        <div className="headerTools">
-          <div className="headerHint">AI agent workspace</div>
-          <DemoSlot />
-          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
+    <AuthShell
+      theme={theme}
+      onToggleTheme={onToggleTheme}
+      onBack={onBack}
+      hint="AI agent workspace"
+      eyebrow={newcomer ? 'Get started' : 'Welcome back'}
+      title={
+        newcomer ? (
+          <>
+            Build your first agent <em>in minutes.</em>
+          </>
+        ) : (
+          <>
+            Pick up where you <em>left off.</em>
+          </>
+        )
+      }
+      lead={
+        newcomer
+          ? 'Say what it should do in your own words, try it out, then put it live. No code needed.'
+          : 'Your agents, tests, configurations, and workspace settings stay together in one place.'
+      }
+      steps={[
+        ['Design', 'Shape the agent in plain language.'],
+        ['Test', 'Try the experience before shipping it.'],
+        ['Deploy', 'Keep a clean technical config underneath.'],
+      ]}
+    >
+      <form
+        className="authCard"
+        noValidate
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setSubmitted(true);
+          if (!canLogin || checking) return;
+          setChecking(true);
+          setRefused('');
+          const answer = await checkSignIn(email.trim(), password);
+          setChecking(false);
+          if (answer.ok) onLogin(email.trim(), keep);
+          else setRefused(answer.error);
+        }}
+      >
+        <div className="authCardTop">
+          <span className="authCardLabel">{demo ? 'Demo sign-in' : 'Sign in'}</span>
+          <span className="authLock" aria-hidden="true">
+            <Icon name="shield" size={15} />
+          </span>
         </div>
-      </header>
-      <div className="loginWrap">
-        <div className="loginIntro">
-          {newcomer ? (
-            <>
-              <div className="eyebrow cyan">Get started</div>
-              <h1>Build your first agent in minutes.</h1>
-              <p>Say what it should do in your own words, try it out, then put it live. No code needed.</p>
-            </>
-          ) : (
-            <>
-              <div className="eyebrow cyan">Welcome back</div>
-              <h1>Pick up where you left off.</h1>
-              <p>Your agents, tests, configurations, and workspace settings stay together in one place.</p>
-            </>
-          )}
-          <div className="loginHighlights">
-            <div>
-              <span>01</span>
-              <strong>Design</strong>
-              <small>Shape the agent in plain language.</small>
-            </div>
-            <div>
-              <span>02</span>
-              <strong>Test</strong>
-              <small>Try the experience before shipping it.</small>
-            </div>
-            <div>
-              <span>03</span>
-              <strong>Deploy</strong>
-              <small>Keep a clean technical config underneath.</small>
-            </div>
-          </div>
-        </div>
-
-        <form
-          className="loginCard"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSubmitted(true);
-            if (canLogin) onLogin(email.trim(), keep);
-          }}
-        >
-          <div className="loginCardTop">
-            <span className="cardEyebrow">{demo ? 'Demo sign-in' : 'Sign in'}</span>
-            <span className="lockMark" aria-hidden="true">
-              <Icon name="shield" size={15} />
-            </span>
-          </div>
-          <h2>{newcomer ? 'Get started with Weave' : 'Sign in to Weave'}</h2>
-          <p className="formIntro">
-            {demo
-              ? `Enter any email and password to ${newcomer ? 'start' : 'continue'}.`
-              : newcomer
-                ? 'Use your work email to set up your workspace.'
-                : 'Use your work email to open your workspaces.'}
+        <h2>{newcomer ? 'Get started with Weave' : 'Sign in to Weave'}</h2>
+        <p className="authFormIntro">{newcomer ? 'Use your work email to set up your workspace.' : 'Use your work email to open your workspaces.'}</p>
+        {refused && (
+          <p className="authNotice" role="alert">
+            <Icon name="info" size={15} />
+            <span>{refused}</span>
           </p>
-          {/* sign-in isn't checked by a server yet: said plainly, because it decides who can change the agents */}
-          <p className="demoNotice" role="note">
-            {/* in demo mode the card's own label already says "Demo sign-in" */}
-            {!demo && <b>Sign-in isn’t verified yet</b>}
-            <span>
-              {demo
-                ? 'Nothing is checked, and what you enter stays in this browser. It is not a security measure: anyone who can open this site can edit, publish and deploy the agents behind it.'
-                : 'This copy of Weave doesn’t check passwords yet, so anyone who can open it can edit, publish and deploy its agents. Keep it where only your team can reach it.'}
-            </span>
-          </p>
-          <label className={emailError ? 'hasError' : ''}>
-            <span>Work email</span>
-            <input
-              autoFocus
-              type="email"
-              autoComplete="email"
-              placeholder="you@company.com"
-              value={email}
-              aria-invalid={!!emailError}
-              aria-describedby={emailError ? 'login-email-error' : undefined}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            {emailError && (
-              <em className="fieldError" id="login-email-error">
-                {emailError}
-              </em>
-            )}
-          </label>
-          <label className={passwordError ? 'hasError' : ''}>
-            <span>Password</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              placeholder="Enter your password"
-              value={password}
-              aria-invalid={!!passwordError}
-              aria-describedby={passwordError ? 'login-password-error' : undefined}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {passwordError && (
-              <em className="fieldError" id="login-password-error">
-                {passwordError}
-              </em>
-            )}
-          </label>
-          <div className="loginRow">
-            <label className="checkLabel">
-              <input type="checkbox" checked={keep} onChange={(event) => setKeep(event.target.checked)} /> Keep me signed in
-            </label>
-            <button type="button" aria-expanded={resetOpen} onClick={() => setResetOpen((value) => !value)}>
-              Forgot password?
-            </button>
-          </div>
-          {resetOpen && (
-            <div className="resetPanel" role="region" aria-label="Reset password">
-              <strong>Reset your password</strong>
-              <p>Sign-in is kept on this device for now, so there’s no password to reset. Continue with your work email and your workspaces open as before.</p>
-              <div className="resetActions">
-                <button type="button" className="secondaryCta compactSecondary" disabled={!emailValid} onClick={() => onLogin(email.trim(), keep)}>
-                  {emailValid ? `Continue as ${email.trim()}` : 'Enter your work email above'}
-                </button>
-                <button type="button" className="textLink" onClick={() => setResetOpen(false)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
+        )}
+        <label className={`authField${emailError ? ' hasError' : ''}`}>
+          <span>Work email</span>
+          <input
+            autoFocus
+            type="email"
+            autoComplete="email"
+            placeholder="you@company.com"
+            value={email}
+            aria-invalid={!!emailError}
+            aria-describedby={emailError ? 'login-email-error' : undefined}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setRefused('');
+            }}
+          />
+          {emailError && (
+            <em className="authError" id="login-email-error">
+              {emailError}
+            </em>
           )}
-          <button className="primaryCta full" type="submit">
-            {newcomer ? 'Continue' : 'Continue to workspace'}
+        </label>
+        <label className={`authField${passwordError ? ' hasError' : ''}`}>
+          <span>Password</span>
+          <input
+            type="password"
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            value={password}
+            aria-invalid={!!passwordError}
+            aria-describedby={passwordError ? 'login-password-error' : undefined}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setRefused('');
+            }}
+          />
+          {passwordError && (
+            <em className="authError" id="login-password-error">
+              {passwordError}
+            </em>
+          )}
+        </label>
+        <div className="authRow">
+          <label className="authCheck">
+            <input type="checkbox" checked={keep} onChange={(event) => setKeep(event.target.checked)} /> Keep me signed in
+          </label>
+          <button type="button" className="authLink" aria-expanded={resetOpen} onClick={() => setResetOpen((value) => !value)}>
+            Forgot password?
           </button>
-        </form>
-      </div>
-    </div>
+        </div>
+        {resetOpen && (
+          <div className="authReset" role="region" aria-label="Reset password">
+            <strong>Reset your password</strong>
+            <p>Ask whoever runs this studio to set a new password for you: the sign-ins are kept in the server’s credentials.txt.</p>
+            <div className="authResetActions">
+              <button type="button" className="authLink" onClick={() => setResetOpen(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+        <button className="authBtn" type="submit" disabled={checking}>
+          <span>{checking ? 'Checking…' : newcomer ? 'Continue' : 'Continue to workspace'}</span>
+          <span className="authBtnIcon" aria-hidden="true">
+            <Icon name="arrowRight" size={16} />
+          </span>
+        </button>
+      </form>
+    </AuthShell>
   );
 }
 
@@ -175,6 +235,8 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
   const [workspaceName, setWorkspaceName] = useState('');
   const [role, setRole] = useState('');
   const canContinue = fullName.trim() && workspaceName.trim() && role.trim();
+  // the steps on the left follow the form: the profile, then the workspace, then building
+  const at = !fullName.trim() ? 0 : !workspaceName.trim() || !role.trim() ? 1 : 2;
 
   const submit = (event) => {
     event.preventDefault();
@@ -188,88 +250,68 @@ export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }
   };
 
   return (
-    <div className="profileSetupScreen">
-      <div className="profileSetupGlow profileGlowA" />
-      <div className="profileSetupGlow profileGlowB" />
-      <header className="simpleHeader profileHeader">
-        <button className="backButton" onClick={onBack}>
-          <Icon name="arrowLeft" size={15} /> Back
-        </button>
-        <Logo />
-        <div className="headerTools">
-          <div className="headerHint">First-time setup</div>
-          <DemoSlot />
-          <StyleMenu theme={theme} onToggleTheme={onToggleTheme} />
+    <AuthShell
+      theme={theme}
+      onToggleTheme={onToggleTheme}
+      onBack={onBack}
+      hint="First-time setup"
+      eyebrow="Let’s set up your workspace"
+      title={
+        <>
+          Before you start building, tell us <em>a little about you.</em>
+        </>
+      }
+      lead="We’ll use these details to personalize your workspace. You only need to do this once."
+      steps={[
+        ['Your profile', 'Tell us what to call you.'],
+        ['Your workspace', 'We’ll use it across Weave.'],
+        ['Build', 'Describe your first agent.'],
+      ]}
+      at={at}
+    >
+      <form className="authCard" onSubmit={submit}>
+        <div className="authCardTop">
+          <span className="authCardLabel">Your details</span>
         </div>
-      </header>
+        <h2>Welcome to Weave</h2>
+        <p className="authFormIntro">A few details to set up your workspace.</p>
 
-      <main className="profileSetupWrap">
-        <section className="profileSetupIntro">
-          <div className="eyebrow cyan">Let’s set up your workspace</div>
-          <h1>Before you start building, tell us a little about you.</h1>
-          <p>We’ll use these details to personalize your workspace. You only need to do this once.</p>
-          <div className="setupStepsMini">
-            <div className="miniStep active">
-              <span>01</span>
-              <b>Your profile</b>
-              <small>Tell us what to call you.</small>
-            </div>
-            <div className="miniStep">
-              <span>02</span>
-              <b>Your workspace</b>
-              <small>We’ll use it across Weave.</small>
-            </div>
-            <div className="miniStep">
-              <span>03</span>
-              <b>Build</b>
-              <small>Describe your first agent.</small>
-            </div>
-          </div>
-        </section>
+        <label className="authField">
+          <span>What should we call you?</span>
+          <input autoFocus type="text" placeholder="e.g. Alex Morgan" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+        </label>
 
-        <form className="profileCard" onSubmit={submit}>
-          <div className="profileCardTop">
-            <div>
-              <span className="cardEyebrow">Your details</span>
-              <h2>Welcome to Weave</h2>
-            </div>
-          </div>
-          <p className="profileIntro">A few details to set up your workspace.</p>
+        <label className="authField">
+          <span>What should we call your workspace?</span>
+          <input type="text" placeholder="e.g. Acme Inc." value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
+        </label>
 
-          <label>
-            <span>What should we call you?</span>
-            <input autoFocus type="text" placeholder="e.g. Alex Morgan" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          </label>
+        <label className="authField">
+          <span>What’s your role?</span>
+          <Select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="">Select your role</option>
+            <option>Founder / Owner</option>
+            <option>Product</option>
+            <option>Engineering</option>
+            <option>Operations</option>
+            <option>Customer Support</option>
+            <option>Sales</option>
+            <option>Other</option>
+          </Select>
+        </label>
 
-          <label>
-            <span>What should we call your workspace?</span>
-            <input type="text" placeholder="e.g. Acme Inc." value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
-          </label>
-
-          <label>
-            <span>What’s your role?</span>
-            <Select value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="">Select your role</option>
-              <option>Founder / Owner</option>
-              <option>Product</option>
-              <option>Engineering</option>
-              <option>Operations</option>
-              <option>Customer Support</option>
-              <option>Sales</option>
-              <option>Other</option>
-            </Select>
-          </label>
-
-          <div className="profileEmail">
-            <span>Signed in as</span>
-            <b>{email || 'your account'}</b>
-          </div>
-          <button className="primaryCta full" type="submit" disabled={!canContinue}>
-            Continue to my workspace <Icon name="arrowRight" size={16} />
-          </button>
-          <small className="privacyNote">You can change these details later from workspace settings.</small>
-        </form>
-      </main>
-    </div>
+        <div className="authSignedIn">
+          <span>Signed in as</span>
+          <b>{email || 'your account'}</b>
+        </div>
+        <button className="authBtn" type="submit" disabled={!canContinue}>
+          <span>Continue to my workspace</span>
+          <span className="authBtnIcon" aria-hidden="true">
+            <Icon name="arrowRight" size={16} />
+          </span>
+        </button>
+        <small className="authSmall">You can change these details later from workspace settings.</small>
+      </form>
+    </AuthShell>
   );
 }

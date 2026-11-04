@@ -3,7 +3,7 @@ import { loadCalls } from '../insights/callData.ts';
 import { localDay, periodOf } from '../format.js';
 
 // Each agent's calls per day over the last `days` days (oldest first, today last), from the list of its calls. Pure.
-export function dailyCalls(calls, botIds, { nowMs = Date.now(), days = 7 } = {}) {
+function dailyCalls(calls, botIds, { nowMs = Date.now(), days = 7 } = {}) {
   const out = {};
   const period = periodOf(nowMs, days);
   botIds.forEach((id) => {

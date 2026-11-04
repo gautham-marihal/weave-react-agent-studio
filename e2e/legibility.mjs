@@ -181,9 +181,27 @@ for (const theme of ['light', 'dark']) {
   await look('speed');
   await open('#/bots/front-desk/speed', '.csStats');
   await look('agent speed');
-  // the agent's Build pages
-  for (const part of ['agent', 'knowledge', 'tools', 'workflow', 'channels', 'guardrails', 'aftercall']) {
-    await open(`#/bots/front-desk/${part}`, '.nlPage');
+  // Build › Guided, each of its nine steps
+  for (const step of ['who', 'voice', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall', 'ready']) {
+    await open(`#/bots/front-desk/build?step=${step}`, '.gdFlow');
+    await page.waitForTimeout(500);
+    await look(`guided: ${step}`);
+  }
+  // the agent's Build pages: the parts of Build › Detailed, and the Workflow canvas
+  for (const part of [
+    'agent',
+    'conversation',
+    'knowledge',
+    'tools',
+    'connections',
+    'channels',
+    'workflow',
+    'subagents',
+    'guardrails',
+    'aftercall',
+    'settings',
+  ]) {
+    await open(`#/bots/front-desk/${part}`, '.dtPage, .nlPage');
     await page.waitForTimeout(700);
     await look(`build: ${part}`);
   }

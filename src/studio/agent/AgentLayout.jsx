@@ -9,7 +9,7 @@ import { ValidationPanel } from '../ValidationPanel.jsx';
 import MonitoringPage from '../monitoring/MonitoringPage.jsx';
 import AgentAlerts from '../insights/AgentAlerts.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
-import { navigate, routeHref } from '../route.js';
+import { navigate, replaceRoute, routeHref } from '../route.js';
 import { useGate } from '../release/gate.js';
 import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
 import { useAsync } from '../useAsync.js';
@@ -21,38 +21,40 @@ import { buildSections } from './buildSections.js';
 import StageTabs from './workspace/StageTabs.jsx';
 import BuildStage from './workspace/BuildStage.jsx';
 import GuidedBuild from './workspace/GuidedBuild.jsx';
-import ChecksCard from './workspace/ChecksCard.jsx';
 import PromptPreview from '../form/PromptPreview.jsx';
 import { readSimple } from '../simple/simpleModel.js';
-import MonitorTabs from './workspace/MonitorTabs.jsx';
-import NextStepBar from './workspace/NextStepBar.jsx';
+import StageViews from './workspace/StageViews.jsx';
 import AgentTopBar from './AgentTopBar.jsx';
 import ShareAgentDrawer from '../team/ShareAgentDrawer.jsx';
-import { ActionSwitches, KnowledgeBlock, ReachChoices } from '../setup/SimpleBlocks.jsx';
-import { KNOWLEDGE_ID, reachOf, whoReadsKnowledge } from '../setup/setupModel.js';
-import { LimitsBlock, MomentsBlock, TopicsBlock } from './blocks/GuardrailBlocks.jsx';
-import { QuestionsBlock, RecordingBlock, SensitiveBlock, SummaryBlock } from './blocks/AfterCallBlocks.jsx';
-import { askedAbove } from './blocks/afterCallModel.js';
+import { KNOWLEDGE_ID, reachOf } from '../setup/setupModel.js';
 import { inSetup, useSetupProgress } from '../setup/setupProgress.js';
 import CallersPanel from '../callers/CallersPanel.jsx';
-import GateStrip from '../release/GateStrip.jsx';
+import TestHealth, { useTestHealth } from '../test/TestHealth.jsx';
 import Drawer from './Drawer.jsx';
-import PageShell, { Section } from './PageShell.jsx';
-import { humanize } from './rowNames.js';
-import { PAGE_LABELS, PAGE_LEAD, PAGE_SECTIONS, SETTINGS_ELSEWHERE, locate, resolvePage, searchTarget, stageOf, tabFor } from './pages.js';
+import PageShell from './PageShell.jsx';
+import { PAGE_LABELS, PAGE_LEAD, PAGE_SECTIONS, locate, resolvePage, searchTarget, stageOf, tabFor } from './pages.js';
 import { onSettingFocus, takeSettingFocus } from '../settingFocus.js';
-import AgentPage from './pages/AgentPage.jsx';
+import { DetailedPage } from './detailed/Detailed.jsx';
+import { agentPart } from './detailed/parts/agentPart.jsx';
+import { conversationPart } from './detailed/parts/conversationPart.jsx';
+import { knowledgePart } from './detailed/parts/knowledgePart.jsx';
+import { toolsPart } from './detailed/parts/toolsPart.jsx';
+import { connectionsPart } from './detailed/parts/connectionsPart.jsx';
+import { ChannelsPage } from './detailed/parts/channelsPart.jsx';
+import { SubagentsPage } from './detailed/parts/subagentsPart.jsx';
+import { guardrailsPart } from './detailed/parts/guardrailsPart.jsx';
+import { afterCallPart } from './detailed/parts/afterCallPart.jsx';
+import { enginePart } from './detailed/parts/enginePart.jsx';
 import HomePage from './pages/HomePage.jsx';
-import ListPage from './pages/ListPage.jsx';
-import { TryGuardrailsView } from '../form/TryPanels.jsx';
 import SectionPage from './pages/SectionPage.jsx';
 import './agent.css';
 import { askConfirm } from '../../ui/dialogs.js';
 import { whenPanelKept } from './stagedPanel.js';
+import { RELEASE_PARTS, TEST_PARTS } from './pageLists.js';
 import { useLiveNumbers } from '../../pages/LiveNumbers.jsx';
 import { useKnowledge } from '../knowledge/useKnowledge.js';
-import { describeWeek } from '../relations/scheduleStrip.js';
-import { usedBy } from '../relations/usedBy.js';
+import Button from '../../ui/Button.tsx';
+import { useSettleOnChange } from '../../ui/motion.ts';
 
 const AssistantTab = lazy(() => import('../assistant/AssistantTab.jsx'));
 const DeployTab = lazy(() => import('../DeployTab.jsx'));
@@ -65,197 +67,29 @@ const WorkflowTab = lazy(() => import('../workflow/WorkflowTab.jsx'));
 const QuestionsPage = lazy(() => import('../insights/QuestionsPage.jsx'));
 const SpeedPage = lazy(() => import('../speed/SpeedPage.jsx'));
 const SetupWizard = lazy(() => import('../setup/SetupWizard.jsx'));
+const PlainIssues = lazy(() => import('../validation/PlainIssues.jsx')); // problems named by label, not path
 
 // Readiness steps the guided setup covers: while the agent is in setup (`inSetup`), each opens the setup at that step,
 // so there is one place to get it ready. Once published, the steps open the agent's own pages.
 const SETUP_STEP = { prompt: 'purpose', hello: 'purpose', voice: 'voice', abilities: 'actions', publish: 'live', deploy: 'live' };
 
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-// "a, b and 2 more": a few names, the rest counted
-const namesInWords = (names) => {
-  const shown = names.filter(Boolean).slice(0, 2);
-  const more = names.filter(Boolean).length - shown.length;
-  return `${shown.join(', ')}${more > 0 ? ` and ${more} more` : ''}`;
-};
-const hostOf = (url) => {
-  try {
-    return new URL(String(url)).host;
-  } catch {
-    return '';
-  }
-};
-// The phone transfers in words: where calls go, or that a number is still to be set
-function transfersInWords(config) {
-  const transfers = (Array.isArray(config?.telephony?.transfers) ? config.telephony.transfers : []).filter((t) => t && typeof t === 'object');
-  if (!transfers.length) return 'None yet. Where a call can be passed to a person.';
-  const numbers = transfers.map((t) => (typeof t.target === 'string' ? t.target.trim() : t.target ? 'a number chosen during the call' : '')).filter(Boolean);
-  const waiting = transfers.length - numbers.length;
-  const parts = [
-    numbers.length ? `Passes calls to ${namesInWords(numbers)}` : '',
-    waiting ? `${plural(waiting, 'transfer')} with no number yet: callers are offered a callback` : '',
-  ];
-  return parts.filter(Boolean).join(' · ');
-}
 // the part of a page that holds its settings form, for a page that has other parts
+// The rows that now hold what the old panels and focus names asked for (links, readiness steps, search).
+const ROW_OF = {
+  voice: 'voice',
+  language: 'primary',
+  models: 'llm',
+  behaviour: 'tone',
+  persona: 'persona',
+  messages: 'lines',
+  role: 'role',
+  greeting: 'greeting',
+  notice: 'notice',
+};
 const FORM_PART = { workflow: 'settings', knowledge: 'settings', settings: 'settings' };
 // Pages that edit the draft through their own controls; they wait while the draft isn't valid JSON (Agent and Workflow
 // say so themselves; Settings is where the JSON is fixed).
 const READS_THE_DRAFT = new Set(['home', 'build', 'tools', 'channels', 'guardrails', 'aftercall', 'knowledge', 'tests']);
-const TOOL_LISTS = [
-  {
-    id: 'tools',
-    path: ['tools'],
-    kind: 'tools',
-    word: 'tool',
-    pickerKey: 'tools',
-    title: 'All its tools',
-    lead: 'Everything it can use, what the switches above add included. Open one to change how it works.',
-    empty: { title: 'No tools yet', text: 'Tools let the agent do things: end the call, hand over to a person, look something up.' },
-  },
-];
-const TOOL_EXTRAS = [
-  {
-    key: 'telephony',
-    title: 'Phone transfers',
-    icon: 'phoneTransfer',
-    // what is set, not what the section is
-    value: (c) => transfersInWords(c),
-  },
-  {
-    key: 'connections',
-    title: 'Connections',
-    icon: 'plug',
-    value: (c, n) =>
-      n
-        ? `${plural(n, 'connection')}: ${namesInWords(Object.entries(c?.connections || {}).map(([id, x]) => hostOf(x?.base_url) || humanize(id)))}`
-        : 'None yet. A connection is a web service its tools call, such as your billing system.',
-  },
-  {
-    key: 'forms',
-    title: 'Forms',
-    icon: 'records',
-    value: (c, n) =>
-      n
-        ? `${plural(n, 'form')}: ${namesInWords((Array.isArray(c?.forms) ? c.forms : []).map((f) => f?.title || humanize(f?.id || 'form')))}`
-        : 'None yet. A form collects details such as a name and number on screen.',
-  },
-  {
-    key: 'notifications',
-    title: 'Messages it sends',
-    icon: 'mail',
-    value: (c, n) => (n ? `${plural(n, 'message')} it can text or email` : 'None yet. Texts and emails it can send during or after a call.'),
-  },
-  {
-    key: 'tasks',
-    title: 'Multi-step tasks',
-    icon: 'flag',
-    value: (c, n) => (n ? plural(n, 'task') : 'None yet. Walk a caller through several steps, such as checking who they are.'),
-  },
-];
-const CHANNEL_LISTS = [
-  {
-    id: 'channels',
-    path: ['channels'],
-    kind: 'channels',
-    word: 'channel',
-    pickerKey: 'channels',
-    title: 'All channels',
-    lead: 'Each place it can be reached, and what it says first there. Open one for its details.',
-    empty: { title: 'No channels yet', text: 'A channel is where people reach the agent: a phone line, a chat on your website.' },
-  },
-];
-// Business hours in words: one schedule's week and time zone, or the names of several. Hours change nothing on their
-// own (a transfer or rule follows them), so an unused one says so.
-const scheduleWords = (c, n) => {
-  const all = Object.entries(c?.schedules && typeof c.schedules === 'object' ? c.schedules : {});
-  if (!n || !all.length) return 'None yet. Opening hours your hand-overs and rules can follow; on their own they change nothing.';
-  if (all.length === 1) {
-    const [, s] = all[0];
-    return `${describeWeek(s).replace(/[.]$/, '')}${typeof s?.timezone === 'string' && s.timezone ? `, ${s.timezone}` : ''}`;
-  }
-  return `${plural(all.length, 'schedule')}: ${namesInWords(all.map(([id, s]) => (typeof s?.description === 'string' && s.description.trim()) || humanize(id)))}`;
-};
-const localZone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
-};
-const CHANNEL_EXTRAS = [
-  {
-    key: 'schedules',
-    title: 'Business hours',
-    icon: 'clock',
-    value: scheduleWords,
-    status: (c, engine) =>
-      engine && Object.keys(c?.schedules && typeof c.schedules === 'object' ? c.schedules : {}).some((id) => !usedBy(engine, c, 'schedules', id).length)
-        ? { tone: '', text: 'Not used' }
-        : null,
-    start: {
-      title: 'No business hours yet',
-      text: 'A phone transfer or a rule can follow them, for example to pass calls to a person only while someone is there.',
-      label: 'Start with Monday to Friday, 9 to 5',
-      make: (c) => ({
-        ...c,
-        schedules: {
-          business_hours: {
-            description: 'Office hours',
-            timezone: localZone(),
-            weekly: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '09:00', end: '17:00' }],
-          },
-        },
-      }),
-    },
-  },
-  { key: 'identity', title: 'Caller identity', icon: 'user', value: () => 'How the agent knows who is calling' },
-];
-const GUARDRAIL_LISTS = [
-  {
-    id: 'input',
-    path: ['guardrails', 'input'],
-    kind: 'guardrails',
-    word: 'check',
-    pickerKey: 'guardrails.input',
-    title: 'On what the caller says',
-    lead: 'Checks that run on the caller’s words before the agent answers.',
-    empty: {
-      title: 'No checks on the caller yet',
-      text: 'For example: refuse tricks to change the agent’s instructions, or keep card numbers out of the records.',
-    },
-  },
-  {
-    id: 'output',
-    path: ['guardrails', 'output'],
-    kind: 'guardrails',
-    word: 'check',
-    pickerKey: 'guardrails.output',
-    title: 'On what the agent says',
-    lead: 'Checks that run on the agent’s own words before they are spoken.',
-    empty: { title: 'No checks on the agent yet', text: 'For example: block a promise it must not make, or keep secret fields out of everything it says.' },
-  },
-  {
-    id: 'escalation',
-    path: ['guardrails', 'escalation'],
-    kind: 'escalation',
-    word: 'rule',
-    pickerKey: 'guardrails.escalation',
-    title: 'All its hand-over and ending rules',
-    lead: 'The ones switched on above, and any of your own: when a call meets one, it hands over or ends by itself.',
-    empty: { title: 'No rules yet', text: 'Switch one on above, or add one of your own.' },
-  },
-];
-const TEST_PARTS = [
-  { id: 'try', label: 'Try it' },
-  { id: 'callers', label: 'Simulated callers' },
-  { id: 'scenarios', label: 'Scenarios' },
-  { id: 'checks', label: 'Readiness checks' },
-];
-const RELEASE_PARTS = [
-  { id: 'versions', label: 'Versions' },
-  { id: 'deploy', label: 'Deploy' },
-];
-
 // Whether the window is at least this wide (it follows resizing).
 function useWide(query) {
   const [wide, setWide] = useState(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : true));
@@ -313,6 +147,9 @@ export default function AgentLayout({ ws }) {
   const testDocked = drawer === 'test' && wideEnough;
   // the bar and stage tabs stick to the top; their height (--nl-head-h) is where other sticky parts sit
   const headRef = useRef(null);
+  // a new stage, or a new page outside Build (whose pages fade on their own, under its view buttons), settles in
+  const bodyRef = useRef(null);
+  useSettleOnChange(bodyRef, stageOf(page)?.id === 'build' ? 'build' : page);
   useLayoutEffect(() => {
     const head = headRef.current;
     if (!head || typeof ResizeObserver === 'undefined') return undefined;
@@ -474,6 +311,17 @@ export default function AgentLayout({ ws }) {
   };
 
   const part = (id, fallback) => (resolved.part && resolved.page === id ? resolved.part : localPart[id] || fallback);
+  // Test's "Ready to publish?": the callers' latest result this visit (by agent), and what all the tests say
+  const [callersBy, setCallersBy] = useState({});
+  const onCallers = useCallback((summary) => setCallersBy((old) => ({ ...old, [botId]: summary })), [botId]);
+  const health = useTestHealth({
+    botId,
+    editor,
+    readinessRuns,
+    callers: callersBy[botId] || null,
+    on: stageOf(page)?.id === 'test',
+    part: part('tests', 'try'),
+  });
   const setPart = (id) => (next) => {
     if (id === 'tests' || id === 'releases') go(tabFor(id, next));
     else setLocalPart((old) => ({ ...old, [id]: next }));
@@ -486,25 +334,23 @@ export default function AgentLayout({ ws }) {
   //   stage: 'stt' | 'llm' | 'tts', the model to show; anything else (a click) shows the panel
   const openModels = (stage) => whenPanelKept(() => showPath(['defaults', 'models', ...(['stt', 'llm', 'tts'].includes(stage) ? [stage] : [])]));
   const form = (id) => ({ keys: PAGE_SECTIONS[id], editor, focusRequest, onShowJson: openJson, onOpenJson: openJson, onShowModels: openModels });
+  // What a Detailed part is asked to bring into view: a field (an open/focus request; the old panel names stand for the
+  // row that now holds them) or a place in the configuration (a problem's "show me", a search result).
+  const detailedRequest = (id) => {
+    const asked = openRequest && openRequest.page === id ? openRequest : null;
+    const name = asked && (asked.focus || asked.open || asked.id);
+    if (name) return { focus: ROW_OF[name] || name, nonce: asked.nonce };
+    if (focusRequest && focusRequest.page === id) return { path: focusRequest.path, nonce: focusRequest.nonce };
+    return null;
+  };
   // the newest draft, for work that finishes after the render that started it (an upload)
   const latestConfig = useRef(config);
   latestConfig.current = config;
-  // A field asked for by another page ("change it on the Agent page"): go there and focus it. Search requests (Ctrl K)
-  // are taken below, on ask and when the agent opens with one waiting; a side panel with unapplied changes asks first.
-  const showField = (target, focus) =>
-    whenPanelKept(() => {
-      setDrawer(null);
-      setOpenRequest({ focus, nonce: Date.now(), page: target });
-      go(target);
-    });
+  // Search requests (Ctrl K) are taken below, on ask and when the agent opens with one waiting; a side panel with
+  // unapplied changes asks first.
   // the numbers callers dial (read only), shown on the Channels page: a phone line with no number can't be called yet
   const phoneNumbers = useLiveNumbers(page === 'channels' && !!config && reachOf(config).sip_voice, { botId });
-  const phoneLine =
-    phoneNumbers.mode !== 'live'
-      ? ''
-      : phoneNumbers.rows.length
-        ? `Callers dial ${phoneNumbers.rows.map((r) => r.number).join(', ')}`
-        : 'No number yet: one is added when it goes live (Releases › Deploy)';
+  const dialled = phoneNumbers.mode === 'live' ? phoneNumbers.rows.map((r) => r.number) : null;
   const showSetting = useRef(null);
   showSetting.current = (request) => {
     if (request.view === 'json') {
@@ -559,199 +405,65 @@ export default function AgentLayout({ ws }) {
         config={config}
         set={editor.setValue}
         latest={() => latestConfig.current}
-        sections={sections}
-        problems={errorsByPage}
+        problems={errorCount}
         simpleKnowledge={simpleKnowledge}
         onUploaded={knowledgeRead.reload}
         onOpen={go}
+        onTest={() => setDrawer('test')}
+        onPublish={() => go('versions', { publish: '1' })}
+        // the step is in the address (Back leaves Build, not the step), so a reload or a link keeps it
+        step={params?.step}
+        onStep={(step) => replaceRoute(routeHref(botId, 'build', { step }))}
       />
     );
   } else if (page === 'agent') {
-    body = (
-      <AgentPage
-        editor={editor}
-        openRequest={openRequest}
-        notices={notices}
-        plan={plan}
-        onShowJson={openJson}
-        onOpenJson={openJson}
-        onShowModels={openModels}
-      />
-    );
+    body = <DetailedPage part={agentPart} editor={editor} request={detailedRequest('agent')} notices={notices} onShowJson={openJson} />;
+  } else if (page === 'conversation') {
+    body = <DetailedPage part={conversationPart} editor={editor} request={detailedRequest('conversation')} onShowJson={openJson} />;
   } else if (page === 'tools') {
     body = (
-      <ListPage
-        notice={
+      <DetailedPage
+        part={toolsPart}
+        editor={editor}
+        request={detailedRequest('tools')}
+        onShowJson={openJson}
+        notices={
           missingTool ? (
             <Notice kind="warn" title={`“${missingTool}” isn’t in the draft`}>
               The calls used a tool by this name, but the draft has none: it was renamed or removed since. The tools it has now are below.
             </Notice>
           ) : null
         }
-        title="Tools"
-        lead={PAGE_LEAD.tools}
-        editor={editor}
-        top={
-          editor.isObject ? (
-            // the setup's own switches, so changing them later is the same move as the first time
-            <Section title="What it can do" lead="Switch on what it may do in a conversation.">
-              <ActionSwitches config={config} set={editor.setValue} onPage />
-            </Section>
-          ) : null
-        }
-        lists={TOOL_LISTS}
-        extras={TOOL_EXTRAS}
-        extrasTitle="Transfers, connections, forms, messages and tasks"
-        openRequest={focusRequest}
-        onShowJson={openJson}
-        onOpenJson={openJson}
-        onShowModels={openModels}
       />
     );
+  } else if (page === 'connections') {
+    body = <DetailedPage part={connectionsPart} editor={editor} request={detailedRequest('connections')} onShowJson={openJson} />;
   } else if (page === 'channels') {
+    body = <ChannelsPage editor={editor} request={detailedRequest('channels')} onShowJson={openJson} extra={{ botId, dialled }} />;
+  } else if (page === 'subagents') {
     body = (
-      <ListPage
-        title="Channels"
-        lead={PAGE_LEAD.channels}
+      <SubagentsPage
         editor={editor}
-        top={
-          editor.isObject ? (
-            <Section title="Where people reach it" lead="Switch each one on or off. A new one says what it says first, set on the Agent page.">
-              <ReachChoices
-                config={config}
-                set={editor.setValue}
-                botId={botId}
-                onPage
-                onShowNotice={() => showField('aftercall', 'notice')}
-                onShowVoice={() =>
-                  whenPanelKept(() => {
-                    setOpenRequest({ open: 'voice', nonce: Date.now(), page: 'agent' });
-                    go('agent');
-                  })
-                }
-                onShowNumber={() => go(tabFor('releases', 'deploy'))}
-              />
-            </Section>
-          ) : null
-        }
-        lists={CHANNEL_LISTS}
-        extras={CHANNEL_EXTRAS}
-        extrasTitle="Hours and callers"
-        onShowGreeting={() => showField('agent', 'greeting')}
-        rowInfo={(kind, item) => (kind === 'channels' && item.type === 'sip_voice' ? phoneLine : '')}
-        openRequest={focusRequest}
+        request={detailedRequest('subagents')}
         onShowJson={openJson}
-        onOpenJson={openJson}
-        onShowModels={openModels}
+        // a hand-over to a person is a tool: its line on the strip opens it on Tools
+        onGoTools={(toolId) => go('tools', { item: `tools:${toolId}` })}
       />
     );
   } else if (page === 'guardrails') {
+    body = <DetailedPage part={guardrailsPart} editor={editor} request={detailedRequest('guardrails')} onShowJson={openJson} />;
+  } else if (page === 'aftercall') {
+    body = <DetailedPage part={afterCallPart} editor={editor} request={detailedRequest('aftercall')} onShowJson={openJson} />;
+  } else if (page === 'knowledge') {
     body = (
-      <ListPage
-        title="Guardrails"
-        lead={PAGE_LEAD.guardrails}
+      <DetailedPage
+        part={knowledgePart}
         editor={editor}
-        top={
-          editor.isObject ? (
-            <>
-              <Section title="Topics" lead="What it keeps to, and what it stays away from.">
-                <TopicsBlock config={config} set={editor.setValue} />
-              </Section>
-              <Section title="When it hands over or ends the call" lead="Moments it acts on by itself, whatever the conversation.">
-                <MomentsBlock config={config} set={editor.setValue} />
-              </Section>
-            </>
-          ) : null
-        }
-        lists={GUARDRAIL_LISTS}
-        footer={
-          <>
-            {editor.isObject && (
-              <Section title="Limits" lead="The most a call can take, whatever happens in it. Leave a box empty for no limit.">
-                <LimitsBlock config={config} set={editor.setValue} onShowNudges={() => whenPanelKept(() => showPath(['defaults', 'conversation']))} />
-              </Section>
-            )}
-            <Section title="Test the checks" lead="See what these checks would do with something a caller might say, before anyone calls.">
-              <TryGuardrailsView config={config} />
-            </Section>
-          </>
-        }
-        openRequest={focusRequest}
+        request={detailedRequest('knowledge')}
         onShowJson={openJson}
-        onOpenJson={openJson}
-        onShowModels={openModels}
+        extra={{ botId, latest: () => latestConfig.current, onUploaded: knowledgeRead.reload, knowledgeRead: knowledgeRead.data }}
       />
     );
-  } else if (page === 'aftercall') {
-    body = (
-      <SectionPage title="After the call" lead={PAGE_LEAD.aftercall} {...form('aftercall')} hide={askedAbove(config)}>
-        {editor.isObject && (
-          <>
-            <Section title="After each call" lead="What is written, answered and kept once a call ends.">
-              <div className="suFields">
-                <SummaryBlock config={config} set={editor.setValue} unsupported={editor.report?.unsupported} />
-                <QuestionsBlock config={config} set={editor.setValue} unsupported={editor.report?.unsupported} />
-                <RecordingBlock config={config} set={editor.setValue} unsupported={editor.report?.unsupported} />
-                <SensitiveBlock config={config} set={editor.setValue} unsupported={editor.report?.unsupported} />
-              </div>
-            </Section>
-            <section className="nlSection smMore">
-              <header>
-                <div>
-                  <h2>More after-call settings</h2>
-                  <p>The model that writes the summaries once they are on, files sent after each call, closing messages, and the call records and logs.</p>
-                </div>
-              </header>
-            </section>
-          </>
-        )}
-      </SectionPage>
-    );
-  } else if (page === 'knowledge') {
-    const p = part('knowledge', 'files');
-    body =
-      p === 'files' ? (
-        <PageShell
-          title="Knowledge"
-          lead={PAGE_LEAD.knowledge}
-          parts={[
-            { id: 'files', label: 'Documents' },
-            { id: 'settings', label: 'How it searches' },
-          ]}
-          part={p}
-          onPart={setPart('knowledge')}
-        >
-          <KnowledgeTab
-            botId={botId}
-            name={name}
-            editor={editor}
-            knowledge={knowledgeRead}
-            // the setup's own "What it knows" while the agent has only the setup's base, or none
-            simple={simpleKnowledge}
-            top={
-              simpleKnowledge
-                ? ({ reload }) => (
-                    <Section title="What it knows" lead={`Documents and web pages it answers from. ${whoReadsKnowledge(config)}`}>
-                      <KnowledgeBlock botId={botId} config={config} set={editor.setValue} latest={() => latestConfig.current} onPage onUploaded={reload} />
-                    </Section>
-                  )
-                : null
-            }
-          />
-        </PageShell>
-      ) : (
-        <SectionPage
-          title="Knowledge"
-          lead={PAGE_LEAD.knowledge}
-          parts={[
-            { id: 'files', label: 'Documents' },
-            { id: 'settings', label: 'How it searches' },
-          ]}
-          part={p}
-          onPart={setPart('knowledge')}
-          {...form('knowledge')}
-        />
-      );
   } else if (page === 'workflow') {
     const p = part('workflow', 'canvas');
     body =
@@ -791,10 +503,10 @@ export default function AgentLayout({ ws }) {
     // the settings' sections are its tabs; the whole configuration as JSON is one button away
     const p = part('settings', 'settings');
     const toggle = (
-      <button type="button" className="quietButton nlBtn" onClick={() => setPart('settings')(p === 'json' ? 'settings' : 'json')}>
+      <Button type="button" className="nlBtn" onClick={() => setPart('settings')(p === 'json' ? 'settings' : 'json')}>
         <Icon name={p === 'json' ? 'sliders' : 'code'} size={15} />
         {p === 'json' ? 'Back to the settings' : 'Edit as JSON'}
-      </button>
+      </Button>
     );
     body =
       p === 'json' ? (
@@ -802,7 +514,7 @@ export default function AgentLayout({ ws }) {
           <JsonPart editor={editor} />
         </PageShell>
       ) : (
-        <SectionPage title="Settings" lead={PAGE_LEAD.settings} actions={toggle} {...form('settings')} {...SETTINGS_ELSEWHERE} />
+        <DetailedPage part={enginePart} editor={editor} request={detailedRequest('settings')} onShowJson={openJson} extra={{ actions: toggle }} />
       );
   } else if (page === 'calls') {
     body = (
@@ -844,9 +556,10 @@ export default function AgentLayout({ ws }) {
     // opens on trying the agent; a link to one part (e.g. Scenarios from the checklist) still opens that part
     const p = part('tests', 'try');
     body = (
-      <PageShell title="Tests" lead={PAGE_LEAD.tests} wide parts={TEST_PARTS} part={p} onPart={setPart('tests')}>
-        <GateStrip botId={botId} editor={editor} />
-        {p === 'callers' && <CallersPanel botId={botId} name={name} editor={editor} />}
+      // its parts are picked in the row under the agent's bar
+      <section className="nlPage wide" aria-label={TEST_PARTS.find((t) => t.id === p)?.label || 'Tests'}>
+        <TestHealth health={health} onOpen={(id) => go(tabFor('tests', id))} />
+        {p === 'callers' && <CallersPanel botId={botId} name={name} editor={editor} onSummary={onCallers} />}
         {p === 'try' && (
           <TestTab
             botId={botId}
@@ -861,16 +574,16 @@ export default function AgentLayout({ ws }) {
         )}
         {p === 'scenarios' && <ScenariosTab botId={botId} name={name} editor={editor} />}
         {p === 'checks' && <ChecksTab botId={botId} name={name} runs={readinessRuns} onRun={onRecordReadiness} />}
-      </PageShell>
+      </section>
     );
   } else if (page === 'releases') {
     const p = part('releases', 'versions');
     body = (
-      <PageShell title="Releases" lead={PAGE_LEAD.releases} wide parts={RELEASE_PARTS} part={p} onPart={setPart('releases')}>
+      <section className="nlPage wide" aria-label={RELEASE_PARTS.find((r) => r.id === p)?.label || 'Releases'}>
         {p === 'versions' && params?.publish === '1' && publishPanel}
         {p === 'versions' && <VersionsTab botId={botId} editor={editor} refreshKey={refresh} summary={summary} knowledgeRead={knowledgeRead.data} />}
         {p === 'deploy' && <DeployTab botId={botId} name={name} initialVersion={params?.version} refreshKey={refresh} onDeployed={bump} />}
-      </PageShell>
+      </section>
     );
   }
 
@@ -900,9 +613,9 @@ export default function AgentLayout({ ws }) {
           kind="warn"
           title="The JSON needs fixing first"
           actions={
-            <button type="button" className="quietButton" onClick={openJson}>
+            <Button type="button" onClick={openJson}>
               Open the JSON
-            </button>
+            </Button>
           }
         >
           This page reads the draft, which isn’t valid JSON right now.
@@ -911,29 +624,14 @@ export default function AgentLayout({ ws }) {
     );
   }
 
-  // The page in its stage's frame: Build's parts down the side (checks beside on a wide screen), Monitor's pages as
-  // tabs. A page that couldn't be drawn (loading, error, JSON to fix) is shown as it is.
-  const checksPanel = <ChecksCard editor={editor} onJump={(path) => showPath(path)} onAll={() => setDrawer('problems')} />;
+  // The page in its stage's frame: Build's parts down the side; the stage's views are in
+  // the row under the bar (StageViews). A page that couldn't be drawn (loading, error, JSON to fix) is shown as it is.
   const stage = drawn ? stageOf(page)?.id : null;
   const staged =
     stage === 'build' ? (
-      <BuildStage
-        botId={botId}
-        page={page}
-        sections={sections}
-        problems={errorsByPage}
-        checks={testDocked ? null : checksPanel}
-        jsonOpen={page === 'settings' && localPart.settings === 'json'}
-        onJson={openJson}
-        status={{ checked: !!editor.report, problems: errorCount }}
-        onChecks={() => setDrawer('problems')}
-      >
+      <BuildStage botId={botId} page={page} sections={sections} problems={errorsByPage} jsonOpen={page === 'settings' && localPart.settings === 'json'}>
         {body}
       </BuildStage>
-    ) : stage === 'monitor' ? (
-      <MonitorTabs botId={botId} page={page}>
-        {body}
-      </MonitorTabs>
     ) : (
       body
     );
@@ -947,9 +645,9 @@ export default function AgentLayout({ ws }) {
           title="Someone else saved this draft after you opened it"
           actions={
             <>
-              <button type="button" className="quietButton" onClick={editor.reload}>
+              <Button type="button" onClick={editor.reload}>
                 Load theirs (drop my edits)
-              </button>
+              </Button>
               <button type="button" className="dangerButton" onClick={() => editor.save({ overwrite: true })}>
                 Overwrite with mine
               </button>
@@ -964,12 +662,30 @@ export default function AgentLayout({ ws }) {
           kind="error"
           title="Couldn’t save the draft"
           actions={
-            <button type="button" className="quietButton" onClick={editor.dismissSaveError}>
+            <Button type="button" onClick={editor.dismissSaveError}>
               Dismiss
-            </button>
+            </Button>
           }
         >
           {editor.saveError.message}
+          {editor.saveError.errors?.length > 0 && (
+            <Suspense fallback={null}>
+              <PlainIssues issues={editor.saveError.errors} severity="error" config={editor.parsed.value} />
+            </Suspense>
+          )}
+        </Notice>
+      )}
+      {editor.checkError && !editor.validating && (
+        <Notice
+          kind="warn"
+          title="The draft couldn’t be checked"
+          actions={
+            <Button type="button" onClick={editor.recheck}>
+              Check again
+            </Button>
+          }
+        >
+          {editor.checkError.message} Until it is checked, problems aren’t shown and it can’t be published.
         </Notice>
       )}
     </>
@@ -1054,28 +770,46 @@ export default function AgentLayout({ ws }) {
           title={`${lastFix.label}.`}
           actions={
             <>
-              <button
+              <Button
                 type="button"
-                className="quietButton"
                 onClick={() => {
                   editor.setValue(lastFix.previous);
                   setLastFix(null);
                 }}
               >
                 Undo
-              </button>
-              <button type="button" className="quietButton" onClick={() => setLastFix(null)}>
+              </Button>
+              <Button type="button" onClick={() => setLastFix(null)}>
                 Dismiss
-              </button>
+              </Button>
             </>
           }
         />
       )}
 
       <div className={`nlMain ${testDocked ? 'docked' : ''}`}>
-        <div className="nlBody">
+        <div className="nlBody" ref={bodyRef}>
+          {/* the stage's views, at the top of the page's column: level with the test panel beside it */}
+          {drawn && (
+            <StageViews
+              botId={botId}
+              page={page}
+              part={page === 'tests' ? part('tests', 'try') : page === 'releases' ? part('releases', 'versions') : ''}
+              jsonOpen={page === 'settings' && localPart.settings === 'json'}
+              onJson={openJson}
+              checks={{ checked: !!editor.report, problems: errorCount, failed: !!editor.checkError && !editor.validating }}
+              onChecks={() => setDrawer('problems')}
+              counts={page === 'tests' ? health.counts : {}}
+              right={
+                page === 'tests' && health.gateOn && !health.verdict.ok ? (
+                  <span className="nlGateHeld" role="status">
+                    Publishing held
+                  </span>
+                ) : null
+              }
+            />
+          )}
           <Suspense fallback={<Spinner label="Loading" />}>{staged}</Suspense>
-          <NextStepBar plan={plan} onStep={openStep} />
         </div>
         {testDocked && (
           <aside className="nlTestDock" aria-label="Test your agent">

@@ -30,6 +30,7 @@ in is kept in the browser; `docs/PRODUCTION.md` says what goes in front of it fo
 | `AGENT_BUILDER_API_KEY`                                        | the API key; the dev server adds it to each request, so it never reaches the browser |
 | `AGENT_BUILDER_USER`                                           | optional: who the API records as the user, instead of the person signed in           |
 | `ANTHROPIC_API_KEY`, `LLM_MODEL`, `LLM_MODELS`, `LLM_BASE_URL` | optional: the model behind "Describe it" (`llmRoute.js`)                             |
+| `API_PASS_TARGETS`                                             | optional: the APIs Integrations may test through `/api-pass` (`apiPass.js`)          |
 | `VITE_DEMO_MODE`                                               | `true` forces demo mode (`.env.demo`, used by `npm run dev:demo`)                    |
 
 The proxy is in `vite.config.js`: the browser only ever calls `/api/...`, and the dev server forwards it with the key.
@@ -55,6 +56,7 @@ When you add an API call, add its answer to `demoApi.js` too, or the demo breaks
 | dnd-kit                | dragging list items into order                                                                   | `src/ui/Sortable.jsx`                |
 | cmdk                   | the search (Ctrl K)                                                                              | `src/pages/SearchPalette.jsx`        |
 | Lucide                 | icons, chosen by name                                                                            | `src/ui/icons.js`, `src/ui/Icon.jsx` |
+| Motion                 | movement: panels and dialogs sliding out, pages settling in, parts fading in, cards settling in  | `src/ui/motion.ts`                   |
 
 ## Where things live
 
@@ -69,15 +71,19 @@ src/
                          Skeleton, Sortable, the style picker, scroll-edge fades
   pages/                 the workspace: Dashboard.jsx (the shell: sidebar, top bar, which page shows), Home, Calls
                          (Sessions.jsx), Voices, Integrations, Telephony, Settings, the search; helpers.js (the sidebar's
-                         links and each page's address); shared.jsx (pieces the pages share)
+                         links and each page's address); shared.jsx (pieces the pages share); site/ (the public
+                         site before sign-in, loaded on its own: Site.jsx, the product window in its hero HeroProduct.jsx, and
+                         siteMotion.jsx, its Motion for React vocabulary); Login.jsx (sign-in and the first-time
+                         profile, in the site's look: auth.css)
   studio/                the Agents area
     Studio.jsx           the list of agents or one agent, by the address
     AgentsPage.jsx       the list of agents and the Create dialog
     AgentWorkspace.jsx   one agent, open: its draft, test conversation and dialogs, handed to agent/AgentLayout.jsx
     agent/               one agent's screens: AgentLayout.jsx (what is drawn), the menu (AgentNav), the top bar,
                          pages.js (the agent's pages and where each setting lives), readiness.js (the steps to get
-                         ready), pages/ (Overview, Agent, list pages, section pages), pickers/ (voice, language,
-                         model), blocks/ (the plain-words blocks of Guardrails and After the call)
+                         ready), detailed/ (Build › Detailed: the parts of building an agent, see below), pages/
+                         (Overview, section pages), pickers/ (voice, language, model), blocks/ (the plain-words
+                         models of Guardrails and After the call)
     form/                the settings form, built from the schema: FormEditor.jsx, Node.jsx (draws any part of the
                          schema), engine.js (reads the schema), plainLanguage.js (every label in plain words)
     simple/              helpers that read and write the everyday settings (simpleModel.js)
@@ -86,8 +92,8 @@ src/
 tests/                   unit and component tests (node:test; components are mounted in jsdom by tests/component/)
 e2e/                     end-to-end scripts that drive a real browser (Playwright) against a running dev server
 scripts/                 keep the schema copies in step (sync-fixtures, schemaTypes, schemaCopies)
-mock-bank/               a made-up bank API and the six OCBC business-banking agents that call it (see mock-bank/README.md)
 docs/                    this guide, PRODUCTION.md, USABILITY_STUDY.md, COLLABORATION_API.md
+mock-api/                mock bank services for the agents (cheques, cards, payments…): `npm run mock`, published on Vercel (see mock-api/README.md)
 ```
 
 Note on names: the API calls an agent a "bot" (`/bots`, `botId`), and so does code that talks to it. The screens always say
@@ -113,10 +119,48 @@ An agent is a JSON configuration described by the API's schema (`GET /schema`; a
   `editor.setValue(next)`; saving, the "someone else saved" case and live validation (`POST /validate`) are handled there.
 - The settings form (`studio/form/`) is generated from the schema, so a new field in the schema shows up without code.
   Labels and explanations come from `form/plainLanguage.js`; how fields are grouped from `form/layout.js`.
-- The agent's own pages (`studio/agent/pages/`) show the everyday settings in plain words and write ordinary fields of the
-  same configuration (`studio/simple/simpleModel.js`), so the pages, the form and the JSON always agree.
+- The parts of Build › Detailed (`studio/agent/detailed/`) show the settings in plain words and write ordinary fields of
+  the same configuration (through `studio/simple/simpleModel.js` and the other `*Model.js` setters), so the parts, the
+  Guided view, the Workflow canvas, the form and the JSON always agree.
 - Logic that does not draw anything lives in plain modules (`*Model.js`, `engine.js`, `readiness.js`...) with no React,
   so it is easy to read and is unit-tested directly.
+
+### Build › Guided
+
+The agent in nine steps, one at a time (`workspace/GuidedBuild.jsx`, styles in `workspace/guided.css`): the steps down
+the left with each one's answer, the step in the middle with Back and Next, and "Your agent so far" on the right (its orb,
+greeting, what it speaks, knows and can do, the checks, and how many steps are done). The last step lists every answer
+with a way back to it. The step is in the address (`#/bots/<id>/build?step=voice`), changed with `replaceRoute`.
+
+- What each step asks and where the draft stands on it is pure: `workspace/guidedSteps.js` (`GUIDED_STEPS`,
+  `guidedSteps(config)` → `{ steps, todo, done, next }`), unit-tested in `tests/guidedSteps.test.js`.
+- Every control writes through the same setters as the Detailed parts (`simpleModel.js`, `setupActions.js`,
+  `guardrailModel.js`, `afterCallModel.js`, `workflowOps.addSubagent`), so Guided never asks anything in its own way.
+  Each step links to its Detailed part for every other setting.
+
+### Build › Detailed
+
+Each part of building an agent (Agent, Conversation, Knowledge, Tools, Connections, Channels, Subagents and hand-overs,
+Guardrails, After the call, Engine and details; the Workflow canvas is its own page) is a plain object in
+`detailed/parts/<name>Part.jsx`, drawn by `detailed/Detailed.jsx`:
+
+- **A part** is `{ id, num, title, question, cols: [[card…], [card…]] }`; its `id` is the page id in `pages.js`.
+- **A card** is `{ id, title, lead?, rows, adv? }`. `adv` rows fold under "Advanced". A card can hold a **list** of the
+  draft (`list: { id, path, label, nameOf, add? or renderAdd? }`), shown as chips; a card with `of: <listId>` is the chosen
+  item's card, and works its rows out with `rowsFor(ctx)` from `ctx.chosen(listId).base`. The chosen item is kept in the
+  address (`?item=list:key`), so a link, "show me" and a reload open the same one.
+- **A row** is either a place in the draft (`path`, or `pathFor(config)` when it depends on the draft) or a pair of
+  `get(config)` / `put(config, value)` that call the existing setters. Its kind (text, number, switch, choice…), its
+  choices, its default and whether it is required come from the schema (`detailed/schemaFacts.js`), unless the row says
+  otherwise. Choices that point at another part (a transfer's business hours, a hand-over's agent) are read from the
+  draft, never typed in.
+- **The header counts** (fields, required, under Advanced) are worked out from the spec and the schema.
+- **Deleting** an item asks first when something points at it (`form/references.js`), takes those pointers out, and offers
+  Undo. **Problems** show under their row; "show me" and the search bring the row into view by its `data-field` or
+  `data-path`.
+
+`tests/detailed.component.test.js` checks every part: each row names a place the schema has, no setting is a row of two
+parts, ids are unique, and the parts write the draft and point at each other's lists.
 
 ## Styles
 
@@ -133,7 +177,8 @@ Plain CSS, no CSS framework.
   theme by `data-theme` (light or dark). A change to the look must be checked in all of them.
 - **Class names** start with a short prefix for their feature: `st` the agents area, `nl` an agent's pages (from the folder's
   old name), `wf` workflow, `su` setup, `sc` scenarios, `cs` speed, `kw` knowledge, `in` alerts and questions, `lv` live,
-  `mn` monitoring, `tm` team, `rp` replay, `rl` relations, `vx` validation, `pv` preview, `pk` pickers, `as` the assistant.
+  `mn` monitoring, `tm` team, `rp` replay, `rl` relations, `vx` validation, `pv` preview, `pk` pickers, `as` the assistant,
+  `dt` Build › Detailed.
 - **Sizes and colours** come from tokens (`--fs-md`, `--accent`, `--line`...), never from bare numbers; a test checks that
   every font size is one of the scale's.
 
@@ -150,13 +195,23 @@ Plain CSS, no CSS framework.
   `e2e/fit.mjs` checks it.
 - **Each input is asked in one place**: a setting has one home page; other places show it and link there.
 - **Icons by name**: add a Lucide icon to `src/ui/icons.js` and use `<Icon name="..." />`.
+- **Movement goes through `ui/motion.ts`**: `exitThen` for a panel's way out (Escape, the shade, its close button),
+  `useSettleOnChange` for a new page (its blocks settle in one after another), `useFadeOnChange` for content that
+  changes in place, `useRiseInOnce` for a list's first showing. Openings stay in CSS. The chosen item's highlight in
+  tab rows, switches and side lists slides on its own (`ui/slideMarks.ts`, watching from the shell): a new row of that
+  kind joins by adding its class to `GROUPS` there.
+  Nothing moves for reduced motion or in the unit tests, and a panel whose screen has already gone is not closed again.
+  An e2e step that closes something and moves on waits for it to go (`e2e/a11y.mjs`).
 
 ## Common changes
 
 - **A new workspace page**: add it to the sidebar list in `src/pages/helpers.js` (its id, label, icon and address), then
   show it in `pages/Dashboard.jsx` where the other pages are chosen, loaded with `lazy` like them.
 - **A new page of an agent**: add it to `PAGE_GROUPS` in `src/studio/agent/pages.js`, then draw it in
-  `studio/agent/AgentLayout.jsx`.
+  `studio/agent/AgentLayout.jsx`. A new part of Build › Detailed is a spec in `detailed/parts/` (see above), drawn with
+  `<DetailedPage part={…} editor={editor} />`; give it a hue in `workspace/look.js`, a line in `buildSections.js`, and
+  the sections it holds in `PAGE_SECTIONS`, so `locate` sends its settings there.
+- **A new setting on a part**: add a row with its `path`; the schema gives it its kind, choices and label.
 - **A label or explanation of a setting**: `src/studio/form/plainLanguage.js`.
 - **A new API call**: add the function to `src/api/client.ts`, its answer to `src/demo/demoApi.js`, and (when its answer is
   checked) a schema to `src/api/schemas.ts`.
@@ -180,6 +235,11 @@ npm run e2e:setup     # in another (each e2e:* script is in package.json; E2E_BA
 Set `E2E_BROWSER` to the browser's path if it is not found. `npm run e2e` (the smoke test) runs against a mocked API by
 default; `E2E_MODE=live` points it at a real API and creates and deploys an agent there, so only use that against a
 test server.
+
+The scripts sign in by typing a made-up email and password. Sign-in is checked against a credentials file
+(`authRoute.js`): `npm run dev:demo` reads `e2e/credentials.txt`, which lists those test logins (`.env.demo` points
+at it), and `npm run dev` reads `credentials.txt`. A new script signing in with a new login adds it to
+`e2e/credentials.txt`. The smoke test takes `E2E_EMAIL` and `E2E_PASSWORD` for the `npm run dev` case.
 
 ## Good to know
 

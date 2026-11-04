@@ -288,9 +288,3 @@ export function toggleSpoken(config, base, on) {
     next.defaults.language = language;
   });
 }
-
-// ---- channels
-export const addChannel = (config, channel) =>
-  edit(config, (next) => {
-    next.channels = [...list(next.channels), clone(channel)];
-  });
