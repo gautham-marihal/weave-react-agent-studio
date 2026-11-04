@@ -14,6 +14,8 @@ import { DemoNote } from '../demo/DemoBadge.jsx';
 import { dismissNotes, peekNotes } from './assistantNotes.js';
 import { navigate, routeHref, setLeaveGuard } from './route.js';
 import { useGateStatus } from './release/gate.js';
+import { DeploySecrets } from './release/Preflight.jsx';
+import { failureReason, useDeploymentWatch } from './release/deployWatch.js';
 import { ErrorState, Notice } from './ui.jsx';
 import NotFound from '../ui/NotFound.jsx';
 import { useAsync } from './useAsync.js';
@@ -28,16 +30,32 @@ import Button from '../ui/Button.tsx';
 const PlainIssues = lazy(() => import('./validation/PlainIssues.jsx')); // problems named by label, not path
 
 // Publishing belongs to the Release stage, so this panel sits on the Versions page beside the release checklist.
-function PublishFrame({ eyebrow, title, subtitle, footer, children }) {
+//   stage: where the panel stands (published, being put live, live, failed…). When it moves on, its buttons are new
+//   ones, so the keyboard is put on the main one rather than dropped to the page; the heading is a live region, so a
+//   screen reader hears the new state.
+function PublishFrame({ eyebrow, title, subtitle, footer, stage = '', children }) {
+  const footRef = useRef(null);
+  const firstStage = useRef(stage);
+  useEffect(() => {
+    if (stage === firstStage.current) return;
+    firstStage.current = '';
+    const foot = footRef.current;
+    const main = foot?.querySelector('.modalCreate:not(:disabled)') || foot?.querySelector('button:not(:disabled)');
+    if (main && !foot.contains(document.activeElement)) main.focus();
+  }, [stage]);
   return (
     <section className="stCard stPublishPanel" aria-label={title}>
-      <header>
+      <header aria-live="polite">
         {eyebrow && <small>{sentenceCase(eyebrow)}</small>}
         <h3>{title}</h3>
         {subtitle && <p className="stMuted">{subtitle}</p>}
       </header>
       {children}
-      {footer && <div className="stPublishFooter">{footer}</div>}
+      {footer && (
+        <div className="stPublishFooter" ref={footRef}>
+          {footer}
+        </div>
+      )}
     </section>
   );
 }
@@ -57,8 +75,15 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, don
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [allWarnings, setAllWarnings] = useState(false);
-  const [deploy, setDeploy] = useState({ phase: 'idle', error: null }); // deploying from here: idle | working | done
-  const blocked = !!editor.parsed.error || !editor.isObject || !editor.report || !editor.report.valid;
+  // deploying from here: idle | working | done, with the deploy's answer ({ deployment, preflight }) once done
+  const [deploy, setDeploy] = useState({ phase: 'idle', error: null, result: null });
+  // a deploy may answer "pending": followed until it is active or failed
+  const watch = useDeploymentWatch(botId, deploy.result?.deployment, (deployment) => {
+    setDeploy((old) => (old.result ? { ...old, result: { ...old.result, deployment } } : old));
+    if (deployment.status !== 'pending') onDeployed?.();
+  });
+  // A failed check leaves no report, and a check under way may be about to replace the one shown: both wait.
+  const blocked = !!editor.parsed.error || !editor.isObject || !editor.report || !editor.report.valid || editor.validating;
   const picked =
     options.find((option) => option.value === choice && !option.disabled) || options.find((option) => option.value === defaultChoice) || options[0];
   const willPublish = picked.version;
@@ -92,43 +117,61 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, don
       navigate(routeHref(botId, 'deploy', { version: shown.version }), { guard: false });
     };
     const putLive = async () => {
-      setDeploy({ phase: 'working', error: null });
+      setDeploy({ phase: 'working', error: null, result: null });
       try {
-        await api.deploy(botId, { version: shown.version, environment: 'development', note: 'Put live after publishing' });
-        setDeploy({ phase: 'done', error: null });
-        onDeployed?.();
+        const result = await api.deploy(botId, { version: shown.version, environment: 'development', note: 'Put live after publishing' });
+        setDeploy({ phase: 'done', error: null, result });
+        if (result?.deployment?.status !== 'pending') onDeployed?.();
       } catch (err) {
-        setDeploy({ phase: 'idle', error: err });
+        setDeploy({ phase: 'idle', error: err, result: null });
       }
     };
-    const live = deploy.phase === 'done';
+    // what the deploy came to: live, still being set up, or failed (an answer without a status is a finished deploy)
+    const status = deploy.phase === 'done' ? deploy.result?.deployment?.status || 'active' : '';
+    const live = status === 'active';
+    const pending = status === 'pending';
+    const failed = status === 'failed';
+    const reason = failed ? failureReason(deploy.result?.deployment) : '';
     return (
       <PublishFrame
-        eyebrow={live ? 'LIVE' : 'PUBLISHED'}
-        title={live ? `Version ${shown.version} is live in Development` : `Version ${shown.version} is published`}
+        stage={`published:${status}`}
+        eyebrow={live ? 'LIVE' : pending ? 'PUTTING IT LIVE' : failed ? 'NOT LIVE' : 'PUBLISHED'}
+        title={
+          live
+            ? `Version ${shown.version} is live in Development`
+            : pending
+              ? `Version ${shown.version} is being put live in Development`
+              : failed
+                ? `Version ${shown.version} couldn’t be put live`
+                : `Version ${shown.version} is published`
+        }
         subtitle={
           live
             ? 'It answers in Development from now on: try it for real there. Staging and Production are chosen on Deploy.'
-            : 'It is now frozen. Put it live in Development to try it for real, or choose where it runs.'
+            : pending
+              ? 'The version before keeps answering in Development until this one is ready. This panel updates when it is.'
+              : failed
+                ? 'The deployment failed, so the version before keeps answering in Development. It is still published: try again, or choose where it runs.'
+                : 'It is now frozen. Put it live in Development to try it for real, or choose where it runs.'
         }
         footer={
           <>
             <button type="button" className="modalCancel" onClick={onClose}>
               Close
             </button>
-            {!live ? (
+            {live || pending ? (
+              <button type="button" className="modalCreate" onClick={chooseWhere}>
+                See where it runs
+              </button>
+            ) : (
               <>
                 <button type="button" className="modalCancel" onClick={chooseWhere} disabled={deploy.phase === 'working'}>
                   Choose where
                 </button>
                 <button type="button" className="modalCreate" onClick={putLive} disabled={deploy.phase === 'working'}>
-                  {deploy.phase === 'working' ? 'Putting it live…' : 'Put it live in Development'}
+                  {deploy.phase === 'working' ? 'Putting it live…' : failed ? 'Try again' : 'Put it live in Development'}
                 </button>
               </>
-            ) : (
-              <button type="button" className="modalCreate" onClick={chooseWhere}>
-                See where it runs
-              </button>
             )}
           </>
         }
@@ -138,6 +181,25 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, don
             {deploy.error.message}
           </Notice>
         )}
+        {failed && reason && (
+          <Notice kind="error" title="Why it failed">
+            {reason}
+          </Notice>
+        )}
+        {pending && watch.checkError && (
+          <Notice
+            kind="warn"
+            title="Couldn’t check how it is going"
+            actions={
+              <Button type="button" onClick={watch.retry}>
+                Check again
+              </Button>
+            }
+          >
+            {watch.checkError.message} The Deploy page shows it once it settles.
+          </Notice>
+        )}
+        {deploy.result?.preflight && <DeploySecrets preflight={deploy.result.preflight} missingOnly />}
         {shown.warnings?.length > 0 && (
           <Notice kind="warn" title={`${shown.warnings.length} warning${shown.warnings.length === 1 ? '' : 's'}`}>
             <Suspense fallback={null}>
@@ -203,14 +265,26 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, don
         validator.
       </DemoNote>
       {blocked && (
-        <Notice kind="error" title="This draft can’t be published yet">
+        <Notice
+          kind="error"
+          title="This draft can’t be published yet"
+          actions={
+            !editor.parsed.error && editor.checkError && !editor.validating ? (
+              <Button type="button" onClick={editor.recheck}>
+                Check again
+              </Button>
+            ) : null
+          }
+        >
           {editor.parsed.error
             ? editor.parsed.duplicates?.length
               ? 'Remove the repeated key in the JSON first.'
               : 'Fix the JSON first.'
-            : !editor.report
-              ? 'Wait for the check to finish.'
-              : 'Fix the problems first: each one says where it is.'}
+            : editor.checkError && !editor.validating
+              ? `The draft couldn’t be checked (${editor.checkError.message}), and only a checked draft can be published.`
+              : !editor.report || editor.validating
+                ? 'Wait for the check to finish.'
+                : 'Fix the problems first: each one says where it is.'}
         </Notice>
       )}
       {!blocked && splitUnsupported(editor.report?.unsupported).security.length > 0 && (

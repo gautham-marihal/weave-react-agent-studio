@@ -39,10 +39,16 @@ export function applyChange(config, change) {
       where: ['agents'],
     };
   }
-  if (change.kind === 'assistant' && change.config && typeof change.config === 'object') {
+  // a whole draft made when the agent was created: from a description, from your template, or blank (its language only)
+  const MADE = {
+    assistant: 'The draft made from your description is applied to this agent.',
+    template: 'Your template is applied to this agent.',
+    blank: 'The agent’s main language is set on this draft.',
+  };
+  if (MADE[change.kind] && change.config && typeof change.config === 'object') {
     return {
       config: change.config,
-      note: 'The draft made from your description is applied to this agent. It couldn’t be saved when the agent was created.',
+      note: `${MADE[change.kind]} It couldn’t be saved when the agent was created.`,
       where: ['agents'],
     };
   }

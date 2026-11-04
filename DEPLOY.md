@@ -30,7 +30,55 @@ uses it, no restart needed (docker-compose.yml mounts it into the container).
 
 ## 2. Start it
 
-Choose one of the two ways people reach it.
+**The quick way: the run scripts.** They check the settings and `credentials.txt` first (and say what is missing),
+build, start, wait until the studio answers, and print its address. The same commands on both systems:
+
+| On Linux or a Mac        | On Windows (Docker Desktop) | Does                                                                    |
+| ------------------------ | --------------------------- | ----------------------------------------------------------------------- |
+| `./run.sh start`         | `.\run.cmd start`           | build and start (private, option A below)                               |
+| `./run.sh start --https` | `.\run.cmd start -Https`    | the same with HTTPS and a password (option B below)                     |
+| `./run.sh stop`          | `.\run.cmd stop`            | stop everything this folder started                                     |
+| `./run.sh status`        | `.\run.cmd status`          | what is running, and whether the studio is healthy                      |
+| `./run.sh logs`          | `.\run.cmd logs`            | follow the logs                                                         |
+| `./run.sh export`        | `.\run.cmd export`          | build, then save every image to `docker-images/weave-studio-images.tar` |
+| `./run.sh import`        | `.\run.cmd import`          | on another computer: load that file and start, building nothing         |
+
+`--demo` / `-Demo` and `--mock` / `-Mock` add the extras below. If `./run.sh` says permission denied (a copy from
+Windows loses the executable bit), run `bash run.sh start`. The images are Linux images; on Windows, Docker Desktop runs them in its Linux VM.
+
+**Moving it without building.** `export` saves every image the folder uses (Caddy too, so it also works offline) into one file, `docker-images/weave-studio-images.tar`. Copy the folder with that file to the other computer (the source code is not needed: `docker-compose.yml`, `Caddyfile`, the scripts, `.env.docker`, `credentials.txt` and that file are enough), fill in `.env.docker`, then run `import`. It takes under a minute, and afterwards the project shows up in Docker Desktop's Containers list, where it can be started and stopped too. Export again after changing the code.
+
+**Windows containers (a Windows Server host).** For a Windows host whose Docker runs Windows containers (Windows
+Server 2022, or Windows 11 Pro/Enterprise switched to Windows containers), there are separate, lightweight Windows
+images: Nano Server, Windows' smallest image, with only `node.exe` (or `caddy.exe`) added. Each is about 150 MB to
+download, and they share the Nano Server part. They are built on a Linux engine and moved as files:
+
+1. On a computer with a Linux engine (Docker Desktop in its usual mode, or a Linux server): `./run.sh export-windows`
+   (or `.\run.cmd export-windows`) builds them into `docker-images/windows/`. `WINDOWS_VERSION=ltsc2025` in `.env.docker`
+   makes them for Windows Server 2025 (the default is `ltsc2022`).
+2. Copy the folder with `docker-images\windows` to the Windows host. The source code is not needed: `docker-compose.windows.yml`, `Caddyfile`, `.env.docker` and `credentials.txt` and the
+   scripts are enough.
+3. On the Windows host: `.\run.cmd import`. The script sees that Docker runs Windows containers and uses
+   `docker-compose.windows.yml` for every command (`start`, `stop`, `status`, `logs`).
+
+The Windows images were checked where they were built: every library `node.exe`, `caddy.exe` and the image tool need
+is in Nano Server, and each image holds the files it should. Their first run on a Windows host is their first real
+run, as a Windows 11 Home computer cannot run Windows containers.
+
+**On Windows without Docker Desktop.** The images are Linux images, so Windows needs a Linux to run them. WSL 2 gives
+one, free, on every edition of Windows 10 and 11 (Home too). Once:
+
+1. In PowerShell as administrator: `wsl --install` (it installs Ubuntu), restart, then open **Ubuntu** and choose a
+   user name and password.
+2. In the Ubuntu window: `curl -fsSL https://get.docker.com | sudo sh`, then `sudo usermod -aG docker $USER`.
+3. In PowerShell: `wsl --shutdown`, then open Ubuntu again. `docker run --rm hello-world` there prints "Hello from
+   Docker!".
+
+Then `.\run.cmd start` works as before: when Docker Desktop isn't running, it hands the command to `run.sh` inside
+WSL, in this same folder, and the addresses open in the Windows browser as usual. With both installed, set
+`RUN_DOCKER=wsl` or `RUN_DOCKER=windows` to choose (`$env:RUN_DOCKER='wsl'` in PowerShell).
+
+Or by hand: choose one of the two ways people reach it.
 
 **A. Private (recommended).** The studio listens on the server only (`127.0.0.1:5173`); people reach it through an
 SSH tunnel, so nobody else can, and no port is opened:

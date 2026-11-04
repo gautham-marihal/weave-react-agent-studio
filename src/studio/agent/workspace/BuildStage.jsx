@@ -32,14 +32,15 @@ export default function BuildStage({ botId, page, sections, problems = {}, jsonO
   );
 }
 
-// The checks result in a word, opening the full panel (in the agent's bar, beside Build's views).
+// The checks result in a word, opening the full panel (in the agent's bar, beside Build's views). failed: the last
+// check couldn't run (the page says why, with Check again), so there is no result to give.
 export function ChecksChip({ status, onOpen }) {
-  const { checked, problems } = status;
-  const words = !checked ? 'Checking…' : problems ? `${problems} ${problems === 1 ? 'problem' : 'problems'}` : 'Checks pass';
+  const { checked, problems, failed = false } = status;
+  const words = failed ? 'Not checked' : !checked ? 'Checking…' : problems ? `${problems} ${problems === 1 ? 'problem' : 'problems'}` : 'Checks pass';
   return (
     <button
       type="button"
-      data-checks={!checked ? 'checking' : problems ? 'problems' : 'pass'}
+      data-checks={failed ? 'failed' : !checked ? 'checking' : problems ? 'problems' : 'pass'}
       className={cx(
         'tw-ml-auto tw-inline-flex tw-cursor-pointer tw-items-center tw-gap-1.5 tw-rounded-full tw-border tw-border-solid tw-bg-surface tw-px-3 tw-py-1 tw-text-sm tw-font-medium',
         !checked && 'tw-border-line tw-text-muted',
@@ -48,7 +49,7 @@ export function ChecksChip({ status, onOpen }) {
       )}
       onClick={onOpen}
     >
-      <Icon name={checked && problems ? 'alert' : 'check'} size={14} />
+      <Icon name={failed || (checked && problems) ? 'alert' : 'check'} size={14} />
       {words}
     </button>
   );

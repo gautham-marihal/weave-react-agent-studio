@@ -46,17 +46,23 @@ export function testHealth({
     counts.scenarios = { text: 'not run', tone: '' };
   } else {
     const failed = (latestRun.failed || 0) + (latestRun.errors || 0);
+    const skipped = latestRun.skipped || 0;
     const total = latestRun.total || scenarioCount;
     tiles.push({
       id: 'scenarios',
       name: 'Scenarios',
       big: String(latestRun.passed || 0),
       of: `of ${total} passed`,
-      bars: bars(latestRun.passed || 0, failed, latestRun.skipped || 0, total),
-      note: `Latest run ${formatWhen(latestRun.startedAt) || 'earlier'}`,
-      chip: failed ? { text: `${failed} fail`, tone: 'bad' } : { text: 'All pass', tone: 'good' },
+      bars: bars(latestRun.passed || 0, failed, skipped, total),
+      note: `Latest run ${formatWhen(latestRun.startedAt) || 'earlier'}${skipped ? `; ${skipped} live not run` : ''}`,
+      // scenarios a run left out (live ones, which call a paid model, unless asked) are not failures: said as not run
+      chip: failed ? { text: `${failed} fail`, tone: 'bad' } : skipped ? { text: `${skipped} not run`, tone: 'warn' } : { text: 'All pass', tone: 'good' },
     });
-    counts.scenarios = failed ? { text: `${failed} fail`, tone: 'bad' } : { text: `${latestRun.passed || 0} of ${total}`, tone: 'good' };
+    counts.scenarios = failed
+      ? { text: `${failed} fail`, tone: 'bad' }
+      : skipped
+        ? { text: `${latestRun.passed || 0} pass, ${skipped} not run`, tone: 'warn' }
+        : { text: `${latestRun.passed || 0} of ${total}`, tone: 'good' };
   }
 
   // simulated callers: their latest result this visit (a run saves nothing)

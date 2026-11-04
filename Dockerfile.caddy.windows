@@ -1,0 +1,20 @@
+# Caddy (HTTPS in front) for Windows containers: Nano Server with only caddy.exe added, from Caddy's own release and
+# checked against its published checksums. Caddy publishes no Nano Server image, only Windows Server Core (several GB).
+# The same file in Weave Studio and tabui, so the image (caddy-nano:windows) is built once. It reads the project's
+# Caddyfile from the project folder, mounted at C:\host by docker-compose.windows.yml.
+ARG WINDOWS_VERSION=ltsc2022
+
+FROM --platform=$BUILDPLATFORM alpine:3.24 AS caddy-windows
+ARG CADDY_VERSION=2.8.4
+RUN apk add --no-cache unzip >/dev/null \
+ && wget -q https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_windows_amd64.zip https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_checksums.txt \
+ && grep " caddy_${CADDY_VERSION}_windows_amd64.zip\$" caddy_${CADDY_VERSION}_checksums.txt | sha512sum -c - \
+ && unzip -q caddy_${CADDY_VERSION}_windows_amd64.zip caddy.exe -d /out
+
+FROM mcr.microsoft.com/windows/nanoserver:${WINDOWS_VERSION}
+COPY --from=caddy-windows /out/caddy.exe C:/caddy/caddy.exe
+# certificates and settings Caddy keeps (volumes in docker-compose.windows.yml)
+ENV XDG_DATA_HOME=C:\\data XDG_CONFIG_HOME=C:\\config
+USER ContainerUser
+EXPOSE 80 443
+CMD ["C:\\caddy\\caddy.exe", "run", "--config", "C:\\host\\Caddyfile", "--adapter", "caddyfile"]

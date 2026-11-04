@@ -5,7 +5,7 @@ import { languageName, readSimple } from '../simple/simpleModel.js';
 import { readModels } from '../models/config.js';
 import { modelLabel, providerLabel } from '../models/catalog.js';
 import { gateCheck } from '../release/gateCheck.js';
-import { coveredOnlySome, coveredOnlyText } from '../scenarios/runResults.js';
+import { coveredOnlySome, coveredOnlyText, passedRunText } from '../scenarios/runResults.js';
 import { readingState } from '../knowledge/model.js';
 import { tabFor } from './pages.js';
 
@@ -193,7 +193,7 @@ export function readinessSteps({ config, summary = null, report = null, scenario
     add({
       ...testStep,
       label: 'Run the tests',
-      text: `The latest run passed (${latestRun.passed ?? scenarioCount} of ${latestRun.total ?? scenarioCount}).`,
+      text: passedRunText(latestRun, scenarioCount),
       state: 'done',
     });
   else

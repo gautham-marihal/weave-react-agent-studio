@@ -37,7 +37,7 @@ a proxy that adds the key and the identity: see [docs/PRODUCTION.md](docs/PRODUC
 
 ## Run with Docker
 
-`cp .env.docker.example .env.docker`, fill it in, then `docker compose up --build -d`: the studio on http://localhost:5173 (stop `npm run dev` first: it is the same address). On a server (with HTTPS and a password, or private through an SSH tunnel), see [DEPLOY.md](DEPLOY.md).
+`./run.sh start` on Linux or a Mac, `.\run.cmd start` on Windows (Docker Desktop, or Docker Engine inside WSL 2 without it: see DEPLOY.md): it makes `.env.docker` from the example the first time (fill it in and run it again), builds and starts the studio on http://localhost:5173 (stop `npm run dev` first: it is the same address). `stop`, `status` and `logs` do what they say; `export` saves the built images to one file and `import` starts them on another computer without building. Separate, lightweight Windows-container images (Nano Server) for a Windows Server host: `export-windows` builds them, and `import` on that host starts them (see DEPLOY.md). By hand: `cp .env.docker.example .env.docker`, fill it in, then `docker compose up --build -d`. On a server (with HTTPS and a password, or private through an SSH tunnel), see [DEPLOY.md](DEPLOY.md).
 
 ## What it does
 
@@ -80,8 +80,9 @@ under it and its main action on the right; each page's code arrives when it is f
 
 An agent (`src/studio/agent/`) has its own menu in the sidebar, in the order the work is done:
 
-- **Overview**; **Build**: Agent, Knowledge, Tools, Workflow, Channels, Guardrails, After the call; **Test and launch**: Tests, Releases; **Monitor**: Calls,
-  Monitoring, Questions, Speed; then **Settings** below a line. The whole menu fits on a 900 px high screen in every style.
+- **Overview**; **Build**: Agent, Conversation, Knowledge, Tools, Connections, Channels, Workflow, Subagents and hand-overs, Guardrails, After the call;
+  **Test and launch**: Tests, Releases; **Monitor**: Calls, Monitoring, Questions, Speed; then **Settings** (its page is "Engine and details") below a line.
+  The whole menu fits on a 900 px high screen in every style.
 - At the top of the menu: **‹ All agents**, and the agent's name with where it stands. Clicking the name lists the workspace's other agents (moving to one
   keeps the page you are on, so going from one agent's Tools to the next one's is one click; unsaved edits are asked about first), **All agents** and
   **Create an agent**.
@@ -614,6 +615,8 @@ npm run e2e:speed   # Speed: answer times, a target, an agent's page, a slow cal
 npm run e2e:setup   # the guided setup end to end: create, every step, try it, put it live, what the draft holds; leaving and coming back (demo; see e2e/setup.mjs)
 npm run e2e:guardrails  # Guardrails and After the call in plain words, what they write, and each input asked in one place (demo; see e2e/guardrails.mjs)
 npm run e2e:fit     # nothing cut off: the test panel's box to type in at 7 window sizes, Workflow blocks with long text, one-line text on every page (demo; see e2e/fit.mjs)
+npm run e2e:deploys # putting live when the server is slow or says no: pending, failed with a reason, a deployment it no longer knows, a check
+                    # that can't run (dev server WITHOUT demo mode, signing in from e2e/credentials.txt; see e2e/deploys.mjs)
 npm run e2e       # needs the dev server running: signs in, creates an agent from a starter, edits, saves, publishes,
                   # deploys to development and has a (mocked) test conversation. E2E_MODE=live uses a real local API.
 npm run sync-fixtures   # fetch GET /schema and update every copy: the test fixture, public/config (the download) and the generated types

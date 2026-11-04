@@ -201,6 +201,15 @@ export const coveredOnlySome = (run, scenarioCount) => scenarioCount > 0 && run?
 // "The latest run covered only 1 of the 4 scenarios."
 export const coveredOnlyText = (run, scenarioCount) => `The latest run covered only ${run.total} of the ${scenarioCount} scenarios.`;
 
+// "The latest run passed (5 of 5)." A run that passed with scenarios it didn't run (live ones, left out unless asked:
+// they call a paid model) says so, rather than "4 of 7", which reads as three failing (UI review 2.4).
+export function passedRunText(run, scenarioCount = 0) {
+  const passed = run?.passed ?? scenarioCount;
+  const total = run?.total ?? scenarioCount;
+  const skipped = run?.skipped || 0;
+  return skipped > 0 ? `The latest run passed: ${passed} passed, ${skipped} not run (live).` : `The latest run passed (${passed} of ${total}).`;
+}
+
 // ---- "this exact version passed"
 // A run carries the checksum of the config it tested, and a published version its own: equal means that exact version.
 export function testStatusOf(version, runs, { scenarioCount = 0 } = {}) {

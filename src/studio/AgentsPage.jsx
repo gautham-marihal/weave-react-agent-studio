@@ -122,7 +122,7 @@ function CreateBotDialog({ existingIds, onClose }) {
           try {
             await api.saveDraft(effectiveId, withLanguage(applyTemplate(draft.config, template)), draft.revision);
           } catch {
-            queueChange(effectiveId, { kind: 'assistant', config: applyTemplate(draft.config, template) });
+            queueChange(effectiveId, { kind: 'template', config: withLanguage(applyTemplate(draft.config, template)) });
           }
         }
       } else if (starter !== 'blank') {
@@ -134,8 +134,13 @@ function CreateBotDialog({ existingIds, onClose }) {
           queueChange(effectiveId, { kind: 'starter', starter });
         }
       } else {
-        // blank: only the language, which the setup would otherwise ask for first
-        await api.saveDraft(effectiveId, withLanguage(draft.config), draft.revision).catch(() => {});
+        // blank: only the language, which the setup would otherwise ask for first; queued, unsaved, if saving fails
+        const config = withLanguage(draft.config);
+        try {
+          await api.saveDraft(effectiveId, config, draft.revision);
+        } catch {
+          queueChange(effectiveId, { kind: 'blank', config });
+        }
       }
       refreshBots();
       onClose();

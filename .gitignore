@@ -41,3 +41,6 @@ eslint-report.json
 
 # Vercel’s local link for the mock API (mock-api/)
 .vercel/
+
+# exported images (./run.sh export)
+docker-images/

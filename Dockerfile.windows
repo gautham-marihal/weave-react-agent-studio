@@ -1,0 +1,42 @@
+# Weave Studio for Windows containers: the same app and server as Dockerfile, on Nano Server (Windows' smallest image)
+# with only node.exe added. For a Windows host running Docker in Windows-containers mode (Windows Server, or Windows 11
+# Pro/Enterprise); everywhere else the Linux image is smaller and simpler.
+# Built on a Linux engine (Docker Desktop, or a Linux server) with buildx, because the Windows part only copies files
+# in: ./run.sh export-windows (or .\run.cmd export-windows) builds it and saves it for the Windows host, where
+# .\run.cmd import loads it. Build arguments: WINDOWS_VERSION (ltsc2022, or ltsc2025 for Windows Server 2025),
+# NODE_VERSION, VITE_DEMO_MODE (true for the demo studio).
+
+ARG WINDOWS_VERSION=ltsc2022
+
+# the app, built on Linux exactly as for the Linux image
+FROM --platform=$BUILDPLATFORM node:22-alpine3.24 AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY . .
+ARG VITE_DEMO_MODE=false
+ENV VITE_DEMO_MODE=${VITE_DEMO_MODE}
+RUN npx vite build
+
+# node.exe from nodejs.org, checked against its published checksum
+FROM --platform=$BUILDPLATFORM alpine:3.24 AS node-windows
+ARG NODE_VERSION=22.23.4
+RUN apk add --no-cache unzip >/dev/null \
+ && wget -q https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-win-x64.zip https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt \
+ && grep " node-v${NODE_VERSION}-win-x64.zip\$" SHASUMS256.txt | sha256sum -c - \
+ && unzip -q -j node-v${NODE_VERSION}-win-x64.zip node-v${NODE_VERSION}-win-x64/node.exe -d /out
+
+FROM mcr.microsoft.com/windows/nanoserver:${WINDOWS_VERSION}
+COPY --from=node-windows /out/node.exe C:/node/node.exe
+ENV PATH="C:\\node;C:\\Windows\\System32;C:\\Windows"
+WORKDIR C:/app
+ENV NODE_ENV=production PORT=8080 HOST=0.0.0.0
+COPY --from=build /app/package.json ./
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/server ./server
+COPY --from=build /app/apiPass.js /app/llmRoute.js /app/authRoute.js /app/credentials.txt ./
+# Nano Server runs as ContainerUser (not an administrator) by default
+USER ContainerUser
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD ["C:\\node\\node.exe", "-e", "fetch('http://127.0.0.1:8080/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+CMD ["C:\\node\\node.exe", "server/prod.mjs"]

@@ -16,8 +16,10 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const first = (...values) => values.find((v) => v !== undefined && v !== null && v !== '');
 
 // ---- text
-// The API's call log holds UTF-8 read back as Windows-1252 ("Iâ€™m" for "I’m"); the transcript endpoint has it right.
-// This fixes a string only when it has that unmistakable pattern, so correct text is never touched.
+// Text that was UTF-8 read back as Windows-1252 ("Iâ€™m" for "I’m") was once seen in a call log. The backend could not
+// reproduce it (UI review 3b: every API path writes and reads UTF-8), so the cause may be outside the API, such as a
+// config that was already garbled when saved. This fixes a string only when it has that unmistakable pattern, so
+// correct text is never touched.
 const CP1252 = {
   0x20ac: 0x80,
   0x201a: 0x82,

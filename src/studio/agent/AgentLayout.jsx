@@ -67,6 +67,7 @@ const WorkflowTab = lazy(() => import('../workflow/WorkflowTab.jsx'));
 const QuestionsPage = lazy(() => import('../insights/QuestionsPage.jsx'));
 const SpeedPage = lazy(() => import('../speed/SpeedPage.jsx'));
 const SetupWizard = lazy(() => import('../setup/SetupWizard.jsx'));
+const PlainIssues = lazy(() => import('../validation/PlainIssues.jsx')); // problems named by label, not path
 
 // Readiness steps the guided setup covers: while the agent is in setup (`inSetup`), each opens the setup at that step,
 // so there is one place to get it ready. Once published, the steps open the agent's own pages.
@@ -667,6 +668,24 @@ export default function AgentLayout({ ws }) {
           }
         >
           {editor.saveError.message}
+          {editor.saveError.errors?.length > 0 && (
+            <Suspense fallback={null}>
+              <PlainIssues issues={editor.saveError.errors} severity="error" config={editor.parsed.value} />
+            </Suspense>
+          )}
+        </Notice>
+      )}
+      {editor.checkError && !editor.validating && (
+        <Notice
+          kind="warn"
+          title="The draft couldn’t be checked"
+          actions={
+            <Button type="button" onClick={editor.recheck}>
+              Check again
+            </Button>
+          }
+        >
+          {editor.checkError.message} Until it is checked, problems aren’t shown and it can’t be published.
         </Notice>
       )}
     </>
@@ -778,7 +797,7 @@ export default function AgentLayout({ ws }) {
               part={page === 'tests' ? part('tests', 'try') : page === 'releases' ? part('releases', 'versions') : ''}
               jsonOpen={page === 'settings' && localPart.settings === 'json'}
               onJson={openJson}
-              checks={{ checked: !!editor.report, problems: errorCount }}
+              checks={{ checked: !!editor.report, problems: errorCount, failed: !!editor.checkError && !editor.validating }}
               onChecks={() => setDrawer('problems')}
               counts={page === 'tests' ? health.counts : {}}
               right={

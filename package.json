@@ -37,7 +37,8 @@
     "e2e:fit": "node e2e/fit.mjs",
     "e2e:workflow": "node e2e/workflow.mjs",
     "e2e:a11y": "node e2e/a11y.mjs",
-    "e2e:reorder": "node e2e/reorder.mjs"
+    "e2e:reorder": "node e2e/reorder.mjs",
+    "e2e:deploys": "node e2e/deploys.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.4",

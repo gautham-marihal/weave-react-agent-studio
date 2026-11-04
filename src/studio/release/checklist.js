@@ -9,7 +9,7 @@
 import { isObj } from '../form/engine.js';
 import { splitUnsupported } from '../preflight.ts';
 import { isFinished, testStatusOf } from '../scenarios/runResults.js';
-import { baseState, knowledgeSummary } from '../knowledge/model.js';
+import { baseState, knowledgeSummary, readableFix } from '../knowledge/model.js';
 import { describeRecords, readDataFlow, recordingNoticeState } from '../records/recordsModel.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -238,7 +238,8 @@ export const POLICY_NOTE =
 export function normalizePreflightKnowledge(raw) {
   const rows = [];
   const push = (base, p) => {
-    const problem = typeof p === 'string' ? { problem: p, fix: '' } : { problem: String(p?.problem || ''), fix: String(p?.fix || '') };
+    // a fix that is an operator's command line (`python -m …`) means nothing in a browser: left out (UI review 3a)
+    const problem = typeof p === 'string' ? { problem: p, fix: '' } : { problem: String(p?.problem || ''), fix: readableFix(p) };
     if (problem.problem) rows.push({ base: base || '', ...problem });
   };
   if (Array.isArray(raw))

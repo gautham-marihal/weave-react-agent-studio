@@ -2,6 +2,7 @@
 // Kept in this browser (the API has no templates endpoint yet) and shared by file. Pure apart from `storage`.
 
 import { isObj } from './form/engine.js';
+import { parseJsonStrict } from './jsonDuplicates.js';
 
 const KEY = 'weave_templates';
 const FORMAT = 'weave-agent-template';
@@ -86,12 +87,13 @@ export const templateToFile = (template) =>
   `${JSON.stringify({ format: FORMAT, version: 1, name: template.name, description: template.description, sourceName: template.sourceName || '', config: template.config }, null, 2)}\n`;
 
 // A shared file -> { template } or { error }. Accepts this app's own file or a bare configuration (an exported agent).
+// A key written twice in one object is refused, as the server does: JSON.parse would keep only the last one.
 export function parseTemplateFile(text, fileName = '') {
   let value;
   try {
-    value = JSON.parse(text);
+    value = parseJsonStrict(text);
   } catch (e) {
-    return { error: `That isn’t valid JSON (${e.message}).` };
+    return { error: e instanceof SyntaxError ? `That isn’t valid JSON (${e.message}).` : e.message };
   }
   if (!isObj(value)) return { error: 'A template file holds one JSON object.' };
   const own = value.format === FORMAT;

@@ -8,6 +8,7 @@ import {
   SENSITIVE,
   addQuestion,
   afterCallOf,
+  notDoneYet,
   removeQuestion,
   setNotice,
   setQuestion,
@@ -233,6 +234,11 @@ export const afterCallPart = {
             id: 'hide',
             label: 'Hide sensitive details in what is kept',
             kind: 'sw',
+            // the server's check says when the runtime doesn't apply it (UI review 2.1): said beside the switch, not hidden
+            note: (config, ctx) =>
+              notDoneYet(ctx?.editor?.report?.unsupported).redaction
+                ? 'Not enforced yet: the runtime doesn’t apply it, so saved transcripts still hold everything that was said.'
+                : '',
             get: (c) => afterCallOf(c).redaction.on,
             put: (c, on) => setRedaction(c, { on }),
           },

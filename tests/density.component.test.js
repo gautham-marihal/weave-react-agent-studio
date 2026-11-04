@@ -8,7 +8,7 @@ import { corpus } from './corpus/corpus.js';
 // How much is on a screen when it is first opened. The brief: a screen should not show everything at once, and nothing should show more than
 // about 40 inputs before the person opens something. This counts the controls a screen draws as it opens (groups as they open on their own,
 // the Advanced fold shut) for every screen of every config in the corpus, the biggest included.
-const { mountForm, act } = await setupDom();
+const { mountForm, mountScreen, act, DETAILED_PARTS } = await setupDom();
 const a = actions(act);
 after(() => teardownDom());
 
@@ -37,7 +37,28 @@ chain.tasks = ['verify_card', 'set_pin', 'activate'].map((id) => ({
 }));
 const measured = [...entries, { source: 'chain', name: 'a chain of 3 tasks with 4 steps each', config: chain }];
 
-// `dir` entries are real bots a customer brought (CONFORMANCE_DIR): the budget is for them too
+// The screens people use: each part of Build (src/studio/agent/detailed/), as it opens. A list part opens its first
+// item's card; folds (Advanced, a setting opened in place) start shut. UI review 2.5: the budget is measured on these,
+// for every config of the corpus, `dir` entries (real bots a customer brought, CONFORMANCE_DIR) included.
+const partControls = (root) =>
+  $$(root, '.dtPart input, .dtPart select, .dtPart textarea, .dtPart [role=combobox], .dtPart [role=switch]').filter(
+    (el) => !el.closest('details:not([open])') && el.type !== 'hidden' && el.type !== 'radio',
+  ).length;
+for (const entry of measured.filter((e) => ['example', 'scaled', 'stress', 'dir', 'chain'].includes(e.source))) {
+  test(`${entry.name}: no part of Build opens with more than ${LIMIT} inputs`, async () => {
+    const counts = [];
+    for (const id of Object.keys(DETAILED_PARTS)) {
+      const app = await mountScreen('detailed', entry.config, { ready: '.dtPart', props: { part: id, extra: id === 'subagents' ? { workspace: [] } : {} } });
+      counts.push([id, partControls(app.container)]);
+      await app.unmount();
+    }
+    const over = counts.filter(([, n]) => n > LIMIT);
+    assert.deepEqual(over, [], `parts that open with too many inputs (limit ${LIMIT}); all: ${counts.map(([id, n]) => `${id}=${n}`).join(' ')}`);
+  });
+}
+
+// The full settings form (FormEditor with its group tabs, "All settings"): no page draws it whole any more, but its
+// sections open inside the parts, so the same budget holds for it. `dir` entries count here too.
 for (const entry of measured.filter((e) => ['example', 'scaled', 'stress', 'dir', 'chain'].includes(e.source))) {
   test(`${entry.name}: no screen of “All settings” opens with more than ${LIMIT} inputs`, async () => {
     const app = await mountForm(entry.config);

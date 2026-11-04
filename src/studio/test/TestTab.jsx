@@ -18,7 +18,7 @@ import TraceView from '../trace/TraceView.jsx';
 import { useTrace } from '../trace/useTrace.js';
 import { finalStateOf, toolsUsedIn } from '../trace/records.js';
 import { scenarioFromConversation } from '../scenarios/model.js';
-import { browserChannels } from '../form/channelTypes.js';
+import { browserChannels, offeredChannels } from '../form/channelTypes.js';
 import Select from '../../ui/Select.tsx';
 import { Choice, OneOf } from '../../ui/OneOf.tsx';
 import './test.css';
@@ -135,8 +135,11 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const versionLoad = useAsync((signal) => (version ? api.getVersion(botId, version, { signal }) : Promise.resolve(null)), [botId, version]);
   const testConfig = ref === 'draft' ? editor.savedConfig || config : versionLoad.data?.config;
   const reach = testability(testConfig);
-  // every enabled web channel being tried gets a button (the server's own list comes back with the session)
-  const webChannels = useMemo(() => browserChannels(testConfig), [testConfig]);
+  // every enabled web channel being tried gets a button. A published version or an environment is the server's to
+  // describe: once a session for that same version has answered, its `channels` decide (a draft test runs the saved
+  // draft, which is the config here).
+  const serverChannels = ref !== 'draft' && info?.ref === ref && !!version && info?.version === version ? info.channels : null;
+  const webChannels = useMemo(() => offeredChannels(browserChannels(testConfig), serverChannels), [testConfig, serverChannels]);
   const channelId = webChannels.some((c) => c.id === channelPick) ? channelPick : webChannels[0]?.id || '';
   const simulated = mode === 'simulated';
   // a web voice channel is shown as a call (the orb and captions); a simulation of one is written out, but still looks like a call
