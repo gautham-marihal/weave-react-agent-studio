@@ -175,7 +175,13 @@ const FRESH = {
   timeout: '',
 };
 
-function AddConnectionDialog({ ctx, onClose }) {
+// The guided Add, in a window, or on the page (inline: Connections' workspace opens it under "Add a system").
+// onAdded(name): the new connection's name, once saved.
+export function AddConnectionSteps(props) {
+  return <AddConnectionDialog {...props} inline />;
+}
+
+function AddConnectionDialog({ ctx, onClose, onAdded, inline = false }) {
   const [answers, setAnswers] = useState(FRESH);
   const [step, setStep] = useState(0);
   // problems show once the person tries to go on from a step
@@ -199,6 +205,7 @@ function AddConnectionDialog({ ctx, onClose }) {
     const item = connectionFrom(answers);
     ctx.set(setPath(ctx.config, ['connections', answers.name], item));
     ctx.choose('connections', answers.name);
+    onAdded?.(answers.name);
     onClose();
   };
   const made = answers.type ? connectionFrom({ ...answers, name: answers.name || 'new' }) : null;
@@ -234,8 +241,10 @@ function AddConnectionDialog({ ctx, onClose }) {
     </>
   );
 
+  // on the page: the same steps in a box, its buttons under them
+  const Shell = inline ? InlineShell : Modal;
   return (
-    <Modal title="Add a connection" subtitle="Connect a system its tools should reach. You can change everything later." onClose={onClose} footer={footer} wide>
+    <Shell title="Add a connection" subtitle="Connect a system its tools should reach. You can change everything later." onClose={onClose} footer={footer} wide>
       <ol className="cnSteps" aria-label="Steps">
         {STEPS.map((s, i) => (
           <li key={s.id} aria-current={i === step ? 'step' : undefined} className={i < step ? 'done' : i === step ? 'on' : ''}>
@@ -576,7 +585,7 @@ function AddConnectionDialog({ ctx, onClose }) {
           )}
         </div>
       )}
-    </Modal>
+    </Shell>
   );
 }
 
@@ -600,5 +609,15 @@ function ServiceField({ value, onChange, error }) {
         ))}
       </datalist>
     </Field>
+  );
+}
+
+// the guided Add's box on the page: its steps, then its buttons
+function InlineShell({ footer, children }) {
+  return (
+    <div className="cnInline" role="group" aria-label="Add a connection">
+      {children}
+      <div className="cnInlineFoot">{footer}</div>
+    </div>
   );
 }

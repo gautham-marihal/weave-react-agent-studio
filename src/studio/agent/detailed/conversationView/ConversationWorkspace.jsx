@@ -16,6 +16,7 @@ import {
   interruptWords,
   quietWords,
   reactWords,
+  reachWords,
   readQuiet,
   rememberWords,
   soundWords,
@@ -60,7 +61,6 @@ function Overview({ ctx, form, view }) {
   const call = speaks(config);
   const simple = readSimple(config);
   const name = simple.persona || simple.name || 'It';
-  const channels = simple.channels.filter((ch) => ch.enabled).map((ch) => ch.name);
   const wait = waitWords(config);
   const cut = interruptWords(config);
   const quiet = quietWords(config, call);
@@ -135,7 +135,7 @@ function Overview({ ctx, form, view }) {
           </span>
           <div className="apName">
             <h2>A call with {name}</h2>
-            <p>{channels.length ? channels.join(' · ') : 'No channel is on yet'}</p>
+            <p>{reachWords(simple.channels)}</p>
           </div>
           {ctx.onTest && (
             <div className="apActs">
@@ -193,7 +193,7 @@ function Overview({ ctx, form, view }) {
           <span className="apChSub">Taking turns, and quiet callers</span>
         </div>
         <div className="apDoc lines">
-          <Line s={s} k="wait" label="Waiting" token="wait">
+          <Line s={s} k="wait" icon="clock" label="Waiting" token="wait">
             {wait.name}
             <span className="apDim">
               {' '}
@@ -201,13 +201,14 @@ function Overview({ ctx, form, view }) {
               {wait.adapt ? ' · adapts to each caller' : ''}
             </span>
           </Line>
-          <Line s={s} k="interrupt" label="Cutting in" token="interrupt">
+          <Line s={s} k="interrupt" icon="swap" label="Cutting in" token="interrupt">
             {cut.name}
             <span className="apDim"> · {cut.detail}</span>
           </Line>
           <Line
             s={s}
             k="quiet"
+            icon="mic"
             label="Quiet callers"
             token="quiet"
             action={quiet.state === 'unset' ? 'Set it up' : 'Open the script'}
@@ -227,15 +228,15 @@ function Overview({ ctx, form, view }) {
           <span className="apChSub">Reading things aloud, and the sound of the line</span>
         </div>
         <div className="apDoc lines">
-          <Line s={s} k="says" label="Says it like" ids={LINES.says} action={sound.rules ? 'Change' : 'Add a rule'} muted={!sound.rules}>
+          <Line s={s} k="says" icon="voice" label="Says it like" ids={LINES.says} action={sound.rules ? 'Change' : 'Add a rule'} muted={!sound.rules}>
             {sound.rules ? `${sound.rules} ${sound.rules === 1 ? 'rule' : 'rules'}: ${sound.ruleNames}` : 'As written'}
             <span className="apDim">{sound.rules ? ` · for ${sound.forAll ? 'everything it says' : 'what the AI writes'}` : ' · no rules yet'}</span>
           </Line>
-          <Line s={s} k="thinking" label="While it thinks" ids={LINES.thinking} muted={!sound.thinking}>
+          <Line s={s} k="thinking" icon="sound" label="While it thinks" ids={LINES.thinking} muted={!sound.thinking}>
             {sound.thinking ? 'A sound' : 'Silence'}
             {soundsNotRun && <span className="cvTag warn">the server doesn’t play sounds yet</span>}
           </Line>
-          <Line s={s} k="line" label="On the line" ids={LINES.line}>
+          <Line s={s} k="line" icon="phone" label="On the line" ids={LINES.line}>
             {sound.noise ? 'Noise reduction on' : 'No noise reduction'}
             <span className="apDim"> · {sound.menus ? 'listens' : 'doesn’t listen'} for phone menus</span>
           </Line>
@@ -250,7 +251,15 @@ function Overview({ ctx, form, view }) {
           <span className="apChSub">What it keeps, what it reacts to, and when things fail</span>
         </div>
         <div className="apDoc lines">
-          <Line s={s} k="remembers" label="Remembers" ids={LINES.remembers} action={remember.count ? 'See all' : 'Add a detail'} muted={!remember.count}>
+          <Line
+            s={s}
+            k="remembers"
+            icon="note"
+            label="Remembers"
+            ids={LINES.remembers}
+            action={remember.count ? 'See all' : 'Add a detail'}
+            muted={!remember.count}
+          >
             {remember.count ? `${remember.count} ${remember.count === 1 ? 'detail' : 'details'}` : 'Nothing yet'}
             {remember.count > 0 && (
               <span className="apDim">
@@ -266,7 +275,7 @@ function Overview({ ctx, form, view }) {
               </span>
             )}
           </Line>
-          <Line s={s} k="reacts" label="Reacts to" ids={LINES.reacts} action={react.count ? 'Change' : 'Add a reaction'} muted={!react.count}>
+          <Line s={s} k="reacts" icon="bolt" label="Reacts to" ids={LINES.reacts} action={react.count ? 'Change' : 'Add a reaction'} muted={!react.count}>
             {react.count ? `${react.count} ${react.count === 1 ? 'reaction' : 'reactions'}` : 'Nothing extra'}
             <span className="apDim">
               {react.count
@@ -274,7 +283,7 @@ function Overview({ ctx, form, view }) {
                 : ' · it follows its brief and workflow'}
             </span>
           </Line>
-          <Line s={s} k="fails" label="If a service fails" ids={LINES.fails}>
+          <Line s={s} k="fails" icon="alert" label="If a service fails" ids={LINES.fails}>
             {fails.name}
             <span className="apDim">
               {fails.usual ? ' (the usual)' : ''} · {fails.detail}

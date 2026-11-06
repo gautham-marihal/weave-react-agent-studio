@@ -1,440 +1,480 @@
-import React, { useState } from 'react';
+import React from 'react';
 import MediaLibrary from './MediaLibrary.jsx';
 import LiveCamera from './LiveCamera.jsx';
-import Icon from '../../../../ui/Icon.jsx';
-import Button from '../../../../ui/Button.tsx';
-import Select from '../../../../ui/Select.tsx';
-import { Switch } from '../../../form/fields.jsx';
-import { channelName } from '../../../simple/simpleModel.js';
-import { DEMO_GRADE } from '../../../pictures/pictureSteps.js';
-import { STRICTNESS_WORDS, strictnessOf } from '../../../pictures/strictness.js';
-import {
-  addPictureRequest,
-  addTargets,
-  aiSeesPictures,
-  channelPictures,
-  forgetting,
-  pictureCounts,
-  pictureGroups,
-  pictureLibrary,
-  setAllStrictness,
-  setChannelInput,
-  sharedStrictness,
-} from '../../../pictures/mediaModel.js';
-import { navigate, replaceRoute, routeHref, useRoute } from '../../../route.js';
-import { locate } from '../../pages.js';
-import { StepCard } from '../StepsView.jsx';
-import { joinAnd, plural } from '../describe.js';
-import '../../../pictures/pictureSteps.css';
+import { setChannelInput } from '../../../pictures/mediaModel.js';
+import { strictnessOf, withStrictness } from '../../../pictures/strictness.js';
+import { DEFAULT_ACCEPT } from '../../../../demo/simulatedPictures.js';
+import { getAtPath } from '../../schemaPath.js';
+import { setPath } from '../schemaFacts.js';
+import MediaWorkspace from '../mediaWorkspace/MediaWorkspace.jsx';
+import { AddPictureStep, DetailsTable, ImagesPick, PairsTable, PairsTry, PickyAll, PickyEditor, SeesPreview } from '../mediaWorkspace/pictureEditors.jsx';
+import { LIST_OF, stepKey, stepsIn, waysIn } from '../mediaWorkspace/mediaWords.js';
 
-// 7 · Images & Videos: everything about photos and the camera in one place. Which channels can take them and whether
-// the AI can see them; every picture step the agent has, wherever it sits, each editable here; how picky the photo
-// checks are, for all of them at once; whether the pictures are forgotten; and what such a check can and cannot do.
-// Nothing new is stored: each control writes the channels' inputs and the steps' own settings.
+// 7 · Images & Videos: everything about photos and the camera in one place (canvas page "11 · Images & Videos,
+// redesigned"). Which ways in take photos and the camera, and their picture details (asked here only; Channels says it
+// and opens here); how each agent sees pictures during the conversation (kept, not run yet); every picture step wherever
+// it runs (asked, checked in code, read by the AI, compared, forgotten), each a list of its own whose rows follow the
+// chosen step; how picky every photo or camera check is at once; the pictures to try it with and your camera, live.
+// The workspace (MediaWorkspace) draws these rows as one picture's journey and three chapters; All settings shows the
+// cards below. Nothing new is stored: each row writes the channels', agents' and steps' own settings.
 
-// a link to the page that holds a place in the draft
-function useGo() {
-  const route = useRoute();
-  return (page, params) => navigate(routeHref(route.botId, page, params), { guard: false });
-}
+const list = (v) => (Array.isArray(v) ? v : []);
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const speech = (v) => (typeof v === 'string' ? v : typeof v?.message === 'string' ? v.message : '');
+const varChoices = (config) => Object.keys(isObj(config?.state?.variables) ? config.state.variables : {}).map((v) => ({ value: v, label: v }));
 
-// Where people can send them: each channel, its photo and camera switches, and whether the AI can see pictures
-function Reach({ ctx }) {
-  const go = useGo();
-  const channels = channelPictures(ctx.config);
-  const ai = aiSeesPictures(ctx.config);
-  const anyOn = channels.some((c) => c.photo || c.camera);
-  return (
-    <div className="mdReach">
-      {channels.length === 0 && <p className="dtNote">No channels yet. Add one on Channels first.</p>}
-      {channels.length > 0 && (
-        <ul className="mdChannels" aria-label="Channels">
-          {channels.map((c) => {
-            const name = `${channelName(c.channel?.type)}${c.channel?.id ? ` (${c.channel.id})` : ''}`;
-            return (
-              <li key={c.index} className={c.on ? '' : 'off'}>
-                <span className="dtIIcon" aria-hidden="true">
-                  <Icon name={c.web ? 'globe' : 'phone'} size={16} />
-                </span>
-                <span className="mdChName">
-                  <b>{name}</b>
-                  {!c.on && <small>switched off</small>}
-                </span>
-                {c.web ? (
-                  <>
-                    <span className="mdSw">
-                      <Switch
-                        id={`md-photo-${c.index}`}
-                        checked={c.photo}
-                        label={`${name}: customers can send photos`}
-                        onChange={(on) => ctx.set(setChannelInput(ctx.config, c.index, 'image', on))}
-                      />
-                      <label htmlFor={`md-photo-${c.index}`}>Photos</label>
-                    </span>
-                    <span className="mdSw">
-                      <Switch
-                        id={`md-camera-${c.index}`}
-                        checked={c.camera}
-                        label={`${name}: customers can turn on their camera`}
-                        onChange={(on) => ctx.set(setChannelInput(ctx.config, c.index, 'video', on))}
-                      />
-                      <label htmlFor={`md-camera-${c.index}`}>Camera</label>
-                    </span>
-                  </>
-                ) : (
-                  <span className="mdVoice">Voice only: a phone call carries no pictures</span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <p className={`mdAi ${ai.sees ? 'good' : anyOn ? 'bad' : ''}`}>
-        <Icon name={ai.sees ? 'check' : 'info'} size={14} />
-        <span>
-          {ai.sees
-            ? 'The AI can see pictures.'
-            : anyOn
-              ? 'A channel takes pictures, but the AI isn’t marked as seeing them, so the server will refuse the agent.'
-              : 'The AI is marked as seeing pictures as soon as a channel takes them.'}{' '}
-          <button type="button" className="stLink" onClick={() => go('agent', { focus: 'vision' })}>
-            AI models on Agent
-          </button>
-        </span>
-      </p>
-    </div>
-  );
-}
-
-// Where it asks for them: every picture step by the list it is in, each opening its editor here
-function Requests({ ctx }) {
-  const go = useGo();
-  const groups = pictureGroups(ctx.config);
-  const targets = addTargets(ctx.config);
-  const [open, setOpen] = useState(null);
-  const [target, setTarget] = useState('');
-  const add = (kind) => {
-    const chosen = targets.find((t) => t.value === (target || targets[0]?.value));
-    if (!chosen) return;
-    const made = addPictureRequest(ctx.config, chosen.path, kind);
-    ctx.set(made.config);
-    setOpen(made.path.join('.'));
+// a row of the chosen item, at a place inside it
+const at = (entry, key, row) => {
+  const where = () => [...entry.base, ...key];
+  return {
+    ...row,
+    pathFor: where,
+    errPath: row.errPath || where(),
+    get: row.get || ((config) => getAtPath(config, where())),
+    put: row.put || ((config, value) => setPath(config, where(), value === '' || (Array.isArray(value) && !value.length) ? undefined : value)),
   };
-  const counts = pictureCounts(ctx.config);
-  const sum = [
-    counts.photo && plural(counts.photo, 'photo request'),
-    counts.video && plural(counts.video, 'video check'),
-    counts.read && plural(counts.read, 'picture reading', 'picture readings'),
-    counts.compare && plural(counts.compare, 'comparison'),
-    counts.forget && plural(counts.forget, 'step that forgets pictures', 'steps that forget pictures'),
-  ].filter(Boolean);
-  return (
-    <div className="mdRequests">
-      {groups.length === 0 ? (
-        <div className="dtIEmpty">
-          <span className="dtIEmptyIcon" aria-hidden="true">
-            <Icon name="image" size={20} />
-          </span>
-          <div>
-            <strong>It doesn’t ask for pictures yet</strong>
-            <p>Add a photo request or a video check to a form’s steps: the customer is asked on screen, and the picture is checked before anything reads it.</p>
-          </div>
-        </div>
-      ) : (
-        <p className="svSum">
-          <b>{sum.length ? joinAnd(sum) : 'Picture steps'}</b>
-        </p>
-      )}
-      {groups.map((group) => {
-        const place = locate(group.list);
-        const formIndex = group.list[0] === 'forms' ? group.list[1] : null;
-        const formId = formIndex !== null ? ctx.config.forms?.[formIndex]?.id : null;
-        return (
-          <section key={group.key} className="mdGroup" aria-label={group.name}>
-            <header className="mdGroupHead">
-              <h3>{group.name}</h3>
-              <button type="button" className="stLink" onClick={() => go(place.page, formId ? { item: `forms:${formId}` } : undefined)}>
-                See all its steps
-              </button>
-            </header>
-            <ol className="svList">
-              {group.steps.map((hit) => {
-                const key = hit.path.join('.');
-                return (
-                  <StepCard
-                    key={key}
-                    step={hit.step}
-                    number={hit.index + 1}
-                    path={hit.path}
-                    ctx={ctx}
-                    open={open === key}
-                    onToggle={() => setOpen(open === key ? null : key)}
-                  />
-                );
-              })}
-            </ol>
-          </section>
-        );
-      })}
-      {targets.length > 0 ? (
-        <div className="mdAdd">
-          <label htmlFor="md-add-to">Add to</label>
-          <Select id="md-add-to" className="stFInput" value={target || targets[0].value} onChange={(event) => setTarget(event.target.value)}>
-            {targets.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </Select>
-          <Button type="button" variant="secondary" size="small" className="dtAddBtn" onClick={() => add('upload')}>
-            <Icon name="image" size={14} />
-            Add a photo request
-          </Button>
-          <Button type="button" variant="secondary" size="small" className="dtAddBtn" onClick={() => add('camera')}>
-            <Icon name="camera" size={14} />
-            Add a video check
-          </Button>
-        </div>
-      ) : (
-        <p className="dtNote">
-          Pictures are asked for in a form’s steps. Add a form on Connections first.{' '}
-          <button type="button" className="stLink" onClick={() => go('connections', { item: 'forms:' })}>
-            Go to forms
-          </button>
-        </p>
-      )}
-    </div>
+};
+// a list of one kind of picture step, wherever they run
+const stepList = (type, id, word) => ({
+  id,
+  word,
+  label: `${word[0].toUpperCase()}${word.slice(1)}s`,
+  entries: (config) =>
+    stepsIn(config)
+      .filter((s) => s.type === type)
+      .map((s) => ({ key: s.key, name: `${s.name} · ${s.group.name}`, base: s.path, item: s.item })),
+});
+const removeStep = (c, entry) => {
+  const listPath = entry.base.slice(0, -1);
+  c.set(
+    setPath(
+      c.config,
+      listPath,
+      list(getAtPath(c.config, listPath)).filter((_, i) => i !== entry.base.at(-1)),
+    ),
   );
-}
+};
+const when = (entry, id) => at(entry, ['when'], { id, label: 'Only when…', hint: 'The step runs only while this holds', kind: 'form' });
 
-// How picky: one choice for every photo upload, one for every camera check
-function Standards({ ctx }) {
-  const counts = pictureCounts(ctx.config);
-  const row = (kind, label, n) => {
-    const now = sharedStrictness(ctx.config, kind, strictnessOf);
-    const id = `md-strict-${kind}`;
-    return (
-      <div className="dtRow" key={kind}>
-        <div className="dtLabel">
-          <label id={id}>{label}</label>
-          <small>
-            {n
-              ? `${plural(n, kind === 'camera' ? 'video check' : 'photo request')}. ${now === '' ? 'They differ now; a choice here sets them all.' : 'A choice here sets them all.'}`
-              : `None yet.`}
-          </small>
-        </div>
-        <div className="dtControl">
-          <div className="dtPills" role="radiogroup" aria-labelledby={id}>
-            {STRICTNESS_WORDS.map((w) => (
-              <button
-                key={w.value}
-                type="button"
-                role="radio"
-                aria-checked={now === w.value}
-                className={now === w.value ? 'on' : ''}
-                disabled={!n}
-                onClick={() => ctx.set(setAllStrictness(ctx.config, kind, w.value))}
-              >
-                {w.label}
-              </button>
-            ))}
-          </div>
-          <small className="dtNote">
-            {STRICTNESS_WORDS.find((w) => w.value === now)?.hint || (now === 'custom' ? 'Their own numbers, set on each step.' : '')}
-          </small>
-        </div>
-      </div>
-    );
-  };
-  return (
-    <>
-      {row('upload', 'Photo uploads', counts.photo)}
-      {row('camera', 'Video checks', counts.video)}
-    </>
-  );
-}
-
-// Privacy: whether every picture asked for is forgotten by a step, and what the server never does with them
-function Privacy({ ctx }) {
-  const go = useGo();
-  const { asked, forgotten } = forgetting(ctx.config);
-  const kept = asked.filter((v) => !forgotten.includes(v));
-  return (
-    <div className="mdPrivacy">
-      <p className={`mdAi ${kept.length ? 'bad' : asked.length ? 'good' : ''}`}>
-        <Icon name={kept.length ? 'alert' : 'check'} size={14} />
-        <span>
-          {!asked.length
-            ? 'Nothing to forget yet: it doesn’t ask for pictures.'
-            : kept.length
-              ? `${joinAnd(kept)} ${kept.length === 1 ? 'is' : 'are'} never forgotten by a step. Add a “Forget pictures” step after the check.`
-              : `Every picture is forgotten by a step after the check (${joinAnd(forgotten)}).`}
-        </span>
-      </p>
-      <p className="mdAi">
-        <Icon name="lock" size={14} />
-        <span>
-          Pictures stay in the call’s memory only: the server never logs, saves or sends them anywhere. Only a step that reads one passes it to the AI.
-        </span>
-      </p>
-      <p className="mdAi">
-        <Icon name="shield" size={14} />
-        <span>
-          Hiding personal details in saved conversations is set on{' '}
-          <button type="button" className="stLink" onClick={() => go('aftercall')}>
-            After the call
-          </button>
-          .
-        </span>
-      </p>
-    </div>
-  );
-}
-
-function Honest() {
-  return (
-    <p className="psHonest" role="note">
-      <span className="psHonestIcon" aria-hidden="true">
-        <Icon name="read" size={16} />
-      </span>
-      <span>
-        <b>A demo-grade check, not identity verification</b>
-        {DEMO_GRADE}
-      </span>
-    </p>
-  );
-}
-
-function TryIt() {
-  const go = useGo();
-  return (
-    <div className="mdTry">
-      <p className="dtNote">
-        On Test, talk to it and answer its requests with your own photos or camera. The simulation measures each picture the way the server does.
-      </p>
-      <Button type="button" variant="secondary" size="small" onClick={() => go('tests')}>
-        <Icon name="test" size={14} />
-        Try it on Test
-      </Button>
-    </div>
-  );
-}
-
-// A section of a tab: its title, a line on what it is for, and its contents
-function Block({ id, title, lead, children }) {
-  return (
-    <section className="dtCard mvBlock" aria-labelledby={`md-${id}`}>
-      <header className="dtCardHead">
-        <h2 id={`md-${id}`}>{title}</h2>
-      </header>
-      {lead && <p className="dtLead">{lead}</p>}
-      {children}
-    </section>
-  );
-}
-
-// the views of the workspace; the chosen one is kept in the address (?view=), so a link or a reload opens it again
-const VIEWS = [
-  { id: 'library', label: 'Library', icon: 'grid' },
-  { id: 'requests', label: 'What it asks for', icon: 'list' },
-  { id: 'camera', label: 'Camera', icon: 'camera' },
-  { id: 'settings', label: 'Settings', icon: 'sliders' },
+// ---- each kind of step's rows
+const requestRows = (e) => [
+  at(e, ['kind'], {
+    id: 'kind',
+    label: 'Upload or camera',
+    hint: 'A photo from their device, or a frame taken from their camera (the sharpest of a few)',
+    kind: 'ch',
+    options: [
+      { value: 'upload', label: 'They upload a photo' },
+      { value: 'camera', label: 'Their camera' },
+    ],
+    get: (config) => (getAtPath(config, [...e.base, 'kind']) === 'camera' ? 'camera' : 'upload'),
+    // a standard chosen by its word moves with it (a camera needs a higher sharpness than an upload)
+    put: (config, kind) => {
+      const step = getAtPath(config, e.base) || {};
+      const word = strictnessOf(step.kind === 'camera' ? 'camera' : 'upload', step.quality);
+      const next = setPath(config, [...e.base, 'kind'], kind);
+      return word && word !== 'custom' ? setPath(next, [...e.base, 'quality'], withStrictness(kind, step.quality, word)) : next;
+    },
+  }),
+  at(e, ['prompt'], {
+    id: 'prompt',
+    label: 'Shown beside the button',
+    hint: 'On their screen, not spoken: say what to do in a line of its own before this step',
+    kind: 'text',
+    placeholder: 'A clear photo of the front of your card',
+    get: (config) => speech(getAtPath(config, [...e.base, 'prompt'])),
+  }),
+  { id: 'sees', label: 'What they see', tags: 'p', render: (c) => <SeesPreview ctx={c} base={e.base} /> },
+  at(e, ['quality'], {
+    id: 'picky',
+    label: 'How picky',
+    hint: 'Checked in code before anything reads it: a picture that falls short is turned down with how to retake it, and the request stays open',
+    render: (c) => <PickyEditor ctx={c} base={e.base} id={c.id} />,
+  }),
+  at(e, ['timeout_s'], {
+    id: 'timeout',
+    label: 'Give up after',
+    hint: 'How long they have to send it: 5 seconds to 10 minutes',
+    kind: 'num',
+    unit: 'seconds',
+    placeholder: '120',
+  }),
+  at(e, ['on_timeout'], { id: 'onTimeout', label: 'Then, if nothing comes', hint: 'Instead of going on to the next step', kind: 'form' }),
+  at(e, ['into'], {
+    id: 'into',
+    label: 'Kept in',
+    hint: 'A picture id, never the picture: emptied first, so a retry never sees the last one',
+    kind: 'pick',
+    options: varChoices,
+  }),
+];
+const readRows = (e, goSecret) => [
+  at(e, ['images'], {
+    id: 'readImages',
+    label: 'Pictures it reads',
+    hint: 'Up to 4, in this one request: they never join the conversation',
+    render: (c) => <ImagesPick ctx={c} base={e.base} id={c.id} label="Pictures it reads" />,
+  }),
+  at(e, ['instructions'], {
+    id: 'instructions',
+    label: 'What to look for',
+    hint: 'What the picture should show, and how to copy each value. {{…}} is filled in first',
+    kind: 'long',
+    rows: 3,
+    placeholder: 'What the picture should show, and how to copy each value. If a value can’t be read, leave it empty.',
+  }),
+  at(e, ['fields'], {
+    id: 'details',
+    label: 'The details',
+    wide: true,
+    render: (c) => <DetailsTable ctx={c} base={e.base} id={c.id} onGoSecret={goSecret(c)} />,
+  }),
+  at(e, ['ok_into'], {
+    id: 'okInto',
+    label: '“Read it all” kept in',
+    hint: 'True only when an answer came back and every detail that must be read was read',
+    kind: 'pick',
+    options: varChoices,
+  }),
+  at(e, ['model'], {
+    id: 'model',
+    label: 'Model that reads it',
+    hint: 'As the agent unless set: a stronger vision model reads a card better and says more honestly when it can’t',
+    kind: 'form',
+  }),
+  at(e, ['timeout_s'], {
+    id: 'readTimeout',
+    label: 'Give up after',
+    hint: 'How long the model has to answer: up to 3 minutes',
+    kind: 'num',
+    unit: 'seconds',
+    placeholder: '45',
+  }),
+];
+const compareRows = (e) => [
+  at(e, ['pairs'], { id: 'pairs', label: 'The pairs', wide: true, render: (c) => <PairsTable ctx={c} base={e.base} id={c.id} /> }),
+  at(e, ['require'], {
+    id: 'require',
+    label: 'It passes when',
+    hint: 'For identity, keep “every pair”: a different person often matches on one thing, such as a surname',
+    kind: 'ch',
+    options: [
+      { value: 'all', label: 'Every pair matches' },
+      { value: 'any', label: 'Any one matches' },
+    ],
+    get: (config) => (getAtPath(config, [...e.base, 'require']) === 'any' ? 'any' : 'all'),
+    put: (config, v) => setPath(config, [...e.base, 'require'], v === 'any' ? 'any' : 'all'),
+  }),
+  at(e, ['into', 'matched'], {
+    id: 'matched',
+    label: 'Whether they matched, kept in',
+    hint: 'A yes or no value, for the steps after it',
+    kind: 'pick',
+    options: varChoices,
+  }),
+  at(e, ['into', 'differences'], {
+    id: 'differences',
+    label: 'What differed, kept in',
+    hint: 'The names of the pairs, never their values',
+    kind: 'pick',
+    options: varChoices,
+  }),
+  at(e, ['into', 'score'], { id: 'score', label: 'The lowest likeness, kept in', hint: '1 is identical', kind: 'pick', options: varChoices }),
+  { id: 'tryPairs', label: 'Try it', tags: 'p', wide: true, render: (c) => <PairsTry ctx={c} base={e.base} id={c.id} /> },
 ];
 
-function MediaWorkspace({ ctx }) {
-  const route = useRoute();
-  const asked = VIEWS.some((v) => v.id === route.params?.view) ? route.params.view : 'library';
-  const [view, setView] = useState(asked);
-  const choose = (id) => {
-    setView(id);
-    replaceRoute(routeHref(route.botId, route.tab, { ...route.params, view: id }));
-  };
-  const counts = pictureCounts(ctx.config);
-  const pictures = pictureLibrary(ctx.config).length;
-  const badge = { library: pictures, requests: counts.photo + counts.video + counts.read + counts.compare + counts.forget, camera: counts.video };
-  return (
-    <div className="mvWork">
-      <div className="mvTabs" role="tablist" aria-label="Images & Videos">
-        {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            role="tab"
-            id={`mv-tab-${v.id}`}
-            aria-selected={view === v.id}
-            aria-controls={`mv-panel-${v.id}`}
-            className={view === v.id ? 'on' : ''}
-            onClick={() => choose(v.id)}
-          >
-            <Icon name={v.icon} size={15} />
-            {v.label}
-            {badge[v.id] > 0 && <span className="mvCount">{badge[v.id]}</span>}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`mv-panel-${view}`} aria-labelledby={`mv-tab-${view}`} className="mvPanel">
-        {view === 'library' && (
-          <Block
-            id="library"
-            title="Pictures to try it with"
-            lead="The photos and sample cards your test scenarios send, as a customer would. Open one to see it large, measure it, change it or replace it."
-          >
-            <MediaLibrary ctx={ctx} />
-          </Block>
-        )}
-        {view === 'requests' && (
-          <>
-            <Block
-              id="requests"
-              title="What it asks customers for"
-              lead="Every photo request, video check, picture reading and comparison, wherever it is. Open one to change it here."
-            >
-              <Requests ctx={ctx} />
-            </Block>
-            <Block
-              id="standard"
-              title="How picky the checks are"
-              lead="Checked in code before anything reads the picture. A picture that falls short is turned down and asked for again."
-            >
-              <Standards ctx={ctx} />
-            </Block>
-          </>
-        )}
-        {view === 'camera' && (
-          <Block
-            id="camera"
-            title="The camera, as a video check sees it"
-            lead="Your own camera, live, with the numbers the server measures on each frame. Nothing is recorded or sent."
-          >
-            <LiveCamera ctx={ctx} />
-          </Block>
-        )}
-        {view === 'settings' && (
-          <>
-            <Block id="reach" title="Where people can send them" lead="Photos and the camera work in chat and talk on your website.">
-              <Reach ctx={ctx} />
-            </Block>
-            <Block id="privacy" title="Privacy">
-              <Privacy ctx={ctx} />
-            </Block>
-            <Block id="honest" title="What a picture check can do">
-              <Honest />
-            </Block>
-            <Block id="try" title="Try it">
-              <TryIt />
-            </Block>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+// ---- a way in's picture rows (only ways in on the website take pictures)
+const wayRows = (e) => {
+  const index = e.base[1];
+  const takes = (config, want) => list(getAtPath(config, ['channels', index, 'modalities', 'input'])).includes(want);
+  const photoOff = (config) => !takes(config, 'image');
+  return [
+    {
+      id: 'photo',
+      label: 'Customers can send photos',
+      hint: 'An upload button in the conversation',
+      kind: 'sw',
+      get: (c) => takes(c, 'image'),
+      put: (c, on) => setChannelInput(c, index, 'image', on),
+    },
+    {
+      id: 'camera',
+      label: 'Customers can turn on their camera',
+      hint: 'Only when a step asks for it',
+      kind: 'sw',
+      get: (c) => takes(c, 'video'),
+      put: (c, on) => setChannelInput(c, index, 'video', on),
+    },
+    at(e, ['inputs', 'image', 'on_receive'], {
+      id: 'onReceive',
+      label: 'When a photo arrives',
+      hint: 'A step that asks for a photo waits for one either way',
+      kind: 'ch',
+      options: [
+        { value: 'attach', label: 'Wait for their next message' },
+        { value: 'reply', label: 'Answer at once' },
+      ],
+      disabled: photoOff,
+      get: (c) => (getAtPath(c, [...e.base, 'inputs', 'image', 'on_receive']) === 'reply' ? 'reply' : 'attach'),
+      put: (c, v) => setPath(c, [...e.base, 'inputs', 'image', 'on_receive'], v === 'reply' ? 'reply' : undefined),
+    }),
+    at(e, ['inputs', 'image', 'max_bytes'], {
+      id: 'maxSize',
+      label: 'Largest photo',
+      kind: 'num',
+      unit: 'MB',
+      placeholder: '8',
+      disabled: photoOff,
+      get: (c) => {
+        const b = getAtPath(c, [...e.base, 'inputs', 'image', 'max_bytes']);
+        return typeof b === 'number' ? Math.round((b / (1024 * 1024)) * 10) / 10 : undefined;
+      },
+      put: (c, mb) =>
+        setPath(c, [...e.base, 'inputs', 'image', 'max_bytes'], typeof mb === 'number' && mb > 0 ? Math.max(1024, Math.round(mb * 1024 * 1024)) : undefined),
+    }),
+    at(e, ['inputs', 'image', 'accepted_mime'], {
+      id: 'accept',
+      label: 'Kinds of file',
+      kind: 'multi',
+      options: [
+        { value: 'image/jpeg', label: 'JPEG' },
+        { value: 'image/png', label: 'PNG' },
+        { value: 'image/webp', label: 'WEBP' },
+        { value: 'image/heic', label: 'HEIC' },
+        { value: 'image/gif', label: 'GIF' },
+      ],
+      disabled: photoOff,
+      get: (c) => {
+        const now = list(getAtPath(c, [...e.base, 'inputs', 'image', 'accepted_mime']));
+        return now.length ? now : DEFAULT_ACCEPT;
+      },
+      put: (c, v) => {
+        const same = list(v).length === DEFAULT_ACCEPT.length && DEFAULT_ACCEPT.every((t) => list(v).includes(t));
+        return setPath(c, [...e.base, 'inputs', 'image', 'accepted_mime'], same || !list(v).length ? undefined : v);
+      },
+    }),
+  ];
+};
+const wayAdv = (e) => [
+  at(e, ['inputs', 'video', 'screen_share'], {
+    id: 'screen',
+    label: 'Screen sharing',
+    hint: 'They can share their screen as well as the camera',
+    kind: 'sw',
+    get: (c) => getAtPath(c, [...e.base, 'inputs', 'video', 'screen_share']) === true,
+  }),
+  at(e, ['inputs', 'video', 'camera'], {
+    id: 'videoCamera',
+    label: 'Camera stream (technical)',
+    hint: 'How the browser sends the camera',
+    kind: 'sw',
+    get: (c) => getAtPath(c, [...e.base, 'inputs', 'video', 'camera']) === true,
+  }),
+  at(e, ['inputs', 'image', 'topic'], {
+    id: 'topic',
+    label: 'Upload topic (technical)',
+    hint: 'The channel uploads travel on; leave it empty for the usual one',
+    kind: 'text',
+    placeholder: 'agent-builder.image',
+  }),
+];
 
-export const mediaPart = {
+// ---- how an agent sees pictures during the conversation (kept, not run yet)
+const modeOf = (config, e) => getAtPath(config, [...e.base, 'vision', 'mode']) || 'off';
+const seeingRows = (e) => [
+  at(e, ['vision', 'mode'], {
+    id: 'seeMode',
+    label: 'How it sees pictures',
+    hint: 'Every turn: the latest picture goes with what the caller says. A live feed needs a realtime model. Kept, but the server doesn’t do either yet',
+    kind: 'ch',
+    options: [
+      { value: 'off', label: 'Only when a step reads one' },
+      { value: 'turn_attach', label: 'Every turn' },
+      { value: 'continuous', label: 'A live feed (realtime model)' },
+    ],
+    get: (c) => modeOf(c, e),
+    put: (c, v) => (v === 'off' ? setPath(c, [...e.base, 'vision'], undefined) : setPath(c, [...e.base, 'vision', 'mode'], v)),
+  }),
+  at(e, ['vision', 'max_dimension'], {
+    id: 'seeSize',
+    label: 'Longest side sent to the AI',
+    hint: 'A picture is made smaller to this before it is sent',
+    kind: 'num',
+    unit: 'px',
+    disabled: (c) => modeOf(c, e) === 'off',
+  }),
+];
+const seeingAdv = (e) => {
+  const live = (c) => modeOf(c, e) !== 'continuous';
+  return [
+    at(e, ['vision', 'watch', 'sample_interval_s'], {
+      id: 'watchEvery',
+      label: 'Look again every',
+      hint: 'How often a frame of the live feed is looked at',
+      kind: 'num',
+      unit: 'seconds',
+      disabled: live,
+    }),
+    at(e, ['vision', 'watch', 'change_threshold'], {
+      id: 'watchChange',
+      label: 'A change worth a look',
+      hint: 'How different two looks must be, 0 to 255',
+      kind: 'num',
+      disabled: live,
+    }),
+    at(e, ['vision', 'watch', 'min_seconds_between_prompts'], {
+      id: 'watchGap',
+      label: 'At most one nudge every',
+      hint: 'So a moving picture doesn’t keep it talking',
+      kind: 'num',
+      unit: 'seconds',
+      disabled: live,
+    }),
+    at(e, ['vision', 'watch', 'on_change'], {
+      id: 'watchSay',
+      label: 'What it does about a change',
+      hint: 'What it says, in its own words, when the picture changes',
+      kind: 'form',
+      disabled: live,
+    }),
+  ];
+};
+
+const goSecret = (c) => () => c.goPart?.('conversation');
+
+export const mediaForm = {
   id: 'media',
   num: '7',
   title: 'Images & Videos',
-  question: 'The pictures you try it with, the photos and video checks it asks customers for, how picky those checks are, and what happens to the pictures.',
-  cols: [],
-  top: (ctx) => <MediaWorkspace ctx={ctx} />,
+  question: 'The photos and camera checks it asks customers for, how picky they are, what it reads from them and what happens to the pictures.',
+  cols: [
+    [
+      {
+        id: 'ways',
+        title: 'Where pictures come in',
+        lead: 'Only on your website: a phone call carries no pictures.',
+        empty: 'No way in on the website yet: add web chat or talk on your website on Channels.',
+        list: {
+          id: 'ways',
+          label: 'Ways in',
+          entries: (config) =>
+            waysIn(config)
+              .filter((w) => w.web)
+              .map((w) => ({ key: w.key, name: `${w.name}${w.id ? ` (${w.id})` : ''}`, base: ['channels', w.index], item: config.channels[w.index] })),
+        },
+        of: 'ways',
+        rowsFor: (c) => (c.chosen('ways') ? wayRows(c.chosen('ways')) : []),
+        advFor: (c) => (c.chosen('ways') ? wayAdv(c.chosen('ways')) : []),
+      },
+      {
+        id: 'seeing',
+        title: 'Seeing during the conversation',
+        lead: 'Kept, but the server doesn’t do it yet: the AI sees a picture only when a step reads it.',
+        empty: 'No agents listed yet.',
+        list: {
+          id: 'seeing',
+          label: 'Agents',
+          entries: (config) =>
+            list(config?.agents?.items)
+              .map((a, i) => ({ a, i }))
+              .filter(({ a }) => isObj(a))
+              .map(({ a, i }) => ({ key: a.id || String(i), name: a.name || a.id || `Agent ${i + 1}`, base: ['agents', 'items', i], item: a })),
+        },
+        of: 'seeing',
+        rowsFor: (c) => (c.chosen('seeing') ? seeingRows(c.chosen('seeing')) : []),
+        advFor: (c) => (c.chosen('seeing') ? seeingAdv(c.chosen('seeing')) : []),
+      },
+      {
+        id: 'picky',
+        title: 'How picky, for all of them',
+        lead: 'One choice sets every photo request, or every camera check, at once.',
+        rows: [
+          { id: 'pickyUpload', label: 'Every photo', render: (c) => <PickyAll ctx={c} kind="upload" id={c.id} /> },
+          { id: 'pickyCamera', label: 'Every camera check', render: (c) => <PickyAll ctx={c} kind="camera" id={c.id} /> },
+        ],
+      },
+      {
+        id: 'library',
+        title: 'Pictures to try it with',
+        lead: 'The photos and sample cards your test conversations send, as a customer would.',
+        rows: [{ id: 'library', label: 'Sample pictures', wide: true, render: (c) => <MediaLibrary ctx={c} /> }],
+      },
+    ],
+    [
+      {
+        id: 'adding',
+        title: 'Add a picture step',
+        lead: 'A starting point (ask, read, forget) or one step, in a form’s steps. It opens in its card below.',
+        body: (c) => (
+          <AddPictureStep ctx={c} onAdded={(path, type) => c.choose(LIST_OF[type] || 'requests', stepKey(path))} onNoForm={() => c.goPart?.('connections')} />
+        ),
+      },
+      {
+        id: 'requests',
+        title: 'Ask for a picture',
+        empty: 'No step asks for a picture yet.',
+        list: stepList('request_image', 'requests', 'request'),
+        of: 'requests',
+        word: 'step',
+        remove: removeStep,
+        rowsFor: (c) => (c.chosen('requests') ? requestRows(c.chosen('requests')) : []),
+        advFor: (c) => (c.chosen('requests') ? [when(c.chosen('requests'), 'whenAsk')] : []),
+      },
+      {
+        id: 'reads',
+        title: 'Read a picture',
+        lead: 'An AI reading a photo can misread, and can’t tell a real card from a copy: a first look, not proof.',
+        empty: 'No step reads a picture yet.',
+        list: stepList('analyze_image', 'reads', 'reading'),
+        of: 'reads',
+        word: 'step',
+        remove: removeStep,
+        rowsFor: (c) => (c.chosen('reads') ? readRows(c.chosen('reads'), goSecret) : []),
+        advFor: (c) => (c.chosen('reads') ? [when(c.chosen('reads'), 'whenRead')] : []),
+      },
+      {
+        id: 'compares',
+        title: 'Compare in code',
+        lead: 'The way a person would, with no AI: names forgive a small slip, codes compare by letters and digits, dates by the day.',
+        empty: 'No step compares values yet.',
+        list: stepList('compare_values', 'compares', 'comparison'),
+        of: 'compares',
+        word: 'step',
+        remove: removeStep,
+        rowsFor: (c) => (c.chosen('compares') ? compareRows(c.chosen('compares')) : []),
+        advFor: (c) => (c.chosen('compares') ? [when(c.chosen('compares'), 'whenCompare')] : []),
+      },
+      {
+        id: 'forgets',
+        title: 'Forget pictures',
+        lead: 'Everything is forgotten when the call ends in any case; a step forgets them as soon as they are used.',
+        empty: 'No step forgets pictures yet.',
+        list: stepList('discard_image', 'forgets', 'forget step'),
+        of: 'forgets',
+        word: 'step',
+        remove: removeStep,
+        rowsFor: (c) => {
+          const e = c.chosen('forgets');
+          return e
+            ? [
+                at(e, ['images'], {
+                  id: 'forgetImages',
+                  label: 'Pictures it forgets',
+                  render: (x) => <ImagesPick ctx={x} base={e.base} id={x.id} max={99} label="Pictures it forgets" />,
+                }),
+              ]
+            : [];
+        },
+        advFor: (c) => (c.chosen('forgets') ? [when(c.chosen('forgets'), 'whenForget')] : []),
+      },
+      {
+        id: 'camera',
+        title: 'Your camera, live',
+        lead: 'What a camera check measures, on your own camera. Nothing is recorded or sent.',
+        rows: [{ id: 'live', label: 'Your camera', tags: 'p', wide: true, render: (c) => <LiveCamera ctx={c} /> }],
+      },
+    ],
+  ],
 };
+
+export const mediaPart = { ...mediaForm, render: (ctx) => <MediaWorkspace ctx={ctx} form={mediaForm} /> };

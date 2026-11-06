@@ -20,11 +20,13 @@ import {
 import { setPath } from '../schemaFacts.js';
 import { ChipList } from '../Detailed.jsx';
 import { notRunAt } from '../../../preflight.ts';
-import { AfterCallGlance } from '../Glance.jsx';
+import AfterCallWorkspace from '../afterCallWorkspace/AfterCallWorkspace.jsx';
 
 // 10 · After the call: what happens once it hangs up: what it writes (a summary, answers to questions), how the call
 // closes, what is kept and for how long, and what is hidden in it. afterCallModel.js writes post_call and the recording
-// notice; the call logs are observability.session_log; closing messages are wrapups.
+// notice; the call logs are observability.session_log; closing messages are wrapups. The workspace (AfterCallWorkspace)
+// draws these rows as one call's record and three chapters; All settings shows the cards below. Metrics, the log level
+// and tracing are Engine and details', beside the rest of the logging.
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -39,6 +41,11 @@ const OWN = 'dt-aftercall-own';
 
 // one question asked of every call: its words, the kind of answer, and the answers it may pick from
 function QuestionRow({ ctx, id, q }) {
+  useEffect(() => {
+    if (wanted !== id) return;
+    wanted = null;
+    document.getElementById(id)?.focus();
+  });
   const change = (patch) => ctx.set(setQuestion(ctx.config, q.index, patch));
   // the answers of "One of a list", kept while another kind is tried, so switching back brings them back
   const kept = useRef(null);
@@ -116,13 +123,11 @@ const wrapRow = (key, row) => ({
   disabled: (config) => !WRAP(config),
 });
 
-export const afterCallPart = {
+export const afterCallForm = {
   id: 'aftercall',
   num: '11',
   title: 'After the call',
   question: 'What happens once the conversation ends: what it writes down, what it keeps and what it hides.',
-  // what is set here, at a glance, before the forms
-  top: (ctx) => <AfterCallGlance ctx={ctx} />,
   cols: [
     [
       {
@@ -149,7 +154,16 @@ export const afterCallPart = {
             put: (c, prompt) => setSummary(c, { prompt: prompt ?? '' }),
           },
         ],
-        adv: [{ id: 'llm', label: 'Model that writes the summaries', kind: 'form', path: ['post_call', 'summary', 'llm'] }],
+        adv: [
+          {
+            id: 'llm',
+            label: 'Model that writes the summaries',
+            kind: 'form',
+            path: ['post_call', 'summary', 'llm'],
+            // only once summaries are on (or a model is set): a model alone would leave the summary's switch unset
+            hidden: (c) => afterCallOf(c).summary.on !== true && c?.post_call?.summary?.llm === undefined,
+          },
+        ],
       },
       {
         id: 'questions',
@@ -276,11 +290,10 @@ export const afterCallPart = {
           { id: 'secrets', label: 'Also hide remembered secrets', path: [...RED, 'mask_sensitive_state'] },
           { id: 'pii', label: 'Log personal details', path: ['observability', 'log_pii'] },
           { id: 'requests', label: 'Keep full model requests', path: ['observability', 'log_llm_requests'] },
-          { id: 'metrics', label: 'Collect metrics', path: ['observability', 'metrics'] },
-          { id: 'level', label: 'Log detail', path: ['observability', 'log_level'] },
-          { id: 'tracing', label: 'Tracing', path: ['observability', 'tracing'] },
         ],
       },
     ],
   ],
 };
+
+export const afterCallPart = { ...afterCallForm, render: (ctx) => <AfterCallWorkspace ctx={ctx} form={afterCallForm} /> };

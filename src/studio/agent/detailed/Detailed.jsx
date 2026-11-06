@@ -112,7 +112,7 @@ export async function removeEntry(ctx, collection, entry) {
 
 // Runs a deletion and, when it changed the draft, offers the item back with Undo (the page's notice, until the draft
 // changes again). `run` gets the ctx to delete with; a deletion the person called off changes nothing and offers nothing.
-async function deleteWithUndo(ctx, word, name, run) {
+export async function deleteWithUndo(ctx, word, name, run) {
   const before = ctx.config;
   let changed = false;
   await run({

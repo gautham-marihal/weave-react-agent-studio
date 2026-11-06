@@ -175,6 +175,13 @@ function GreetingField({ config, set, id }) {
 // startOpen: the list shows at once (inside the profile's editor for that one setting)
 function PickerButton({ id, value, empty, children, startOpen = false }) {
   const [open, setOpen] = useState(!!startOpen);
+  // in a popover for that one setting, the picker is the editor itself (its choice is shown once, ticked in its list)
+  if (startOpen)
+    return (
+      <div id={id} className="dtPickPanel bare" role="group" aria-labelledby={`${id}-label`}>
+        {children}
+      </div>
+    );
   return (
     <>
       <button type="button" id={id} className="dtPickBtn" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -193,7 +200,7 @@ function VoiceRow({ config, set, id, pickersOpen }) {
   const talks = readSimple(config).voiceChannel;
   return (
     <PickerButton id={id} value={value} empty={talks ? 'No voice chosen yet' : 'Not needed while it only chats'} startOpen={pickersOpen}>
-      <VoicePicker config={config} set={set} speech={talks} />
+      <VoicePicker config={config} set={set} speech={talks} bare={pickersOpen} />
     </PickerButton>
   );
 }
@@ -205,7 +212,7 @@ function ModelRow({ config, set, id, stage, pickersOpen }) {
   const value = m?.set ? `${m.providerName}${m.modelName ? ` · ${m.modelName}` : ''}` : '';
   return (
     <PickerButton id={id} value={value} empty="Not chosen yet" startOpen={pickersOpen}>
-      <ModelPicker config={config} set={set} providers={providers} live={live} speech={readSimple(config).voiceChannel} stages={[stage]} />
+      <ModelPicker config={config} set={set} providers={providers} live={live} speech={readSimple(config).voiceChannel} stages={[stage]} bare={pickersOpen} />
     </PickerButton>
   );
 }
@@ -357,8 +364,13 @@ export const agentForm = {
           { id: 'clean', label: 'Clean up text before speaking', tags: 'm', path: ['defaults', 'models', 'tts', 'text_transforms'] },
         ],
         adv: [
-          { id: 'voiceid', label: 'A voice id from your own account', path: ['defaults', 'models', 'tts', 'voice_id'] },
-          { id: 'sttlang', label: 'Listening language code', path: ['defaults', 'models', 'stt', 'language'] },
+          {
+            id: 'voiceid',
+            label: 'A voice from your own account',
+            hint: 'Its id at the voice provider. Or pick a voice in the list.',
+            path: ['defaults', 'models', 'tts', 'voice_id'],
+          },
+          { id: 'sttlang', label: 'Language for listening', path: ['defaults', 'models', 'stt', 'language'] },
           { id: 'keyterms', label: 'Words to listen for', path: ['defaults', 'models', 'stt', 'keyterms'] },
         ],
       },
@@ -368,8 +380,8 @@ export const agentForm = {
         lead: 'What it thinks, hears and speaks with.',
         rows: [
           { id: 'llm', label: 'Thinking', tags: 'r', errPath: ['defaults', 'models', 'llm'], render: (c) => <ModelRow {...c} stage="llm" /> },
-          { id: 'stt', label: 'Hearing', errPath: ['defaults', 'models', 'stt'], hidden: (c) => !speaks(c), render: (c) => <ModelRow {...c} stage="stt" /> },
-          { id: 'tts', label: 'Speaking', hidden: (c) => !speaks(c), render: (c) => <ModelRow {...c} stage="tts" /> },
+          { id: 'stt', label: 'Hearing', errPath: ['defaults', 'models', 'stt'], render: (c) => <ModelRow {...c} stage="stt" /> },
+          { id: 'tts', label: 'Speaking', render: (c) => <ModelRow {...c} stage="tts" /> },
           { id: 'temperature', label: 'How creative the answers are', tags: 'm', unit: '0 to 2', path: ['defaults', 'models', 'llm', 'temperature'] },
           { id: 'tools', label: 'Can use tools', path: ['defaults', 'models', 'llm', 'tool_calling'] },
           { id: 'parallel', label: 'Use several tools at once', path: ['defaults', 'models', 'llm', 'parallel_tool_calls'] },
@@ -377,16 +389,25 @@ export const agentForm = {
         ],
         adv: [
           { id: 'fallbacks', label: 'Backup models', path: ['defaults', 'models', 'llm', 'fallbacks'] },
-          { id: 'key', label: 'Access keys', path: ['defaults', 'models', 'llm', 'api_key'] },
-          { id: 'address', label: 'Service addresses', path: ['defaults', 'models', 'llm', 'base_url'] },
-          { id: 'options', label: 'Extra options', path: ['defaults', 'models', 'llm', 'options'] },
+          {
+            id: 'key',
+            label: 'Key kept on the server',
+            hint: 'The name of the key the server keeps for this service. The key itself is never shown here.',
+            path: ['defaults', 'models', 'llm', 'api_key'],
+          },
+          {
+            id: 'address',
+            label: 'Web address of the service',
+            hint: 'Only for a self-hosted or compatible service.',
+            path: ['defaults', 'models', 'llm', 'base_url'],
+          },
+          { id: 'options', label: 'Provider settings', hint: 'Passed as they are to the provider.', path: ['defaults', 'models', 'llm', 'options'] },
           {
             id: 'realtime',
             label: 'Speech-to-speech model',
             errPath: ['defaults', 'models', 'realtime'],
             render: (c) => <RealtimeRow {...c} />,
           },
-          { id: 'model', label: 'Another model id', path: ['defaults', 'models', 'llm', 'model'] },
         ],
       },
     ],

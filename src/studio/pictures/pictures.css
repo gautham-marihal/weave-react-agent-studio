@@ -367,9 +367,6 @@
   font-size: var(--fs-xs);
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
 }
-.pcCamBar {
-  padding: 0 14px 12px;
-}
 
 .pcFoot {
   margin: 0;

@@ -5279,15 +5279,10 @@ html[data-theme="dark"] {
 /* Cards */
 .dashboard
   :is(
-    .agentStatCard,
-    .agentPanel,
     .metricCard,
     .sessionsTablePanel,
     .telephonyStatCard,
     .telephonyTablePanel,
-    .progressCard,
-    .activityCard,
-    .quickCard,
     .starterCard,
     .integrationCard,
     .voiceTableWrap,
@@ -5299,10 +5294,10 @@ html[data-theme="dark"] {
   border-color: var(--line);
   box-shadow: var(--ds-card-shadow);
 }
-.dashboard :is(.agentStatCard, .metricCard, .telephonyStatCard) {
+.dashboard :is(.metricCard, .telephonyStatCard) {
   padding: var(--ds-card-pad);
 }
-.dashboard :is(.integrationCard, .agentRow) {
+.dashboard :is(.integrationCard) {
   background: var(--panel);
 }
 
@@ -5321,7 +5316,6 @@ html[data-theme="dark"] {
 .dashboard
   :is(
     .tableTools .iconOnly,
-    .agentRowAction,
     .compactSecondary,
     .voiceTableActions .secondaryCta,
     .voiceTableActions .iconButton,
@@ -5348,7 +5342,7 @@ html[data-theme="dark"] {
 }
 
 /* Badges: one shape for every small status label */
-:is(.cardTag, .agentRowHint, .workspaceFeaturePage .statusPill, .sideLink em) {
+:is(.cardTag, .workspaceFeaturePage .statusPill, .sideLink em) {
   display: inline-flex;
   align-items: center;
   gap: 6px;

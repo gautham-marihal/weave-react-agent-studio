@@ -517,7 +517,7 @@ html[data-theme] body .workspaceMenuLabel {
 }
 
 /* small labels above a title: quiet words, not a coloured shout */
-html[data-theme] body :is(.eyebrow, .createEyebrow, .cardEyebrow, .headerHint) {
+html[data-theme] body :is(.eyebrow, .createEyebrow) {
   color: var(--muted);
   font-size: var(--fs-sm);
   font-weight: 500;
@@ -696,11 +696,6 @@ html[data-theme] body .linkButton {
 html[data-theme] body .linkButton:hover {
   text-decoration-color: currentColor;
 }
-html[data-theme] body :is(.quickIcon, .activityIcon) {
-  border-color: var(--line);
-  background: var(--surface2);
-  color: var(--textStrong);
-}
 html[data-theme] body button.active {
   box-shadow: none;
 }
@@ -710,7 +705,6 @@ html[data-theme]
   body
   :is(
     .settingsFacts dt,
-    .stAgentSummary span,
     .callFacts dt,
     .asFacts dt,
     .stTDetails dt,
@@ -721,7 +715,6 @@ html[data-theme]
     .stEnvCard small,
     .stChangeBody small,
     .stPublishPanel > header small,
-    .hjHead,
     .tableColumnsTitle,
     .stPickGroup h6,
     .stUrlPreview span,
@@ -765,10 +758,6 @@ html[data-theme] body .searchFieldWrap input:focus-visible {
 }
 html[data-theme] body .searchFieldWrap > span {
   color: var(--muted);
-}
-html[data-theme] body :is(.loginCard input:not([type="checkbox"]), .profileCard input, .profileCard :is(select, button:where(.rxSelect))):focus {
-  border-color: color-mix(in srgb, var(--textStrong) 45%, var(--line2));
-  box-shadow: 0 0 0 3px var(--ring);
 }
 html[data-theme] body input[type="checkbox"],
 html[data-theme] body input[type="radio"] {

@@ -195,6 +195,7 @@ for (const theme of ['light', 'dark']) {
     'tools',
     'connections',
     'channels',
+    'media',
     'workflow',
     'subagents',
     'guardrails',

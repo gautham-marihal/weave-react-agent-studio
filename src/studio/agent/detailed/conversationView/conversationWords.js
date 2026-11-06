@@ -352,3 +352,20 @@ export function soundWords(config) {
     menus: getAtPath(config, [...C, 'ivr_detection']) === true,
   };
 }
+
+// where people reach it, in plain words: "Talks and chats on your website, and takes phone calls"
+export function reachWords(channels) {
+  const on = new Set(channels.filter((ch) => ch.enabled).map((ch) => ch.type));
+  const web = [on.has('web_voice') && 'talks', on.has('web_chat') && 'chats'].filter(Boolean);
+  const parts = [
+    web.length && `${web.join(' and ')} on your website`,
+    on.has('sip_voice') && 'takes phone calls',
+    on.has('whatsapp') && 'answers on WhatsApp',
+    on.has('sms') && 'answers text messages',
+    on.has('email') && 'answers email',
+    on.has('custom') && 'answers on a channel of your own',
+  ].filter(Boolean);
+  if (!parts.length) return 'No channel is on yet';
+  const words = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
+  return words[0].toUpperCase() + words.slice(1);
+}

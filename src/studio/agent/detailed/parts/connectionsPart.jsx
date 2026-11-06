@@ -7,8 +7,10 @@ import { setPath } from '../schemaFacts.js';
 import { FormRow, removeEntry } from '../Detailed.jsx';
 import { AddConnection, CONNECTION_KINDS, describeConnection } from './ConnectionsOverview.jsx';
 import { clip, joinAnd, plural, stepsWords } from '../describe.js';
+import SignIn from '../connectionsWorkspace/SignIn.jsx';
+import ConnectionsWorkspace from '../connectionsWorkspace/ConnectionsWorkspace.jsx';
 
-// 5 · Connections, transfers and forms: what its tools reach. Each was a long list inside Tools; now each kind has its
+// 5 · Connections: what its tools reach (systems, transfers, forms, messages, tasks). Each was a long list inside Tools; now each kind has its
 // own card, its items as chips and the chosen one's fields under them. Everything here is pointed at from elsewhere
 // (a tool's connection, a hand-over's transfer, a form a tool shows), and those places pick from these lists.
 
@@ -165,11 +167,11 @@ const card = ({ id, title, lead, path, collection, word, label, nameOf, add, row
   },
 });
 
-export const connectionsPart = {
+export const connectionsForm = {
   id: 'connections',
   num: '5',
-  title: 'Connections, transfers and forms',
-  question: 'The outside systems its tools reach, phone transfers to people, the forms it shows, the messages it sends and its multi-step tasks.',
+  title: 'Connections',
+  question: 'The systems it reaches, where it passes callers on, and the forms, messages and tasks it uses.',
   cols: [
     [
       {
@@ -258,12 +260,15 @@ export const connectionsPart = {
             ),
           ],
           adv: (entry) => [
-            at(entry, ['auth'], {
-              id: 'auth',
-              label: 'Sign-in',
-              hint: 'How the agent proves who it is to this service. The key itself stays on the server as a secret; only its name is saved here.',
-              kind: 'form',
-            }),
+            {
+              ...at(entry, ['auth'], {
+                id: 'auth',
+                label: 'Sign-in',
+                hint: 'How the agent proves who it is to this service. The key itself stays on the server as a secret; only its name is saved here.',
+              }),
+              kind: 'custom',
+              render: (c) => <SignIn ctx={c} id={c.id} value={c.value} onChange={c.onChange} entry={entry} />,
+            },
             at(
               entry,
               ['headers'],
@@ -353,6 +358,14 @@ export const connectionsPart = {
           }),
           at(entry, ['closed'], { id: 'closed', label: 'When closed', kind: 'form' }),
           at(entry, ['on_failure'], { id: 'failed', label: 'If it fails', kind: 'form' }),
+          at(entry, ['on_success'], { id: 'success', label: 'Once connected', hint: 'Steps that run once the call has moved', kind: 'form' }),
+          at(entry, ['description'], {
+            id: 'about',
+            label: 'What it is for',
+            hint: 'In a sentence, for whoever looks after the agent.',
+            kind: 'long',
+            rows: 2,
+          }),
         ],
         adv: (entry) => [
           { id: 'pbx', label: 'Phone system: host, port, transport, trunk, number', kind: 'form', path: ['telephony', 'pbx'] },
@@ -385,6 +398,12 @@ export const connectionsPart = {
         adv: (entry) => [
           at(entry, ['otherwise'], { id: 'otherwise', label: 'If the channel cannot show it', kind: 'form' }),
           at(entry, ['description'], { id: 'description', label: 'Description', kind: 'long', rows: 2 }),
+          {
+            id: 'name',
+            label: 'Name',
+            hint: 'What steps and tools call it. Renaming it renames it everywhere it is used.',
+            render: (c) => <IdName ctx={c} id={c.id} entry={{ ...entry, list: 'forms' }} collection="forms" />,
+          },
         ],
       }),
       card({
@@ -408,7 +427,22 @@ export const connectionsPart = {
             ],
           }),
         ],
-        adv: (entry) => [at(entry, ['on_failure'], { id: 'failed', label: 'If it fails', kind: 'form' })],
+        adv: (entry) => [
+          at(entry, ['on_failure'], { id: 'failed', label: 'If it fails', kind: 'form' }),
+          at(entry, ['description'], {
+            id: 'about',
+            label: 'What it is for',
+            hint: 'In a sentence, for whoever looks after the agent.',
+            kind: 'long',
+            rows: 2,
+          }),
+          {
+            id: 'name',
+            label: 'Name',
+            hint: 'What steps and tools call it. Renaming it renames it everywhere it is used.',
+            render: (c) => <IdName ctx={c} id={c.id} entry={{ ...entry, list: 'notifications' }} collection="notifications" />,
+          },
+        ],
       }),
       card({
         id: 'tasks',
@@ -441,6 +475,20 @@ export const connectionsPart = {
         ],
         adv: (entry) => [
           at(entry, ['instructions'], { id: 'instructions', label: 'Instructions', kind: 'long', rows: 3 }),
+          at(entry, ['inactivity'], { id: 'quiet', label: 'If the caller goes quiet', hint: 'During this task only', kind: 'form' }),
+          at(entry, ['description'], {
+            id: 'about',
+            label: 'What it is for',
+            hint: 'In a sentence, for whoever looks after the agent.',
+            kind: 'long',
+            rows: 2,
+          }),
+          {
+            id: 'name',
+            label: 'Name',
+            hint: 'What steps and tools call it. Renaming it renames it everywhere it is used.',
+            render: (c) => <IdName ctx={c} id={c.id} entry={{ ...entry, list: 'tasks' }} collection="tasks" />,
+          },
           at(entry, ['use_prior_context'], { id: 'prior', label: 'Use what was already said', kind: 'sw' }),
           at(entry, ['attempts_scope'], {
             id: 'scope',
@@ -466,6 +514,8 @@ export const connectionsPart = {
     ],
   ],
 };
+
+export const connectionsPart = { ...connectionsForm, render: (ctx) => <ConnectionsWorkspace ctx={ctx} form={connectionsForm} /> };
 
 // a new item at the end of a list, with a fresh id; its key is that id, so its card opens
 function addTo(config, path, word, make) {

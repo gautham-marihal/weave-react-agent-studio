@@ -30,7 +30,9 @@ function offerToEntry(config, id) {
   return setPath(config, ['agents', 'items', at, 'tools'], [...list(items[at].tools), id]);
 }
 
-export default function AddItem({ ctx, path, pickerKey, word, onAdded, label }) {
+// The choices of what to add, and what picking one does: { options, pick(option, made) }, or null while the schema
+// loads. AddItem shows them in its window; Tools' workspace lays them out on the page.
+export function useAddChoices({ ctx, path, pickerKey, word, onAdded }) {
   const { types: channelTypes } = useChannelTypes();
   const { providers } = useProviders();
   const { engine, schema, config } = ctx;
@@ -66,7 +68,7 @@ export default function AddItem({ ctx, path, pickerKey, word, onAdded, label }) 
     return at < 0 ? option : { ...option, help: `${option.help} It has one already: this opens it.`, existing: at };
   });
   if (!options.length) return null;
-  const pick = (option, made) => {
+  const pick = (option, made = option.make?.()) => {
     if (option.existing !== undefined) {
       const tool = list(config?.tools)[option.existing];
       onAdded?.(String(tool?.id ?? option.existing));
@@ -81,13 +83,19 @@ export default function AddItem({ ctx, path, pickerKey, word, onAdded, label }) 
     ctx.set(next);
     onAdded?.(String(isObj(made) && typeof made.id === 'string' ? made.id : list(getAtPath(next, path)).length - 1));
   };
+  return { options, pick };
+}
+
+export default function AddItem({ ctx, path, pickerKey, word, onAdded, label }) {
+  const choices = useAddChoices({ ctx, path, pickerKey, word, onAdded });
+  if (!choices) return null;
   return (
     <AddPicker
       what={WHAT[pickerKey] || `a ${word}`}
       intro={INTRO[pickerKey]}
       label={label || `Add ${withA(word)}`}
-      options={options}
-      onPick={pick}
+      options={choices.options}
+      onPick={choices.pick}
       className="dtAddPicker"
     />
   );

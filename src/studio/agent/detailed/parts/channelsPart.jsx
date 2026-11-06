@@ -26,6 +26,8 @@ import { setPath } from '../schemaFacts.js';
 import { DetailedPage, removeEntry } from '../Detailed.jsx';
 import AddItem from '../AddItem.jsx';
 import { clip } from '../describe.js';
+import { CarriesEditor, ClosedDays, WeekEditor } from '../channelsWorkspace/channelEditors.jsx';
+import ChannelsWorkspace from '../channelsWorkspace/ChannelsWorkspace.jsx';
 
 // A channel's row: what kind it is, what customers can send on it, its first words, and whether it is on
 const INPUT_WORDS = { text: 'typing', audio: 'talking', image: 'photos', video: 'the camera' };
@@ -42,7 +44,7 @@ function describeChannel(entry) {
   };
 }
 
-// 6 · Channels and hours: where people reach the agent, and when. The three ways that work today are switched on and
+// 6 · Channels: how people reach the agent, and when its team is in. The three ways that work today are switched on and
 // off with the setup's own switches (setupModel.js: a new one is made ready, the last one can't go); the kinds the
 // server lists as not running yet are shown, waiting. Each channel opens its own card; hours and caller id sit beside.
 // What a channel offers (a keypad, forms, which entry fields, voice) is the server's table of kinds (GET
@@ -69,7 +71,7 @@ function ReachPills({ ctx, id }) {
       <div className="dtPills" role="group" aria-label="Where people reach it" id={id}>
         {REACH.map((r) => (
           <button key={r.type} type="button" aria-pressed={on[r.type]} className={on[r.type] ? 'on' : ''} onClick={() => flip(r.type)}>
-            {r.title || channelName(r.type)}
+            {r.label || r.title || channelName(r.type)}
           </button>
         ))}
         {later.map((t) => (
@@ -267,11 +269,11 @@ export function ChannelsPage({ extra = {}, ...props }) {
   return <DetailedPage part={channelsPart} {...props} extra={{ ...extra, channelTypes: types }} />;
 }
 
-export const channelsPart = {
+export const channelsForm = {
   id: 'channels',
   num: '6',
-  title: 'Channels and hours',
-  question: 'Where people reach it, when it is open, and how it knows who is calling.',
+  title: 'Channels',
+  question: 'How people reach it, when its team is in, and how it knows who is calling.',
   cols: [
     [
       {
@@ -365,8 +367,11 @@ export const channelsPart = {
               }),
             ),
             itemRow(entry, ['match'], { id: 'match', label: 'Who it answers', kind: 'form' }),
-            itemRow(entry, ['modalities'], { id: 'modalities', label: 'What it hears and says', kind: 'form' }),
-            itemRow(entry, ['inputs'], { id: 'inputs', label: 'Pictures and video', kind: 'form' }),
+            {
+              ...itemRow(entry, ['modalities'], { id: 'modalities', label: 'What it carries', hint: 'What the person can use, and how it answers' }),
+              kind: 'custom',
+              render: (ctx) => <CarriesEditor id={ctx.id} value={ctx.value} onChange={ctx.onChange} types={ctx.channelTypes} type={entry.item?.type} />,
+            },
             itemRow(entry, ['overrides'], { id: 'overrides', label: 'Its own models and conversation settings', kind: 'form' }),
           ];
         },
@@ -407,8 +412,16 @@ export const channelsPart = {
           if (!entry) return [];
           return [
             itemRow(entry, ['timezone'], { id: 'tz', label: 'Time zone', kind: 'text', placeholder: 'Asia/Singapore' }),
-            itemRow(entry, ['weekly'], { id: 'week', label: 'Normal week', kind: 'form' }),
-            itemRow(entry, ['holidays'], { id: 'closed', label: 'Closed days', kind: 'form' }),
+            {
+              ...itemRow(entry, ['weekly'], { id: 'week', label: 'Normal week' }),
+              kind: 'custom',
+              render: (ctx) => <WeekEditor id={ctx.id} value={ctx.value} onChange={ctx.onChange} />,
+            },
+            {
+              ...itemRow(entry, ['holidays'], { id: 'closed', label: 'Closed days' }),
+              kind: 'custom',
+              render: (ctx) => <ClosedDays id={ctx.id} value={ctx.value} onChange={ctx.onChange} />,
+            },
             itemRow(entry, ['description'], { id: 'name', label: 'Name', kind: 'text' }),
           ];
         },
@@ -454,3 +467,5 @@ export const channelsPart = {
     ],
   ],
 };
+
+export const channelsPart = { ...channelsForm, render: (ctx) => <ChannelsWorkspace ctx={ctx} form={channelsForm} /> };

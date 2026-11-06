@@ -7,6 +7,7 @@ import { OneOf, Choice } from '../../../../ui/OneOf.tsx';
 import { SCORE_BANDS, normalizeSearch, readingState, settingsOf } from '../../../knowledge/model.js';
 import { humanize } from '../../../form/engine.js';
 import { docBase, searchProblem, searchable } from './knowledgeView.js';
+import { setLastHits } from '../knowledgeWorkspace/lastSearch.js';
 import './knowledge.css';
 
 // Build › Knowledge › "Try a search" (FRONTEND_GUIDE 10.2, POST …/knowledge/{base}/search, a read): what a caller
@@ -20,9 +21,14 @@ const pct = (v) => `${Math.max(0, Math.min(1, v)) * 100}%`;
 const two = (v) => (typeof v === 'number' ? v.toFixed(2) : '');
 
 // bring the saved setting into view, glowing, with the focus in it
-function showSetting(field) {
+// (on the Knowledge workspace the setting is behind its line: the page is asked to open it, then it is shown)
+function showSetting(field, tries = 0) {
   const row = document.querySelector(`[data-field="${field}"]`);
-  if (!row) return;
+  if (!row) {
+    if (tries === 0) window.dispatchEvent(new CustomEvent('detailed:show', { detail: field }));
+    if (tries < 10) requestAnimationFrame(() => showSetting(field, tries + 1));
+    return;
+  }
   row.scrollIntoView({ block: 'center' });
   row.classList.remove('dtFlash');
   row.getBoundingClientRect();
@@ -30,10 +36,14 @@ function showSetting(field) {
   row.querySelector('input, textarea, button, [tabindex]')?.focus({ preventScroll: true });
 }
 
-function Scale({ hits, line, saved }) {
+export function Scale({ hits, line, saved }) {
   const marks = [0, 0.25, 0.5, 0.75, 1];
   return (
-    <div className="kxScale" role="img" aria-label={`Scores of the passages found: ${hits.map((h, i) => `${i + 1} at ${two(h.score)}`).join(', ')}`}>
+    <div
+      className="kxScale"
+      role="img"
+      aria-label={hits.length ? `Scores of the passages found: ${hits.map((h, i) => `${i + 1} at ${two(h.score)}`).join(', ')}` : `The line at ${two(line)}`}
+    >
       {SCORE_BANDS.filter(([, , words]) => words === 'Unrelated' || words === 'Related').map(([from, to, words]) => (
         <React.Fragment key={words}>
           <span className={`kxBand ${words === 'Related' ? 'rel' : 'unrel'}`} style={{ left: pct(from), width: pct(to - from) }} />
@@ -88,7 +98,10 @@ export default function KnowledgeSearch({ ctx }) {
         ...(before.trim() ? { previous_reply: before.trim() } : {}),
         ref: 'draft',
       });
-      setAnswer({ busy: false, problem: '', found: normalizeSearch(raw), base: base.id });
+      const result = normalizeSearch(raw);
+      setAnswer({ busy: false, problem: '', found: result, base: base.id });
+      // its passages, for the line under How close a match
+      setLastHits(base.id, list(result?.hits));
     } catch (e) {
       setAnswer({ busy: false, problem: searchProblem(e, base.id), found: null, base: base.id });
     }

@@ -35,6 +35,7 @@ import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { DetailedPage, removeEntry } from '../Detailed.jsx';
 import { clip } from '../describe.js';
+import SubagentsWorkspace from '../subagentsWorkspace/SubagentsWorkspace.jsx';
 
 // 8 · Subagents and hand-overs: who answers, what each subagent does, and who passes callers to whom: the same
 // settings the Workflow canvas draws, as a form (one draft: a change here shows on the canvas and the other way round).
@@ -282,7 +283,7 @@ const KINDS = [
   { value: 'standalone', label: 'Answers on its own' },
 ];
 
-export const subagentsPart = {
+export const subagentsForm = {
   id: 'subagents',
   num: '9',
   title: 'Subagents and hand-overs',
@@ -416,7 +417,6 @@ export const subagentsPart = {
           return [
             itemRow(entry, ['instructions', 'rules'], { id: 'rules', label: 'Rules', kind: 'list' }),
             itemRow(entry, ['instructions', 'conditional'], { id: 'sometimes', label: 'Only sometimes', kind: 'form' }),
-            itemRow(entry, ['vision'], { id: 'vision', label: 'Understands pictures', kind: 'form' }),
             itemRow(entry, ['channels'], {
               id: 'channels',
               label: 'Channels',
@@ -565,7 +565,25 @@ export const subagentsPart = {
               },
             },
             itemRow(entry, ['announce'], { id: 'say', label: 'Say while handing over', kind: 'text', placeholder: 'One moment, let me get bookings.' }),
-            itemRow(entry, ['carry_context'], { id: 'context', label: 'The next agent knows what was said', kind: 'sw' }),
+            // on unless switched off (the schema's default), so an unset switch reads on
+            (() => {
+              const row = itemRow(entry, ['carry_context'], { id: 'context', label: 'The next agent knows what was said', kind: 'sw' });
+              return { ...row, get: (config) => row.get(config) !== false };
+            })(),
+            // what it records as it hands over, such as the caller's intent for later routing (the schema's set_state)
+            itemRow(entry, ['set_state'], { id: 'remember', label: 'It remembers', hint: 'Values set as it hands over, for later routing', kind: 'form' }),
+          ];
+        },
+        advFor: (c) => {
+          const entry = c.chosen('handoffs');
+          if (!entry) return [];
+          return [
+            itemRow(entry, ['tool'], {
+              id: 'name',
+              label: 'Name the model sees',
+              hint: 'Made for you; change it only to match a prompt that names it',
+              kind: 'text',
+            }),
           ];
         },
       },
@@ -698,6 +716,8 @@ export const subagentsPart = {
     ],
   ],
 };
+
+export const subagentsPart = { ...subagentsForm, render: (ctx) => <SubagentsWorkspace ctx={ctx} form={subagentsForm} /> };
 
 // The part with the workspace's other agents and their numbers (a transfer to one of them is a hand-over to it).
 export function SubagentsPage({ editor, request, onShowJson, onGoTools }) {

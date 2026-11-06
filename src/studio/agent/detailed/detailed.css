@@ -609,17 +609,6 @@ html[data-theme] body .dtCard h2 {
   border-radius: var(--r-control, 8px);
   background: color-mix(in srgb, var(--surface2) 45%, var(--panel));
 }
-.dtPerService {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.dtPerService label {
-  display: grid;
-  gap: 4px;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
 .dtFormRow {
   display: grid;
   gap: 8px;
@@ -672,26 +661,6 @@ html[data-theme] body .dtCard h2 {
 .dtDrop.over {
   border-color: var(--accent);
   color: var(--textStrong);
-}
-.dtFound {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--fs-xs);
-}
-.dtFound li {
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: var(--surface2);
-}
-.dtFound li.left {
-  opacity: 0.7;
-}
-.dtFound p {
-  margin: 2px 0 0;
-  color: var(--text);
 }
 .dtCardAction {
   padding: 4px 0 8px;
@@ -865,9 +834,6 @@ html[data-theme] body .dtStrip h2 {
   border-radius: var(--r-control, 8px);
   background: color-mix(in srgb, var(--accent) 4%, var(--surface2));
   box-sizing: border-box;
-}
-.dtNarrow {
-  max-width: 120px;
 }
 
 /* the Add buttons, over the studio's own button look */
@@ -1379,167 +1345,12 @@ html[data-theme] body .dtAddPicker .stAddBtn:hover {
   width: 100%;
 }
 
-/* ---- Images & Videos ---- */
-.mdReach,
-.mdRequests,
-.mdPrivacy {
-  display: grid;
-  gap: 12px;
-  padding: 12px 0 16px;
-}
-.mdChannels {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.mdChannels li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-control, 8px);
-  background: var(--panel);
-}
-.mdChannels li.off {
-  background: var(--surface2);
-}
-.mdChName {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-  color: var(--textStrong);
-  font-size: var(--fs-sm);
-}
-.mdChName small {
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
-.mdSw {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text);
-  font-size: var(--fs-sm);
-}
-.mdSw label {
-  cursor: pointer;
-}
-.mdVoice {
-  grid-column: span 2;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
-.mdAi {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0;
-  color: var(--text);
-  font-size: var(--fs-xs);
-  line-height: 1.5;
-}
-.mdAi svg {
-  flex: none;
-  margin-top: 2px;
-}
-.mdAi.good {
-  color: var(--good-text);
-}
-.mdAi.bad {
-  color: var(--danger-text);
-}
-.mdGroup {
-  display: grid;
-  gap: 8px;
-}
-.mdGroupHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-}
-html[data-theme] body .mdGroupHead h3 {
-  margin: 0;
-  color: var(--textStrong);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-.mdAdd {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
-  padding-top: 4px;
-}
-.mdAdd label {
-  color: var(--text);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-.mdAdd select {
-  width: auto;
-  min-width: 240px;
-  max-width: 100%;
-}
-.mdTry {
-  display: grid;
-  justify-items: start;
-  gap: 10px;
-  padding: 10px 0 16px;
-}
+/* ---- Images & Videos (its workspace is mediaWorkspace/mediaWorkspace.css) ---- */
 .dtCard .psHonest {
   margin: 10px 0 16px;
 }
-@media (max-width: 720px) {
-  .mdChannels li {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .mdChannels li > .mdSw,
-  .mdChannels li > .mdVoice {
-    grid-column: 2;
-  }
-}
 
-/* the workspace's views, its sections, the library, one picture's details and the camera */
-.mvWork {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-.mvTabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  border-bottom: 1px solid var(--line);
-}
-.mvTabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: -1px;
-  padding: 10px 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  cursor: pointer;
-}
-.mvTabs button:hover {
-  color: var(--textStrong);
-}
-.mvTabs button.on {
-  border-bottom-color: var(--accent);
-  color: var(--textStrong);
-  font-weight: 600;
-}
+/* the library, one picture's details and the camera */
 .mvCount {
   min-width: 18px;
   padding: 0 6px;
@@ -1550,17 +1361,6 @@ html[data-theme] body .mdGroupHead h3 {
   font-weight: 600;
   line-height: 18px;
   text-align: center;
-}
-.mvPanel {
-  display: grid;
-  gap: 24px;
-  min-width: 0;
-}
-.mvBlock {
-  padding-bottom: 20px;
-}
-.mvBlock > .dtLead {
-  margin-bottom: 14px;
 }
 .mvLib {
   display: grid;
@@ -1847,124 +1647,6 @@ html[data-theme] body .mdGroupHead h3 {
   .mvRows .mvTags {
     grid-column: 2;
   }
-}
-
-/* ---- "At a glance": what is set in a part, before its forms (Glance.jsx) ---- */
-.glBox {
-  display: grid;
-  gap: 14px;
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card, 14px);
-  background: color-mix(in srgb, var(--dt-hue, var(--accent)) 3%, var(--panel));
-}
-.glTiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.glTile {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  width: 100%;
-  height: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-control, 8px);
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.glTile:hover {
-  border-color: color-mix(in srgb, var(--dt-hue, var(--accent)) 45%, var(--line));
-}
-.glIcon {
-  --pill: var(--good-text);
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--pill) 12%, var(--panel));
-  color: var(--pill);
-}
-.glTile.off .glIcon {
-  --pill: var(--muted);
-}
-.glTile.warn .glIcon {
-  --pill: var(--warn-text);
-}
-.glTile.bad .glIcon {
-  --pill: var(--danger-text);
-}
-.glText {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-.glLabel {
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
-.glValue {
-  color: var(--textStrong);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-.glTile.bad .glValue {
-  color: var(--danger-text);
-}
-.glIntro {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-.glAvatar {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--dt-hue, var(--accent));
-  color: #fff;
-  font-weight: 600;
-}
-.glIntroText {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.glWho {
-  color: var(--muted);
-  font-size: var(--fs-sm);
-}
-.glWho b {
-  color: var(--textStrong);
-}
-.glBubble {
-  justify-self: start;
-  max-width: 64ch;
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 4px 14px 14px 14px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  color: var(--textStrong);
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-}
-.glBubble.empty {
-  color: var(--danger-text);
 }
 
 /* a long list of items in a row (remembered values): searched, the first few shown until asked for all */

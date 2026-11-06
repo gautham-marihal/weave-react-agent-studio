@@ -121,6 +121,8 @@ await page.waitForSelector('.dashMain');
 
 // ---------------------------------------------------------------- Knowledge: upload, save and build, the file's card
 await go('#/bots/acme-support/knowledge');
+// these checks read the part's cards: Knowledge opens on what it knows, so its All settings view is chosen
+await page.getByRole('button', { name: 'All settings', exact: true }).click();
 await page.waitForSelector('[data-field="knowledge.upload"]');
 const text =
   'Returns. You can return a router within 30 days of delivery, unused and in its box.\n\nWarranty. Routers come with a 2-year warranty covering faults.\n\nOpening hours. We open Monday to Saturday, 9am to 6pm.';
@@ -195,6 +197,9 @@ check('…and deleted on the second yes', (await page.getByText('returns.md is t
 check('the file is out of the draft (until saved)', (await page.locator('[data-source="file:returns.md"]').count()) === 0);
 
 // ---------------------------------------------------------------- Tools: Try it
+// a tool's address opens its own page on "What it can do"; the Try it card is in All settings (remembered from here on)
+await go('#/bots/acme-support/tools');
+await page.locator('.apSeg').getByRole('button', { name: 'All settings', exact: true }).click();
 await go('#/bots/acme-support/tools?item=tools:get_bill');
 const tryCard = page.locator('[data-card="tools.try"]');
 await tryCard.waitFor({ timeout: 10000 });

@@ -355,11 +355,6 @@ html[data-theme] body .cvHero .apName h2 {
   cursor: not-allowed;
   opacity: 0.5;
 }
-.cvFixed {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--fs-sm);
-}
 .cvStory {
   margin: 0;
   padding: 12px 14px;
@@ -470,4 +465,262 @@ html[data-theme] body .cvHero .apName h2 {
 .cvQuote a {
   color: var(--cv-hue-text);
   font-weight: 600;
+}
+
+/* ---- what it remembers (RememberSheet.jsx, canvas board C6): the details as a table, beside what "kept secret"
+   means and one editor card (a new detail, or the one chosen) ---- */
+.rmWrap {
+  --cv-hue: var(--hue-conversation, var(--accent));
+  --cv-hue-text: color-mix(in srgb, var(--cv-hue) 72%, var(--textStrong));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+  container-type: inline-size;
+  min-width: 0;
+}
+html[data-theme="dark"] .rmWrap {
+  --cv-hue: color-mix(in srgb, var(--hue-conversation, var(--accent)) 55%, #ffffff);
+}
+@container (max-width: 760px) {
+  .rmWrap > * {
+    grid-column: 1 / -1;
+  }
+}
+.rmSheet,
+.rmSide {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.rmSide {
+  gap: 12px;
+}
+.rmHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.rmTitle {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+}
+.rmTitle h3 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.rmSub,
+.rmCount,
+.rmNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.rmTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.rmFind {
+  position: relative;
+  display: flex;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.rmFind > svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.rmFind input.stFInput {
+  width: 100%;
+  padding-left: 36px;
+}
+.rmTools .cvPills button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.rmTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.rmTable thead th {
+  padding: 0 8px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: left;
+}
+.rmTable tbody tr {
+  position: relative;
+}
+.rmTable tbody :is(th, td) {
+  height: 42px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+  vertical-align: middle;
+}
+.rmTable tbody tr:hover {
+  background: var(--surface2);
+}
+.rmTable tbody tr.on {
+  background: color-mix(in srgb, var(--cv-hue) 8%, var(--panel));
+}
+.rmTable tbody th button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--textStrong);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+/* the whole row picks the detail, while the name stays its one button */
+.rmTable tbody th button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.rmTable tbody th button:focus-visible {
+  outline: none;
+}
+.rmTable tbody tr:has(button:focus-visible) {
+  outline: 2px solid var(--focus, var(--cv-hue));
+  outline-offset: -2px;
+}
+.rmKind {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.rmDim {
+  color: var(--muted) !important;
+}
+.rmEnd {
+  text-align: right !important;
+}
+.rmEnd .cvTag {
+  margin-left: 0;
+}
+.rmCount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rmCard {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  min-width: 0;
+}
+.rmCard h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.rmCard p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+.rmCardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rmCardHead h4 {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rmClose {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.rmClose:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.rmKey {
+  justify-self: start;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.rmH {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.rmField {
+  display: grid;
+  gap: 6px;
+}
+.rmSwitch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.rmSwitch .stSwitch span {
+  display: none;
+}
+.rmFoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.rmNew .rmFoot {
+  justify-content: flex-end;
+}
+.rmForm {
+  margin-top: 4px;
 }

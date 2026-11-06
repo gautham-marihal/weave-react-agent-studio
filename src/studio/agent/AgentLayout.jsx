@@ -460,7 +460,16 @@ export default function AgentLayout({ ws }) {
   } else if (page === 'connections') {
     body = <DetailedPage part={connectionsPart} editor={editor} request={detailedRequest('connections')} onShowJson={openJson} />;
   } else if (page === 'media') {
-    body = <DetailedPage part={mediaPart} editor={editor} request={detailedRequest('media')} onShowJson={openJson} />;
+    body = (
+      <DetailedPage
+        part={mediaPart}
+        editor={editor}
+        request={detailedRequest('media')}
+        onShowJson={openJson}
+        // its lines open the parts that own what they show (Agent's model, Conversation's secret values, a form's steps)
+        extra={{ goPart: (id, query) => go(id, query) }}
+      />
+    );
   } else if (page === 'channels') {
     body = <ChannelsPage editor={editor} request={detailedRequest('channels')} onShowJson={openJson} extra={{ botId, dialled }} />;
   } else if (page === 'subagents') {
@@ -474,7 +483,16 @@ export default function AgentLayout({ ws }) {
       />
     );
   } else if (page === 'guardrails') {
-    body = <DetailedPage part={guardrailsPart} editor={editor} request={detailedRequest('guardrails')} onShowJson={openJson} />;
+    body = (
+      <DetailedPage
+        part={guardrailsPart}
+        editor={editor}
+        request={detailedRequest('guardrails')}
+        onShowJson={openJson}
+        // "Most moves between agents" is set on Subagents and hand-overs: its line opens that part
+        extra={{ goPart: (id) => go(id) }}
+      />
+    );
   } else if (page === 'aftercall') {
     body = <DetailedPage part={afterCallPart} editor={editor} request={detailedRequest('aftercall')} onShowJson={openJson} />;
   } else if (page === 'knowledge') {
@@ -537,7 +555,14 @@ export default function AgentLayout({ ws }) {
           <JsonPart editor={editor} />
         </PageShell>
       ) : (
-        <DetailedPage part={enginePart} editor={editor} request={detailedRequest('settings')} onShowJson={openJson} extra={{ actions: toggle }} />
+        <DetailedPage
+          part={enginePart}
+          editor={editor}
+          request={detailedRequest('settings')}
+          onShowJson={openJson}
+          // the version line's "Release" opens Release
+          extra={{ actions: toggle, goPart: (id) => go(id) }}
+        />
       );
   } else if (page === 'calls') {
     body = (

@@ -7,6 +7,7 @@ import { notRunAt } from '../../../preflight.ts';
 import { speaks } from './agentPart.jsx';
 import ConversationWorkspace from '../conversationView/ConversationWorkspace.jsx';
 import { QuietScript, RetryGrid, WaitChoice } from '../conversationView/conversationEditors.jsx';
+import RememberSheet from '../conversationView/RememberSheet.jsx';
 import { C, INTERRUPTION, QUIET, R, TURNS, eventName, setQuietOn } from '../conversationView/conversationWords.js';
 
 // 2 · Conversation: how the agent behaves during a call (taking turns, quiet callers, how it sounds, what it remembers
@@ -25,7 +26,6 @@ const nameOfRule = (rule, i) => {
 };
 // a reaction by what starts it, in words ("A detail changes")
 const nameOfEvent = (event, i) => (event && typeof event.on === 'string' ? eventName(event.on) : `Reaction ${i + 1}`);
-const nameOfVar = (variable, key) => `${key}${variable?.type ? ` · ${variable.type}` : ''}${variable?.sensitive ? ' · secret' : ''}`;
 
 const voiceOnly = (what) => (c) => (speaks(c.config) ? '' : `Only for voice: ${what}. This agent has no voice channel switched on.`);
 
@@ -118,16 +118,14 @@ export const conversationForm = {
       {
         id: 'remembers',
         title: 'What it remembers',
-        lead: 'Details it keeps during a call, for tools, hand-overs and the brief to use. One kept secret reads as *** everywhere but the places it is sent.',
         rows: [
           {
             id: 'variables',
             label: 'Details',
-            hint: 'Kind, allowed values, can be empty, keep secret, starts as',
+            hint: 'Kind, how it starts, kept secret',
+            wide: true,
             errPath: ['state'],
-            render: (c) => (
-              <InlineItems ctx={c} id={c.id} path={['state', 'variables']} word="value" label="Variables" collection="state_vars" nameOf={nameOfVar} />
-            ),
+            render: (c) => <RememberSheet {...c} />,
           },
         ],
       },

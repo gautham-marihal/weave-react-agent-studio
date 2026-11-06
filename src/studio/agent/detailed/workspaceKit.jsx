@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
 import Button from '../../../ui/Button.tsx';
 import { Input } from '../../../ui/Input.tsx';
@@ -37,16 +37,43 @@ export function reveal(el) {
 }
 
 // the switch between the two views, remembered per person; first = [view, its name] ("profile", "Profile")
+// "/" (or the hint beside the switch) finds a setting: it opens All settings with its search box ready to type in
+let findNext = false;
+const FIND = 'workspace:find';
+const typing = (el) => !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || !!el.closest?.('[role="dialog"], .cm-editor'));
+
 export function ViewSwitch({ view, onChoose, first, label }) {
   const [story, name] = first;
+  const find = useCallback(() => {
+    if (view === 'all') window.dispatchEvent(new Event(FIND));
+    else {
+      findNext = true;
+      onChoose('all');
+    }
+  }, [view, onChoose]);
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || typing(document.activeElement)) return;
+      event.preventDefault();
+      find();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [find]);
   return (
-    <div className="apSeg segmented" role="group" aria-label={label}>
-      <button type="button" aria-pressed={view === story} className={view === story ? 'on' : ''} onClick={() => onChoose(story)}>
-        {name}
+    <div className="apSwitchRow">
+      <button type="button" className="apFindKey" onClick={find} aria-keyshortcuts="/">
+        <kbd>/</kbd>
+        find a setting
       </button>
-      <button type="button" aria-pressed={view === 'all'} className={view === 'all' ? 'on' : ''} onClick={() => onChoose('all')}>
-        All settings
-      </button>
+      <div className="apSeg segmented" role="group" aria-label={label}>
+        <button type="button" aria-pressed={view === story} className={view === story ? 'on' : ''} onClick={() => onChoose(story)}>
+          {name}
+        </button>
+        <button type="button" aria-pressed={view === 'all'} className={view === 'all' ? 'on' : ''} onClick={() => onChoose('all')}>
+          All settings
+        </button>
+      </div>
     </div>
   );
 }
@@ -164,32 +191,38 @@ export function Tok({ s, k }) {
 }
 
 // a line of a chapter: its words; Change opens its settings under it, or the part of the sentence that holds them
-// abbr: the technical short name, in brackets after the label ("Thinks with (LLM)"); action: the button's word
-export function Line({ s, k, label, abbr = '', children, ids, token, muted = false, action = 'Change' }) {
+// abbr: the technical short name, in brackets after the label ("Thinks with (LLM)"); action: the button's word;
+// locked: nothing to change yet (said why in the chapter), so no button
+// onAction: the button does this instead (Tools: open a tool's own page); below: what opens under it instead of rows
+export function Line({ s, k, label, abbr = '', icon = '', children, ids, token, muted = false, action = 'Change', locked = false, onAction, below }) {
   const isOpen = s.open?.line === k;
   const bad = ids ? hasProblem(ids, s.rows, s.ctx) : token ? hasProblem(s.tokens[token].ids, s.rows, s.ctx) : false;
   return (
-    <div className={`apLine ${isOpen ? 'open' : ''}`}>
+    <div className={`apLine ${isOpen ? 'open' : ''}`} data-line={k}>
       <div className="apLineHead">
         <span className="apLineLabel">
           {label}
           {abbr && <span className="apAbbr"> ({abbr})</span>}
         </span>
         <span className={`apLineValue ${muted ? 'muted' : ''}`}>
-          {children}
+          {icon && <Icon name={icon} size={15} className="apLineIcon" />}
+          {/* the words run as text, so their own spaces are the only gaps */}
+          <span className="apLineText">{children}</span>
           {bad && <span className="apBad">Needs a look</span>}
         </span>
-        <button
-          type="button"
-          className="apChange"
-          aria-expanded={token ? s.open?.token === token : isOpen}
-          onClick={() => (token ? s.openToken(token) : s.setOpen(isOpen ? null : { line: k }))}
-        >
-          {isOpen ? 'Done' : action}
-          <span className="srOnly"> {label}</span>
-        </button>
+        {!locked && (
+          <button
+            type="button"
+            className="apChange"
+            aria-expanded={onAction ? undefined : token ? s.open?.token === token : isOpen}
+            onClick={() => (onAction ? onAction() : token ? s.openToken(token) : s.setOpen(isOpen ? null : { line: k }))}
+          >
+            {isOpen && !onAction ? 'Done' : action}
+            <span className="srOnly"> {label}</span>
+          </button>
+        )}
       </div>
-      {isOpen && ids && <Rows ids={ids} rows={s.rows} ctx={s.ctx} partId={s.partId} />}
+      {isOpen && (below || (ids && <Rows ids={ids} rows={s.rows} ctx={s.ctx} partId={s.partId} />))}
     </div>
   );
 }
@@ -203,7 +236,7 @@ export function More({ s, k, ids }) {
     <div className="apMore">
       <button type="button" className="apMoreBtn" aria-expanded={isOpen} onClick={() => s.setOpen(isOpen ? null : { line: k })}>
         <Icon name={isOpen ? 'minus' : 'plus'} size={14} />
-        {isOpen ? 'Fewer settings' : `${shown.length} more settings`}
+        {isOpen ? 'Fewer settings' : `${shown.length} more ${shown.length === 1 ? 'setting' : 'settings'}`}
       </button>
       {!isOpen && (
         <ul className="apMoreNames" aria-label="What is in there">
@@ -220,19 +253,33 @@ export function More({ s, k, ids }) {
 // All settings: the part's own cards, every fold open, searchable. switcher: the ViewSwitch to show in its header.
 export function AllSettings({ ctx, form, switcher, searchLabel }) {
   const [query, setQuery] = useState('');
+  const box = useRef(null);
+  useEffect(() => {
+    const focus = () => box.current?.focus();
+    if (findNext) {
+      findNext = false;
+      requestAnimationFrame(focus);
+    }
+    window.addEventListener(FIND, focus);
+    return () => window.removeEventListener(FIND, focus);
+  }, []);
   const part = useMemo(
     () => ({
       ...form,
-      top: () => (
-        <div className="apFind">
-          <Icon name="search" size={15} />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchLabel} aria-label={searchLabel} />
-          {query && (
-            <button type="button" className="apChange" onClick={() => setQuery('')}>
-              Clear
-            </button>
-          )}
-        </div>
+      // the search, then the part's own top when it has one (Subagents' strip of hand-overs chooses its cards' item)
+      top: (c) => (
+        <>
+          <div className="apFind">
+            <Icon name="search" size={15} />
+            <Input ref={box} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchLabel} aria-label={searchLabel} />
+            {query && (
+              <button type="button" className="apChange" onClick={() => setQuery('')}>
+                Clear
+              </button>
+            )}
+          </div>
+          {form.top ? form.top(c) : null}
+        </>
       ),
     }),
     [form, query, searchLabel],

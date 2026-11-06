@@ -222,7 +222,10 @@ test('a search puts every passage on one scale with the saved line; moving the l
     },
     async (calls) => {
       const app = await mount(withDocs([fileSrc('faq.md')]), { knowledgeRead: read({ sources: [{ type: 'file', file_id: 'faq.md', uploaded: true }] }) });
-      const card = $(app.container, '[data-card="knowledge.try"]');
+      // on what it knows, the search is under Try it, opened from its line
+      await a.click(byText(app.container, 'button', /Try a question/));
+      assert.ok(await until(app, () => !!$(app.container, '.apLine.open #kx-query')), 'the search opens under its line');
+      const card = $(app.container, '.apLine.open');
       await a.type(card.querySelector('#kx-query'), 'How long do I have to return one?');
       await a.click(byText(card, 'button', 'Search'));
       assert.ok(await until(app, () => $$(card, '.kxHit').length === 3));

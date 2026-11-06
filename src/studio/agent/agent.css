@@ -916,67 +916,6 @@ html[data-theme] body .nlTestDockBody .pvPanel {
   gap: inherit;
   container-type: inline-size;
 }
-.ovStats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-.ovStat {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: 4px;
-  min-height: 112px;
-  padding: 14px 16px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card-fill, var(--panel));
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.ovStat:hover {
-  border-color: color-mix(in srgb, var(--textStrong) 26%, var(--line2));
-}
-.ovStatLabel {
-  color: var(--muted);
-  font-size: var(--fs-sm);
-}
-.ovStat strong {
-  color: var(--textStrong);
-  font-size: var(--fs-2xl);
-  font-weight: 650;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
-}
-.ovStat small {
-  color: var(--muted);
-  font-size: var(--fs-sm);
-}
-.ovSpark {
-  position: absolute;
-  right: 14px;
-  bottom: 14px;
-  display: flex;
-  gap: 3px;
-  align-items: flex-end;
-  width: 84px;
-  height: 34px;
-}
-.ovSpark i {
-  flex: 1;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--accent) 40%, var(--surface2));
-  transition: background 0.12s ease;
-}
-.ovSpark i.today {
-  background: color-mix(in srgb, var(--accent) 75%, var(--surface2));
-}
-.ovSpark i:hover {
-  background: var(--accent);
-}
 .ovGrid {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
@@ -1090,9 +1029,6 @@ html[data-theme] body .nlTestDockBody .pvPanel {
   font-size: var(--fs-sm);
 }
 @container (max-width: 880px) {
-  .ovStats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .ovGrid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1120,9 +1056,6 @@ html[data-style="premium"][data-theme] body .nlWorkspace .nlBody .welcomeBlock h
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-.ovStat .ovStatSkeleton {
-  margin: 4px 0 6px;
 }
 
 /* the test conversation, beside the page or sliding over it: a fixed height the conversation measures itself against (see preview.css), filled

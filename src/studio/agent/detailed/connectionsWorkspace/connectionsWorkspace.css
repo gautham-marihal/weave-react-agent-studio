@@ -1,0 +1,517 @@
+/* Build › Connections (ConnectionsWorkspace.jsx, ReachMap.jsx, ItemPage.jsx, SignIn.jsx; canvas page "5 · Connections,
+   redesigned"): the Agent profile's calm column (agentProfile.css) in the part's own amber, the picture of what it
+   reaches, and an item's own page (the step strip, sections and pills are Tools' own: toolsWorkspace.css). Only the
+   studio's tokens, so every style and both themes draw it in their own colours. */
+@import "../toolsWorkspace/toolsWorkspace.css";
+
+.cxWrap,
+.cxSignIn {
+  --cx-hue: var(--hue-connections, var(--accent));
+  --cx-hue-text: color-mix(in srgb, var(--cx-hue) 75%, var(--textStrong));
+}
+/* the part's amber is deep: on a dark page it is lifted, so its words keep their contrast */
+html[data-theme="dark"] :is(.cxWrap, .cxSignIn) {
+  --cx-hue: color-mix(in srgb, var(--hue-connections, var(--accent)) 55%, #ffffff);
+}
+.apWrap.cxWrap {
+  --ap-hue: var(--cx-hue);
+  --tl-hue: var(--cx-hue);
+  --tl-hue-text: var(--cx-hue-text);
+}
+
+/* ---- the card at the top ---- */
+.cxAvatar {
+  width: 56px;
+  height: 56px;
+  font-size: var(--fs-xl);
+}
+html[data-theme] body .cxHero .apName h2 {
+  font-size: var(--fs-2xl);
+}
+.cxSentence {
+  line-height: 1.75;
+}
+
+/* ---- the picture: the agent, what reaches out, the systems it reaches ---- */
+.cxMap {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 56px;
+  padding: 16px 18px 18px;
+  border: 1px solid color-mix(in srgb, var(--cx-hue) 20%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--cx-hue) 3%, var(--panel));
+}
+.cxLines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.cxLines path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--cx-hue) 30%, var(--line));
+  stroke-width: 1.5;
+}
+.cxLines path.quiet {
+  stroke: color-mix(in srgb, var(--cx-hue) 18%, var(--line));
+}
+.cxLines path.lit {
+  stroke: var(--cx-hue);
+  stroke-width: 2.2;
+}
+.cxCol {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cxColHead {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  color: var(--cx-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cxMap:not(.empty) .cxCol {
+  padding-top: 22px;
+}
+.cxNode {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.cxNode {
+  cursor: pointer;
+}
+button.cxNode:hover {
+  border-color: color-mix(in srgb, var(--cx-hue) 45%, var(--line2));
+}
+.cxNode.lit {
+  border-color: var(--cx-hue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cx-hue) 14%, transparent);
+}
+.cxNode.bad {
+  border-color: color-mix(in srgb, var(--danger-text) 35%, var(--line2));
+}
+.cxNode.more {
+  justify-content: center;
+  min-height: 32px;
+  border-style: dashed;
+  color: var(--cx-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.cxNode.more.quiet {
+  color: var(--muted);
+}
+.cxNode.agent {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 60px;
+  border-radius: 14px;
+}
+.cxNode.agent small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.cxAgent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--textStrong);
+  font-weight: 650;
+}
+.cxAgent i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cx-hue), color-mix(in srgb, var(--cx-hue) 55%, #c2477f));
+  color: #fff;
+  font-size: var(--fs-xs);
+  font-style: normal;
+}
+.cxIcon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--cx-hue) 10%, var(--panel));
+  color: var(--cx-hue-text);
+}
+.cxText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+.cxText b {
+  overflow: hidden;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cxText small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cxDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.cxDot.good {
+  background: var(--good);
+}
+.cxDot.warn {
+  background: var(--warn-text);
+}
+.cxDot.bad {
+  background: var(--danger-text);
+}
+/* a new agent: just the agent, and the way to add what it should reach */
+.cxMap.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 28px 18px;
+}
+.cxMap.empty .cxNode.agent {
+  width: 170px;
+}
+.cxMap.empty .cxNode.more {
+  min-height: 56px;
+  padding: 0 18px;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+.cxDash {
+  width: 64px;
+  border-top: 1.5px dashed color-mix(in srgb, var(--cx-hue) 35%, var(--line));
+}
+@media (max-width: 1100px) {
+  .cxMap {
+    gap: 32px;
+  }
+}
+
+/* ---- a part of the sentence opened: the list of its kind ---- */
+.cxTokenList {
+  display: grid;
+  gap: 12px;
+}
+
+.cxTokenList > button {
+  justify-self: start;
+}
+.cxUses {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cxUses li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.cxUses li:first-child {
+  border-top: 0;
+}
+.cxUses .cxText small {
+  white-space: normal;
+}
+.cxNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--cx-hue) 6%, var(--panel));
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.cxNote svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* ---- the chapters ---- */
+.cxFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 8px;
+}
+.cxFilters .rmFind {
+  flex: 0 1 260px;
+}
+.cxCount {
+  margin: 0;
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.cxAddShow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 4px 0 16px;
+}
+.cxWrap .cnInline {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.cnInlineFoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+/* ---- an item's own page ---- */
+.cxPage {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.cxFormGrid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+@media (max-width: 1100px) {
+  .cxFormGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cxStack {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.cxPreview {
+  position: sticky;
+  top: 12px;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface2);
+}
+.cxPreviewHead {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.cxPreviewCard {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+.cxPreviewCard b {
+  color: var(--textStrong);
+}
+.cxPreviewCard small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.cxField {
+  display: grid;
+  gap: 4px;
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+.cxField em {
+  color: var(--danger-text);
+  font-style: normal;
+}
+.cxField i {
+  display: block;
+  height: 30px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+}
+.cxField i.tall {
+  height: 52px;
+}
+.cxSend {
+  justify-self: start;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--textStrong);
+  color: var(--panel);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+/* ---- how a system signs in ---- */
+.cxSignIn {
+  display: grid;
+  gap: 12px;
+}
+.cxSecret {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.cxSecretBox {
+  position: relative;
+  display: flex;
+  max-width: 360px;
+}
+.cxSecretBox > svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.cxSecretBox input.stFInput {
+  width: 100%;
+  padding-left: 34px;
+}
+.cxSignIn .cxNote {
+  background: var(--surface2);
+}
+
+/* a long list of steps, folded to one line until it is opened */
+.cxFold {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+.cxFoldLabel {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.cxFoldWords {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.tlSection .apRows + .apRows .dtRow:first-child,
+.tlSection .cxFold + .apRows .dtRow:first-child {
+  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+
+/* a system set up but reached by nothing yet: a dashed line, through one node that leads to where something can use it */
+.cxLines path.idle {
+  stroke: color-mix(in srgb, var(--cx-hue) 35%, var(--line));
+  stroke-dasharray: 5 5;
+}
+.cxLines path.idle.lit {
+  stroke: var(--cx-hue);
+}
+.cxNode.idle {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--cx-hue) 35%, var(--line2));
+  background: color-mix(in srgb, var(--cx-hue) 3%, var(--panel));
+}
+.cxNode.idle .cxText b {
+  color: var(--cx-hue-text);
+}
+.cxDot.idle {
+  border: 1.5px solid var(--dim);
+  background: var(--panel);
+}
+
+/* what the lines and dots mean */
+.cxFigure {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.cxLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.cxLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cxLegend i.solid,
+.cxLegend i.dashed {
+  width: 22px;
+  border-top: 1.5px solid color-mix(in srgb, var(--cx-hue) 45%, var(--line));
+}
+.cxLegend i.dashed {
+  border-top-style: dashed;
+}
+.cxLegend i.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.cxLegend i.dot.good {
+  background: var(--good);
+}
+.cxLegend i.dot.bad {
+  background: var(--danger-text);
+}
+.cxLegend i.dot.warn {
+  background: var(--warn-text);
+}
+.cxLegend i.dot.idle {
+  border: 1.5px solid var(--dim);
+  background: var(--panel);
+}

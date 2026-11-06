@@ -201,14 +201,36 @@ function PartCard({ part, config, set, providers, open, onToggle, speech = true 
 
 // speech: whether the agent hears and speaks (a phone or website voice channel).
 // The list that opens first is the first part it needs that is still to choose.
+// One part, bare: what is wrong with its choice, if anything, and its list (the choice is ticked there).
+function BarePart({ part, config, set, providers }) {
+  const slot = readModels(config)[part.id];
+  const status = slot.provider ? modelStatus(part.id, slot.provider, slot.model) : null;
+  const problem = slotProblem(part.id, slot, providers);
+  return (
+    <>
+      {problem && <p className="pkWarn">{problem.text}</p>}
+      {status && ['custom', 'free', 'empty'].includes(status.state) ? <p className={`pkStatus ${status.state}`}>{status.text}</p> : null}
+      <ModelList part={part} config={config} set={set} providers={providers} />
+    </>
+  );
+}
+
 // stages: which parts to show (the three steps, unless asked for another, such as ['realtime']).
-export default function ModelPicker({ config, set, providers, live, speech = true, stages = THREE_STEPS }) {
+// bare: one part inside an editor of its own (a popover): only its list, no card around it
+export default function ModelPicker({ config, set, providers, live, speech = true, stages = THREE_STEPS, bare = false }) {
   const models = readModels(config);
   const parts = PARTS.filter((p) => stages.includes(p.id));
   // one part alone opens its list at once; of several, the first still to choose
   const [open, setOpen] = useState(() =>
     parts.length === 1 ? parts[0].id : (parts.find((p) => !models[p.id].provider && (speech || p.id === 'llm')) || {}).id || '',
   );
+  if (bare && parts.length === 1)
+    return (
+      <div className="pkPicker bare">
+        {!live && <p className="pkNote">The server’s list of what it can run couldn’t be read, so these are the usual choices.</p>}
+        <BarePart part={parts[0]} config={config} set={set} providers={providers} />
+      </div>
+    );
   return (
     <div className="pkPicker">
       {!live && <p className="pkNote">The server’s list of what it can run couldn’t be read, so these are the usual choices.</p>}

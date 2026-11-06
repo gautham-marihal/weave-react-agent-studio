@@ -142,7 +142,7 @@ export const PAGE_SECTIONS = {
   guardrails: ['guardrails'],
   aftercall: ['post_call', 'wrapups', 'observability'],
   tests: ['tests'],
-  settings: ['meta', 'runtime', 'constants', 'builder', 'defaults'],
+  settings: ['meta', 'runtime', 'constants', 'builder', 'defaults', 'observability'],
 };
 
 export const sectionsCovered = () => new Set(Object.values(PAGE_SECTIONS).flat());
@@ -198,6 +198,12 @@ export function locate(path) {
   if (key === 'meta' && ['name', 'description', 'tags', 'owner'].includes(sub)) return { page: 'agent' };
   // how many times a call may move between agents is asked with the hand-overs
   if (key === 'guardrails' && sub === 'limits' && third === 'max_handoffs_per_call') return { page: 'subagents' };
+  // the log of each call and what it holds are After the call's; metrics, the log level, tracing and the export are
+  // Engine and details', beside the rest of the logging
+  if (key === 'observability' && ['metrics', 'log_level', 'tracing', 'otel', 'log_file'].includes(sub)) return { page: 'settings' };
+  // photos, the camera and their details on a way in, and how an agent sees pictures, are Images & Videos'
+  if (key === 'channels' && sub !== undefined && third === 'inputs') return { page: 'media' };
+  if (key === 'agents' && sub === 'items' && fourth === 'vision') return { page: 'media' };
   if (key === 'tests') return { page: 'tests', part: 'scenarios' };
   const page = Object.keys(PAGE_SECTIONS).find((id) => id !== 'agent' && PAGE_SECTIONS[id].includes(key));
   return { page: page || 'settings' };

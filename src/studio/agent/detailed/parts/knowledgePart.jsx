@@ -23,7 +23,8 @@ import { IndexRow, SourceCards } from './KnowledgeIndex.jsx';
 import KnowledgeSearch from './KnowledgeSearch.jsx';
 import { notRunAt } from '../../../preflight.ts';
 import { canSearch } from './knowledgeView.js';
-import { KnowledgeGlance } from '../Glance.jsx';
+import KnowledgeWorkspace from '../knowledgeWorkspace/KnowledgeWorkspace.jsx';
+import { MatchScale, ModeChoice } from '../knowledgeWorkspace/knowledgeEditors.jsx';
 
 // 3 · Knowledge: what it answers from. The documents and pages are the setup's base (setupKnowledge.js: uploading,
 // pages, who reads it), and its search index is built and followed here (KnowledgeIndex.jsx); how it searches is that
@@ -197,13 +198,13 @@ const based = (where, row) => ({
   put: (config, value) => (where(config) ? setPath(config, where(config), value === '' ? undefined : value) : config),
 });
 
-export const knowledgePart = {
+// Every setting of the part, as cards of rows: what All settings shows, and the rows the workspace opens
+// (knowledgeWorkspace/KnowledgeWorkspace.jsx: the sentence, the shelf and three chapters).
+export const knowledgeForm = {
   id: 'knowledge',
   num: '3',
   title: 'Knowledge',
   question: 'The documents and web pages it answers from, and how it searches them.',
-  // what is set here, at a glance, before the forms
-  top: (ctx) => <KnowledgeGlance ctx={ctx} />,
   cols: [
     [
       {
@@ -221,18 +222,33 @@ export const knowledgePart = {
               </div>
             ),
           },
-          { id: 'upload', label: 'Upload documents', render: (c) => <Upload ctx={c} id={c.id} /> },
-          { id: 'page', label: 'A web page', render: (c) => <PageAdd ctx={c} id={c.id} /> },
+          {
+            id: 'upload',
+            label: 'Documents',
+            hint: 'Add files to answer from. They are read when you build the index.',
+            render: (c) => <Upload ctx={c} id={c.id} />,
+          },
+          {
+            id: 'page',
+            label: 'A web page',
+            hint: 'Read when the index is built: up to 60 pages per address, following the site’s robots.txt, never a private or internal address.',
+            render: (c) => <PageAdd ctx={c} id={c.id} />,
+          },
           {
             id: 'depth',
-            label: 'Follow links on the page',
-            kind: 'num',
-            unit: 'levels, 0 to 5',
-            min: 0,
-            max: 5,
-            integer: true,
+            label: 'Follow links on the same site',
+            hint: 'For every web page it reads.',
+            kind: 'ch',
+            options: [
+              { value: 0, label: 'The page only' },
+              { value: 1, label: '1 level' },
+              { value: 2, label: '2 levels' },
+              { value: 3, label: '3 levels' },
+              { value: 4, label: '4 levels' },
+              { value: 5, label: '5 levels' },
+            ],
             get: depthOf,
-            put: (c, v) => setDepth(c, v ?? 0),
+            put: (c, v) => setDepth(c, Number(v) || 0),
           },
           {
             id: 'read',
@@ -262,8 +278,7 @@ export const knowledgePart = {
         title: 'Try a search',
         waiting: (c) => (canSearch(c.config) ? '' : 'Add a document or a web page above first, then try what a caller might ask.'),
         lead: 'What a caller might ask, and what it would find. Nothing is saved.',
-        rows: [],
-        body: (c) => <KnowledgeSearch ctx={c} />,
+        rows: [{ id: 'ask', label: 'Ask it something', wide: true, render: (c) => <KnowledgeSearch ctx={c} /> }],
       },
     ],
     [
@@ -276,34 +291,60 @@ export const knowledgePart = {
             ...based(doc(['mode']), {
               id: 'mode',
               label: 'When it searches',
-              kind: 'ch',
-              options: [
-                { value: 'tool', label: 'When the model decides' },
-                { value: 'inject', label: 'On every caller turn' },
-              ],
+              wide: true,
+              render: (c) => <ModeChoice {...c} />,
             }),
             // the agents that read it keep reading it, the way the new mode allows (a list of its own, or a search tool)
             put: (config, value) => (docBaseId(config) ? setBaseMode(config, docBaseId(config), value) : config),
           },
-          based(doc(['top_k']), { id: 'topk', label: 'How many results', kind: 'num', unit: '1 to 20', min: 1, max: 20, integer: true }),
+          based(doc(['top_k']), {
+            id: 'topk',
+            label: 'How many passages',
+            hint: 'The best ones it finds, each time. Empty is the usual, 4.',
+            kind: 'num',
+            unit: '1 to 20',
+            min: 1,
+            max: 20,
+            integer: true,
+          }),
           based(doc(['retrieval', 'query_from']), {
             id: 'from',
-            label: 'What is searched for',
+            label: 'What it searches for',
             kind: 'ch',
             options: [
               { value: 'last_exchange', label: 'The last reply and the newest words' },
               { value: 'last_user', label: 'Only the caller’s newest words' },
             ],
           }),
-          based(doc(['retrieval', 'min_score']), { id: 'score', label: 'How closely a passage must match', kind: 'num' }),
-          based(doc(['retrieval', 'max_chars']), { id: 'chars', label: 'Most text per search', kind: 'num', unit: 'characters', integer: true }),
-          based(doc(['retrieval', 'timeout_s']), { id: 'timeout', label: 'Give up after', kind: 'num', unit: 'seconds, up to 30', max: 30 }),
+          based(doc(['retrieval', 'min_score']), {
+            id: 'score',
+            label: 'How close a match must be',
+            hint: 'A line on the score scale: passages under it are left out.',
+            wide: true,
+            render: (c) => <MatchScale {...c} />,
+          }),
+          based(doc(['retrieval', 'max_chars']), {
+            id: 'chars',
+            label: 'Most text per search',
+            hint: 'Empty is the usual, 4,000.',
+            kind: 'num',
+            unit: 'characters',
+            integer: true,
+          }),
+          based(doc(['retrieval', 'timeout_s']), {
+            id: 'timeout',
+            label: 'Give up after',
+            hint: 'Empty is the usual, 3 seconds.',
+            kind: 'num',
+            unit: 'seconds, up to 30',
+            max: 30,
+          }),
           based(doc(['retrieval', 'strip_markdown']), { id: 'strip', label: 'Remove formatting symbols', kind: 'sw' }),
           based(doc(['refresh']), {
             // its own note says a timer does nothing; the server's words would say it twice
             serverNote: false,
             id: 'refresh',
-            label: 'Rebuild it',
+            label: 'Rebuild on a timer',
             kind: 'ch',
             // a timer chosen is told it does nothing while the server says so (its `unsupported`, FRONTEND_GUIDE 5: not
             // hard-coded); before the first check comes back, what the guide says today (section 8)
@@ -343,16 +384,19 @@ export const knowledgePart = {
       {
         id: 'rag',
         title: 'Or your own search service',
-        lead: 'Instead of documents here: a search API you already run.',
-        body: (c) =>
-          ragIndex(c.config) < 0 ? (
-            <div className="dtCardAction">
-              <Button type="button" size="small" variant="secondary" onClick={() => c.set(addSearchService(c.config))}>
+        lead: 'Instead of documents here: a search API you already run. Nothing to build: each search asks it.',
+        rows: [
+          {
+            id: 'use',
+            label: 'Your own search service',
+            hint: 'A search API you already run, set up under Connections.',
+            hidden: (config) => ragIndex(config) >= 0,
+            render: (c) => (
+              <Button type="button" size="small" variant="secondary" id={c.id} onClick={() => c.set(addSearchService(c.config))}>
                 Use a search service
               </Button>
-            </div>
-          ) : null,
-        rows: [
+            ),
+          },
           based(rag(['connection']), {
             id: 'connection',
             label: 'Connection',
@@ -371,3 +415,6 @@ export const knowledgePart = {
     ],
   ],
 };
+
+// Build › Knowledge: what it knows (a sentence and the shelf), or every setting at once, both from knowledgeForm.
+export const knowledgePart = { ...knowledgeForm, render: (ctx) => <KnowledgeWorkspace ctx={ctx} form={knowledgeForm} /> };

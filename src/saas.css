@@ -48,7 +48,7 @@ html[data-theme] body .sectionHeader h2 {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-html[data-theme] body :is(.ovStat, .metricCard, .telephonyStatCard) strong {
+html[data-theme] body :is(.metricCard, .telephonyStatCard) strong {
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -259,7 +259,7 @@ html[data-theme] body .sidebar .collapse:hover {
 }
 
 /* ---- buttons: one shape; the main one solid, the others white with a hairline -------------------------------------------------------------------- */
-html[data-theme] body :is(.primaryCta, .modalCreate, .topStart, .createButton) {
+html[data-theme] body :is(.primaryCta, .modalCreate, .createButton) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -344,50 +344,12 @@ html[data-theme] body .stPromptPreview {
 /* ---- cards: one radius, a hairline and the faintest lift ---------------------------------------------------------------------------------------- */
 html[data-theme]
   body
-  :is(
-    .stCard,
-    .ovStat,
-    .agentTable,
-    .nlRows,
-    .quickCard,
-    .activityCard,
-    .metricCard,
-    .telephonyStatCard,
-    .sessionsTablePanel,
-    .homeJourney,
-    .progressCard,
-    .nlTestDock,
-    .clTableWrap,
-    .shipFlow,
-    .stAgentSummary,
-    .ovCalls,
-    .nlSteps
-  ) {
+  :is(.stCard, .agentTable, .metricCard, .telephonyStatCard, .sessionsTablePanel, .nlTestDock, .clTableWrap, .shipFlow, .ovCalls, .nlSteps) {
   border-radius: var(--r-card);
 }
-html[data-style="simple"][data-theme]
-  body
-  :is(
-    .stCard,
-    .ovStat,
-    .agentTable,
-    .nlRows,
-    .quickCard,
-    .activityCard,
-    .metricCard,
-    .telephonyStatCard,
-    .sessionsTablePanel,
-    .homeJourney,
-    .progressCard,
-    .shipFlow,
-    .stAgentSummary
-  ) {
+html[data-style="simple"][data-theme] body :is(.stCard, .agentTable, .metricCard, .telephonyStatCard, .sessionsTablePanel, .shipFlow) {
   border-color: var(--line);
   box-shadow: var(--shadow-xs);
-}
-html[data-style="simple"][data-theme] body .ovStat:hover {
-  border-color: var(--line2);
-  box-shadow: 0 2px 8px rgba(16, 16, 20, 0.06);
 }
 /* a table in a card is the card: no second frame inside */
 html[data-theme] body .sessionsTablePanel .clTableWrap {
@@ -545,12 +507,6 @@ html[data-theme] body .stNoticeIcon {
 }
 
 /* ---- the landing page: flat cards, no tilt ------------------------------------------------------------------------------------------------------- */
-html[data-theme] body :is(.showcaseMain, .showcasePrompt, .showcaseConfig) {
-  transform: none;
-}
-html[data-theme] body :is(.miniHeading, .showcaseHeader, .landingBottom) {
-  letter-spacing: 0;
-}
 
 /* ---- sign-in: a calmer card ------------------------------------------------------------------------------------------------------------------- */
 html[data-theme] body .demoNote b {
@@ -559,14 +515,6 @@ html[data-theme] body .demoNote b {
 }
 
 /* the small bars beside the number, not beside the line under it: that line gets the whole width and stays on one line like the other cards' */
-html[data-theme] body .ovStat > .ovSpark {
-  top: 40px;
-  bottom: auto;
-  height: 30px;
-}
-html[data-theme] body .ovStat:has(.ovSpark) > strong {
-  padding-right: 96px;
-}
 html[data-theme] body .clFilters :is(select, button:where(.rxSelect)).stFInput,
 html[data-theme] body .clFilters .stFInput {
   min-width: 0;
@@ -941,9 +889,6 @@ html[data-theme] body .mnGrid i {
 html[data-theme] body .mnNum {
   color: var(--muted);
   font-weight: 500;
-}
-html[data-theme] body :is(.ovSpark, .stRowSpark) i.today {
-  background: var(--chart-1);
 }
 
 /* an alert's actions: what to do about it on the left (one dark button, one outlined), the housekeeping to the right as quiet text buttons */
@@ -1482,10 +1427,10 @@ html[data-theme] body .integrationCard h2 {
 }
 
 /* ---- one control height: a button, a field and a list beside them line up (40 px; 34 px for the compact ones in table rows) ---- */
-html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal, .loginCard) .stFInput:not(textarea):not(.csTarget),
+html[data-theme] body :is(.dashMain, .nlDrawer, .stFSheet, .createModal) .stFInput:not(textarea):not(.csTarget),
 html[data-theme]
   body
-  :is(.stCompare, .stDeployForm, .stSort, .voiceLibraryToolbar, .stTControls)
+  :is(.stCompare, .stDeployForm, .voiceLibraryToolbar, .stTControls)
   :is(:is(select, button:where(.rxSelect)), input:not([type="checkbox"]):not([type="radio"])),
 html[data-theme] body .settingsRow input,
 html[data-theme] body .settingsField :is(input, :is(select, button:where(.rxSelect))) {
@@ -1501,7 +1446,7 @@ html[data-theme] body .settingsField :is(input, :is(select, button:where(.rxSele
 }
 /* a long list's searchable box (SmartSelect's combobox, past eight choices) beside them reads as the dropdowns do: the same
    inset and ink, not the bare input's */
-html[data-theme] body :is(.stCompare, .stDeployForm, .stSort, .voiceLibraryToolbar, .stTControls) .stComboInput {
+html[data-theme] body :is(.stCompare, .stDeployForm, .voiceLibraryToolbar, .stTControls) .stComboInput {
   padding-left: 10px;
   color: var(--textStrong);
 }
@@ -1616,8 +1561,6 @@ html[data-theme]
     .lvChannel,
     .lvFlags > li,
     .statusPill,
-    .stAgentTag,
-    .smDefault,
     .tmRole,
     .tmStatus,
     .stStatus,
@@ -2177,24 +2120,22 @@ html[data-theme] body [data-slide-hold] {
    =========================================================================================================== */
 
 /* cards that open something lift a little towards the pointer (Vibrant keeps its own bouncier lift) */
-html:not([data-style="simple"], [data-style="vibrant"])[data-theme] body :is(.quickCard, .integrationCard, .lvCard, button.ovStat, button.lvStat, a.lvStat) {
+html:not([data-style="simple"], [data-style="vibrant"])[data-theme] body :is(.integrationCard, .lvCard, button.lvStat, a.lvStat) {
   transition:
     transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 0.22s ease,
     border-color 0.22s ease;
 }
-html:not([data-style="simple"], [data-style="vibrant"])[data-theme]
-  body
-  :is(.quickCard, .integrationCard, .lvCard, button.ovStat, button.lvStat, a.lvStat):hover {
+html:not([data-style="simple"], [data-style="vibrant"])[data-theme] body :is(.integrationCard, .lvCard, button.lvStat, a.lvStat):hover {
   transform: translateY(-2px);
   box-shadow: var(--card-hover);
 }
 
 /* the numbers that sum a page up carry a fine line of the accent along their top edge */
-html:not([data-style="simple"])[data-theme] body :is(.ovStat, .lvStat, .csStat, .mnKpis) {
+html:not([data-style="simple"])[data-theme] body :is(.lvStat, .csStat, .mnKpis) {
   position: relative;
 }
-html:not([data-style="simple"])[data-theme] body :is(.ovStat, .lvStat, .csStat, .mnKpis)::before {
+html:not([data-style="simple"])[data-theme] body :is(.lvStat, .csStat, .mnKpis)::before {
   content: "";
   position: absolute;
   top: 0;
@@ -2237,7 +2178,7 @@ html:not([data-style="simple"])[data-theme] body :is(.nlEmpty > span:first-child
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-theme] body :is(.quickCard, .integrationCard, .lvCard, button.ovStat, button.lvStat, a.lvStat):hover {
+  html[data-theme] body :is(.integrationCard, .lvCard, button.lvStat, a.lvStat):hover {
     transform: none;
   }
   [data-slide="move"]::after {

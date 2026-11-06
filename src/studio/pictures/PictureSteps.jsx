@@ -63,7 +63,7 @@ function KindTiles({ value, onChange, disabled, labelId }) {
   );
 }
 
-function SharpnessScale({ kind, quality, onChange, disabled }) {
+export function SharpnessScale({ kind, quality, onChange, disabled }) {
   const id = useId();
   const value = quality?.min_sharpness;
   const set = (next) => onChange(next === undefined ? omitKey(quality, 'min_sharpness') : { ...(isObj(quality) ? quality : {}), min_sharpness: next });
@@ -136,7 +136,7 @@ function SharpnessScale({ kind, quality, onChange, disabled }) {
 }
 
 // Relaxed · Standard · Strict: the picture standard's numbers in three words ("Your own numbers" when they are set by hand)
-function StrictnessPick({ kind, quality, onChange, disabled, labelId }) {
+export function StrictnessPick({ kind, quality, onChange, disabled, labelId }) {
   const now = strictnessOf(kind, quality);
   const chosen = STRICTNESS_WORDS.find((w) => w.value === now);
   return (
@@ -168,7 +168,7 @@ function StrictnessPick({ kind, quality, onChange, disabled, labelId }) {
 }
 
 // The request as the customer meets it: the instruction beside an upload button or a camera view, and the time they have
-function CustomerPreview({ kind, prompt, timeout }) {
+export function CustomerPreview({ kind, prompt, timeout }) {
   const time = typeof timeout === 'number' && timeout > 0 ? (timeout >= 60 && timeout % 60 === 0 ? `${timeout / 60} min` : `${timeout} s`) : '';
   return (
     <div className="psPreview" aria-label="Preview of what the customer sees">

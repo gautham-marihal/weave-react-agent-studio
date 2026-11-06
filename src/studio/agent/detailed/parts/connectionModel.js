@@ -18,7 +18,7 @@ export const CONNECTION_KINDS = [
     value: 'mcp',
     label: 'MCP server',
     icon: 'webhook',
-    blurb: 'A server that offers ready-made tools to the agent over the Model Context Protocol.',
+    blurb: 'A server that offers ready-made tools over the Model Context Protocol. Kept in the file, but the server doesn’t run its tools yet.',
   },
   {
     value: 'notifier',

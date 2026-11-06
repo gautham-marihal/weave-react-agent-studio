@@ -183,8 +183,11 @@ check('the numbers set up by hand are still there', (await page.locator('tbody t
 // ---- an agent: its phone line asks for no route, and its Deploy page lists its numbers
 await page.evaluate(() => (location.hash = '#/bots/front-desk/channels'));
 await page.waitForTimeout(1500);
-// the phone channel's card: how callers reach it
-await page.locator('[data-card="channels.channel"] .dtItems button', { hasText: /phone/i }).first().click();
+// the phone line's own page, opened from its door: how callers reach it
+await page
+  .locator('.chDoor', { hasText: /Phone calls/ })
+  .first()
+  .click();
 await page.waitForSelector('[data-route="platform"]');
 check(
   'a phone line asks for no number, trunk or routing rule',

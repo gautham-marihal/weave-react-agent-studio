@@ -133,6 +133,8 @@ const goTo = async (hash) => {
 
 // ---- how a line is said: Conversation › How the voice reads things
 await goTo('#/bots/acme-support/conversation');
+// the panel is a row of the part: Conversation opens on the call, so its All settings view is chosen
+await page.getByRole('button', { name: 'All settings', exact: true }).click();
 let panel = page.locator('section[aria-label="Try how a line is said"]');
 await panel.scrollIntoViewIfNeeded().catch(() => {});
 check('pronunciation: the “Try a line” panel is under the voice settings', (await panel.count()) === 1);
@@ -158,6 +160,9 @@ await shot('speech');
 
 // ---- what redaction hides: After the call › Privacy
 await goTo('#/bots/acme-support/aftercall');
+// the part opens on "After a call"; the Privacy card with its try panel is under All settings
+await page.locator('.apSeg').getByRole('button', { name: 'All settings', exact: true }).click();
+await page.waitForSelector('[data-card="aftercall.privacy"]');
 panel = page.locator('[data-card="aftercall.privacy"] section[aria-label="Try what redaction hides"]');
 check('redaction: the panel is under the redaction settings', (await panel.count()) === 1);
 await panel.getByLabel('A line a caller might say').fill('My card is 4111 1111 1111 1111 and my email is sam@example.com');
@@ -181,6 +186,8 @@ await shot('redaction');
 
 // ---- a task: Connections › Multi-step tasks (the first task is the one open)
 await goTo('#/bots/acme-support/connections');
+// the task's card is on the part's All settings view (it opens on what it reaches)
+await page.getByRole('button', { name: 'All settings', exact: true }).click();
 panel = page.locator('[data-card="connections.tasks"] section[aria-label="Try this task"]');
 check('task: the panel is under the task', (await panel.count()) >= 1);
 await panel.first().getByRole('button', { name: 'Show the steps' }).click();
@@ -201,6 +208,8 @@ await shot('task');
 
 // ---- the safety rules: the Guardrails page has its own box
 await goTo('#/bots/acme-support/guardrails');
+// "What it guards" opens the box under its "Try a line"
+await page.locator('.grHero').getByRole('button', { name: 'Try a line' }).click();
 panel = page.locator('section[aria-label="Try the safety rules"]');
 // the page's frame is drawn before the agent's draft is read, and the box with it
 await panel

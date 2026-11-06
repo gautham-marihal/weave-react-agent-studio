@@ -118,6 +118,8 @@ await page.waitForSelector('.dashMain');
 
 // ---- a list of cards: a task's steps, opened in place on Connections
 await go('#/bots/acme-support/connections');
+// a task's cards are on the part's All settings view (it opens on what it reaches)
+await page.getByRole('button', { name: 'All settings', exact: true }).click();
 const drawer = page.locator('[data-field="connections.steps"]');
 await drawer.getByRole('button', { name: /^Edit / }).click();
 await page.waitForSelector('[data-field="connections.steps"] .stFCards .dragHandle', { timeout: 20000 });

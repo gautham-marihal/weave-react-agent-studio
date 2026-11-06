@@ -28,6 +28,7 @@ import { refChoices } from '../../../form/engine.js';
 import ToolTry from './ToolTry.jsx';
 import { agentsUsingTool, kindOfTool, notAvailable, toolNamedElsewhere } from '../../../form/toolInfo.js';
 import { clip } from '../describe.js';
+import ToolsWorkspace from '../toolsWorkspace/ToolsWorkspace.jsx';
 
 // what each kind of tool does, in words, and its picture: the rows of the tools list
 const TOOL_KINDS = {
@@ -260,7 +261,7 @@ const rowAt = (where, entry, row) => {
   };
 };
 
-export const toolsPart = {
+export const toolsForm = {
   id: 'tools',
   num: '4',
   title: 'Tools',
@@ -476,3 +477,5 @@ export const toolsPart = {
     ],
   ],
 };
+
+export const toolsPart = { ...toolsForm, render: (ctx) => <ToolsWorkspace ctx={ctx} form={toolsForm} /> };

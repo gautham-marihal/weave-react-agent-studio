@@ -196,6 +196,10 @@ html[data-theme] body .apSoft:hover {
   color: var(--muted);
   font-size: var(--fs-sm);
 }
+.apHint a {
+  color: color-mix(in srgb, var(--ap-hue) 72%, var(--textStrong));
+  font-weight: 600;
+}
 
 /* the editor under a part of the sentence */
 .apPop {
@@ -416,6 +420,14 @@ html[data-theme] body .apChHead h2 {
 .apLineValue.muted {
   color: var(--muted);
 }
+.apLineText {
+  min-width: 0;
+}
+.apLineText .apPlay {
+  display: inline-grid;
+  margin-right: 10px;
+  vertical-align: middle;
+}
 .apDim {
   color: var(--muted);
 }
@@ -520,4 +532,85 @@ html[data-theme] body .apChHead h2 {
   background: var(--panel);
   color: var(--text);
   font-size: var(--fs-xs);
+}
+
+/* the view switch, with "/ find a setting" beside it (workspaceKit ViewSwitch) */
+.apSwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.apFindKey {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.apFindKey:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.apFindKey kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+/* a line's small picture, before its words (Conversation, Knowledge) */
+.apLineIcon {
+  flex: none;
+  color: var(--muted);
+}
+
+/* a tool the brief names, shown as the tool (AgentWorkspace BriefText) */
+.apToolChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ap-hue) 9%, var(--panel));
+  color: var(--ap-hue-text, var(--ap-hue));
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* settings changed right on their line: a slider, a pair of switches (Speed, Its answers, It can) */
+.apRange {
+  width: 220px;
+  max-width: 100%;
+  margin: 0 10px 0 0;
+  accent-color: var(--ap-hue);
+  vertical-align: middle;
+}
+.apEnds {
+  margin-right: 10px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.apSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 24px;
+  color: var(--textStrong);
+}
+.apSwitch .stSwitch span {
+  display: none;
 }

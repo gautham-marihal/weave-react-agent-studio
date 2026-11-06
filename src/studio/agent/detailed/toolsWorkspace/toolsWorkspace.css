@@ -1,0 +1,427 @@
+/* Build › Tools (ToolsWorkspace.jsx, ToolPage.jsx; canvas page "4 · Tools, redesigned"): the Agent profile's calm
+   column (agentProfile.css) in the Tools part's own orange, the tiles under the sentence, the kinds of tool to add, and
+   a tool's own page as the steps of one run. Only the studio's tokens, so every style and both themes draw it in their
+   own colours. */
+
+.tlWrap {
+  --tl-hue: var(--hue-tools, var(--accent));
+  --tl-hue-text: color-mix(in srgb, var(--tl-hue) 70%, var(--textStrong));
+}
+/* the part's orange is deep: on a dark page it is lifted, so its words keep their contrast */
+html[data-theme="dark"] .tlWrap {
+  --tl-hue: color-mix(in srgb, var(--hue-tools, var(--accent)) 65%, #ffffff);
+}
+.apWrap.tlWrap {
+  --ap-hue: var(--tl-hue);
+}
+
+/* ---- the card at the top ---- */
+.tlAvatar {
+  width: 56px;
+  height: 56px;
+  font-size: var(--fs-xl);
+}
+html[data-theme] body .tlHero .apName h2 {
+  font-size: var(--fs-2xl);
+}
+.tlSentence {
+  line-height: 1.75;
+}
+.tlToolTok {
+  text-decoration-color: color-mix(in srgb, var(--tl-hue) 55%, transparent);
+}
+
+/* every ability and tool, a tile saying only its state; the switches live once, on the lines below */
+.tlTiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--tl-hue) 22%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--tl-hue) 4%, var(--panel));
+  list-style: none;
+}
+@media (max-width: 1100px) {
+  .tlTiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.tlTiles > li {
+  display: flex;
+  min-width: 0;
+}
+.tlTile {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.tlTile:hover {
+  border-color: color-mix(in srgb, var(--tl-hue) 45%, var(--line2));
+}
+.tlTile.on {
+  border-color: color-mix(in srgb, var(--tl-hue) 35%, var(--line2));
+}
+.tlTile small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.tlTileHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.tlTileHead b {
+  min-width: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.tlTileIcon,
+.tlKindIcon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--muted);
+}
+.tlTile.on .tlTileIcon,
+.tlKindIcon {
+  background: color-mix(in srgb, var(--tl-hue) 12%, var(--panel));
+  color: var(--tl-hue-text);
+}
+.tlTile.add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 100px;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--tl-hue) 35%, var(--line2));
+  background: color-mix(in srgb, var(--tl-hue) 3%, var(--panel));
+  color: var(--tl-hue-text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.tlState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.tlState::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.tlState.good {
+  color: var(--good-text);
+}
+.tlState.good::before {
+  background: var(--good);
+}
+.tlState.warn {
+  color: var(--warn-text);
+}
+.tlState.warn::before {
+  background: var(--warn-text);
+}
+
+/* a tool's state on its line and its page */
+.tlPill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tlPill.good {
+  background: color-mix(in srgb, var(--good) 12%, var(--panel));
+  color: var(--good-text);
+}
+.tlPill.warn {
+  background: color-mix(in srgb, var(--warn-text) 12%, var(--panel));
+  color: var(--warn-text);
+}
+.tlPill.bad {
+  background: color-mix(in srgb, var(--danger-text) 10%, var(--panel));
+  color: var(--danger-text);
+}
+
+/* ---- add a tool: each kind by what it does ---- */
+.tlKindsWrap {
+  display: grid;
+  gap: 12px;
+  padding: 4px 0 16px;
+}
+.tlKinds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  .tlKinds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.tlKind {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tlKind:hover {
+  border-color: color-mix(in srgb, var(--tl-hue) 45%, var(--line2));
+}
+.tlKind b {
+  margin-top: 4px;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.tlKind small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.tlKind.later {
+  opacity: 0.6;
+}
+
+/* ---- try a tool ---- */
+.tlTry {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 16px;
+  min-width: 0;
+}
+
+/* ---- a tool's own page: the steps of one run ---- */
+.tlPage {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.tlPageBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tlBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.tlBack b {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.tlBack:hover {
+  color: var(--textStrong);
+}
+.tlPageHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+.tlPageIcon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tl-hue) 12%, var(--panel));
+  color: var(--tl-hue-text);
+}
+.tlPageName {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+html[data-theme] body .tlPageName h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-2xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.tlPageName p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.tlSteps {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+  list-style: none;
+  overflow: hidden;
+}
+@media (max-width: 1100px) {
+  .tlSteps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.tlSteps > li {
+  display: flex;
+  min-width: 0;
+}
+.tlSteps > li + li {
+  border-left: 1px solid var(--line);
+}
+.tlStep {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tlStep:hover,
+.tlStep.on {
+  background: color-mix(in srgb, var(--tl-hue) 8%, var(--panel));
+}
+.tlStep b {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.tlStep small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.tlStepN {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tl-hue) 12%, var(--panel));
+  color: var(--tl-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.tlStep .tlStepN {
+  margin-bottom: 4px;
+}
+.tlStep.fail .tlStepN,
+.tlStepN.fail {
+  background: color-mix(in srgb, var(--danger-text) 10%, var(--panel));
+  color: var(--danger-text);
+}
+.tlSection {
+  display: grid;
+  gap: 8px;
+  padding: 20px 24px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 16px;
+  background: var(--panel);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.tlSection.lit {
+  border-color: color-mix(in srgb, var(--tl-hue) 50%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tl-hue) 12%, transparent);
+}
+.tlSection.bad {
+  border-color: color-mix(in srgb, var(--danger-text) 40%, var(--line));
+}
+.tlSectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.tlSectionHead .tlStepN {
+  align-self: center;
+}
+.tlSectionHead h3 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.tlPageFoot {
+  display: flex;
+  justify-content: flex-end;
+}
+/* a step's settings read across, the name on the left (board T3); a wide one keeps the whole width */
+@media (min-width: 900px) {
+  .tlSection .apRows .dtRow:not(.wide, .stacked) {
+    flex-direction: row;
+    gap: 24px;
+    padding: 12px 0;
+  }
+  .tlSection .apRows .dtRow:not(.wide, .stacked) > .dtLabel {
+    flex: none;
+    width: 180px;
+  }
+  .tlSection .apRows .dtRow:not(.wide, .stacked) > .dtControl {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+}
