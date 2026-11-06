@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Input } from '../../../../ui/Input.tsx';
-import { freshId, renameEverywhere, ID_PATTERN } from '../../../form/references.js';
+import { freshId, renameEverywhere, ID_PATTERN, describeUsage, findUsage } from '../../../form/references.js';
 import { TryTaskView } from '../../../form/TryPanels.jsx';
 import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { FormRow, removeEntry } from '../Detailed.jsx';
+import { AddConnection, CONNECTION_KINDS, describeConnection } from './ConnectionsOverview.jsx';
+import { clip, joinAnd, plural, stepsWords } from '../describe.js';
 
 // 5 · Connections, transfers and forms: what its tools reach. Each was a long list inside Tools; now each kind has its
 // own card, its items as chips and the chosen one's fields under them. Everything here is pointed at from elsewhere
@@ -80,11 +82,76 @@ function Outcomes({ ctx, entry }) {
   );
 }
 
-const card = ({ id, title, path, collection, word, label, nameOf, add, rows, adv }) => ({
+// Who points at an item, in words ("Used by tool “lookup”"), or what to do so something does
+const usedBy = (ctx, collection, key, none) => {
+  const places = ctx.engine ? describeUsage(ctx.config, findUsage(ctx.engine, ctx.config, collection, key)) : [];
+  return places.length ? `Used by ${places.join(', ')}` : none;
+};
+
+// The words for each list's rows: what the item is and where it stands (Detailed.jsx ItemRows)
+const DESCRIBE = {
+  transfers: (entry, ctx) => {
+    const t = isObj(entry.item) ? entry.item : {};
+    const how =
+      t.method === 'http_request'
+        ? `Asks another system${t.request?.connection ? ` (${t.request.connection})` : ''}`
+        : t.method === 'sip_refer'
+          ? 'Over the phone line (SIP)'
+          : '';
+    return {
+      icon: 'phoneTransfer',
+      meta: [how, t.schedule ? 'only in business hours' : '', t.play_dialtone ? 'plays a dial tone' : ''].filter(Boolean).join(' · ') || 'Not set up yet',
+      detail: t.description ? clip(t.description) : usedBy(ctx, 'transfers', entry.key, 'Not used yet: a tool or hand-over passes callers to it.'),
+      state: !t.method
+        ? { tone: 'bad', words: 'Needs a way to transfer' }
+        : t.target || t.request
+          ? { tone: 'good', words: 'Ready' }
+          : { tone: 'bad', words: 'Needs where to' },
+    };
+  },
+  forms: (entry, ctx) => {
+    const f = isObj(entry.item) ? entry.item : {};
+    const fields = Array.isArray(f.fields) ? f.fields : [];
+    const steps = stepsWords(f.on_submit);
+    return {
+      icon: 'list',
+      meta: [plural(fields.length, 'question'), f.submit_label ? `button “${f.submit_label}”` : ''].filter(Boolean).join(' · '),
+      detail: steps ? `When it is sent: ${steps}` : usedBy(ctx, 'forms', entry.key, 'Nothing happens when it is sent yet.'),
+      state: fields.length ? null : { tone: 'bad', words: 'No questions yet' },
+    };
+  },
+  notifications: (entry, ctx) => {
+    const n = isObj(entry.item) ? entry.item : {};
+    const ways = Array.isArray(n.deliver) ? n.deliver.filter(isObj) : [];
+    const via = [...new Set(ways.map((w) => w.via).filter(Boolean))];
+    return {
+      icon: 'mail',
+      meta: ways.length ? `${plural(ways.length, 'way')} to send it${via.length ? `, through ${joinAnd(via)}` : ''}` : 'No way to send it yet',
+      detail: usedBy(ctx, 'notifications', entry.key, 'Not sent by any step yet.'),
+      state: ways.length ? null : { tone: 'bad', words: 'Needs a way to send it' },
+    };
+  },
+  tasks: (entry, ctx) => {
+    const t = isObj(entry.item) ? entry.item : {};
+    const steps = Array.isArray(t.steps) ? t.steps : [];
+    const kinds = { verification: 'Checks who the caller is', collect_fields: 'Collects details', confirmation: 'Confirms something', custom: 'Custom' };
+    return {
+      icon: 'list',
+      meta: [kinds[t.kind] || '', plural(steps.length, 'step'), t.max_attempts ? `up to ${plural(t.max_attempts, 'try', 'tries')}` : '']
+        .filter(Boolean)
+        .join(' · '),
+      detail: usedBy(ctx, 'tasks', entry.key, 'Not started by any tool yet: a task tool on Tools starts it.'),
+      state: steps.length ? null : { tone: 'bad', words: 'No steps yet' },
+    };
+  },
+};
+
+const card = ({ id, title, lead, path, collection, word, label, nameOf, add, rows, adv, icon, empty }) => ({
   id,
   title,
+  lead,
   word,
-  list: { id, path, label, nameOf, add },
+  list: { id, path, label, nameOf, add, icon, empty, describe: DESCRIBE[id] },
   of: id,
   empty: `None yet.`,
   remove: (c, entry) => removeEntry(c, collection, entry),
@@ -102,7 +169,7 @@ export const connectionsPart = {
   id: 'connections',
   num: '5',
   title: 'Connections, transfers and forms',
-  question: 'What do its tools reach? These were one long list at the bottom of Tools; now each kind has its own card.',
+  question: 'The outside systems its tools reach, phone transfers to people, the forms it shows, the messages it sends and its multi-step tasks.',
   cols: [
     [
       {
@@ -120,20 +187,24 @@ export const connectionsPart = {
           },
           rows: (entry) => [
             {
+              id: 'name',
+              label: 'Name',
+              hint: 'What its tools call it. Renaming it renames it everywhere it is used.',
+              render: (c) => <IdName ctx={c} id={c.id} entry={{ ...entry, list: 'connections' }} collection="connections" />,
+            },
+            {
               id: 'kind',
-              label: 'Kind',
+              label: 'What it is',
               kind: 'ch',
-              options: [
-                { value: 'http', label: 'Web API' },
-                { value: 'mcp', label: 'MCP server' },
-                { value: 'notifier', label: 'SMS or email sender' },
-              ],
+              options: CONNECTION_KINDS.map((k) => ({ value: k.value, label: k.label })),
+              hint: 'Changing it keeps the address and starts the new kind’s own settings afresh.',
               get: (config) => getAtPath(config, [...entry.base, 'type']),
               put: (config, type) => setKind(config, entry.base, type),
             },
             {
               id: 'address',
               label: 'Address',
+              hint: 'Where the service is. Its tools add their own paths, such as /accounts, to it.',
               tags: 'r',
               kind: 'text',
               placeholder: 'https://api.example.com',
@@ -151,12 +222,102 @@ export const connectionsPart = {
                 return key ? setPath(config, [...entry.base, key], value ?? '') : config;
               },
             },
-            at(entry, ['auth'], { id: 'auth', label: 'Sign-in', hint: 'Names a server secret; the value never shows', kind: 'form' }),
-            at(entry, ['headers'], { id: 'headers', label: 'Headers', kind: 'form' }, (item) => item?.type === 'http'),
-            at(entry, ['timeout_s'], { id: 'timeout', label: 'Give up after', kind: 'num', unit: 'seconds' }, (item) => item?.type === 'http'),
+            // a texts-or-emails sender: what it sends, through which service, from whom
+            at(
+              entry,
+              ['kind'],
+              {
+                id: 'sends',
+                label: 'It sends',
+                kind: 'ch',
+                options: [
+                  { value: 'sms', label: 'Texts (SMS)' },
+                  { value: 'email', label: 'Emails' },
+                ],
+              },
+              (item) => item?.type === 'notifier',
+            ),
+            at(
+              entry,
+              ['provider'],
+              {
+                id: 'provider',
+                label: 'Service',
+                tags: 'r',
+                kind: 'text',
+                placeholder: 'twilio',
+                hint: 'The company that sends them, such as twilio, sendgrid or microsoft_graph.',
+              },
+              (item) => item?.type === 'notifier',
+            ),
+            at(
+              entry,
+              ['from'],
+              { id: 'from', label: 'Sends from', kind: 'text', hint: 'The number, address or mailbox people see. Empty: the service’s default.' },
+              (item) => item?.type === 'notifier',
+            ),
+          ],
+          adv: (entry) => [
+            at(entry, ['auth'], {
+              id: 'auth',
+              label: 'Sign-in',
+              hint: 'How the agent proves who it is to this service. The key itself stays on the server as a secret; only its name is saved here.',
+              kind: 'form',
+            }),
+            at(
+              entry,
+              ['headers'],
+              {
+                id: 'headers',
+                label: 'Headers',
+                hint: 'Extra information sent with every request to this service, such as an account number it expects.',
+                kind: 'form',
+              },
+              (item) => item?.type === 'http',
+            ),
+            at(
+              entry,
+              ['timeout_s'],
+              {
+                id: 'timeout',
+                label: 'Give up after',
+                hint: 'How long to wait for this service to answer before the request stops. Empty: the server’s default.',
+                kind: 'num',
+                unit: 'seconds',
+              },
+              (item) => item?.type === 'http',
+            ),
+            at(
+              entry,
+              ['transport'],
+              {
+                id: 'transport',
+                label: 'How it connects',
+                hint: 'Leave it as it is unless the server’s makers say otherwise.',
+                kind: 'ch',
+                options: [
+                  { value: 'streamable_http', label: 'Streamable HTTP' },
+                  { value: 'sse', label: 'Server-sent events (older servers)' },
+                ],
+              },
+              (item) => item?.type === 'mcp',
+            ),
           ],
         }),
-        lead: 'The systems its tools talk to. Set once, used by many tools.',
+        list: {
+          id: 'connections',
+          path: ['connections'],
+          label: 'Connections',
+          nameOf: (item, key) => key,
+          icon: 'plug',
+          mono: true,
+          emptyTitle: 'No connections yet',
+          empty: 'Connect the systems its tools should reach: a web API, an MCP server, or a service that sends texts and emails.',
+          // a row per connection, and the guided Add (what, which service, address, sign-in, review)
+          describe: describeConnection,
+          renderAdd: (c) => <AddConnection ctx={c} />,
+        },
+        lead: 'The systems its tools talk to. Each is set up once and used by as many tools as need it.',
       },
       card({
         id: 'transfers',
@@ -252,6 +413,8 @@ export const connectionsPart = {
       card({
         id: 'tasks',
         title: 'Multi-step tasks',
+        // what a task is, in the agent config guide's words (sections 1, 2.1 and 3.17)
+        lead: 'A short conversation with the caller that ends in a result, such as checking who they are. An agent starts one with a task tool on Tools; the steps go in order, and code checks each answer, not the model.',
         path: ['tasks'],
         collection: 'tasks',
         word: 'task',

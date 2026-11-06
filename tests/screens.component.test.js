@@ -6,7 +6,7 @@ import { createDemoApi, minimalConfig } from '../src/demo/demoApi.js';
 
 // Component tests of the screens built on top of the form: the Simple view, the Scenarios tab and the preview beside the editor. Each
 // is mounted in jsdom with a config in state; clicks and typing are replayed and the config that comes out is read back.
-const { mountScreen, act } = await setupDom();
+const { mountScreen, act, getDemoApi } = await setupDom();
 const a = actions(act);
 after(() => teardownDom());
 
@@ -82,39 +82,64 @@ test('Scenarios: write one, it goes into the draft’s tests, run it, results ap
   await app.unmount();
 });
 
-test('Scenarios: letting a run reach real systems is off by default, asks first, and says so on the Run button', async () => {
+test('Scenarios: a server that doesn’t let runs reach real systems isn’t asked to (FRONTEND_GUIDE 10.4)', async () => {
   const config = {
     ...agent(),
     tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }], model_script: [{ say: 'hello' }] }],
   };
-  const app = await scenarios(config);
+  const app = await scenarios(config); // the demo's server says network_allowed: false
   await a.click($(app.container, '.scPaid summary'));
-  const boxes = $$(app.container, '.scPaid input[type=checkbox]');
-  assert.equal(boxes.length, 3, 'live, reviewer checks, and real requests');
-  assert.equal(boxes[2].checked, false, 'off by default');
-  assert.match(textOf($(app.container, '.scPaid')), /Let requests reach real systems.*can change real data.*refuses it unless an operator has allowed it/);
-  const realConfirm = window.confirm;
-  const asked = [];
-  try {
-    window.confirm = (text) => {
-      asked.push(text);
-      return false;
-    };
-    await a.check(boxes[2]);
-    assert.equal(asked.length, 1);
-    assert.match(asked[0], /real systems/);
-    assert.equal($$(app.container, '.scPaid input[type=checkbox]')[2].checked, false, 'declining leaves it off');
-    assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
-    window.confirm = () => true;
-    await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
-    assert.match(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
-    assert.match(textOf($(app.container, '.scPaid summary')), /\(on\)/);
-    await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
-    assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/, 'switching it off takes the words away');
-  } finally {
-    window.confirm = realConfirm;
-  }
+  assert.equal($$(app.container, '.scPaid input[type=checkbox]').length, 2, 'live and reviewer checks only');
+  assert.doesNotMatch(textOf($(app.container, '.scPaid')), /real systems/);
+  assert.match(textOf($(app.container, '.scPaid summary')), /^Paid options/);
   await app.unmount();
+});
+
+test('Scenarios: where the server allows it, letting a run reach real systems is off by default, asks first, and says so on the Run button', async () => {
+  const config = {
+    ...agent(),
+    tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }], model_script: [{ say: 'hello' }] }],
+  };
+  // this server allows it: GET /tests says so
+  const demo = getDemoApi();
+  const handle = demo.handle;
+  demo.handle = async (method, path, body) => {
+    const answer = await handle.call(demo, method, path, body);
+    return method === 'GET' && /\/tests(\?|$)/.test(path) && answer.status === 200 ? { ...answer, body: { ...answer.body, network_allowed: true } } : answer;
+  };
+  try {
+    const app = await scenarios(config);
+    await a.click($(app.container, '.scPaid summary'));
+    await until(app, () => $$(app.container, '.scPaid input[type=checkbox]').length === 3);
+    const boxes = $$(app.container, '.scPaid input[type=checkbox]');
+    assert.equal(boxes.length, 3, 'live, reviewer checks, and real requests');
+    assert.equal(boxes[2].checked, false, 'off by default');
+    assert.match(textOf($(app.container, '.scPaid')), /Let requests reach real systems.*can change real data.*An operator has allowed it/);
+    const realConfirm = window.confirm;
+    const asked = [];
+    try {
+      window.confirm = (text) => {
+        asked.push(text);
+        return false;
+      };
+      await a.check(boxes[2]);
+      assert.equal(asked.length, 1);
+      assert.match(asked[0], /real systems/);
+      assert.equal($$(app.container, '.scPaid input[type=checkbox]')[2].checked, false, 'declining leaves it off');
+      assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
+      window.confirm = () => true;
+      await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
+      assert.match(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
+      assert.match(textOf($(app.container, '.scPaid summary')), /\(on\)/);
+      await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
+      assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/, 'switching it off takes the words away');
+    } finally {
+      window.confirm = realConfirm;
+    }
+    await app.unmount();
+  } finally {
+    demo.handle = handle;
+  }
 });
 
 test('Scenarios: a scenario with mistakes isn’t added, and says what to fix; editing and deleting work', async () => {
@@ -303,8 +328,8 @@ test('Preview: the microphone and the picture button appear exactly when the cha
   await send(new window.File(['x'], 'ok.png', { type: 'image/png' }));
   assert.equal($(panel(), '.pvHint.warn'), null, 'a good picture clears the note');
   assert.ok(
-    $$(panel(), '.pvMsg.me').some((m) => /Sent a picture: ok\.png/.test(textOf(m))),
-    'and is shown as sent',
+    $$(panel(), '.pvPictureLine').some((m) => /You sent a photo/.test(textOf(m)) && /ok\.png/.test(textOf(m))),
+    'and is shown as sent, as a line of its own in the conversation',
   );
   await app.wait(900);
   assert.ok(

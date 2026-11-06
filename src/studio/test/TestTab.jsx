@@ -12,6 +12,8 @@ import { navigate, routeHref } from '../route.js';
 import { useAsync } from '../useAsync.js';
 import { sameModels, summarizeModels } from '../models/config.js';
 import FormPrompt from './FormPrompt.jsx';
+import { formTimeLimit } from './formQueue.js';
+import PictureRequest, { PictureLine } from '../pictures/PictureRequest.jsx';
 import { drawsVoice, testability } from './channels.ts';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
 import TraceView from '../trace/TraceView.jsx';
@@ -26,6 +28,7 @@ import '../preview/preview.css';
 import '../models/models.css';
 import { randomTag } from '../format.js';
 import Button from '../../ui/Button.tsx';
+import { plainUnsupported } from '../preflight.ts';
 
 // The Test page: a conversation with the draft, by voice in a real session (LiveKit) or with the simulated agent (no
 // server), and what happened in each turn (the trace) beside it.
@@ -54,6 +57,13 @@ function clock(ms) {
 }
 
 function Bubble({ message, botName }) {
+  // what a picture request the agent made came to, where it happened in the conversation
+  if (message.role === 'picture')
+    return (
+      <div className="stTPictureLine">
+        <PictureLine picture={message.picture} />
+      </div>
+    );
   if (message.role === 'system')
     return (
       <div className="stTSystem" role="note">
@@ -127,7 +137,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const inputs = info?.channel?.input || [];
   const isVoice = drawsVoice(info?.channel);
   const imageCfg = ref === 'draft' ? channelCfg?.inputs?.image : null;
-  const unsupported = editor.report?.unsupported || [];
+  const unsupported = plainUnsupported(editor.report?.unsupported);
 
   // The models a test runs with: a draft test runs the saved draft (not unsaved edits); a published version or an
   // environment runs that version, whatever the draft says now.
@@ -142,6 +152,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const webChannels = useMemo(() => offeredChannels(browserChannels(testConfig), serverChannels), [testConfig, serverChannels]);
   const channelId = webChannels.some((c) => c.id === channelPick) ? channelPick : webChannels[0]?.id || '';
   const simulated = mode === 'simulated';
+  // how long a form may take before the real agent ends the conversation for silence (a simulation never does)
+  const formLimit = simulated ? null : formTimeLimit(testConfig, session.info?.channel?.id);
   // a web voice channel is shown as a call (the orb and captions); a simulation of one is written out, but still looks like a call
   // the conversation's own channel while it runs, and once it has ended until another channel is picked
   const showsSession = !!info && (running || (status === 'ended' && info.channel?.id === channelId));
@@ -176,6 +188,13 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     const el = listRef.current;
     if (stickRef.current && el) el.scrollTop = el.scrollHeight;
   }, [messages, form]);
+  // a picture the agent asks for opens at its top, in the list's own scroll: it waits for an answer, so it is shown
+  const pictureId = session.picture?.id;
+  useEffect(() => {
+    const el = listRef.current;
+    const card = el?.querySelector('.pcCard');
+    if (el && card) el.scrollTop += card.getBoundingClientRect().top - el.getBoundingClientRect().top - 8;
+  }, [pictureId]);
   const onScroll = () => {
     const el = listRef.current;
     if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -198,11 +217,25 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !imageCfg) return;
-    const problem = pictureProblem(file, { acceptedMime: imageCfg.accepted_mime || [], maxBytes: imageCfg.max_bytes || 0 });
+    // while the agent asks for a photo, its own request decides what it takes; otherwise the channel's settings do
+    const problem = session.picture ? '' : pictureProblem(file, { acceptedMime: imageCfg.accepted_mime || [], maxBytes: imageCfg.max_bytes || 0 });
     setPictureNote(problem);
     if (problem) return;
-    await session.sendImage(file, imageCfg.topic || 'image-upload');
+    setPictureNote((await session.sendImage(file, imageCfg.topic)) || '');
   };
+  // a picture the agent asks for (MEDIA_PROTOCOL): the upload or the camera, answered in the conversation
+  const pictureCard = session.picture ? (
+    <PictureRequest
+      key={session.picture.id}
+      request={session.picture}
+      onSend={(file) => session.sendImage(file, imageCfg?.topic)}
+      onCamera={session.pictureCamera}
+      cameraOn={!!media.camera}
+      attachCamera={session.attachCamera}
+      simulated={simulated}
+    />
+  ) : null;
+  const cameraWanted = session.picture?.kind === 'camera';
 
   // A finished conversation becomes a starting scenario to edit (the caller's turns, the tools used, the final state).
   const canSave = messages.some((m) => m.role === 'user') && !running && !!config && editor.isObject && !editor.parsed.error;
@@ -396,7 +429,10 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                   again.
                 </Notice>
               )}
-              {form && !transcriptOpen && <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} />}
+              {form && !transcriptOpen && (
+                <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} limitS={formLimit} />
+              )}
+              {!transcriptOpen && pictureCard}
               <button type="button" className="stLink stTTranscriptToggle" onClick={() => setTranscriptOpen((v) => !v)} aria-expanded={transcriptOpen}>
                 {transcriptOpen ? 'Hide the transcript' : `Show the transcript (${messages.length})`}
               </button>
@@ -479,7 +515,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                   again.
                 </Notice>
               )}
-              {form && <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} />}
+              {form && <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} limitS={formLimit} />}
+              {pictureCard}
               <div ref={endRef} />
             </div>
           )}
@@ -552,8 +589,14 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                         type="button"
                         className="stTMediaBtn"
                         onClick={() => fileRef.current?.click()}
-                        disabled={!connected || !imageCfg}
-                        title={imageCfg ? 'Send a picture' : 'Pictures can be sent when testing the draft'}
+                        disabled={!connected || !imageCfg || cameraWanted}
+                        title={
+                          cameraWanted
+                            ? 'The agent wants the camera now: use the card in the conversation'
+                            : imageCfg
+                              ? 'Send a picture'
+                              : 'Pictures can be sent when testing the draft'
+                        }
                       >
                         <Icon name="paperclip" size={16} /> Send a picture
                       </button>

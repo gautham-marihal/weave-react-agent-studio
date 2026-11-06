@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { parseObject, parseValue, showValue } from './model.js';
+import { jsonProblem, parseObject, parseValue, readJson, showValue } from './model.js';
 import { TextArea } from '../../ui/Input.tsx';
 
 // The scenario editor's typed-value boxes: a JSON object/value box and a state value box.
@@ -41,12 +41,12 @@ export function JsonBox({ value, onChange, label, rows = 3, placeholder, objectO
       onChange(parsed.value);
     } else {
       try {
-        const parsed = JSON.parse(next);
+        const parsed = readJson(next);
         setError('');
         mine.current = JSON.stringify(parsed);
         onChange(parsed);
       } catch (e) {
-        setError(`Not valid JSON (${e.message}).`);
+        setError(jsonProblem(e));
       }
     }
   };

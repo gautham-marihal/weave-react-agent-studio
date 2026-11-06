@@ -41,14 +41,65 @@ export function useWhatIf(config) {
   };
 }
 
-export default function WhatIfBar({ config, what, phone = true }) {
+// An agent to preview as (the prompt preview from the top bar, FRONTEND_GUIDE 10.1): its subagents as chips, each with its
+// initial and whether it answers first. Shown only with more than one agent.
+//   agent: { list: [{ id, name, first }], value, onChange }
+function AgentChips({ agent }) {
+  const refs = React.useRef([]);
+  const at = agent.list.findIndex((a) => a.id === agent.value);
+  const move = (index) => {
+    const next = agent.list[(index + agent.list.length) % agent.list.length];
+    agent.onChange(next.id);
+    refs.current[(index + agent.list.length) % agent.list.length]?.focus();
+  };
+  return (
+    <div className="stPromptAgents" role="radiogroup" aria-label="Preview as agent">
+      {agent.list.map((a, index) => (
+        <button
+          key={a.id}
+          ref={(el) => {
+            refs.current[index] = el;
+          }}
+          type="button"
+          role="radio"
+          aria-checked={a.id === agent.value}
+          tabIndex={a.id === agent.value || (at < 0 && index === 0) ? 0 : -1}
+          className={`stAgentChip ${a.id === agent.value ? 'on' : ''}`}
+          onClick={() => agent.onChange(a.id)}
+          onKeyDown={(event) => {
+            if (['ArrowRight', 'ArrowDown'].includes(event.key)) {
+              event.preventDefault();
+              move(index + 1);
+            }
+            if (['ArrowLeft', 'ArrowUp'].includes(event.key)) {
+              event.preventDefault();
+              move(index - 1);
+            }
+          }}
+        >
+          <span className={`stAgentChipAv tone${index % 4}`} aria-hidden="true">
+            {(a.name || a.id).slice(0, 1).toUpperCase()}
+          </span>
+          {a.name}
+          <small>{a.first ? 'answers first' : 'subagent'}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function WhatIfBar({ config, what, phone = true, agent = null }) {
   const channels = (Array.isArray(config?.channels) ? config.channels : []).map((channel) => channel?.id).filter(Boolean);
+  const agents = agent && agent.list.length > 1;
   return (
     <div className="stPromptAs" role="group" aria-label="Preview as">
       <header>
         <span>
           <strong>Preview as…</strong>
-          <small>Try another {phone ? 'channel, time or caller' : 'channel or time'}. Nothing here is saved.</small>
+          <small>
+            Try another {agents ? 'agent, ' : ''}
+            {phone ? 'channel, time or caller' : 'channel or time'}. Nothing here is saved.
+          </small>
         </span>
         {what.changed && (
           <button type="button" className="stLink" onClick={what.reset}>
@@ -56,6 +107,7 @@ export default function WhatIfBar({ config, what, phone = true }) {
           </button>
         )}
       </header>
+      {agents && <AgentChips agent={agent} />}
       <div className="stPromptAsGrid">
         {channels.length > 0 && (
           <label>

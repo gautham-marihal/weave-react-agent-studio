@@ -3,7 +3,15 @@
 // Pure data and two helpers: no DOM.
 
 export const ENUM_LABELS = {
-  status: { draft: 'Draft', published: 'Published', archived: 'Archived' },
+  status: {
+    draft: 'Draft',
+    published: 'Published',
+    archived: 'Archived',
+    // how a picture request ended (a scenario's "what the screen was told")
+    received: 'A picture came in',
+    timeout: 'Nothing came in time',
+    cancelled: 'Cancelled',
+  },
   environment: { development: 'Development', staging: 'Staging', production: 'Production' },
   engine: { 'livekit-agents': 'LiveKit Agents' },
   provider_mode: { plugins: 'Your own provider keys', inference: 'LiveKit Inference (LiveKit Cloud only)' },
@@ -57,6 +65,12 @@ export const ENUM_LABELS = {
     collect: 'Ask the caller',
     call: 'Call a tool',
     say: 'Say something',
+    // a value read from a picture
+    date: 'Date',
+    // what the visitor's screen was told (a scenario check)
+    request_image: 'Asked for a picture',
+    image_rejected: 'Turned a picture down',
+    request_done: 'Ended a picture request',
   },
   entities: {
     card_number: 'Card numbers',
@@ -82,8 +96,25 @@ export const ENUM_LABELS = {
     collect_fields: 'Collect details',
     confirmation: 'Confirmation',
     custom: 'Custom',
+    // how a picture is asked for
+    upload: 'An upload',
+    camera: 'The camera',
   },
-  method: { sip_refer: 'Transfer by SIP', http_request: 'Ask another system over HTTP' },
+  method: {
+    sip_refer: 'Transfer by SIP',
+    http_request: 'Ask another system over HTTP',
+    // how two values are compared
+    text: 'Names and phrases (forgives small differences)',
+    id: 'Codes (letters and digits only)',
+    exact: 'Exactly the same (ignoring case)',
+    date: 'The same day',
+    date_on_or_after: 'On or after (an expiry against today)',
+    number: 'The same number',
+  },
+  date_order: { dmy: 'Day first (05/04 is 5 April)', mdy: 'Month first (05/04 is May 4)' },
+  require: { all: 'Every pair must match', any: 'One pair is enough' },
+  apply_to: { model: 'What the model says', all: 'Everything it says' },
+  colour: { blue: 'Blue', green: 'Green', sand: 'Sand', grey: 'Grey' },
   log_level: { DEBUG: 'Debug: very detailed', INFO: 'Info', WARNING: 'Warnings and errors', ERROR: 'Errors only' },
   level: { debug: 'Debug: very detailed', info: 'Info', warning: 'Warnings and errors', error: 'Errors only' },
   detail: { events: 'What happened', full: 'Everything (for testing only)' },
@@ -117,7 +148,7 @@ export const ENUM_LABELS = {
   days: { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' },
   strategy: { first_success: 'Stop at the first that works', all: 'Send to all' },
   content_type: { text: 'Plain text', html: 'HTML' },
-  format: { text: 'Text', json: 'JSON' },
+  format: { text: 'Text', json: 'JSON', png: 'PNG', jpeg: 'JPEG', jpg: 'JPG', webp: 'WebP', gif: 'GIF', bmp: 'BMP' },
   participant_kind: { standard: 'Standard', sip: 'Phone (SIP)', ingress: 'Streamed in', egress: 'Streamed out', agent: 'Agent', connector: 'Connector' },
   on_receive: { reply: 'Start a reply right away', attach: 'Wait and attach it to the next message' },
   outcome: { verified: 'Verified', failed: 'Failed', declined: 'Declined' },
@@ -153,9 +184,13 @@ export const ENUM_LABELS = {
 export const KEEP_AS_WRITTEN = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', '1.1', '1.2', 'text', 'json', 'id', 'room', 'started_at', 'type', 'modality']);
 
 // A choice that has the same label wherever it is found, so a setting with an unlisted name still reads well.
+// The ways two values are compared use common words (text, id, number) that mean other things elsewhere, so their labels
+// stay with that setting only.
+const ONLY_THERE = { method: new Set(['text', 'id', 'exact', 'date', 'number']) };
 const ALL = new Map();
-Object.values(ENUM_LABELS).forEach((byValue) =>
+Object.entries(ENUM_LABELS).forEach(([name, byValue]) =>
   Object.entries(byValue).forEach(([value, label]) => {
+    if (ONLY_THERE[name]?.has(value)) return;
     ALL.set(value, ALL.has(value) && ALL.get(value) !== label ? null : label);
   }),
 );

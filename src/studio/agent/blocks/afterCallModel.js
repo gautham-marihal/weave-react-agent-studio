@@ -179,6 +179,15 @@ export const SENSITIVE = [
   ['otp', 'One-time codes'],
   ['pin', 'PINs'],
 ];
+// The kinds to offer, as the server lists them (GET /redaction/entities, FRONTEND_GUIDE 10.1: never a fixed list), each
+// with the studio's plain label when it has one; without the server's answer (not read yet, or unreachable), SENSITIVE.
+export function sensitiveChoices(serverEntities) {
+  const labels = Object.fromEntries(SENSITIVE);
+  const kinds = (Array.isArray(serverEntities) ? serverEntities : []).map((e) => (typeof e === 'string' ? e : e?.kind)).filter(Boolean);
+  if (!kinds.length) return SENSITIVE.map(([value, label]) => ({ value, label }));
+  const words = (kind) => kind.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  return kinds.map((kind) => ({ value: kind, label: labels[kind] || words(kind) }));
+}
 
 // change: { on?, entities? }. Switched on from nothing, it starts ticked with the kinds the agent already treats as
 // sensitive, and is written as `enabled: true`. A 1.2 setting: raises schema_version as enableRedaction does.
@@ -247,4 +256,17 @@ const ASKED_ABOVE_NO_SUMMARY = [...ASKED_ABOVE, ['post_call', 'summary']];
 export function askedAbove(config) {
   const summary = config?.post_call?.summary;
   return isObj(summary) && (summary.enabled === true || summary.llm !== undefined) ? ASKED_ABOVE : ASKED_ABOVE_NO_SUMMARY;
+}
+
+// A closing message (a wrap-up) is a wait started at a set moment by a "Start a closing message" step, never by itself
+// (agent config guide 2.8, 3.23): is any step anywhere in the draft starting this one?
+export function closingStarted(config, id) {
+  let found = false;
+  const walk = (v) => {
+    if (found || !v || typeof v !== 'object') return;
+    if (!Array.isArray(v) && v.type === 'wrapup' && v.wrapup === id) found = true;
+    else Object.values(v).forEach(walk);
+  };
+  walk(config);
+  return found;
 }

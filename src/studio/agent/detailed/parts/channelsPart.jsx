@@ -25,6 +25,22 @@ import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { DetailedPage, removeEntry } from '../Detailed.jsx';
 import AddItem from '../AddItem.jsx';
+import { clip } from '../describe.js';
+
+// A channel's row: what kind it is, what customers can send on it, its first words, and whether it is on
+const INPUT_WORDS = { text: 'typing', audio: 'talking', image: 'photos', video: 'the camera' };
+function describeChannel(entry) {
+  const ch = isObj(entry.item) ? entry.item : {};
+  const input = Array.isArray(ch.modalities?.input) ? ch.modalities.input : [];
+  // its own first words, when they are words (a fixed line by its id is named on the Agent part)
+  const says = typeof ch.greeting?.say === 'string' ? ch.greeting.say : '';
+  return {
+    icon: ch.type === 'sip_voice' || ch.type === 'phone' ? 'phone' : ch.type === 'web_voice' ? 'voice' : 'chat',
+    meta: [ch.id, input.length ? `customers can use ${input.map((m) => INPUT_WORDS[m] || m).join(', ')}` : ''].filter(Boolean).join(' · '),
+    detail: says ? `Says first: “${clip(says, 110)}”` : 'Its first words come from the agent.',
+    state: ch.enabled === false ? { tone: 'off', words: 'Switched off' } : { tone: 'good', words: 'On' },
+  };
+}
 
 // 6 · Channels and hours: where people reach the agent, and when. The three ways that work today are switched on and
 // off with the setup's own switches (setupModel.js: a new one is made ready, the last one can't go); the kinds the
@@ -255,7 +271,7 @@ export const channelsPart = {
   id: 'channels',
   num: '6',
   title: 'Channels and hours',
-  question: 'Where do people reach it, and when? Each channel opens its own settings; hours and caller id sit beside them.',
+  question: 'Where people reach it, when it is open, and how it knows who is calling.',
   cols: [
     [
       {
@@ -280,6 +296,10 @@ export const channelsPart = {
           label: 'Settings for',
           hint: 'The channel whose settings are below',
           nameOf: (ch, i) => (isObj(ch) ? `${channelName(ch.type)}${ch.enabled === false ? ' (off)' : ''}` : `Channel ${i + 1}`),
+          icon: 'chat',
+          emptyTitle: 'No way to reach it yet',
+          empty: 'Add chat or talk on your website, or a phone line.',
+          describe: describeChannel,
           renderAdd: (c) => <AddItem ctx={c} path={['channels']} pickerKey="channels" word="channel" onAdded={(key) => c.choose('channels', key)} />,
         },
         of: 'channels',
@@ -314,7 +334,16 @@ export const channelsPart = {
               hint: 'Empty: it uses the agent’s greeting',
               render: (ctx) => <OwnGreeting ctx={ctx} id={ctx.id} entry={entry} />,
             },
-            itemRow(entry, ['greeting', 'allow_interruptions'], { id: 'interrupt', label: 'Callers can interrupt the greeting', kind: 'sw' }, speaks),
+            (() => {
+              const row = itemRow(
+                entry,
+                ['greeting', 'allow_interruptions'],
+                { id: 'interrupt', label: 'Callers can interrupt the greeting', kind: 'sw' },
+                speaks,
+              );
+              // unset, callers may talk over it (the schema has no default; the channel form reads it the same way)
+              return { ...row, get: (config) => row.get(config) !== false };
+            })(),
             ...capabilityRows(entry, types),
             itemRow(entry, ['instructions_append'], { id: 'extra', label: 'Extra instructions for this channel', kind: 'long', rows: 2 }),
             ...(fit.mislabelled || fit.voiceOnly.length || fit.speech.length

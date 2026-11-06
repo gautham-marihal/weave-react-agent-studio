@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import MobileNav from './studio/MobileNav.jsx';
 import { Landing } from './pages/Landing.jsx';
-import { Login, ProfileSetup } from './pages/Login.jsx';
+import { Login } from './pages/Login.jsx';
+import { firstProfile } from './pages/firstProfile.js';
 import { Dashboard, openWorkspaceNamed } from './pages/Dashboard.jsx';
 import { AccountDialog, InfoDialogHost } from './pages/shared.jsx';
 import { DemoBadge } from './demo/DemoBadge.jsx';
@@ -56,7 +57,6 @@ export function App() {
       return 'landing';
     }
   });
-  const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [accountOpen, setAccountOpen] = useState(false);
   const [accountWorkspace, setAccountWorkspace] = useState('');
   const [theme, setTheme] = useState(() => {
@@ -98,7 +98,6 @@ export function App() {
   const handleLogin = (email, keep = true) => {
     const normalizedEmail = (email || '').trim().toLowerCase();
     const profileMatchesAccount = profile && (profile.email || '').trim().toLowerCase() === normalizedEmail;
-    setKeepSignedIn(keep);
 
     if (profileMatchesAccount) {
       rememberSignIn(keep);
@@ -106,33 +105,28 @@ export function App() {
       return;
     }
 
-    setPendingEmail(email.trim());
-    setScreen('onboarding');
-  };
-
-  const [pendingEmail, setPendingEmail] = useState('');
-  // Why the sign-in page opened: to start (a "Create…" button) or to sign in. A first-time starter is greeted as new.
-  const [loginIntent, setLoginIntent] = useState('signin');
-  const newcomer = loginIntent === 'start' && !profile;
-
-  const handleProfileComplete = (nextProfile) => {
+    // The first sign-in on this browser goes straight to the workspace's home: the name and the workspace are made
+    // from the email (firstProfile.js) and can be changed later in the account dialog. No "set up your workspace" step.
+    const nextProfile = firstProfile(email);
     try {
       localStorage.setItem('weave_profile', JSON.stringify(nextProfile));
     } catch {}
-    openWorkspaceNamed(nextProfile?.workspaceName);
+    openWorkspaceNamed(nextProfile.workspaceName);
     setProfile(nextProfile);
-    rememberSignIn(keepSignedIn);
-    // The first-time setup ends where it promises ("03 Build: describe your first agent"): in the create dialog.
-    window.location.hash = '#/bots?new=1';
+    rememberSignIn(keep);
+    window.location.hash = '#/home';
     setScreen('dashboard');
   };
+
+  // Why the sign-in page opened: to start (a "Create…" button) or to sign in. A first-time starter is greeted as new.
+  const [loginIntent, setLoginIntent] = useState('signin');
+  const newcomer = loginIntent === 'start' && !profile;
 
   // The browser tab title before the workspace opens (inside it, the Dashboard names each page).
   useEffect(() => {
     const titles = {
       landing: 'Weave · Build, test and run AI agents',
       login: newcomer ? 'Get started · Weave' : 'Sign in · Weave',
-      onboarding: 'Set up your workspace · Weave',
     };
     if (titles[screen]) document.title = titles[screen];
   }, [screen, newcomer]);
@@ -147,8 +141,6 @@ export function App() {
     view = <Landing theme={theme} onToggleTheme={toggleTheme} onSignIn={() => openLogin('signin')} onStart={() => openLogin('start')} />;
   } else if (screen === 'login') {
     view = <Login theme={theme} onToggleTheme={toggleTheme} newcomer={newcomer} onLogin={handleLogin} onBack={() => setScreen('landing')} />;
-  } else if (screen === 'onboarding') {
-    view = <ProfileSetup theme={theme} onToggleTheme={toggleTheme} email={pendingEmail} onComplete={handleProfileComplete} onBack={() => setScreen('login')} />;
   } else {
     view = (
       <Dashboard
@@ -174,8 +166,8 @@ export function App() {
       <InfoDialogHost />
       <DialogHost />
       <DemoBadge />
-      {!['landing', 'login', 'onboarding'].includes(screen) && <MobileNav />}
-      {accountOpen && profile && screen !== 'landing' && screen !== 'login' && screen !== 'onboarding' && (
+      {!['landing', 'login'].includes(screen) && <MobileNav />}
+      {accountOpen && profile && screen !== 'landing' && screen !== 'login' && (
         <AccountDialog
           profile={profile}
           workspaceName={accountWorkspace || profile?.workspaceName}

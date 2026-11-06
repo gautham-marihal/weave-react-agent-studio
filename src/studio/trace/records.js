@@ -5,6 +5,7 @@
 import { isObj } from '../form/engine.js';
 import { channelName } from '../simple/simpleModel.js';
 import { maskTraceRows } from '../privacy/maskConfidential.js';
+import { clockText, formatBytes, rejectedShort } from '../pictures/pictureProtocol.js';
 
 // "web_chat" → "web chat", "sip_voice" → "phone": a channel as a sentence says it
 const channelWords = (type) => {
@@ -73,6 +74,8 @@ export const GROUPS = [
   { id: 'tools', label: 'Tools', kinds: ['tool_called'] },
   { id: 'api', label: 'API requests', kinds: ['http_request'] },
   { id: 'knowledge', label: 'Knowledge', kinds: ['knowledge_search'] },
+  // a picture asked for, received, turned down, read, compared, forgotten (never the picture or what was read from it)
+  { id: 'pictures', label: 'Pictures', kinds: ['image', 'image_analysis', 'compare'] },
   { id: 'state', label: 'State', kinds: ['state_changed'] },
   { id: 'tasks', label: 'Tasks', kinds: ['task_started', 'task_step', 'task_finished', 'task_skipped'] },
   { id: 'safety', label: 'Safety rules and limits', kinds: ['guardrail_triggered', 'limit_reached'] },
@@ -104,9 +107,178 @@ const ms = (r) => {
   return typeof v === 'number' ? v : undefined;
 };
 
-// One record as a row: { id, seq, at, kind, group, tone, label, text, facts: [[label, value]], ms, problem, raw }.
-//   tone: 'plain' | 'agent' | 'caller' | 'good' | 'bad' | 'muted'
-export function describeRecord(record, index = 0) {
+// ---- pictures (FRONTEND_GUIDE 7.1 and 10.3): the numbers an author calibrates the quality standard with
+const nameList = (v) =>
+  list(v)
+    .map((x) => (typeof x === 'string' ? x : isObj(x) ? first(x.name, x.field, x.label) : ''))
+    .filter(Boolean);
+const pictureWord = (kind) => (kind === 'camera' ? 'Camera picture' : 'Photo');
+// the sharpness and brightness of a picture against the request's standard, for the bars under its line:
+//   { id, label, value, need (a floor), band ([low, high]), max, log }
+function pictureMeters(r, quality) {
+  const q = isObj(quality) ? quality : {};
+  const meters = [];
+  if (typeof r.sharpness === 'number')
+    meters.push({
+      id: 'sharpness',
+      label: 'Sharpness',
+      value: r.sharpness,
+      need: typeof q.min_sharpness === 'number' ? q.min_sharpness : undefined,
+      max: Math.max(2000, r.sharpness * 1.25),
+      log: true,
+    });
+  if (typeof r.brightness === 'number')
+    meters.push({
+      id: 'brightness',
+      label: 'Brightness',
+      value: r.brightness,
+      band: typeof q.min_brightness === 'number' || typeof q.max_brightness === 'number' ? [q.min_brightness ?? 0, q.max_brightness ?? 255] : undefined,
+      max: 255,
+    });
+  return meters;
+}
+const sizeFacts = (r) => [
+  ...(r.width && r.height ? [['size', `${r.width} × ${r.height}`]] : []),
+  ...(typeof first(r.bytes, r.size) === 'number' ? [['file', formatBytes(first(r.bytes, r.size))]] : []),
+  ...(r.frames ? [['frames', `the sharpest of ${r.frames}`]] : []),
+];
+const round1 = (v) => (typeof v === 'number' ? Math.round(v * 10) / 10 : v);
+
+function describePicture(r, base, quality) {
+  const kind = String(r.event);
+  if (kind === 'image_analysis') {
+    const fields = nameList(first(r.fields, r.field_names));
+    const read = typeof r.read === 'number' ? r.read : Array.isArray(r.read) ? r.read.length : typeof r.read_count === 'number' ? r.read_count : undefined;
+    const missing = nameList(r.missing);
+    const count = read !== undefined ? read : missing.length ? fields.length - missing.length : undefined;
+    const tokens = first(r.tokens, r.total_tokens, r.usage?.total_tokens);
+    return {
+      ...base,
+      label: 'Picture',
+      tone: r.ok === false ? 'warn' : 'plain',
+      text: `Photo read${count !== undefined && fields.length ? `: ${count} of ${fields.length} value${fields.length === 1 ? '' : 's'}` : ''}${r.ok === false ? ' (not in full)' : ''}`,
+      facts: [
+        ...(fields.length ? [['values', fields.join(', ')]] : []),
+        ...(missing.length ? [['not read', missing.join(', ')]] : []),
+        ...(list(r.images).length ? [['from', list(r.images).join(', ')]] : []),
+        ...(tokens !== undefined ? [['tokens', String(tokens)]] : []),
+        ...(r.model ? [['model', String(r.model)]] : []),
+        ...(r.error ? [['failed', short(r.error)]] : []),
+      ],
+      note: 'What was read is never sent to the studio',
+    };
+  }
+  if (kind === 'compare') {
+    const pairs = list(r.pairs).filter(isObj);
+    const same = pairs.filter((p) => p.matched).map((p) => p.label || p.left || 'a pair');
+    const differ = pairs.filter((p) => p.matched === false).map((p) => p.label || p.left || 'a pair');
+    const words = [
+      same.length ? `${same.join(' and ')} matched` : '',
+      differ.length ? `${differ.join(' and ')} ${differ.length === 1 ? 'differs' : 'differ'}` : '',
+    ]
+      .filter(Boolean)
+      .join(', ');
+    return {
+      ...base,
+      label: 'Picture',
+      tone: r.matched ? 'good' : 'warn',
+      text: `Comparison: ${words || (r.matched ? 'matched' : 'did not match')}`,
+      facts: [
+        ['result', r.matched ? 'matched' : 'not matched'],
+        ...(typeof r.score === 'number' ? [['score', String(round1(r.score))]] : []),
+        ...(r.require === 'any' ? [['needed', 'one pair']] : []),
+      ],
+      pairs: pairs.map((p) => ({ label: p.label || p.left || 'a pair', matched: !!p.matched })),
+    };
+  }
+  // an `image` record: one step of a picture request
+  const step = String(first(r.step, ''));
+  // a request names its `kind`; a picture that came in (or was turned down) names its `source`
+  const from = first(r.kind, r.source);
+  const words = pictureWord(from);
+  switch (step) {
+    case 'requested':
+      return {
+        ...base,
+        label: 'Picture',
+        text: from === 'camera' ? 'Camera asked for' : 'Photo asked for',
+        facts: [
+          ...(r.into ? [['into', String(r.into)]] : []),
+          ...(typeof r.timeout_s === 'number' ? [['waits up to', clockText(Math.round(r.timeout_s))]] : []),
+          ...(isObj(r.quality) && typeof r.quality.min_sharpness === 'number' ? [['least sharpness', String(r.quality.min_sharpness)]] : []),
+        ],
+      };
+    case 'received':
+      return {
+        ...base,
+        label: 'Picture',
+        tone: 'good',
+        text: from === 'camera' ? 'Picture taken from the camera' : 'Photo received',
+        facts: [...sizeFacts(r), ...(first(r.image_id, r.id) ? [['kept as', String(first(r.image_id, r.id))]] : [])],
+        meters: pictureMeters(r, quality),
+      };
+    case 'rejected': {
+      const code = String(first(r.code, 'unreadable'));
+      const score =
+        code === 'too_blurry' && typeof r.sharpness === 'number'
+          ? ` (sharpness ${round1(r.sharpness)})`
+          : code.startsWith('too_') && typeof r.brightness === 'number' && code !== 'too_small' && code !== 'too_many' && code !== 'too_large'
+            ? ` (brightness ${round1(r.brightness)})`
+            : '';
+      return {
+        ...base,
+        label: 'Picture',
+        tone: 'warn',
+        text: `${words} turned down: ${rejectedShort(code)}${score}`,
+        facts: [['code', code], ...sizeFacts(r)],
+        meters: pictureMeters(r, quality),
+      };
+    }
+    case 'ignored':
+      return {
+        ...base,
+        tone: 'muted',
+        label: 'Picture',
+        text: 'A picture was ignored',
+        facts: [['why', String(first(r.reason, r.why, 'not from the visitor, or not asked for')).replace(/_/g, ' ')]],
+      };
+    case 'discarded': {
+      // the server writes one record per picture with its `id`; older records listed the state names
+      const names = r.id ? [String(r.id)] : list(first(r.images, r.variables));
+      const count = typeof r.count === 'number' ? r.count : names.length;
+      return {
+        ...base,
+        tone: 'muted',
+        label: 'Picture',
+        text: names.length
+          ? `Picture${names.length === 1 ? '' : 's'} forgotten: ${names.join(', ')}`
+          : `${count || 'A'} picture${count === 1 ? '' : 's'} forgotten`,
+      };
+    }
+    case 'request_ended': {
+      const status = String(first(r.status, ''));
+      return {
+        ...base,
+        tone: status === 'timeout' ? 'warn' : 'muted',
+        label: 'Picture',
+        text:
+          status === 'received'
+            ? 'Request ended: a picture came in'
+            : status === 'timeout'
+              ? 'Request ended: nothing usable came in time'
+              : 'Request ended: cancelled',
+      };
+    }
+    default:
+      return { ...base, label: 'Picture', text: step ? `${words}: ${step.replace(/_/g, ' ')}` : words, meters: pictureMeters(r, quality) };
+  }
+}
+
+// One record as a row: { id, seq, at, kind, group, tone, label, text, facts: [[label, value]], ms, problem, raw }, and for a
+// picture its `meters`, a comparison's `pairs` and a `note`.
+//   tone: 'plain' | 'agent' | 'caller' | 'good' | 'warn' | 'bad' | 'muted'
+//   quality: the picture standard of the request this record belongs to, when known (describeRecords finds it)
+export function describeRecord(record, index = 0, quality = null) {
   const r = isObj(record) ? record : {};
   const kind = String(r.event || r.kind || 'event');
   const base = {
@@ -288,6 +460,10 @@ export function describeRecord(record, index = 0) {
           ...(r.handoffs ? [['handoffs', String(r.handoffs)]] : []),
         ],
       };
+    case 'image':
+    case 'image_analysis':
+    case 'compare':
+      return describePicture(r, base, first(r.quality, quality));
     case 'error':
       return {
         ...base,
@@ -313,7 +489,20 @@ export function describeRecord(record, index = 0) {
   }
 }
 
-export const describeRecords = (records) => list(records).map((r, i) => describeRecord(r, i));
+// Each record's row; a picture's measurements are read against the standard its request asked for (its `requested` record).
+export function describeRecords(records) {
+  const standard = new Map();
+  let latest = null;
+  return list(records).map((r, i) => {
+    // each request's own standard (none when it set none); a record without a request id goes with the latest request
+    if (r?.event === 'image' && r.step === 'requested') {
+      latest = isObj(r.quality) ? r.quality : null;
+      if (r.request_id) standard.set(r.request_id, latest);
+    }
+    const quality = r?.event === 'image' ? (r.request_id && standard.has(r.request_id) ? standard.get(r.request_id) : latest) : null;
+    return describeRecord(r, i, quality);
+  });
+}
 
 // The counts for the filter chips: { conversation: 6, tools: 2, ... , errors: 1 }, every group present.
 export function groupCounts(rows) {

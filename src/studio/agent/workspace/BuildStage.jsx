@@ -55,7 +55,22 @@ export function ChecksChip({ status, onOpen }) {
   );
 }
 
-// The parts down the left of the Detailed view, marked done, to do or with problems; a tooltip says what each is for.
+// The parts down the left, in groups a newcomer can follow (the same parts and names as always, in the same order)
+const PART_GROUPS = [
+  { id: 'basics', label: 'Basics', ids: ['agent', 'conversation', 'knowledge'] },
+  { id: 'abilities', label: 'What it can do', ids: ['tools', 'connections', 'channels', 'media'] },
+  { id: 'flow', label: 'Call flow', ids: ['workflow', 'subagents'] },
+  { id: 'safety', label: 'Safety and follow-up', ids: ['guardrails', 'aftercall'] },
+];
+
+// A part's mark: problems, then something to do, then done; a part that may stay empty says "Optional"
+function PartMark({ part, problems }) {
+  if (!problems && part.state === 'optional') return <span className="tw-shrink-0 tw-text-xs tw-font-normal tw-text-muted">Optional</span>;
+  return <Mark problems={problems} todo={part.state === 'todo' || part.state === 'attention' ? 1 : 0} done={part.state === 'done'} />;
+}
+
+// The parts down the left of the Detailed view, in groups, each marked done, to do, optional or with problems; a
+// tooltip says what each is for and where it stands.
 function PartList({ page, sections, problems, go }) {
   const item = (id, label, icon, mark = null, tip = null) => {
     const button = (
@@ -79,20 +94,44 @@ function PartList({ page, sections, problems, go }) {
       </li>
     );
   };
+  const partItem = (part) =>
+    item(part.id, part.label, part.icon, <PartMark part={part} problems={problems[part.id] || 0} />, `${part.purpose} Now: ${part.status}`);
+  const grouped = new Set(PART_GROUPS.flatMap((g) => g.ids));
+  // a part no group names yet still shows, at the end of the first group
+  const groups = PART_GROUPS.map((g, i) => ({
+    ...g,
+    parts: [...g.ids.map((id) => sections.find((s) => s.id === id)), ...(i === 0 ? sections.filter((s) => !grouped.has(s.id)) : [])].filter(Boolean),
+  }));
+  const heading = (id, label, first = false) => (
+    <p
+      id={`build-group-${id}`}
+      className={cx('tw-m-0 tw-hidden tw-px-2.5 tw-pb-1 tw-text-xs tw-font-semibold tw-text-muted lg:tw-block', first ? 'tw-pt-0' : 'tw-pt-4')}
+    >
+      {label}
+    </p>
+  );
   return (
     <nav aria-label="Build" className="lg:tw-sticky lg:tw-top-[var(--under-bar)] lg:tw-self-start">
-      <ul className="tw-m-0 tw-flex tw-list-none tw-flex-wrap tw-gap-1 tw-p-0 lg:tw-flex-col lg:tw-gap-0.5">
-        {sections.map((part) =>
-          item(
-            part.id,
-            part.label,
-            part.icon,
-            <Mark problems={problems[part.id] || 0} todo={part.state === 'todo' || part.state === 'attention' ? 1 : 0} done={part.state === 'done'} />,
-            `${part.purpose} Now: ${part.status}`,
-          ),
-        )}
-        {item('settings', 'Engine and details', 'sliders')}
-      </ul>
+      <div className="tw-flex tw-flex-wrap tw-gap-1 lg:tw-flex-col lg:tw-gap-0">
+        {groups.map((g, i) => (
+          <div key={g.id} className="tw-contents lg:tw-block" role="group" aria-labelledby={`build-group-${g.id}`}>
+            {heading(g.id, g.label, i === 0)}
+            <ul className="tw-m-0 tw-flex tw-list-none tw-flex-wrap tw-gap-1 tw-p-0 lg:tw-flex-col lg:tw-gap-0.5">{g.parts.map(partItem)}</ul>
+          </div>
+        ))}
+        <div className="tw-contents lg:tw-block" role="group" aria-labelledby="build-group-technical">
+          {heading('technical', 'Technical')}
+          <ul className="tw-m-0 tw-flex tw-list-none tw-flex-wrap tw-gap-1 tw-p-0 lg:tw-flex-col lg:tw-gap-0.5">
+            {item(
+              'settings',
+              'Engine and details',
+              'sliders',
+              <span className="tw-shrink-0 tw-text-xs tw-font-normal tw-text-muted">Advanced</span>,
+              'What runs it underneath: the engine, fixed values and the studio’s checks. Mostly for technical people.',
+            )}
+          </ul>
+        </div>
+      </div>
     </nav>
   );
 }

@@ -26,7 +26,9 @@ ENV NODE_ENV=production PORT=8080 HOST=0.0.0.0
 COPY --from=build /app/package.json ./
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
-COPY --from=build /app/apiPass.js /app/llmRoute.js /app/authRoute.js /app/credentials.txt ./
+# who may sign in (credentials.txt) is never built in: it is given to the container when it starts (docker-compose mounts it),
+# so the image can be shared without the passwords
+COPY --from=build /app/apiPass.js /app/llmRoute.js /app/authRoute.js ./
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1

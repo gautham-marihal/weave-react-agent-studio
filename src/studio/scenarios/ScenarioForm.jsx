@@ -2,16 +2,29 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SmartSelect from '../SmartSelect.jsx';
 import Icon from '../../ui/Icon.jsx';
 import { channelLabel } from '../agent/rowNames.js';
-import { channelTypeOf, hasProblems, isKeysTurn, newExpectation, scenarioProblems, toolChoices } from './model.js';
+import {
+  TURN_KINDS,
+  changeTurnKind,
+  channelTypeOf,
+  hasProblems,
+  isKeysTurn,
+  jsonProblem,
+  newExpectation,
+  readJson,
+  scenarioProblems,
+  toolChoices,
+  turnKind,
+} from './model.js';
 import Select from '../../ui/Select.tsx';
 import Button from '../../ui/Button.tsx';
 import { Input, TextArea } from '../../ui/Input.tsx';
 import { JsonBox } from './JsonBox.jsx';
 import ExpectRow from './ExpectRow.jsx';
 import { MocksEditor, ScriptEditor } from './MocksAndScript.jsx';
+import SamplePictures, { SampleCard } from './SamplePictures.jsx';
 
-// The editor for one scenario: every part the schema has (turns, thirteen kinds of expectation, clock, state, API
-// mocks, model script) plus "Edit as JSON". Unknown parts are kept as they are and never block Save; only what is
+// The editor for one scenario: every part the schema has (turns that say, press keys, upload a picture or show the
+// camera; sixteen kinds of expectation; sample pictures; clock, state, API mocks, model script) plus "Edit as JSON". Unknown parts are kept as they are and never block Save; only what is
 // positively wrong (a missing id, a missing channel, a bad pattern) is a problem, shown where it is.
 
 export default function ScenarioForm({ initial, config, others, onSave, onCancel, isNew }) {
@@ -54,9 +67,15 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
       return next;
     });
   const setTurn = (i, text) => set({ turns: (scenario.turns || []).map((t, k) => (k !== i ? t : isKeysTurn(t) ? { keys: text } : { say: text })) });
-  const setTurnKind = (i, keys) =>
-    set({ turns: (scenario.turns || []).map((t, k) => (k !== i || isKeysTurn(t) === keys ? t : keys ? { keys: '' } : { say: '' })) });
-  const phoneLine = channelTypeOf(config, scenario.channel) === 'sip_voice';
+  const setTurnTo = (i, next) => set({ turns: (scenario.turns || []).map((t, k) => (k !== i ? t : next)) });
+  const setTurnKind = (i, kind) => setTurnTo(i, changeTurnKind((scenario.turns || [])[i], kind, scenario.images));
+  const channelType = channelTypeOf(config, scenario.channel);
+  const phoneLine = channelType === 'sip_voice';
+  // pictures go only to a web channel (a phone call carries none); keys only to a phone line
+  const webChannel = channelType === 'web_chat' || channelType === 'web_voice';
+  const pictureNames = Object.keys(scenario.images && typeof scenario.images === 'object' ? scenario.images : {});
+  const kindsFor = (turn) => TURN_KINDS.filter((k) => k.value === 'say' || k.value === turnKind(turn) || (k.value === 'keys' ? phoneLine : webChannel));
+  const showPictures = webChannel || pictureNames.length > 0;
   const setCaller = (patch) => {
     const caller = { ...(scenario.caller || {}), ...patch };
     Object.keys(caller).forEach((k) => {
@@ -74,13 +93,13 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
   };
   const closeJson = () => {
     try {
-      const parsed = JSON.parse(jsonText);
+      const parsed = readJson(jsonText);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('a scenario is an object');
       setScenario(parsed);
       setJsonMode(false);
       setJsonError('');
     } catch (e) {
-      setJsonError(`Not valid JSON (${e.message}).`);
+      setJsonError(jsonProblem(e));
     }
   };
   const submit = (event) => {
@@ -88,10 +107,10 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
     let value = scenario;
     if (jsonMode) {
       try {
-        value = JSON.parse(jsonText);
+        value = readJson(jsonText);
         if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('a scenario is an object');
       } catch (e) {
-        setJsonError(`Not valid JSON (${e.message}).`);
+        setJsonError(jsonProblem(e));
         return;
       }
     }
@@ -214,43 +233,98 @@ export default function ScenarioForm({ initial, config, others, onSave, onCancel
           <fieldset className="scBlock">
             <legend>What the caller says, in order</legend>
             <ol className="scTurns">
-              {(scenario.turns || []).map((turn, i) => (
-                <li key={i}>
-                  {(phoneLine || isKeysTurn(turn)) && (
-                    <Select
-                      className="stFInput small"
-                      value={isKeysTurn(turn) ? 'keys' : 'say'}
-                      onChange={(event) => setTurnKind(i, event.target.value === 'keys')}
-                      aria-label={`Turn ${i + 1}: kind`}
+              {(scenario.turns || []).map((turn, i) => {
+                const kind = turnKind(turn);
+                const picture = kind === 'upload' || kind === 'camera';
+                return (
+                  <li key={i}>
+                    {kindsFor(turn).length > 1 && (
+                      <Select
+                        className="stFInput small"
+                        value={kind || 'say'}
+                        onChange={(event) => setTurnKind(i, event.target.value)}
+                        aria-label={`Turn ${i + 1}: kind`}
+                      >
+                        {kindsFor(turn).map((k) => (
+                          <option key={k.value} value={k.value}>
+                            {k.label}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                    {picture ? (
+                      <span className="scTurnPicture">
+                        <SampleCard image={scenario.images?.[kind === 'upload' ? turn.upload : turn.camera]} small />
+                        <Select
+                          className="stFInput small"
+                          value={(kind === 'upload' ? turn.upload : turn.camera) ?? ''}
+                          aria-label={kind === 'upload' ? `Turn ${i + 1}: the sample picture uploaded` : `Turn ${i + 1}: what the camera shows`}
+                          aria-invalid={
+                            !!(
+                              show('turns') &&
+                              !pictureNames.includes(kind === 'upload' ? turn.upload : turn.camera) &&
+                              !(kind === 'camera' && turn.camera === null)
+                            ) || undefined
+                          }
+                          onChange={(event) => setTurnTo(i, kind === 'upload' ? { upload: event.target.value } : { camera: event.target.value || null })}
+                        >
+                          {kind === 'camera' && <option value="">Nothing: switch the camera off</option>}
+                          {kind === 'upload' && !pictureNames.includes(turn.upload) && (
+                            <option value={turn.upload || ''}>{turn.upload ? `${turn.upload} (not a sample picture)` : 'Choose a sample picture…'}</option>
+                          )}
+                          {pictureNames.map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </Select>
+                      </span>
+                    ) : kind === 'say' || kind === 'keys' ? (
+                      <Input
+                        className={`small${isKeysTurn(turn) ? ' mono' : ''}`}
+                        type="text"
+                        value={(isKeysTurn(turn) ? turn.keys : turn.say) ?? ''}
+                        placeholder={isKeysTurn(turn) ? 'Keys, e.g. 4821#' : 'What they say'}
+                        aria-label={isKeysTurn(turn) ? `Turn ${i + 1}: the keys the caller presses` : `Turn ${i + 1}: what the caller says`}
+                        onChange={(event) => setTurn(i, event.target.value)}
+                      />
+                    ) : (
+                      <code className="scUnknownCode">{JSON.stringify(turn)}</code>
+                    )}
+                    <button
+                      type="button"
+                      className="stIconBtn danger"
+                      aria-label={`Delete turn ${i + 1}`}
+                      onClick={() => set({ turns: (scenario.turns || []).filter((_, k) => k !== i) })}
                     >
-                      <option value="say">Says</option>
-                      <option value="keys">Presses keys</option>
-                    </Select>
-                  )}
-                  <Input
-                    className={`small${isKeysTurn(turn) ? ' mono' : ''}`}
-                    type="text"
-                    value={(isKeysTurn(turn) ? turn.keys : turn.say) ?? ''}
-                    placeholder={isKeysTurn(turn) ? 'Keys, e.g. 4821#' : 'What they say'}
-                    aria-label={isKeysTurn(turn) ? `Turn ${i + 1}: the keys the caller presses` : `Turn ${i + 1}: what the caller says`}
-                    onChange={(event) => setTurn(i, event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="stIconBtn danger"
-                    aria-label={`Delete turn ${i + 1}`}
-                    onClick={() => set({ turns: (scenario.turns || []).filter((_, k) => k !== i) })}
-                  >
-                    <Icon name="close" size={14} />
-                  </button>
-                </li>
-              ))}
+                      <Icon name="close" size={14} />
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
             {show('turns') && <small className="stFErr">{problems.turns}</small>}
+            {/* FRONTEND_GUIDE 10.4: keys go right after the turn in which the bot asks for them */}
+            {(scenario.turns || []).some(isKeysTurn) && (
+              <small className="stMuted">
+                Put a “Presses keys” turn right after the turn in which the agent asks for them. It works whether the agent waits for the keys in a tool or in a
+                task step; the digits are never written to the result.
+              </small>
+            )}
             <button type="button" className="stAddBtn" onClick={() => set({ turns: [...(scenario.turns || []), { say: '' }] })}>
               <Icon name="plus" size={14} /> Add a turn
             </button>
           </fieldset>
+
+          {showPictures && (
+            <fieldset className="scBlock">
+              <legend>
+                Sample pictures <em>(drawn for the picture turns; nothing here is real data)</em>
+              </legend>
+              <SamplePictures scenario={scenario} onChange={set} />
+              {show('images') && <small className="stFErr">{problems.images}</small>}
+            </fieldset>
+          )}
 
           <fieldset className="scBlock">
             <legend>What must be true afterwards</legend>

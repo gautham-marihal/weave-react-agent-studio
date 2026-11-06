@@ -120,7 +120,8 @@ test('agent pages: a setting opens on the page and panel that hold it, and says 
 
 test('agent pages: a setting found under one name in many places is listed twice at most, so other settings still fit', async () => {
   const { capSameLabel } = await import('../src/studio/agent/pages.js');
-  const found = find('hours', 24);
+  // as wide a look as the search box takes (Dashboard): a schedule can be tested in every step's condition (schema 1.2)
+  const found = find('hours', 80);
   const count = (list) => list.filter((e) => e.label === 'Business hours').length;
   assert.ok(count(found) > 2, 'the search finds business hours in many places');
   const capped = capSameLabel(found, 2);
@@ -133,7 +134,8 @@ test('agent pages: a setting found under one name in many places is listed twice
 test('agent pages: the agent’s pages and the things people come to do are found by the words they use, the best match first', async () => {
   const { searchAgent } = await import('../src/studio/agent/pages.js');
   const ids = (q) => searchAgent(q).map((i) => i.id);
-  assert.equal(searchAgent('').length, 18, 'with nothing typed, the pages (Conversation, Connections and Subagents among them)');
+  assert.equal(searchAgent('').length, 19, 'with nothing typed, the pages (Conversation, Connections, Images & Videos and Subagents among them)');
+  assert.equal(searchAgent('camera')[0]?.id, 'page-media', 'the camera is found on Images & Videos');
   assert.ok(ids('hand over').includes('page-subagents'));
   assert.equal(ids('deploy')[0], 'deploy');
   assert.equal(ids('roll back')[0], 'rollback');

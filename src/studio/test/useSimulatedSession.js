@@ -3,6 +3,7 @@ import { createSimulatedAgent, widenQuestion } from '../../demo/simulatedAgent.j
 import { isDemoMode } from '../../demo/demoMode.js';
 import { api } from '../../api/client.ts';
 import { chooseSimulatedChannel } from './simulatedChannel.js';
+import { useSimulatedPictures } from './useSimulatedPictures.js';
 
 // A SIMULATED conversation shaped like useLiveSession, so the Test tab and the editor's preview can show either. No
 // server or LiveKit: replies come from demo/simulatedAgent.js, each marked `simulated`, on `getConfig(ref)` (for the
@@ -119,14 +120,24 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
     [addRecord],
   );
 
+  // the picture steps of the configuration (useSimulatedPictures): the same card, refusals and records as a real call
+  const endedBySteps = useCallback(() => {
+    finish('agent');
+    push({ role: 'system', text: 'The simulated agent ended the conversation.' });
+    setStatus('ended');
+  }, [finish, push]);
+  const pictures = useSimulatedPictures({ push, addRecord, log, later, agent: () => agentRef.current, onEnded: endedBySteps });
+  const { reset: resetPictures, begin: beginPictures, onSaid: picturesOnSaid } = pictures;
+
   useEffect(() => {
     aliveRef.current = true;
     return () => {
       finish('closed');
+      resetPictures();
       aliveRef.current = false;
       clearTimers();
     };
-  }, [clearTimers, finish]);
+  }, [clearTimers, finish, resetPictures]);
 
   const startFor = useCallback(
     async (botId, options = {}) => {
@@ -135,6 +146,7 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
       attemptRef.current += 1;
       const attempt = attemptRef.current;
       clearTimers();
+      resetPictures();
       setError(null);
       setMessages([]);
       setEvents([]);
@@ -186,8 +198,11 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
         );
       // the agent's first lines, one at a time, and then the conversation is live
       const greet = () => {
-        agent.greeting().forEach((message, index) => later(() => push({ ...message, role: 'bot' }), index * THINK_MS));
+        const lines = agent.greeting();
+        lines.forEach((message, index) => later(() => push({ ...message, role: 'bot' }), index * THINK_MS));
         later(() => setStatus('live'), 0);
+        // steps that ask for a picture as the call starts run after the greeting
+        beginPictures(config, channel, lines.length * THINK_MS);
       };
       later(() => {
         startedRef.current = Date.now();
@@ -205,16 +220,17 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
         later(greet, 250);
       }, 250);
     },
-    [addRecord, clearTimers, later, log, push, status],
+    [addRecord, clearTimers, later, log, push, status, resetPictures, beginPictures],
   );
 
   const stop = useCallback(() => {
     attemptRef.current += 1;
     finish('user');
+    resetPictures();
     clearTimers();
     setStatus('idle');
     log('You ended the simulated conversation');
-  }, [clearTimers, finish, log]);
+  }, [clearTimers, finish, log, resetPictures]);
 
   const sendText = useCallback(
     async (text) => {
@@ -222,6 +238,8 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
       const agent = agentRef.current;
       if (!agent || !body) return false;
       push({ role: 'user', text: body });
+      // what was said starts the configuration's picture steps (a tool's or a task's): they answer instead
+      if (picturesOnSaid(body)) return true;
       const hits = await searchDocuments(playingRef.current, body);
       // ended, or started again, while its documents were searched: this answer belongs to no conversation now
       if (!aliveRef.current || agentRef.current !== agent) return false;
@@ -244,18 +262,27 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
       }
       return true;
     },
-    [addRecord, finish, later, log, push],
+    [addRecord, finish, later, log, push, picturesOnSaid],
   );
 
-  // A picture sent in the preview: shown as sent, with a reply saying it's made up (the real agent would look at it).
+  // A picture sent in the preview: for the picture the agent asked for (measured and checked as the runtime would), or
+  // with nothing asked, shown as sent with a reply saying it's made up (the real agent would look at it). Returns why it
+  // wasn't sent, or ''.
+  const sendPicture = pictures.sendImage;
   const sendImage = useCallback(
     async (file) => {
-      if (!agentRef.current || !file) return;
-      push({ role: 'user', text: `Sent a picture: ${file.name}` });
+      if (!agentRef.current || !file) return '';
+      const asked = await sendPicture(file);
+      if (asked !== null) return asked;
+      push({ role: 'picture', text: '', picture: { kind: 'upload', status: 'sent', sent: { name: file.name, size: file.size } } });
       addRecord('user_sent_image', { name: file.name, type: file.type, size: file.size, simulated: true });
-      later(() => push({ role: 'bot', text: 'Thanks, I received your picture. (A simulated reply: the real agent would look at it.)' }), THINK_MS);
+      later(
+        () => push({ role: 'bot', text: 'Thanks, I received your picture. (A simulated reply: the real agent would look at it.)', simulated: true }),
+        THINK_MS,
+      );
+      return '';
     },
-    [addRecord, later, push],
+    [addRecord, later, push, sendPicture],
   );
 
   const noop = useCallback(() => {}, []);
@@ -267,7 +294,10 @@ export function useSimulatedSession({ onFinished, getConfig } = {}) {
     records,
     error,
     form: null,
-    media: { mic: false, camera: false, screen: false },
+    media: { mic: false, camera: pictures.cameraOn, screen: false },
+    picture: pictures.picture,
+    pictureCamera: pictures.pictureCamera,
+    attachCamera: pictures.attachCamera,
     agentHint: false,
     reconnecting: false,
     simulated: true,

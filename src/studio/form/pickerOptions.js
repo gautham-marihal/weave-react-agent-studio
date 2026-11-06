@@ -384,7 +384,7 @@ export function pickerFor(collection, { engine, branches, takenIds = [], botId =
       type: preset.type,
       // a kind nothing connects to the runtime yet says so on its card (the server's list, `runs_today`)
       ...(notRunningYet(channelTypes, preset.type) ? { badge: NOT_RUNNING, unavailable: NOT_RUNNING } : {}),
-      make: () => buildChannel(preset.id, { taken: takenIds, botId }),
+      make: () => buildChannel(preset.id, { taken: takenIds, botId, types: channelTypes }),
     }));
   }
   const table = collection === 'tools' ? TOOLS : collection === 'pronunciation' ? PRONUNCIATION : GUARDRAILS[collection.replace('guardrails.', '')];

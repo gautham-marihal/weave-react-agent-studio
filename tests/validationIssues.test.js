@@ -194,3 +194,90 @@ test('every message the server gave for the broken copies gets a plain sentence 
     assert.doesNotMatch(d.text, /\b[a-z]+_[a-z]+\b(?!['”])/, `${d.text}: no raw key in the sentence (ids the author chose are quoted)`);
   });
 });
+
+// The rules of the agent config guide's section 6 table, in the exact words the server answered with on 2026-11-05.
+test('the guide’s validation rules are said in plain words, with a fix where one is safe', () => {
+  const said = [
+    [
+      err(
+        ['channels', 0, 'modalities', 'input'],
+        "channel 'web-chat' / agent 'assistant': accepts images or video but the effective llm does not have vision: true",
+      ),
+      /takes pictures or video.*isn’t marked as reading pictures/,
+    ],
+    [
+      err(['defaults', 'models', 'llm'], "channel 'web-chat' / agent 'assistant': agent has tools or handoffs but the effective llm has tool_calling: false"),
+      /marked as not using tools/,
+    ],
+    [
+      err(['agents', 'items', 0, 'handoffs', 0, 'tool'], "handoff tool name 'end_call' collides with a tool the model already sees under that name"),
+      /hand-over name “end_call” is already a tool’s name/,
+    ],
+    [
+      err(['agents', 'items', 0, 'instructions', 'role'], "template 'Help {{const.nope}}' reads undeclared constant 'nope'"),
+      /fixed value “nope”, which doesn’t exist/,
+    ],
+    [
+      err(['schedules', 'hours', 'weekly', 0], "schedule 'hours': window 18:00-09:00 ends before it starts"),
+      /from 18:00 to 09:00 ends before it starts.*two windows/,
+    ],
+    [
+      err(['schedules', 'hours', 'timezone'], "schedule 'hours' timezone: 'Mars/Olympus' is not a known IANA timezone"),
+      /“Mars\/Olympus” isn’t a time zone the server knows/,
+    ],
+    [
+      err(['defaults', 'conversation', 'inactivity'], 'defaults.conversation.inactivity: inactivity has max_nudges 2 but no nudges to say'),
+      /nudged 2 times, but nothing is written to say/,
+    ],
+    [
+      warn(['defaults', 'conversation', 'inactivity'], 'defaults.conversation.inactivity: callers are nudged but nothing ends the silence (no on_exhausted)'),
+      /nothing happens after the last nudge/,
+    ],
+    [warn(['agents', 'items', 1], "agent 'lonely' is unreachable: nothing hands off to it"), /Nothing passes callers to the agent “lonely”/],
+    [warn(['messages', 0], "message 'still_there' is declared but never used"), /The fixed line “still_there” isn’t used anywhere/],
+    [warn(['wrapups', 0], "wrapup 'closing' is declared but never used"), /The closing message “closing” isn’t used anywhere/],
+    [err(['messages', 0, 'text'], "message 'hello_x' has no text for the primary language 'en-US'"), /no version in the agent’s main language \(en-US\)/],
+    [warn(['messages', 0, 'text'], "message 'hello_y' has no 'es' text"), /has no es version, but the agent speaks es/],
+    [
+      warn(['tools', 1], "tool 'escalate_to_human': transfer_or_callback has no fallback if the transfer cannot happen"),
+      /nothing to do when the transfer can’t happen/,
+    ],
+  ];
+  said.forEach(([issue, words]) => {
+    const d = describe(issue);
+    assert.ok(d.recognised, `recognised: ${issue.message}`);
+    assert.match(d.text, words);
+  });
+});
+
+test('a typed key is never repeated back, and an empty value is not quoted as “None”', () => {
+  const key = describe(err(['defaults', 'models', 'llm', 'api_key'], "'sk-live-123' is not of type 'object'"));
+  assert.doesNotMatch(key.text, /sk-live-123/, 'the key is not shown');
+  assert.match(key.text, /give the name of a secret instead/);
+  const empty = describe(err(['defaults', 'models', 'tts'], "None is not of type 'object'"));
+  assert.equal(empty.text, 'This is empty, but it needs a group of settings.');
+});
+
+test('the one-click fixes for the model and the longest silence change only what they say', () => {
+  const config = JSON.parse(JSON.stringify(example));
+  config.defaults.models.llm.vision = false;
+  const vision = fixOf(
+    describe(err([], "channel 'web-chat' / agent 'tech_support': accepts images or video but the effective llm does not have vision: true"), config),
+    'model-vision',
+  );
+  const seen = vision.apply(config);
+  assert.equal(seen.defaults.models.llm.vision, true);
+  const agent = seen.agents.items.find((a) => a.id === 'tech_support');
+  if (agent.overrides?.models?.llm) assert.equal(agent.overrides.models.llm.vision, true, 'the agent’s own model too');
+  assert.equal(config.defaults.models.llm.vision, false, 'the draft given is not changed');
+  const silence = fixOf(
+    describe(
+      warn(
+        [],
+        "channel 'web-chat': inactivity needs up to 360s of silence to finish, but guardrails.limits.max_silence_s is 60s and would cut the call off first",
+      ),
+    ),
+    'longest-silence',
+  );
+  assert.equal(silence.apply(example).guardrails.limits.max_silence_s, 360);
+});

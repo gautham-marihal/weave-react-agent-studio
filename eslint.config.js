@@ -48,7 +48,7 @@ export default [
     },
   },
   {
-    files: ['tests/**', 'e2e/**', 'scripts/**', 'mock-api/**', 'server/**', 'vite.config.js', 'llmRoute.js', 'apiPass.js', 'authRoute.js'],
+    files: ['tests/**', 'e2e/**', 'scripts/**', 'mock-api/**', 'server/**', 'demos/**', 'vite.config.js', 'llmRoute.js', 'apiPass.js', 'authRoute.js'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   // SonarQube's own analyzer for JavaScript and TypeScript (SonarSource's rules, as SonarQube runs them), with its recommended set. Switched off are the

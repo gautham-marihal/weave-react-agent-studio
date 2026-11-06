@@ -71,12 +71,38 @@ export class Room {
         return {};
       },
       async publishData() {},
-      async sendFile() {},
+      // a picture sent on a byte stream: what was sent and on which topic (never its bytes)
+      async sendFile(file, opts) {
+        window.__fake.sent.push({ kind: 'file', name: file && file.name, size: file && file.size, type: file && file.type, topic: opts && opts.topic });
+        return {};
+      },
       async setMicrophoneEnabled() {},
-      async setCameraEnabled() {},
+      // the camera: switched as asked (or refused, as a browser does when its permission is denied), and recorded
+      async setCameraEnabled(on) {
+        if (on && window.__fake.cameraDenied) throw Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' });
+        room.camera = !!on;
+        window.__fake.sent.push({ kind: 'camera', on: !!on });
+      },
       async setScreenShareEnabled() {},
-      getTrackPublication() {
-        return null;
+      // a drawn card stands in for the camera picture
+      getTrackPublication(source) {
+        if (source !== 'camera' || !room.camera) return null;
+        return {
+          track: {
+            attach(video) {
+              const canvas = document.createElement('canvas');
+              canvas.width = 640;
+              canvas.height = 480;
+              const ctx = canvas.getContext('2d');
+              ctx.fillStyle = '#3a3047';
+              ctx.fillRect(0, 0, 640, 480);
+              ctx.fillStyle = '#dfe6f2';
+              ctx.fillRect(150, 150, 340, 214);
+              video.srcObject = canvas.captureStream ? canvas.captureStream(5) : null;
+              return video;
+            },
+          },
+        };
       },
     };
   }

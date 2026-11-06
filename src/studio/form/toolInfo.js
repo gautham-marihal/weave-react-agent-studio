@@ -29,11 +29,11 @@ export function notAvailable(tool) {
 export const BUILTIN_HELP = {
   end_call: 'Ends the conversation. It says a goodbye line first, which is done in code so it is never skipped. Give the agent this so it can hang up.',
   transfer_or_callback:
-    'Hands the caller to a person, or runs its fallback (say a callback line, raise a ticket) when no one can take it: no target, closed hours, a failed transfer. Needs a transfer set up under Telephony.',
+    'Hands the caller to a person, or runs its fallback (say a callback line, raise a ticket) when no one can take it: no target, a failed transfer, or closed hours when the transfer has no closed steps of its own. Needs a transfer set up under Phone transfers on Connections.',
   return_to_entry: 'A specialist sends the caller back to the agent that answers first, with a note of what is still needed.',
   send_dtmf: 'Sends keypad tones on the call (a phone call only).',
   collect_dtmf: 'Collects digits the caller presses (a phone call only).',
-  send_form: 'Shows the caller a form. Needs a form defined under Forms; the channel must be able to show forms.',
+  send_form: 'Shows the caller a form. Needs a form set up under Forms on Connections; the channel must be able to show forms.',
   noop: 'Does nothing itself; only its effects run (set state, hand off). Use it for a tool whose whole job is a conditional handoff.',
 };
 

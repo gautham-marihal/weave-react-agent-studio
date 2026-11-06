@@ -9,6 +9,7 @@
 import customersFile from '../data/customers.json' with { type: 'json' };
 import services from '../data/services.json' with { type: 'json' };
 import info from '../data/info.json' with { type: 'json' };
+import { UNBOUND_ROUTES, resetUnbound } from './unbound.mjs';
 
 const { customers } = customersFile;
 const OTP = '123456'; // the one-time password every test customer "receives"
@@ -1113,6 +1114,9 @@ function fax(items, id, body, what) {
   ];
 }
 
+// Tetherfi Unbound use case 1 (src/unbound.mjs): onboarding, the MX bridge and TQD
+ROUTES.push(...UNBOUND_ROUTES);
+
 const compiled = ROUTES.map(([method, path, handler]) => {
   const names = [];
   const re = new RegExp(`^${path.replace(/:(\w+)/g, (_, n) => (names.push(n), '([^/]+)'))}/?$`);
@@ -1138,12 +1142,16 @@ export function handle({ method, path, query = {}, body = {}, headers = {} }) {
     const m = clean.match(r.re);
     if (!m || r.method !== method) continue;
     const params = Object.fromEntries(r.names.map((n, i) => [n, decodeURIComponent(m[i + 1])]));
-    const [status, out] = r.handler(params, parsed || {}, query);
-    // a caller that asks for refusals in the body (header x-refusals: in-body, as the agents do: their tools can't read
-    // the body of an error answer) gets the bank's "no" as a 200 with ok: false and the reason, so it can say why
-    if (headers['x-refusals'] === 'in-body' && status >= 400 && status < 500 && out?.reason)
-      return { status: 200, body: { ...out, ok: false, refused: true, status } };
-    return { status, body: out };
+    const finish = ([status, out]) => {
+      // a caller that asks for refusals in the body (header x-refusals: in-body, as the agents do: their tools can't read
+      // the body of an error answer) gets the bank's "no" as a 200 with ok: false and the reason, so it can say why
+      if (headers['x-refusals'] === 'in-body' && status >= 400 && status < 500 && out?.reason)
+        return { status: 200, body: { ...out, ok: false, refused: true, status } };
+      return { status, body: out };
+    };
+    // a route may answer at once or (when it reads a store) later: then this answer is a promise too
+    const answer = r.handler(params, parsed || {}, query);
+    return typeof answer?.then === 'function' ? answer.then(finish) : finish(answer);
   }
   const known = compiled.some((r) => r.re.test(clean));
   return known
@@ -1155,4 +1163,5 @@ export function handle({ method, path, query = {}, body = {}, headers = {} }) {
 export function resetState() {
   changed.clear();
   for (const k of Object.keys(created)) created[k] = k === 'otp' || k === 'choices' ? new Map() : [];
+  resetUnbound();
 }

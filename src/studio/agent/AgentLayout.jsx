@@ -18,6 +18,7 @@ import { ErrorState, Notice, Spinner } from '../ui.jsx';
 import { SkeletonRows } from '../../ui/Skeleton.jsx';
 import { readinessSteps } from './readiness.js';
 import { buildSections } from './buildSections.js';
+import { BuildSectionsContext } from './detailed/buildContext.js';
 import StageTabs from './workspace/StageTabs.jsx';
 import BuildStage from './workspace/BuildStage.jsx';
 import GuidedBuild from './workspace/GuidedBuild.jsx';
@@ -40,6 +41,7 @@ import { conversationPart } from './detailed/parts/conversationPart.jsx';
 import { knowledgePart } from './detailed/parts/knowledgePart.jsx';
 import { toolsPart } from './detailed/parts/toolsPart.jsx';
 import { connectionsPart } from './detailed/parts/connectionsPart.jsx';
+import { mediaPart } from './detailed/parts/mediaPart.jsx';
 import { ChannelsPage } from './detailed/parts/channelsPart.jsx';
 import { SubagentsPage } from './detailed/parts/subagentsPart.jsx';
 import { guardrailsPart } from './detailed/parts/guardrailsPart.jsx';
@@ -417,9 +419,28 @@ export default function AgentLayout({ ws }) {
       />
     );
   } else if (page === 'agent') {
-    body = <DetailedPage part={agentPart} editor={editor} request={detailedRequest('agent')} notices={notices} onShowJson={openJson} />;
+    body = (
+      <DetailedPage
+        part={agentPart}
+        editor={editor}
+        request={detailedRequest('agent')}
+        notices={notices}
+        onShowJson={openJson}
+        // "Talk to it" on the profile opens the same test panel as the bar's Test
+        extra={{ onTest: () => setDrawer('test') }}
+      />
+    );
   } else if (page === 'conversation') {
-    body = <DetailedPage part={conversationPart} editor={editor} request={detailedRequest('conversation')} onShowJson={openJson} />;
+    body = (
+      <DetailedPage
+        part={conversationPart}
+        editor={editor}
+        request={detailedRequest('conversation')}
+        onShowJson={openJson}
+        // "Try a call" on the overview opens the same test panel as the bar's Test
+        extra={{ onTest: () => setDrawer('test') }}
+      />
+    );
   } else if (page === 'tools') {
     body = (
       <DetailedPage
@@ -438,6 +459,8 @@ export default function AgentLayout({ ws }) {
     );
   } else if (page === 'connections') {
     body = <DetailedPage part={connectionsPart} editor={editor} request={detailedRequest('connections')} onShowJson={openJson} />;
+  } else if (page === 'media') {
+    body = <DetailedPage part={mediaPart} editor={editor} request={detailedRequest('media')} onShowJson={openJson} />;
   } else if (page === 'channels') {
     body = <ChannelsPage editor={editor} request={detailedRequest('channels')} onShowJson={openJson} extra={{ botId, dialled }} />;
   } else if (page === 'subagents') {
@@ -629,9 +652,11 @@ export default function AgentLayout({ ws }) {
   const stage = drawn ? stageOf(page)?.id : null;
   const staged =
     stage === 'build' ? (
-      <BuildStage botId={botId} page={page} sections={sections} problems={errorsByPage} jsonOpen={page === 'settings' && localPart.settings === 'json'}>
-        {body}
-      </BuildStage>
+      <BuildSectionsContext.Provider value={sections}>
+        <BuildStage botId={botId} page={page} sections={sections} problems={errorsByPage} jsonOpen={page === 'settings' && localPart.settings === 'json'}>
+          {body}
+        </BuildStage>
+      </BuildSectionsContext.Provider>
     ) : (
       body
     );
@@ -833,7 +858,7 @@ export default function AgentLayout({ ws }) {
       {drawer === 'prompt' && (
         <Drawer title="Preview the prompt" icon="eye" width="wide" onClose={() => setDrawer(null)}>
           {/* what the agent that answers first is told; another agent's is on its own page */}
-          <PromptPreview agentId={readSimple(config).agentId} config={config} startOpen />
+          <PromptPreview agentId={readSimple(config).agentId} config={config} startOpen pickAgent />
         </Drawer>
       )}
       {drawer === 'describe' && (

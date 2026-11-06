@@ -11,8 +11,8 @@ const fromEnv = () => {
   }
 };
 
-// The sample agents demo mode starts with (demoApi.js seedState), marked "Sample" and hideable from Home
-export const DEMO_SAMPLE_IDS = ['acme-support', 'front-desk', 'bookings'];
+// The sample agents demo mode starts with (demoApi.js seedState, demoSamples.js), marked "Sample" and hideable from Home
+export const DEMO_SAMPLE_IDS = ['acme-support', 'front-desk', 'bookings', 'unbound-onboarding'];
 export const isDemoSample = (id) => isDemoMode() && DEMO_SAMPLE_IDS.includes(id);
 
 // Can the user switch it? Not when the build itself is a demo build.

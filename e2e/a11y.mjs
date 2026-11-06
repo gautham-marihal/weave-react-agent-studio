@@ -52,7 +52,9 @@ const OVERLAYS = [
   ['create an agent', '#/bots?new=1', null, '[role=dialog]'],
   ['a tool’s Advanced rows', `${B}/tools`, '[data-card="tools.tool"] .dtAdv > summary', '[data-card="tools.tool"] .dtAdvRows'],
   ['a channel’s Advanced rows', `${B}/channels`, '[data-card="channels.channel"] .dtAdv > summary', '[data-card="channels.channel"] .dtAdvRows'],
-  ['a setting opened in place', `${B}/conversation`, '.dtFormRow button:has-text("Edit")', '.dtFormRow .stForm'],
+  // Conversation opens on the call: a part of its sentence opens an editor in place, a chapter's line its settings
+  ['a part of the call opened in place', `${B}/conversation`, '.cvSentence .apTok', '.apPop'],
+  ['a setting opened in place', `${B}/conversation`, '.apLine:has-text("If a service fails") .apChange', '.apLine.open .dtRow'],
   ['the test panel', `${B}/home`, '.nlBar button:has-text("Test")', '.nlTestDock'],
   ['Describe', `${B}/home`, '.nlBar button:has-text("Describe")', '.nlDrawer'],
   ['a new scenario', `${B}/scenarios`, 'button:has-text("New scenario")', 'form.scForm'],

@@ -1202,6 +1202,133 @@
               }
             }
           },
+          "images": {
+            "type": "object",
+            "description": "Pictures this scenario can upload or show to a pretend camera, by name (schema 1.2). Each is either drawn from text lines as a sample card (`lines`, with faults you can switch on: blur, brightness, rotate, exif_orientation, glare, noise, crop, skew), or the picture itself (`base64` or `data_url`), or a file in the bot's fixtures folder (`file`), or plain `text` (not a picture: to see how a wrong file is handled), or `empty`. Nothing here is real data.",
+            "propertyNames": {
+              "pattern": "^[a-z][a-z0-9_-]{0,40}$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The rows of text on the sample card, for example \"Name: JANE SAMPLE\"."
+                },
+                "title": {
+                  "type": "string"
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 16,
+                  "maximum": 4000
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 16,
+                  "maximum": 4000
+                },
+                "colour": {
+                  "enum": [
+                    "blue",
+                    "green",
+                    "sand",
+                    "grey"
+                  ]
+                },
+                "format": {
+                  "enum": [
+                    "png",
+                    "jpeg",
+                    "jpg",
+                    "webp",
+                    "gif",
+                    "bmp"
+                  ],
+                  "default": "png"
+                },
+                "quality": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "blur": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Soft focus: a Gaussian radius in pixels (2 is slightly soft, 6 unreadable by eye)."
+                },
+                "brightness": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "1 is unchanged, below 1 is darker, above 1 brighter."
+                },
+                "rotate": {
+                  "type": "number",
+                  "description": "Degrees the card is turned."
+                },
+                "exif_orientation": {
+                  "enum": [
+                    3,
+                    6,
+                    8
+                  ],
+                  "description": "Store the picture turned and tag it with how to turn it back, as a phone held sideways does."
+                },
+                "glare": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "A white bloom over part of the card."
+                },
+                "noise": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 120
+                },
+                "crop": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 0.8,
+                  "description": "The fraction cut off the right side."
+                },
+                "skew": {
+                  "type": "number",
+                  "description": "A perspective tilt."
+                },
+                "seed": {
+                  "type": "integer"
+                },
+                "base64": {
+                  "type": "string"
+                },
+                "data_url": {
+                  "type": "string"
+                },
+                "file": {
+                  "type": "string",
+                  "description": "A path inside the bot's fixtures folder."
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Plain text bytes: a file that is not a picture."
+                },
+                "empty": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "camera": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Which of `images` the visitor's camera shows from the start (schema 1.2). Leave it out, or null, for no camera."
+          },
           "turns": {
             "type": "array",
             "minItems": 1,
@@ -1216,6 +1343,35 @@
                   "properties": {
                     "say": {
                       "type": "string"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "upload"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "upload": {
+                      "type": "string",
+                      "description": "The visitor sends this picture (one of the scenario's `images`). If the bot is waiting for one it is taken at once; otherwise it waits to be asked for."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "camera"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "camera": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "From now on the visitor's camera shows this picture (one of `images`), or null to switch the camera off."
                     }
                   }
                 },
@@ -1302,6 +1458,20 @@
                       "type": "string",
                       "format": "regex",
                       "description": "Some assistant message matches this regex (ignoring case)."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "said_not_matches"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "said_not_matches": {
+                      "type": "string",
+                      "format": "regex",
+                      "description": "No assistant message matches this regex (ignoring case): the way to prove something was never said, such as a full ID number. Schema 1.2."
                     }
                   }
                 },
@@ -1503,6 +1673,60 @@
                         "max_handoffs_per_call"
                       ],
                       "description": "This call limit ended the call (schema 1.2). A scenario is far shorter than the duration and silence limits, so those two can only be proved in a unit test."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "screen_told"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "screen_told": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "minProperties": 1,
+                      "description": "The bot sent the visitor's screen this message (schema 1.2): {type: request_image, kind: upload | camera} for a request, {type: image_rejected, code: too_blurry ...} for a refused picture, {type: request_done, status: received | timeout} when a request ended.",
+                      "properties": {
+                        "type": {
+                          "enum": [
+                            "request_image",
+                            "request_done",
+                            "image_rejected"
+                          ]
+                        },
+                        "kind": {
+                          "enum": [
+                            "upload",
+                            "camera"
+                          ]
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "enum": [
+                            "received",
+                            "timeout",
+                            "cancelled"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "images_held"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "images_held": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "This many pictures were still held in the call's memory when the conversation ended (0 proves they were discarded). Schema 1.2."
                     }
                   }
                 },
@@ -3076,6 +3300,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
         "type": {
           "const": "say"
         },
@@ -3095,6 +3323,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
         "type": {
           "const": "generate"
         },
@@ -3119,6 +3351,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
         "type": {
           "const": "play_sound"
         },
@@ -3142,6 +3378,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
         "type": {
           "const": "http"
         },
@@ -3204,6 +3444,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
         "type": {
           "const": "collect_dtmf"
         },
@@ -3241,6 +3485,320 @@
         }
       }
     },
+    "actionRequestImage": {
+      "title": "Ask for a picture",
+      "description": "Ask the visitor for a picture and wait for it: an upload (they choose a photo) or the camera (a frame is taken from their video). The picture's id goes into `into`; the picture itself stays in the call's memory and is never logged, saved or sent anywhere. On a web channel only (a phone call carries no pictures); the channel must list `image` (upload) or `video` (camera) among its input modalities. The visitor's screen is told what is wanted (MEDIA_PROTOCOL.md). Say what to do in a line of your own before this action. Schema 1.2.",
+      "type": "object",
+      "required": [
+        "type",
+        "kind",
+        "into"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
+        "type": {
+          "const": "request_image"
+        },
+        "kind": {
+          "enum": [
+            "upload",
+            "camera"
+          ],
+          "description": "upload = the visitor sends a photo (a photo already sent, and not yet used, is taken at once). camera = a frame (the sharpest of a few) is taken from their camera, which the screen switches on."
+        },
+        "into": {
+          "type": "string",
+          "x-ref": "state_vars",
+          "description": "The state variable that receives the picture's id. It is emptied first, so a retry never sees the last attempt's picture."
+        },
+        "prompt": {
+          "$ref": "#/$defs/speech",
+          "description": "Shown on the visitor's screen beside the upload button or the camera view (it is not spoken)."
+        },
+        "timeout_s": {
+          "type": "number",
+          "minimum": 5,
+          "maximum": 600,
+          "default": 120,
+          "description": "Give up after this long."
+        },
+        "quality": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Hold the picture to a standard, checked in code. A picture that falls short is refused with a message that tells the visitor how to retake it, and the request stays open. Worth setting for anything a model will read: a model asked to read a blurred or too small card often reads it confidently and wrongly. Calibrate the numbers with real photos from your own channel.",
+          "properties": {
+            "min_sharpness": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Least sharpness (variance of the picture's edges, measured at 640 px wide; a crisp card photo is in the hundreds or thousands, a badly blurred upload under 5). For a camera request set it higher than for an upload: video compression adds fine noise that lifts a blurred frame's score to about 10, so a camera gate of 8 can never refuse one (25 did, in a real-browser-style test). The call record shows the score of every picture and frame, so calibrate on real calls."
+            },
+            "min_brightness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 255,
+              "description": "Least average brightness (0 black to 255 white)."
+            },
+            "max_brightness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 255,
+              "description": "Greatest average brightness: refuses a washed-out picture."
+            },
+            "min_dimension": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Least length of the picture's shorter side in pixels."
+            }
+          }
+        },
+        "on_timeout": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/action"
+          },
+          "description": "Run when no picture came in time, instead of continuing."
+        }
+      }
+    },
+    "actionAnalyzeImage": {
+      "title": "Read a picture with the vision model",
+      "description": "Ask the language model a question about one or more pictures and store named values: the text on a card, whether two pictures show the same document, whether the photo is too dark. The pictures go to the model in this one request, never into the conversation. The model must be vision-capable (`vision: true`). A value it cannot read is stored as empty, never guessed. This is a model reading a picture, not a verification: it can misread, and it cannot tell a genuine document from a forgery; for a real decision send the picture to a verification service. Schema 1.2.",
+      "type": "object",
+      "required": [
+        "type",
+        "images",
+        "instructions",
+        "fields"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
+        "type": {
+          "const": "analyze_image"
+        },
+        "images": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "x-ref": "state_vars"
+          },
+          "description": "State variables that hold picture ids (set by request_image)."
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "x-ui": {
+            "widget": "textarea"
+          },
+          "description": "What to look for, in your words. {{...}} is filled in first."
+        },
+        "fields": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 24,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,40}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "date"
+                ],
+                "description": "date = written as YYYY-MM-DD."
+              },
+              "description": {
+                "type": "string",
+                "description": "What this value is and how to write it."
+              }
+            }
+          },
+          "description": "The values to read. Each comes back as its type or empty. Text is trimmed to one short line."
+        },
+        "into": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-ref": "state_vars"
+          },
+          "description": "Which state variable keeps each field: {\"full_name\": \"doc_name\"}. A field not listed goes to a variable with its own name. Mark the variable `sensitive` for a number you do not want in logs."
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "Fields that must be read for the answer to count as ok."
+        },
+        "ok_into": {
+          "type": "string",
+          "x-ref": "state_vars",
+          "description": "A boolean state variable: true when an answer came back and every required field was read."
+        },
+        "model": {
+          "$ref": "#/$defs/llmConfig",
+          "description": "Read with this model instead of the one the bot talks with. A stronger vision model reads a card better and says more honestly when it cannot (gpt-4.1 did, gpt-4.1-mini often called a blurred card clear); the chat can stay on a faster, cheaper one."
+        },
+        "timeout_s": {
+          "type": "number",
+          "minimum": 5,
+          "maximum": 180,
+          "default": 45
+        }
+      }
+    },
+    "actionCompareValues": {
+      "title": "Compare values in code",
+      "description": "Compare pairs of state variables the way a person would, in code and not by a model: names ignore case, accents, punctuation and word order and forgive a small misspelling; codes compare by their letters and digits; dates compare as the same day however they are written. Stores whether they matched. A value missing on either side never matches. Schema 1.2.",
+      "type": "object",
+      "required": [
+        "type",
+        "pairs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
+        "type": {
+          "const": "compare_values"
+        },
+        "pairs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "left",
+              "right"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "left": {
+                "type": "string",
+                "x-ref": "state_vars"
+              },
+              "right": {
+                "type": "string",
+                "x-ref": "state_vars"
+              },
+              "method": {
+                "enum": [
+                  "text",
+                  "id",
+                  "exact",
+                  "date",
+                  "date_on_or_after",
+                  "number"
+                ],
+                "default": "text",
+                "description": "text: names and phrases (fuzzy). id: letters and digits only. exact: same text ignoring case. date: the same day. date_on_or_after: the left date is the right date or later (an expiry date against today). number: the same number."
+              },
+              "threshold": {
+                "type": "number",
+                "minimum": 0.5,
+                "maximum": 1,
+                "default": 0.85,
+                "description": "text only: the least similarity that counts as a match."
+              },
+              "date_order": {
+                "enum": [
+                  "dmy",
+                  "mdy"
+                ],
+                "default": "dmy",
+                "description": "date only: how to read 05/04/1990."
+              },
+              "label": {
+                "type": "string",
+                "description": "A name for this pair in `differences` (default: the left variable's name)."
+              },
+              "optional": {
+                "type": "boolean",
+                "default": false,
+                "description": "Leave this pair out when either side is empty (it still must match when both have a value)."
+              }
+            }
+          }
+        },
+        "require": {
+          "enum": [
+            "all",
+            "any"
+          ],
+          "default": "all",
+          "description": "all: every pair must match. any: one is enough."
+        },
+        "into": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "matched": {
+              "type": "string",
+              "x-ref": "state_vars",
+              "description": "A boolean variable: did they match."
+            },
+            "score": {
+              "type": "string",
+              "x-ref": "state_vars",
+              "description": "A number variable: the lowest similarity among the pairs (1 = identical)."
+            },
+            "differences": {
+              "type": "string",
+              "x-ref": "state_vars",
+              "description": "A text variable: the labels of the pairs that did not match, never their values."
+            }
+          }
+        }
+      }
+    },
+    "actionDiscardImage": {
+      "title": "Forget pictures now",
+      "description": "Remove the pictures held in these variables from the call's memory and clear the variables. Do it as soon as a picture has been used; everything is forgotten when the call ends in any case. Schema 1.2.",
+      "type": "object",
+      "required": [
+        "type",
+        "images"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
+        "type": {
+          "const": "discard_image"
+        },
+        "images": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "x-ref": "state_vars"
+          }
+        }
+      }
+    },
     "actionLog": {
       "type": "object",
       "required": [
@@ -3249,6 +3807,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+        },
         "type": {
           "const": "log"
         },
@@ -3294,6 +3856,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "when": {
+              "$ref": "#/$defs/condition",
+              "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+            },
             "type": {
               "const": "set_state"
             },
@@ -3313,6 +3879,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "when": {
+              "$ref": "#/$defs/condition",
+              "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+            },
             "type": {
               "const": "handoff"
             },
@@ -3333,6 +3903,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "when": {
+              "$ref": "#/$defs/condition",
+              "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+            },
             "type": {
               "const": "return_to_entry"
             }
@@ -3345,6 +3919,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "when": {
+              "$ref": "#/$defs/condition",
+              "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+            },
             "type": {
               "const": "end_call"
             },
@@ -3361,6 +3939,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "when": {
+              "$ref": "#/$defs/condition",
+              "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+            },
             "type": {
               "const": "transfer"
             },
@@ -3378,6 +3960,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "when": {
+              "$ref": "#/$defs/condition",
+              "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+            },
             "type": {
               "const": "notify"
             },
@@ -3415,6 +4001,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "when": {
+              "$ref": "#/$defs/condition",
+              "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+            },
             "type": {
               "const": "send_form"
             },
@@ -3432,6 +4022,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "when": {
+              "$ref": "#/$defs/condition",
+              "description": "Run this action only if the condition holds now (schema 1.2). Without it the action always runs."
+            },
             "type": {
               "const": "wrapup"
             },
@@ -3449,6 +4043,18 @@
         },
         {
           "$ref": "#/$defs/actionCollectDtmf"
+        },
+        {
+          "$ref": "#/$defs/actionRequestImage"
+        },
+        {
+          "$ref": "#/$defs/actionAnalyzeImage"
+        },
+        {
+          "$ref": "#/$defs/actionCompareValues"
+        },
+        {
+          "$ref": "#/$defs/actionDiscardImage"
         },
         {
           "$ref": "#/$defs/actionLog"

@@ -34,6 +34,7 @@ import { agentLabel, humanize } from '../../rowNames.js';
 import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { DetailedPage, removeEntry } from '../Detailed.jsx';
+import { clip } from '../describe.js';
 
 // 8 · Subagents and hand-overs: who answers, what each subagent does, and who passes callers to whom: the same
 // settings the Workflow canvas draws, as a form (one draft: a change here shows on the canvas and the other way round).
@@ -46,6 +47,32 @@ const agentsOf = (config) => list(config?.agents?.items).filter(isObj);
 const indexOfAgent = (config, id) => list(config?.agents?.items).findIndex((a) => isObj(a) && a.id === id);
 const nameOf = (config, id) => (id ? agentLabel(config, id) : '');
 const firstId = (config) => config?.agents?.entry || agentsOf(config)[0]?.id || '';
+
+// A subagent's row: whether it answers first, what it can use, who it passes to, and its job in a line
+function describeSubagent(entry, c) {
+  const a = isObj(entry.item) ? entry.item : {};
+  const tools = Array.isArray(a.tools) ? a.tools.length : 0;
+  const passes = Array.isArray(a.handoffs)
+    ? a.handoffs
+        .filter(isObj)
+        .map((h) => nameOf(c.config, h.to))
+        .filter(Boolean)
+    : [];
+  const role = typeof a.instructions === 'string' ? a.instructions : a.instructions?.role || '';
+  const first = a.id && a.id === firstId(c.config);
+  return {
+    icon: first ? 'agent' : 'subagent',
+    meta: [
+      first ? 'Answers first' : 'Takes over when asked',
+      tools ? `${tools} ${tools === 1 ? 'tool' : 'tools'}` : 'no tools',
+      passes.length ? `passes to ${passes.join(', ')}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    detail: role ? clip(role, 150) : 'No instructions yet: say what this one does.',
+    state: role ? null : { tone: 'bad', words: 'Needs instructions' },
+  };
+}
 
 // every hand-over to a subagent, across the agents
 const handoffEntries = (config) =>
@@ -257,9 +284,9 @@ const KINDS = [
 
 export const subagentsPart = {
   id: 'subagents',
-  num: '8',
+  num: '9',
   title: 'Subagents and hand-overs',
-  question: 'Who answers, what each one does, and who passes callers to whom. The same things the Workflow canvas draws, as a form.',
+  question: 'Who answers first, what each subagent does, and who passes callers to whom. The Workflow canvas shows the same as a drawing.',
   top: (ctx) => <Strip {...ctx} />,
   cols: [
     [
@@ -285,6 +312,8 @@ export const subagentsPart = {
           label: 'Subagents',
           hint: 'One job each; choose one to set it up',
           nameOf: (a, i) => (isObj(a) && (a.name || a.id)) || `Subagent ${i + 1}`,
+          icon: 'subagent',
+          describe: describeSubagent,
           add: (config) => {
             const made = addSubagent(config, firstId(config), { name: 'New subagent' });
             return { config: made.config, key: made.id };
@@ -397,7 +426,19 @@ export const subagentsPart = {
                   .filter((ch) => isObj(ch) && ch.id)
                   .map((ch) => ({ value: ch.id, label: ch.id })),
             }),
-            itemRow(entry, ['on_enter'], { id: 'enter', label: 'On taking over, it first…', kind: 'form' }),
+            itemRow(entry, ['on_enter'], {
+              id: 'enter',
+              label: 'On taking over, it first…',
+              kind: 'form',
+              // agent config guide 3.27: with these steps the model stays quiet afterwards unless `opening` is also set
+              note: (config) => {
+                const agent = getAtPath(config, entry.base);
+                const steps = Array.isArray(agent?.on_enter) ? agent.on_enter.length : 0;
+                return steps && !String(agent?.instructions?.opening || '').trim()
+                  ? 'After these steps it says nothing more until the caller speaks. To have it go on talking, write what it does in “When it takes over”.'
+                  : '';
+              },
+            }),
           ];
         },
       },

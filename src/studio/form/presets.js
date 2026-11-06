@@ -92,9 +92,14 @@ export function defaultsForType(type, botId) {
   }
 }
 
-export function buildChannel(presetId, { taken = [], botId = '' } = {}) {
+// A new channel of a preset. `types` (GET /channel-types) says what each kind starts with: its `default_modalities`
+// replace the ones written above, so a kind the server changes starts right (the guide, section 5).
+export function buildChannel(presetId, { taken = [], botId = '', types = null } = {}) {
   const preset = CHANNEL_PRESETS.find((item) => item.id === presetId) || CHANNEL_PRESETS[0];
   const start = defaultsForType(preset.type, botId);
+  const told = types ? infoOf(types, preset.type)?.defaultModalities : null;
+  if (told && Array.isArray(told.input) && told.input.length && Array.isArray(told.output) && told.output.length)
+    start.modalities = { input: [...told.input], output: [...told.output] };
   // an id that differs from one already taken only by a hyphen
   // ("web-chat", "web_chat") counts as taken: the two would read the same
   const lookalikes = taken.map((id) => String(id).replace(/-/g, '_'));

@@ -2,6 +2,9 @@
 // askConfirm() resolves true or false; showNotice() resolves on close; one <DialogHost /> (App.jsx) draws them.
 // With no host (a component test) the browser's box is used, so a decision is never silently skipped.
 //   tone: 'danger' for something that can't be undone (red button, focus on Cancel), else 'default'
+//   warning: { title, text, items: [{ feature, where }] } a red note above the buttons (protections not enforced)
+//   typeWord: a word to type before the confirm button works (as the Deploy page asks for a risky production deploy);
+//   typeWordWhy: the words after it ("to put it live for customers anyway"), else "to continue"
 
 let current = null;
 let made = 0;
@@ -34,9 +37,30 @@ function open(dialog) {
 
 const plain = ({ title, body }) => [title, body].filter(Boolean).join('\n\n');
 
-export function askConfirm({ title, body = '', confirmLabel = 'Continue', cancelLabel = 'Cancel', tone = 'default' }) {
-  if (!listeners.size) return Promise.resolve(typeof window !== 'undefined' && window.confirm ? window.confirm(plain({ title, body })) : false);
-  return open({ kind: 'confirm', title, body, confirmLabel, cancelLabel, tone });
+export function askConfirm({
+  title,
+  body = '',
+  confirmLabel = 'Continue',
+  cancelLabel = 'Cancel',
+  tone = 'default',
+  warning = null,
+  typeWord = '',
+  typeWordWhy = '',
+}) {
+  if (!listeners.size) {
+    // the browser's box can't ask for a word: what it must be is put in its text, and the answer checked
+    if (typeof window === 'undefined') return Promise.resolve(false);
+    if (typeWord && window.prompt) {
+      const typed = window.prompt(`${plain({ title, body })}\n\nType ${typeWord} to continue.`);
+      return Promise.resolve(
+        String(typed || '')
+          .trim()
+          .toLowerCase() === typeWord.toLowerCase(),
+      );
+    }
+    return Promise.resolve(window.confirm ? window.confirm(plain({ title, body })) : false);
+  }
+  return open({ kind: 'confirm', title, body, confirmLabel, cancelLabel, tone, warning, typeWord, typeWordWhy });
 }
 
 export function showNotice({ title, body = '', closeLabel = 'OK' }) {

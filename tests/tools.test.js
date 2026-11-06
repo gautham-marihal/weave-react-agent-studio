@@ -63,6 +63,8 @@ test('which names exist depends on where the text sits: the places the review fo
   assert.deepEqual(flagged(['telephony', 'transfers', 0, 'uri_template'], 'sip:{{target}}@{{pbx.host}};transport={{pbx.transport}}'), []);
   // an event supplies what happened
   assert.deepEqual(flagged(['events', 'on_error', 'do', 0, 'say'], '{{error}} {{reason}} {{tool}} {{transfer}} {{from}} {{to}}'), []);
+  // …including a state change and a guardrail that matched (agent config guide 3.24, 3.27)
+  assert.deepEqual(flagged(['events', 0, 'do', 0, 'message'], '{{variable}} {{previous}} {{value}} {{target}} {{rule}} {{type}} {{action}} {{kinds}}'), []);
   // a task step's validation reads the answer just collected
   assert.deepEqual(flagged(['tasks', 0, 'steps', 1, 'validate', 'args', 'code'], '{{value}}'), []);
   // a tool's direct delivery reads the response's own field names

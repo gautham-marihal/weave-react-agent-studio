@@ -4,11 +4,10 @@
 //
 //   npm run build -- --mode demo   then   npx vite preview --mode demo --port 4180   then   E2E_BASE=http://localhost:4180 npm run e2e:firstrun
 //
-// The review's target: sign-in to the first test conversation in 8 clicks or fewer once real sign-in replaces the demo's (its screen and profile step are
-// counted apart, because they are the demo's own), and no technical term on the way. It prints the count and fails when the target is missed.
+// The review's target: sign-in to the first test conversation in 8 clicks or fewer once real sign-in replaces the demo's (its screen is
+// counted apart, because it is the demo's own), and no technical term on the way. It prints the count and fails when the target is missed.
 // Environment: E2E_BASE (default http://localhost:4180), E2E_BROWSER (a Chrome or Edge path), E2E_MAX_CLICKS (default 8).
 import { chromium } from 'playwright-core';
-import { pick } from './pick.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:4180';
 const MAX_CLICKS = Number(process.env.E2E_MAX_CLICKS || 8);
@@ -91,12 +90,7 @@ await page
 await page.getByPlaceholder('you@company.com').fill('asha@harbour.example');
 await page.getByPlaceholder('Enter your password').fill('a-demo-password');
 await page.getByRole('button', { name: /continue to workspace/i }).click();
-// the demo's own profile step (real sign-in brings the person's details with it)
-await page.getByPlaceholder('e.g. Alex Morgan').waitFor();
-await page.getByPlaceholder('e.g. Alex Morgan').fill('Asha Rao');
-await page.getByPlaceholder('e.g. Acme Inc.').fill('Harbour Plumbing');
-await pick(page, page.locator('select, .rxSelect'), { label: 'Customer Support' });
-await page.getByRole('button', { name: /continue to my workspace/i }).click();
+// signing in opens the workspace's home straight away: the name and the workspace come from the email
 await page.waitForSelector('.dashMain');
 const afterSignIn = await mark();
 
@@ -144,7 +138,7 @@ await scan();
 const done = await mark();
 
 const afterTheSignIn = { clicks: done.clicks - afterSignIn.clicks, fields: done.typed - afterSignIn.typed };
-console.log(`demo sign-in and profile: ${afterSignIn.clicks} clicks, ${afterSignIn.typed} fields (the demo's own; real sign-in replaces them)`);
+console.log(`demo sign-in: ${afterSignIn.clicks} clicks, ${afterSignIn.typed} fields (the demo's own; real sign-in replaces them)`);
 console.log(`from the workspace to the first test conversation: ${afterTheSignIn.clicks} clicks, ${afterTheSignIn.fields} fields`);
 console.log(`counted: ${(await page.evaluate(() => window.__clicks)).slice(afterSignIn.clicks).join(' > ')}`);
 const jargon = [...new Set(seen)];

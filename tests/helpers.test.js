@@ -83,6 +83,11 @@ test('API errors are told apart', () => {
   assert.equal(invalid.kind, 'invalid');
   assert.equal(invalid.errors.length, 1);
   assert.equal(classify(422, { detail: [{ loc: ['body'], msg: 'nope', type: 'x' }] }).kind, 'client_bug');
+  // FRONTEND_GUIDE section 2: FastAPI's own 422 is a bug in the UI, not something to show a user; its fields go in details
+  const bug = classify(422, { detail: [{ loc: ['body', 'config'], msg: 'field required', type: 'missing' }] });
+  assert.doesNotMatch(bug.message, /body|config|field required|malformed/);
+  assert.match(bug.message, /isn’t something you did/);
+  assert.equal(bug.details, 'The app sent a malformed request (body.config: field required).');
 });
 
 test('validation reports become one flat list; empty and null paths mean "general"', () => {

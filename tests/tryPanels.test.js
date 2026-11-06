@@ -11,6 +11,8 @@ import {
   normalizeRedaction,
   normalizeSpeech,
   normalizeTask,
+  startedByWords,
+  stepDetails,
   redactionVerdict,
   speechVerdict,
   stepState,
@@ -348,4 +350,42 @@ test('demo tasks understand more of the condition grammar, and claim nothing abo
   assert.equal(previewTaskDemo(c, { task: 'verify', state: { attempts: 3 } }).body.steps[0].held_back_now, false);
   assert.equal(normalizeTask(view).steps[0].checkedBy.pattern, String.raw`^\d+$`);
   assert.equal(checkedWords(normalizeTask(view).steps[0]), String.raw`by the pattern /^\d+$/`);
+});
+
+test('a task step says the rest of what the preview tells: how the answer travels, what the AI is given, where it is kept, when it is skipped', () => {
+  const view = normalizeTask({
+    offered_by: ['verify_caller'],
+    steps: [
+      {
+        id: 'account',
+        type: 'collect',
+        answer_mode: 'value',
+        model_tools: [{ name: 'cannot_continue' }, { name: 'submit_answer' }],
+        store_in: 'account_no',
+        skip_if: { state: 'customer', not_equals: null },
+      },
+      {
+        id: 'pin',
+        type: 'collect',
+        answer_mode: 'keypad',
+        keypad: { num_digits: 4, timeout_s: 15 },
+        model_tools: [{ name: 'cannot_continue' }],
+        requires: { state: 'verified', equals: true },
+      },
+    ],
+  });
+  const describe = (c) => `${c.state} ${'equals' in c ? 'is' : 'is not'} ${JSON.stringify(c.equals ?? c.not_equals)}`;
+  assert.deepEqual(stepDetails(view.steps[0], describe), [
+    'The AI passes on only the answer; the check is made with the step’s own arguments.',
+    'The AI is given only: cannot_continue, submit_answer.',
+    'The answer is kept in account_no.',
+    'Skipped when customer is not null.',
+  ]);
+  assert.deepEqual(stepDetails(view.steps[1], describe), [
+    'It waits up to 15 seconds for the keys.',
+    'The AI is given only: cannot_continue.',
+    'Only after verified is true.',
+  ]);
+  assert.equal(startedByWords(view.offeredBy), 'Started by the tool “verify_caller”.');
+  assert.match(startedByWords([]), /No tool starts this task yet/);
 });

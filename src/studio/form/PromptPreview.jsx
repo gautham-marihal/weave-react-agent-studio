@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { agentLabel } from '../agent/rowNames.js';
 import { useConfigSelect } from './ctx.js';
 import { usePromptPreview } from './usePreview.js';
 import { promptAdvice } from './serverPreview.js';
@@ -39,14 +40,25 @@ export function PromptPreviewFromForm({ agentId }) {
 
 //   config: given by a screen that has the whole config in hand (the Agent page)
 //   startOpen: drawn open (in its own panel, from the agent's bar), not as a row to open
-export default function PromptPreview({ agentId, config, startOpen = false }) {
+//   pickAgent: offer the other agents too ("Preview as…"), for the panel that isn't about one agent
+export default function PromptPreview({ agentId, config, startOpen = false, pickAgent = false }) {
   const [open, setOpen] = useState(startOpen);
+  const [picked, setPicked] = useState(agentId);
+  useEffect(() => setPicked(agentId), [agentId]);
+  const agentList = useMemo(() => {
+    if (!pickAgent) return [];
+    const entry = config?.agents?.entry;
+    return (Array.isArray(config?.agents?.items) ? config.agents.items : [])
+      .filter((a) => a && typeof a.id === 'string' && a.id)
+      .map((a) => ({ id: a.id, name: agentLabel(config, a.id), first: a.id === entry }));
+  }, [config, pickAgent]);
+  const shownAgent = pickAgent && agentList.some((a) => a.id === picked) ? picked : agentId;
   const [exactOpen, setExactOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const what = useWhatIf(config);
   const preview = usePromptPreview({
     config,
-    agentId,
+    agentId: shownAgent,
     channel: what.channel,
     state: what.state,
     nowLocal: what.nowLocal,
@@ -54,7 +66,7 @@ export default function PromptPreview({ agentId, config, startOpen = false }) {
     enabled: open,
   });
   const prompt = preview.data;
-  const advice = useMemo(() => promptAdvice(prompt), [prompt]);
+  const advice = useMemo(() => promptAdvice(prompt, config), [prompt, config]);
   const source = SOURCE[preview.source];
 
   return (
@@ -83,7 +95,7 @@ export default function PromptPreview({ agentId, config, startOpen = false }) {
       </summary>
       {open && (
         <div className="stPromptBody">
-          <WhatIfBar config={config} what={what} />
+          <WhatIfBar config={config} what={what} agent={pickAgent ? { list: agentList, value: shownAgent, onChange: setPicked } : null} />
 
           {preview.source === 'approximate' && (
             <p className="stFWarn" role="note">

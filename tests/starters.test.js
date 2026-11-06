@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { applyStarter, STARTERS, INACTIVITY, usesVoice } from '../src/studio/starters.ts';
+import { minimalConfig } from '../src/demo/demoApi.js';
 import { runScenarioChecks } from '../src/studio/scenarios.js';
 import { ownerOfIn } from '../src/studio/agents.js';
 import { applyChange } from '../src/studio/pendingChange.js';
@@ -91,13 +92,14 @@ test('the example config in the fixtures is untouched by starters (they only fil
 test('every starter nudges a silent caller and then ends the call, with the lines it names', () => {
   for (const starter of STARTERS.filter((s) => s.id !== 'blank')) {
     const out = applyStarter(blank, starter.id);
-    assert.deepEqual(out.defaults.conversation.inactivity, INACTIVITY, starter.id);
+    // a call waits 12 seconds; an agent that only chats waits 2 minutes from the last message
+    assert.deepEqual(out.defaults.conversation.inactivity, { ...INACTIVITY, timeout_s: usesVoice(out) ? 12 : 120 }, starter.id);
     const ids = new Set(out.messages.map((m) => m.id));
     const named = [...JSON.stringify(out.defaults.conversation.inactivity).matchAll(/"message":"([^"]+)"/g)].map((m) => m[1]);
     named.forEach((id) => assert.ok(ids.has(id), `${starter.id}: ${id} exists`));
     assert.equal(runScenarioChecks(out).find((c) => c.id === 'silent').passed, true, starter.id);
   }
-  assert.ok(INACTIVITY.timeout_s >= 8 && INACTIVITY.timeout_s <= 10);
+  assert.equal(INACTIVITY.timeout_s, 12, 'a call’s wait (agent config guide 3.10)');
   assert.equal(INACTIVITY.nudges.length, 2);
 });
 
@@ -156,4 +158,13 @@ test('with a company, every starter greets as the company, worded for a call or 
     assert.match(phone.channels[0].greeting.say, /^Hello, thank you for calling Acme\. /, starter.id);
     assert.doesNotMatch(phone.channels[0].greeting.say, /GM/, `${starter.id}: not the agent’s name`);
   }
+});
+
+test('a template checks in on a quiet caller after 12 seconds on a call, and after 2 minutes on a chat', () => {
+  const chat = minimalConfig('c', 'C');
+  chat.channels = [{ id: 'web-chat', type: 'web_chat', enabled: true }];
+  assert.equal(applyStarter(chat, 'support').defaults.conversation.inactivity.timeout_s, 120);
+  const call = minimalConfig('v', 'V');
+  call.channels = [{ id: 'web-voice', type: 'web_voice', enabled: true }];
+  assert.equal(applyStarter(call, 'support').defaults.conversation.inactivity.timeout_s, 12);
 });

@@ -6,16 +6,15 @@ import { isDemoMode } from '../demo/demoMode.js';
 import { StyleMenu } from '../ui/StylePicker.jsx';
 import { DemoSlot } from '../demo/DemoBadge.jsx';
 import Icon from '../ui/Icon.jsx';
-import Select from '../ui/Select.tsx';
 import { useRiseInOnce } from '../ui/motion';
 import './auth.css';
 
-// Signing in (Login) and, the first time, saying who you are (ProfileSetup). The email and password are checked by the
-// server against credentials.txt (authRoute.js); who is signed in is then kept in this browser.
-// Both wear the public site's look (deep ink or soft paper, a fine grid, a slow aurora, serif headlines), so the step
-// from the site into the studio feels like one place. Their words, fields and buttons are the studio's own.
+// Signing in. The email and password are checked by the server against credentials.txt (authRoute.js); who is signed
+// in is then kept in this browser, and the first sign-in goes straight to the workspace (App.jsx, firstProfile.js).
+// It wears the public site's look (deep ink or soft paper, a fine grid, a slow aurora, serif headlines), so the step
+// from the site into the studio feels like one place. Its words, fields and buttons are the studio's own.
 
-// The frame both screens share: the top bar, the backdrop, the words on the left and the form on the right.
+// The sign-in screen's frame: the top bar, the backdrop, the words on the left and the form on the right.
 //   hint: what the top bar says this screen is   steps: the three steps on the left, `at` the one in hand (or none)
 function AuthShell({ theme, onToggleTheme, onBack, hint, eyebrow, title, lead, steps, at, children }) {
   const intro = useRef(null);
@@ -225,92 +224,6 @@ export function Login({ theme, onToggleTheme, onLogin, onBack, newcomer = false 
             <Icon name="arrowRight" size={16} />
           </span>
         </button>
-      </form>
-    </AuthShell>
-  );
-}
-
-export function ProfileSetup({ email, theme, onToggleTheme, onComplete, onBack }) {
-  const [fullName, setFullName] = useState('');
-  const [workspaceName, setWorkspaceName] = useState('');
-  const [role, setRole] = useState('');
-  const canContinue = fullName.trim() && workspaceName.trim() && role.trim();
-  // the steps on the left follow the form: the profile, then the workspace, then building
-  const at = !fullName.trim() ? 0 : !workspaceName.trim() || !role.trim() ? 1 : 2;
-
-  const submit = (event) => {
-    event.preventDefault();
-    if (!canContinue) return;
-    onComplete({
-      fullName: fullName.trim(),
-      workspaceName: workspaceName.trim(),
-      role: role.trim(),
-      email,
-    });
-  };
-
-  return (
-    <AuthShell
-      theme={theme}
-      onToggleTheme={onToggleTheme}
-      onBack={onBack}
-      hint="First-time setup"
-      eyebrow="Let’s set up your workspace"
-      title={
-        <>
-          Before you start building, tell us <em>a little about you.</em>
-        </>
-      }
-      lead="We’ll use these details to personalize your workspace. You only need to do this once."
-      steps={[
-        ['Your profile', 'Tell us what to call you.'],
-        ['Your workspace', 'We’ll use it across Weave.'],
-        ['Build', 'Describe your first agent.'],
-      ]}
-      at={at}
-    >
-      <form className="authCard" onSubmit={submit}>
-        <div className="authCardTop">
-          <span className="authCardLabel">Your details</span>
-        </div>
-        <h2>Welcome to Weave</h2>
-        <p className="authFormIntro">A few details to set up your workspace.</p>
-
-        <label className="authField">
-          <span>What should we call you?</span>
-          <input autoFocus type="text" placeholder="e.g. Alex Morgan" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-        </label>
-
-        <label className="authField">
-          <span>What should we call your workspace?</span>
-          <input type="text" placeholder="e.g. Acme Inc." value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} />
-        </label>
-
-        <label className="authField">
-          <span>What’s your role?</span>
-          <Select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="">Select your role</option>
-            <option>Founder / Owner</option>
-            <option>Product</option>
-            <option>Engineering</option>
-            <option>Operations</option>
-            <option>Customer Support</option>
-            <option>Sales</option>
-            <option>Other</option>
-          </Select>
-        </label>
-
-        <div className="authSignedIn">
-          <span>Signed in as</span>
-          <b>{email || 'your account'}</b>
-        </div>
-        <button className="authBtn" type="submit" disabled={!canContinue}>
-          <span>Continue to my workspace</span>
-          <span className="authBtnIcon" aria-hidden="true">
-            <Icon name="arrowRight" size={16} />
-          </span>
-        </button>
-        <small className="authSmall">You can change these details later from workspace settings.</small>
       </form>
     </AuthShell>
   );

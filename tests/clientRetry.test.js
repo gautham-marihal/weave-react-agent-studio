@@ -66,3 +66,45 @@ test('a write is never repeated', async () => {
     assert.equal(calls.length, 1, 'a second create could make two');
   });
 });
+
+// FRONTEND_GUIDE 10.3: the live trace's named `error` event ("no call appeared within wait") is final, and is told
+// apart from a dropped connection, so the browser doesn't reconnect to it forever with nothing said
+test('following a call: the server’s own error event stops the stream and says why; a lost connection says nothing more', async () => {
+  const { followCall } = await import('../src/api/client.ts');
+  const made = [];
+  class FakeSource {
+    static CLOSED = 2;
+    constructor(url) {
+      this.url = url;
+      this.readyState = 1;
+      this.listeners = {};
+      made.push(this);
+    }
+    addEventListener(name, fn) {
+      (this.listeners[name] ||= []).push(fn);
+    }
+    close() {
+      this.readyState = FakeSource.CLOSED;
+    }
+    fire(name, event) {
+      (this.listeners[name] || []).forEach((fn) => fn(event));
+    }
+  }
+  const real = globalThis.EventSource;
+  globalThis.EventSource = FakeSource;
+  try {
+    const reasons = [];
+    followCall('bot', 'room-1', { onRecord() {}, onError: (reason) => reasons.push(reason ?? '') });
+    const source = made[0];
+    assert.match(source.url, /\/bots\/bot\/calls\/room-1\/stream$/);
+    // a dropped connection the browser will retry: not final, nothing reported
+    source.fire('error', {});
+    assert.deepEqual(reasons, []);
+    // the server's named event: closed at once, with its words
+    source.fire('error', { data: JSON.stringify({ detail: 'no call appeared within 30 s' }) });
+    assert.equal(source.readyState, FakeSource.CLOSED);
+    assert.deepEqual(reasons, ['no call appeared within 30 s']);
+  } finally {
+    globalThis.EventSource = real;
+  }
+});

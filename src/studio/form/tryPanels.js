@@ -239,6 +239,29 @@ export function normalizeTask(raw) {
   };
 }
 
+// The rest of what POST /preview/task says about one step, as sentences (FRONTEND_GUIDE 10.1): how the answer travels,
+// what the step's model is given, where the answer is kept, when the step is skipped or held back, how long a keypad
+// entry waits. Only what the server said: an empty list when it said nothing more.
+export function stepDetails(step, describe = (c) => JSON.stringify(c)) {
+  const out = [];
+  if (step.type === 'collect') {
+    if (step.answerMode === 'tool_arguments') out.push('The AI calls the checking tool itself, with what the caller said.');
+    if (step.answerMode === 'value') out.push('The AI passes on only the answer; the check is made with the step’s own arguments.');
+    if (step.answerMode === 'keypad' && step.keypad?.timeoutS) out.push(`It waits up to ${step.keypad.timeoutS} seconds for the keys.`);
+    if (step.modelTools.length) out.push(`The AI is given only: ${step.modelTools.join(', ')}.`);
+    if (step.storeIn) out.push(`The answer is kept in ${step.storeIn}.`);
+  }
+  if (step.skipIf) out.push(`Skipped when ${describe(step.skipIf)}.`);
+  if (step.requires) out.push(`Only after ${describe(step.requires)}.`);
+  return out;
+}
+// Which tools start the task, as a sentence ('' when none does).
+export function startedByWords(offeredBy) {
+  const tools = list(offeredBy).filter(Boolean);
+  if (!tools.length) return 'No tool starts this task yet: give an agent a task tool that names it.';
+  return `Started by the tool${tools.length === 1 ? '' : 's'} ${tools.map((t) => `“${t}”`).join(', ')}.`;
+}
+
 // The words for how a step's answer is checked: "" when nothing checks it.
 export function checkedWords(step) {
   const by = step.checkedBy;

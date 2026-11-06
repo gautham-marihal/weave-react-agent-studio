@@ -387,5 +387,16 @@ export function createSimulatedAgent(config, { channelId, state: startingState }
     get ended() {
       return ended;
     },
+    // what the picture steps change (simulatedPictures.js): values set, read or compared, and an end to the call
+    setState(values) {
+      if (isObj(values)) Object.assign(state, values);
+    },
+    end() {
+      ended = true;
+    },
+    // a line of the configuration's, with its {{...}} filled in from what the agent remembers
+    say(speech) {
+      return fill(speechText(speech, config));
+    },
   };
 }

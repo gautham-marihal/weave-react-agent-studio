@@ -191,3 +191,41 @@ test('settings are named the way the form draws them, and “an” goes before a
   assert.equal(withArticle('Cartesia'), 'a Cartesia');
   assert.equal(withArticle('ElevenLabs'), 'an ElevenLabs');
 });
+
+test('the guide, section 5: the silence clock is voice-only, so a channel that can’t carry audio doesn’t offer it in its overrides', async () => {
+  const { enumValuesNotOffered, FALLBACK } = await import('../src/studio/form/channelTypes.js');
+  // "voice" is true for the kind, or its modalities list audio: a web chat may carry audio, an SMS channel may not
+  const config = {
+    channels: [
+      { id: 'texts', type: 'sms', modalities: { input: ['text'], output: ['text'] } },
+      { id: 'voice', type: 'web_voice', modalities: { input: ['audio'], output: ['audio'] } },
+      { id: 'chat', type: 'web_chat', modalities: { input: ['text'], output: ['text'] } },
+    ],
+  };
+  const clockOf = (i) => ['channels', i, 'overrides', 'conversation', 'inactivity', 'clock'];
+  assert.deepEqual(enumValuesNotOffered(config, FALLBACK, clockOf(0)), ['silence'], 'an SMS channel');
+  assert.deepEqual(enumValuesNotOffered(config, FALLBACK, clockOf(1)), [], 'a web voice channel keeps it');
+  assert.deepEqual(enumValuesNotOffered(config, FALLBACK, clockOf(2)), [], 'a web chat may carry audio (voice: true for its kind), so it keeps it');
+  assert.deepEqual(
+    enumValuesNotOffered(config, FALLBACK, ['defaults', 'conversation', 'inactivity', 'clock']),
+    [],
+    'the agent-wide setting keeps every choice',
+  );
+  assert.deepEqual(enumValuesNotOffered(config, FALLBACK, ['channels', 0, 'overrides', 'conversation', 'inactivity', 'timeout_s']), []);
+});
+
+test('the guide, section 5: a new channel starts from the server’s default_modalities when it gives them', async () => {
+  const { buildChannel } = await import('../src/studio/form/presets.js');
+  const { normalizeChannelTypes } = await import('../src/studio/form/channelTypes.js');
+  const types = normalizeChannelTypes({
+    types: [{ type: 'web_chat', input: ['text', 'image'], output: ['text'], default_modalities: { input: ['text', 'image'], output: ['text'] } }],
+  });
+  assert.deepEqual(buildChannel('web_chat', { botId: 'a', types }).modalities, { input: ['text', 'image'], output: ['text'] });
+  assert.deepEqual(
+    buildChannel('web_chat', { botId: 'a' }).modalities,
+    { input: ['text'], output: ['text'] },
+    'without the server’s list: the written defaults',
+  );
+  const empty = normalizeChannelTypes({ types: [{ type: 'web_chat', default_modalities: { input: [], output: [] } }] });
+  assert.deepEqual(buildChannel('web_chat', { botId: 'a', types: empty }).modalities, { input: ['text'], output: ['text'] }, 'an empty list says nothing');
+});

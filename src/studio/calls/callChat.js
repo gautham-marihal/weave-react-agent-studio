@@ -19,6 +19,7 @@ export function clockOf(seconds) {
  * @returns {{ items: object[], agents: string[], caller: string, turns: number }}
  *   items: { type: 'line', role: 'caller' | 'agent', agent, text, time, interrupted }
  *        | { type: 'handover', from, to, time }
+ *        | { type: 'picture', text, tone, time }  a picture asked for, received, turned down, or not sent in time
  *   agents: the agent ids that spoke or took over, in order of first appearance
  *   caller: who called, as the records name them ('' when they don't)
  */
@@ -41,6 +42,8 @@ export function chatOf(records) {
       if (next) current = next;
       meet(next);
     }
+    if (row.kind === 'image' && ['requested', 'received', 'rejected'].includes(raw.step)) items.push({ type: 'picture', text: row.text, tone: row.tone, time });
+    if (row.kind === 'image' && raw.step === 'request_ended' && raw.status === 'timeout') items.push({ type: 'picture', text: row.text, tone: row.tone, time });
     if (row.kind === 'user_said' && row.text.trim()) {
       items.push({ type: 'line', role: 'caller', agent: '', text: row.text, time, interrupted: false });
     }

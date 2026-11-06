@@ -1,6 +1,7 @@
 import React from 'react';
 import { getAtPath } from '../../schemaPath.js';
 import { InlineItems } from '../Detailed.jsx';
+import { EngineGlance } from '../Glance.jsx';
 
 // 11 · Engine and details: what runs it underneath, and what is left of Settings once everything else moved to the
 // part it changes: its version and status (set by Release), the engine, fixed values every text can use, and the
@@ -18,9 +19,11 @@ const constantName = (value, key) => `${key} = ${typeof value === 'string' ? val
 
 export const enginePart = {
   id: 'settings',
-  num: '11',
+  num: '12',
   title: 'Engine and details',
-  question: 'What runs it underneath? What is left of Settings once everything else has moved to where it belongs.',
+  question: 'What runs it underneath: its version, the engine, fixed values and the studio’s checks. Mostly for technical people.',
+  // what is set here, at a glance, before the forms
+  top: (ctx) => <EngineGlance ctx={ctx} />,
   cols: [
     [
       {
@@ -84,14 +87,22 @@ export const enginePart = {
           { id: 'drain', label: 'Finish speaking before hanging up', path: ['runtime', 'hangup', 'drain'] },
         ],
         adv: [
-          { id: 'worker', label: 'Worker process', kind: 'form', path: ['runtime', 'worker'] },
+          {
+            id: 'worker',
+            label: 'Worker process',
+            // agent config guide 3.3: one worker runs every agent, so these are set on the worker, not read from here
+            hint: 'Not read from here: one worker runs every agent, so these are set on the worker itself.',
+            kind: 'form',
+            path: ['runtime', 'worker'],
+          },
           { id: 'dispatch', label: 'Dispatch name (old)', kind: 'text', path: ['runtime', 'dispatch_name'] },
         ],
       },
       {
         id: 'lint',
         title: 'Studio checks',
-        lead: 'Warnings the studio gives while you build.',
+        // the server's check warns only when a limit is set (no default); the agent config guide's example uses 450 and 8
+        lead: 'Warnings the server’s check gives while you build. Each is off until it has a number: the agent config guide suggests 450 words and 8 tools.',
         rows: [
           { id: 'words', label: 'Most words in one agent’s instructions', path: ['builder', 'lint', 'max_prompt_words_per_agent'] },
           { id: 'tools', label: 'Most tools per agent', path: ['builder', 'lint', 'max_tools_per_agent'] },

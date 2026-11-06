@@ -1665,6 +1665,73 @@ textarea.stFInput {
   width: 100%;
   min-width: 0;
 }
+/* the agent to preview as: its agents as chips, each with its initial */
+.stPromptAgents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.stAgentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 3px 12px 3px 3px;
+  border: 1.5px solid var(--line2);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--textStrong);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.stAgentChip small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+.stAgentChip:hover {
+  border-color: var(--accent-border);
+}
+.stAgentChip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.stAgentChip:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--accent));
+  outline-offset: 2px;
+}
+.stAgentChipAv {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--on-ink, #fff);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  background: var(--accent);
+}
+.stAgentChipAv.tone1 {
+  background: color-mix(in srgb, var(--accent) 55%, #2f6fd6);
+}
+.stAgentChipAv.tone2 {
+  background: color-mix(in srgb, var(--accent) 45%, #c2417f);
+}
+.stAgentChipAv.tone3 {
+  background: color-mix(in srgb, var(--accent) 45%, #138a63);
+}
+@media (prefers-reduced-motion: reduce) {
+  .stAgentChip {
+    transition: none;
+  }
+}
 .stPromptAsSub {
   margin: 4px 0 0;
   padding-top: 12px;

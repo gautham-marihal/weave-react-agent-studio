@@ -1,12 +1,15 @@
-import React, { useId, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import Select from '../../ui/Select.tsx';
 import Button from '../../ui/Button.tsx';
 import { Input, TextArea } from '../../ui/Input.tsx';
+import './formPrompt.css';
+import { formValues, otherErrors } from './formQueue.js';
 
 // A form the agent asked for during a conversation. Whether and when it appears is the agent's decision;
 // this only draws it and sends the answers back. The server validates again and may answer with errors.
-export default function FormPrompt({ form, onSubmit, onDismiss }) {
+//   limitS: how long the person has before the agent ends the conversation for silence (formTimeLimit), or null
+export default function FormPrompt({ form, onSubmit, onDismiss, limitS = null }) {
   const idBase = useId();
   const [values, setValues] = useState(() => Object.fromEntries(form.fields.map((f) => [f.name, f.type === 'checkbox' ? false : ''])));
   const [local, setLocal] = useState({});
@@ -27,13 +30,7 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
     });
     setLocal(problems);
     if (Object.values(problems).some(Boolean)) return;
-    const out = {};
-    form.fields.forEach((field) => {
-      const value = values[field.name];
-      if (field.type === 'number') out[field.name] = value === '' ? null : Number(value);
-      else out[field.name] = value;
-    });
-    onSubmit(out);
+    onSubmit(formValues(form.fields, values));
   };
 
   return (
@@ -42,6 +39,7 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
         <div>
           <strong>{form.title}</strong>
           {form.description && <p>{form.description}</p>}
+          {limitS > 0 && <TimeToFinish limitS={limitS} />}
         </div>
         <button
           type="button"
@@ -114,7 +112,11 @@ export default function FormPrompt({ form, onSubmit, onDismiss }) {
           </div>
         );
       })}
-      {form.errors?._form && <small className="stFErr">{form.errors._form}</small>}
+      {otherErrors(form).map((message) => (
+        <small key={message} className="stFErr" role="alert">
+          {message}
+        </small>
+      ))}
       <div className="stTFormActions">
         <Button type="submit" variant="primary" size="compact" disabled={form.busy}>
           {form.busy ? 'Sending…' : form.submitLabel}
@@ -130,4 +132,28 @@ function safeTest(pattern, text) {
   } catch {
     return true;
   }
+}
+
+// the time left to fill the form, from when it appeared: the agent ends a silent conversation after limitS seconds
+function TimeToFinish({ limitS }) {
+  const [start] = useState(() => Date.now());
+  const [now, setNow] = useState(start);
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const left = Math.max(0, limitS - Math.floor((now - start) / 1000));
+  const clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  return (
+    <p className={`stTFormTime ${left <= 60 ? 'low' : ''}`} title="After this, the agent may end the conversation for silence">
+      <Icon name="clock" size={13} />
+      {left > 0 ? (
+        <span>
+          Time to finish: <b>{clock}</b>
+        </span>
+      ) : (
+        <span>Time is up: the agent may end the conversation. Send it as soon as you can.</span>
+      )}
+    </p>
+  );
 }

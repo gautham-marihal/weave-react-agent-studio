@@ -17,13 +17,18 @@ type Place = { when: (path: string[]) => boolean; roots?: string[]; any?: boolea
 // Roots that exist only in one place of the config, and what each is:
 //   a notification is given `with.…` (the details of what it is sent about)
 //   a transfer's address template reads `pbx.…` and `target` (the number it resolved)
-//   an event supplies `error`, `reason`, `tool`, `transfer`, `from`, `to` (what happened)
+//   an event supplies what happened (agent config guide 3.24 and 3.27): `from`, `to` (a handoff), `tool`, `error` (a tool
+//   error), `variable`, `previous`, `value` (a state change), `transfer`, `target`, `reason` (a transfer), `rule`, `type`,
+//   `action`, `kinds` (a guardrail that matched)
 //   a task step's validation reads `value` (the answer just collected)
 //   a tool's direct delivery (`result.out_of_band`) reads the response's own field names, so any name is fine there
 const PLACE_ROOTS: Place[] = [
   { when: (path) => path.includes('notifications'), roots: ['with'] },
   { when: (path) => path.includes('transfers'), roots: ['pbx', 'target'] },
-  { when: (path) => path[0] === 'events' || path.includes('events'), roots: ['error', 'reason', 'tool', 'transfer', 'from', 'to', 'with'] },
+  {
+    when: (path) => path[0] === 'events' || path.includes('events'),
+    roots: ['error', 'reason', 'tool', 'transfer', 'target', 'from', 'to', 'variable', 'previous', 'value', 'rule', 'type', 'action', 'kinds', 'with'],
+  },
   { when: (path) => path.includes('tasks') || path.includes('steps') || path.includes('validate'), roots: ['value'] },
   { when: (path) => path.includes('out_of_band'), any: true },
 ];

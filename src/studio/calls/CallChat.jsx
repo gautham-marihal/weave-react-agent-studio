@@ -32,7 +32,12 @@ export default function CallChat({ botId, callId, events, config, botName, calle
       {chat.agents.length > 1 && <p className="clChatAgents">Agents in this call: {chat.agents.map((agent) => nameOf(agent)).join(', ')}</p>}
       <ol className="clChatList">
         {maskConversation(chat.items).map((item, index) =>
-          item.type === 'handover' ? (
+          item.type === 'picture' ? (
+            <li key={index} className={`clHandover clPicture ${item.tone || ''}`}>
+              <span>{item.text}</span>
+              {item.time && <time>{item.time}</time>}
+            </li>
+          ) : item.type === 'handover' ? (
             <li key={index} className="clHandover">
               <span>
                 {nameOf(item.from)} passed the caller to <strong>{nameOf(item.to)}</strong>

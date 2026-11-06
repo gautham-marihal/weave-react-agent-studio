@@ -138,10 +138,11 @@ export const CALLBACK_MESSAGE = {
 const TRANSFER_ID = 'human_support';
 const ESCALATE_ID = 'escalate_to_human';
 
-// A silent caller otherwise keeps the line open for ever: nudge twice, then say goodbye and end.
+// A silent caller otherwise keeps the line open for ever: nudge twice, then say goodbye and end. The wait is a call's
+// (12 seconds, agent config guide 3.10); an agent that only chats waits 2 minutes from the last message (its chat example).
 export const INACTIVITY = {
   enabled: true,
-  timeout_s: 10,
+  timeout_s: 12,
   max_nudges: 2,
   nudges: [
     { type: 'say', text: { message: 'still_there' } },
@@ -164,6 +165,19 @@ const upsertById = (list: unknown, entries: { id: string }[]): Loose[] => [
   ...(Array.isArray(list) ? list : []).filter((item: Loose) => !entries.some((entry) => entry.id === item?.id)),
   ...entries,
 ];
+
+// The agent config guide's limits (2.1, 3.26): the server warns about an agent over 450 words of instructions or 8
+// tools, the push to split it into specialists or tasks, but only when `builder.lint` sets them. Every new agent starts
+// with them; values already there (from a template) are kept. They stay editable on Engine › Studio checks.
+export const LINT_LIMITS = { max_prompt_words_per_agent: 450, max_tools_per_agent: 8 };
+export function withLintLimits<C extends AgentConfig | Loose>(config: C): C {
+  const c: Loose = config;
+  if (!c || typeof c !== 'object') return config;
+  const lint = c.builder?.lint && typeof c.builder.lint === 'object' ? c.builder.lint : {};
+  const missing = Object.entries(LINT_LIMITS).filter(([key]) => lint[key] === undefined);
+  if (!missing.length) return config;
+  return { ...c, builder: { ...(c.builder || {}), lint: { ...lint, ...Object.fromEntries(missing) } } };
+}
 
 // Returns a new configuration with the starter's content written into it. The agent's own name, id and version
 // are left alone. A blank starter returns the configuration unchanged.
@@ -200,7 +214,8 @@ export function applyStarter<C extends AgentConfig | Loose>(config: C, starterId
   // A silent caller is nudged, then the call ends. A configuration that already handles it is left alone.
   const conversation = next.defaults?.conversation;
   if (!conversation?.inactivity) {
-    next.defaults = { ...(next.defaults || {}), conversation: { ...(conversation || {}), inactivity: clone(INACTIVITY) } };
+    const inactivity = { ...clone(INACTIVITY), timeout_s: usesVoice(next) ? 12 : 120 };
+    next.defaults = { ...(next.defaults || {}), conversation: { ...(conversation || {}), inactivity } };
     messages.push(...INACTIVITY_MESSAGES);
   }
 

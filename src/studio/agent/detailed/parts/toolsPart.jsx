@@ -24,6 +24,47 @@ import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { removeEntry } from '../Detailed.jsx';
 import AddItem from '../AddItem.jsx';
+import { refChoices } from '../../../form/engine.js';
+import ToolTry from './ToolTry.jsx';
+import { agentsUsingTool, kindOfTool, notAvailable, toolNamedElsewhere } from '../../../form/toolInfo.js';
+import { clip } from '../describe.js';
+
+// what each kind of tool does, in words, and its picture: the rows of the tools list
+const TOOL_KINDS = {
+  http: ['Looks up or saves in your system', 'plug'],
+  builtin: ['Built in', 'bolt'],
+  transfer: ['Passes the caller on', 'phoneTransfer'],
+  form: ['Shows a form', 'list'],
+  task: ['Runs a multi-step task', 'list'],
+  knowledge: ['Searches its knowledge', 'book'],
+  mcp: ['A tool from an MCP server', 'webhook'],
+  code: ['Custom code', 'code'],
+};
+const BUILTIN_WORDS = { end_call: 'Ends the conversation', return_to_entry: 'Sends back to the first agent', handoff: 'Hands over to a subagent' };
+// A tool's row: what it does, what it reaches, which agents use it, and whether it is ready
+function describeTool(entry, c) {
+  const t = isObj(entry.item) ? entry.item : {};
+  const kind = kindOfTool(t);
+  const [words, icon] = TOOL_KINDS[kind] || [kind ? humanize(kind) : 'Tool', 'tools'];
+  const agents = t.id ? agentsUsingTool(c.config, t.id) : [];
+  const reaches = t.connection || t.request?.connection;
+  return {
+    icon,
+    meta: [
+      kind === 'builtin' && BUILTIN_WORDS[t.builtin] ? BUILTIN_WORDS[t.builtin] : words,
+      reaches ? `through ${reaches}` : '',
+      agents.length ? `used by ${agents.map((id) => agentLabel(c.config, id)).join(', ')}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    detail: t.description ? clip(t.description) : 'No description yet: the agent decides when to use it from its name alone.',
+    state: notAvailable(t)
+      ? { tone: 'warn', words: 'Not run by the server yet' }
+      : !agents.length && !(t.id && toolNamedElsewhere(c.config, t.id))
+        ? { tone: 'off', words: 'Not given to an agent' }
+        : { tone: 'good', words: 'Ready' },
+  };
+}
 
 // 4 · Tools: what it can do. The four quick abilities are the setup's own switches (setupActions.js makes each tool,
 // form, transfer and connection they need); every tool is listed, and the chosen one is laid out from "when it uses it"
@@ -223,7 +264,7 @@ export const toolsPart = {
   id: 'tools',
   num: '4',
   title: 'Tools',
-  question: 'What can it do? Four quick abilities, then your own tools, each in the order you think about it.',
+  question: 'What it can do besides talking: quick abilities first, then your own tools.',
   cols: [
     [
       {
@@ -301,6 +342,10 @@ export const toolsPart = {
           hint: 'Add: hand over, send back to the first agent, end call, show a form, look up, search knowledge, rules only',
           // by name ("End call"); its id is in the tooltip of its card's Advanced
           nameOf: (t, i) => (isObj(t) && t.id ? humanize(t.id) : `Tool ${i + 1}`),
+          icon: 'tools',
+          emptyTitle: 'No tools yet',
+          empty: 'Tools let it do things besides talking: look something up in your system, show a form, pass the caller to a person.',
+          describe: describeTool,
           renderAdd: (c) => <AddItem ctx={c} path={['tools']} pickerKey="tools" word="tool" onAdded={(key) => c.choose('tools', key)} />,
         },
         rows: [],
@@ -358,8 +403,9 @@ export const toolsPart = {
               kind: calls ? 'pick' : 'note',
               text: 'Only a tool that calls your system has a connection.',
               placeholder: 'Choose a connection…',
-              // the connections set up on the Connections part
-              options: (config) => Object.keys(isObj(config?.connections) ? config.connections : {}).map((k) => ({ value: k, label: k })),
+              // the web-API connections set up on the Connections part: the schema's x-ref is http_connections, so an MCP
+              // server or an SMS/email sender is not offered here (the guide, section 4)
+              options: (config) => refChoices(config, 'http_connections'),
             }),
             {
               ...rowAt(http(['request']), entry, { id: 'method', label: 'Method and path', tags: calls ? 'r' : '' }),
@@ -410,12 +456,22 @@ export const toolsPart = {
                   .filter((ch) => isObj(ch) && ch.id)
                   .map((ch) => ({ value: ch.id, label: ch.id })),
             }),
-            rowAt(http(['result']), entry, { id: 'sample', label: 'Try it on a sample response', kind: 'form' }),
+            rowAt(http(['result']), entry, { id: 'sample', label: 'Everything about the answer', kind: 'form' }),
             rowAt(own(['parameters']), entry, { id: 'json', label: 'Edit the inputs as JSON', kind: 'code' }),
             // a built-in tool's own settings (which transfer, which form…)
             ...(builtin ? [rowAt(own(['params']), entry, { id: 'params', label: 'Its built-in settings', kind: 'form' })] : []),
           ];
         },
+      },
+      // Try the chosen tool with sample values (FRONTEND_GUIDE 10.1, POST /preview/result): nothing is called or saved
+      {
+        id: 'try',
+        of: 'tools',
+        titleFor: (entry) => (entry ? `Try it: ${entry.name}` : 'Try it'),
+        lead: 'With sample values. Nothing is called and no secret is read: the server works it out from the draft as it is now.',
+        empty: 'Choose a tool to try it.',
+        rows: [],
+        body: (c, entry) => (entry ? <ToolTry key={entry.key} ctx={c} entry={entry} /> : null),
       },
     ],
   ],

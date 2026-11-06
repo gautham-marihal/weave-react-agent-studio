@@ -20,7 +20,7 @@ const TELEPHONY_PREVIEW_COPY = {
   numbers:
     'This server does not set up phone numbers from here, so nothing is bought or connected: “Get a number” only adds a row in this browser. A real phone number is connected on the platform. A phone channel’s number field in the agent’s configuration is a description and doesn’t route calls either.',
   trunks:
-    'Nothing is created at a carrier: a trunk here is only a row in this browser. The platform’s SIP trunks are made for you when a phone number is set up under Phone numbers (when this server supports it), or outside this app.',
+    'Nothing is created at a carrier: a trunk here is only a row in this browser. The platform’s SIP trunks are made for you when a phone number is set up under Phone numbers (when this server supports it), or outside this app. Outbound trunks and outbound calling aren’t built on the platform yet: no agent can place a call.',
 };
 
 function TelephonyPreviewBanner({ section }) {
@@ -1108,11 +1108,7 @@ function TelephonyTrunksPage({ telephony, onChange }) {
           value={String(inbound.length)}
           note={inbound.length ? 'Bringing calls into Weave' : 'No inbound trunks connected'}
         />
-        <TelephonyStat
-          label="TOTAL OUTBOUND TRUNKS"
-          value={String(outbound.length)}
-          note={outbound.length ? 'Placing calls through your carrier' : 'No outbound trunks connected'}
-        />
+        <TelephonyStat label="TOTAL OUTBOUND TRUNKS" value={String(outbound.length)} note="Outbound calling isn’t available yet" />
         <TelephonyStat label="SIP URI" value="Not connected" note="This preview creates no SIP endpoint" />
       </section>
       <div className="telephonySectionTitle">
@@ -1142,7 +1138,7 @@ function TelephonyTrunksPage({ telephony, onChange }) {
         title="Outbound trunks"
         emptyIcon="external"
         emptyTitle="No outbound trunks"
-        emptyText="Outbound trunks let agents place calls through your carrier."
+        emptyText="An outbound trunk is for placing calls through your carrier. Outbound calling isn’t built on the platform yet, so agents can’t place calls."
         emptyAction={{ label: 'Create outbound trunk', onClick: () => setDialog('outbound') }}
         columns={['TRUNK ID', 'TRUNK NAME', 'NUMBERS', 'SIP URI', 'CREATED']}
         rows={outbound.map((trunk) => ({
@@ -1590,7 +1586,7 @@ function SipTrunkDialog({ initialDirection = 'inbound', existingNames, onClose, 
       <div className="segmentedChoice" role="radiogroup" aria-label="Direction">
         {[
           ['inbound', 'Inbound', 'Receive calls from your carrier'],
-          ['outbound', 'Outbound', 'Place calls through your carrier'],
+          ['outbound', 'Outbound', 'For placing calls: not available on the platform yet'],
         ].map(([value, title, note]) => (
           <button
             key={value}

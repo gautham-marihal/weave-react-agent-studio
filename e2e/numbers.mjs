@@ -198,6 +198,18 @@ check(
   (await page.locator('.agentNumbers').getByRole('button', { name: 'Add a number' }).count()) === 1,
 );
 
+// ---- SIP trunks: a preview, and outbound calling is not built (FRONTEND_GUIDE section 8): nothing says an agent can place calls
+await page.evaluate(() => (location.hash = '#/telephony/trunks'));
+await page.waitForSelector('.telephonyPreview');
+const trunks = (await page.locator('.telephonyContent').innerText()).replace(/\s+/g, ' ');
+check(
+  'trunks: the preview says outbound calling isn’t built',
+  /Outbound trunks and outbound calling aren’t built on the platform yet/.test(trunks),
+  trunks.slice(0, 300),
+);
+check('trunks: the outbound count says calling isn’t available', /Outbound calling isn’t available yet/.test(trunks));
+check('trunks: nothing promises that agents place calls', !/let agents place calls|Placing calls through your carrier/.test(trunks));
+
 check('nothing was sent to a server (the demo answers in the browser)', requests.length === 0, requests.join(', '));
 check('no errors in the console', problems.length === 0, problems.slice(0, 2).join(' | '));
 await browser.close();

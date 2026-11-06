@@ -177,7 +177,7 @@ export function ErrorState({ error, onRetry, what = 'this' }) {
             : kind === 'unexpected'
               ? 'The server sent an answer this version of the studio can’t read. It isn’t something you did.'
               : 'Try again in a moment.';
-  const forOperator = [error?.message, kind === 'auth' ? 'Check AGENT_BUILDER_API_KEY in the studio’s environment, then restart it.' : '']
+  const forOperator = [error?.message, error?.details, kind === 'auth' ? 'Check AGENT_BUILDER_API_KEY in the studio’s environment, then restart it.' : '']
     .filter(Boolean)
     .join(' ');
   return (

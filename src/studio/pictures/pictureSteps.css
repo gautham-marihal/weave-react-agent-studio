@@ -1,0 +1,366 @@
+/* The picture steps in Build (PictureSteps.jsx): the upload / camera tiles, the sharpness scale with what its numbers
+   mean, the note when no channel can take a picture, and the honest note on reading a photo. Studio tokens only. */
+.psAsk,
+.psStep {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.psRow {
+  display: grid;
+  grid-template-columns: minmax(0, 34%) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+@container (max-width: 560px) {
+  .psRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+.psLabel b {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--textStrong);
+}
+.psLabel small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.psTiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+.psTile {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.psTile:hover:not(:disabled) {
+  border-color: var(--accent-border);
+}
+.psTile.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.psTile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.psTile b {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--textStrong);
+}
+.psTile small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.psTileIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line2);
+  color: var(--accent-text);
+}
+.psGap {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+  color: var(--warn-text);
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+}
+.psGap > span {
+  flex: 1 1 260px;
+}
+.psStandard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.psScale {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.psScaleTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.psScaleTop label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+.psScaleNum {
+  width: 96px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.psRange {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.psMarks {
+  position: relative;
+  height: 18px;
+  margin: 0 8px;
+}
+.psScaleWords {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.psMark {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.psMark::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 6px;
+  margin: 0 auto 2px;
+  background: var(--dim);
+}
+.psAdvice {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.psAdvice > span {
+  flex: 1 1 200px;
+}
+.psAdvice svg {
+  flex: none;
+  margin-top: 2px;
+}
+.psAdvice.ok {
+  background: var(--good-soft);
+  color: var(--good-text);
+}
+.psAdvice.warn {
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+  color: var(--warn-text);
+}
+.psScaleClear {
+  align-self: flex-start;
+  font-size: var(--fs-xs);
+}
+.psScaleOff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.psHonest {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line2);
+  background: linear-gradient(135deg, var(--surface2), var(--surface));
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--muted);
+}
+.psHonest b {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--textStrong);
+  margin-bottom: 2px;
+}
+.psHonestIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* "Only when…" under every step (schema 1.2: any step can carry a condition) */
+.stActionWhen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 10px;
+  margin: 6px 0 2px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.stActionWhen > .stRuleLabel {
+  padding-top: 2px;
+}
+.stActionWhenBody {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.stActionWhenBody > :first-child {
+  align-self: stretch;
+}
+
+/* Relaxed · Standard · Strict, the exact numbers folded under them, and what the customer sees */
+.psStrict {
+  display: grid;
+  gap: 6px;
+}
+.psPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.psPills button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 3px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.psPills button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.psPills button.on {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--accent-text);
+  font-weight: 500;
+}
+.psPills button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.psStrictWords {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.psExact {
+  display: grid;
+  /* room enough that the (i) of the first number is never within reach of the link above it */
+  gap: 18px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-control, 8px);
+}
+.psExact summary {
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.psPreview {
+  display: grid;
+  gap: 10px;
+  max-width: 460px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 12px);
+  background: var(--surface2);
+}
+.psPreviewHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.psPreviewHead b {
+  flex: 1;
+  min-width: 0;
+}
+.psPreviewTime {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.psPreviewCam,
+.psPreviewDrop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--r-control, 8px);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.psPreviewCam {
+  min-height: 96px;
+  background: color-mix(in srgb, var(--textStrong) 82%, var(--panel));
+  color: color-mix(in srgb, var(--panel) 92%, transparent);
+}
+.psPreviewDrop {
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--panel);
+  color: var(--muted);
+}
+.psPreviewNote {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+/* inside the narrower fold the (i) sits close to the box beside it, so it takes the full 24 px a target needs */
+.psExact .stFInfo {
+  width: 24px;
+  height: 24px;
+  vertical-align: -6px;
+}

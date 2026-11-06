@@ -19,18 +19,26 @@ export const SETTINGS = {
   runtime: E('Engine settings', 'How the voice engine runs this agent. Most agents never need to change these.', 'expert'),
   defaults: E('Defaults', 'The models, language and conversation behaviour every agent and channel starts from.', 'guided'),
   persona: E('Personality', 'Who the agent says it is, how it sounds, and the rules every agent follows.', 'guided'),
-  channels: E('Where it is available', 'The ways people reach this agent: a phone line, a web chat, WhatsApp…', 'guided'),
+  channels: E('Where it is available', 'The ways people reach this agent: a phone line, a web chat or web voice.', 'guided'),
   agents: E('Agents', 'The agents that make up this assistant: who answers first and who they can pass a caller to.', 'guided'),
-  tasks: E('Multi-step tasks', 'A task that takes several steps, such as checking who someone is and then asking for a code.', 'detailed'),
+  tasks: E(
+    'Multi-step tasks',
+    'A short conversation with the caller that ends in a result, such as checking who they are and then asking for a code.',
+    'detailed',
+  ),
   tools: E('What it can do (tools)', 'The things the agent can do beyond talking: look something up, hand over to a person, end the call.', 'guided'),
   connections: E('Connections to other systems', 'The services your agent talks to, such as your order system or an email service.', 'guided'),
   messages: E('Fixed lines', 'Lines the agent always says the same way, such as a goodbye. You can write each in several languages.', 'detailed'),
   state: E('Things it remembers during a call', 'Values the agent keeps for the length of one call, such as whether the caller has been verified.', 'detailed'),
   constants: E('Fixed values', 'Values that never change, such as a payment web address, that you can use in what the agent says.', 'detailed'),
   schedules: E('Business hours', 'When you are open, so the agent can behave differently outside those hours.', 'detailed'),
-  forms: E('Forms', 'Details to collect from someone, such as a name and phone number.', 'detailed'),
+  forms: E('Forms', 'Details to collect on screen in a chat, such as a name and phone number. A phone call can’t show one.', 'detailed'),
   notifications: E('Messages it sends', 'Emails or texts the agent can send.', 'detailed'),
-  wrapups: E('Closing messages', 'What to say to close politely when the caller stops replying.', 'detailed'),
+  wrapups: E(
+    'Closing messages',
+    'A wait started at a set moment (after a form is sent, a tool finishes): if nobody replies in time, its steps run, usually a goodbye and hang up. It does nothing until a step starts it.',
+    'detailed',
+  ),
   knowledge: E('Knowledge', 'Documents and web pages the agent answers questions from.', 'guided'),
   guardrails: E('Safety rules', 'Limits on what the agent may say or do, and when to pass a caller to a person.', 'guided'),
   events: E('When something happens', 'Actions to run when a call starts, a tool fails or a handoff happens.', 'detailed'),
@@ -60,7 +68,7 @@ export const SETTINGS = {
   disclosures: E('What callers are told', 'Statements the agent makes up front, such as that the call may be recorded.', 'guided'),
   recording_notice: E(
     'Recording notice',
-    'Said at the start of voice conversations when calls are recorded.',
+    'Said once, with the first greeting, on channels that speak. Not shown in a text chat.',
     'guided',
     'This call may be recorded to improve our service.',
   ),
@@ -205,7 +213,11 @@ export const SETTINGS = {
   handoffs: E('Who it can pass the caller to', 'Other agents this one can hand the conversation to, and when.', 'guided'),
   carry_context: E('Pass the conversation along', 'The next agent sees what was already said, so the caller does not repeat themselves.', 'detailed'),
   announce: E('What it says during the handover', 'Spoken while the handover happens, so a slow start is not silence.', 'detailed'),
-  on_enter: E('When it takes over, it first…', 'Steps that run every time this agent takes over.', 'detailed'),
+  on_enter: E(
+    'When it takes over, it first…',
+    'Steps that run every time this agent takes over. After them it waits for the caller, unless “When it takes over” also says what to do.',
+    'detailed',
+  ),
   set_state: E('Remember when it happens', 'Values to remember when this happens, such as why the caller wants a person.', 'detailed'),
 
   // tools
@@ -217,7 +229,12 @@ export const SETTINGS = {
   num_digits: E('Number of digits', 'Stop as soon as this many digits are entered.', 'detailed', '6'),
   terminator: E('Key that ends it', 'A key that ends the entry early, usually #.', 'detailed', '#'),
   digits: E('Digits to send', 'Fixed digits to send; leave empty to let the model choose.', 'detailed'),
-  fallback: E('If it cannot happen', 'What to do when the transfer cannot be made: no target, closed hours or a failed attempt.', 'detailed'),
+  // agent config guide 8: outside the hours the transfer's own `closed` steps run instead (the fallback only when it has none)
+  fallback: E(
+    'If it cannot happen',
+    'What to do when the transfer cannot be made: no target, or a failed attempt. Outside the hours the transfer’s own “If it is closed” steps run instead, unless it has none.',
+    'detailed',
+  ),
   guard_loops: E('Stop the agent bouncing back', 'Refuse to return unless the caller has spoken since this agent’s last tool call.', 'expert'),
   pending_request_into: E('Remember what the caller still needs', 'Keep, in this state variable, what the caller asked for that is still open.', 'expert'),
   handler: E('Code to run', 'Which function runs. Custom code tools are not available yet.', 'expert'),
@@ -387,13 +404,14 @@ export const SETTINGS = {
   size: E('Passage length (characters)', 'Smaller passages match a question more exactly; larger ones carry more context.', 'expert'),
   overlap: E('Overlap (characters)', 'Characters repeated between passages.', 'expert'),
   embedding: E('Search model', 'The model that turns text into something searchable.', 'expert'),
-  refresh: E(
-    'How often to rebuild',
-    'How often the index should be rebuilt. The server doesn’t rebuild indexes on a timer yet, so press Build after the files change.',
-    'detailed',
-  ),
+  refresh: E('How often to rebuild', 'How often the index is rebuilt. With “Only when I rebuild it”, press Build after the files change.', 'detailed'),
   retrieval: E('How a search behaves', 'Limits and wording for searches of this knowledge.', 'detailed'),
-  min_score: E('How closely a passage must match', 'Passages that match less closely are dropped. Test a search to choose it.', 'detailed', '0.5'),
+  min_score: E(
+    'How closely a passage must match',
+    'Passages scoring lower are dropped. Related text scores about 0.5 to 0.75 and unrelated text below 0.25, so 0.3 is a good start: test a search to check.',
+    'detailed',
+    '0.3',
+  ),
   max_chars: E('Most text per search', 'The most passage text given to the model for one search.', 'detailed'),
   strip_markdown: E('Remove formatting symbols', 'Turn markdown into plain text, so the agent does not read out asterisks.', 'detailed'),
   query_from: E('What is searched for', 'The caller’s newest words alone, or the agent’s last reply and then the caller’s words.', 'detailed'),
@@ -451,7 +469,7 @@ export const SETTINGS = {
   transfers: E('Transfers', 'Places a call can be passed to.', 'guided'),
   target: E('Where to', 'The number or address to pass the call to.', 'guided'),
   uri_template: E('How the address is built', 'How a plain number becomes the phone-system address.', 'expert'),
-  closed: E('If it is closed', 'What to do outside the hours.', 'detailed'),
+  closed: E('If it is closed', 'What to do outside the hours. These run instead of the tool’s fallback; with none here, the fallback runs.', 'detailed'),
   before: E('First do', 'Steps to run before the transfer.', 'expert'),
   delay_s: E('Wait before transferring (seconds)', 'Time for the first steps to finish.', 'expert'),
   play_dialtone: E('Play a dial tone', 'Let the caller hear a dial tone while connecting.', 'detailed'),
@@ -532,6 +550,58 @@ export const SETTINGS = {
   graph_positions: E('Positions in the agent map', 'Where each agent is drawn.', 'expert'),
   x: E('Left–right position', 'Where it sits across.', 'expert'),
   y: E('Up–down position', 'Where it sits down.', 'expert'),
+
+  // pictures (schema 1.2): asking for one, reading it, comparing what was read, forgetting it
+  quality: E(
+    'Picture standard',
+    'Checked in code before anything reads the picture: one that falls short is turned down with a message, and the request stays open.',
+    'detailed',
+  ),
+  min_sharpness: E(
+    'Sharp enough',
+    'A badly blurred upload scores under 5 and a crisp card hundreds. Video lifts a blurred frame to about 10, so the camera needs more: 25 works.',
+    'detailed',
+    '8',
+  ),
+  min_brightness: E('Bright enough', 'The least average brightness, from 0 (black) to 255 (white). Turns down a photo taken in the dark.', 'detailed', '40'),
+  max_brightness: E(
+    'Not washed out',
+    'The greatest average brightness, from 0 (black) to 255 (white). Turns down a photo bleached by glare.',
+    'detailed',
+    '230',
+  ),
+  min_dimension: E('Big enough (pixels)', 'The least length of the picture’s shorter side, in pixels, so the text on it can be read.', 'detailed', '480'),
+  images: E('Pictures', 'The state variables that hold the pictures (each set by an “Ask for a picture” step).', 'detailed'),
+  ok_into: E('Read in full, kept in', 'A yes/no state variable: yes when an answer came back and every required value was read.', 'detailed'),
+  pairs: E('Pairs to compare', 'Each pair compares two state variables, such as the name read from a card and the name the caller typed.', 'detailed'),
+  left: E('This value', 'The state variable on one side of the comparison.', 'detailed'),
+  right: E('Against this value', 'The state variable on the other side, such as what the caller typed.', 'detailed'),
+  threshold: E('How close counts', 'For names and phrases: the least similarity that counts as a match, from 0.5 to 1.', 'detailed', '0.85'),
+  date_order: E('How dates are written', 'For dates: whether 05/04/1990 is the 5th of April or May the 4th.', 'detailed'),
+  optional: E('Skip when empty', 'Leave this pair out when either side is empty. When both have a value they must still match.', 'detailed'),
+  matched: E('Matched, kept in', 'A yes/no state variable: did they match.', 'detailed'),
+  differences: E('Which differed, kept in', 'A text state variable: the names of the pairs that did not match, never their values.', 'detailed'),
+  lines: E('Lines on the card', 'The rows of text drawn on the sample card, such as “Name: JANE SAMPLE”.', 'detailed', 'Name: JANE SAMPLE'),
+  width: E('Width (pixels)', 'How wide the sample picture is.', 'expert'),
+  height: E('Height (pixels)', 'How tall the sample picture is.', 'expert'),
+  colour: E('Card colour', 'The colour of the sample card.', 'expert'),
+  blur: E('Blur', 'Soft focus, in pixels: 2 is slightly soft, 6 cannot be read by eye.', 'detailed', '4'),
+  brightness: E('Brightness', '1 is unchanged, below 1 darker, above 1 brighter.', 'detailed', '0.35'),
+  rotate: E('Turned (degrees)', 'How far the card is turned in the picture.', 'detailed', '12'),
+  exif_orientation: E('Stored sideways', 'Saved turned with a note on how to turn it back, as a phone held sideways does.', 'expert'),
+  glare: E('Glare', 'A white bloom over part of the card, from 0 (none) to 1.', 'detailed', '0.6'),
+  noise: E('Grain', 'Speckle added to the picture, from 0 to 120.', 'expert'),
+  crop: E('Cut off', 'The part of the right side that is missing, from 0 to 0.8.', 'detailed', '0.3'),
+  skew: E('Tilted', 'A perspective tilt, as when a card is photographed at an angle.', 'expert'),
+  seed: E('Random seed', 'Makes the grain and other random touches the same on every run.', 'expert'),
+  base64: E('Picture (base64)', 'The picture itself, as base64 text, instead of a drawn card.', 'expert'),
+  data_url: E('Picture (data URL)', 'The picture itself, as a data URL, instead of a drawn card.', 'expert'),
+  empty: E('An empty file', 'Sends a file with no bytes, to see how that is handled.', 'expert'),
+  upload: E('Sends a picture', 'The pretend visitor uploads this sample picture. If the bot is waiting for one it is taken at once.', 'guided'),
+  said_not_matches: E('Never says', 'No reply may match this pattern: the way to prove something, such as a full ID number, was never said.', 'detailed'),
+  screen_told: E('The screen was told', 'What the bot sent the visitor’s screen: a picture asked for, a picture turned down, or a request ended.', 'detailed'),
+  code: E('Why it was turned down', 'The reason a picture was refused, such as too_blurry or too_dark.', 'detailed', 'too_blurry'),
+  images_held: E('Pictures still held', 'How many pictures were still in the call’s memory at the end. 0 proves they were forgotten.', 'detailed', '0'),
 
   // misc
   id: E('Id', 'The name this is known by in the configuration. It is permanent once other things point at it.', 'guided'),
@@ -710,10 +780,69 @@ export const CONTEXT = {
   'connections.from': E('Sent from', 'The sender number, address or mailbox messages are sent from.', 'detailed'),
   'tools.source': E('Which knowledge', 'The knowledge this tool searches.', 'guided'),
   'turns.say': E('What the caller says', 'The words the pretend caller says in this turn.', 'guided'),
+  // a scenario's sample pictures (schema 1.2)
+  'tests.images': E(
+    'Sample pictures',
+    'Pictures this scenario can upload or show to a pretend camera, drawn from lines of text with faults you switch on.',
+    'detailed',
+  ),
+  'tests.camera': E('Camera shows from the start', 'Which sample picture the pretend visitor’s camera shows from the start. Empty for no camera.', 'detailed'),
+  'turns.camera': E('Shows the camera', 'From this turn on the pretend visitor’s camera shows this sample picture, or nothing to switch it off.', 'guided'),
+  'images.title': E('Title on the card', 'The heading drawn at the top of the sample card.', 'detailed', 'SAMPLE ID CARD'),
+  'images.format': E('File format', 'The kind of picture file sent: PNG, JPEG, WebP…', 'detailed'),
+  'images.quality': E('JPEG quality', 'How hard a JPEG or WebP is compressed, from 1 (worst) to 100 (best).', 'expert'),
+  'images.file': E('A file of your own', 'A picture in the agent’s fixtures folder, instead of a drawn card.', 'expert'),
+  'images.text': E('Not a picture', 'Sends these words as the file, to see how a file that is not a picture is turned down.', 'detailed'),
+  'screen_told.type': E('Message', 'Which message the screen was sent: a picture asked for, turned down, or the request ended.', 'detailed'),
+  'screen_told.kind': E('Asked for', 'An upload or the camera.', 'detailed'),
+  'screen_told.status': E('How it ended', 'A picture came in, nothing came in time, or it was cancelled.', 'detailed'),
+  'pairs.method': E('How to compare', 'Names forgive small differences; codes compare letters and digits; dates compare the day.', 'detailed'),
+  'pairs.label': E('Name of the pair', 'How this pair is named in the list of differences. By default the first value’s name.', 'detailed'),
+  'into.matched': E('Matched, kept in', 'A yes/no state variable: did they match.', 'detailed'),
+  'into.score': E('Score, kept in', 'A number state variable: the lowest similarity among the pairs (1 is identical).', 'detailed'),
   'log_file.path': E('File location', 'Where the log is written.', 'expert'),
   'reliability.connection': E('Connection to each service', 'How long to wait, and how often to retry, for listening, thinking and speaking.', 'expert'),
   'forms.fields': E('Fields', 'The details to collect.', 'guided'),
   'fields.type': E('Kind of answer', 'Text, email, phone number, number, choice or tick box.', 'guided'),
+};
+
+// ---- a step's own settings: "kind.name", where the step's kind decides the meaning ---------------------------------
+// The step editors (EffectsEditor's ActionSteps) name the owner by the step's kind, so a picture step's "into" or
+// "required" says what it means there, not what the same name means on a form.
+export const STEP_WORDS = {
+  'request_image.kind': E('What they do', 'Upload a photo from their device, or show the camera so the agent takes the picture itself.', 'guided'),
+  'request_image.prompt': E(
+    'Shown on their screen',
+    'A line beside the upload button or the camera view. It is not spoken: say what to do in a line of your own first.',
+    'guided',
+  ),
+  'request_image.into': E('Keep its id in', 'The state variable that receives the picture’s id, for the steps that read or forget it.', 'guided'),
+  'request_image.timeout_s': E(
+    'Wait up to (seconds)',
+    'How long the agent waits for a usable picture before “If nothing comes in time” runs.',
+    'detailed',
+    '120',
+  ),
+  'request_image.quality': E(
+    'Picture standard',
+    'Checked in code before anything reads the picture: one that falls short is turned down, and the request stays open.',
+    'detailed',
+  ),
+  'request_image.on_timeout': E('If nothing comes in time', 'Steps to run when no usable picture came in time, instead of carrying on.', 'detailed'),
+  'analyze_image.images': E('Pictures to read', 'The state variables that hold the pictures, set by “Ask for a picture”. Up to four.', 'guided'),
+  'analyze_image.instructions': E('What to look for', 'In your words, what the model should read from the pictures. {{...}} is filled in first.', 'guided'),
+  'analyze_image.fields': E('Values to read', 'Each value has a name and a kind. A value it cannot read is left empty, never guessed.', 'guided'),
+  'analyze_image.into': E(
+    'Where each value goes',
+    'The state variable that keeps each value. A value not listed goes to a variable of its own name.',
+    'detailed',
+  ),
+  'analyze_image.required': E('Must be read', 'The values that must all be read for the answer to count as read in full.', 'detailed'),
+  'analyze_image.model': E('Read with this model', 'A vision model to read with, instead of the one the agent talks with.', 'expert'),
+  'analyze_image.timeout_s': E('Give up after (seconds)', 'How long to wait for the model’s answer.', 'detailed', '45'),
+  'compare_values.require': E('It matches when', 'Every pair must match, or one pair is enough.', 'detailed'),
+  'compare_values.into': E('Keep the result in', 'State variables for whether they matched, the score, and which pairs differed.', 'detailed'),
+  'discard_image.images': E('Pictures to forget', 'The state variables whose pictures are removed from the call’s memory now.', 'guided'),
 };
 
 // ---- the words used when there is no entry: a label made by rule ----------------------------------------------------
@@ -770,7 +899,7 @@ export const parentOf = (path) => {
 // `owner` is the schema property the setting lives under; without it, it is read from `path`.
 export function describeSetting(name, { owner, path, description } = {}) {
   const parent = owner !== undefined ? owner : parentOf(path);
-  const hit = CONTEXT[`${parent}.${name}`] || SETTINGS[name];
+  const hit = CONTEXT[`${parent}.${name}`] || STEP_WORDS[`${parent}.${name}`] || SETTINGS[name];
   const schemaPurpose = String(description || '')
     .split(/\n|(?<=[.!?])\s/)[0]
     .trim();

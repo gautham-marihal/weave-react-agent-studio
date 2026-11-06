@@ -497,7 +497,9 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
     const matching = groups.map((group) => ({ ...group, items: find(group.items) })).filter((group) => group.items.length);
     const settings =
       agentOpen && settingsIndex
-        ? capSameLabel(settingsIndex.search(settingsIndex.entries, searchQuery, 24), 2)
+        ? // a wide look first: one setting can sit in dozens of places (a schedule in every step's condition), and
+          // after keeping two of each there must still be others to show
+          capSameLabel(settingsIndex.search(settingsIndex.entries, searchQuery, 80), 2)
             .slice(0, 8)
             .map((entry) => ({
               type: 'setting',

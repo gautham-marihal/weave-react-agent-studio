@@ -74,6 +74,27 @@ export function DeploySecrets({ preflight, missingOnly = false }) {
   );
 }
 
+// The knowledge problems of a deploy's preflight (`preflight.knowledge`, FRONTEND_GUIDE 10.2): every base the version
+// uses that has no index, a file missing or changed. Shown next to the secrets wherever a version is put live.
+export function DeployKnowledge({ preflight }) {
+  const knowledge = normalizePreflightKnowledge(preflight?.knowledge);
+  if (!knowledge.length) return null;
+  return (
+    <Notice kind="warn" title={`${knowledge.length} knowledge problem${knowledge.length === 1 ? '' : 's'} in this version`}>
+      Callers asking about these get no answer from the knowledge base, or an out-of-date one.
+      <ul className="stPlain">
+        {knowledge.map((p, i) => (
+          <li key={i}>
+            {p.base && <strong>{p.base}: </strong>}
+            {p.problem}
+            {p.fix ? ` ${p.fix}` : ''}
+          </li>
+        ))}
+      </ul>
+    </Notice>
+  );
+}
+
 export default function Preflight({ preflight }) {
   if (!preflight) return null;
   const unsupported = preflight.unsupported || [];
@@ -83,20 +104,7 @@ export default function Preflight({ preflight }) {
   return (
     <div className="stPreflight">
       <DeploySecrets preflight={preflight} />
-      {knowledge.length > 0 && (
-        <Notice kind="warn" title={`${knowledge.length} knowledge problem${knowledge.length === 1 ? '' : 's'} in this version`}>
-          Callers asking about these get no answer from the knowledge base, or an out-of-date one.
-          <ul className="stPlain">
-            {knowledge.map((p, i) => (
-              <li key={i}>
-                {p.base && <strong>{p.base}: </strong>}
-                {p.problem}
-                {p.fix ? ` ${p.fix}` : ''}
-              </li>
-            ))}
-          </ul>
-        </Notice>
-      )}
+      <DeployKnowledge preflight={preflight} />
       <UnsupportedNotices items={unsupported} />
     </div>
   );

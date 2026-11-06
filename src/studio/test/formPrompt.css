@@ -1,0 +1,68 @@
+/* The form an agent asks for during a conversation (FormPrompt.jsx): kept with the form, so it is styled wherever a
+   conversation shows it (the Test page, the side Try it panel, the guided setup). */
+.stTForm {
+  align-self: stretch;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stTForm header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.stTForm header strong {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.stTForm header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+/* the time left to fill the form (the agent's silence rule) */
+.stTForm header p.stTFormTime {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.stTForm header p.stTFormTime b {
+  color: var(--textStrong);
+}
+.stTForm header p.stTFormTime.low,
+.stTForm header p.stTFormTime.low b {
+  color: var(--warn-text);
+}
+.stTField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stTField > label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+.stTField abbr {
+  color: var(--danger-text);
+  text-decoration: none;
+}
+.stTCheck {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--fs-md);
+  color: var(--textStrong);
+}
+.stTFormActions {
+  display: flex;
+  justify-content: flex-end;
+}

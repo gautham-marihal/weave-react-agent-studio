@@ -191,6 +191,8 @@ check(
   /never sees the digits/.test(await panel.first().locator('[data-step="ask_pin"]').innerText()),
 );
 check('task: the endings are told', /The agent is told: “The caller is verified\.”/.test(await panel.first().innerText()));
+// the rest of what the preview says (FRONTEND_GUIDE 10.1): which tool starts it, how each answer travels and where it is kept
+check('task: it says which tool starts it', /Started by the tool|No tool starts this task yet/.test(await panel.first().innerText()));
 await panel.first().getByLabel('What if these were already remembered').fill('{"verified": true}');
 await panel.first().getByRole('button', { name: 'Show the steps' }).click();
 await page.waitForTimeout(500);
@@ -209,6 +211,12 @@ check('safety rules: the Guardrails page has the box', (await panel.count()) ===
 await panel.getByRole('button', { name: 'Try it' }).click();
 await page.waitForSelector('section[aria-label="Try the safety rules"] [data-block="rule"]');
 check('safety rules: and it answers there', /caught this line/.test(await panel.innerText()));
+// a declined line isn't given to the agent: what it reads in its place from then on is said too (10.1, model_sees)
+check(
+  'safety rules: what the agent reads instead of a withheld line is said',
+  /from then on, the agent reads it as/.test(await panel.innerText()),
+  (await panel.innerText()).slice(0, 400),
+);
 await shot('guardrails-new');
 
 check('nothing was sent to a server (the demo answers in the browser)', requests.length === 0, requests.join(', '));

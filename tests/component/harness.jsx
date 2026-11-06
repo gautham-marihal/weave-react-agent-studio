@@ -49,6 +49,7 @@ import { knowledgePart } from '../../src/studio/agent/detailed/parts/knowledgePa
 import { toolsPart } from '../../src/studio/agent/detailed/parts/toolsPart.jsx';
 import { connectionsPart } from '../../src/studio/agent/detailed/parts/connectionsPart.jsx';
 import { channelsPart } from '../../src/studio/agent/detailed/parts/channelsPart.jsx';
+import { mediaPart } from '../../src/studio/agent/detailed/parts/mediaPart.jsx';
 import { subagentsPart } from '../../src/studio/agent/detailed/parts/subagentsPart.jsx';
 import { guardrailsPart } from '../../src/studio/agent/detailed/parts/guardrailsPart.jsx';
 import { afterCallPart } from '../../src/studio/agent/detailed/parts/afterCallPart.jsx';
@@ -56,9 +57,19 @@ import { enginePart } from '../../src/studio/agent/detailed/parts/enginePart.jsx
 
 // the parts of Build › Detailed, by page id, for the tests that read their specs
 export const DETAILED_PARTS = Object.fromEntries(
-  [agentPart, conversationPart, knowledgePart, toolsPart, connectionsPart, channelsPart, subagentsPart, guardrailsPart, afterCallPart, enginePart].map(
-    (part) => [part.id, part],
-  ),
+  [
+    agentPart,
+    conversationPart,
+    knowledgePart,
+    toolsPart,
+    connectionsPart,
+    channelsPart,
+    mediaPart,
+    subagentsPart,
+    guardrailsPart,
+    afterCallPart,
+    enginePart,
+  ].map((part) => [part.id, part]),
 );
 
 // the search (Ctrl K) over a few pages, matched the way the workspace matches them; what is chosen goes into the config, and closing it shows "closed"
@@ -338,3 +349,5 @@ export async function mountScreen(screen, initial, { props = {}, report = null, 
 export const mountForm = (initial) => mountScreen('form', initial);
 
 export { act };
+// the demo API the mounted screens talk to (the bundle's own copy), for a test that needs an answer the demo never gives
+export { getDemoApi } from '../../src/demo/demoApi.js';

@@ -712,6 +712,16 @@ html[data-theme] body .decisionActions > button {
   min-height: 38px;
   padding: 0 16px;
 }
+/* a red note and a word to type, between the question and its buttons (askConfirm's warning and typeWord) */
+html[data-theme] body .decisionWarning,
+html[data-theme] body .decisionWord {
+  margin-top: 16px;
+}
+html[data-theme] body .decisionActions > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
 /* the button for something that can't be undone */
 html[data-theme] body .dangerCta {
   display: inline-flex;

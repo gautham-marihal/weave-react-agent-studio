@@ -5,7 +5,7 @@ import { DragHandle, SortableList, useSortableItem } from '../../ui/Sortable.jsx
 import { cardsThatMayOpen } from './cardSize.js';
 import { isObj } from './engine.js';
 import { PLAIN_KIND } from './plainKinds.js';
-import { keysNotOffered, modalityChoices } from './channelTypes.js';
+import { enumValuesNotOffered, keysNotOffered, modalityChoices } from './channelTypes.js';
 import {
   OwnerCtx,
   keyOf,
@@ -45,6 +45,7 @@ import { IdChip } from './IdTools.jsx';
 import { collectionAt, COLLECTIONS, lockedIdCollection } from './references.js';
 import { arrayStyle, carryOver, isActionList, isComplex, isRuleList, matchesDiscriminator, summarize } from './cardLogic.js';
 import EffectsEditor, { ActionSteps } from './EffectsEditor.jsx';
+import PictureStep, { PICTURE_STEPS } from '../pictures/PictureSteps.jsx';
 import { isPromptPath, isTemplateString } from './templates.ts';
 import { languageHint } from './messages.ts';
 import { describeSetting } from './plainLanguage.js';
@@ -70,6 +71,16 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
   const shape = engine.resolveShape(schema, value);
   const kind = engine.kindOf(shape);
   const placeholder = Array.isArray(shape.examples) ? String(shape.examples[0]) : undefined;
+
+  // one picture step edited on its own (a step opened from Build's list of steps): the same editor as in a list of
+  // steps, and its "only when" condition under it
+  if (isObj(value) && PICTURE_STEPS.has(value.type) && shape?.properties?.type?.const === value.type)
+    return (
+      <>
+        <PictureStep shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />
+        {shape.properties.when && <ObjectBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} onlyKeys={['when']} />}
+      </>
+    );
 
   switch (kind) {
     case 'const':
@@ -111,7 +122,9 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
       // The choices are drawn in words (plainEnums.js); the stored value is unchanged. A tool kind the runtime can't
       // run says so, and the schema's default is marked.
       const leaf = String(path[path.length - 1]);
-      const values = shape.enum.map(String);
+      // a voice-only choice is not offered on a channel without audio (what is already chosen stays)
+      const notOffered = ctx.channelTypes ? enumValuesNotOffered(ctx.store.get(), ctx.channelTypes, path) : [];
+      const values = shape.enum.map(String).filter((v) => !notOffered.includes(v) || v === String(value ?? ''));
       const suffix =
         path[0] === 'tools' && leaf === 'builtin' ? Object.fromEntries(Object.keys(UNSUPPORTED_BUILTINS).map((name) => [name, '(not available yet)'])) : {};
       const labels = enumLabels(leaf, values, { technical: ctx.technical, suffix });
@@ -222,7 +235,7 @@ export default function Node({ schema, value, path, onChange, disabled, id, inva
     case 'union': {
       if (path[0] === 'messages' && path.length === 3 && path[2] === 'text')
         return <MessageText value={value} onChange={onChange} path={path} disabled={disabled} />;
-      const generic = <UnionBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} />;
+      const generic = <UnionBody shape={shape} value={value} path={path} onChange={onChange} disabled={disabled} id={id} />;
       return shape.title === 'Condition' ? <ConditionBuilder value={value} path={path} onChange={onChange} disabled={disabled} fallback={generic} /> : generic;
     }
     default:
@@ -516,7 +529,7 @@ export function FieldRow({
   return (
     <div className={`stFRow ${wide ? 'wide' : ''} ${readOnly ? 'ro' : ''} ${kind === 'boolean' ? 'toggle' : ''} ${missing ? 'missing' : ''}`} data-path={key}>
       <div className="stFLabel">
-        <label htmlFor={takesId ? inputId : undefined} id={labelId} title={words.lead || undefined}>
+        <label htmlFor={takesId || kind === 'union' ? inputId : undefined} id={labelId} title={words.lead || undefined}>
           {title}
         </label>
         {tags}
@@ -567,7 +580,8 @@ export function FieldRow({
 // by the schema's title; technical names show the schema's own.
 const isCheckPath = (path) => path.length === 3 && path[0] === 'guardrails' && (path[1] === 'input' || path[1] === 'output') && typeof path[2] === 'number';
 
-function UnionBody({ shape, value, path, onChange, disabled }) {
+// `id` goes to the box of the kind chosen, so a row's label names it (a line of text, or one of the fixed lines).
+function UnionBody({ shape, value, path, onChange, disabled, id }) {
   const { engine, technical } = useForm();
   const branches = useMemo(() => engine.branchesOf(shape), [engine, shape]);
   const picked = engine.pickBranch(branches, value);
@@ -584,7 +598,8 @@ function UnionBody({ shape, value, path, onChange, disabled }) {
   };
   // not set yet: the choice of kinds, and nothing chosen (a single kind is simply drawn, with its defaults)
   if (value === undefined) {
-    if (branches.length === 1) return <Node schema={branches[0]} value={engine.defaultFor(branches[0])} path={path} onChange={onChange} disabled={disabled} />;
+    if (branches.length === 1)
+      return <Node schema={branches[0]} value={engine.defaultFor(branches[0])} path={path} onChange={onChange} disabled={disabled} id={id} />;
     return (
       <div className="stFUnion">
         {segmented ? (
@@ -644,7 +659,7 @@ function UnionBody({ shape, value, path, onChange, disabled }) {
           />
         ))}
       {fitsBranch ? (
-        <Node schema={branches[picked]} value={value} path={path} onChange={onChange} disabled={disabled} />
+        <Node schema={branches[picked]} value={value} path={path} onChange={onChange} disabled={disabled} id={id} />
       ) : (
         <div className="stFUnknown">
           <small className="stFWarn">This value doesn’t match any known kind. Pick a kind above to start over, or edit it as JSON.</small>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { IMAGE_TOPIC } from '../pictures/pictureProtocol.js';
 
 // Speaking to the simulated agent: the browser's own speech recognition types into the message box (the studio uploads
 // nothing). Without it, `supported` is false and the button says so. The real agent hears the microphone itself.
@@ -85,7 +86,7 @@ export function inputCapabilities(config, sessionChannel) {
     voice: inputs.includes('audio'),
     video: inputs.includes('video'),
     image: image
-      ? { acceptedMime: Array.isArray(image.accepted_mime) ? image.accepted_mime : [], maxBytes: image.max_bytes || 0, topic: image.topic || 'image-upload' }
+      ? { acceptedMime: Array.isArray(image.accepted_mime) ? image.accepted_mime : [], maxBytes: image.max_bytes || 0, topic: image.topic || IMAGE_TOPIC }
       : null,
   };
 }

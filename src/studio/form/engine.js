@@ -315,6 +315,10 @@ export function createEngine(root) {
   return { root, deref, flatten, resolveShape, fits, pickBranch, branchesOf, branchLabel, kindOf, isNullable, defaultFor, isPureUnion };
 }
 
+// An `x-ref` field's choices for a picker of its own ({ value, label }), e.g. refChoices(config, 'http_connections'):
+// the same list the generated form offers, so a Build part's picker can't offer what the schema refuses.
+export const refChoices = (config, ref) => (collectRefOptions(config)[ref] || []).map((id) => ({ value: id, label: id }));
+
 // The ids that an `x-ref` field may point at, taken from the config being edited.
 export function collectRefOptions(config) {
   const c = isObj(config) ? config : {};

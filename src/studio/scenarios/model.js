@@ -1,11 +1,17 @@
 // Test scenarios, the editing side: shapes, labels, sentences and checks for the `tests` section (channel and caller,
-// `turns`, `expect`, plus optional description, clock `now`, `state`, `http_mocks` and a `model_script` that makes runs
-// free and repeatable). The server runs them (api.runTests); runResults.js reads its answers.
+// `turns`, `expect`, plus optional description, clock `now`, `state`, `http_mocks`, sample pictures (`images`, `camera`)
+// and a `model_script` that makes runs free and repeatable). The server runs them (api.runTests); runResults.js reads its answers.
 //
 // The form NEVER blocks saving, or calls a scenario broken, over something it doesn't know: the schema grows, so
 // unknown parts are kept as they are and shown as "edit in JSON". Pure: no network, no DOM.
 
 import { isObj } from '../form/engine.js';
+import { parseJsonStrict } from '../jsonDuplicates.js';
+
+// Pasted or typed JSON for a scenario, read strictly: a key written twice is an error, not a setting silently lost
+// (FRONTEND_GUIDE 2: the server refuses such JSON too). The words for a box: the repeat said as it is, else "Not valid JSON".
+export const readJson = (text) => parseJsonStrict(text);
+export const jsonProblem = (error) => (/^The key “/.test(error?.message || '') ? error.message : `Not valid JSON (${error?.message}).`);
 
 const list = (v) => (Array.isArray(v) ? v : []);
 
@@ -66,6 +72,25 @@ export const EXPECT_KINDS = [
     hint: 'A scenario is far shorter than the length and silence limits, so those two are best proved with a unit test.',
     shape: 'limit',
   },
+  // pictures (schema 1.2)
+  {
+    key: 'screen_told',
+    label: 'The screen was told',
+    hint: 'What the bot sent the visitor’s screen: a picture asked for, a picture turned down (and why), or a request ended.',
+    shape: 'screen',
+  },
+  {
+    key: 'images_held',
+    label: 'Pictures still held at the end',
+    hint: 'How many pictures were still in the call’s memory when it ended: 0 proves they were forgotten.',
+    shape: 'count',
+  },
+  {
+    key: 'said_not_matches',
+    label: 'The agent never said anything matching',
+    hint: 'A pattern no agent message may match, ignoring case: the way to prove a full ID number was never read out.',
+    shape: 'regex',
+  },
   {
     key: 'judge',
     label: 'A reviewer would agree that…',
@@ -114,10 +139,84 @@ export function outcomeNamesOf(config, taskId) {
   return [...new Set([...TASK_OUTCOME_CHOICES.map((c) => c.value), ...own])];
 }
 
-// ---- turns: what the caller says, or the keys they press (a phone line only)
+// ---- turns: what the caller says, the keys they press (a phone line only), or a picture they upload or show the camera
+// (a web channel; schema 1.2)
 const KEYS_PATTERN = /^[0-9*#A-Da-d]+$/;
 export const isKeysTurn = (turn) => isObj(turn) && typeof turn.keys === 'string' && turn.say === undefined;
-export const describeTurn = (turn) => (isKeysTurn(turn) ? 'presses keys on the keypad' : `“${isObj(turn) ? (turn.say ?? '') : ''}”`);
+// 'say' | 'keys' | 'upload' | 'camera', or '' for a turn of a kind this file doesn't know
+export function turnKind(turn) {
+  if (!isObj(turn)) return '';
+  if ('say' in turn) return 'say';
+  if ('keys' in turn) return 'keys';
+  if ('upload' in turn) return 'upload';
+  if ('camera' in turn) return 'camera';
+  return '';
+}
+export const TURN_KINDS = [
+  { value: 'say', label: 'Says' },
+  { value: 'upload', label: 'Uploads a picture' },
+  { value: 'camera', label: 'Shows the camera' },
+  { value: 'keys', label: 'Presses keys' },
+];
+export function describeTurn(turn) {
+  switch (turnKind(turn)) {
+    case 'keys':
+      return 'presses keys on the keypad';
+    case 'upload':
+      return `uploads the sample picture “${turn.upload || '…'}”`;
+    case 'camera':
+      return turn.camera ? `shows the sample picture “${turn.camera}” to the camera` : 'switches the camera off';
+    default:
+      return `“${isObj(turn) ? (turn.say ?? '') : ''}”`;
+  }
+}
+// a turn of another kind, keeping what it can (a picture's name stays the picture's)
+export function changeTurnKind(turn, kind, images = {}) {
+  const firstImage = Object.keys(isObj(images) ? images : {})[0] || '';
+  const picture = isObj(turn) ? turn.upload || turn.camera || '' : '';
+  switch (kind) {
+    case 'keys':
+      return { keys: '' };
+    case 'upload':
+      return { upload: picture || firstImage };
+    case 'camera':
+      return { camera: picture || firstImage || null };
+    default:
+      return { say: isObj(turn) && typeof turn.say === 'string' ? turn.say : '' };
+  }
+}
+
+// ---- sample pictures (`images`): drawn from lines of text with faults switched on, so a scenario can show what
+// happens to a blurry or dark photo. Nothing here is real data.
+export const IMAGE_NAME = /^[a-z][a-z0-9_-]{0,40}$/;
+export const sampleImage = () => ({ title: 'SAMPLE ID CARD', lines: ['Name: JANE SAMPLE', 'ID number: S1234567D', 'Expires: 2030-04-05'] });
+// the faults a sample card can have, as switches: { key, label, on (the value it takes), hint }
+export const IMAGE_FAULTS = [
+  { key: 'blur', label: 'Blur', on: 4, hint: 'Soft focus: 2 is slightly soft, 6 unreadable' },
+  { key: 'brightness', label: 'Dark', on: 0.35, hint: '1 is unchanged, below 1 darker' },
+  { key: 'glare', label: 'Glare', on: 0.6, hint: 'A white bloom over part of the card' },
+  { key: 'rotate', label: 'Turned', on: 12, hint: 'Degrees the card is turned' },
+  { key: 'crop', label: 'Cut off', on: 0.3, hint: 'The part of the right side missing' },
+];
+export function freshImageName(images, base = 'clear') {
+  const taken = new Set(Object.keys(isObj(images) ? images : {}));
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}_${n}`)) n += 1;
+  return `${base}_${n}`;
+}
+// "Sample card · blur, dark" / "Not a picture" / "A file of your own"
+export function describeImage(image) {
+  if (!isObj(image)) return 'Not set';
+  if (image.empty) return 'An empty file';
+  if (typeof image.text === 'string') return 'Not a picture (text)';
+  if (image.file) return `A file of your own (${image.file})`;
+  if (image.base64 || image.data_url) return 'A picture of your own';
+  const faults = IMAGE_FAULTS.filter((f) => image[f.key] !== undefined && !(f.key === 'brightness' && image.brightness === 1)).map((f) =>
+    f.label.toLowerCase(),
+  );
+  return `Sample card${faults.length ? ` · ${faults.join(', ')}` : ''}`;
+}
 export const channelTypeOf = (config, id) => list(config?.channels).find((c) => c?.id === id)?.type || '';
 
 const shortJson = (value, max = 80) => {
@@ -159,6 +258,18 @@ export function describeExpectation(expectation) {
       return `the safety rule “${expectation.guardrail_not_triggered || '…'}” does not match`;
     case 'limit_reached':
       return `the call ends because: ${choiceLabel(LIMIT_CHOICES, expectation.limit_reached).toLowerCase()}`;
+    case 'screen_told': {
+      const e = isObj(expectation.screen_told) ? expectation.screen_told : {};
+      if (e.type === 'image_rejected') return `the screen is told a picture was turned down${e.code ? ` (${String(e.code).replace(/_/g, ' ')})` : ''}`;
+      if (e.type === 'request_done') return `the screen is told the picture request ended${e.status ? ` (${e.status})` : ''}`;
+      return `the screen is asked for ${e.kind === 'camera' ? 'the camera' : e.kind === 'upload' ? 'an upload' : 'a picture'}`;
+    }
+    case 'images_held':
+      return expectation.images_held === 0
+        ? 'no picture is still held at the end'
+        : `${expectation.images_held} picture${expectation.images_held === 1 ? ' is' : 's are'} still held at the end`;
+    case 'said_not_matches':
+      return `the agent never says anything matching /${expectation.said_not_matches}/`;
     case 'judge':
       return `a reviewer agrees that ${expectation.judge}`;
     default:
@@ -222,6 +333,12 @@ export function newExpectation(kind, config) {
       return { guardrail_not_triggered: inputRuleIdsOf(config)[0] || '' };
     case 'limit_reached':
       return { limit_reached: 'max_tool_calls_per_call' };
+    case 'screen_told':
+      return { screen_told: { type: 'request_image', kind: 'upload' } };
+    case 'images_held':
+      return { images_held: 0 };
+    case 'said_not_matches':
+      return { said_not_matches: '' };
     case 'judge':
       return { judge: '' };
     default:
@@ -334,6 +451,19 @@ function expectationProblem(e, index, config) {
         : `${where}there is no check on what the caller says called “${e.guardrail_not_triggered}”.`;
     case 'limit_reached':
       return LIMIT_CHOICES.some((c) => c.value === e.limit_reached) ? '' : `${where}choose which limit.`;
+    case 'said_not_matches': {
+      if (!e.said_not_matches) return `${where}write a pattern.`;
+      const why = regexProblem(e.said_not_matches);
+      return why ? `${where}not a valid pattern (${why}).` : '';
+    }
+    case 'images_held':
+      return Number.isInteger(e.images_held) && e.images_held >= 0 ? '' : `${where}write a whole number, 0 or more.`;
+    case 'screen_told': {
+      const v = e.screen_told;
+      if (!isObj(v) || !Object.keys(v).length) return `${where}choose what the screen was told.`;
+      if (v.type !== undefined && !['request_image', 'request_done', 'image_rejected'].includes(v.type)) return `${where}choose what the screen was told.`;
+      return '';
+    }
     case 'judge':
       return String(e.judge || '').trim() ? '' : `${where}write the criterion.`;
     default:
@@ -376,11 +506,38 @@ export function scenarioProblems(scenario, config, others = []) {
   if (!scenario.channel) out.channel = 'Choose a channel.';
   else if (!channelIds.includes(scenario.channel)) out.channel = `There is no channel “${scenario.channel}”.`;
   const turns = list(scenario.turns);
+  const images = isObj(scenario.images) ? scenario.images : {};
+  const pictureNames = Object.keys(images);
+  const channelType = channelTypeOf(config, scenario.channel);
+  const turnProblem = (t) => {
+    switch (turnKind(t)) {
+      case 'keys':
+        return !KEYS_PATTERN.test(t.keys);
+      case 'upload':
+        return !pictureNames.includes(t.upload);
+      case 'camera':
+        return t.camera !== null && !pictureNames.includes(t.camera);
+      case 'say':
+        return !String(t.say ?? '').trim();
+      default:
+        return !isObj(t); // a kind of turn the schema may add later is kept as it is, never an error
+    }
+  };
   if (!turns.length) out.turns = 'Add at least one thing the caller says.';
-  else if (turns.some((t) => !isObj(t) || (isKeysTurn(t) ? !KEYS_PATTERN.test(t.keys) : !String(t.say ?? '').trim())))
-    out.turns = 'Every turn needs some words, or keys (digits, * or #, for example 4821#).';
-  else if (turns.some(isKeysTurn) && !out.channel && channelTypeOf(config, scenario.channel) !== 'sip_voice')
+  else if (turns.some((t) => turnProblem(t) && ['upload', 'camera'].includes(turnKind(t))))
+    out.turns = pictureNames.length
+      ? 'Every picture turn needs one of this scenario’s sample pictures.'
+      : 'Add a sample picture for the picture turns to send.';
+  else if (turns.some(turnProblem)) out.turns = 'Every turn needs some words, or keys (digits, * or #, for example 4821#).';
+  else if (turns.some(isKeysTurn) && !out.channel && channelType !== 'sip_voice')
     out.turns = 'Keys can only be pressed on a phone line. Choose a phone channel, or say it in words.';
+  else if (turns.some((t) => ['upload', 'camera'].includes(turnKind(t))) && !out.channel && channelType && !['web_chat', 'web_voice'].includes(channelType))
+    out.turns = 'Pictures can only be sent on a web channel (a phone call carries none). Choose a web chat or web voice channel.';
+  const badNames = pictureNames.filter((name) => !IMAGE_NAME.test(name));
+  if (badNames.length) out.images = `A sample picture’s name starts with a lowercase letter, then lowercase letters, digits, - or _ (${badNames.join(', ')}).`;
+  else if (pictureNames.some((name) => !isObj(images[name]))) out.images = 'Every sample picture is an object.';
+  else if (scenario.camera !== undefined && scenario.camera !== null && !pictureNames.includes(scenario.camera))
+    out.images = `The camera shows “${scenario.camera}”, which is not one of the sample pictures.`;
   const expect = list(scenario.expect);
   const problems = [];
   if (!expect.length) problems.push('Add at least one thing that must be true afterwards.');
@@ -416,9 +573,14 @@ export const hasProblems = (problems) => Object.keys(problems).length > 0;
 export function parseImport(text, config) {
   let value;
   try {
-    value = JSON.parse(text);
+    value = readJson(text);
   } catch (error) {
-    return { scenarios: [], problems: [`That isn’t valid JSON (${error.message}).`], rejected: null, already: [] };
+    return {
+      scenarios: [],
+      problems: [/^The key “/.test(error.message) ? error.message : `That isn’t valid JSON (${error.message}).`],
+      rejected: null,
+      already: [],
+    };
   }
   const items = Array.isArray(value) ? value : isObj(value) && Array.isArray(value.tests) ? value.tests : isObj(value) ? [value] : null;
   if (!items) return { scenarios: [], problems: ['Paste a list of scenarios, or one scenario.'], rejected: null, already: [] };
@@ -476,10 +638,10 @@ export function parseObject(text) {
   const source = String(text ?? '').trim();
   if (!source) return { value: undefined };
   try {
-    const value = JSON.parse(source);
+    const value = readJson(source);
     return isObj(value) ? { value } : { error: 'This must be a JSON object, like {"verified": true}.' };
   } catch (error) {
-    return { error: `Not valid JSON (${error.message}).` };
+    return { error: jsonProblem(error) };
   }
 }
 

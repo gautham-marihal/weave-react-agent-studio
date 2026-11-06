@@ -87,6 +87,10 @@ src/
     form/                the settings form, built from the schema: FormEditor.jsx, Node.jsx (draws any part of the
                          schema), engine.js (reads the schema), plainLanguage.js (every label in plain words)
     simple/              helpers that read and write the everyday settings (simpleModel.js)
+    pictures/            pictures the agent asks for (MEDIA_PROTOCOL.md, guide 7.1): pictureProtocol.js (the
+                         agent-builder.ui messages and the open request), PictureRequest.jsx (the card in any test
+                         conversation), PictureSteps.jsx + pictureSteps.js (the four picture steps in Build), measure.js
+                         (sharpness and brightness, as the runtime measures them, for the simulated agent)
     workflow/, knowledge/, test/, scenarios/, calls/, trace/, release/, monitoring/, speed/, live/, insights/, ...
                          one folder per feature: its components, its logic (`*Model.js`) and its stylesheet
 tests/                   unit and component tests (node:test; components are mounted in jsdom by tests/component/)
@@ -159,8 +163,46 @@ Guardrails, After the call, Engine and details; the Workflow canvas is its own p
   Undo. **Problems** show under their row; "show me" and the search bring the row into view by its `data-field` or
   `data-path`.
 
+**A part with its own workspace.** Agent and Conversation set `render(ctx)` on their part, so they open on a page of their
+own instead of the cards. Both pages work the same way:
+- a sentence whose bold parts open small editors in place;
+- chapters of lines that open under themselves;
+- the less-used settings under "N more settings", which names them;
+- a switch to "All settings", which shows the part's own cards with every fold open, plus a search box.
+
+The pieces are shared in `detailed/workspaceKit.jsx`. Each person's choice of view is remembered by
+`detailed/workspaceView.js`. Every editor in a workspace is one of the part's own rows (`DetailedRow`), so a setting is
+the same control, saved in the same place, wherever it shows.
+- **Agent:** `detailed/agentProfile/` (the agent as a profile).
+- **Conversation:** `detailed/conversationView/`.
+  - `ConversationWorkspace.jsx` is the page, "The call", in one format for every agent. A part not set yet is a blank to
+    click and fill. An agent that only chats is told which parts take effect once a voice channel is on.
+  - `CallDrawing.jsx` draws an example call from the agent's own settings, and lights the moment an open editor shapes.
+  - `conversationEditors.jsx` holds the part's own editors, used as rows: how long it waits, the quiet-caller script, and
+    the retries per service.
+  - `conversationWords.js` is pure: the plain words, and those editors' writes.
+  - `conversationLayout.js` says where each row shows. A test checks that every row has exactly one place.
+
 `tests/detailed.component.test.js` checks every part: each row names a place the schema has, no setting is a row of two
 parts, ids are unique, and the parts write the draft and point at each other's lists.
+
+Some cards carry a whole panel as their `body(ctx, entry)` instead of rows, or a row draws one with `render`:
+
+- **Knowledge** (guide 10.2): `parts/KnowledgeIndex.jsx` is the "Search index" row (its state from
+  `knowledge/model.js` `readingState`, Build now or Save and build, the build followed with `useBuilds` until it ends,
+  then the knowledge read again) and "What it has read" (each file and page as a card with its state and fix; × asks
+  whether to delete the file too, and a 409 from the server is explained before `?force=true` is sent).
+  `parts/KnowledgeSearch.jsx` is "Try a search": any base, a follow-up's reply before, every passage on one 0-to-1 scale
+  with the saved `min_score` line and a what-if line that saves nothing. The pure helpers (`docBase`, `buildStep`,
+  `canSearch`, `searchProblem`) are in `parts/knowledgeView.js`; styles in `parts/knowledge.css`.
+- **Tools** (guide 10.1): `parts/ToolTry.jsx` is the chosen tool's "Try it" card (`POST /preview/result`): sample
+  arguments and a pasted answer in; the request, whether it may run, and the answer split three ways out. Nothing is
+  called. Styles in `parts/toolTry.css`.
+
+Elsewhere from the same round: Monitor › Calls has "Choose dates…" (`calls/DateRange.jsx`, the days worked out by
+`callModel.js` `datesQuery`, `since` and `until` sent to the server), and Preview prompt has a chip per agent
+(`form/WhatIfBar.jsx` `AgentChips`). `tests/section10.test.js`, `tests/knowledge10.component.test.js` and
+`npm run e2e:section10` check them.
 
 ## Styles
 

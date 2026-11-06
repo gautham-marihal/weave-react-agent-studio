@@ -9,6 +9,7 @@ import {
   LANGUAGES,
   greetingOf,
   greetingTarget,
+  languageName,
   readSimple,
   setAgentName,
   setGreeting,
@@ -23,21 +24,17 @@ import {
 import { setLanguageField, spokenChips } from '../../pickers/pickerLogic.js';
 import VoicePicker from '../../pickers/VoicePicker.jsx';
 import ModelPicker from '../../pickers/ModelPicker.jsx';
-import { providerLabel } from '../../../models/catalog.js';
+import { modelLabel, providerLabel } from '../../../models/catalog.js';
 import { summarizeModels, voicesFor, readModels } from '../../../models/config.js';
 import { useProviders } from '../../../models/useProviders.js';
 import { getAtPath } from '../../schemaPath.js';
 import { InlineItems, briefOf } from '../Detailed.jsx';
+import { speaks } from '../agentProfile/speaks.js';
+import AgentWorkspace from '../agentProfile/AgentWorkspace.jsx';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-// it speaks: a channel that is on is a voice one (a phone line, web voice) or says it hears or speaks audio
-export const speaks = (config) =>
-  list(config?.channels).some(
-    (ch) =>
-      ch &&
-      ch.enabled !== false &&
-      (['sip_voice', 'web_voice'].includes(ch.type) || list(ch.modalities?.input).includes('audio') || list(ch.modalities?.output).includes('audio')),
-  );
+// it speaks: a voice channel is on, or a channel hears or speaks audio (agentProfile/speaks.js)
+export { speaks };
 const inWords = (names) => {
   const each = [...new Set(names)];
   return each.length > 1 ? `${each.slice(0, -1).join(', ')} and ${each.at(-1)}` : each[0] || '';
@@ -175,8 +172,9 @@ function GreetingField({ config, set, id }) {
 }
 
 // A picker shown as a select-like button; the full picker opens under it.
-function PickerButton({ id, value, empty, children }) {
-  const [open, setOpen] = useState(false);
+// startOpen: the list shows at once (inside the profile's editor for that one setting)
+function PickerButton({ id, value, empty, children, startOpen = false }) {
+  const [open, setOpen] = useState(!!startOpen);
   return (
     <>
       <button type="button" id={id} className="dtPickBtn" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -188,26 +186,38 @@ function PickerButton({ id, value, empty, children }) {
   );
 }
 
-function VoiceRow({ config, set, id }) {
+function VoiceRow({ config, set, id, pickersOpen }) {
   const models = readModels(config);
   const voice = voicesFor(models.tts.provider).find((v) => v.voiceId === models.tts.voiceId);
   const value = models.tts.voiceId ? `${voice?.name || 'Custom voice'}${models.tts.provider ? ` · ${providerLabel(models.tts.provider)}` : ''}` : '';
   const talks = readSimple(config).voiceChannel;
   return (
-    <PickerButton id={id} value={value} empty={talks ? 'No voice chosen yet' : 'Not needed while it only chats'}>
+    <PickerButton id={id} value={value} empty={talks ? 'No voice chosen yet' : 'Not needed while it only chats'} startOpen={pickersOpen}>
       <VoicePicker config={config} set={set} speech={talks} />
     </PickerButton>
   );
 }
 
-// One stage's model ("Language model: OpenAI GPT-4.1 Mini"); the picker covers all three stages.
-function ModelRow({ config, set, id, stage }) {
+// One stage's model ("Language model: OpenAI GPT-4.1 Mini"); its picker shows that stage only.
+function ModelRow({ config, set, id, stage, pickersOpen }) {
   const { providers, live } = useProviders();
   const m = summarizeModels(config).find((s) => s.stage === stage);
   const value = m?.set ? `${m.providerName}${m.modelName ? ` · ${m.modelName}` : ''}` : '';
   return (
-    <PickerButton id={id} value={value} empty="Not chosen yet">
-      <ModelPicker config={config} set={set} providers={providers} live={live} speech={readSimple(config).voiceChannel} />
+    <PickerButton id={id} value={value} empty="Not chosen yet" startOpen={pickersOpen}>
+      <ModelPicker config={config} set={set} providers={providers} live={live} speech={readSimple(config).voiceChannel} stages={[stage]} />
+    </PickerButton>
+  );
+}
+
+// Speech-to-speech: the same picker, showing only its own part ("Not used" until one is chosen).
+function RealtimeRow({ config, set, id, pickersOpen }) {
+  const { providers, live } = useProviders();
+  const { provider, model } = readModels(config).realtime;
+  const value = provider ? `${providerLabel(provider)}${model ? ` · ${modelLabel('realtime', provider, model)}` : ''}` : '';
+  return (
+    <PickerButton id={id} value={value} empty="Not used" startOpen={pickersOpen}>
+      <ModelPicker config={config} set={set} providers={providers} live={live} stages={['realtime']} />
     </PickerButton>
   );
 }
@@ -220,11 +230,12 @@ const speaksOf = (config) =>
     .map((chip) => chip.code);
 const languageChoices = BASE_LANGUAGES.map((l) => ({ value: l.code, label: l.name }));
 
-export const agentPart = {
+// Every setting of the part, as cards of rows: what All settings shows, and the rows the profile opens.
+export const agentForm = {
   id: 'agent',
   num: '1',
   title: 'Agent',
-  question: 'Who is it, and how does it sound?',
+  question: 'Who it is, what it should do, what it says first, and how it sounds.',
   cols: [
     [
       {
@@ -306,6 +317,7 @@ export const agentPart = {
             kind: 'pick',
             path: ['defaults', 'language', 'primary'],
             options: LANGUAGES.map(([value, label]) => ({ value, label })),
+            valueLabel: (v) => `${languageName(v)} (${v})`,
             put: (c, v) => setPrimaryLanguage(c, v),
           },
           {
@@ -368,10 +380,18 @@ export const agentPart = {
           { id: 'key', label: 'Access keys', path: ['defaults', 'models', 'llm', 'api_key'] },
           { id: 'address', label: 'Service addresses', path: ['defaults', 'models', 'llm', 'base_url'] },
           { id: 'options', label: 'Extra options', path: ['defaults', 'models', 'llm', 'options'] },
-          { id: 'realtime', label: 'Speech-to-speech model', path: ['defaults', 'models', 'realtime'] },
+          {
+            id: 'realtime',
+            label: 'Speech-to-speech model',
+            errPath: ['defaults', 'models', 'realtime'],
+            render: (c) => <RealtimeRow {...c} />,
+          },
           { id: 'model', label: 'Another model id', path: ['defaults', 'models', 'llm', 'model'] },
         ],
       },
     ],
   ],
 };
+
+// Build › Agent: the agent as a profile, or every setting at once (agentProfile/AgentWorkspace.jsx), both from agentForm.
+export const agentPart = { ...agentForm, render: (ctx) => <AgentWorkspace ctx={ctx} form={agentForm} /> };

@@ -118,6 +118,14 @@ export const MODEL_OPTIONS = {
     groq: [],
     openai_compatible: [],
   },
+  // speech-to-speech: one model hears, thinks and speaks (defaults.models.realtime), instead of the three steps above
+  realtime: {
+    openai: [
+      m('gpt-realtime', 'GPT Realtime', 'Hears, thinks and speaks in one model; the most natural conversation'),
+      m('gpt-realtime-mini', 'GPT Realtime Mini', 'Faster and cheaper, for simpler conversations', ['fast']),
+      m('gpt-4o-realtime-preview', 'GPT-4o Realtime (preview)', 'The earlier preview model'),
+    ],
+  },
 };
 
 // Names that used to be offered (they come from the older XML configuration) and what the runtime calls the same
@@ -229,7 +237,7 @@ export const providersForStage = (providers, stage) =>
 // ---- what each provider can do, by stage: the catalogue's copy of GET /providers, to check the table and to say
 // sensible things when the server can't be asked
 export const PROVIDER_STAGES = {
-  openai: ['stt', 'llm', 'tts'],
+  openai: ['stt', 'llm', 'tts', 'realtime'],
   openai_compatible: ['stt', 'llm', 'tts'],
   anthropic: ['llm'],
   google: ['stt', 'llm', 'tts'],

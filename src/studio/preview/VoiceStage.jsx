@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useRef } from 'react';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { createOrb } from './orbPainter.js';
 import StatusChip from '../../ui/StatusChip.tsx';
 import { captionOf, speakingEndsAt, voiceBadge, voiceStateOf, voiceWords } from './voiceState.js';
@@ -12,14 +12,27 @@ import './voice.css';
 // each state with its own motion; it follows the agent's voice while it speaks (getLevel) and the caller's while it
 // listens (getUserLevel). The painter reads the levels every frame itself, so the conversation does not re-render sixty
 // times a second.
-//   state: a voiceState.js state; size: in pixels (the rings reach past it)
+//   state: a voiceState.js state; size: in pixels, or a CSS length (a panel's own variable, which changes with its
+//   height): then the orb is drawn at the size it is laid out at, measured (the rings reach past it)
 function VoiceOrb({ state = 'idle', size = 200, getLevel, getUserLevel }) {
   const canvas = useRef(null);
   const orb = useRef(null);
   // the levels are read through refs, so a new session's functions are used without starting the orb again
   const levels = useRef({ getLevel, getUserLevel });
   levels.current = { getLevel, getUserLevel };
-  const px = typeof size === 'number' ? size : 200;
+  const fixed = typeof size === 'number';
+  const box = useRef(null);
+  const [measured, setMeasured] = useState(200);
+  const px = fixed ? size : measured;
+  useEffect(() => {
+    if (fixed || !box.current || typeof ResizeObserver === 'undefined') return undefined;
+    const watch = new ResizeObserver(([entry]) => {
+      const width = Math.round(entry.contentRect.width);
+      if (width > 0) setMeasured(width);
+    });
+    watch.observe(box.current);
+    return () => watch.disconnect();
+  }, [fixed]);
   useEffect(() => {
     // no canvas to draw on in the tests' stand-in for a browser
     if (!canvas.current || /jsdom/i.test(navigator.userAgent)) return undefined;
@@ -38,7 +51,7 @@ function VoiceOrb({ state = 'idle', size = 200, getLevel, getUserLevel }) {
   useEffect(() => orb.current?.setSize(px), [px]);
   useEffect(() => orb.current?.setState(state), [state]);
   return (
-    <span className={`vOrb ${state}`} style={{ '--size': `${px}px` }} aria-hidden="true">
+    <span ref={box} className={`vOrb ${state}`} style={{ '--size': fixed ? `${size}px` : size }} aria-hidden="true">
       <canvas ref={canvas} className="vOrbCanvas" />
     </span>
   );

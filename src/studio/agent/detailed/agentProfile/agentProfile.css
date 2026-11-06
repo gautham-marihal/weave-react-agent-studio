@@ -1,0 +1,523 @@
+/* Build › Agent as a profile (AgentWorkspace.jsx): a calm, single column. The studio's tokens, so every style and both
+   themes draw it in their own colours; the plum is the Agent part's own hue. */
+
+.apWrap {
+  --ap-hue: var(--hue-agent, var(--accent));
+  display: grid;
+  gap: 36px;
+  max-width: 860px;
+  min-width: 0;
+}
+
+/* ---- the page's own line: its name, what it is for, and the two views ---- */
+.apTop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.apTopText {
+  flex: 1;
+  min-width: 240px;
+}
+html[data-theme] body .apWrap h1 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.apTop .dtQuestion {
+  margin: 4px 0 0;
+}
+
+/* ---- describe it, when blanks are left ---- */
+.apAi {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--ap-hue) 22%, var(--line));
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 0 10px 30px -18px color-mix(in srgb, var(--ap-hue) 60%, transparent);
+}
+.apAiIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--ap-hue), color-mix(in srgb, var(--ap-hue) 55%, #c2477f));
+  color: #fff;
+}
+.apAiText {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.apAiText b {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.apAiText span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+/* ---- the profile card ---- */
+.apHero {
+  position: relative;
+  display: grid;
+  gap: 22px;
+  padding: 36px 40px 30px;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 24px;
+  background:
+    radial-gradient(110% 120% at 0% 0%, color-mix(in srgb, var(--ap-hue) 9%, transparent) 0%, transparent 55%),
+    radial-gradient(80% 110% at 100% 0%, color-mix(in srgb, #c2477f 7%, transparent) 0%, transparent 50%), var(--panel);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 16px 44px -20px color-mix(in srgb, var(--ap-hue) 40%, transparent);
+}
+.apId {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.apAvatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ap-hue), color-mix(in srgb, var(--ap-hue) 55%, #c2477f));
+  box-shadow:
+    0 0 0 4px var(--panel),
+    0 0 0 5px color-mix(in srgb, var(--ap-hue) 25%, var(--line));
+  color: #fff;
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+}
+.apAvatar.empty {
+  border: 2px dashed var(--line);
+  background: var(--surface2);
+  box-shadow: none;
+  color: var(--muted);
+}
+.apName {
+  flex: 1;
+  min-width: 200px;
+}
+html[data-theme] body .apName h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-3xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.apName p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.apActs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html[data-theme] body .apSoft {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ap-hue) 10%, var(--panel));
+  color: var(--accent-text, var(--ap-hue));
+}
+html[data-theme] body .apSoft:hover {
+  background: color-mix(in srgb, var(--ap-hue) 16%, var(--panel));
+}
+
+/* the sentence: everything that matters, each part a button that opens its editor */
+.apSentence {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-xl);
+  line-height: 1.85;
+  letter-spacing: -0.005em;
+  overflow-wrap: anywhere;
+}
+.apTok {
+  display: inline;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--textStrong);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ap-hue) 35%, transparent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+  cursor: pointer;
+}
+.apTok:hover,
+.apTok.on {
+  background: color-mix(in srgb, var(--ap-hue) 10%, transparent);
+  text-decoration-color: var(--ap-hue);
+}
+.apTok:focus-visible {
+  outline: 2px solid var(--ap-hue);
+  outline-offset: 2px;
+}
+.apTok.blank {
+  padding: 1px 10px;
+  border: 1.5px dashed color-mix(in srgb, var(--ap-hue) 40%, var(--line));
+  border-radius: 10px;
+  color: color-mix(in srgb, var(--ap-hue) 70%, var(--muted));
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.apTok.blank.optional {
+  border-color: var(--line);
+  color: var(--muted);
+}
+.apTok.bad {
+  text-decoration-color: var(--danger-text);
+}
+.apHint {
+  margin: -8px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+/* the editor under a part of the sentence */
+.apPop {
+  position: absolute;
+  z-index: 30;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: min(70vh, 640px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow:
+    0 2px 6px rgba(16, 24, 40, 0.06),
+    0 24px 60px -14px rgba(46, 16, 68, 0.3);
+}
+.apPop::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: calc(var(--tip, 40px) - 7px);
+  width: 13px;
+  height: 13px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  border-radius: 3px 0 0 0;
+  background: var(--panel);
+  transform: rotate(45deg);
+}
+.apPop:focus {
+  outline: none;
+}
+.apPopHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 18px 4px;
+}
+html[data-theme] body .apPopHead h3 {
+  flex: 1;
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 650;
+}
+.apIconBtn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.apIconBtn:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.apPopBody {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 18px;
+}
+.apPopFoot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* the part's own rows, stacked: name above, control under */
+.apRows .dtRow {
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+}
+.apRows .dtRow:first-child {
+  border-top: 0;
+}
+.apRows .dtLabel,
+.apRows .dtControl {
+  width: 100%;
+}
+.apNone {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+/* ---- the chapters ---- */
+.apCh {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.apChHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.apChNum {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+html[data-theme] body .apChHead h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.apChSub {
+  flex: 1;
+  min-width: 160px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.apChHead > button {
+  align-self: center;
+}
+.apDoc {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 24px 28px;
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  border-radius: 18px;
+  background: var(--panel);
+}
+.apDoc.lines {
+  gap: 0;
+  padding: 4px 28px;
+}
+.apBrief {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-md);
+  line-height: 1.75;
+  white-space: pre-line;
+}
+.apBrief.empty {
+  color: var(--muted);
+}
+.apMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.apMeta .good {
+  color: var(--good-text);
+  font-weight: 600;
+}
+.apMeta .warn {
+  color: var(--warn-text);
+  font-weight: 600;
+}
+.apGrow {
+  flex: 1;
+}
+.apChange {
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--accent-text, var(--ap-hue));
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.apChange:hover {
+  background: color-mix(in srgb, var(--ap-hue) 8%, transparent);
+}
+.apLine {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.apLine:first-child {
+  border-top: 0;
+}
+.apLineHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 60px;
+  padding: 10px 0;
+}
+.apLineLabel {
+  flex: none;
+  width: 180px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+/* the technical short name after a label: "(LLM)" */
+.apAbbr {
+  white-space: nowrap;
+  opacity: 0.8;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
+}
+.apLineValue {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.apLineValue.muted {
+  color: var(--muted);
+}
+.apDim {
+  color: var(--muted);
+}
+.apBad {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger-text) 10%, var(--panel));
+  color: var(--danger-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.apLine.open .apRows {
+  padding: 0 0 12px;
+}
+.apPlay {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--textStrong);
+  color: var(--panel);
+  cursor: pointer;
+}
+.apMore {
+  display: grid;
+  gap: 4px;
+}
+.apMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--accent-text, var(--ap-hue));
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.apMoreBtn span {
+  color: var(--muted);
+  font-weight: 400;
+}
+.apMore .apRows {
+  padding: 4px 28px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  border-radius: 18px;
+  background: var(--panel);
+}
+
+/* ---- all settings: the search over the cards ---- */
+.apFind {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 520px;
+}
+.apFind > svg {
+  flex: none;
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .apHero {
+    padding: 26px 22px;
+  }
+  .apSentence {
+    font-size: var(--fs-lg);
+  }
+  .apLineHead {
+    flex-wrap: wrap;
+  }
+  .apLineLabel {
+    width: 100%;
+  }
+  .apDoc,
+  .apDoc.lines {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+/* what "more settings" holds, named before it is opened */
+.apMoreNames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0 0 0 28px;
+  list-style: none;
+}
+.apMoreNames li {
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--fs-xs);
+}

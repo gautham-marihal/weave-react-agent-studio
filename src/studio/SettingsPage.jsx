@@ -100,8 +100,9 @@ export default function SettingsPage({ workspace, workspaceCount, bots, removedC
               </div>
             </dl>
             <p className="stMuted">
-              A workspace groups agents; it doesn’t limit who can open them (that is on the Team page). Workspaces are kept on this device, while the agents,
-              their versions and their deployments are on the server.
+              A workspace groups agents; it doesn’t limit who can open them, and nothing does yet: anyone who can open the studio can open every agent (the Team
+              page is a preview the server doesn’t check). Workspaces are kept on this device, while the agents, their versions and their deployments are on the
+              server.
             </p>
           </section>
 

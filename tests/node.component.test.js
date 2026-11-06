@@ -477,7 +477,20 @@ test('an agent’s on-enter actions are numbered steps with a plain-language men
   assert.ok(step, 'the step has a kind menu');
   assert.equal(step.getAttribute('role'), 'combobox', 'more than eight kinds of step: a searchable list, not a long dropdown');
   assert.equal(step.value, 'Say a line', 'it shows the kind in words');
-  assert.deepEqual((await a.options(step)).slice(0, 3), ['Say a line', 'Say something the model writes', 'Change state']);
+  // grouped (talk, state and flow, pictures, other systems), each with its grey line under it
+  assert.deepEqual((await a.options(step)).slice(0, 3), [
+    'Say a lineExact words',
+    'Say something the model writesFrom your instructions',
+    'Show a formFields on the screen',
+  ]);
+  const all = await a.options(step);
+  ['Ask for a picture', 'Read a picture', 'Compare values', 'Forget pictures'].forEach((name) =>
+    assert.ok(
+      all.some((text) => text.startsWith(name)),
+      `the menu offers “${name}” (schema 1.2)`,
+    ),
+  );
+  assert.match(textOf(document.body), /Only when…/, 'any step can run only when a condition holds (schema 1.2)');
   assert.match(textOf($(document.body, '.stActionSentence')), /^Say “Welcome”$/);
   await a.choose(byLabel(document.body, 'Add a step to the list'), 'end_call');
   assert.deepEqual(

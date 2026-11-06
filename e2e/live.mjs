@@ -73,7 +73,8 @@ await page.waitForTimeout(600);
 const cards = await page.locator('.lvCard').count();
 check('the calls going on are found by themselves', cards >= 2, String(cards));
 check('the count at the top is the number of cards', Number(await page.locator('.lvStat strong').first().textContent()) === cards);
-check('the status says what is watched', /Watching 3 agents/.test(await page.locator('.lvStatus').textContent()));
+// the demo's three starters and the Unbound sample (src/demo/demoSamples.js)
+check('the status says what is watched', /Watching 4 agents/.test(await page.locator('.lvStatus').textContent()));
 check('a phone number never shows whole', !/\+\d{6,}/.test(await page.locator('.lvGrid').textContent()));
 
 // time moves, and words arrive

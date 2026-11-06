@@ -16,12 +16,14 @@ import {
   setTopics,
   topicsOf,
 } from '../../blocks/guardrailModel.js';
-import { SENSITIVE } from '../../blocks/afterCallModel.js';
+import { sensitiveChoices } from '../../blocks/afterCallModel.js';
+import { guardNotRun } from '../../blocks/guardrailModel.js';
 import { setHandOver } from '../../../setup/setupActions.js';
 import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { ChipList, InlineItems } from '../Detailed.jsx';
 import AddItem from '../AddItem.jsx';
+import { GuardrailsGlance } from '../Glance.jsx';
 
 // 9 · Guardrails: what it must never do. Topics and the three ready-made moments are guardrailModel.js's (each a rule
 // in the draft's guardrails.escalation); checks on what the caller and the agent say are guardrails.input / .output;
@@ -30,6 +32,8 @@ import AddItem from '../AddItem.jsx';
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const off = (config) => topicsOf(config).offTopic;
+// what the server keeps but does not run yet, from its own report on the draft (agent config guide 8)
+const notRun = (c) => guardNotRun(c?.editor?.report?.unsupported);
 // one of the three ready-made rules; one that would clash with a check can't be switched on (it says why)
 const moment = (id) => ({
   get: (config) => momentsOf(config)[id].on,
@@ -100,7 +104,7 @@ const checkRows = (entry) => {
       id: 'entities',
       label: 'Personal details it looks for',
       kind: 'multi',
-      options: SENSITIVE.map(([value, label]) => ({ value, label })),
+      options: (config, ctx) => sensitiveChoices(ctx?.redactionKinds),
       hidden: notInCheck(at(['entities'])),
       get: (config) => list(getAtPath(config, at(['entities']))),
       put: (config, v) => setPath(config, at(['entities']), v),
@@ -128,14 +132,20 @@ const checkName = (c, i) => (isObj(c) && (c.id || c.type)) || `Check ${i + 1}`;
 
 export const guardrailsPart = {
   id: 'guardrails',
-  num: '9',
+  num: '10',
   title: 'Guardrails',
-  question: 'What must it never do? Ready-made rules are switches; your own rules and checks sit right under them.',
+  question: 'What it must never do. Ready-made rules are switches; your own rules and checks sit under them.',
+  // what is set here, at a glance, before the forms
+  top: (ctx) => <GuardrailsGlance ctx={ctx} />,
   cols: [
     [
       {
         id: 'topics',
         title: 'Topics',
+        lead: (c) =>
+          notRun(c).topics
+            ? 'Not run yet: the server keeps these topic settings but does not act on them, so nothing is turned away for being off topic. Say it in the instructions meanwhile.'
+            : '',
         rows: [
           {
             id: 'allowed',
@@ -190,6 +200,10 @@ export const guardrailsPart = {
       {
         id: 'moments',
         title: 'Hand over or end the call',
+        lead: (c) =>
+          notRun(c).escalation
+            ? 'Not run yet: the server keeps these rules but does not act on them, so no caller is passed on or cut off by them. Call limits do run.'
+            : '',
         rows: [
           { id: 'frustrated', label: MOMENTS[0].label, kind: 'sw', ...moment('frustrated_to_person') },
           { id: 'manager', label: 'Pass people who ask for a manager', kind: 'sw', ...moment('asks_for_person') },
@@ -250,6 +264,12 @@ export const guardrailsPart = {
       {
         id: 'output',
         title: 'Checks on what the agent says',
+        lead: (c) => {
+          const n = notRun(c).output.length;
+          return n
+            ? `Not run yet: ${n === 1 ? 'one check here is' : `${n} checks here are`} kept but not acted on by the server. A rule in words is told to the model and does apply.`
+            : '';
+        },
         rows: [
           {
             id: 'checks',

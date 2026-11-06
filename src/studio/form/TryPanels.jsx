@@ -20,8 +20,11 @@ import {
   redactionVerdict,
   ruleWords,
   speechVerdict,
+  startedByWords,
+  stepDetails,
   stepState,
 } from './tryPanels.js';
+import { describeCondition } from './promptPreview.js';
 import Select from '../../ui/Select.tsx';
 import { Input, TextArea } from '../../ui/Input.tsx';
 
@@ -426,6 +429,12 @@ export function TryGuardrailsView({ config }) {
                     <em>the agent reads</em> “{view.modelSees}”
                   </p>
                 )}
+                {/* withheld: the agent isn't asked now, and reads this in place of the caller's words from then on (10.1) */}
+                {!view.modelIsAsked && view.modelSees && (
+                  <p>
+                    <em>from then on, the agent reads it as</em> “{view.modelSees}”
+                  </p>
+                )}
                 {view.savedAs && (
                   <p>
                     <em>saved in the records as</em> “{view.savedAs}”
@@ -529,6 +538,7 @@ export function TryTaskView({ config, taskId }) {
       result={
         view && (
           <>
+            <p className="stMuted">{startedByWords(view.offeredBy)}</p>
             {view.skippedNow && (
               <p className="stFWarn">With these values the whole task is already satisfied: it ends at once as a success and asks nothing.</p>
             )}
@@ -557,6 +567,11 @@ export function TryTaskView({ config, taskId }) {
                         {s.attempts ? ` ${s.attempts} attempt${s.attempts === 1 ? '' : 's'}.` : ''}
                       </p>
                     )}
+                    {stepDetails(s, describeCondition).map((line) => (
+                      <p key={`${s.id}-${line}`} className="stMuted">
+                        {line}
+                      </p>
+                    ))}
                     {s.actions.map((a) => (
                       <p key={`${s.id}-${a}`} className="stMuted">
                         {a}
@@ -573,7 +588,8 @@ export function TryTaskView({ config, taskId }) {
             </ol>
             {view.attempts && (
               <p className="stMuted">
-                Wrong answers are counted {view.attempts.counted === 'task' ? 'across the whole task' : 'on each step'}
+                {view.keepsHistory ? 'The agent that started it keeps everything said during the task. ' : ''}Wrong answers are counted{' '}
+                {view.attempts.counted === 'task' ? 'across the whole task' : 'on each step'}
                 {view.attempts.limit ? `, up to ${view.attempts.limit}` : ''}.
               </p>
             )}

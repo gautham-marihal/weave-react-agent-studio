@@ -2,14 +2,17 @@ import React from 'react';
 import SmartSelect from '../SmartSelect.jsx';
 import { isObj } from './engine.js';
 import { useForm, useItemKeys } from './ctx.js';
-import Node from './Node.jsx';
+import Node, { ObjectBody } from './Node.jsx';
+import PictureStep, { PICTURE_STEPS } from '../pictures/PictureSteps.jsx';
 import { ACTION_KINDS, describeAction, describeRule, kindLabel, moveItem } from './effects.js';
 import { carryOver } from './cardLogic.js';
 import Icon from '../../ui/Icon.jsx';
 import { DragHandle, SortableItem, SortableList } from '../../ui/Sortable.jsx';
 
-// A list of actions as numbered steps: a plain menu picks each kind, the ordinary form fills in the details. Used
-// wherever the schema asks for actions, so every trigger reads the same. `label` names the list for screen readers.
+// A list of actions as numbered steps: a plain menu picks each kind (grouped: talk, state and flow, pictures, other
+// systems), the ordinary form fills in the details, and any step can run "Only when…" a condition holds (schema 1.2).
+// The picture steps have their own editor (pictures/PictureSteps.jsx). Used wherever the schema asks for actions, so
+// every trigger reads the same. `label` names the list for screen readers.
 export function ActionSteps({ shape, value, path, onChange, disabled, label = 'the list' }) {
   const ctx = useForm();
   const { engine } = ctx;
@@ -21,6 +24,60 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
   const kinds = ACTION_KINDS.filter((kind) => branchOf(kind.type));
   const makeAction = (type) => engine.defaultFor(branchOf(type));
   const where = path.join('.');
+  const options = kinds.map((kind) => ({ value: kind.type, label: kind.label, group: kind.group, description: kind.hint }));
+  // a step's own settings: all but its kind and its condition, which have their own places above and below
+  const body = (action, j) => {
+    const type = isObj(action) ? action.type : undefined;
+    const branch = branchOf(type);
+    const change = (next) => onChange(actions.map((a, k) => (k === j ? next : a)));
+    if (!branch) return <Node schema={actionSchema} value={action} path={[...path, j]} onChange={change} disabled={disabled} />;
+    const flat = engine.flatten(branch);
+    if (PICTURE_STEPS.has(type)) return <PictureStep shape={flat} value={action} path={[...path, j]} onChange={change} disabled={disabled} />;
+    const keys = Object.keys(flat.properties || {}).filter((k) => k !== 'type' && k !== 'when');
+    return keys.length ? <ObjectBody shape={flat} value={action} path={[...path, j]} onChange={change} disabled={disabled} onlyKeys={keys} /> : null;
+  };
+  // "Only when…": the same condition editor as rules and hooks
+  const condition = (action, j) => {
+    const branch = branchOf(isObj(action) ? action.type : undefined);
+    const whenSchema = branch ? engine.flatten(branch).properties?.when : null;
+    if (!whenSchema) return null;
+    const change = (next) => onChange(actions.map((a, k) => (k === j ? next : a)));
+    if (action.when === undefined)
+      return disabled ? null : (
+        <p className="stActionWhen">
+          <button type="button" className="stLink" onClick={() => change({ ...action, when: engine.defaultFor(whenSchema) })}>
+            Only when…
+          </button>
+        </p>
+      );
+    return (
+      <div className="stActionWhen">
+        <span className="stRuleLabel">Only when</span>
+        <div className="stActionWhenBody">
+          <Node
+            schema={whenSchema}
+            value={action.when}
+            path={[...path, j, 'when']}
+            onChange={(next) => change({ ...action, when: next })}
+            disabled={disabled}
+          />
+          {!disabled && (
+            <button
+              type="button"
+              className="stLink"
+              onClick={() => {
+                ctx.markDelete(`the condition of step ${j + 1}`);
+                const { when: _gone, ...rest } = action;
+                change(rest);
+              }}
+            >
+              Remove the condition (always do this)
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -46,7 +103,7 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
                     disabled={disabled}
                     ariaLabel={`Step ${j + 1} of ${label}: what to do`}
                     placeholder={type ? kindLabel(type) : 'Choose…'}
-                    options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))}
+                    options={options}
                     onChange={(chosen) => {
                       if (!chosen || chosen === type) return;
                       // what the new kind can hold too is kept (as other kind pickers
@@ -93,27 +150,26 @@ export function ActionSteps({ shape, value, path, onChange, disabled, label = 't
                   )}
                 </div>
                 <p className="stActionSentence">{describeAction(action)}</p>
-                <Node
-                  schema={branch || actionSchema}
-                  value={action}
-                  path={[...path, j]}
-                  onChange={(next) => onChange(actions.map((a, k) => (k === j ? next : a)))}
-                  disabled={disabled}
-                />
+                {isObj(action) && condition(action, j)}
+                {body(action, j)}
               </SortableItem>
             );
           })}
         </SortableList>
       </ol>
       {actions.length === 0 &&
-        (engine.flatten(shape).minItems >= 1 ? <p className="stFWarn">Needs at least one step.</p> : <p className="stFEmpty">No steps yet.</p>)}
+        (Array.isArray(value) && engine.flatten(shape).minItems >= 1 ? (
+          <p className="stFWarn">Needs at least one step.</p>
+        ) : (
+          <p className="stFEmpty">No steps yet.</p>
+        ))}
       {!disabled && (
         <SmartSelect
           action
           className="stFInput small"
           ariaLabel={`Add a step to ${label}`}
           placeholder="Add a step…"
-          options={kinds.map((kind) => ({ value: kind.type, label: kind.label }))}
+          options={options}
           onChange={(chosen) => {
             if (chosen) onChange([...actions, makeAction(chosen)]);
           }}

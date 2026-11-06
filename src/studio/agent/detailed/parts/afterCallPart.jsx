@@ -5,7 +5,7 @@ import { TryRedactionView } from '../../../form/TryPanels.jsx';
 import {
   ANSWER_KINDS,
   QUESTION_IDEAS,
-  SENSITIVE,
+  sensitiveChoices,
   addQuestion,
   afterCallOf,
   notDoneYet,
@@ -15,9 +15,12 @@ import {
   setRecording,
   setRedaction,
   setSummary,
+  closingStarted,
 } from '../../blocks/afterCallModel.js';
 import { setPath } from '../schemaFacts.js';
 import { ChipList } from '../Detailed.jsx';
+import { notRunAt } from '../../../preflight.ts';
+import { AfterCallGlance } from '../Glance.jsx';
 
 // 10 · After the call: what happens once it hangs up: what it writes (a summary, answers to questions), how the call
 // closes, what is kept and for how long, and what is hidden in it. afterCallModel.js writes post_call and the recording
@@ -100,6 +103,13 @@ function AddQuestions({ ctx }) {
 
 // the first closing message: how long it waits, and what it does when the caller stays silent
 const WRAP = (config) => (list(config?.wrapups).some(isObj) ? ['wrapups', list(config.wrapups).findIndex(isObj)] : null);
+const notStarted = (config) => {
+  const at = WRAP(config);
+  const id = at ? config.wrapups[at[1]].id : '';
+  return at && id && !closingStarted(config, id)
+    ? 'Nothing starts it yet, so it never runs: add the step “Start a closing message” where the wait should begin, for example after a form is sent or a tool finishes.'
+    : '';
+};
 const wrapRow = (key, row) => ({
   ...row,
   pathFor: (config) => (WRAP(config) ? [...WRAP(config), key] : null),
@@ -108,9 +118,11 @@ const wrapRow = (key, row) => ({
 
 export const afterCallPart = {
   id: 'aftercall',
-  num: '10',
+  num: '11',
   title: 'After the call',
-  question: 'What happens once it hangs up? What it writes, what it keeps, and what it hides.',
+  question: 'What happens once the conversation ends: what it writes down, what it keeps and what it hides.',
+  // what is set here, at a glance, before the forms
+  top: (ctx) => <AfterCallGlance ctx={ctx} />,
   cols: [
     [
       {
@@ -122,6 +134,7 @@ export const afterCallPart = {
             label: 'Write a summary of each call',
             kind: 'sw',
             errPath: ['post_call', 'summary'],
+            notRunPath: ['post_call', 'summary'],
             get: (c) => afterCallOf(c).summary.on === true,
             put: (c, on) => setSummary(c, { on }),
           },
@@ -141,7 +154,10 @@ export const afterCallPart = {
       {
         id: 'questions',
         title: 'Questions about each call',
-        lead: 'Answered after every call, so you can count them on Monitoring.',
+        lead: (c) =>
+          notRunAt(c?.editor?.report?.unsupported, ['post_call', 'analysis'])
+            ? 'Not run yet: the server keeps these questions but does not answer them after calls, so Monitoring has nothing to count from them.'
+            : 'Answered after every call, so you can count them on Monitoring.',
         rowsFor: (c) => [
           ...afterCallOf(c.config).questions.map((q) => ({
             id: `q${q.index}`,
@@ -161,6 +177,7 @@ export const afterCallPart = {
       {
         id: 'closing',
         title: 'Closing the call',
+        lead: 'A wait you start at a set moment, such as after the callback form is sent: if nobody replies in time, these steps run. A caller who goes quiet at any other time is handled by the silence settings on Conversation.',
         body: (c) =>
           !WRAP(c.config) ? (
             <div className="dtCardAction">
@@ -175,7 +192,7 @@ export const afterCallPart = {
             </div>
           ) : null,
         rows: [
-          wrapRow('wait_s', { id: 'wait', label: 'Wait before closing', kind: 'num', unit: 'seconds' }),
+          wrapRow('wait_s', { id: 'wait', label: 'Wait before closing', kind: 'num', unit: 'seconds', note: notStarted }),
           wrapRow('on_silence', { id: 'silent', label: 'When the caller stays silent', kind: 'form' }),
         ],
       },
@@ -213,7 +230,7 @@ export const afterCallPart = {
           {
             id: 'notice',
             label: 'Recording notice',
-            hint: 'Said at the start when anything is kept',
+            hint: 'Said once, with the first greeting, on channels that speak',
             kind: 'text',
             errPath: ['persona', 'disclosures'],
             get: (c) => afterCallOf(c).notice,
@@ -246,7 +263,7 @@ export const afterCallPart = {
             id: 'entities',
             label: 'What it looks for',
             kind: 'multi',
-            options: SENSITIVE.map(([value, label]) => ({ value, label })),
+            options: (config, ctx) => sensitiveChoices(ctx?.redactionKinds),
             disabled: (c) => !afterCallOf(c).redaction.on,
             get: (c) => afterCallOf(c).redaction.entities,
             put: (c, entities) => setRedaction(c, { entities }),

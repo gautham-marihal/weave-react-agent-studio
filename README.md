@@ -341,7 +341,7 @@ their time in have purpose-built editors:
   effects are rules: each applies always or only when a condition holds. The details of a step are the ordinary form for that kind of
   action (`form/EffectsEditor.jsx`, `form/effects.js`).
 - **Templates and prompts.** Text the runtime reads as a template (`{{state.x}}`, `{{args.x}}`, `{{const.x}}`, filters) is highlighted,
-  has an **Insert a value** helper, and flags a name that points at nothing. Prompts show a word count, and each agent has a **Preview the prompt** panel that puts the persona, role, opening, rules, conditional blocks, channel addition and tools together in order. It asks the server, so it is **exact** (see “What the model will be told” below); only when the server can't be asked does it fall back to an approximate copy built in the browser, and it says so.
+  has an **Insert a value** helper, and flags a name that points at nothing. Prompts show a word count, and each agent has a **Preview the prompt** panel that puts the persona and its shared rules, the channel's addition, the role and rules, the conditional blocks, the opening and the tools together, in the order the agent config guide gives (3.16). It asks the server, so it is **exact** (see “What the model will be told” below); only when the server can't be asked does it fall back to an approximate copy built in the browser, and it says so.
 - **Messages** can be one text or one per language; every language the agent speaks gets a row, a missing one is badged and one click adds it.
 - **State variables.** `sensitive` shows a shield and what it means, and offers to raise `schema_version` to 1.2 (which it needs).
 - **`x-ui` hints** the schema may carry are honoured: `widget` (`textarea`, `template`, `jsonpath`, `phone`, `url`, `duration`,
@@ -615,6 +615,12 @@ npm run e2e:speed   # Speed: answer times, a target, an agent's page, a slow cal
 npm run e2e:setup   # the guided setup end to end: create, every step, try it, put it live, what the draft holds; leaving and coming back (demo; see e2e/setup.mjs)
 npm run e2e:guardrails  # Guardrails and After the call in plain words, what they write, and each input asked in one place (demo; see e2e/guardrails.mjs)
 npm run e2e:fit     # nothing cut off: the test panel's box to type in at 7 window sizes, Workflow blocks with long text, one-line text on every page (demo; see e2e/fit.mjs)
+npm run e2e:ways    # the side Test panel's ways in: Chat or Talk for an agent with both, the channel asked for and named, again or instead
+                    # after it ends, both themes checked by axe (dev server WITHOUT demo mode; see e2e/ways.mjs)
+npm run e2e:pictures # pictures (guide 7.1): the agent asks for a photo or the camera, a refusal, done; the simulated agent measures them;
+                    # the record's Pictures lines; Build's picture steps; a scenario with sample pictures (WITHOUT demo mode; see e2e/pictures.mjs)
+npm run e2e:forms   # a form the agent asks for, shown and answered in the Test panel beside the pages and in the setup's Try it step
+                    # (dev server WITHOUT demo mode, signing in from e2e/credentials.txt; see e2e/forms.mjs)
 npm run e2e:deploys # putting live when the server is slow or says no: pending, failed with a reason, a deployment it no longer knows, a check
                     # that can't run (dev server WITHOUT demo mode, signing in from e2e/credentials.txt; see e2e/deploys.mjs)
 npm run e2e       # needs the dev server running: signs in, creates an agent from a starter, edits, saves, publishes,

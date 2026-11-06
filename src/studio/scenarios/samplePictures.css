@@ -1,0 +1,239 @@
+/* A scenario's sample pictures (SamplePictures.jsx): each drawn card on a checked stage beside its name, lines and
+   fault switches; the small card beside a picture turn. Studio tokens; the card itself is paper-coloured in both modes. */
+.spList {
+  display: grid;
+  gap: 12px;
+  container-type: inline-size;
+}
+.spItem {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--surface);
+}
+@container (max-width: 520px) {
+  .spItem {
+    grid-template-columns: 1fr;
+  }
+}
+.spStage {
+  border-radius: 12px;
+  border: 1px solid var(--line2);
+  background: repeating-conic-gradient(var(--surface2) 0 25%, var(--surface) 0 50%) 0 0 / 16px 16px;
+  display: grid;
+  place-items: center;
+  padding: 20px 12px;
+  min-height: 150px;
+  overflow: hidden;
+}
+.spCard {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 1.586;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--sp-from, #e5ecf7), var(--sp-to, #bdcbe3));
+  box-shadow: 0 12px 28px rgba(20, 30, 60, 0.22);
+  color: #1d2433;
+  transition:
+    filter 0.3s ease,
+    transform 0.3s ease;
+}
+.spCard.small {
+  width: 44px;
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(20, 30, 60, 0.2);
+  flex: none;
+}
+.spCard.other {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  background: var(--surface2);
+  color: var(--muted);
+  box-shadow: none;
+  border: 1px dashed var(--line2);
+  text-align: center;
+  padding: 8px;
+}
+.spCard.other small {
+  font-size: var(--fs-xs);
+}
+.spTitle {
+  position: absolute;
+  left: 7%;
+  top: 8%;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #4a5875;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 86%;
+  text-overflow: ellipsis;
+}
+.spFace {
+  position: absolute;
+  left: 7%;
+  top: 26%;
+  width: 25%;
+  height: 56%;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #a9b5ca, #8794ad);
+}
+.spCard.small .spFace {
+  top: 18%;
+  height: 64%;
+  border-radius: 2px;
+}
+.spLines {
+  position: absolute;
+  left: 38%;
+  right: 6%;
+  top: 26%;
+  display: grid;
+  gap: 3px;
+  font-size: var(--fs-xs);
+  line-height: 1.2;
+}
+.spLines span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spLines b {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5a6784;
+}
+.spMiniLines {
+  position: absolute;
+  left: 40%;
+  right: 10%;
+  top: 30%;
+  height: 3px;
+  border-radius: 2px;
+  background: #95a2b8;
+  box-shadow:
+    0 7px 0 #afb9cb,
+    0 14px 0 #afb9cb;
+}
+.spGlare {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(42% 52% at 70% 30%, rgba(255, 255, 255, 0.96), transparent 70%);
+}
+.spFields {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.spFields label,
+.spCamera {
+  display: grid;
+  gap: 4px;
+}
+.spFields label > span,
+.spCamera > span {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.spRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.spName {
+  flex: 1 1 auto;
+}
+.spFaults {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.spFault {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  padding: 5px 10px 5px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: var(--surface);
+  cursor: pointer;
+}
+.spFault.on {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.spFault:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.spSwitch {
+  position: relative;
+  width: 26px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background 0.2s;
+}
+.spSwitch::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s;
+}
+.spFault.on .spSwitch {
+  background: var(--accent);
+}
+.spFault.on .spSwitch::after {
+  transform: translateX(10px);
+}
+.spAdd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.spCamera {
+  max-width: 420px;
+}
+/* a picture turn: the kind, the sample picture's small card, its name */
+.scTurnPicture {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.scTurnPicture > :last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spCard,
+  .spSwitch,
+  .spSwitch::after {
+    transition: none;
+  }
+}

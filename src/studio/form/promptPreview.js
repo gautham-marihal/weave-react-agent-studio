@@ -1,5 +1,6 @@
-// An approximate preview of what an agent is told, assembled from what the config says (persona, role, opening, rules,
-// conditional blocks, channel addition, tools) in that order. Always labelled approximate: the exact text comes from
+// An approximate preview of what an agent is told, assembled from what the config says in the order the agent config
+// guide gives (3.16, 4): the persona and its shared rules, the channel's addition, the role and rules, the conditional
+// blocks, then the opening (applied once, when the agent takes over) and the tools. Always labelled approximate: the exact text comes from
 // `POST /preview/prompt` (serverPreview.js). Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
@@ -27,7 +28,11 @@ export function describeCondition(condition) {
   if ('schedule' in condition) return `${condition.schedule} is ${condition.open ? 'open' : 'closed'}`;
   if (Array.isArray(condition.all)) return condition.all.map(describeCondition).join(' and ');
   if (Array.isArray(condition.any)) return condition.any.map(describeCondition).join(' or ');
-  if ('not' in condition) return `not (${describeCondition(condition.not)})`;
+  // "not … is not set" reads "… is set" (the picture fixture's "a photo arrived")
+  if ('not' in condition) {
+    const inner = describeCondition(condition.not);
+    return / is not set$/.test(inner) ? inner.replace(/ is not set$/, ' is set') : `not (${inner})`;
+  }
   return 'a condition holds';
 }
 
@@ -113,9 +118,10 @@ export function assemblePrompt(config, agentId, { channelId } = {}) {
   add('persona', 'Who the agent is', 'From the persona', who.join('\n\n'));
   const shared = list(persona.shared_rules).map(text).filter(Boolean);
   add('shared', 'Rules for every agent', 'persona.shared_rules, added to every agent’s prompt', shared.map((rule) => `- ${rule}`).join('\n'));
+  const channel = list(config.channels).find((item) => item?.id === channelId);
+  if (channel) add('channel', `Added on ${channel.id}`, 'The channel’s instructions_append', channel.instructions_append);
 
   add('role', 'Its role', 'instructions.role', instructions.role);
-  add('opening', 'When it takes over', 'instructions.opening, applied once when this agent takes over', instructions.opening);
   const rules = list(instructions.rules).map(text).filter(Boolean);
   add('rules', 'Its rules', 'instructions.rules', rules.map((rule) => `- ${rule}`).join('\n'));
   list(instructions.conditional).forEach((block, index) => {
@@ -127,9 +133,7 @@ export function assemblePrompt(config, agentId, { channelId } = {}) {
       { conditional: true },
     );
   });
-
-  const channel = list(config.channels).find((item) => item?.id === channelId);
-  if (channel) add('channel', `Added on ${channel.id}`, 'The channel’s instructions_append', channel.instructions_append);
+  add('opening', 'When it takes over', 'instructions.opening, applied once when this agent takes over', instructions.opening);
 
   // The tools it may call: the model sees each by name, with its description and the arguments it fills in.
   const tools = list(config.tools);

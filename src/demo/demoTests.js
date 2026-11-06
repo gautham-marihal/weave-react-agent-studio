@@ -127,6 +127,22 @@ function evaluateChecks(scenario, ctx, { judge, scripted }) {
       const hit = ctx.said.find((t) => re.test(t));
       return check('said_matches', !!hit, hit ? `The agent said “${hit.slice(0, 80)}”.` : `No agent message matches /${expect.said_matches}/.`);
     }
+    if ('said_not_matches' in expect) {
+      let re;
+      try {
+        re = new RegExp(expect.said_not_matches, 'i');
+      } catch {
+        return check('said_not_matches', null, 'The pattern is not a valid regular expression.');
+      }
+      const hit = ctx.said.find((t) => re.test(t));
+      return check(
+        'said_not_matches',
+        !hit,
+        hit ? `The agent said “${hit.slice(0, 80)}”, which matches.` : `No agent message matches /${expect.said_not_matches}/.`,
+      );
+    }
+    // what the screen was told about pictures, and how many are held at the end: the demo draws no sample pictures
+    for (const kind of ['screen_told', 'images_held']) if (kind in expect) return check(kind, null, PICTURES_NOT_HERE);
     if ('agent_is' in expect)
       return check(
         'agent_is',
@@ -170,6 +186,9 @@ function evaluateChecks(scenario, ctx, { judge, scripted }) {
     return check('unknown', null, 'The demo runner does not know this kind of check.');
   });
 }
+
+const PICTURES_NOT_HERE = 'The demo runner draws no sample pictures and runs no picture steps, so this cannot be checked here. The real runner checks it.';
+const isPictureTurn = (turn) => isObj(turn) && ('upload' in turn || 'camera' in turn) && turn.say === undefined;
 
 // One scenario -> the result the API would give.
 export function runScenarioDemo(config, scenario, { live = false, judge = false } = {}) {
@@ -274,6 +293,11 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
     // keypad digits are never written to the result (they may be a PIN), only that keys were pressed
     const pressed = isObj(turn) && typeof turn.keys === 'string' && turn.say === undefined;
     const textIn = String(turn?.say ?? '');
+    // a picture turn: said so in the record, and nothing more (the demo draws no sample pictures)
+    if (isPictureTurn(turn)) {
+      event('image', { step: 'ignored', reason: 'the demo runner draws no sample pictures', sample: 'upload' in turn ? turn.upload : turn.camera });
+      continue;
+    }
     if (pressed) event('keys_pressed', { count: turn.keys.length });
     else {
       transcript.push({ role: 'user', text: textIn });
@@ -319,7 +343,13 @@ export function runScenarioDemo(config, scenario, { live = false, judge = false 
     final_agent: finalAgent,
     final_state: finalState,
     events,
-    notes: scripted ? [DEMO_RUN_NOTE] : [DEMO_RUN_NOTE, 'This live scenario was played by the simulated agent: no real model was called.'],
+    notes: [
+      DEMO_RUN_NOTE,
+      ...(scripted ? [] : ['This live scenario was played by the simulated agent: no real model was called.']),
+      ...(list(scenario?.turns).some(isPictureTurn)
+        ? ['Its picture turns were skipped: the demo runner draws no sample pictures. The real runner sends them.']
+        : []),
+    ],
   };
 }
 

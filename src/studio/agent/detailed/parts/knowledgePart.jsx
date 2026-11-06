@@ -1,17 +1,34 @@
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState } from 'react';
 import { api } from '../../../../api/client.ts';
 import Icon from '../../../../ui/Icon.jsx';
 import Button from '../../../../ui/Button.tsx';
 import { Input } from '../../../../ui/Input.tsx';
-import { ACCEPT_ATTRIBUTE, applyMinScore, fileTypeProblem, formatBytes, matchWords, normalizeSearch, settingsOf } from '../../../knowledge/model.js';
-import { KNOWLEDGE_ID, addKnowledgeFile, addKnowledgePage, cleanUrl, knowledgeOf, removeKnowledge } from '../../../setup/setupKnowledge.js';
+import { ACCEPT_ATTRIBUTE, fileTypeProblem, formatBytes } from '../../../knowledge/model.js';
+import {
+  KNOWLEDGE_ID,
+  addKnowledgeFile,
+  addKnowledgePage,
+  baseReaders,
+  cleanUrl,
+  knowledgeOf,
+  lookedUpWith,
+  setBaseMode,
+  setBaseReaders,
+} from '../../../setup/setupKnowledge.js';
 import { agentLabel } from '../../rowNames.js';
 import { freshId } from '../../../form/references.js';
 import { setPath } from '../schemaFacts.js';
+import { refChoices } from '../../../form/engine.js';
+import { IndexRow, SourceCards } from './KnowledgeIndex.jsx';
+import KnowledgeSearch from './KnowledgeSearch.jsx';
+import { notRunAt } from '../../../preflight.ts';
+import { canSearch } from './knowledgeView.js';
+import { KnowledgeGlance } from '../Glance.jsx';
 
 // 3 · Knowledge: what it answers from. The documents and pages are the setup's base (setupKnowledge.js: uploading,
-// pages, who reads it); how it searches is that base's settings; "your own search service" is a base of the other
-// kind (rag_api). The try-out asks the server what it would find, without saving anything.
+// pages, who reads it), and its search index is built and followed here (KnowledgeIndex.jsx); how it searches is that
+// base's settings; "your own search service" is a base of the other kind (rag_api). The try-out (KnowledgeSearch.jsx)
+// asks the server what it would find, without saving anything.
 //   ctx extra: botId, latest() (the newest draft, for uploads that finish later), onUploaded()
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -148,159 +165,11 @@ function PageAdd({ ctx, id }) {
   );
 }
 
-function WhatItRead({ ctx, id }) {
-  const { files, pages } = knowledgeOf(ctx.config);
-  const [refused, setRefused] = useState('');
-  const read = ctx.knowledgeRead;
-  const stateOf = (name) => {
-    const doc = list(read?.files || read?.documents).find((f) => f && (f.name === name || f.file_id === name || f.url === name));
-    return doc?.status ? ` · ${String(doc.status).replace(/_/g, ' ')}` : '';
-  };
-  const remove = (kind, value) => {
-    const result = removeKnowledge(ctx.config, kind, value);
-    setRefused(result.refused);
-    if (!result.refused) ctx.set(result.config);
-  };
-  if (!files.length && !pages.length) return <span className="dtNote">Nothing yet: until you add some, it answers only from its instructions.</span>;
-  return (
-    <>
-      <div className="dtChips" id={id}>
-        <ul aria-label="What it has read">
-          {[...files.map((v) => ['file', v]), ...pages.map((v) => ['url', v])].map(([kind, value]) => (
-            <li key={`${kind}:${value}`}>
-              <span>
-                {value}
-                {stateOf(value)}
-              </span>
-              <button type="button" aria-label={`Remove ${value}`} onClick={() => remove(kind, value)}>
-                <Icon name="close" size={12} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-      {refused && (
-        <small className="stFieldError" role="alert">
-          {refused}
-        </small>
-      )}
-    </>
-  );
-}
-
 // which agents read the documents in every conversation (each agent's `knowledge` list)
-const readersOfBase = (config) => {
-  const at = docIndex(config);
-  const id = at >= 0 ? config.knowledge[at].id : KNOWLEDGE_ID;
-  return list(config?.agents?.items)
-    .filter((a) => isObj(a) && list(a.knowledge).includes(id))
-    .map((a) => a.id);
-};
-function setReaders(config, ids) {
-  const at = docIndex(config);
-  if (at < 0) return config;
-  const baseId = config.knowledge[at].id;
-  const items = list(config?.agents?.items).map((a) => {
-    if (!isObj(a)) return a;
-    const has = list(a.knowledge).includes(baseId);
-    const want = ids.includes(a.id);
-    if (has === want) return a;
-    const knowledge = want ? [...list(a.knowledge), baseId] : list(a.knowledge).filter((k) => k !== baseId);
-    const next = { ...a, knowledge };
-    if (!knowledge.length) delete next.knowledge;
-    return next;
-  });
-  return setPath(config, ['agents', 'items'], items);
-}
-
-// ---- the try-out: what it would find ----------------------------------------------------------------------------------
-// The question and the passage count are two rows; they share this small store.
-let tryState = { query: '', topK: '' };
-const listeners = new Set();
-const setTry = (change) => {
-  tryState = { ...tryState, ...change };
-  listeners.forEach((l) => l());
-};
-const useTry = () =>
-  useSyncExternalStore(
-    (l) => {
-      listeners.add(l);
-      return () => listeners.delete(l);
-    },
-    () => tryState,
-  );
-
-function TrySearch({ ctx, id }) {
-  const state = useTry();
-  const [answer, setAnswer] = useState({ busy: false, error: '', hits: null });
-  const at = docIndex(ctx.config);
-  const base = at >= 0 ? ctx.config.knowledge[at] : null;
-  const run = async (event) => {
-    event.preventDefault();
-    if (!base || !state.query.trim()) return;
-    setAnswer({ busy: true, error: '', hits: null });
-    try {
-      const raw = await api.searchKnowledge(ctx.botId, base.id, {
-        query: state.query.trim(),
-        ...(state.topK ? { top_k: Number(state.topK) } : {}),
-        ref: 'draft',
-      });
-      const found = applyMinScore(normalizeSearch(raw).hits, settingsOf(ctx.config, base.id).minScore);
-      setAnswer({ busy: false, error: '', hits: found });
-    } catch (e) {
-      setAnswer({ busy: false, error: e?.message || 'The search failed.', hits: null });
-    }
-  };
-  if (!base) return <span className="dtNote">Add a document or page first.</span>;
-  return (
-    <>
-      <form className="dtInline" onSubmit={run} role="search" aria-label="What would it find?">
-        <Input
-          id={id}
-          value={state.query}
-          placeholder="Do you open on Saturdays?"
-          onChange={(event) => setTry({ query: event.target.value })}
-          maxLength={2000}
-        />
-        <Button type="submit" size="small" disabled={answer.busy || !state.query.trim()}>
-          {answer.busy ? 'Looking…' : 'Find'}
-        </Button>
-      </form>
-      {answer.error && (
-        <small className="stFieldError" role="alert">
-          {answer.error}
-        </small>
-      )}
-      {answer.hits && (
-        <ol className="dtFound" role="status">
-          {answer.hits.length === 0 && <li>Nothing it has read matches this.</li>}
-          {answer.hits.map((hit, n) => (
-            <li key={n} className={hit.kept ? '' : 'left'}>
-              <strong>{hit.source || `Passage ${n + 1}`}</strong> <span className="dtNote">{hit.kept ? matchWords(hit.score).text : 'Left out'}</span>
-              <p>{hit.text}</p>
-            </li>
-          ))}
-        </ol>
-      )}
-    </>
-  );
-}
-function TryCount({ id }) {
-  const state = useTry();
-  return (
-    <Input
-      id={id}
-      size="small"
-      type="number"
-      min="1"
-      max="20"
-      value={state.topK}
-      placeholder="4"
-      className="dtNarrow"
-      onChange={(event) => setTry({ topK: event.target.value })}
-    />
-  );
-}
+// which agents read the documents, set the one way the base's mode allows (setupKnowledge.js, agent config guide 2.11)
+const docBaseId = (config) => (docIndex(config) >= 0 ? config.knowledge[docIndex(config)].id : '');
+const readersOfBase = (config) => (docBaseId(config) ? baseReaders(config, docBaseId(config)) : []);
+const setReaders = (config, ids) => (docBaseId(config) ? setBaseReaders(config, docBaseId(config), ids) : config);
 
 // it has something to search: a document or a page
 const hasDocs = (config) => {
@@ -332,14 +201,26 @@ export const knowledgePart = {
   id: 'knowledge',
   num: '3',
   title: 'Knowledge',
-  question: 'What does it know? Documents and pages first; how it searches is one card, not a separate tab.',
+  question: 'The documents and web pages it answers from, and how it searches them.',
+  // what is set here, at a glance, before the forms
+  top: (ctx) => <KnowledgeGlance ctx={ctx} />,
   cols: [
     [
       {
         id: 'docs',
         title: 'Documents and pages',
-        lead: 'What it answers from. Uploading starts reading at once.',
+        lead: 'What it answers from. Add files and pages, then build the index so it can search them.',
         rows: [
+          {
+            id: 'index',
+            label: 'Search index',
+            hint: 'Built before calls. The last index keeps answering until a new build is ready, so a failed build costs nothing.',
+            render: (c) => (
+              <div id={c.id}>
+                <IndexRow ctx={c} />
+              </div>
+            ),
+          },
           { id: 'upload', label: 'Upload documents', render: (c) => <Upload ctx={c} id={c.id} /> },
           { id: 'page', label: 'A web page', render: (c) => <PageAdd ctx={c} id={c.id} /> },
           {
@@ -353,12 +234,20 @@ export const knowledgePart = {
             get: depthOf,
             put: (c, v) => setDepth(c, v ?? 0),
           },
-          { id: 'read', label: 'What it has read', hint: 'Remove any of them here', errPath: ['knowledge'], render: (c) => <WhatItRead ctx={c} id={c.id} /> },
+          {
+            id: 'read',
+            label: 'What it has read',
+            hint: 'Each file and page, and whether the index has it',
+            errPath: ['knowledge'],
+            render: (c) => <SourceCards ctx={c} id={c.id} />,
+          },
           {
             id: 'readers',
             label: 'Which agents read it',
-            hint: 'Was set from each subagent',
+            hint: 'Agents search it on every turn; a tool searches when the model asks',
             kind: 'multi',
+            // the knowledge tools that search it are set on Tools; said here so the whole picture is in one place
+            note: (config) => (docIndex(config) < 0 ? '' : lookedUpWith(config, config.knowledge[docIndex(config)].id)),
             options: (config) =>
               list(config?.agents?.items)
                 .filter(isObj)
@@ -371,18 +260,10 @@ export const knowledgePart = {
       {
         id: 'try',
         title: 'Try a search',
-        waiting: (c) => (hasDocs(c.config) ? '' : 'Add a document or a web page above first, then try what a caller might ask.'),
-        lead: 'See what it would find before a caller asks.',
-        rows: [
-          {
-            id: 'ask',
-            label: 'Something a caller might ask',
-            hint: 'Shows the passages it would find',
-            tags: 'p',
-            render: (c) => <TrySearch ctx={c} id={c.id} />,
-          },
-          { id: 'count', label: 'Passages to ask for', tags: 'p', render: (c) => <TryCount id={c.id} /> },
-        ],
+        waiting: (c) => (canSearch(c.config) ? '' : 'Add a document or a web page above first, then try what a caller might ask.'),
+        lead: 'What a caller might ask, and what it would find. Nothing is saved.',
+        rows: [],
+        body: (c) => <KnowledgeSearch ctx={c} />,
       },
     ],
     [
@@ -391,15 +272,19 @@ export const knowledgePart = {
         title: 'How it searches',
         waiting: (c) => (hasDocs(c.config) ? '' : 'Its search settings appear once it has a document or web page to search.'),
         rows: [
-          based(doc(['mode']), {
-            id: 'mode',
-            label: 'When it searches',
-            kind: 'ch',
-            options: [
-              { value: 'tool', label: 'When the model decides' },
-              { value: 'inject', label: 'On every caller turn' },
-            ],
-          }),
+          {
+            ...based(doc(['mode']), {
+              id: 'mode',
+              label: 'When it searches',
+              kind: 'ch',
+              options: [
+                { value: 'tool', label: 'When the model decides' },
+                { value: 'inject', label: 'On every caller turn' },
+              ],
+            }),
+            // the agents that read it keep reading it, the way the new mode allows (a list of its own, or a search tool)
+            put: (config, value) => (docBaseId(config) ? setBaseMode(config, docBaseId(config), value) : config),
+          },
           based(doc(['top_k']), { id: 'topk', label: 'How many results', kind: 'num', unit: '1 to 20', min: 1, max: 20, integer: true }),
           based(doc(['retrieval', 'query_from']), {
             id: 'from',
@@ -415,9 +300,22 @@ export const knowledgePart = {
           based(doc(['retrieval', 'timeout_s']), { id: 'timeout', label: 'Give up after', kind: 'num', unit: 'seconds, up to 30', max: 30 }),
           based(doc(['retrieval', 'strip_markdown']), { id: 'strip', label: 'Remove formatting symbols', kind: 'sw' }),
           based(doc(['refresh']), {
+            // its own note says a timer does nothing; the server's words would say it twice
+            serverNote: false,
             id: 'refresh',
             label: 'Rebuild it',
             kind: 'ch',
+            // a timer chosen is told it does nothing while the server says so (its `unsupported`, FRONTEND_GUIDE 5: not
+            // hard-coded); before the first check comes back, what the guide says today (section 8)
+            note: (config, ctx) => {
+              const at = doc(['refresh'])(config);
+              const chosen = at ? at.reduce((v, k) => (v == null ? v : v[k]), config) : undefined;
+              const every = { hourly: 'every hour', daily: 'every day', weekly: 'every week' }[chosen];
+              if (!every) return '';
+              const report = ctx?.editor?.report;
+              if (report?.valid && !notRunAt(report.unsupported, at)) return '';
+              return `Set to rebuild ${every}, but nothing rebuilds it on a timer yet: the index stays as it was last built. Press Build after the files change.`;
+            },
             options: [
               { value: 'manual', label: 'Only when I rebuild it' },
               { value: 'hourly', label: 'Every hour' },
@@ -460,8 +358,9 @@ export const knowledgePart = {
             label: 'Connection',
             tags: 'r',
             kind: 'pick',
-            // the connections set up on the Connections part
-            options: (config) => Object.keys(isObj(config?.connections) ? config.connections : {}).map((k) => ({ value: k, label: k })),
+            // the web-API connections set up on the Connections part: the schema's x-ref is http_connections, so an MCP
+            // server or an SMS/email sender is not offered here (the guide, section 4)
+            options: (config) => refChoices(config, 'http_connections'),
             placeholder: 'Choose a connection…',
           }),
           based(rag(['collection']), { id: 'collection', label: 'Collection', kind: 'text' }),

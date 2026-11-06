@@ -6,7 +6,8 @@ import { askConfirm } from '../../ui/dialogs.js';
 import { AgentNumbers, useLiveNumbers } from '../../pages/LiveNumbers.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
 import { useGateStatus } from '../release/gate.js';
-import { DeploySecrets } from '../release/Preflight.jsx';
+import { PRODUCTION_WORD, splitUnsupported } from '../preflight.ts';
+import { DeployKnowledge, DeploySecrets } from '../release/Preflight.jsx';
 import { failureReason, useDeploymentWatch } from '../release/deployWatch.js';
 import { navigate, replaceRoute, routeHref } from '../route.js';
 import { Notice, envLabel } from '../ui.jsx';
@@ -157,10 +158,25 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
 
   const goLive = async () => {
     if (environment === 'production') {
+      // A protection set up but not enforced (the check's security items): the agent would look protected and isn't, so
+      // the word the Deploy page asks for is asked here too (the guide, section 5). Without one, the plain question.
+      const security = splitUnsupported(editor.report?.unsupported).security;
       const yes = await askConfirm({
         title: `Put ${name} live for customers?`,
         body: 'Everyone who calls or chats reaches this version from now on. “Testing” is the place to try it for real first.',
-        confirmLabel: 'Put it live for customers',
+        confirmLabel: security.length ? 'Put it live for customers anyway' : 'Put it live for customers',
+        ...(security.length
+          ? {
+              tone: 'danger',
+              warning: {
+                title: `${security.length} protection${security.length === 1 ? ' is' : 's are'} declared but not enforced`,
+                text: `The agent looks protected and is not: the runtime doesn’t enforce ${security.length === 1 ? 'this' : 'these'} yet.`,
+                items: security,
+              },
+              typeWord: PRODUCTION_WORD,
+              typeWordWhy: 'to put it live for customers anyway',
+            }
+          : {}),
       });
       if (!yes) return;
     }
@@ -238,6 +254,7 @@ function LiveStep({ botId, name, editor, summary, states, onStep, done, onLive, 
           </Notice>
         )}
         {done.preflight && <DeploySecrets preflight={done.preflight} missingOnly />}
+        {done.preflight && <DeployKnowledge preflight={done.preflight} />}
         {/* what each way of reaching it still needs: nothing here pretends a channel works before it does */}
         <section className="suReach" aria-labelledby="suReachTitle">
           <h3 id="suReachTitle">How people reach it</h3>

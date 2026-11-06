@@ -14,7 +14,7 @@ const AT_A_TIME = 4;
 type AgentPage = { id: string; calls: CallSummary[]; next: string | null; error: string | null };
 type Round = Record<string, AgentPage>;
 type Cursors = Record<string, string> | null;
-type Filters = { range?: string; caller?: string; channel?: string; status?: string };
+type Filters = { range?: string; caller?: string; channel?: string; status?: string; from?: string; to?: string };
 
 // callModel.js's queryFor, with the types TypeScript can't read from its defaults
 const listQuery = queryFor as (filters: Filters, page: { limit?: number; cursor?: string }) => Parameters<typeof api.listCalls>[1];

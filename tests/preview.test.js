@@ -66,6 +66,12 @@ test('advice on size is given only past the limits, and says what to do', () => 
     ],
   });
   assert.match(dropped[0].text, /1 tool will not be offered to the model: code \(custom code can’t run yet\)/);
+  // the agent's own limits (builder.lint) decide; without them the agent config guide's 450 words and 8 tools
+  assert.deepEqual(LIMITS, { words: 450, tools: 8 });
+  const nine = { ...base, stats: { words: 300, tokens: 400, toolsOffered: 9 } };
+  assert.equal(promptAdvice(nine)[0].id, 'tools', 'past the guide’s 8');
+  assert.deepEqual(promptAdvice(nine, { builder: { lint: { max_tools_per_agent: 12 } } }), [], 'the agent allows 12');
+  assert.match(promptAdvice({ ...base, stats: { words: 500, tokens: 650, toolsOffered: 2 } })[0].text, /Over 450 words/);
 });
 
 test('“Preview as…” sends only what was changed, and a local time gets the browser’s zone', () => {
@@ -188,8 +194,8 @@ test('when the server can’t be asked, the studio’s own approximate prompt is
     [
       ['persona', true],
       ['role', true],
-      ['opening', true],
       ['conditional-0', false],
+      ['opening', true],
     ],
   );
   assert.match(p.instructions, /Your name is Sam/);

@@ -11,7 +11,7 @@ import { MIN_DESCRIPTION, generateDraft } from '../demo/draftAssistant.js';
 import { minimalConfig } from '../demo/minimalConfig.js';
 import { readSimple } from './simple/simpleModel.js';
 import { setGreeting, setRole } from './simple/simpleModel.js';
-import { applyStarter, STARTERS } from './starters.ts';
+import { applyStarter, STARTERS, withLintLimits } from './starters.ts';
 import { botIdProblem, formatWhen, freeBotId } from './format.js';
 import { applyTemplate, deleteTemplate, loadTemplates, parseTemplateFile, saveTemplate } from './savedTemplates.js';
 import { PAGE_SIZE, SORTS, STATUSES, collectFacets, filterBots, paginate } from './agentList.js';
@@ -102,7 +102,8 @@ function CreateBotDialog({ existingIds, onClose }) {
       // A template or description that names a language keeps its own.
       const languages = typeof navigator === 'undefined' ? [] : navigator.languages || [navigator.language];
       // ...and with every integration connected on the Integrations page, as every agent in the workspace has
-      const withLanguage = (config) => withIntegrations(withMainLanguage(config, languages));
+      // ...and with the guide's size limits, so the server warns once an agent grows too big (starters.ts withLintLimits)
+      const withLanguage = (config) => withLintLimits(withIntegrations(withMainLanguage(config, languages)));
       if (described) {
         // Built on the real new draft (so its id and version are right), with the review's edits applied.
         const made = generateDraft(description, draft.config, { name: name.trim(), company });

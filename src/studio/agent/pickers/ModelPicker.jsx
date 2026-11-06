@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
 import SimpleKey from '../../simple/SimpleKey.jsx';
 import { modelLabel, modelStatus, providerLabel } from '../../models/catalog.js';
-import { readModels, setModel, setProvider, slotProblem } from '../../models/config.js';
+import { clearStage, readModels, setModel, setProvider, slotProblem } from '../../models/config.js';
 import { modelRows, providerChips } from './pickerLogic.js';
 import './pickers.css';
 import Button from '../../../ui/Button.tsx';
@@ -14,7 +14,12 @@ const PARTS = [
   { id: 'llm', title: 'Language model', what: 'Decides what to say and which tool to use.' },
   { id: 'stt', title: 'Speech-to-text', what: 'Turns what the caller says into text.' },
   { id: 'tts', title: 'Text-to-speech', what: 'Turns the reply into speech. The voice itself is chosen under Voice.' },
+  // shown only where asked for (stages): one model in place of the three steps
+  { id: 'realtime', title: 'Speech-to-speech', what: 'One model that hears, thinks and speaks, in place of the three steps.' },
 ];
+const THREE_STEPS = ['llm', 'stt', 'tts'];
+// "Language model" → "language models", "Speech-to-text" → "speech-to-text models"
+const modelsWord = (part) => `${part.title.replace(/ model$/i, '')} models`;
 
 function ModelList({ part, config, set, providers }) {
   const slot = readModels(config)[part.id];
@@ -49,8 +54,8 @@ function ModelList({ part, config, set, providers }) {
           className="pkSearch big"
           type="search"
           value={query}
-          placeholder={`Search ${part.title.toLowerCase()} models`}
-          aria-label={`Search ${part.title} models`}
+          placeholder={`Search ${modelsWord(part).toLowerCase()}`}
+          aria-label={`Search ${modelsWord(part)}`}
           onChange={(event) => setQuery(event.target.value)}
         />
         <div className="pkPills" role="group" aria-label="Provider">
@@ -71,7 +76,7 @@ function ModelList({ part, config, set, providers }) {
           ))}
         </div>
       </div>
-      <ul className="pkModelList" aria-label={`${part.title} models`}>
+      <ul className="pkModelList" aria-label={modelsWord(part)}>
         {rows.map((row) => (
           <li key={`${row.provider}/${row.id}`} className={row.selected ? 'on' : ''}>
             {/* a provider not installed on the server can't run: shown but not choosable (unless already in use) */}
@@ -165,15 +170,27 @@ function PartCard({ part, config, set, providers, open, onToggle, speech = true 
               {slot.model && modelLabel(part.id, slot.provider, slot.model) !== slot.model ? ` · ${slot.model}` : ''}
             </small>
           </span>
+        ) : part.id === 'realtime' ? (
+          <span className="pkChosenText">
+            <strong>Not used</strong>
+            <small>It hears, thinks and speaks in separate steps. Choose one to do all three in a single model.</small>
+          </span>
         ) : (
           <span className="pkChosenText">
             <strong>{notNeeded ? 'Not needed while it only chats' : 'Nothing chosen yet'}</strong>
             <small>{notNeeded ? 'Choose one for phone calls or talking on your website.' : 'Choose a model to use for this part of the call.'}</small>
           </span>
         )}
-        <Button type="button" aria-expanded={open} aria-label={`${open ? 'Close the list of' : 'Change'} ${part.title} models`} onClick={onToggle}>
-          {open ? 'Done choosing' : slot.provider ? 'Change' : 'Choose'}
-        </Button>
+        <span className="pkChosenActions">
+          {part.id === 'realtime' && slot.provider ? (
+            <Button type="button" onClick={() => set(clearStage(config, 'realtime'))}>
+              Stop using it
+            </Button>
+          ) : null}
+          <Button type="button" aria-expanded={open} aria-label={`${open ? 'Close the list of' : 'Change'} ${modelsWord(part)}`} onClick={onToggle}>
+            {open ? 'Done choosing' : slot.provider ? 'Change' : 'Choose'}
+          </Button>
+        </span>
       </div>
       {problem && <p className="pkWarn">{problem.text}</p>}
       {status && ['custom', 'free', 'empty'].includes(status.state) ? <p className={`pkStatus ${status.state}`}>{status.text}</p> : null}
@@ -184,13 +201,18 @@ function PartCard({ part, config, set, providers, open, onToggle, speech = true 
 
 // speech: whether the agent hears and speaks (a phone or website voice channel).
 // The list that opens first is the first part it needs that is still to choose.
-export default function ModelPicker({ config, set, providers, live, speech = true }) {
+// stages: which parts to show (the three steps, unless asked for another, such as ['realtime']).
+export default function ModelPicker({ config, set, providers, live, speech = true, stages = THREE_STEPS }) {
   const models = readModels(config);
-  const [open, setOpen] = useState(() => (PARTS.find((p) => !models[p.id].provider && (speech || p.id === 'llm')) || {}).id || '');
+  const parts = PARTS.filter((p) => stages.includes(p.id));
+  // one part alone opens its list at once; of several, the first still to choose
+  const [open, setOpen] = useState(() =>
+    parts.length === 1 ? parts[0].id : (parts.find((p) => !models[p.id].provider && (speech || p.id === 'llm')) || {}).id || '',
+  );
   return (
     <div className="pkPicker">
       {!live && <p className="pkNote">The server’s list of what it can run couldn’t be read, so these are the usual choices.</p>}
-      {PARTS.map((part) => (
+      {parts.map((part) => (
         <PartCard
           key={part.id}
           part={part}

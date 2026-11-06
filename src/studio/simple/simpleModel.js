@@ -35,6 +35,7 @@ export const LANGUAGES = [
   ['en-AU', 'English (Australia)'],
   ['en-IN', 'English (India)'],
   ['en-NG', 'English (Nigeria)'],
+  ['en-SG', 'English (Singapore)'],
   ['es-ES', 'Spanish (Spain)'],
   ['es-MX', 'Spanish (Mexico)'],
   ['fr-FR', 'French (France)'],
@@ -53,6 +54,7 @@ export const LANGUAGES = [
   ['ko-KR', 'Korean'],
   ['zh-CN', 'Chinese (Mandarin)'],
   ['id-ID', 'Indonesian'],
+  ['ms-MY', 'Malay'],
   ['sw-KE', 'Swahili'],
 ];
 export const languageName = (code) =>

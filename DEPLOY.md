@@ -11,6 +11,42 @@ Compose; nothing is installed on the server but Docker.
   database (`:3322`) and `https://weave-mock-api.vercel.app`.
 - The Agent Builder **API key**.
 
+## From Docker Hub, without the source code
+
+The images are published in the private Docker Hub repository **`gtm25/weave-agent-builder`**, so a server can pull
+them instead of building. It then needs only four files from this folder: `docker-compose.hub.yml`,
+`.env.docker.example` (copied to `.env.docker` and filled in, as in step 1), `credentials.txt` (who may sign in) and
+the `Caddyfile` (for HTTPS).
+
+| Tag                                                                          | What it is                                   |
+| ---------------------------------------------------------------------------- | -------------------------------------------- |
+| `studio`                                                                     | Weave Studio (Linux)                         |
+| `studio-demo`                                                                | the demo studio: sample data, no key (Linux) |
+| `mock-api`                                                                   | the mock bank services (Linux)               |
+| `studio-windows`, `studio-demo-windows`, `mock-api-windows`, `caddy-windows` | the same for a Windows Server host           |
+
+The repository is private: sign in with the read-only access token you were given (Docker shows it once; ask for a
+new one if it is lost). It can pull and nothing else.
+
+```sh
+docker login --username gtm25                         # paste the access token at the password prompt
+docker compose -f docker-compose.hub.yml pull
+docker compose -f docker-compose.hub.yml up -d                    # http://localhost:5173 on the server
+docker compose -f docker-compose.hub.yml --profile https up -d    # or with HTTPS on https://STUDIO_DOMAIN (see step 2)
+```
+
+`credentials.txt` is never inside the image: it is given to the container when it starts, so edit it on the server.
+Without it the sign-in page says sign-in isn't set up, and nobody gets in. To update, run the `pull` and `up -d`
+lines again.
+
+On a Windows Server host (Windows containers), pull the `-windows` tags and give them the names
+`docker-compose.windows.yml` uses, then start it as described below:
+
+```powershell
+foreach ($t in 'studio','studio-demo','mock-api') { docker pull "gtm25/weave-agent-builder:$t-windows"; docker tag "gtm25/weave-agent-builder:$t-windows" "weave-$t`:windows" }
+docker pull gtm25/weave-agent-builder:caddy-windows; docker tag gtm25/weave-agent-builder:caddy-windows caddy-nano:windows
+```
+
 ## 1. Copy the folder and fill in the settings
 
 Copy this folder to the server (git clone, scp or rsync; `node_modules` is not needed). Then:

@@ -82,3 +82,14 @@ test('large documents are scanned quickly', () => {
   assert.deepEqual(findDuplicateKeys(big), []);
   assert.ok(Date.now() - started < 1500, `took ${Date.now() - started} ms`);
 });
+
+test('pasted and typed scenario JSON refuses a repeated key instead of losing a setting (FRONTEND_GUIDE 2)', async () => {
+  const { parseImport, parseObject, jsonProblem } = await import('../src/studio/scenarios/model.js');
+  const pasted = parseImport('{"id": "a", "turns": [{"say": "Hi"}], "expect": [], "id": "b"}', { tests: [] });
+  assert.equal(pasted.scenarios.length, 0, 'nothing is added');
+  assert.match(pasted.problems[0], /The key “id” appears twice/);
+  const typed = parseObject('{"verified": true, "verified": false}');
+  assert.match(typed.error, /The key “verified” appears twice/);
+  assert.equal(parseObject('{"verified": true}').value.verified, true, 'ordinary JSON still reads');
+  assert.match(jsonProblem(new Error('Unexpected token')), /^Not valid JSON \(Unexpected token\)\.$/);
+});

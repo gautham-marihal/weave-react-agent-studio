@@ -13,6 +13,7 @@ import {
   Bot,
   BrushCleaning,
   Camera,
+  CameraOff,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -26,6 +27,8 @@ import {
   CornerDownLeft,
   createLucideIcon,
   Ellipsis,
+  Equal,
+  Eraser,
   ExternalLink,
   Eye,
   FileText,
@@ -38,6 +41,7 @@ import {
   Hammer,
   Hash,
   House,
+  Image,
   Info,
   KeyRound,
   LayoutGrid,
@@ -70,6 +74,8 @@ import {
   Radio,
   Redo2,
   Rocket,
+  ScanEye,
+  ScanLine,
   Search,
   Shield,
   ShieldCheck,
@@ -82,6 +88,7 @@ import {
   Trash2,
   TriangleAlert,
   Undo2,
+  Upload,
   User,
   UserCog,
   Users,
@@ -205,6 +212,14 @@ export const ICONS = {
   eye: Eye,
   // putting a version live (the agent's Release stage)
   rocket: Rocket,
+  // pictures the agent asks for (a photo, the camera), reads, compares and forgets
+  image: Image,
+  upload: Upload,
+  scan: ScanLine,
+  read: ScanEye,
+  compare: Equal,
+  forget: Eraser,
+  cameraOff: CameraOff,
 };
 
 export const ICON_NAMES = Object.keys(ICONS);

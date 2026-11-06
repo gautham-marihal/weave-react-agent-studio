@@ -1,7 +1,7 @@
 // A change another page asks for on an agent's draft ("use this voice", "apply this starter"). Queued, applied when
 // the agent's Config tab opens, and left unsaved so the person reviews it first.
 
-import { applyStarter, starterById } from './starters.ts';
+import { applyStarter, starterById, withLintLimits } from './starters.ts';
 
 const KEY = 'weave_pending_change';
 
@@ -34,7 +34,7 @@ export function applyChange(config, change) {
   if (change.kind === 'starter') {
     const starter = starterById(change.starter);
     return {
-      config: applyStarter(config, starter.id),
+      config: withLintLimits(applyStarter(config, starter.id)),
       note: `The “${starter.label}” starter is applied to this draft. It couldn’t be saved when the agent was created.`,
       where: ['agents'],
     };
