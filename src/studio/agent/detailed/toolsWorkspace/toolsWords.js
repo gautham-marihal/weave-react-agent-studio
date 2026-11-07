@@ -3,7 +3,7 @@
 // then → if it fails). Pure: no React, no DOM, so the tests run it in Node.
 
 import { DETAIL_FIELDS, actionsOf, handOverCases, switchOf } from '../../../setup/setupActions.js';
-import { agentsUsingTool, kindOfTool, notAvailable, toolNamedElsewhere } from '../../../form/toolInfo.js';
+import { agentsUsingTool, kindOfTool, toolNamedElsewhere, toolNotRun } from '../../../form/toolInfo.js';
 import { agentLabel, humanize } from '../../rowNames.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -91,7 +91,8 @@ const BUILTIN_WORDS = {
 const toolName = (t) => (typeof t.title === 'string' && t.title ? t.title : humanize(t.id));
 
 // every tool, as a line: its name, what it does, who uses it, whether it is ready, and the ability that made it
-export function toolsOf(config) {
+//   unsupported: the server's check of the draft (what it doesn't run), when known
+export function toolsOf(config, unsupported = null) {
   return list(config?.tools)
     .filter((t) => isObj(t) && typeof t.id === 'string')
     .map((t) => {
@@ -100,7 +101,7 @@ export function toolsOf(config) {
       const agents = agentsUsingTool(config, t.id);
       const made = switchOf(config, t.id);
       const ability = made && ABILITIES.find((ab) => ab.action === made.id);
-      const missing = notAvailable(t);
+      const missing = toolNotRun(config, t, unsupported);
       return {
         id: t.id,
         name: toolName(t),
@@ -136,7 +137,11 @@ export { either, together };
 
 // a tool as the steps of one run, each said in a few words
 export function stepsOf(config, toolId) {
-  const t = list(config?.tools).find((x) => isObj(x) && x.id === toolId);
+  // a tool with no id yet (written in the JSON) is known by its place, as its list names it
+  const tools = list(config?.tools);
+  const t =
+    tools.find((x) => isObj(x) && x.id === toolId) ||
+    (/^\d+$/.test(String(toolId)) && isObj(tools[Number(toolId)]) && !tools[Number(toolId)].id ? tools[Number(toolId)] : null);
   if (!t) return [];
   const kind = kindOfTool(t);
   const http = kind === 'http';

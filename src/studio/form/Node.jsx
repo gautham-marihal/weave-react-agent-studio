@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useState } from 'react';
+import React, { useId, useMemo, useRef, useState } from 'react';
 import Fold from '../../ui/Fold.jsx';
 import Icon from '../../ui/Icon.jsx';
 import { DragHandle, SortableList, useSortableItem } from '../../ui/Sortable.jsx';
@@ -1010,8 +1010,21 @@ function MapBody({ shape, value, path, onChange, disabled }) {
   const pattern = names.pattern;
   const fixedKeys = !!refName;
   const complex = !!valueSchema && isComplex(engine, valueSchema);
+  // each entry's React key stays the same when it is renamed (keyed by name, a rename redrew it: the card folded and
+  // the keyboard was lost)
+  const stable = useRef({ ids: new Map(), next: 0 });
+  const keyFor = (k) => {
+    const { ids } = stable.current;
+    if (!ids.has(k)) ids.set(k, `entry-${(stable.current.next += 1)}`);
+    return ids.get(k);
+  };
 
   const rename = (from, to) => {
+    const { ids } = stable.current;
+    if (ids.has(from) && !ids.has(to)) {
+      ids.set(to, ids.get(from));
+      ids.delete(from);
+    }
     if (named) {
       renameDirect(named, from, to);
       return;
@@ -1050,7 +1063,7 @@ function MapBody({ shape, value, path, onChange, disabled }) {
         if (complex) {
           return (
             <Group
-              key={key}
+              key={keyFor(key)}
               pathKey={pk}
               title={key}
               hint={
@@ -1077,7 +1090,7 @@ function MapBody({ shape, value, path, onChange, disabled }) {
           );
         }
         return (
-          <div className="stFMapRow" key={key} data-path={pk}>
+          <div className="stFMapRow" key={keyFor(key)} data-path={pk}>
             {fixedKeys ? (
               <code className="stFMapKey">{key}</code>
             ) : (

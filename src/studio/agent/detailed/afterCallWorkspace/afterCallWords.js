@@ -11,6 +11,7 @@
 
 import { ANSWER_KINDS, SENSITIVE, afterCallOf, closingStarted, notDoneYet } from '../../blocks/afterCallModel.js';
 import { humanize } from '../../rowNames.js';
+import { lineOf } from '../../../form/speechLine.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -59,18 +60,19 @@ export function questionsIn(config) {
 }
 
 // ---- closing a call ------------------------------------------------------------------------------------------------
-const speech = (v) => (typeof v === 'string' ? v : str(v?.message));
+// a line's words, a fixed line's too
+const speech = (v, config) => lineOf(config, v).text;
 // what one step does, as a verb ("says goodbye", "hangs up")
 export function stepWords(step, config) {
   if (!isObj(step)) return '';
   const name = (id, items) => list(items).find((x) => isObj(x) && x.id === id)?.name || humanize(String(id || ''));
   switch (step.type) {
     case 'say':
-      return speech(step.text) ? `says “${clip(speech(step.text), 40)}”` : 'says a line';
+      return speech(step.text, config) ? `says “${clip(speech(step.text, config), 40)}”` : 'says a line';
     case 'generate':
       return 'says something it writes';
     case 'end_call':
-      return speech(step.say) ? `says “${clip(speech(step.say), 40)}” and hangs up` : 'hangs up';
+      return speech(step.say, config) ? `says “${clip(speech(step.say, config), 40)}” and hangs up` : 'hangs up';
     case 'transfer':
       return 'passes the call on';
     case 'handoff':

@@ -30,7 +30,8 @@ const STATUS = { active: { text: 'Active', tone: 'good' }, invited: { text: 'Inv
 // Who works in this workspace and on which agents (an agent's "Share" panel makes the same choice).
 //   agents: [{ id, name }]
 //   agentsLoaded: false while the list is still being read (so nobody is dropped from it)
-export default function TeamPage({ agents, agentsLoaded = true, workspaceName }) {
+//   existingIds: every agent the server has (hidden ones too); access goes only with an agent that is really gone
+export default function TeamPage({ agents, agentsLoaded = true, existingIds = null, workspaceName }) {
   const { members, update } = useTeam();
   const [panel, setPanel] = useState(null); // { mode: 'invite' } | { mode: 'edit', id }
   const [query, setQuery] = useState('');
@@ -41,16 +42,17 @@ export default function TeamPage({ agents, agentsLoaded = true, workspaceName })
   const me = members.find((m) => m.role === 'owner');
 
   // an agent that is gone takes the access to it away (only once the list of agents has been read)
+  const keep = existingIds || agents.map((a) => a.id);
+  const keepKey = keep.join('\n');
   useEffect(() => {
-    if (agentsLoaded && agents.length > 0)
+    if (agentsLoaded && keep.length > 0)
       update((list) => {
-        const next = pruneScopes(
-          list,
-          agents.map((a) => a.id),
-        );
+        const next = pruneScopes(list, keep);
         return JSON.stringify(next) === JSON.stringify(list) ? list : next;
       });
-  }, [agentsLoaded, agents, update]);
+    // keepKey stands for keep (a new array every draw)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentsLoaded, keepKey, update]);
 
   const shown = useMemo(
     () =>

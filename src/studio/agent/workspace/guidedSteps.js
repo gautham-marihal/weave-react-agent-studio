@@ -157,11 +157,15 @@ function stepState(id, config) {
     }
     case 'guardrails': {
       const topics = topicsOf(config);
-      const moments = Object.values(momentsOf(config)).filter((m) => m?.on).length;
+      // the moments that pass a caller to a person, and the one that ends the call (not a hand-over)
+      const on = Object.entries(momentsOf(config)).filter(([, m]) => m?.on);
+      const handOvers = on.filter(([id]) => id !== 'abusive_end').length;
+      const ends = on.some(([id]) => id === 'abusive_end');
       const parts = [
         topics.allowed.length && `keeps to ${plural(topics.allowed.length, 'topic')}`,
         topics.blocked.length && `avoids ${plural(topics.blocked.length, 'topic')}`,
-        moments && plural(moments, 'hand-over rule'),
+        handOvers && plural(handOvers, 'hand-over rule'),
+        ends && 'ends abusive calls',
       ].filter(Boolean);
       return parts.length ? { state: 'done', answer: upper(parts.join(' · ')) } : { state: 'optional', answer: 'Nothing set · optional' };
     }

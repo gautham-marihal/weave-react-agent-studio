@@ -489,9 +489,12 @@ try {
   // ---- 3. Build: the steps it runs as it takes over, with the Pictures group and "Only when…"
   await page.evaluate((id) => (location.hash = `#/bots/${id}/subagents`), BOT);
   await page.waitForSelector('.dtPart', { timeout: 15000 });
-  // "On taking over, it first…" is folded under the card's Advanced, and opens in place with Edit
+  // Subagents opens on "Who answers"; the cards with "On taking over, it first…" are under All settings, where every
+  // Advanced fold starts open
+  await page.locator('.apSeg').getByRole('button', { name: 'All settings', exact: true }).click();
   const fold = page.locator('details.dtAdv').filter({ hasText: 'On taking over' }).first();
-  await fold.locator('summary').click();
+  await fold.waitFor({ timeout: 15000 });
+  if (!(await fold.evaluate((d) => d.open))) await fold.locator('summary').click();
   // a short list opens with Edit; a longer one shows its steps as cards, with Edit all the steps under them
   await fold.getByRole('button', { name: /^(Edit|Edit all the steps|Set it) On taking over/ }).click();
   const ask = page.locator('.psAsk').first();

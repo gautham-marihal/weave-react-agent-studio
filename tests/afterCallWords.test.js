@@ -68,7 +68,8 @@ test('closing a call: how long it waits, what then, and whether anything starts 
   assert.deepEqual([c.waitWords, c.then, c.started], ['10 seconds', 'says “Goodbye” and hangs up', false]);
   const started = { ...full(), events: [{ on: 'call_started', do: [{ type: 'wrapup', wrapup: 'closing' }] }] };
   assert.equal(closingOf(started).started, true);
-  assert.equal(stepWords({ type: 'end_call', say: { message: 'Bye now' } }), 'says “Bye now” and hangs up');
+  // a fixed line is told by its words, not its id
+  assert.equal(stepWords({ type: 'end_call', say: { message: 'bye' } }, { messages: [{ id: 'bye', text: 'Bye now' }] }), 'says “Bye now” and hangs up');
   assert.equal(stepWords({ type: 'handoff', to: 'billing' }, { agents: { items: [{ id: 'billing', name: 'Billing desk' }] } }), 'hands over to Billing desk');
 });
 

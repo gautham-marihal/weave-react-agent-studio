@@ -364,8 +364,19 @@ export const UNBOUND_ROUTES = [
     'POST',
     '/unbound/accounts',
     async (_, body) => {
-      const offer = OFFERS.find((o) => o.id === text(body.plan_id) || o.name.toLowerCase() === text(body.plan_name).toLowerCase());
+      // the account by its id or its name, however a model writes it ("Private Wealth Account", "private_wealth_account")
+      const slug = (v) =>
+        text(v)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_|_$/g, '');
+      const asked = [slug(body.plan_id), slug(body.plan_name)].filter(Boolean);
+      const offer = OFFERS.find((o) => asked.includes(o.id) || asked.includes(slug(o.name)));
       if (!offer) return bad(`Say the plan: ${OFFERS.map((o) => o.name).join(', ')}.`);
+      // an account the deposit doesn't qualify for (the offers list only those it does) is refused
+      const amount = amountOf(body.amount);
+      if (amount && amount < offer.min_amount)
+        return bad(`The ${offer.name} needs a deposit of at least ${text(body.currency).toUpperCase() || 'SGD'} ${offer.min_amount.toLocaleString('en-US')}.`);
       if (body.signed !== true && text(body.signed).toLowerCase() !== 'true') return bad('The customer has not signed yet (signed: true).');
       const application = await store.get('applications', text(body.application_id));
       const account = {

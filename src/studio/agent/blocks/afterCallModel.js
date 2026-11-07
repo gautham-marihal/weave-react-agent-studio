@@ -203,8 +203,11 @@ export function setRedaction(config, change) {
       if (first.length) redaction.entities = known.filter((id) => first.includes(id));
     }
     if (change.entities !== undefined) {
+      // the studio's kinds in their usual order, then any other kind ticked (the server's own list, or one written by
+      // hand), so nothing chosen is dropped
       const known = SENSITIVE.map(([id]) => id);
-      const entities = known.filter((id) => change.entities.includes(id));
+      const given = [...new Set(list(change.entities).filter((id) => typeof id === 'string' && id))];
+      const entities = [...known.filter((id) => given.includes(id)), ...given.filter((id) => !known.includes(id))];
       if (entities.length) redaction.entities = entities;
       else delete redaction.entities;
     }

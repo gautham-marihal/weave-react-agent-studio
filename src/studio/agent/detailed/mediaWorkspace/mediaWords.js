@@ -13,6 +13,7 @@ import { channelGap } from '../../../pictures/pictureSteps.js';
 import { STRICTNESS_WORDS, strictnessOf } from '../../../pictures/strictness.js';
 import { channelName } from '../../../simple/simpleModel.js';
 import { DEFAULT_ACCEPT, DEFAULT_MAX_BYTES } from '../../../../demo/simulatedPictures.js';
+import { lineOf } from '../../../form/speechLine.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -20,7 +21,8 @@ const str = (v) => (typeof v === 'string' ? v.trim() : '');
 const clip = (t, n = 48) => (t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t);
 export const together = (words, last = 'and') => (words.length > 1 ? `${words.slice(0, -1).join(', ')} ${last} ${words.at(-1)}` : words[0] || '');
 export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-const speech = (v) => (typeof v === 'string' ? v : str(v?.message));
+// a line's words, a fixed line's too
+const speech = (v, config) => lineOf(config, v).text;
 export const WEB = new Set(['web_chat', 'web_voice']);
 
 // "2 minutes", "45 seconds"
@@ -187,7 +189,11 @@ export function stepsIn(config) {
           picky,
           pickyWord,
           words: kind === 'camera' ? 'Camera' : 'Upload',
-          more: [speech(s.prompt) ? `“${clip(speech(s.prompt), 44)}”` : '', pickyWord, timeWords(typeof s.timeout_s === 'number' ? s.timeout_s : 120)]
+          more: [
+            speech(s.prompt, config) ? `“${clip(speech(s.prompt, config), 44)}”` : '',
+            pickyWord,
+            timeWords(typeof s.timeout_s === 'number' ? s.timeout_s : 120),
+          ]
             .filter(Boolean)
             .join(' · '),
           gap: !str(s.into)

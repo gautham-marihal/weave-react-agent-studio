@@ -169,3 +169,20 @@ test('an agent’s Share panel lists who can open it, and shares only that agent
   assert.equal(list().length, 1, 'someone who had only this agent leaves the team');
   await app.unmount();
 });
+
+test('a person whose only agent is hidden from the list (not deleted) keeps their access', async () => {
+  // this test's team: the owner, and Marco on agent "c" only
+  const key = Object.keys(window.sessionStorage).includes('weave_team_active') ? `weave_team_${window.sessionStorage.getItem('weave_team_active')}` : '';
+  assert.ok(key, 'the open team');
+  const team = JSON.parse(window.localStorage.getItem(key));
+  team.members.push({ id: 'marco', email: 'marco@x.com', name: 'Marco', role: 'editor', scope: { agents: ['c'] }, status: 'active', invitedBy: '', at: 1 });
+  window.localStorage.setItem(key, JSON.stringify(team));
+  // "c" is hidden: the list shows a and b, but the server still has all three
+  const app = await mountScreen('team', config(), { ready: '.tmPage', props: { agents: AGENTS.slice(0, 2), existingIds: ['a', 'b', 'c'] } });
+  await app.wait(50);
+  assert.ok(
+    JSON.parse(window.localStorage.getItem(key)).members.some((m) => m.email === 'marco@x.com'),
+    'Marco is still on the team',
+  );
+  await app.unmount();
+});

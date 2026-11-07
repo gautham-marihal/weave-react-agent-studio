@@ -75,7 +75,9 @@ export function channelPictures(config) {
   return (Array.isArray(config?.channels) ? config.channels : []).map((channel, index) => {
     const input = Array.isArray(channel?.modalities?.input) ? channel.modalities.input : [];
     const web = isObj(channel) && WEB.has(channel.type);
-    return { index, channel, web, on: channel?.enabled !== false, photo: web && input.includes('image'), camera: web && input.includes('video') };
+    // the camera: the channel takes video, and its camera isn't switched off (`inputs.video.camera: false`)
+    const camera = web && input.includes('video') && channel?.inputs?.video?.camera !== false;
+    return { index, channel, web, on: channel?.enabled !== false, photo: web && input.includes('image'), camera };
   });
 }
 

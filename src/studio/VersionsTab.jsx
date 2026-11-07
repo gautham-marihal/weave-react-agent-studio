@@ -7,7 +7,7 @@ import { formatDiffPath, formatWhen, truncate } from './format.js';
 import { navigate, routeHref } from './route.js';
 import { ErrorState, Modal, Notice, Spinner } from './ui.jsx';
 import { useAsync } from './useAsync.js';
-import { isFinished, normalizeHeadline, testStatusOf } from './scenarios/runResults.js';
+import { isDraftRun, isFinished, normalizeHeadline, testStatusOf } from './scenarios/runResults.js';
 import ShipFlow from './release/ShipFlow.jsx';
 import { shipSteps } from './release/shipFlow.js';
 import { readinessSteps, stepRoute } from './agent/readiness.js';
@@ -231,7 +231,10 @@ export default function VersionsTab({ botId, editor, refreshKey, summary, knowle
   // where the draft stands on the way to callers: saved, valid, tested, published, deployed
   const latest = useLatestPublished(botId, refreshKey);
   const [gateOn] = useGate(botId);
-  const latestRun = useMemo(() => (Array.isArray(runs.data) ? headlines.find((run) => isFinished(run.status)) || null : undefined), [runs.data, headlines]);
+  const latestRun = useMemo(
+    () => (Array.isArray(runs.data) ? headlines.find((run) => isFinished(run.status) && isDraftRun(run)) || null : undefined),
+    [runs.data, headlines],
+  );
   const flow = useMemo(() => {
     const draft = editor.parsed.value;
     const pub = latest.published;

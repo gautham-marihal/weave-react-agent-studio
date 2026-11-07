@@ -531,25 +531,28 @@ function layout(nodes, edges, { entry, saved }) {
     const rowH = plugs.length ? Math.max(...plugs.map((p) => p.h)) : 0;
     return { w: Math.max(n.w, rowW), h: n.h + (plugs.length ? GAP.plug + rowH : 0), rowW };
   };
+  // dagre keeps nodes in plain objects, so a name like "constructor" collides with the object's own: every name it
+  // sees has a prefix (`dn`), never an id as it is
+  const dn = (id) => `n:${id}`;
   const g = new dagre.graphlib.Graph({ multigraph: true });
   g.setGraph({ rankdir: 'LR', nodesep: 30, ranksep: 70, edgesep: 18, marginx: PAD, marginy: PAD });
   g.setDefaultEdgeLabel(() => ({}));
   const main = nodes.filter((n) => n.role !== 'plug');
   main.forEach((n) => {
     const b = box(n);
-    g.setNode(n.id, { width: b.w, height: b.h });
+    g.setNode(dn(n.id), { width: b.w, height: b.h });
   });
   drawn.forEach((e) => {
     const words = e.missing ? 'Say when' : e.label && e.kind !== 'start' ? e.full || e.label : '';
     const lb = words ? labelBox(words) : null;
-    g.setEdge(e.from, e.to, lb ? { width: lb.width, height: lb.height, labelpos: 'c' } : {}, e.id);
+    g.setEdge(dn(e.from), dn(e.to), lb ? { width: lb.width, height: lb.height, labelpos: 'c' } : {}, `e:${e.id}`);
   });
   dagre.layout(g);
   // each line on its own lane between the columns, which move apart where the lanes need room (edgeLanes.js)
   const lanes = planLanes(
     new Map(
       main.map((n) => {
-        const at = g.node(n.id);
+        const at = g.node(dn(n.id));
         const b = box(n);
         const top = Math.round(at.y - b.h / 2);
         const inset = Math.min(PORT_INSET, n.h / 2);
@@ -557,7 +560,7 @@ function layout(nodes, edges, { entry, saved }) {
       }),
     ),
     drawn.map((e) => {
-      const route = g.edge({ v: e.from, w: e.to, name: e.id }) || {};
+      const route = g.edge({ v: dn(e.from), w: dn(e.to), name: `e:${e.id}` }) || {};
       const label = route.x !== undefined && route.width ? { x: route.x, y: route.y, w: route.width } : null;
       return { id: e.id, from: e.from, to: e.to, via: (route.points || []).slice(1, -1), label };
     }),
@@ -566,7 +569,7 @@ function layout(nodes, edges, { entry, saved }) {
   // the places the layout gives: a subagent at the top of its place, what it uses in a row under it
   const defaults = new Map();
   main.forEach((n) => {
-    const at = g.node(n.id);
+    const at = g.node(dn(n.id));
     const b = box(n);
     const left = Math.round(at.x + lanes.shift.get(n.id) - b.w / 2);
     const top = Math.round(at.y - b.h / 2);

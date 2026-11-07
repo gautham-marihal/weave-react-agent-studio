@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IMAGE_TOPIC } from '../pictures/pictureProtocol.js';
+import { DEFAULT_ACCEPT, DEFAULT_MAX_BYTES } from '../../demo/simulatedPictures.js';
 
 // Speaking to the simulated agent: the browser's own speech recognition types into the message box (the studio uploads
 // nothing). Without it, `supported` is false and the button says so. The real agent hears the microphone itself.
-export function useDictation(onText) {
+//   lang: the language to hear (the agent's own, so a Japanese agent is spoken to in Japanese); else the page's
+export function useDictation(onText, lang = '') {
   const Recognition = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : undefined;
   const [listening, setListening] = useState(false);
   const [error, setError] = useState('');
@@ -34,7 +36,7 @@ export function useDictation(onText) {
     if (!Recognition) return;
     setError('');
     const rec = new Recognition();
-    rec.lang = document.documentElement.lang || navigator.language || 'en-US';
+    rec.lang = lang || document.documentElement.lang || navigator.language || 'en-US';
     rec.interimResults = true;
     rec.continuous = false;
     rec.onresult = (event) => {
@@ -56,7 +58,7 @@ export function useDictation(onText) {
     } catch {
       setListening(false);
     }
-  }, [Recognition]);
+  }, [Recognition, lang]);
   useEffect(
     () => () => {
       try {
@@ -84,9 +86,15 @@ export function inputCapabilities(config, sessionChannel) {
     channel,
     inputs,
     voice: inputs.includes('audio'),
-    video: inputs.includes('video'),
+    // the camera: the channel takes video, and its camera isn't switched off (`inputs.video.camera: false`)
+    video: inputs.includes('video') && channel?.inputs?.video?.camera !== false,
     image: image
-      ? { acceptedMime: Array.isArray(image.accepted_mime) ? image.accepted_mime : [], maxBytes: image.max_bytes || 0, topic: image.topic || IMAGE_TOPIC }
+      ? // unset, the same kinds and size the Media page says a channel takes (simulatedPictures.js)
+        {
+          acceptedMime: Array.isArray(image.accepted_mime) && image.accepted_mime.length ? image.accepted_mime : DEFAULT_ACCEPT,
+          maxBytes: image.max_bytes || DEFAULT_MAX_BYTES,
+          topic: image.topic || IMAGE_TOPIC,
+        }
       : null,
   };
 }

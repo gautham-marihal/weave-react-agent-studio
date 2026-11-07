@@ -337,9 +337,15 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
     },
     [config, editor],
   );
+  // a step's block is known by its place ("agent::enter::1"): after an undo or redo that place may hold another step, so
+  // the selection goes back to its agent rather than jumping to whatever step is there now
+  const keepSelection = () => {
+    if (selected?.type === 'node' && String(selected.id).includes('::enter::')) setSelected({ type: 'node', id: String(selected.id).split('::enter::')[0] });
+  };
   const undo = () => {
     const prev = hist.past[hist.past.length - 1];
     if (!prev) return;
+    keepSelection();
     setHist({ past: hist.past.slice(0, -1), future: [config, ...hist.future] });
     lastApplied.current = JSON.stringify(prev);
     lastGroup.current = { group: '', at: 0 };
@@ -348,6 +354,7 @@ export default function WorkflowTab({ editor, botId, onShowSetting = null, onSho
   const redo = () => {
     const [next, ...rest] = hist.future;
     if (!next) return;
+    keepSelection();
     setHist({ past: [...hist.past, config], future: rest });
     lastApplied.current = JSON.stringify(next);
     lastGroup.current = { group: '', at: 0 };

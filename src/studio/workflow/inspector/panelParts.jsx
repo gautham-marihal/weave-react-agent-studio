@@ -4,6 +4,7 @@ import { isObj } from '../../form/engine.js';
 import { getAt } from '../../form/inlineCreate.js';
 import { formatPath } from '../../format.js';
 import { speechText } from '../../../demo/simulatedAgent.js';
+import { fixedLineNote, lineOf, setLine } from '../../form/speechLine.js';
 import { PartPanel, PartRow, Parts } from '../../../ui/Parts.tsx';
 import Tip from '../../../ui/Tip.tsx';
 import Button from '../../../ui/Button.tsx';
@@ -67,12 +68,37 @@ export function Where() {
 // A line it says, which may be one of the agent's fixed lines: typing here makes it its own words (the fixed line stays
 // as it is wherever else it is said).
 //   required: the warning shown while the box is empty, since the settings need at least one letter there
-export function LineField({ id, label, value, config, onChange, hint, placeholder, rows = 3, required = '' }) {
+// A line it says. One of its fixed lines ({ message }) shows its words and, given where it is kept (`path`) and how to
+// write the whole config (`apply`), changes that line's own words, as every page does (form/speechLine.js): its
+// translations and the link stay, and the field says how many places use it.
+export function LineField({
+  id,
+  label,
+  value,
+  config,
+  onChange,
+  hint,
+  placeholder,
+  rows = 3,
+  required = '',
+  path = null,
+  apply = null,
+  group = '',
+  keepEmpty = false,
+}) {
   const fixed = isObj(value);
   const words = typeof value === 'string' ? value : fixed ? speechText(value, config) : '';
+  const inPlace = fixed && path && apply && lineOf(config, value).at >= 0;
+  // emptied, the line goes from this place only (the fixed line stays for the others)
+  const change = inPlace ? (v) => apply(setLine(config, path, v, { keepEmpty }), { group }) : onChange;
+  const note = inPlace
+    ? fixedLineNote(config, value)
+    : fixed
+      ? 'One of its fixed lines. Typing here makes it its own words; the fixed line stays as it is.'
+      : hint;
   return (
-    <Field label={label} id={id} hint={fixed ? 'One of its fixed lines. Typing here makes it its own words; the fixed line stays as it is.' : hint}>
-      <Text id={id} multiline rows={rows} value={words} placeholder={placeholder} onChange={onChange} />
+    <Field label={label} id={id} hint={note}>
+      <Text id={id} multiline rows={rows} value={words} placeholder={placeholder} onChange={change} />
       {required && !words.trim() && <p className="wfWarnText">{required}</p>}
     </Field>
   );

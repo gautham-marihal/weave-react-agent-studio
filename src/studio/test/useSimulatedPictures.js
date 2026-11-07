@@ -1,24 +1,27 @@
-import { useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { applyUiMessage, fileKey, readUiMessage, rejectedShort, REJECTED_WORDS, uploadProblem } from '../pictures/pictureProtocol.js';
 import { measureFile, measureFrame } from '../pictures/measure.js';
-import { compareValues, conditionHolds, findPictureFlows, flowStartsOn, qualityVerdict, requestMessage } from '../../demo/simulatedPictures.js';
+import { channelRefuses, compareValues, conditionHolds, findPictureFlows, flowStartsOn, qualityVerdict, requestMessage } from '../../demo/simulatedPictures.js';
 
 // The picture steps of a SIMULATED conversation (useSimulatedSession): a configuration's "Ask for a picture" opens the
 // same card a real call does, a chosen photo or the camera's frames are measured here as the runtime measures them, and
 // each step leaves the record a real call has (image, image_analysis, compare), so the call view can be tried too.
 // Honest about what it can't do: nothing reads what is on a picture, so "Read a picture" leaves its values empty.
 //   push(message), addRecord(event, fields), log(text), later(fn, ms): the session's own
-//   agent(): the simulated agent (state, say, setState, end)
+//   agent(): the simulated agent (state, say, setState, end, act)
 //   onEnded(): the steps ended the call
+//   onAct(out, wait): what the agent did for a step that isn't a picture's (its lines, notes, a form), shown after
+//   `wait`; returns the wait after them
 
 const THINK_MS = 380;
 const FRAMES = 5; // the runtime keeps the sharpest of about five frames over a second
 const QUIET_SMALL = 2; // and retries quietly while a starting camera is still small
 
-export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnded }) {
+export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnded, onAct }) {
   const [picture, setPicture] = useState(null);
   const [cameraOn, setCameraOn] = useState(false);
   const pictureRef = useRef(null);
+  const lastKindRef = useRef(null); // the kind of the picture request that ended last (a camera's retake is known by it)
   const waitingRef = useRef(null); // { actions, next, action }: where the steps carry on once the picture is in
   const flowsRef = useRef([]); // the configuration's picture flows (findPictureFlows), each run once
   const ranRef = useRef(new Set());
@@ -27,6 +30,9 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
   const timeoutRef = useRef(0);
   const cameraTimerRef = useRef(0);
   const streamRef = useRef(null);
+  // each time the camera is asked for; anything that turns it off (or ends the conversation, or leaves) moves it on, so a
+  // camera the browser hands over late (after its permission prompt) is stopped at once instead of left on
+  const cameraAskRef = useRef(0);
   const videoRef = useRef(null);
   const heldRef = useRef(new Set()); // picture ids held in the call's memory
   const sentRef = useRef(new Set());
@@ -38,7 +44,10 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
   const tell = useCallback(
     (packet) => {
       const message = readUiMessage(packet);
-      const { request, done } = applyUiMessage(pictureRef.current, message);
+      const before = pictureRef.current;
+      const { request, done } = applyUiMessage(before, message, Date.now(), lastKindRef.current);
+      if (done) lastKindRef.current = done.kind;
+      else if (before && request && request.id !== before.id) lastKindRef.current = before.kind;
       pictureRef.current = request;
       setPicture(request);
       if (done) push({ role: 'picture', text: '', picture: { kind: done.kind, status: done.status, sent: done.sent } });
@@ -47,6 +56,7 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
   );
 
   const stopCamera = useCallback(() => {
+    cameraAskRef.current += 1;
     window.clearTimeout(cameraTimerRef.current);
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -83,7 +93,21 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
             countRef.current += 1;
             const id = `sim_${countRef.current}`;
             if (action.into) sim.setState({ [action.into]: null }); // emptied first, so a retry never sees the last picture
-            const packet = requestMessage(action, channelRef.current, id);
+            // a channel that can't take it: refused, as the runtime refuses it, and nothing is shown or asked of the camera
+            const refused = channelRefuses(action.kind === 'camera' ? 'camera' : 'upload', channelRef.current);
+            if (refused) {
+              later(
+                () => {
+                  addRecord('image', { step: 'request_ended', request_id: id, status: 'not_accepted', simulated: true });
+                  push({ role: 'system', text: `Simulated: the agent can’t ask for ${action.kind === 'camera' ? 'the camera' : 'a photo'} here: ${refused}.` });
+                  // "If nothing comes in time" runs instead of carrying on; without it, the steps stop here
+                  if (Array.isArray(action.on_timeout) && action.on_timeout.length) runSteps(action.on_timeout, 0, 0);
+                },
+                (wait += THINK_MS),
+              );
+              return;
+            }
+            const packet = requestMessage(action, channelRef.current, id, (speech) => sim.say(speech));
             waitingRef.current = { actions: steps, next: i + 1, action, id };
             later(() => {
               addRecord('image', {
@@ -166,12 +190,27 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
             later(() => onEnded(), wait + THINK_MS);
             return;
           }
-          default:
-            log(`Simulated: the step “${action.type}” is not run in a simulation`);
+          default: {
+            // every other step is the agent's own (a form, a hand-over, a transfer…): it runs it, and its lines show
+            const out = typeof sim.act === 'function' ? sim.act([action]) : null;
+            if (!out) {
+              log(`Simulated: the step “${action.type}” is not run in a simulation`);
+              break;
+            }
+            wait = onAct ? onAct(out, wait) : wait;
+            if (out.ended) {
+              later(() => onEnded(), wait + THINK_MS);
+              return;
+            }
+            if (out.steps.length) {
+              runSteps(out.steps, 0, wait);
+              return;
+            }
+          }
         }
       }
     },
-    [addRecord, agent, later, log, onEnded, push, stopCamera, tell],
+    [addRecord, agent, later, log, onEnded, onAct, push, stopCamera, tell],
   );
 
   // A picture is in: kept in the call's memory under a new id, the request ends, and the steps carry on.
@@ -279,8 +318,15 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
         return '';
       }
       if (!navigator.mediaDevices?.getUserMedia) return 'This browser can’t use a camera here.';
+      const ask = (cameraAskRef.current += 1);
       try {
-        streamRef.current = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // turned off, ended or left while the browser asked: this camera isn't wanted any more
+        if (ask !== cameraAskRef.current || !waitingRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return '';
+        }
+        streamRef.current = stream;
         setCameraOn(true);
         cameraTimerRef.current = window.setTimeout(() => takeFrames(), 1200);
         return '';
@@ -301,21 +347,15 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
   }, []);
 
   // ---- the conversation's side
-  // a new conversation: the configuration's picture steps, and those that run as the call starts
-  const begin = useCallback(
-    (config, channel, delay) => {
-      configRef.current = config;
-      channelRef.current = channel;
-      flowsRef.current = findPictureFlows(config);
-      ranRef.current = new Set();
-      const first = flowsRef.current.find((f) => f.start);
-      if (first) {
-        ranRef.current.add(first);
-        runSteps(first.actions, 0, delay);
-      }
-    },
-    [runSteps],
-  );
+  // a new conversation: the configuration's picture steps that a caller's words may start (a tool's or a task's). Those
+  // with a trigger of their own run from it: an agent's as it takes over, a form's once it is sent, a transfer's, an
+  // event's (the session runs them through the agent).
+  const begin = useCallback((config, channel) => {
+    configRef.current = config;
+    channelRef.current = channel;
+    flowsRef.current = findPictureFlows(config).filter((f) => !f.start && ['tools', 'tasks'].includes(f.path[0]));
+    ranRef.current = new Set();
+  }, []);
   // What the caller said starts a picture flow (a tool's or task's): true when it did, so the session doesn't also reply.
   const onSaid = useCallback(
     (text) => {
@@ -337,6 +377,7 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
     if (open) push({ role: 'picture', text: '', picture: { kind: open.kind, status: 'cancelled', sent: open.sent } });
     waitingRef.current = null;
     pictureRef.current = null;
+    lastKindRef.current = null;
     setPicture(null);
     heldRef.current = new Set();
     sentRef.current = new Set();
@@ -344,6 +385,16 @@ export function useSimulatedPictures({ push, addRecord, log, later, agent, onEnd
     thumbsRef.current = [];
   }, [push, stopCamera]);
   const held = useCallback(() => heldRef.current.size, []);
+  // leaving the page: the camera goes off, also one still being asked for
+  useEffect(
+    () => () => {
+      cameraAskRef.current += 1;
+      window.clearTimeout(cameraTimerRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    },
+    [],
+  );
 
-  return { picture, cameraOn, sendImage, pictureCamera, attachCamera, begin, onSaid, reset, held };
+  return { picture, cameraOn, sendImage, pictureCamera, attachCamera, begin, onSaid, reset, held, runSteps };
 }

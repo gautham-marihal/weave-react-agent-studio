@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Icon from '../../ui/Icon.jsx';
 import FocusBox from '../../ui/FocusBox.jsx';
 import Button from '../../ui/Button.tsx';
+import { measureFrame } from './measure.js';
 
-// The large camera view over the page (like a video call), so a face and a card both fit in one frame. Three uses:
+// The large camera view over the page (like a video call), so a face and a card both fit in one frame. Four uses:
+//   VideoAgainStage a camera check's retake: the countdown, then the sharpest of a few frames is sent as the photo
 //   GetReadyStage   before the camera is shared with the agent: a private preview and a short countdown, so the person
 //                   can get their face and the card in view (the agent takes its frames as soon as the camera is shared)
 //   SharedStage     the camera shared with the agent, while it takes its frames
@@ -174,6 +176,119 @@ export function SharedStage({ request, videoRef, note, onOff, timer, privacy }) 
         </span>
       )}
       <span className="pcTip">Hold still: your face and the card side by side, the card close enough to read</span>
+    </Stage>
+  );
+}
+
+// The video check again, for a camera's retake (a photo asked for straight after the camera): the same private
+// preview and countdown as before sharing, then the camera's frames are taken here, the sharpest of a few over about a
+// second (as the runtime takes a camera's), and sent as the photo. The person holds still; there is no shutter to press.
+const FRAMES = 5;
+export function VideoAgainStage({ request, seconds = 5, onSend, onClose, timer, privacy }) {
+  const { videoRef, problem, live } = useLocalCamera();
+  const [left, setLeft] = useState(seconds);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const run = useRef(0);
+  // the sharpest of a few frames, as a JPEG file (not mirrored)
+  const takeFrames = useCallback(async () => {
+    const video = videoRef.current;
+    let best = null;
+    for (let i = 0; i < FRAMES; i += 1) {
+      if (i) await new Promise((done) => window.setTimeout(done, 220));
+      if (!video || !video.videoWidth) continue;
+      const facts = measureFrame(video);
+      if (best && (facts?.sharpness ?? 0) <= best.sharpness) continue;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      best = { canvas, sharpness: facts?.sharpness ?? 0 };
+    }
+    if (!best) return null;
+    const blob = await new Promise((done) => best.canvas.toBlob(done, 'image/jpeg', 0.92));
+    return blob ? new File([blob], `camera-video-${Date.now()}.jpg`, { type: 'image/jpeg' }) : null;
+  }, [videoRef]);
+  const go = useCallback(async () => {
+    const mine = (run.current += 1);
+    setBusy(true);
+    setNote('');
+    const file = await takeFrames();
+    if (mine !== run.current) return;
+    if (!file) {
+      setBusy(false);
+      setNote('No picture came from the camera. Try again.');
+      return;
+    }
+    const why = await onSend(file);
+    if (mine !== run.current) return;
+    setBusy(false);
+    if (why) {
+      setNote(why);
+      setLeft(seconds); // another go, after the countdown again
+    } else onClose();
+  }, [onClose, onSend, seconds, takeFrames]);
+  useEffect(() => {
+    if (!live || busy || note) return undefined;
+    if (left <= 0) {
+      go();
+      return undefined;
+    }
+    const id = window.setTimeout(() => setLeft((n) => n - 1), 1000);
+    return () => window.clearTimeout(id);
+  }, [live, left, busy, note, go]);
+  // leaving stops a go still running from sending
+  useEffect(() => () => (run.current += 1), []);
+  return (
+    <Stage
+      label="Try again with video"
+      title="Try again with video: your face and the card in view"
+      line={request.prompt || 'Hold the card beside your face, close enough to read'}
+      timer={timer}
+      note={problem || note}
+      privacy={`${PREVIEW_NOTE} the countdown ends. ${privacy}`}
+      onClose={onClose}
+      actions={
+        <>
+          <Button type="button" size="compact" onClick={onClose}>
+            Cancel
+          </Button>
+          {note ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="compact"
+              className="pcStageMain"
+              onClick={() => {
+                setNote('');
+                setLeft(seconds);
+              }}
+            >
+              <Icon name="camera" size={15} />
+              Try again
+            </Button>
+          ) : (
+            <Button type="button" variant="primary" size="compact" className="pcStageMain" onClick={go} disabled={!live || busy}>
+              <Icon name="camera" size={15} />
+              {busy ? 'Taking the picture…' : 'Take it now'}
+            </Button>
+          )}
+        </>
+      }
+    >
+      <video ref={videoRef} autoPlay muted playsInline aria-label="Your camera preview" />
+      {live && !busy && !note && (
+        <span className="pcReady" role="status">
+          <span className="srOnly">The picture is taken in {seconds} seconds.</span>
+          <b aria-hidden="true">{left}</b>
+          <small aria-hidden="true">Hold still: taking the picture in {left}…</small>
+        </span>
+      )}
+      {request.rejection && (
+        <span className="pcToast" role="alert">
+          {request.rejection.message}
+        </span>
+      )}
     </Stage>
   );
 }

@@ -114,6 +114,17 @@ export function normalizeHeadline(raw) {
   };
 }
 
+// The draft's latest test run: the newest finished run of its SAVED scenarios (ref "draft"; a server that doesn't say
+// the ref is believed). A run of unsaved edits, or of Simulated callers (both "unsaved"), says nothing about the draft.
+export const isDraftRun = (run) => !run.ref || run.ref === 'draft';
+export function latestDraftRun(rawRuns) {
+  return (
+    list(rawRuns)
+      .map(normalizeHeadline)
+      .find((run) => isFinished(run.status) && isDraftRun(run)) || null
+  );
+}
+
 // `GET /tests`: each scenario with its last result, which may sit under `last`, `last_result` or `result`.
 export function normalizeScenarioList(raw) {
   const items = list(raw?.scenarios);

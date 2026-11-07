@@ -74,6 +74,24 @@ test('use case 1, end to end through the stand-ins: offers → application → f
     400,
     'not signed',
   );
+  // the account chosen by its id, as the offers give it, is refused for a deposit it doesn't suit
+  const tooSmall = await call('POST', '/unbound/accounts', {
+    application_id: app.application_id,
+    plan_id: 'private_wealth',
+    amount: '200000',
+    currency: 'SGD',
+    signed: 'true',
+  });
+  assert.equal(tooSmall.status, 400);
+  // a name written as an id by a model is still that account
+  const asId = await call('POST', '/unbound/accounts', {
+    application_id: app.application_id,
+    plan_name: 'private_wealth_account',
+    amount: '200000',
+    signed: 'true',
+  });
+  assert.match(asId.body.reason, /Private Wealth Account needs a deposit/);
+  assert.match(tooSmall.body.reason, /needs a deposit of at least SGD 1,000,000/);
   const opened = (await call('POST', '/unbound/accounts', { application_id: app.application_id, plan_name: 'Private Wealth Account', signed: 'true' })).body;
   assert.equal(opened.relationship_manager, 'Daniel Lim');
   assert.equal(opened.proof_needed, 'the grant of probate or letters of administration', 'the due diligence carries over from the application');

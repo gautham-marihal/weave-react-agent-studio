@@ -42,7 +42,7 @@ export default function ToolPage({ ctx, form, toolKey, onBack, onTry }) {
       </div>
     );
   const tool = (Array.isArray(ctx.config.tools) ? ctx.config.tools : []).find((t) => t && t.id === entry.key) || entry.item || {};
-  const info = toolsOf(ctx.config).find((t) => t.id === entry.key);
+  const info = toolsOf(ctx.config, ctx.editor?.report?.unsupported).find((t) => t.id === entry.key);
   const steps = stepsOf(ctx.config, entry.key);
   const http = tool.type === 'http';
   const s = { open, setOpen, rows, ctx, partId: 'tools' };
@@ -111,6 +111,8 @@ export default function ToolPage({ ctx, form, toolKey, onBack, onTry }) {
 
       {STEPS.map((layout, i) => {
         const step = steps[i];
+        // (no steps for something that isn't a tool: nothing to draw)
+        if (!step) return null;
         const ids = idsOf(layout);
         const sub = layout.sub ? (layout.key === 'fails' && !http ? '' : layout.sub) : SUB[layout.key]?.(http) || '';
         return (

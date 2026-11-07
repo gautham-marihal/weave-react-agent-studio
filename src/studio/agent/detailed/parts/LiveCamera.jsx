@@ -4,10 +4,15 @@ import Button from '../../../../ui/Button.tsx';
 import { measureFrame } from '../../../pictures/measure.js';
 import { STRICTNESS } from '../../../pictures/strictness.js';
 import { pictureSteps } from '../../../pictures/mediaModel.js';
+import { qualityVerdict } from '../../../../demo/simulatedPictures.js';
+
+// what a refusal means, for the line under a check
+const WHY = { too_small: 'too small', too_blurry: 'too blurred', too_dark: 'too dark', too_bright: 'too bright' };
 
 // The camera, as a customer's video check sees it: the person's own camera, live and large, with the numbers the server
-// measures on a frame (sharpness and brightness) beside the bar each video check holds it to. Nothing is recorded or
-// sent: the picture stays in this browser and the camera is switched off on leaving.
+// measures on a frame (size, sharpness and brightness) beside each video check's whole standard, judged the way the
+// runtime judges it (qualityVerdict). Nothing is recorded or sent: the picture stays in this browser and the camera is
+// switched off on leaving.
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
@@ -54,10 +59,8 @@ export default function LiveCamera({ ctx }) {
   // the bars the agent's own video checks set, else the standard one
   const checks = pictureSteps(ctx.config)
     .filter((h) => h.step.type === 'request_image' && h.step.kind === 'camera')
-    .map((h) => ({ into: h.step.into, sharp: h.step.quality?.min_sharpness, bright: h.step.quality?.min_brightness }));
-  const bars = checks.length
-    ? checks
-    : [{ into: 'the standard check', sharp: STRICTNESS.camera.standard.min_sharpness, bright: STRICTNESS.camera.standard.min_brightness }];
+    .map((h) => ({ into: h.step.into, quality: isObj(h.step.quality) ? h.step.quality : {} }));
+  const bars = checks.length ? checks : [{ into: 'the standard check', quality: STRICTNESS.camera.standard }];
   const sharp = numbers ? Math.round(numbers.sharpness) : null;
   const bright = numbers ? Math.round(numbers.brightness) : null;
 
@@ -99,22 +102,29 @@ export default function LiveCamera({ ctx }) {
             <dd>{sharp ?? '—'}</dd>
             <dt>Brightness</dt>
             <dd>{bright === null ? '—' : `${bright} of 255`}</dd>
+            <dt>Size</dt>
+            <dd>{numbers ? `${numbers.width} × ${numbers.height} px` : '—'}</dd>
           </dl>
         </div>
         <div className="cnField">
           <span className="cnLabel">{checks.length ? 'Its video checks' : 'The standard video check'}</span>
           <ul className="mvChecks">
             {bars.map((b, i) => {
-              const okSharp = sharp === null || typeof b.sharp !== 'number' || sharp >= b.sharp;
-              const okBright = bright === null || typeof b.bright !== 'number' || bright >= b.bright;
-              const ok = okSharp && okBright;
+              const q = b.quality;
+              // the whole standard, as the runtime checks a frame: its size, sharpness and brightness
+              const code = numbers ? qualityVerdict(q, numbers) : '';
+              const asks = [
+                typeof q.min_dimension === 'number' && `at least ${q.min_dimension} px`,
+                `sharpness ${typeof q.min_sharpness === 'number' ? q.min_sharpness : 'not checked'}`,
+                typeof q.min_brightness === 'number' && `brightness ${q.min_brightness}`,
+                typeof q.max_brightness === 'number' && `at most ${q.max_brightness} bright`,
+              ].filter(Boolean);
               return (
-                <li key={`${b.into}-${i}`} className={sharp === null ? '' : ok ? 'good' : 'bad'}>
-                  <Icon name={sharp === null ? 'camera' : ok ? 'check' : 'close'} size={12} />
+                <li key={`${b.into}-${i}`} className={numbers ? (code ? 'bad' : 'good') : ''}>
+                  <Icon name={!numbers ? 'camera' : code ? 'close' : 'check'} size={12} />
                   <span>
-                    {isObj(b) && b.into ? `Kept as ${b.into}` : ''}: sharpness {typeof b.sharp === 'number' ? b.sharp : 'not checked'}
-                    {typeof b.bright === 'number' ? `, brightness ${b.bright}` : ''}
-                    {sharp === null ? '' : ok ? ' · this frame passes' : ` · this frame is ${!okSharp ? 'too blurred' : 'too dark'}`}
+                    {b.into ? `Kept as ${b.into}` : ''}: {asks.join(', ')}
+                    {!numbers ? '' : code ? ` · this frame is ${WHY[code] || 'refused'}` : ' · this frame passes'}
                   </span>
                 </li>
               );

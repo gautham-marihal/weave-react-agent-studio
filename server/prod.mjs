@@ -53,6 +53,17 @@ const TYPES = {
 // /api/… → the Agent Builder API, streamed both ways
 function forward(req, res) {
   const path = req.url.replace(/^\/api/, '') || '/';
+  // a ".." step (plain or encoded) could reach paths above the API's own base on the same host: refused
+  let decoded;
+  try {
+    decoded = decodeURIComponent(path.split('?')[0]);
+  } catch {
+    decoded = path;
+  }
+  if (/(^|[/\\])\.\.([/\\]|$)/.test(decoded)) {
+    res.writeHead(400, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({ detail: 'That address is not allowed.' }));
+  }
   const headers = { ...req.headers, host: target.host };
   delete headers.authorization;
   if (apiKey) headers.authorization = `Bearer ${apiKey}`;
@@ -68,8 +79,11 @@ function forward(req, res) {
   );
   upstream.on('error', (error) => {
     if (res.headersSent) return res.destroy();
-    res.writeHead(502, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ detail: `The Agent Builder API did not answer (${error.message}).` }));
+    // the reason (with the API's own address) goes to the server's log, never to the browser; an empty 502 is what the
+    // app reads as "the server isn't answering", and a read is tried once more, as with the dev server
+    console.error(`The Agent Builder API did not answer: ${error.message}`);
+    res.writeHead(502);
+    res.end();
   });
   req.pipe(upstream);
 }

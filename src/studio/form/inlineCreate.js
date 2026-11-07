@@ -67,9 +67,21 @@ export function createProblems(collection, answers, config) {
     if (field.required && !value) out[field.key] = 'Required.';
     else if (field.pattern && value && !new RegExp(field.pattern).test(value)) out[field.key] = field.hint ? `Use ${field.hint}.` : 'Not in the right form.';
   });
-  if (collection === 'state_vars' && !out.name && answers.name && isObj(config?.state?.variables) && String(answers.name).trim() in config.state.variables)
+  if (
+    collection === 'state_vars' &&
+    !out.name &&
+    answers.name &&
+    isObj(config?.state?.variables) &&
+    Object.hasOwn(config.state.variables, String(answers.name).trim())
+  )
     out.name = 'That variable already exists.';
-  if (collection === 'http_connections' && !out.name && answers.name && isObj(config?.connections) && String(answers.name).trim() in config.connections)
+  if (
+    collection === 'http_connections' &&
+    !out.name &&
+    answers.name &&
+    isObj(config?.connections) &&
+    Object.hasOwn(config.connections, String(answers.name).trim())
+  )
     out.name = 'That connection already exists.';
   return out;
 }

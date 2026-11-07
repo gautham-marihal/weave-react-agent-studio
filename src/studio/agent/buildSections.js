@@ -10,6 +10,7 @@ import { afterCallOf } from './blocks/afterCallModel.js';
 import { agentLabel } from './rowNames.js';
 import { PAGE_GROUPS } from './pages.js';
 import { aiSeesPictures, channelPictures, pictureCounts } from '../pictures/mediaModel.js';
+import { settingConflicts } from './conflicts.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -51,7 +52,7 @@ function agentPart(config) {
     words(read.role) < 8 && 'what it should do',
     !read.greeting && 'what it says first',
     !read.primaryLanguage && 'its language',
-    read.voiceChannel && !voice && 'its voice',
+    read.voiceChannel && !voice && !readModels(config).realtime?.provider && 'its voice',
   ].filter(Boolean);
   if (missing.length) return { state: 'todo', status: `Still to choose: ${joinAnd(missing)}.` };
   const languages = [...new Set([read.primaryLanguage, ...read.speaks].filter(Boolean).map((c) => languageName(c).replace(/ \(.*\)$/, '')))];
@@ -227,18 +228,28 @@ const BUILD_PAGES = PAGE_GROUPS.find((g) => g.id === 'build').pages;
 // -> [{ id, label, icon, purpose, state: 'done' | 'todo' | 'attention' | 'optional', status }], in the menu's order.
 //   errorsByPage: what the checks found, by page (a page with errors needs attention, whatever it holds)
 //   knowledgeRead: what the server has read of the documents (useKnowledge's data); if absent, documents count as there
+//   settings that don't work together (conflicts.js) mark their part too, saying the first
 export function buildSections({ config, errorsByPage = {}, knowledgeRead = null } = {}) {
   if (!isObj(config)) return [];
+  const conflicts = settingConflicts(config);
   return BUILD_PAGES.map((page) => {
     const part = READERS[page.id](config, knowledgeRead);
     const errors = errorsByPage[page.id] || 0;
+    const clash = conflicts.filter((c) => c.part === page.id);
     return {
       id: page.id,
       label: page.label,
       icon: page.icon,
       purpose: PURPOSE[page.id],
       ...part,
-      ...(errors ? { state: 'attention', status: `${plural(errors, 'problem')} to fix · ${part.status}` } : {}),
+      ...(clash.length && !errors
+        ? {
+            state: 'attention',
+            status: `${clash[0].text}${clash.length > 1 ? ` (and ${plural(clash.length - 1, 'more thing')} to look at)` : ''}`,
+            conflicts: clash.map((c) => c.text),
+          }
+        : {}),
+      ...(errors ? { state: 'attention', status: `${plural(errors, 'problem')} to fix · ${part.status}`, conflicts: clash.map((c) => c.text) } : {}),
     };
   });
 }

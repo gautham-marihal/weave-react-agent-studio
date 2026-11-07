@@ -11,7 +11,7 @@ import AgentAlerts from '../insights/AgentAlerts.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
 import { navigate, replaceRoute, routeHref } from '../route.js';
 import { useGate } from '../release/gate.js';
-import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
+import { latestDraftRun } from '../scenarios/runResults.js';
 import { useAsync } from '../useAsync.js';
 import Icon from '../../ui/Icon.jsx';
 import { ErrorState, Notice, Spinner } from '../ui.jsx';
@@ -143,7 +143,7 @@ export default function AgentLayout({ ws }) {
   const [localPart, setLocalPart] = useState({}); // parts with no address of their own
   const [focusRequest, setFocusRequest] = useState(null);
   const [openRequest, setOpenRequest] = useState(null);
-  const [lastFix, setLastFix] = useState(null); // { label, previous }
+  const [lastFix, setLastFix] = useState(null); // { label, previous, made }: what the fix replaced, and what it made
   // on a wide window the test conversation docks beside the page across page changes; on a narrow one it slides over
   const wideEnough = useWide('(min-width: 1280px)');
   const testDocked = drawer === 'test' && wideEnough;
@@ -239,10 +239,7 @@ export default function AgentLayout({ ws }) {
   }, []);
   // the tests' latest run (re-read on leaving the Tests page, where they run) and whether they must pass to publish
   const runs = useAsync((signal) => api.listTestRuns(botId, 20, { signal }), [botId, page === 'tests']);
-  const latestRun = useMemo(
-    () => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : undefined),
-    [runs.data],
-  );
+  const latestRun = useMemo(() => (Array.isArray(runs.data) ? latestDraftRun(runs.data) : undefined), [runs.data]);
   const [gateOn] = useGate(botId);
   const gate = useMemo(
     () => (gateOn ? { enabled: true, savedAt: editor.meta?.savedAt || '', dirty: editor.dirty } : null),
@@ -307,10 +304,20 @@ export default function AgentLayout({ ws }) {
     if (askSetting && editor.isObject) showPath(askSetting.split('.'));
   }, [askSetting, editor.isObject, showPath]);
   const applyFix = (next, label, jumpTo) => {
-    setLastFix({ label, previous: editor.parsed.value });
+    fixLanded.current = false;
+    setLastFix({ label, previous: editor.parsed.value, made: JSON.stringify(next) });
     editor.setValue(next);
     if (jumpTo) window.setTimeout(() => showPath(jumpTo), 60);
   };
+
+  // once the fix is in the draft, any other change to it (an edit, a reload, Load theirs) ends the fix's Undo
+  const draftNow = editor.parsed.value;
+  const fixLanded = useRef(false);
+  useEffect(() => {
+    if (!lastFix) return;
+    if (JSON.stringify(draftNow) === lastFix.made) fixLanded.current = true;
+    else if (fixLanded.current) setLastFix(null);
+  }, [draftNow, lastFix]);
 
   const part = (id, fallback) => (resolved.part && resolved.page === id ? resolved.part : localPart[id] || fallback);
   // Test's "Ready to publish?": the callers' latest result this visit (by agent), and what all the tests say

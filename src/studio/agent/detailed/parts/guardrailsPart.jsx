@@ -20,11 +20,16 @@ import {
 } from '../../blocks/guardrailModel.js';
 import { sensitiveChoices } from '../../blocks/afterCallModel.js';
 import { guardNotRun } from '../../blocks/guardrailModel.js';
-import { setHandOver } from '../../../setup/setupActions.js';
+import { setEndCall, setHandOver } from '../../../setup/setupActions.js';
 import { freshId } from '../../../form/references.js';
 import { agentLabel, humanize } from '../../rowNames.js';
 import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
+import { fixedLineNote, lineOf, setLine } from '../../../form/speechLine.js';
+
+// where the off-topic line and the line said when a limit ends the call are kept
+const OFF_SAY = ['guardrails', 'topics', 'on_off_topic', 'say'];
+const LIMIT_SAY = ['guardrails', 'limits', 'say'];
 import { ChipList } from '../Detailed.jsx';
 import AddItem from '../AddItem.jsx';
 import GuardrailsWorkspace from '../guardrailsWorkspace/GuardrailsWorkspace.jsx';
@@ -195,6 +200,12 @@ function CompareEditor({ ctx, entry, id }) {
   const op = COMPARES.find((c) => when[c.value] !== undefined)?.value || 'equals';
   const current = when[op];
   const [typed, setTyped] = useState(current === undefined ? '' : String(current));
+  // another rule chosen (All settings keeps this row as the choice changes): its own value, never the last rule's
+  const [forRule, setForRule] = useState(entry.key);
+  if (forRule !== entry.key) {
+    setForRule(entry.key);
+    setTyped(current === undefined ? '' : String(current));
+  }
   const write = (nextOp, text) => {
     let next = ctx.config;
     COMPARES.forEach((c) => {
@@ -353,8 +364,15 @@ export const guardrailsForm = {
             label: 'When someone keeps going off topic',
             kind: 'sw',
             get: (c) => !!off(c),
-            put: (c, on) =>
-              on ? setOffTopic(c, { strikes: 3, then: endingTools(c)[0]?.id || '', say: 'I can only help with what I’m here for.' }) : setOffTopic(c, null),
+            // the rule needs something to do once the tries are used up: with no tool at all, ending the call politely
+            // is switched on with it (switching on did nothing before)
+            note: (c) =>
+              !off(c) && !endingTools(c).length ? 'Switching it on also switches on “End the call politely” on Tools, to do once the tries are used up.' : '',
+            put: (c, on) => {
+              if (!on) return setOffTopic(c, null);
+              const base = endingTools(c).length ? c : setEndCall(c, true);
+              return setOffTopic(base, { strikes: 3, then: endingTools(base)[0]?.id || '', say: 'I can only help with what I’m here for.' });
+            },
           },
           {
             id: 'strikes',
@@ -384,8 +402,10 @@ export const guardrailsForm = {
             label: 'What it says each time',
             kind: 'text',
             disabled: (c) => !off(c),
-            get: (c) => off(c)?.say,
-            put: (c, say) => setOffTopic(c, { ...off(c), say }),
+            // a fixed line ({ message }) shows its words and changes in place, so the rule keeps pointing at it
+            note: (c) => fixedLineNote(c, getAtPath(c, OFF_SAY)),
+            get: (c) => (off(c) ? lineOf(c, getAtPath(c, OFF_SAY)).text : ''),
+            put: (c, say) => (say && lineOf(c, getAtPath(c, OFF_SAY)).at >= 0 ? setLine(c, OFF_SAY, say) : setOffTopic(c, { ...off(c), say, sayRef: '' })),
           },
         ],
       },
@@ -495,8 +515,9 @@ export const guardrailsForm = {
             id: 'limitSay',
             label: 'What it says when a limit ends the call',
             kind: 'text',
-            get: (c) => limitsOf(c).say,
-            put: (c, text) => setLimitSay(c, text || ''),
+            note: (c) => fixedLineNote(c, getAtPath(c, LIMIT_SAY)),
+            get: (c) => lineOf(c, getAtPath(c, LIMIT_SAY)).text,
+            put: (c, text) => (text && lineOf(c, getAtPath(c, LIMIT_SAY)).at >= 0 ? setLine(c, LIMIT_SAY, text) : setLimitSay(c, text || '')),
           },
         ],
       },

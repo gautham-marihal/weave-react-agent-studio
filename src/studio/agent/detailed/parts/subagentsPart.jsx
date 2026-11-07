@@ -16,6 +16,8 @@ import {
   setTransferDelay,
   setTransferSay,
   transferOf,
+  transferSayOf,
+  whyKeepAgent,
 } from '../../../workflow/workflowOps.js';
 import {
   llmChoice,
@@ -33,9 +35,11 @@ import { whoTakesOver } from '../../../../demo/simulatedAgent.js';
 import { agentLabel, humanize } from '../../rowNames.js';
 import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
+import { fixedLineNote, lineOf, setLine } from '../../../form/speechLine.js';
 import { DetailedPage, removeEntry } from '../Detailed.jsx';
 import { clip } from '../describe.js';
 import SubagentsWorkspace from '../subagentsWorkspace/SubagentsWorkspace.jsx';
+import { firstOf } from '../subagentsWorkspace/subagentsWords.js';
 
 // 8 · Subagents and hand-overs: who answers, what each subagent does, and who passes callers to whom: the same
 // settings the Workflow canvas draws, as a form (one draft: a change here shows on the canvas and the other way round).
@@ -328,12 +332,28 @@ export const subagentsForm = {
         titleFor: (entry) => (entry ? `A subagent: ${entry.name}` : 'A subagent'),
         lead: 'Anything not set here comes from the agent (part 1).',
         remove: (c, entry) => removeEntry(c, 'agents', entry),
+        // as on its own page and the Workflow canvas
+        keep: (c, entry) =>
+          entry.key === firstOf(c.config)
+            ? 'It answers first, so it can’t be deleted. To delete it, choose another agent to answer first.'
+            : whyKeepAgent(c.config, entry.key),
         rowsFor: (c) => {
           const entry = c.chosen('agents');
           if (!entry) return [];
           return [
             itemRow(entry, ['name'], { id: 'name', label: 'Name', kind: 'text' }),
-            itemRow(entry, ['kind'], { id: 'kind', label: 'What kind', kind: 'ch', options: KINDS }),
+            {
+              ...itemRow(entry, ['kind'], { id: 'kind', label: 'What kind', kind: 'ch', options: KINDS }),
+              // the runtime ignores the hand-overs of an agent that answers on its own (the Workflow makes such an agent
+              // a router when one is added): said here, where the kind is chosen
+              note: (config) => {
+                const agent = getAtPath(config, entry.base);
+                const n = list(agent?.handoffs).length;
+                return agent?.kind === 'standalone' && n
+                  ? `It has ${n} hand-over${n === 1 ? '' : 's'}, which an agent that answers on its own never makes. Choose “Passes callers on” to keep ${n === 1 ? 'it' : 'them'}.`
+                  : '';
+              },
+            },
             // while it is the only agent, its words are the Agent part's (asked there, once)
             {
               id: 'same',
@@ -564,7 +584,13 @@ export const subagentsForm = {
                 return parts.length ? parts.join(' · ') : 'Nothing else passes callers here.';
               },
             },
-            itemRow(entry, ['announce'], { id: 'say', label: 'Say while handing over', kind: 'text', placeholder: 'One moment, let me get bookings.' }),
+            // its words, a fixed line's too, changed in place (form/speechLine.js)
+            {
+              ...itemRow(entry, ['announce'], { id: 'say', label: 'Say while handing over', kind: 'text', placeholder: 'One moment, let me get bookings.' }),
+              note: (config) => fixedLineNote(config, getAtPath(config, [...entry.base, 'announce'])),
+              get: (config) => lineOf(config, getAtPath(config, [...entry.base, 'announce'])).text,
+              put: (config, text) => setLine(config, [...entry.base, 'announce'], text || ''),
+            },
             // on unless switched off (the schema's default), so an unset switch reads on
             (() => {
               const row = itemRow(entry, ['carry_context'], { id: 'context', label: 'The next agent knows what was said', kind: 'sw' });
@@ -644,10 +670,9 @@ export const subagentsForm = {
               id: 'say',
               label: 'Say while transferring',
               kind: 'text',
-              get: (config) => {
-                const { transfer } = transferOf(config, entry.key);
-                return list(transfer?.before).find((a) => isObj(a) && a.type === 'say')?.text || '';
-              },
+              // its words, a fixed line's too (changed in place: setTransferSay)
+              note: (config) => fixedLineNote(config, list(transferOf(config, entry.key).transfer?.before).find((a) => isObj(a) && a.type === 'say')?.text),
+              get: (config) => transferSayOf(config, entry.key),
               put: (config, text) => setTransferSay(config, entry.key, text || ''),
             },
             {

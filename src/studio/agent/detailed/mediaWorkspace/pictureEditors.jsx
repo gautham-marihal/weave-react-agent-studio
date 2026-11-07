@@ -11,6 +11,7 @@ import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { RECIPES, addRecipe, letWaysTake } from './pictureRecipes.js';
 import { methodWords, plural } from './mediaWords.js';
+import { lineOf } from '../../../form/speechLine.js';
 
 // Images & Videos' own editors, used as rows of the part (mediaPart.jsx), so they are the same on a step's page and in
 // All settings: how picky a request is (three words, or its own numbers), which pictures a step reads or forgets, the
@@ -66,7 +67,8 @@ export function PickyEditor({ ctx, base, id }) {
 // what the customer sees, under the words shown beside the button
 export function SeesPreview({ ctx, base }) {
   const step = getAtPath(ctx.config, base) || {};
-  const words = typeof step.prompt === 'string' ? step.prompt : step.prompt?.message;
+  // its words, a fixed line's too
+  const words = lineOf(ctx.config, step.prompt).text;
   return (
     <CustomerPreview kind={step.kind === 'camera' ? 'camera' : 'upload'} prompt={words} timeout={typeof step.timeout_s === 'number' ? step.timeout_s : 120} />
   );
@@ -111,6 +113,11 @@ const NAME = /^[a-z][a-z0-9_]{0,40}$/;
 function DetailRow({ ctx, base, name, spec, index, taken, onGoSecret }) {
   const step = getAtPath(ctx.config, base) || {};
   const [typed, setTyped] = useState(name);
+  const [seen, setSeen] = useState(name);
+  if (name !== seen) {
+    setSeen(name);
+    setTyped(name);
+  }
   const into = isObj(step.into) ? step.into : {};
   const keptIn = into[name] || name;
   const required = list(step.required).includes(name);
@@ -561,7 +568,7 @@ const ICON_OF = { document: 'read', damage: 'image', receipt: 'note', camera: 'c
 export function AddPictureStep({ ctx, onAdded, onNoForm, starts = true }) {
   const targets = addTargets(ctx.config);
   const [target, setTarget] = useState('');
-  const chosen = targets.find((t) => t.value === (target || targets[0]?.value));
+  const chosen = targets.find((t) => t.value === target) || targets[0];
   if (!targets.length)
     return (
       <p className="cxNote">

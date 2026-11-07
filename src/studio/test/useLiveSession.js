@@ -82,6 +82,7 @@ export function useLiveSession({ onFinished } = {}) {
   // the picture the agent is asking for, if any (pictures/pictureProtocol.js openRequest); one at a time
   const [picture, setPicture] = useState(null);
   const pictureRef = useRef(null);
+  const lastKindRef = useRef(null); // the kind of the picture request that ended last (a camera's retake is known by it)
   const sentFilesRef = useRef(new Set()); // the photos sent in this call: the same file is never sent twice
   const thumbsRef = useRef([]); // small local previews of sent photos (object URLs), released when the call is over
   const cameraForPictureRef = useRef(false); // the camera was switched on for a request, so it goes off when that ends
@@ -144,6 +145,8 @@ export function useLiveSession({ onFinished } = {}) {
 
   const cleanup = useCallback(() => {
     window.clearTimeout(hintTimerRef.current);
+    // a connection that dropped is over with its room: the next session starts connected, not "reconnecting"
+    setReconnecting(false);
     const room = roomRef.current;
     roomRef.current = null;
     if (audioHostRef.current) audioHostRef.current.replaceChildren();
@@ -158,6 +161,7 @@ export function useLiveSession({ onFinished } = {}) {
     setMedia({ mic: false, camera: false, screen: false });
     setAgentState('');
     pictureRef.current = null;
+    lastKindRef.current = null;
     setPicture(null);
     cameraForPictureRef.current = false;
   }, []);
@@ -205,7 +209,9 @@ export function useLiveSession({ onFinished } = {}) {
       const message = readUiMessage(raw);
       if (!message) return; // not JSON, or a type this screen doesn't know: ignored, as the protocol asks
       const before = pictureRef.current;
-      const { request, done, note } = applyUiMessage(before, message);
+      const { request, done, note } = applyUiMessage(before, message, Date.now(), lastKindRef.current);
+      if (done) lastKindRef.current = done.kind;
+      else if (before && request && request.id !== before.id) lastKindRef.current = before.kind;
       // a new request while the camera was on for an older one: that one is over
       if (before && request && request.id !== before.id && before.kind === 'camera' && request.kind !== 'camera' && cameraForPictureRef.current) cameraOff();
       setRequest(request);
@@ -492,6 +498,7 @@ export function useLiveSession({ onFinished } = {}) {
       room.on(RoomEvent.Disconnected, () => {
         window.clearTimeout(hintTimerRef.current);
         if (!aliveRef.current) return;
+        setReconnecting(false);
         if (stoppingRef.current) {
           setStatus('idle');
           return;

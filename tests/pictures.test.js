@@ -90,6 +90,20 @@ test('one request is open at a time: refused keeps it open, done closes it and l
   assert.equal(next.request.kind, 'camera');
 });
 
+test('a photo asked for straight after the camera is the camera check’s retake: the camera only, never a file', () => {
+  const photo = (id) => readUiMessage({ type: 'request_image', request_id: id, kind: 'upload' });
+  // after a camera request that ended (its picture taken, or none came)
+  assert.equal(applyUiMessage(null, photo('r_3'), 0, 'camera').request.cameraOnly, true);
+  // or one it replaced while still open
+  const open = applyUiMessage(null, readUiMessage({ type: 'request_image', request_id: 'r_2', kind: 'camera' })).request;
+  assert.equal(applyUiMessage(open, photo('r_3')).request.cameraOnly, true);
+  // any other photo request takes a file as usual
+  assert.equal(applyUiMessage(null, photo('r_1')).request.cameraOnly, false);
+  assert.equal(applyUiMessage(null, photo('r_4'), 0, 'upload').request.cameraOnly, false);
+  // and a camera request is a camera request
+  assert.equal(applyUiMessage(null, readUiMessage({ type: 'request_image', request_id: 'r_5', kind: 'camera' }), 0, 'camera').request.cameraOnly, false);
+});
+
 test('a photo is checked before it is sent: empty, too big, the wrong kind; and the same file is recognised', () => {
   const file = (size, type, name = 'id.jpg') => ({ size, type, name, lastModified: 5 });
   assert.equal(uploadProblem(file(1000, 'image/jpeg'), { accept: ['image/jpeg'], maxBytes: 8388608 }), '');

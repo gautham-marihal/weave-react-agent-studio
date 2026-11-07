@@ -9,6 +9,7 @@ import { setPath } from '../schemaFacts.js';
 import MediaWorkspace from '../mediaWorkspace/MediaWorkspace.jsx';
 import { AddPictureStep, DetailsTable, ImagesPick, PairsTable, PairsTry, PickyAll, PickyEditor, SeesPreview } from '../mediaWorkspace/pictureEditors.jsx';
 import { LIST_OF, stepKey, stepsIn, waysIn } from '../mediaWorkspace/mediaWords.js';
+import { fixedLineNote, lineOf, setLine } from '../../../form/speechLine.js';
 
 // 7 · Images & Videos: everything about photos and the camera in one place (canvas page "11 · Images & Videos,
 // redesigned"). Which ways in take photos and the camera, and their picture details (asked here only; Channels says it
@@ -20,7 +21,8 @@ import { LIST_OF, stepKey, stepsIn, waysIn } from '../mediaWorkspace/mediaWords.
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
-const speech = (v) => (typeof v === 'string' ? v : typeof v?.message === 'string' ? v.message : '');
+// a line's words, a fixed line's too (form/speechLine.js)
+const speech = (v, config) => lineOf(config, v).text;
 const varChoices = (config) => Object.keys(isObj(config?.state?.variables) ? config.state.variables : {}).map((v) => ({ value: v, label: v }));
 
 // a row of the chosen item, at a place inside it
@@ -82,7 +84,10 @@ const requestRows = (e) => [
     hint: 'On their screen, not spoken: say what to do in a line of its own before this step',
     kind: 'text',
     placeholder: 'A clear photo of the front of your card',
-    get: (config) => speech(getAtPath(config, [...e.base, 'prompt'])),
+    // a fixed line shows its words and changes in place, so the step keeps pointing at it
+    note: (config) => fixedLineNote(config, getAtPath(config, [...e.base, 'prompt'])),
+    get: (config) => speech(getAtPath(config, [...e.base, 'prompt']), config),
+    put: (config, text) => setLine(config, [...e.base, 'prompt'], text || ''),
   }),
   { id: 'sees', label: 'What they see', tags: 'p', render: (c) => <SeesPreview ctx={c} base={e.base} /> },
   at(e, ['quality'], {
@@ -266,9 +271,10 @@ const wayAdv = (e) => [
   at(e, ['inputs', 'video', 'camera'], {
     id: 'videoCamera',
     label: 'Camera stream (technical)',
-    hint: 'How the browser sends the camera',
+    hint: 'How the browser sends the camera. Off, the camera can’t be used on this channel',
     kind: 'sw',
-    get: (c) => getAtPath(c, [...e.base, 'inputs', 'video', 'camera']) === true,
+    // on unless switched off: a channel that takes video sends the camera unless this says false
+    get: (c) => getAtPath(c, [...e.base, 'inputs', 'video', 'camera']) !== false,
   }),
   at(e, ['inputs', 'image', 'topic'], {
     id: 'topic',
@@ -356,6 +362,7 @@ export const mediaForm = {
         empty: 'No way in on the website yet: add web chat or talk on your website on Channels.',
         list: {
           id: 'ways',
+          path: ['channels'],
           label: 'Ways in',
           entries: (config) =>
             waysIn(config)
@@ -373,6 +380,7 @@ export const mediaForm = {
         empty: 'No agents listed yet.',
         list: {
           id: 'seeing',
+          path: ['agents', 'items'],
           label: 'Agents',
           entries: (config) =>
             list(config?.agents?.items)

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { api } from '../../api/client.ts';
 import { usePref } from '../usePref.js';
 import { useAsync } from '../useAsync.js';
-import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
+import { latestDraftRun } from '../scenarios/runResults.js';
 import { gateCheck } from './gateCheck.js';
 
 // "Tests must pass before publishing" is a per-agent choice kept in this browser (gateCheck.js says what it means).
@@ -17,7 +17,7 @@ export function useGate(botId) {
 export function useGateStatus(botId, editor) {
   const [enabled] = useGate(botId);
   const runs = useAsync((signal) => (enabled ? api.listTestRuns(botId, 20, { signal }) : Promise.resolve([])), [botId, enabled]);
-  const latest = Array.isArray(runs.data) ? runs.data.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : null;
+  const latest = Array.isArray(runs.data) ? latestDraftRun(runs.data) : null;
   const scenarioCount = Array.isArray(editor?.parsed?.value?.tests) ? editor.parsed.value.tests.length : 0;
   const check = gateCheck({ enabled, scenarioCount, latestRun: latest, savedAt: editor?.meta?.savedAt || '', dirty: !!editor?.dirty });
   return { enabled, check, loading: enabled && runs.loading && !runs.data, reload: runs.reload };

@@ -188,10 +188,12 @@ export function evaluateAlerts({ calls = [], facts = {}, bots = [], nowMs = 0, r
     // nothing arriving where something usually does
     if (enabled.no_calls) {
       const { hours, usual } = enabled.no_calls.params;
+      // a call going on now is a call coming in (mine leaves those out, as they have no outcome yet)
+      const live = list(calls).some((c) => c && c.bot === bot && c.status === 'in_progress');
       const recent = mine.filter((c) => at(c) > nowMs - hours * HOUR);
       const history = mine.filter((c) => at(c) <= nowMs - hours * HOUR && at(c) > nowMs - BASELINE_DAYS * DAY);
       const expected = history.length / ((BASELINE_DAYS * DAY - hours * HOUR) / (hours * HOUR));
-      if (!recent.length && expected >= usual) {
+      if (!recent.length && !live && expected >= usual) {
         const last = history.length ? new Date(Math.max(...history.map(at))).toISOString() : null;
         push('no_calls', bot, '', {
           title: 'No calls coming in',

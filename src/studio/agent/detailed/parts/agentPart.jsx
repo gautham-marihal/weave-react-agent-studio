@@ -28,6 +28,7 @@ import { modelLabel, providerLabel } from '../../../models/catalog.js';
 import { summarizeModels, voicesFor, readModels } from '../../../models/config.js';
 import { useProviders } from '../../../models/useProviders.js';
 import { getAtPath } from '../../schemaPath.js';
+import { setPath } from '../schemaFacts.js';
 import { InlineItems, briefOf } from '../Detailed.jsx';
 import { speaks } from '../agentProfile/speaks.js';
 import AgentWorkspace from '../agentProfile/AgentWorkspace.jsx';
@@ -217,6 +218,13 @@ function ModelRow({ config, set, id, stage, pickersOpen }) {
   );
 }
 
+// A speech-to-speech model in use (defaults.models.realtime with a provider): it hears, thinks and speaks itself, with
+// its own voice (`realtime.voice`), so the speaking model's voice isn't used meanwhile.
+const usesRealtime = (config) => !!readModels(config).realtime.provider;
+// the voices a speech-to-speech model offers, by provider (OpenAI's realtime voices); another provider's is typed in All
+// settings' JSON, or picked from what is set
+const REALTIME_VOICES = { openai: ['alloy', 'ash', 'ballad', 'cedar', 'coral', 'echo', 'marin', 'sage', 'shimmer', 'verse'] };
+
 // Speech-to-speech: the same picker, showing only its own part ("Not used" until one is chosen).
 function RealtimeRow({ config, set, id, pickersOpen }) {
   const { providers, live } = useProviders();
@@ -313,9 +321,24 @@ export const agentForm = {
             id: 'voice',
             label: 'Voice',
             hint: 'Hear each one say the greeting',
-            tags: (c) => (speaks(c) ? 'r' : ''),
+            tags: (c) => (speaks(c) && !usesRealtime(c) ? 'r' : ''),
             errPath: ['defaults', 'models', 'tts'],
+            // a speech-to-speech model speaks with a voice of its own (the next row): this one isn't used meanwhile
+            note: (c) => (usesRealtime(c) ? 'Not used while a speech-to-speech model speaks: it has a voice of its own, below.' : ''),
             render: (c) => <VoiceRow {...c} />,
+          },
+          {
+            id: 'realtimeVoice',
+            label: 'Voice of the speech-to-speech model',
+            hint: 'The speech-to-speech model speaks with this voice',
+            kind: 'pick',
+            placeholder: 'The model’s usual voice',
+            hidden: (c) => !usesRealtime(c),
+            // read and written here (the schema says what it is only once a speech-to-speech model is chosen)
+            pathFor: () => ['defaults', 'models', 'realtime', 'voice'],
+            get: (c) => getAtPath(c, ['defaults', 'models', 'realtime', 'voice']),
+            put: (c, v) => (usesRealtime(c) ? setPath(c, ['defaults', 'models', 'realtime', 'voice'], v || undefined) : c),
+            options: (c) => (REALTIME_VOICES[readModels(c).realtime.provider] || []).map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })),
           },
           {
             id: 'primary',

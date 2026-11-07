@@ -2,7 +2,7 @@ import React from 'react';
 import { api } from '../../api/client.ts';
 import { useAsync } from '../useAsync.js';
 import { useGate } from '../release/gate.js';
-import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
+import { latestDraftRun } from '../scenarios/runResults.js';
 import { Switch } from '../form/fields.jsx';
 import { testHealth } from './testHealth.js';
 
@@ -16,7 +16,7 @@ import { testHealth } from './testHealth.js';
 export function useTestHealth({ botId, editor, readinessRuns = [], callers = null, on = false, part = '' }) {
   const [gateOn, setGate] = useGate(botId);
   const runs = useAsync((signal) => (on ? api.listTestRuns(botId, 20, { signal }) : Promise.resolve([])), [botId, on, part]);
-  const latestRun = Array.isArray(runs.data) ? runs.data.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : null;
+  const latestRun = Array.isArray(runs.data) ? latestDraftRun(runs.data) : null;
   const config = editor?.parsed?.value;
   const health = testHealth({
     scenarioCount: Array.isArray(config?.tests) ? config.tests.length : 0,

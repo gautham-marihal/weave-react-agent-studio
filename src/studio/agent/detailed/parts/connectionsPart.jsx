@@ -34,10 +34,14 @@ const at = (entry, key, row, when = () => true) => {
 function IdName({ ctx, id, entry, collection }) {
   const [typed, setTyped] = useState(null);
   const shown = typed ?? entry.key;
-  const ok = new RegExp(ID_PATTERN).test(shown);
+  // a name another item of the list already has would merge the two (a map) or make two of one id (a list)
+  const taken = (ctx.items?.(entry.list || collection) || []).some((other) => other.key === shown && other.key !== entry.key);
+  const ok = new RegExp(ID_PATTERN).test(shown) && !taken;
   const commit = () => {
     if (typed === null || typed === entry.key) return setTyped(null);
-    if (ok && ctx.engine) {
+    // not a name it can take: the box keeps what was typed, with the reason under it
+    if (!ok) return undefined;
+    if (ctx.engine) {
       ctx.set(renameEverywhere(ctx.engine, ctx.config, collection, entry.key, typed));
       ctx.choose(entry.list || collection, typed);
     }
@@ -53,7 +57,11 @@ function IdName({ ctx, id, entry, collection }) {
         onBlur={commit}
         onKeyDown={(event) => event.key === 'Enter' && commit()}
       />
-      {!ok && <small className="stFieldError">Lowercase letters, digits, _ or -, starting with a letter.</small>}
+      {!ok && (
+        <small className="stFieldError" role="alert">
+          {taken ? 'Another one already has this name.' : 'Lowercase letters, digits, _ or -, starting with a letter.'}
+        </small>
+      )}
     </>
   );
 }

@@ -2,9 +2,11 @@
 // use it, and advice on its settings. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
+import { notRunAt } from '../preflight.ts';
 
 // The kinds the runtime does not run yet (the validator's "unsupported" list, checked on 2026-10-16), so "Add tool" can
-// say so before anyone builds one. Built-ins are named by `builtin`.
+// say so before anyone builds one. Built-ins are named by `builtin`. Once a draft is checked, what the server says about
+// each tool wins (toolNotRun), so a kind it starts running stops being marked.
 export const UNSUPPORTED_KINDS = {
   mcp: 'MCP server tools',
   code: 'Custom code tools',
@@ -23,6 +25,14 @@ export function notAvailable(tool) {
   if (UNSUPPORTED_KINDS[kind]) return UNSUPPORTED_KINDS[kind];
   if (kind === 'builtin' && UNSUPPORTED_BUILTINS[tool.builtin]) return UNSUPPORTED_BUILTINS[tool.builtin];
   return null;
+}
+
+// What the server doesn't run of a tool in the draft: its own check's word for that tool once the draft is checked
+// (`unsupported`, the validator's list), else the list above. '' or null when it runs.
+export function toolNotRun(config, tool, unsupported) {
+  if (!Array.isArray(unsupported)) return notAvailable(tool);
+  const index = (Array.isArray(config?.tools) ? config.tools : []).indexOf(tool);
+  return index < 0 ? notAvailable(tool) : notRunAt(unsupported, ['tools', index]) || null;
 }
 
 // One line on when to use each built-in action.

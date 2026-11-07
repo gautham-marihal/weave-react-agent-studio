@@ -45,6 +45,18 @@ export const FALLBACK_PROVIDERS = [
   { name: 'silero', stages: ['vad'], installed: true, default_secret: null, key_available: null },
 ];
 
+// Which language models of the list read pictures (photos and camera frames): true or false for a model the list
+// knows, null for one it doesn't (typed in, or a compatible service), whose maker says. The schema's `vision` switch
+// only tells the runtime to send pictures; the model must also read them.
+const TEXT_ONLY = { groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'] };
+const SEEING = ['openai', 'anthropic', 'google'];
+export function seesPictures(provider, model) {
+  const listed = (MODEL_OPTIONS.llm[provider] || []).some((m) => m.id === model);
+  if (!listed) return null;
+  if ((TEXT_ONLY[provider] || []).includes(model)) return false;
+  return SEEING.includes(provider) ? true : null;
+}
+
 export const MODEL_OPTIONS = {
   stt: {
     openai: [

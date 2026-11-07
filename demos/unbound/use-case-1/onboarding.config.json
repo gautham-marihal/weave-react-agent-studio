@@ -68,6 +68,65 @@
             }
           ]
         }
+      },
+      "speech": {
+        "apply_to": "all",
+        "pronunciation": [
+          {
+            "type": "replace",
+            "id": "sgd_amount",
+            "pattern": "\\bSGD\\s?(\\d[\\d,.]*(?:\\s(?:thousand|million|billion))?)",
+            "replacement": "\\g<1> Singapore dollars"
+          },
+          {
+            "type": "replace",
+            "id": "per_year",
+            "pattern": "\\bp\\.\\s?a\\.",
+            "replacement": "a year",
+            "ignore_case": true
+          },
+          {
+            "type": "replace",
+            "id": "rate_trailing_zero",
+            "pattern": "(\\d+)\\.(\\d)0%",
+            "replacement": "\\g<1>.\\g<2> percent"
+          },
+          {
+            "type": "replace",
+            "id": "percent",
+            "pattern": "(\\d+(?:\\.\\d+)?)%",
+            "replacement": "\\g<1> percent"
+          },
+          {
+            "type": "replace",
+            "id": "account_ending",
+            "pattern": "\\bending (\\d)(\\d)(\\d)(\\d)\\b",
+            "replacement": "ending \\g<1> \\g<2> \\g<3> \\g<4>"
+          },
+          {
+            "type": "replace",
+            "id": "reference_join",
+            "pattern": "\\b(TQD|CB)-(\\d+)",
+            "replacement": "\\g<1>\\g<2>"
+          },
+          {
+            "type": "spell",
+            "id": "reference",
+            "pattern": "\\b(?:TQD|CB)\\d+\\b"
+          },
+          {
+            "type": "replace",
+            "id": "email_at",
+            "pattern": "@",
+            "replacement": " at "
+          },
+          {
+            "type": "replace",
+            "id": "email_dot",
+            "pattern": "([A-Za-z])\\.([A-Za-z])",
+            "replacement": "\\g<1> dot \\g<2>"
+          }
+        ]
       }
     }
   },
@@ -237,11 +296,6 @@
       },
       "card_expiry": {
         "type": "string",
-        "nullable": true,
-        "default": null
-      },
-      "card_legible": {
-        "type": "boolean",
         "nullable": true,
         "default": null
       },
@@ -423,6 +477,26 @@
       "handover_reason": {
         "type": "string",
         "default": "check_incomplete"
+      },
+      "card_is_bank": {
+        "type": "boolean",
+        "nullable": true,
+        "default": null
+      },
+      "plan_offers": {
+        "type": "array",
+        "nullable": true,
+        "default": null
+      },
+      "callback_window": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "chosen_plan": {
+        "type": "string",
+        "nullable": true,
+        "default": null
       }
     }
   },
@@ -448,7 +522,7 @@
         }
       },
       "greeting": {
-        "say": "Hello, this is Aria from Unbound Bank. How can I help you today?"
+        "say": "Hello, this is {{const.agent_name}} from {{const.bank_name}}. How can I help you today?"
       },
       "instructions_append": "This is a voice call in the browser: the customer can also type, and sees forms and picture requests on the screen."
     },
@@ -479,7 +553,7 @@
         }
       },
       "greeting": {
-        "say": "Hello, this is Aria from Unbound Bank. How can I help you today?"
+        "say": "Hello, this is {{const.agent_name}} from {{const.bank_name}}. How can I help you today?"
       },
       "instructions_append": "This is a web chat: the customer types, and sees forms and picture requests on the screen."
     }
@@ -553,20 +627,71 @@
       ]
     },
     {
+      "id": "choose_account",
+      "type": "builtin",
+      "builtin": "noop",
+      "description": "The customer chose the account to open, from the accounts offered for this deposit. Call it only after the identity check passed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "description": "The chosen account’s name, exactly as you offered it."
+          }
+        },
+        "required": ["plan"]
+      },
+      "reply": "none",
+      "effects": [
+        {
+          "when": {
+            "state": "handover_reason",
+            "equals": "ready_for_plan"
+          },
+          "do": [
+            {
+              "type": "set_state",
+              "values": {
+                "chosen_plan": "{{args.plan}}"
+              }
+            },
+            {
+              "type": "send_form",
+              "form": "sign_application"
+            }
+          ]
+        },
+        {
+          "when": {
+            "not": {
+              "state": "handover_reason",
+              "equals": "ready_for_plan"
+            }
+          },
+          "do": [
+            {
+              "type": "say",
+              "text": "First we need to finish checking your identity."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "end_call",
       "type": "builtin",
       "builtin": "end_call",
       "description": "Ends the conversation after the goodbye, when the customer has nothing more to ask.",
       "params": {
-        "say": "Thank you for choosing Unbound Bank. Goodbye."
+        "say": "Thank you for choosing {{const.bank_name}}. Goodbye."
       }
     }
   ],
   "forms": [
     {
       "id": "application",
-      "title": "Open your Unbound Bank account",
-      "description": "About 2 minutes, and you have up to 7. Have your card ready: next we’ll ask for a photo of it and a short video check.",
+      "title": "Open your account",
+      "description": "About 2 minutes. Have your card ready: next we’ll ask for a photo of it and a short video check.",
       "fields": [
         {
           "name": "first_name",
@@ -647,7 +772,7 @@
         },
         {
           "name": "consent",
-          "label": "I agree that Unbound Bank checks my ID card and a short video of me to open this account, as its privacy notice describes.",
+          "label": "I agree that the bank checks my ID card and a short video of me to open this account, as its privacy notice describes.",
           "type": "checkbox",
           "required": true
         }
@@ -750,15 +875,15 @@
             },
             "full_name": {
               "type": "string",
-              "description": "The holder’s name exactly as printed, as one line (on a bank card, the cardholder name)."
+              "description": "The holder’s name as printed, as one line, in normal capitals (Tan Wei Ming, not TAN WEI MING) (on a bank card, the cardholder name)."
             },
             "family_name": {
               "type": "string",
-              "description": "The surname or family name, only when the card labels it as such."
+              "description": "The surname or family name, only when the card labels it as such, in normal capitals (Tan, not TAN)."
             },
             "given_names": {
               "type": "string",
-              "description": "The given name or names, only when the card labels them as such."
+              "description": "The given name or names, only when the card labels them as such, in normal capitals (Wei Ming, not WEI MING)."
             },
             "id_number": {
               "type": "string",
@@ -807,6 +932,10 @@
             "screen_or_copy": {
               "type": "boolean",
               "description": "true when this looks like a photo of a screen or a photocopy."
+            },
+            "is_bank_card": {
+              "type": "boolean",
+              "description": "true when this is a bank card (debit or credit), false for an identity card."
             }
           },
           "required": ["full_name", "id_number"],
@@ -826,7 +955,8 @@
             "text_sharp": "cap_sharp",
             "glare_free": "cap_glare_free",
             "flat": "cap_flat",
-            "screen_or_copy": "cap_screen"
+            "screen_or_copy": "cap_screen",
+            "is_bank_card": "card_is_bank"
           },
           "ok_into": "card_read_ok"
         },
@@ -1284,15 +1414,15 @@
             },
             "full_name": {
               "type": "string",
-              "description": "The holder’s name exactly as printed, as one line (on a bank card, the cardholder name)."
+              "description": "The holder’s name as printed, as one line, in normal capitals (Tan Wei Ming, not TAN WEI MING) (on a bank card, the cardholder name)."
             },
             "family_name": {
               "type": "string",
-              "description": "The surname or family name, only when the card labels it as such."
+              "description": "The surname or family name, only when the card labels it as such, in normal capitals (Tan, not TAN)."
             },
             "given_names": {
               "type": "string",
-              "description": "The given name or names, only when the card labels them as such."
+              "description": "The given name or names, only when the card labels them as such, in normal capitals (Wei Ming, not WEI MING)."
             },
             "id_number": {
               "type": "string",
@@ -1341,6 +1471,10 @@
             "screen_or_copy": {
               "type": "boolean",
               "description": "true when this looks like a photo of a screen or a photocopy."
+            },
+            "is_bank_card": {
+              "type": "boolean",
+              "description": "true when this is a bank card (debit or credit), false for an identity card."
             }
           },
           "required": ["full_name", "id_number"],
@@ -1360,7 +1494,8 @@
             "text_sharp": "cap_sharp",
             "glare_free": "cap_glare_free",
             "flat": "cap_flat",
-            "screen_or_copy": "cap_screen"
+            "screen_or_copy": "cap_screen",
+            "is_bank_card": "card_is_bank"
           },
           "ok_into": "card_read_ok"
         },
@@ -2541,8 +2676,8 @@
               },
               {
                 "not": {
-                  "state": "card_type",
-                  "equals": "bank card"
+                  "state": "card_is_bank",
+                  "equals": true
                 }
               }
             ]
@@ -2617,10 +2752,6 @@
               {
                 "state": "deepfake",
                 "equals": "detected"
-              },
-              {
-                "state": "same_card",
-                "equals": false
               }
             ]
           },
@@ -2794,7 +2925,7 @@
               }
             ]
           },
-          "text": "Everything matches, and your identity is verified. Last step: choose your account and sign. I’ve put the options on your screen."
+          "text": "Everything matches, and your identity is verified."
         },
         {
           "type": "set_state",
@@ -2887,12 +3018,29 @@
           }
         },
         {
-          "type": "send_form",
+          "type": "http",
           "when": {
             "state": "handover_reason",
             "equals": "ready_for_plan"
           },
-          "form": "choose_plan"
+          "connection": "onboarding_service",
+          "method": "GET",
+          "path": "/unbound/offers",
+          "query": {
+            "amount": "{{state.amount}}",
+            "currency": "{{state.currency}}"
+          },
+          "to_state": {
+            "plan_offers": "$.offers"
+          }
+        },
+        {
+          "type": "generate",
+          "when": {
+            "state": "handover_reason",
+            "equals": "ready_for_plan"
+          },
+          "instructions": "In two or three short sentences, offer the customer the accounts below for their deposit, each by name with its rate, and ask which one they would like to open. Offer only these: {{state.plan_offers}}"
         },
         {
           "type": "transfer",
@@ -2907,17 +3055,10 @@
       ]
     },
     {
-      "id": "choose_plan",
-      "title": "Choose your account and sign",
-      "description": "Your identity is verified. Pick the account, then sign to open it.",
+      "id": "sign_application",
+      "title": "Sign to open your account",
+      "description": "Sign to open the account you chose.",
       "fields": [
-        {
-          "name": "plan",
-          "label": "Account",
-          "type": "select",
-          "required": true,
-          "options": ["Private Wealth Account", "Inheritance Holding Account", "Laddered Fixed Deposits"]
-        },
         {
           "name": "signed",
           "label": "I have read the account terms and fees, and I sign this application electronically.",
@@ -2940,7 +3081,9 @@
           "path": "/unbound/accounts",
           "body": {
             "application_id": "{{state.application_id}}",
-            "plan_name": "{{form.plan}}",
+            "plan_name": "{{state.chosen_plan}}",
+            "amount": "{{state.amount}}",
+            "currency": "{{state.currency}}",
             "signed": "{{form.signed}}",
             "risk": "{{state.risk_level}}",
             "proof_needed": "{{state.proof_needed}}"
@@ -2950,6 +3093,10 @@
             "account_last4": "$.account_last4",
             "plan_name": "$.plan_name",
             "relationship_manager": "$.relationship_manager"
+          },
+          "when": {
+            "state": "handover_reason",
+            "equals": "ready_for_plan"
           }
         },
         {
@@ -3006,7 +3153,7 @@
               }
             ]
           },
-          "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you within one working day to arrange the deposit. Please have {{state.proof_needed}} ready: banks must check where large deposits come from."
+          "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you {{const.rm_call_window}} to arrange the deposit. Please have {{state.proof_needed}} ready: banks must check where large deposits come from."
         },
         {
           "type": "say",
@@ -3024,7 +3171,7 @@
               }
             ]
           },
-          "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you within one working day to arrange the deposit."
+          "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you {{const.rm_call_window}} to arrange the deposit."
         },
         {
           "type": "say",
@@ -3034,7 +3181,7 @@
               "equals": null
             }
           },
-          "text": "Your online banking login and debit card arrive by post within 5 working days. Is there anything else I can help with?"
+          "text": "Your online banking login and debit card arrive by post {{const.card_delivery}}. Is there anything else I can help with?"
         },
         {
           "type": "say",
@@ -3123,7 +3270,8 @@
               "reason": "{{state.handover_reason}}"
             },
             "to_state": {
-              "callback_ref": "$.reference"
+              "callback_ref": "$.reference",
+              "callback_window": "$.window"
             }
           },
           {
@@ -3134,7 +3282,7 @@
                 "equals": null
               }
             },
-            "text": "I’m sorry, all our video banking colleagues are busy. I’ve booked a call-back to your mobile within 2 working hours, reference {{state.callback_ref}}. Your application is saved."
+            "text": "I’m sorry, all our video banking colleagues are busy. I’ve booked a call-back to your mobile {{state.callback_window | default('soon')}}, reference {{state.callback_ref}}. Your application is saved."
           },
           {
             "type": "say",
@@ -3156,7 +3304,7 @@
         "name": "Advisor",
         "kind": "router",
         "instructions": {
-          "role": "You are Aria, a private banking advisor at Unbound Bank, talking with a prospective customer who is comparing banks for a large sum, often an inheritance they want to keep in a separate account. As soon as they mention an amount, call deposit_offers straight away: if they did not say the currency, use SGD and mention it in passing (“for SGD 500 million…”); never stop to ask them to confirm the amount or the currency. Answer in four short sentences at most, as a private banker would say it aloud: (1) the offer that fits best, with its rate; (2) one alternative; (3) the safety point said honestly (deposit insurance covers only up to its legal limit), and, whenever deposit_offers returns requirements, always that proof of where the money comes from is needed but can follow after opening; (4) whether they would like to open the account now, right here, in about 2 minutes with a short form, a photo of their ID card and a quick video check. When they agree, call go_to_onboarding.",
+          "role": "You are a private banking advisor, talking with a prospective customer who is comparing banks for a large sum, often an inheritance they want to keep in a separate account. As soon as they mention an amount, call deposit_offers straight away: if they did not say the currency, use SGD and mention it in passing (“for SGD 500 million…”); never stop to ask them to confirm the amount or the currency. Answer in four short sentences at most, as a private banker would say it aloud: (1) the offer that fits best, with its rate; (2) one alternative; (3) the safety point said honestly (deposit insurance covers only up to its legal limit), and, whenever deposit_offers returns requirements, always that proof of where the money comes from is needed but can follow after opening; (4) whether they would like to open the account now, right here, as the onboarding line deposit_offers returns describes it. When they agree, call go_to_onboarding.",
           "rules": [
             "Use only the offers and figures deposit_offers returns; never invent rates or promise returns.",
             "Never ask a question you can answer from what they already said.",
@@ -3180,9 +3328,9 @@
         "name": "Onboarding",
         "kind": "specialist",
         "instructions": {
-          "role": "You guide the customer through opening the account. The form, the ID photo, the video check and the hand-over to a human colleague run by themselves; you only answer short questions while they happen, in one or two sentences. If they ask why a question is on the form: by law, banks must know their customers, where large deposits come from, where customers pay tax and whether they hold public office. While the customer chooses an account, answer questions about the options from deposit_offers in a sentence or two. After the account is open, answer short questions about what happens next, then say goodbye and call end_call. Never ask for details the form asks for, and never say a check passed or failed unless the system said so."
+          "role": "You guide the customer through opening the account. The form, the ID photo, the video check and the hand-over to a human colleague run by themselves; you only answer short questions while they happen, in one or two sentences. If they ask why a question is on the form: by law, banks must know their customers, where large deposits come from, where customers pay tax and whether they hold public office. Once the identity check has passed, the system offers the accounts for this deposit; when the customer says which one they want, call choose_account with that account’s name exactly as you offered it, never one that wasn’t offered. Answer questions about the options in a sentence or two. After the account is open, answer short questions about what happens next, then say goodbye and call end_call. Never ask for details the form asks for, and never say a check passed or failed unless the system said so."
         },
-        "tools": ["deposit_offers", "end_call"],
+        "tools": ["deposit_offers", "choose_account", "end_call"],
         "on_enter": [
           {
             "type": "say",
@@ -3204,7 +3352,7 @@
         "enforcement": "code",
         "on_trigger": {
           "action": "deflect",
-          "say": "I can only help with Unbound Bank accounts."
+          "say": "I can only help with {{const.bank_name}} accounts."
         }
       }
     ]
@@ -3215,5 +3363,11 @@
       "entities": ["national_id", "date_of_birth", "card_number", "bank_account"],
       "mask_sensitive_state": true
     }
+  },
+  "constants": {
+    "bank_name": "Unbound Bank",
+    "agent_name": "Aria",
+    "rm_call_window": "within one working day",
+    "card_delivery": "within 5 working days"
   }
 }

@@ -987,7 +987,9 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
           <div className="dashContent" id="pageContent" ref={pageRef}>
             {/* a page that breaks says so on its own; the menu and top bar keep working, another page starts afresh */}
             <PageErrorBoundary resetKey={`${active}|${route.view}|${route.botId || ''}|${route.tab || ''}`}>
-              <Suspense fallback={<PageLoading />}>
+              {/* a workspace page starts afresh in another workspace: no filter, open call or numbers carried over from the
+                  last one (an agent's own pages keep theirs: they are keyed by the agent, and may hold unsaved edits) */}
+              <Suspense key={inAgentView ? 'agent' : currentWorkspace?.id || ''} fallback={<PageLoading />}>
                 {bots === null && !agentsError && ['sessions', 'live', 'monitoring', 'speed', 'alerts'].includes(active) ? (
                   // these pages are about the agents' calls: until the agents are known they can't say "none yet"
                   <PageLoading />
@@ -1117,7 +1119,8 @@ export function Dashboard({ profile, theme, onToggleTheme, onSignOut, onAccountO
                 ) : active === 'team' ? (
                   <TeamPage
                     agents={botList.map((b) => ({ id: b.id, name: b.name || b.id }))}
-                    agentsLoaded={bots !== null}
+                    agentsLoaded={bots !== null && Array.isArray(allBots)}
+                    existingIds={Array.isArray(allBots) ? allBots.map((b) => b.id) : null}
                     workspaceName={workspaceName}
                     profile={profile}
                   />

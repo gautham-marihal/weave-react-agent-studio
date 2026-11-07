@@ -7,6 +7,7 @@ import { freshId } from '../form/references.js';
 import { createAndPoint } from '../form/inlineCreate.js';
 import { START_ID, parseNodeId } from './workflowModel.js';
 import { toolNamedElsewhere } from '../form/toolInfo.js';
+import { lineOf, setLine } from '../form/speechLine.js';
 import { dropLines } from '../setup/setupModel.js';
 import { BACK_TOOL_DESCRIPTION, dropStaleHandoffRules, withHandoffRules } from './handoffRules.js';
 
@@ -267,14 +268,28 @@ export const setTransferAgent = (config, toolId, agent) =>
         t.description = `Transfer to ${agent.name}.`;
       })
     : config;
-// What it says while the transfer is made (said before it), '' for nothing.
-export const setTransferSay = (config, toolId, text) =>
-  editTransfer(config, toolId, (t) => {
-    const rest = list(t.before).filter((a) => !(isObj(a) && a.type === 'say'));
-    const before = text ? [{ type: 'say', text }, ...rest] : rest;
+// What it says while the transfer is made (the first `say` before it), '' for nothing. Only that line changes: any
+// other step before it (a later line, a webhook) stays. A fixed line ({ message }) changes its own words in place
+// (form/speechLine.js), so its link and translations stay.
+export const setTransferSay = (config, toolId, text) => {
+  const { index, transfer } = transferOf(config, toolId);
+  const at = list(transfer?.before).findIndex((a) => isObj(a) && a.type === 'say');
+  if (index >= 0 && at >= 0 && text && lineOf(config, transfer.before[at].text).at >= 0)
+    return setLine(config, ['telephony', 'transfers', index, 'before', at, 'text'], text);
+  return editTransfer(config, toolId, (t) => {
+    const before = list(t.before);
+    if (at >= 0 && text) before[at] = { ...before[at], text };
+    else if (at >= 0) before.splice(at, 1);
+    else if (text) before.unshift({ type: 'say', text });
     if (before.length) t.before = before;
     else delete t.before;
   });
+};
+// The words it says while the transfer is made (a fixed line's too), '' for nothing.
+export const transferSayOf = (config, toolId) => {
+  const { transfer } = transferOf(config, toolId);
+  return lineOf(config, list(transfer?.before).find((a) => isObj(a) && a.type === 'say')?.text).text;
+};
 // How long to wait before the transfer is made, in seconds (0 or less: no wait).
 export const setTransferDelay = (config, toolId, seconds) =>
   editTransfer(config, toolId, (t) => {

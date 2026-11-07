@@ -125,13 +125,16 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
   const findChannel = (config) => (Array.isArray(config?.channels) ? config.channels : []).find((c) => c?.id === voiceChannelId);
   const noCaptions = !simulated && voiceView && speaksOnly(findChannel(editor?.savedConfig || draftConfig));
 
-  // What the channel lets a caller send, from the draft's own settings: the microphone, pictures, the camera.
-  const can = inputCapabilities(editor?.parsed?.value, session.info?.channel);
+  // What the channel lets a caller send, from the settings of what runs (the saved draft for the real agent, the edits
+  // for the simulation): the microphone, pictures, the camera.
+  const can = inputCapabilities(triedConfig, session.info?.channel);
   const fileRef = useRef(null);
   const [note, setNote] = useState('');
   // what was already typed when the microphone was turned on stays; what is said is added after it
   const dictBase = useRef('');
-  const dictation = useDictation((text) => setDraft(`${dictBase.current}${dictBase.current && !/\s$/.test(dictBase.current) ? ' ' : ''}${text}`));
+  // heard in the agent's language: what it listens for (`stt.language`), else its main language
+  const hearIn = String(triedConfig?.defaults?.models?.stt?.language || triedConfig?.defaults?.language?.primary || '');
+  const dictation = useDictation((text) => setDraft(`${dictBase.current}${dictBase.current && !/\s$/.test(dictBase.current) ? ' ' : ''}${text}`), hearIn);
   useEffect(() => {
     if (state !== 'live') dictation.cancel();
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -163,7 +166,8 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
       simulated={simulated}
     />
   ) : null;
-  const cameraWanted = session.picture?.kind === 'camera';
+  // the camera is wanted: a camera request, or a camera check's retake (a picture from the camera, never a file)
+  const cameraWanted = session.picture?.kind === 'camera' || !!session.picture?.cameraOnly;
   const hasTools = can.voice || !!can.image || (can.video && !simulated);
   const tools = hasTools ? (
     <span className="pvTools">

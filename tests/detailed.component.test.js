@@ -723,6 +723,33 @@ test('Images & Videos: a starting point adds ask, read and forget, lets the webs
   await app.unmount();
 });
 
+test('Images & Videos: All settings opens on an agent with no picture steps, and a problem’s “show me” on a way in opens it', async () => {
+  const fresh = await mount('media');
+  await agentView(fresh, 'All settings');
+  assert.ok(await until(fresh, () => !!$(fresh.container, '[data-card="media.requests"]')), 'every card draws, the empty step lists too');
+  await agentView(fresh, 'Its pictures');
+  await fresh.unmount();
+  const web = pictured().channels.findIndex((c) => c.type === 'web_chat');
+  const app = await mount('media', pictured(), { request: { path: ['channels', web, 'inputs', 'image', 'max_bytes'], nonce: 1 } });
+  assert.ok(await until(app, () => !!$(app.container, '#dt-media-maxSize')), 'the way in’s own rows, in All settings');
+  await agentView(app, 'Its pictures');
+  await app.unmount();
+});
+
+test('Images & Videos: two parts of the sentence that open the same editor each keep their own anchor', async () => {
+  const app = await mount('media', pictured());
+  assert.ok(await until(app, () => !!$(app.container, '.mdHero')));
+  const parts = $$(app.container, '.grSentence .apTok[aria-haspopup]').filter((b) => /^(photos|the camera)/.test(textOf(b)));
+  assert.equal(parts.length, 2);
+  await a.click(parts[0]);
+  assert.deepEqual(
+    parts.map((b) => b.getAttribute('aria-expanded')),
+    ['true', 'false'],
+    'only the part clicked says it is open',
+  );
+  await app.unmount();
+});
+
 test('Images & Videos’ workspace gives every setting a place', () => {
   const part = DETAILED_PARTS.media;
   const cards = part.cols.flat();
@@ -744,6 +771,91 @@ test('Images & Videos’ workspace gives every setting a place', () => {
     const ids = [...card.rowsFor(at), ...(card.advFor?.(at) || [])].map((r) => r.id);
     assert.deepEqual([...mediaItemPlaced(listId)].sort(), [...ids].sort(), `${listId}: each row once, none left out`);
   }
+});
+
+// ---- the whole-app review (2026-11-07): Build fixes, each pinned
+const blur = (el) =>
+  act(async () => {
+    el.dispatchEvent(new window.FocusEvent('focusout', { bubbles: true }));
+    el.dispatchEvent(new window.FocusEvent('blur', { bubbles: false }));
+  });
+
+test('a connection can’t be renamed to a name another one has: it says so and nothing merges', async () => {
+  const config = agent();
+  config.connections = { crm: { type: 'http', base_url: 'https://crm.example.com' }, billing: { type: 'http', base_url: 'https://billing.example.com' } };
+  const app = await mount('connections', config);
+  await agentView(app, 'All settings');
+  const card = () => $(app.container, '[data-card="connections.connections"]');
+  const box = $(card(), '[data-field="connections.name"] input');
+  await a.type(box, 'billing');
+  await blur(box);
+  assert.match(textOf($(card(), '[data-field="connections.name"]')), /Another one already has this name/);
+  assert.deepEqual(Object.keys(app.config.connections), ['crm', 'billing']);
+  await agentView(app, 'What it reaches');
+  await app.unmount();
+});
+
+test('a rule’s value box shows the chosen rule’s own value, never the one chosen before', async () => {
+  const config = agent();
+  config.state = { variables: { attempts: { type: 'integer' }, vip: { type: 'boolean' } } };
+  config.guardrails = {
+    escalation: [
+      { id: 'too_many', when: { state: 'attempts', gte: 3 }, action: 'end_call' },
+      { id: 'vip_rule', when: { state: 'vip', equals: true }, action: 'end_call' },
+    ],
+  };
+  const app = await mount('guardrails', config);
+  await agentView(app, 'All settings');
+  const card = () => $(app.container, '[data-card="guardrails.rule"]');
+  const box = () => $(card(), '[data-field="guardrails.ruleCompare"] input');
+  assert.equal(box().value, '3');
+  await a.click(byText(card(), 'button', 'vip_rule'));
+  assert.equal(box().value, 'true');
+  await agentView(app, 'What it guards');
+  await app.unmount();
+});
+
+test('the agent that answers first can’t be deleted from Subagents’ All settings: it says why instead', async () => {
+  const config =
+    addSubagent(agent(), 'assistant', { name: 'Billing', when: 'bills' }).config || addSubagent(agent(), 'assistant', { name: 'Billing', when: 'bills' });
+  const app = await mount('subagents', config);
+  await agentView(app, 'All settings');
+  const card = $(app.container, '[data-card="subagents.subagent"]');
+  assert.ok(card, 'the subagent card');
+  assert.match(textOf(card), /It answers first, so it can’t be deleted/);
+  assert.equal(byText(card, 'button', /^Delete this/), null);
+  await agentView(app, 'Who answers');
+  await app.unmount();
+});
+
+test('removing one of two equal words takes away only that one', async () => {
+  const config = agent();
+  config.persona = { ...config.persona, style_rules: ['Be brief', 'Be brief', 'Be kind'] };
+  const app = await mount('agent', config);
+  await agentView(app, 'All settings');
+  const removes = $$(app.container, 'button[aria-label="Remove “Be brief”"]');
+  assert.equal(removes.length, 2, 'both chips are there');
+  await a.click(removes[0]);
+  assert.deepEqual(app.config.persona.style_rules, ['Be brief', 'Be kind']);
+  await agentView(app, 'Profile');
+  await app.unmount();
+});
+
+test('switching on the off-topic rule on an agent with no tools also switches on ending the call, so it works', async () => {
+  const config = agent();
+  config.tools = [];
+  config.agents.items = config.agents.items.map((x) => ({ ...x, tools: [] }));
+  config.guardrails = { topics: { allowed: ['orders'] } };
+  const app = await mount('guardrails', config);
+  await agentView(app, 'All settings');
+  const sw = $(app.container, '#dt-guardrails-offtopic');
+  assert.match(textOf($(app.container, '[data-field="guardrails.offtopic"]')), /also switches on “End the call politely”/);
+  await a.click(sw);
+  const rule = app.config.guardrails.topics.on_off_topic;
+  assert.ok(rule?.then, 'the rule runs a tool');
+  assert.equal(app.config.tools.find((t) => t.id === rule.then)?.builtin, 'end_call');
+  await agentView(app, 'What it guards');
+  await app.unmount();
 });
 
 // ---- each input in one place
@@ -1567,4 +1679,55 @@ test('Knowledge’s workspace gives every one of its settings exactly one place'
   const placed = knowledgePlaced();
   assert.deepEqual([...placed].sort(), [...rows].sort(), 'each row once, none left out, none made up');
   assert.equal(new Set(placed).size, placed.length, 'no row twice');
+});
+
+// ---- every Build setting drives the agent (2026-11-07 review): what a row shows and writes is what the agent uses
+test('a tool is offered only the settings its kind has: a task has no inputs for the model, a knowledge search its own number', async () => {
+  const config = agent();
+  config.knowledge = [{ id: 'kb', type: 'vector_store', sources: [] }];
+  config.tools = [
+    { id: 'verify', type: 'task', task: 'verify', description: 'Checks who it is.' },
+    { id: 'search_kb', type: 'knowledge', source: 'kb', top_k: 7 },
+    ...config.tools,
+  ];
+  const app = await mount('tools', config);
+  await agentView(app, 'All settings');
+  const card = () => $(app.container, '[data-card="tools.tool"]');
+  const pickTool = (re) => a.click($$(app.container, '[data-card="tools.mine"] button').find((b) => re.test(textOf(b))));
+  await pickTool(/verify/i);
+  assert.match(textOf(card()), /When it uses it/);
+  assert.doesNotMatch(textOf(card()), /What the model fills in/, 'a task has no inputs the model fills in');
+  await pickTool(/search/i);
+  assert.equal($(app.container, '#dt-tools-kTopK').value, '7', 'a knowledge search shows its own number');
+  await app.unmount();
+});
+
+test('with a speech-to-speech model, its own voice is chosen, and the speaking voice says it isn’t used', async () => {
+  const config = agent();
+  config.defaults.models.realtime = { provider: 'openai', model: 'gpt-realtime' };
+  const app = await mount('agent', config);
+  await agentView(app, 'All settings');
+  assert.match(textOf($(app.container, '[data-card="agent.voice"]')), /Not used while a speech-to-speech model speaks/);
+  await a.choose($(app.container, '#dt-agent-realtimeVoice'), 'coral');
+  assert.equal(app.config.defaults.models.realtime.voice, 'coral');
+  await app.unmount();
+});
+
+test('a channel’s greeting field says when other channels share the line, and the quiet-caller switch reads as its script does', async () => {
+  const config = agent();
+  config.channels = [
+    { id: 'chat', type: 'web_chat', enabled: true, modalities: { input: ['text'], output: ['text'] }, greeting: { say: 'Hi there' } },
+    { id: 'talk', type: 'web_voice', enabled: true, modalities: { input: ['audio', 'text'], output: ['audio', 'text'] }, greeting: { say: 'Hi there' } },
+  ];
+  config.defaults.conversation = { inactivity: { timeout_s: 30, max_nudges: 1, nudges: [{ type: 'say', text: 'Still there?' }] } };
+  const app = await mount('channels', config);
+  await agentView(app, 'All settings');
+  assert.match(textOf($(app.container, '[data-card="channels.channel"]')), /2 channels say this line, so it changes on all of them/);
+  await app.unmount();
+  const conv = await mount('conversation', config);
+  await agentView(conv, 'All settings');
+  const sw = $(conv.container, '#dt-conversation-nudge');
+  assert.ok(sw, 'the switch');
+  assert.equal(sw.getAttribute('aria-checked') === 'true' || sw.checked === true, true, 'a script with no “enabled” counts as on, as its sentence says');
+  await conv.unmount();
 });

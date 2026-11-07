@@ -34,7 +34,8 @@ const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { 
 
 function HomeNumbers({ report, reading, timing, days, onOpen }) {
   const { totals, previous, series } = report;
-  const handled = (t) => (typeof t.handoffRate === 'number' ? 1 - t.handoffRate : null);
+  // finished by the agent with nobody passed on: a call cut off or still going is not handled
+  const handled = (t) => (typeof t.handledRate === 'number' ? t.handledRate : null);
   const hadPrevious = previous.calls > 0;
   const today = series[series.length - 1]?.calls || 0;
   const tiles = useRef(null);
@@ -55,8 +56,8 @@ function HomeNumbers({ report, reading, timing, days, onOpen }) {
         title="Calls the agent finished without passing the caller to a person"
         loading={reading}
         value={pct(handled(totals))}
-        note={totals.calls ? `${totals.calls - Math.round((totals.handoffRate || 0) * totals.calls)} of ${plural(totals.calls, 'call')}` : 'No calls yet'}
-        spark={sparkPoints(series.map((d) => (d.calls ? 1 - d.handoffs / d.calls : null)))}
+        note={totals.calls ? `${totals.handled} of ${plural(totals.calls, 'call')}` : 'No calls yet'}
+        spark={sparkPoints(series.map((d) => (d.calls ? d.handled / d.calls : null)))}
         change={hadPrevious ? moved(handled(totals), handled(previous), pct, 'up') : null}
         onOpen={() => onOpen('monitoring')}
       />
@@ -134,7 +135,7 @@ function CallsByDay({ series, loading, days }) {
               {series.map((d, i) => (
                 <span key={d.day} className={`cvBar ${at === i ? 'on' : ''}`} onMouseEnter={() => setAt(i)}>
                   {d.handoffs > 0 && <i className="person" style={{ height: `${(d.handoffs / top) * 100}%` }} />}
-                  {d.calls - d.handoffs > 0 && <i className="handled" style={{ height: `${((d.calls - d.handoffs) / top) * 100}%` }} />}
+                  {d.handled > 0 && <i className="handled" style={{ height: `${(d.handled / top) * 100}%` }} />}
                 </span>
               ))}
             </span>
@@ -148,7 +149,7 @@ function CallsByDay({ series, loading, days }) {
           </div>
           <p className="cvReadout" aria-hidden="true">
             {shown
-              ? `${dayLong(shown.day)}: ${plural(shown.calls, 'call')}, ${shown.calls - shown.handoffs} handled by the agent, ${shown.handoffs} passed to a person.`
+              ? `${dayLong(shown.day)}: ${plural(shown.calls, 'call')}, ${shown.handled} handled by the agent, ${shown.handoffs} passed to a person.`
               : `${plural(total, 'call')} in the last ${days} days. Point at a day for its numbers.`}
           </p>
           <table className="srOnly">
@@ -164,7 +165,7 @@ function CallsByDay({ series, loading, days }) {
               {series.map((d) => (
                 <tr key={d.day}>
                   <th scope="row">{dayLong(d.day)}</th>
-                  <td>{d.calls - d.handoffs}</td>
+                  <td>{d.handled}</td>
                   <td>{d.handoffs}</td>
                 </tr>
               ))}
@@ -363,7 +364,7 @@ function exportCsv(report, days, names) {
   const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
   const lines = [
     ['Day', 'Calls', 'Handled by the agent', 'Passed to a person'],
-    ...report.series.map((d) => [d.day, d.calls, d.calls - d.handoffs, d.handoffs]),
+    ...report.series.map((d) => [d.day, d.calls, d.handled, d.handoffs]),
     [],
     ['Agent', 'Calls', 'Answer time (half the answers)', 'Tool calls that failed'],
     ...report.perAgent.map((a) => [names[a.bot] || a.bot, a.calls, seconds(a.waitP50), pct(a.toolFailRate)]),

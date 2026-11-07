@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import Select from '../../../../ui/Select.tsx';
 import { Input, TextArea } from '../../../../ui/Input.tsx';
 import { NumberInput, Switch } from '../../../form/fields.jsx';
@@ -21,12 +21,13 @@ import { reachOf } from '../../../setup/setupModel.js';
 import { LookupForm } from '../../../setup/SimpleBlocks.jsx';
 import { agentLabel, humanize } from '../../rowNames.js';
 import { getAtPath } from '../../schemaPath.js';
+import { lineOf, setLine } from '../../../form/speechLine.js';
 import { setPath } from '../schemaFacts.js';
 import { removeEntry } from '../Detailed.jsx';
 import AddItem from '../AddItem.jsx';
 import { refChoices } from '../../../form/engine.js';
 import ToolTry from './ToolTry.jsx';
-import { agentsUsingTool, kindOfTool, notAvailable, toolNamedElsewhere } from '../../../form/toolInfo.js';
+import { agentsUsingTool, kindOfTool, toolNamedElsewhere, toolNotRun } from '../../../form/toolInfo.js';
 import { clip } from '../describe.js';
 import ToolsWorkspace from '../toolsWorkspace/ToolsWorkspace.jsx';
 
@@ -59,7 +60,7 @@ function describeTool(entry, c) {
       .filter(Boolean)
       .join(' · '),
     detail: t.description ? clip(t.description) : 'No description yet: the agent decides when to use it from its name alone.',
-    state: notAvailable(t)
+    state: toolNotRun(c.config, entry.item, c.editor?.report?.unsupported)
       ? { tone: 'warn', words: 'Not run by the server yet' }
       : !agents.length && !(t.id && toolNamedElsewhere(c.config, t.id))
         ? { tone: 'off', words: 'Not given to an agent' }
@@ -143,12 +144,10 @@ function HandOverCases({ ctx, id }) {
             </label>
             <label className="dtCaseField">
               <span>Number</span>
-              <Input
-                mono
+              <CaseNumber
                 value={c.number}
-                placeholder="+6561234567"
                 disabled={!phone || c.numberElsewhere}
-                onChange={(event) => ctx.set(setHandOverCase(ctx.config, c.id, { number: event.target.value }))}
+                onChange={(number) => ctx.set(setHandOverCase(ctx.config, c.id, { number }))}
               />
               {c.numberElsewhere ? (
                 <small className="dtNote">Chosen by what the caller asks: change it on Connections › Phone transfers.</small>
@@ -176,6 +175,30 @@ function HandOverCases({ ctx, id }) {
   );
 }
 
+// A case's number as it is typed ("+65 6123 4567", spaces and all); a phone number is saved without its spaces (a SIP
+// address as it is). Typed spaces used to vanish under the cursor, as the saved number was written back into the box.
+function CaseNumber({ value, disabled, onChange }) {
+  const [typed, setTyped] = useState(value);
+  const [seen, setSeen] = useState(value);
+  const saved = (text) => (/^[+\d(]/.test(text.trim()) ? text.replace(/\s+/g, '') : text.trim());
+  if (value !== seen) {
+    setSeen(value);
+    if (saved(typed) !== value) setTyped(value);
+  }
+  return (
+    <Input
+      mono
+      value={typed}
+      placeholder="+65 6123 4567"
+      disabled={disabled}
+      onChange={(event) => {
+        setTyped(event.target.value);
+        onChange(saved(event.target.value));
+      }}
+    />
+  );
+}
+
 // where the end-call tool says its goodbye (params.say), or null without one
 const endCallPath = (config) => {
   const at = list(config?.tools).findIndex((t) => isObj(t) && t.type === 'builtin' && t.builtin === 'end_call');
@@ -183,20 +206,7 @@ const endCallPath = (config) => {
 };
 
 // A line the agent says, which may be text or one of its fixed lines ({ message: id }): shown as its words, and edited
-// in place (a fixed line's own text changes, so every place that uses it says the new words).
-const textOf = (v) => (typeof v === 'string' ? v : v && typeof v === 'object' ? textOf(v.text ?? Object.values(v)[0]) : '');
-function lineOf(config, value) {
-  if (isObj(value) && typeof value.message === 'string') {
-    const at = list(config?.messages).findIndex((m) => isObj(m) && m.id === value.message);
-    return { text: at >= 0 ? textOf(config.messages[at].text) : '', fixed: value.message, at };
-  }
-  return { text: textOf(value), fixed: '', at: -1 };
-}
-function setLine(config, path, text) {
-  const line = lineOf(config, getAtPath(config, path));
-  if (line.fixed && line.at >= 0 && typeof config.messages[line.at].text === 'string') return setPath(config, ['messages', line.at, 'text'], text);
-  return setPath(config, path, text === '' ? undefined : text);
-}
+// in place (form/speechLine.js: a fixed line's own text changes, so every place that uses it says the new words).
 
 // which agents offer a tool (each agent's `tools` list)
 const agentsWith = (config, id) =>
@@ -221,7 +231,9 @@ function MethodPath({ ctx, id, base }) {
   const set = (key, value) => ctx.set(setPath(ctx.config, [...base, 'request', key], value));
   return (
     <span className="dtInline">
-      <Select value={request.method || 'GET'} onChange={(event) => set('method', event.target.value)} aria-label="Method">
+      {/* the method is required: unset, it says so rather than showing GET as if it were chosen */}
+      <Select value={request.method || ''} onChange={(event) => set('method', event.target.value || undefined)} aria-label="Method">
+        {!request.method && <option value="">Method…</option>}
         {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
           <option key={m} value={m}>
             {m}
@@ -250,6 +262,10 @@ function WaitRetries({ ctx, id, base }) {
 // a tool row that only an API tool has: its place, or null (greyed out) for the others
 const http = (key) => (entry) => (config) => (isHttp(toolAt(config, entry)) ? [...entry.base, ...key] : null);
 const own = (key) => (entry) => () => [...entry.base, ...key];
+// a row for a setting this kind of tool has: the schema decides (a task, MCP or knowledge tool has no `parameters`, a
+// built-in or knowledge one no `preconditions`, only a web API call has `limits`), so nothing is offered that the
+// server's check refuses
+const allowedFor = (entry, key) => (config, ctx) => !ctx?.facts || !ctx.facts([...entry.base, key]);
 const rowAt = (where, entry, row) => {
   const at = where(entry);
   return {
@@ -385,12 +401,13 @@ export const toolsForm = {
               label: 'What the model fills in',
               hint: 'Name, kind, required, description, allowed values',
               errPath: [...entry.base, 'parameters'],
+              hidden: allowedFor(entry, 'parameters'),
               render: (ctx) => {
                 const tool = toolAt(ctx.config, entry) || {};
                 return (
                   <ParamsEditor
                     value={tool.parameters}
-                    toolName={tool.id}
+                    toolName={tool.name || tool.id}
                     description={tool.description}
                     onChange={(next) => ctx.set(setPath(ctx.config, [...entry.base, 'parameters'], next))}
                   />
@@ -446,8 +463,26 @@ export const toolsForm = {
           return [
             rowAt(own(['name']), entry, { id: 'name', label: 'Name the model sees', kind: 'text' }),
             rowAt(http(['result', 'out_of_band']), entry, { id: 'oob', label: 'Sent straight to the caller', kind: 'form' }),
-            rowAt(own(['preconditions']), entry, { id: 'pre', label: 'Only allow when…', kind: 'form' }),
-            rowAt(own(['limits']), entry, { id: 'limits', label: 'Count attempts in', kind: 'form' }),
+            { ...rowAt(own(['preconditions']), entry, { id: 'pre', label: 'Only allow when…', kind: 'form' }), hidden: allowedFor(entry, 'preconditions') },
+            { ...rowAt(own(['limits']), entry, { id: 'limits', label: 'Count attempts in', kind: 'form' }), hidden: allowedFor(entry, 'limits') },
+            // a knowledge search's own settings: how many passages (instead of its base's), and what the model is told
+            // when the search fails
+            {
+              ...rowAt(own(['top_k']), entry, {
+                id: 'kTopK',
+                label: 'How many passages',
+                hint: 'Instead of its base’s number',
+                kind: 'num',
+                min: 1,
+                max: 20,
+                integer: true,
+              }),
+              hidden: (config, ctx) => toolAt(config, entry)?.type !== 'knowledge' || allowedFor(entry, 'top_k')(config, ctx),
+            },
+            {
+              ...rowAt(own(['on_error']), entry, { id: 'kFails', label: 'If the search fails', kind: 'form' }),
+              hidden: (config, ctx) => toolAt(config, entry)?.type !== 'knowledge' || allowedFor(entry, 'on_error')(config, ctx),
+            },
             rowAt(own(['channels']), entry, {
               id: 'channels',
               label: 'Channels it works on',
@@ -458,7 +493,7 @@ export const toolsForm = {
                   .map((ch) => ({ value: ch.id, label: ch.id })),
             }),
             rowAt(http(['result']), entry, { id: 'sample', label: 'Everything about the answer', kind: 'form' }),
-            rowAt(own(['parameters']), entry, { id: 'json', label: 'Edit the inputs as JSON', kind: 'code' }),
+            { ...rowAt(own(['parameters']), entry, { id: 'json', label: 'Edit the inputs as JSON', kind: 'code' }), hidden: allowedFor(entry, 'parameters') },
             // a built-in tool's own settings (which transfer, which form…)
             ...(builtin ? [rowAt(own(['params']), entry, { id: 'params', label: 'Its built-in settings', kind: 'form' })] : []),
           ];

@@ -193,7 +193,14 @@ const SCREENS = {
   languagepicker: (editor) => <LanguagePicker config={editor.parsed.value} set={editor.setValue} />,
   voicepicker: (editor) => <VoicePicker config={editor.parsed.value} set={editor.setValue} />,
   modelpicker: (editor, props) => <ModelPicker config={editor.parsed.value} set={editor.setValue} providers={props.providers || FALLBACK_PROVIDERS} live />,
-  team: (_editor, props) => <TeamPage agents={props.agents || []} workspaceName="Acme" profile={{ fullName: 'Owner', email: 'owner@acme.com' }} />,
+  team: (_editor, props) => (
+    <TeamPage
+      agents={props.agents || []}
+      existingIds={props.existingIds || null}
+      workspaceName="Acme"
+      profile={{ fullName: 'Owner', email: 'owner@acme.com' }}
+    />
+  ),
   share: () => <ShareAgentDrawer botId="a" name="Acme Support" onClose={() => {}} onOpenTeam={() => {}} />,
   fixcall: (editor, props) => (
     <FixCallDrawer

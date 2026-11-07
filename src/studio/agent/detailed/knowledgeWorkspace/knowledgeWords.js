@@ -7,7 +7,7 @@
 //   passage found is kept; a search gives up after 3 s and brings at most 4,000 characters unless set;
 // - building is only started by a press, from what is saved; the last index keeps answering until a new one is ready.
 
-import { baseReaders, knowledgeOf } from '../../../setup/setupKnowledge.js';
+import { baseReaders, knowledgeOf, passagesOf } from '../../../setup/setupKnowledge.js';
 import { agentLabel } from '../../rowNames.js';
 import { sinceRead } from '../../../knowledge/model.js';
 import { docBase } from '../parts/knowledgeView.js';
@@ -37,8 +37,9 @@ export function readKnowledge(config, held = null) {
     pages,
     depth: pages.length ? Math.max(...pages.map((u) => depths[u] || 0)) : 0,
     mode: base ? base.mode || 'tool' : held?.mode || FIRST_MODE,
-    topK: num(base ? base.top_k : held?.top_k) ?? USUAL.topK,
-    topKSet: num(base?.top_k) !== null,
+    // the number a search really uses (its search tool's own, while it has one)
+    topK: num(base ? passagesOf(config, base.id) : held?.top_k) ?? USUAL.topK,
+    topKSet: num(base ? passagesOf(config, base.id) : null) !== null,
     minScore: num(r.min_score),
     queryFrom: r.query_from === 'last_user' ? 'last_user' : 'last_exchange',
     maxChars: num(r.max_chars) ?? USUAL.maxChars,

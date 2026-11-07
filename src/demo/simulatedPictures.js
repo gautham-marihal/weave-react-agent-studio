@@ -78,6 +78,21 @@ export function findPictureFlows(config) {
   return found;
 }
 
+// Can this channel take what a picture request asks for? A photo needs a web channel that takes images, the camera one
+// that takes video with its camera not switched off; a phone line has no screen. '' when it can, else why not.
+export function channelRefuses(kind, channel) {
+  if (!isObj(channel)) return 'there is no channel to ask on';
+  const web = ['web_chat', 'web_voice'].includes(channel.type);
+  const input = list(channel.modalities?.input);
+  if (!web) return 'this channel has no screen to show the request on';
+  if (kind === 'camera') {
+    if (!input.includes('video')) return 'this channel doesn’t take the camera (video isn’t one of what callers can send)';
+    if (channel.inputs?.video?.camera === false) return 'this channel’s camera is switched off';
+    return '';
+  }
+  return input.includes('image') ? '' : 'this channel doesn’t take photos (images aren’t one of what callers can send)';
+}
+
 // Does this picture flow start with what the caller just said?
 export function flowStartsOn(flow, said) {
   const text = String(said || '');
@@ -115,9 +130,10 @@ export function conditionHolds(when, state, channelId) {
 }
 
 // What a picture request asks of the screen, from the step and the channel (`inputs.image`): the request_image message.
-export function requestMessage(action, channel, id) {
+//   say: turns a line into its words (a fixed line, { message }, is said in its own words)
+export function requestMessage(action, channel, id, say = null) {
   const image = isObj(channel?.inputs?.image) ? channel.inputs.image : {};
-  const prompt = typeof action?.prompt === 'string' ? action.prompt : isObj(action?.prompt) ? action.prompt.text || '' : '';
+  const prompt = typeof action?.prompt === 'string' ? action.prompt : isObj(action?.prompt) ? (say ? say(action.prompt) : action.prompt.text || '') : '';
   return {
     type: 'request_image',
     request_id: id,
@@ -180,8 +196,12 @@ export function readDate(value, order = 'dmy') {
     const [d, mo] = order === 'mdy' ? [m[2], m[1]] : [m[1], m[2]];
     return `${m[3]}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
+  // a date in words ("5 March 2024") is read as that day at local midnight: its own day, not the UTC one (east of UTC,
+  // toISOString would give the day before)
   const parsed = new Date(text);
-  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const two = (n) => String(n).padStart(2, '0');
+  return `${parsed.getFullYear()}-${two(parsed.getMonth() + 1)}-${two(parsed.getDate())}`;
 }
 const empty = (v) => v === undefined || v === null || String(v).trim() === '';
 

@@ -6,6 +6,7 @@ import { isObj } from '../studio/form/engine.js';
 import { evalPath } from '../studio/form/jsonPaths.js';
 import { notAvailable } from '../studio/form/toolInfo.js';
 import { fillArgs } from './demoTests.js';
+import { conditionHolds } from './simulatedPictures.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 export const DEMO_PREVIEW_NOTE =
@@ -37,12 +38,14 @@ export function previewPromptDemo(config, body = {}) {
     ...list(built.agent.tools).map((id) => {
       const t = toolsById[id];
       const why = t ? notAvailable(t) : null;
+      // a tool limited to other channels isn't offered on this one (the schema's `channels`)
+      const elsewhere = !!t && Array.isArray(t.channels) && !!channel && !t.channels.includes(channel.id);
       return {
-        name: id,
+        name: t?.name || id,
         description: t?.description || '',
         parameters: t?.parameters || { type: 'object', properties: {} },
-        offered: !!t && !why,
-        reason: !t ? 'not defined' : why ? `${why} can’t run yet` : '',
+        offered: !!t && !why && !elsewhere,
+        reason: !t ? 'not defined' : why ? `${why} can’t run yet` : elsewhere ? `only on ${t.channels.join(', ')}` : '',
       };
     }),
     ...list(built.agent.handoffs)
@@ -115,12 +118,23 @@ export function previewResultDemo(config, body = {}) {
       method: tool.request.method || 'GET',
       url: `${base}${fillArgs(tool.request.path || '/', args)}`,
       query: fillArgs(tool.request.query || {}, args),
-      headers: {},
+      // the connection's headers, then the tool's own; a secret is named, never read
+      headers: Object.fromEntries(
+        Object.entries({ ...(isObj(connection.headers) ? connection.headers : {}), ...(isObj(tool.request.headers) ? tool.request.headers : {}) }).map(
+          ([k, v]) => [k, isObj(v) && typeof v.secret === 'string' ? `‹secret ${v.secret}›` : fillArgs(v, args)],
+        ),
+      ),
       body: tool.request.body === undefined ? null : fillArgs(tool.request.body, args),
       auth: { type: connection.auth?.type || 'none', secrets: [...collectSecrets(connection.auth)] },
     };
   }
-  out.preconditions = { holds: true, message: '' };
+  // its "only allow when…" checks, against the values given to try it with (body.state): the first that fails says why
+  const state = isObj(body.state) ? body.state : {};
+  const failing = list(tool.preconditions).find((p) => isObj(p) && conditionHolds(p.require, state, body.channel) === false);
+  const unknown = list(tool.preconditions).some((p) => isObj(p) && conditionHolds(p.require, state, body.channel) === null);
+  out.preconditions = failing
+    ? { holds: false, message: failing.on_fail?.tool_error || 'A check before the tool runs doesn’t hold.' }
+    : { holds: true, message: unknown ? 'A check before it runs depends on a value only a real call has.' : '' };
   const props = isObj(tool.parameters?.properties) ? tool.parameters.properties : {};
   out.args_problems = [
     ...list(tool.parameters?.required)

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import Icon from '../../../ui/Icon.jsx';
-import { isObj } from '../../form/engine.js';
 import { setAt } from '../../form/inlineCreate.js';
-import { setTransferAgent, setTransferDelay, setTransferSay, transferOf } from '../workflowOps.js';
+import { setTransferAgent, setTransferDelay, setTransferSay, transferOf, transferSayOf } from '../workflowOps.js';
 import { parseNodeId } from '../workflowModel.js';
 import Select from '../../../ui/Select.tsx';
 import Button from '../../../ui/Button.tsx';
@@ -25,7 +24,8 @@ export function AgentTransferView({ node, owner, config, flow, workspace, botId,
   const id = `wf-${node.id}`;
   const agents = list(workspace?.agents).filter((a) => a.id !== botId);
   const chosen = agents.find((a) => a.id === node.bot);
-  const say = list(transfer?.before).find((a) => isObj(a) && a.type === 'say')?.text;
+  // its words, a fixed line's too (changed in place: setTransferSay)
+  const say = transferSayOf(config, toolId);
   const when = typeof tool?.description === 'string' ? tool.description.trim() : '';
   const into = flow.edges.filter((e) => e.to === node.id);
   const group = (what) => ({ group: `transfer:${toolId}:${what}` });
@@ -82,7 +82,7 @@ export function AgentTransferView({ node, owner, config, flow, workspace, botId,
               id={`${id}-say`}
               multiline
               rows={3}
-              value={typeof say === 'string' ? say : ''}
+              value={say}
               placeholder="One moment, I’ll put you through."
               onChange={(v) => apply(setTransferSay(config, toolId, v), group('say'))}
             />

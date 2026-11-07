@@ -46,7 +46,10 @@ const LAST = env.UB_LAST_NAME || (PICTURES ? 'Morgan' : 'Wei Ming');
 const ID_NUMBER = env.UB_ID_NUMBER || 'S8512345D';
 const DOB = env.UB_DOB || '14/03/1985';
 const MAIL_NAME = `${FIRST}.${LAST}`.toLowerCase().replace(/[^a-z.]+/g, '');
-const CUSTOMER_EMAIL = `${MAIL_NAME}${FAILURE ? `+${FAILURE}` : ''}@example.com`;
+// UB_RUN: a tag of this run's own in the e-mail (name+r3@…), so the checks on the MX queue and the TQD outbox only see
+// this run's customer, never one left there by an earlier run with the same name
+const RUN_TAG = /^[a-z0-9]{1,12}$/i.test(env.UB_RUN || '') ? `+${env.UB_RUN.toLowerCase()}` : '';
+const CUSTOMER_EMAIL = `${MAIL_NAME}${RUN_TAG}${FAILURE ? `+${FAILURE}` : ''}@example.com`;
 
 const shots = here(`../shots/${way}`);
 const BASE = env.E2E_BASE || 'http://localhost:5181';
@@ -130,7 +133,7 @@ const PHOTO_RETAKE = /I can’t see a name|Part of the card|The card is too far 
 const PHOTO_GIVE_UP = /still isn’t clear|still doesn’t show|No photo came through/;
 const VIDEO_RETAKE =
   /I couldn’t see your whole face|I couldn’t see the card|The card was covering|The card was too far away to read|No picture came from the camera/;
-const QUEUED = /next in the queue|colleagues are busy|Choose your account and sign/;
+const QUEUED = /next in the queue|colleagues are busy|Everything matches/;
 // what Aria says after the checks, and the hand-over reason each one must go with (the first that matches wins)
 const OUTCOMES = [
   { said: /needs to complete the identity check with you/, reason: 'identity_review', words: 'identity review (neutral line)' },
@@ -287,11 +290,16 @@ if (formShown) {
         return countOf(now, /take the picture instead/) > countOf(start, /take the picture instead/) || countOf(now, QUEUED) > countOf(start, QUEUED);
       }, 120000);
       await page.waitForTimeout(1500);
-      // not recognised: the customer takes the picture (Take a picture, then the shutter)
+      // not recognised: the retake offers the video again or a picture, never a file; the customer takes a picture
       if (/take the picture instead/.test(await textOf(panel)) && !QUEUED.test(await textOf(panel))) {
         console.log(at(), '   Aria asked for a picture taken by the customer:', lastLine(await textOf(panel), VIDEO_RETAKE) || '(no frame)');
         const take = page.locator(`${panel} .pcCard`).getByRole('button', { name: 'Take a picture' });
         if (await until(async () => (await take.count()) > 0, 20000)) {
+          const retakeCard = await textOf(`${panel} .pcCard`);
+          check(
+            'the retake offers the video again or a picture, never a file from the device',
+            /Try again with video/.test(retakeCard) && !/Choose a photo|drop a photo/.test(retakeCard),
+          );
           await take.last().click();
           const shutter = page.locator('.pcStage').getByRole('button', { name: 'Take picture' });
           await until(async () => (await shutter.count()) > 0 && (await shutter.isEnabled()), 15000);
@@ -315,21 +323,21 @@ if (formShown) {
         outcome?.reason === 'identity_review' && !/face matches|other way round/.test(all),
       );
     if (outcome?.reason === 'ready_for_plan') {
-      // verified: no hand-over; the customer chooses the account and signs with the AI
+      // verified: no hand-over; Aria offers the accounts the offers service gives for this amount (nothing typed into
+      // the config), the customer chooses one in conversation, and signs it with the AI
       verified = true;
-      const planForm = page.locator(`${panel} form.stTForm`, { hasText: 'Choose your account and sign' }).last();
-      check('verified: no transfer to a person; the choose-and-sign form opens', (await planForm.count()) > 0 && !/next in the queue/.test(all));
+      const offerMark = all.lastIndexOf('Everything matches'); // what Aria says from the verdict on (the offer may already be in)
+      const offersSaid = await until(async () => /Private Wealth|Inheritance Holding|Laddered/i.test(await newText(offerMark)), 60000);
+      check(
+        'verified: no transfer to a person; Aria offers the accounts for this amount',
+        offersSaid && !/next in the queue/.test(all),
+        (await newText(offerMark)).slice(0, 240),
+      );
+      await say('I would like the Private Wealth Account, please.');
+      const planForm = page.locator(`${panel} form.stTForm`, { hasText: 'Sign to open your account' }).last();
+      check('the chosen account’s signature form opens', await until(async () => (await planForm.count()) > 0, 60000));
       await page.screenshot({ path: `${shots}/5-choose-and-sign.png` });
       if (await planForm.count()) {
-        const plan = planForm
-          .getByRole('combobox', { name: /^Account/ })
-          .or(planForm.locator('select'))
-          .first();
-        if ((await plan.evaluate((e) => e.tagName)) === 'SELECT') await plan.selectOption('Private Wealth Account');
-        else {
-          await plan.click();
-          await page.getByRole('option', { name: 'Private Wealth Account' }).click();
-        }
         await planForm.getByLabel(/I sign this application electronically/).check();
         await planForm.getByRole('button', { name: /Sign and open my account/ }).click();
         console.log(at(), '   customer: chose the Private Wealth Account and signed');

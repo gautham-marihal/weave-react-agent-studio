@@ -39,7 +39,8 @@ const FormEditor = lazy(() => import('../../form/FormEditor.jsx'));
 //     path?, get?(config), put?(config, value), options? ([{ value, label }] or (config) => …),
 //     valueLabel?(value) (what a 'pick' shows for a value its list lacks), unit?, placeholder?,
 //     rows?, disabled?, note?, render?(ctx) }
-// A card spec: { id, title, from?, lead?, rows, adv? (row specs, usually with a `path`), body?(ctx) }
+// A card spec: { id, title, from?, lead?, rows, adv? (row specs, usually with a `path`), body?(ctx),
+//   keep?(ctx, entry) (why the chosen item can't be deleted, in place of its Delete button) }
 // A part spec: { id, num, title, question, cols: [[card…], [card…]], top?(ctx) }
 
 // "Required": marked so (tags 'r'), or the schema says so, but not on a switch (it always has a value) and not while
@@ -94,6 +95,22 @@ export function useFacts(config) {
 
 // Deletes a list's item, after asking when other parts of the draft point at it (and then taking those pointers out).
 export async function removeEntry(ctx, collection, entry) {
+  // an item of a list with no id yet (written in the JSON) is known only by its place: it is taken out from there (by
+  // its key, which is its index, nothing would be found, and "deleted" would be said with nothing gone)
+  const at = entry.base?.[entry.base.length - 1];
+  if (typeof at === 'number' && !(entry.item && typeof entry.item.id === 'string' && entry.item.id)) {
+    const holderPath = entry.base.slice(0, -1);
+    const holder = getAtPath(ctx.config, holderPath);
+    if (Array.isArray(holder))
+      ctx.set(
+        setPath(
+          ctx.config,
+          holderPath,
+          holder.filter((_, i) => i !== at),
+        ),
+      );
+    return;
+  }
   const id = entry.key;
   const hits = ctx.engine ? findUsage(ctx.engine, ctx.config, collection, id) : [];
   if (hits.length) {
@@ -142,7 +159,11 @@ export function countPart(part, given) {
   // an empty list still has its item's fields: counted on a stand-in first item
   const lists = Object.fromEntries(part.cols.flat().flatMap((card) => (card.list ? [[card.list.id, card.list]] : [])));
   const standIn = (l) => [...l.path, given.facts(l.path)?.kind === 'map' ? '_' : 0];
-  const ctx = { ...given, chosen: (id) => given.chosen(id) || (lists[id] ? { key: '', name: '', base: standIn(lists[id]), item: undefined } : null) };
+  // (a list gathered from several places, with no single path, has no stand-in: its card counts no rows while empty)
+  const ctx = {
+    ...given,
+    chosen: (id) => given.chosen(id) || (lists[id]?.path ? { key: '', name: '', base: standIn(lists[id]), item: undefined } : null),
+  };
   for (const card of part.cols.flat()) {
     // a list card's chips count as a field, unless the card also shows the chosen item's fields (they are the fields)
     if (card.list && card.of !== card.list.id) {
@@ -212,11 +233,18 @@ function useChoices(part, config, extra = {}) {
   }
   const listById = useMemo(() => Object.fromEntries(lists.map((l) => [l.id, l])), [lists]);
   const items = (id) => (listById[id] ? entriesOf(listById[id], config, extra) : []);
+  // where each list's chosen item was: an item renamed under its card (its key is its name, as a check's "Its name") is
+  // the same item in the same place, so the card stays on it rather than jumping to the first
+  const lastBase = useRef({});
   const chosen = (id) => {
     const all = items(id);
-    return all.find((e) => e.key === picked[id]) || all[0] || null;
+    const same = (e) => JSON.stringify(e.base) === lastBase.current[id];
+    const found = all.find((e) => e.key === picked[id]) || (lastBase.current[id] ? all.find(same) : null) || all[0] || null;
+    if (found) lastBase.current[id] = JSON.stringify(found.base);
+    return found;
   };
   const choose = (id, key) => {
+    delete lastBase.current[id];
     setPicked((old) => ({ ...old, [id]: key }));
     if (route.view === 'bot') replaceRoute(routeHref(route.botId, route.tab, { ...route.params, item: `${id}:${key}` }));
   };
@@ -279,6 +307,7 @@ export function DetailedPage({ part, editor, extra = {}, request = null, notices
     const path = request?.path;
     if (!Array.isArray(path)) return;
     for (const l of lists) {
+      if (!Array.isArray(l.path)) continue;
       if (path.length > l.path.length && l.path.every((p, i) => String(p) === String(path[i]))) {
         const key = path[l.path.length];
         const item = getAtPath(config, [...l.path, key]);
@@ -537,7 +566,7 @@ export function DetailedCard({ card, ctx, partId }) {
   const entry = card.of ? ctx.chosen(card.of) : null;
   // an item's card fades in when another item is chosen (not the card that holds the list of items)
   const box = useRef(null);
-  useFadeOnChange(box, card.of && !card.list ? entry?.key || '' : 'list');
+  useFadeOnChange(box, card.of && !card.list ? (entry ? JSON.stringify(entry.base) : '') : 'list');
   // a search over the part (Agent's All settings) keeps the rows whose name or help says it
   const q = String(ctx.rowFilter || '')
     .trim()
@@ -606,14 +635,18 @@ export function DetailedCard({ card, ctx, partId }) {
         ))}
       {entry && card.remove && (
         <div className="dtItemFoot">
-          <Button type="button" variant="secondary" size="small" onClick={() => deleteWithUndo(ctx, card.word, entry.name, (c) => card.remove(c, entry))}>
-            Delete {card.word ? `this ${card.word}` : `“${entry.name}”`}
-          </Button>
+          {card.keep?.(ctx, entry) ? (
+            <p className="dtNote">{card.keep(ctx, entry)}</p>
+          ) : (
+            <Button type="button" variant="secondary" size="small" onClick={() => deleteWithUndo(ctx, card.word, entry.name, (c) => card.remove(c, entry))}>
+              Delete {card.word ? `this ${card.word}` : `“${entry.name}”`}
+            </Button>
+          )}
         </div>
       )}
       {adv.filter((row) => isShown(row, ctx)).length > 0 && (
         <AdvancedFoot
-          key={entry?.key || 'card'}
+          key={entry ? JSON.stringify(entry.base) : 'card'}
           rows={adv.filter((row) => isShown(row, ctx))}
           ctx={ctx}
           partId={partId}
@@ -743,8 +776,14 @@ function Control({ kind, row, id, value, onChange, facts, ctx }) {
       );
     }
     case 'multi': {
-      const options = optionsOf(row, facts, ctx.config, true, ctx);
+      const offered = optionsOf(row, facts, ctx.config, true, ctx);
       const chosen = Array.isArray(value) ? value : [];
+      // a value the config holds that isn't offered (written by hand, or no longer listed) still shows, ticked, so what
+      // the agent really uses is never hidden and can be unticked
+      const options = [
+        ...offered,
+        ...chosen.filter((v) => !offered.some((o) => o.value === v)).map((v) => ({ value: v, label: String(v).replace(/_/g, ' ') })),
+      ];
       return (
         <div className="dtPills" role="group" aria-labelledby={labelled} id={id}>
           {options.map((option) => {
@@ -865,11 +904,12 @@ export function ChipList({ id, label, items, onChange, placeholder, disabled }) 
     <div className="dtChips">
       {items.length > 0 && (
         <ul aria-label={label}>
-          {items.map((item) => (
-            <li key={String(item)}>
+          {/* by place: the same words twice (the schema allows it) are two chips, and × takes away only the one pressed */}
+          {items.map((item, at) => (
+            <li key={`${at}:${String(item)}`}>
               <span>{String(item)}</span>
               {!disabled && (
-                <button type="button" aria-label={`Remove “${item}”`} onClick={() => onChange(items.filter((i) => i !== item))}>
+                <button type="button" aria-label={`Remove “${item}”`} onClick={() => onChange(items.filter((_, i) => i !== at))}>
                   <Icon name="close" size={12} />
                 </button>
               )}

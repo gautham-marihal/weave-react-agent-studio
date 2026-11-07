@@ -104,7 +104,16 @@ export default function ConditionBuilder({ value, onChange, path, disabled, fall
     onChange({
       [source]: subject,
       [nextOperator]:
-        nextOperator === 'in' ? (Array.isArray(operand) ? operand : []) : nextOperator === 'gte' || nextOperator === 'lte' ? asNumber(single) : single,
+        // "is one of" starts from the value typed for "is" (the reverse keeps its first one)
+        nextOperator === 'in'
+          ? Array.isArray(operand)
+            ? operand
+            : operand === undefined || operand === null || operand === ''
+              ? []
+              : [operand]
+          : nextOperator === 'gte' || nextOperator === 'lte'
+            ? asNumber(single)
+            : single,
     });
   };
   const setOperand = (v) => onChange({ [source]: subject, [operator]: v });

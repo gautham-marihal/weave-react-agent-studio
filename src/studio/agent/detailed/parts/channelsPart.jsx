@@ -20,7 +20,7 @@ import { addDefaultSpeechModels } from '../../../models/config.js';
 import { useProviders } from '../../../models/useProviders.js';
 import { REACH, reachOf, setReach } from '../../../setup/setupModel.js';
 import { channelGreetingTarget, channelName, greetingOf, setGreeting } from '../../../simple/simpleModel.js';
-import { SCHEDULES_START } from '../../pageLists.js';
+import { SCHEDULES_START, agentZone } from '../../pageLists.js';
 import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { DetailedPage, removeEntry } from '../Detailed.jsx';
@@ -39,7 +39,11 @@ function describeChannel(entry) {
   return {
     icon: ch.type === 'sip_voice' || ch.type === 'phone' ? 'phone' : ch.type === 'web_voice' ? 'voice' : 'chat',
     meta: [ch.id, input.length ? `customers can use ${input.map((m) => INPUT_WORDS[m] || m).join(', ')}` : ''].filter(Boolean).join(' · '),
-    detail: says ? `Says first: “${clip(says, 110)}”` : 'Its first words come from the agent.',
+    detail: says
+      ? `Says first: “${clip(says, 110)}”`
+      : ch.greeting?.say
+        ? 'Says first one of the agent’s fixed lines.'
+        : 'Says nothing first: it waits for the person to start.',
     state: ch.enabled === false ? { tone: 'off', words: 'Switched off' } : { tone: 'good', words: 'On' },
   };
 }
@@ -89,19 +93,37 @@ function ReachPills({ ctx, id }) {
   );
 }
 
-// a channel's own first line: what this channel says when someone arrives (the agent's line, unless it has its own)
+// what this channel says first when someone arrives. A line other channels say too stays one line (as on the Workflow's
+// channel panel), so the field says when typing changes them as well; the channels are fixed at the first edit, so
+// clearing and retyping writes the same ones.
 function OwnGreeting({ ctx, id, entry }) {
   const index = entry.base[1];
-  const target = channelGreetingTarget(ctx.config, index);
+  const [fixed, setFixed] = useState(null);
+  const target = fixed || channelGreetingTarget(ctx.config, index);
   const line = greetingOf(ctx.config, target);
+  const notes = [
+    target.length > 1 ? `${target.length} channels say this line, so it changes on all of them.` : '',
+    line.reference ? 'It is one of the agent’s fixed lines; changing it changes that line everywhere it is used.' : '',
+  ].filter(Boolean);
   return (
-    <TextArea
-      id={id}
-      rows={2}
-      value={line.text}
-      placeholder="Empty: it waits for the person to start"
-      onChange={(event) => ctx.set(setGreeting(ctx.config, event.target.value, target))}
-    />
+    <>
+      <TextArea
+        id={id}
+        rows={2}
+        value={line.text}
+        placeholder="Empty: it waits for the person to start"
+        aria-describedby={notes.length ? `${id}-shared` : undefined}
+        onChange={(event) => {
+          if (!fixed) setFixed(target);
+          ctx.set(setGreeting(ctx.config, event.target.value, target));
+        }}
+      />
+      {notes.length > 0 && (
+        <small className="dtNote" id={`${id}-shared`}>
+          {notes.join(' ')}
+        </small>
+      )}
+    </>
   );
 }
 
@@ -332,8 +354,8 @@ export const channelsForm = {
               : []),
             {
               id: 'greeting',
-              label: 'Its own greeting',
-              hint: 'Empty: it uses the agent’s greeting',
+              label: 'What it says first',
+              hint: 'Empty: it waits for the person to start',
               render: (ctx) => <OwnGreeting ctx={ctx} id={ctx.id} entry={entry} />,
             },
             (() => {
@@ -386,19 +408,23 @@ export const channelsForm = {
           id: 'schedules',
           path: ['schedules'],
           label: 'Schedules',
-          empty: 'None yet. The first one starts as Monday to Friday, 9 to 5, in your time zone.',
+          empty: 'None yet. The first one starts as Monday to Friday, 9 to 5, in the agent’s time zone.',
           nameOf: (s, key) => (isObj(s) && s.description) || key,
           add: (config) => {
             if (!isObj(config?.schedules) || !Object.keys(config.schedules).length) {
               const next = SCHEDULES_START.make(config);
               return { config: next, key: Object.keys(next.schedules || {})[0] };
             }
-            const key = `hours_${Object.keys(config.schedules).length + 1}`;
+            // a name no schedule has (counting can repeat one after a deletion, and would replace it)
+            let n = Object.keys(config.schedules).length + 1;
+            while (`hours_${n}` in config.schedules) n += 1;
+            const key = `hours_${n}`;
             return {
               config: setPath(config, ['schedules', key], {
                 description: 'More hours',
-                timezone: config.schedules[Object.keys(config.schedules)[0]]?.timezone || 'UTC',
-                weekly: [],
+                timezone: config.schedules[Object.keys(config.schedules)[0]]?.timezone || agentZone(config),
+                // a schedule needs at least one rule (schema minItems 1): weekdays, 9 to 5, to change
+                weekly: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '09:00', end: '17:00' }],
               }),
               key,
             };

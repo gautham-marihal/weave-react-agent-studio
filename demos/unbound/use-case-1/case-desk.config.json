@@ -68,6 +68,65 @@
             }
           ]
         }
+      },
+      "speech": {
+        "apply_to": "all",
+        "pronunciation": [
+          {
+            "type": "replace",
+            "id": "sgd_amount",
+            "pattern": "\\bSGD\\s?(\\d[\\d,.]*(?:\\s(?:thousand|million|billion))?)",
+            "replacement": "\\g<1> Singapore dollars"
+          },
+          {
+            "type": "replace",
+            "id": "per_year",
+            "pattern": "\\bp\\.\\s?a\\.",
+            "replacement": "a year",
+            "ignore_case": true
+          },
+          {
+            "type": "replace",
+            "id": "rate_trailing_zero",
+            "pattern": "(\\d+)\\.(\\d)0%",
+            "replacement": "\\g<1>.\\g<2> percent"
+          },
+          {
+            "type": "replace",
+            "id": "percent",
+            "pattern": "(\\d+(?:\\.\\d+)?)%",
+            "replacement": "\\g<1> percent"
+          },
+          {
+            "type": "replace",
+            "id": "account_ending",
+            "pattern": "\\bending (\\d)(\\d)(\\d)(\\d)\\b",
+            "replacement": "ending \\g<1> \\g<2> \\g<3> \\g<4>"
+          },
+          {
+            "type": "replace",
+            "id": "reference_join",
+            "pattern": "\\b(TQD|CB)-(\\d+)",
+            "replacement": "\\g<1>\\g<2>"
+          },
+          {
+            "type": "spell",
+            "id": "reference",
+            "pattern": "\\b(?:TQD|CB)\\d+\\b"
+          },
+          {
+            "type": "replace",
+            "id": "email_at",
+            "pattern": "@",
+            "replacement": " at "
+          },
+          {
+            "type": "replace",
+            "id": "email_dot",
+            "pattern": "([A-Za-z])\\.([A-Za-z])",
+            "replacement": "\\g<1> dot \\g<2>"
+          }
+        ]
       }
     }
   },
@@ -208,7 +267,7 @@
       "builtin": "end_call",
       "description": "Ends the conversation after the goodbye, when the customer has nothing more to ask.",
       "params": {
-        "say": "Thank you for choosing Unbound Bank. Goodbye."
+        "say": "Thank you for choosing {{const.bank_name}}. Goodbye."
       }
     }
   ],
@@ -220,7 +279,7 @@
         "name": "Case desk",
         "kind": "standalone",
         "instructions": {
-          "role": "You are Aria at Unbound Bank. The customer has just opened an account with a video banking colleague, and you have opened their case in Tetherfi Quest Desk, which e-mails them the details. Answer short questions about what happens next: their relationship manager calls within one working day to arrange the deposit; for a large deposit the bank must first see proof of where the money comes from (anti-money-laundering rules); the online banking login and debit card arrive by post within 5 working days. When they have nothing more to ask, say goodbye and call end_call.",
+          "role": "You are at the bank’s case desk. The customer has just opened an account with a video banking colleague, and you have opened their case in Tetherfi Quest Desk, which e-mails them the details. Answer short questions about what happens next, using only what you have already told them: when their relationship manager calls, the proof of where the money comes from that a large deposit needs (anti-money-laundering rules), and when the online banking login and debit card arrive. When they have nothing more to ask, say goodbye and call end_call.",
           "rules": [
             "Use only the details you were given: plan, account ending, case reference, e-mail, relationship manager and the proof needed.",
             "Never read out a full account number: only its last four digits.",
@@ -301,7 +360,7 @@
                 }
               ]
             },
-            "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you within one working day to arrange the deposit. Please have {{state.proof_needed}} ready: banks must check where large deposits come from."
+            "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you {{const.rm_call_window}} to arrange the deposit. Please have {{state.proof_needed}} ready: banks must check where large deposits come from."
           },
           {
             "type": "say",
@@ -319,7 +378,7 @@
                 }
               ]
             },
-            "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you within one working day to arrange the deposit."
+            "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you {{const.rm_call_window}} to arrange the deposit."
           },
           {
             "type": "say",
@@ -329,7 +388,7 @@
                 "equals": null
               }
             },
-            "text": "Your online banking login and debit card arrive by post within 5 working days. Is there anything else I can help with?"
+            "text": "Your online banking login and debit card arrive by post {{const.card_delivery}}. Is there anything else I can help with?"
           },
           {
             "type": "say",
@@ -351,7 +410,7 @@
         "enforcement": "code",
         "on_trigger": {
           "action": "deflect",
-          "say": "I can only help with Unbound Bank accounts."
+          "say": "I can only help with {{const.bank_name}} accounts."
         }
       }
     ]
@@ -362,5 +421,10 @@
       "entities": ["national_id", "date_of_birth", "card_number", "bank_account"],
       "mask_sensitive_state": true
     }
+  },
+  "constants": {
+    "bank_name": "Unbound Bank",
+    "rm_call_window": "within one working day",
+    "card_delivery": "within 5 working days"
   }
 }

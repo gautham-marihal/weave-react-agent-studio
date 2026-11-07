@@ -48,7 +48,12 @@ const readBody = (req) =>
     let raw = '';
     req.on('data', (chunk) => {
       raw += chunk;
-      if (raw.length > MAX_BODY) fail(Object.assign(new Error('too large'), { status: 413 }));
+      if (raw.length > MAX_BODY) {
+        // stop reading, and close the connection once the answer is sent (it would hang until Node's timeout)
+        req.removeAllListeners('data');
+        req.on('data', () => {});
+        fail(Object.assign(new Error('too large'), { status: 413, close: true }));
+      }
     });
     req.on('end', () => ok(raw));
     req.on('error', fail);
@@ -70,6 +75,7 @@ export function authMiddleware(env = process.env, readText = (file) => readFileS
     try {
       payload = JSON.parse(await readBody(req));
     } catch (error) {
+      if (error.close) res.setHeader('connection', 'close');
       return send(res, error.status || 400, { error: 'The request is not valid.' });
     }
     if (!matches(list, payload?.email, payload?.password)) {

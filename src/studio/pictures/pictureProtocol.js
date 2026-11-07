@@ -89,9 +89,13 @@ export const REJECTED_SHORT = {
 export const rejectedShort = (code) => REJECTED_SHORT[code] || String(code || 'refused').replace(/_/g, ' ');
 
 // A new open request, from a request_image message.
-export const openRequest = (message, now = Date.now()) => ({
+//   afterCamera: the request just before it in this conversation asked for the camera. A photo asked for straight after
+//   a camera request is that check's retake (the video wasn't accepted), so the screen offers the camera again, a still or
+//   the video, and never a file from the device (`cameraOnly`): the check is of a live face and card.
+export const openRequest = (message, now = Date.now(), { afterCamera = false } = {}) => ({
   id: message.id,
   kind: message.kind,
+  cameraOnly: message.kind === 'upload' && !!afterCamera,
   prompt: message.prompt,
   accept: message.accept,
   maxBytes: message.maxBytes,
@@ -107,9 +111,12 @@ export const openRequest = (message, now = Date.now()) => ({
 //   done     how a request ended, for the line it leaves in the conversation: { id, kind, status, sent }
 //   note     a refusal of a photo nothing asked for (request_id null), to show as a line
 // One request is open at a time: a new one replaces any other (the runtime moved on).
-export function applyUiMessage(request, message, now = Date.now()) {
+//   lastKind: the kind of the request that ended last in this conversation (or null), so a photo asked for straight after
+//   the camera is known as its retake
+export function applyUiMessage(request, message, now = Date.now(), lastKind = null) {
   if (!message) return { request, done: null, note: null };
-  if (message.type === 'request_image') return { request: openRequest(message, now), done: null, note: null };
+  if (message.type === 'request_image')
+    return { request: openRequest(message, now, { afterCamera: (request ? request.kind : lastKind) === 'camera' }), done: null, note: null };
   if (message.type === 'image_rejected') {
     if (request && (message.id === request.id || message.id === null))
       return { request: { ...request, rejection: { code: message.code, message: message.message }, phase: 'open' }, done: null, note: null };

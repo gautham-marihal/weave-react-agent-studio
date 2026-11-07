@@ -5,7 +5,8 @@ import { Input } from '../../../../ui/Input.tsx';
 import { groupIssues } from '../../../../api/client.ts';
 import { readSimple } from '../../../simple/simpleModel.js';
 import { replaceRoute, routeHref, useRoute } from '../../../route.js';
-import { endingTools, limitsOf, momentsOf } from '../../blocks/guardrailModel.js';
+import { endingTools, momentsOf } from '../../blocks/guardrailModel.js';
+import { lineOf } from '../../../form/speechLine.js';
 import { AllSettings, Line, Popover, Rows, ViewSwitch, reveal, rowsOf, useShownView } from '../workspaceKit.jsx';
 import { makeViewStore } from '../workspaceView.js';
 import { useAddChoices } from '../AddItem.jsx';
@@ -206,8 +207,8 @@ function Overview({ ctx, form, view }) {
     setOpen({ line });
     requestAnimationFrame(() => reveal(document.querySelector(`.grWrap [data-line="${line}"]`)));
   };
-  const openToken = (k) => {
-    setOpen({ token: k });
+  const openToken = (k, at = k) => {
+    setOpen({ token: k, at });
     reveal(hero.current);
   };
   const addCheck = (w) => {
@@ -237,22 +238,26 @@ function Overview({ ctx, form, view }) {
       </section>
     );
 
-  const tok = (k, words, blank = false) => (
-    <button
-      key={`${k}:${words}`}
-      type="button"
-      ref={(el) => {
-        anchors.current[k] = el;
-      }}
-      className={['apTok', blank && 'blank optional', open?.token === k && 'on'].filter(Boolean).join(' ')}
-      aria-expanded={open?.token === k}
-      aria-haspopup="dialog"
-      onClick={() => (open?.token === k ? close() : openToken(k))}
-    >
-      {blank ? TOKENS[k].blank : words}
-      <span className="srOnly"> ({TOKENS[k].title}: change)</span>
-    </button>
-  );
+  const tok = (k, words, blank = false) => {
+    const at = `${k}:${blank ? '' : words}`;
+    const on = open?.token === k && open.at === at;
+    return (
+      <button
+        key={at}
+        type="button"
+        ref={(el) => {
+          anchors.current[at] = el;
+        }}
+        className={['apTok', blank && 'blank optional', on && 'on'].filter(Boolean).join(' ')}
+        aria-expanded={on}
+        aria-haspopup="dialog"
+        onClick={() => (on ? close() : openToken(k, at))}
+      >
+        {blank ? TOKENS[k].blank : words}
+        <span className="srOnly"> ({TOKENS[k].title}: change)</span>
+      </button>
+    );
+  };
   const s = { open, setOpen, openToken, close, rows, ctx, filled: {}, anchors, tokens: TOKENS, partId: 'guardrails' };
 
   // ---- the sentence: what it checks, then what it keeps to and when it acts, then "Not yet:" for what isn't set
@@ -422,7 +427,8 @@ function Overview({ ctx, form, view }) {
   };
   const offTopic = said.offTopic ? config.guardrails.topics.on_off_topic : null;
   const offThen = offTopic ? endingTools(config).find((t) => t.id === offTopic.then)?.label : '';
-  const limitSay = typeof limitsOf(config).say === 'string' ? limitsOf(config).say : '';
+  // its words, a fixed line's too
+  const limitSay = lineOf(config, config?.guardrails?.limits?.say).text;
 
   return (
     <section className="dtPart apWrap grWrap" data-part="guardrails" aria-labelledby="dt-guardrails-title">
@@ -484,7 +490,10 @@ function Overview({ ctx, form, view }) {
         {open?.token && (
           <Popover
             key={open.token}
-            anchor={anchors.current[open.token] || hero.current}
+            // the part clicked, else the first part of the sentence that opens it (opened from the picture)
+            anchor={
+              anchors.current[open.at] || Object.entries(anchors.current).find(([key, el]) => el && key.startsWith(`${open.token}:`))?.[1] || hero.current
+            }
             box={hero}
             title={TOKENS[open.token].title}
             onClose={close}

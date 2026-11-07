@@ -14,7 +14,20 @@ function read() {
   if (saved) return saved;
   try {
     const raw = JSON.parse(window.localStorage.getItem(KEY) || 'null');
-    saved = raw && typeof raw === 'object' ? { ...EMPTY, ...raw, notify: { ...EMPTY.notify, ...(raw.notify || {}) } } : { ...EMPTY };
+    // each part only when it has the shape it should (a part stored as null or a wrong kind is the empty one)
+    const obj = (v, d) => (v && typeof v === 'object' && !Array.isArray(v) ? v : d);
+    saved =
+      raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? {
+            ...EMPTY,
+            ...raw,
+            rules: obj(raw.rules, {}),
+            acks: obj(raw.acks, {}),
+            history: Array.isArray(raw.history) ? raw.history.filter((h) => h && typeof h === 'object') : [],
+            questions: obj(raw.questions, {}),
+            notify: { ...EMPTY.notify, ...obj(raw.notify, {}) },
+          }
+        : { ...EMPTY };
   } catch {
     saved = { ...EMPTY };
   }
@@ -75,7 +88,8 @@ export const reopen = (key) =>
     return { ...s, acks };
   });
 export const setNotify = (patch) => setInsights((s) => ({ ...s, notify: { ...s.notify, ...patch } }));
-export const clearHistory = () => setInsights((s) => ({ ...s, history: s.history.filter((h) => !h.clearedAt) }));
+// the cleared alerts of these agents only (the list on the page is the open workspace's; other workspaces keep theirs)
+export const clearHistory = (botIds) => setInsights((s) => ({ ...s, history: s.history.filter((h) => !h.clearedAt || !botIds.includes(h.bot)) }));
 
 // A decision about an agent's question: { words, text, kind: 'answered' | 'dismissed', reason?, answer?, at, agentId? }
 export const questionDecisions = (state, botId) => (Array.isArray(state?.questions?.[botId]) ? state.questions[botId] : []);

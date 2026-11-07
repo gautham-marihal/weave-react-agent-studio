@@ -25,7 +25,9 @@ export function parseRoute(hash) {
 }
 
 export function routeHref(botId, tab, params) {
-  const query = params && Object.keys(params).length ? `?${new URLSearchParams(params)}` : '';
+  // a parameter left undefined or null is left out (URLSearchParams would write it as the word "undefined")
+  const kept = params ? Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null)) : {};
+  const query = Object.keys(kept).length ? `?${new URLSearchParams(kept)}` : '';
   if (!botId) return `#/bots${query}`;
   return `#/bots/${botId}${tab ? `/${tab}` : ''}${query}`;
 }
@@ -83,12 +85,17 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     }
     event.stopImmediatePropagation();
     const leavingTo = next;
+    // the address goes back by REPLACING the entry the move made (a new entry would sit in history: after "Leave", Back
+    // returned into the agent left); "Leave" puts that entry's own address back the same way
+    const put = (href) => window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${href}`);
     restoring = true;
-    window.location.hash = here;
+    put(here);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
     askConfirm({ title: 'Leave this agent?', body: lost, confirmLabel: 'Leave', cancelLabel: 'Stay', tone: 'danger' }).then((ok) => {
       if (!ok) return;
       agreedAt = Date.now();
-      window.location.hash = leavingTo;
+      put(leavingTo);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
   });
 }

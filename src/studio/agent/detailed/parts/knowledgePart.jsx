@@ -12,8 +12,10 @@ import {
   cleanUrl,
   knowledgeOf,
   lookedUpWith,
+  passagesOf,
   setBaseMode,
   setBaseReaders,
+  setPassages,
 } from '../../../setup/setupKnowledge.js';
 import { agentLabel } from '../../rowNames.js';
 import { freshId } from '../../../form/references.js';
@@ -297,16 +299,21 @@ export const knowledgeForm = {
             // the agents that read it keep reading it, the way the new mode allows (a list of its own, or a search tool)
             put: (config, value) => (docBaseId(config) ? setBaseMode(config, docBaseId(config), value) : config),
           },
-          based(doc(['top_k']), {
-            id: 'topk',
-            label: 'How many passages',
-            hint: 'The best ones it finds, each time. Empty is the usual, 4.',
-            kind: 'num',
-            unit: '1 to 20',
-            min: 1,
-            max: 20,
-            integer: true,
-          }),
+          {
+            ...based(doc(['top_k']), {
+              id: 'topk',
+              label: 'How many passages',
+              hint: 'The best ones it finds, each time. Empty is the usual, 4.',
+              kind: 'num',
+              unit: '1 to 20',
+              min: 1,
+              max: 20,
+              integer: true,
+            }),
+            // the number a search really uses: its search tool's own, while it has one, and set there too
+            get: (config) => (docBaseId(config) ? passagesOf(config, docBaseId(config)) : null),
+            put: (config, value) => (docBaseId(config) ? setPassages(config, docBaseId(config), value === '' ? undefined : value) : config),
+          },
           based(doc(['retrieval', 'query_from']), {
             id: 'from',
             label: 'What it searches for',

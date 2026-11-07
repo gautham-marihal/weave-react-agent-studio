@@ -595,7 +595,8 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
       onPublished={(published) => {
         setJustPublished(published);
         bump();
-        editor.reload();
+        // the draft moved on to the next version number; edits made while publishing are never replaced
+        editor.reloadQuietly();
       }}
       onDeployed={bump}
     />

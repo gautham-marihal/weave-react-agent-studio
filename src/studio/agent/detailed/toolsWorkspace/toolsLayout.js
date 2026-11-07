@@ -19,10 +19,10 @@ export const TOKENS = {
 export const STEPS = [
   { key: 'asked', sub: 'what the model reads to decide, and what it fills in', ids: ['when', 'inputs', 'agents'] },
   { key: 'may', sub: 'checked in code, before anything is called', ids: ['pre'] },
-  { key: 'calls', sub: '', ids: ['connection', 'method', 'request', 'wait', 'params'] },
+  { key: 'calls', sub: '', ids: ['connection', 'method', 'request', 'wait', 'params', 'kTopK'] },
   { key: 'back', sub: '', ids: ['sees', 'keeps', 'oob'] },
   { key: 'then', sub: '', ids: ['reply', 'effects'] },
-  { key: 'fails', sub: 'no answer, an error, or past the wait', ids: ['fails'] },
+  { key: 'fails', sub: 'no answer, an error, or past the wait', ids: ['fails', 'kFails'] },
 ];
 // the tool's settings fewer people need
 export const TOOL_MORE = ['name', 'channels', 'limits', 'sample', 'json'];

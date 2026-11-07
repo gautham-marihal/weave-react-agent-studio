@@ -327,7 +327,7 @@ function Overview({ ctx, form, view }) {
             </Line>
           ))}
           <Line s={s} k="addHours" icon="plus" label="Add hours" action="Add" muted onAction={addHours}>
-            {schedules.length ? 'another set, such as a weekend line' : 'none yet · starts as Monday to Friday, 9 to 5, in your time zone'}
+            {schedules.length ? 'another set, such as a weekend line' : 'none yet · starts as Monday to Friday, 9 to 5, in the agent’s time zone'}
           </Line>
         </div>
       </section>

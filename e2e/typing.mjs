@@ -100,10 +100,13 @@ async function measure(browser, tools) {
   await page.getByRole('button', { name: /continue to workspace/i }).click();
   await page.waitForSelector('.dashMain');
   await page.goto(`${BASE}/#/bots/big/tools`);
+  // Tools opens on "What it can do": its cards (every Advanced row open) are under All settings
+  await page.locator('.apSeg').getByRole('button', { name: 'All settings', exact: true }).click();
   await page.waitForSelector('.dtPage [data-card="tools.tool"] #dt-tools-when');
-  // the first tool's card, beside a chip for every tool; its Advanced rows open (the most a keystroke can make the part draw again), then type in
-  // when it uses the tool, above them
-  await page.locator('[data-card="tools.tool"] .dtAdv > summary').click();
+  // the first tool's card, beside a chip for every tool, with its Advanced rows open (the most a keystroke can make the
+  // part draw again); then type in when it uses the tool, above them
+  const fold = page.locator('[data-card="tools.tool"] .dtAdv').first();
+  if (!(await fold.evaluate((d) => d.open))) await fold.locator('summary').click();
   await page.waitForSelector('[data-card="tools.tool"] .dtAdvRows');
   await page.waitForTimeout(700);
   const nodes = await page.evaluate(() => document.querySelectorAll('*').length);

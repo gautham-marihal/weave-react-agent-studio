@@ -5,13 +5,33 @@ The customer is comparing banks for a large inheritance. The AI shares offers an
 - **Everything verified:** Aria finishes the account herself. The customer chooses the account and signs, the account opens, and the case goes to Tetherfi Quest Desk (TQD), which e-mails the next steps. No person is needed.
 - **Any check fails** (names, details, face, deepfake, a different card, an unreadable photo or video): Aria hands over to a human video banking agent through MX. When the agent finishes, a second AI agent opens the TQD case.
 
-The full design (the agents, the hand-overs, what each agent may say, every failure path, data and privacy) is in the doc [Tetherfi Unbound: Use case 1 design](https://claude.ai/artifact/3p93EPY9MbLmXsge3ksAhM). This page covers the files here and how to run them.
+The full design (the agents, the hand-overs, what each agent may say, every failure path, data and privacy) is in the doc [Tetherfi Unbound: Use case 1 design](https://claude.ai/artifact/3p93EPY9MbLmXsge3ksAhM). Where each value lives in Build, and how to change and test it, is in [Use case 1: configuration guide](https://claude.ai/artifact/LxLrr9cxoT14kdy2BfCVNf). This page covers the files here and how to run them.
 
-**Status (2026-11-05):**
+**Status (2026-11-07):**
 
-- Both bots are on the real Agent Builder server as **drafts**: valid, with no warnings and nothing unsupported. They are not published yet.
-- The end-to-end test passes on the real server for any card: 16 of 16 checks for a verified customer (finished by the AI), and 19 of 19 for each path that goes to a person.
+- Both bots are on the real Agent Builder server as **drafts**: valid, with no warnings and nothing unsupported. They are not published yet. They were put there through the studio's Build › JSON and its Save, and both drafts match these files exactly.
+- The end-to-end test passes on the real server: 20 of 20 checks on the demo path (names the other way round, then a person, then the case desk). On the verified path (finished by the AI), 17 of 18 pass; the miss is the "nothing sent to the MX queue for this customer" check, which found a hand-over left in the queue by an earlier failed run with the same test customer.
 - On web voice, the call record shows every line said in full and in order.
+
+## Nothing typed in: where each value lives
+
+- **Wording used in many lines** is in each agent's **constants** (Build › Engine and details › Fixed values), and every line uses `{{const.name}}`:
+  - `bank_name`, `rm_call_window` and `card_delivery` in both agents;
+  - `agent_name` in the onboarding agent only (the case desk never says the name).
+
+  Change one value there and every greeting, goodbye and next step changes with it. The persona's name and company are the persona's own fields: the model reads them, so the instructions don't repeat them.
+
+- **The accounts** come only from the offers service. Once the identity check passes:
+  - the form's steps fetch the offers for this amount into `plan_offers`;
+  - the model offers them (a `generate` step);
+  - the customer says which one;
+  - `choose_account` keeps that account's name and opens the **Sign to open your account** form. In code, it does so only when `handover_reason` is `ready_for_plan`.
+
+  The accounts API opens it, and refuses an account the deposit doesn't qualify for.
+
+- **How onboarding goes** is said from the offers service's own `onboarding` line. **The call-back's window** comes from the call-back service (`$.window`).
+- **A bank card** is told apart by a yes/no the vision model answers (`is_bank_card` into `card_is_bank`), not by matching the words it writes.
+- **The photo check and the video check** are each written twice (the first try and the retry), because a step can't be reused in the config. [tests/unboundUseCase1.test.js](../../../tests/unboundUseCase1.test.js) fails if the two copies ever differ, if a name, time or plan is typed into a line, or if a constant is never used.
 
 ## Like a real account opening
 
@@ -19,7 +39,7 @@ The full design (the agents, the hand-overs, what each agent may say, every fail
 - **The Advisor says up front that proof of the inheritance is needed**, and that it can follow after the account is opened.
 - **The form asks what a bank's form asks:** name, date of birth, nationality, ID number, e-mail, mobile, address, occupation, source of funds, tax residency, politically exposed person and consent. That's 13 fields.
 - **Names typed the other way round are recognised in code**, and the customer hears exactly what the card says.
-- **A failed face match, a suspected deepfake, or a different card on video** goes to a person with a neutral line (reason `identity_review`).
+- **A failed face match or a suspected deepfake** goes to a person with a neutral line (reason `identity_review`). The card number read on video (its last 4 digits against the card photo) is passed to the colleague on a hand-over as information only: video frames misread it too often to decide on.
 - **A busy video desk books a real call-back** and gives its reference.
 - **The customer leaves with clear next steps:** their relationship manager calls within one working day; have the grant of probate ready; the login and card arrive by post. The TQD e-mail lists the same steps.
 
@@ -48,22 +68,22 @@ The full design (the agents, the hand-overs, what each agent may say, every fail
 
 ## Verified, or passed to a person
 
-| After the checks                       | What happens                                                                                                                                                                                                                                                                                                                                                                                |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Everything verified (`ready_for_plan`) | "Everything matches, and your identity is verified." Then the form **Choose your account and sign** opens: the account (Private Wealth, Inheritance Holding or Laddered Fixed Deposits) and the e-signature. The account opens (`POST /unbound/accounts`), then the TQD case and e-mail. Aria gives the next steps (relationship manager, proof of the funds, login and card). No transfer. |
-| Any failure                            | The specific line, then the transfer to the video banking desk through MX with the reason (`name_order`, `name_mismatch`, `details_mismatch`, `name_unreadable`, `identity_review`, `check_incomplete`, `video_incomplete`). Then the case desk bot after the human agent, as before.                                                                                                       |
-| The account can't be opened            | "I couldn't open the account just now, so a video banking colleague will finish it with you." Then the transfer, reason `account_not_opened`.                                                                                                                                                                                                                                               |
+| After the checks                       | What happens                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Everything verified (`ready_for_plan`) | "Everything matches, and your identity is verified." Aria then offers the accounts the offers service gives for this amount, and the customer says which one. `choose_account` opens the form **Sign to open your account** (the e-signature). The account opens (`POST /unbound/accounts`, which refuses an account the deposit doesn't qualify for), then the TQD case and e-mail. Aria gives the next steps (relationship manager, proof of the funds, login and card). No transfer. |
+| Any failure                            | The specific line, then the transfer to the video banking desk through MX with the reason (`name_order`, `name_mismatch`, `details_mismatch`, `name_unreadable`, `identity_review`, `check_incomplete`, `video_incomplete`). Then the case desk bot after the human agent, as before.                                                                                                                                                                                                   |
+| The account can't be opened            | "I couldn't open the account just now, so a video banking colleague will finish it with you." Then the transfer, reason `account_not_opened`.                                                                                                                                                                                                                                                                                                                                           |
 
 **The camera, as the customer sees it** (the studio's Test panel; a widget follows the same protocol):
 
 1. **Get ready.** After "Turn on camera", a large view opens over the page with a private preview and a 5-second countdown. The camera is shared with the agent only when the countdown ends, or when the customer presses "Share now". The agent takes its frames as soon as the camera is shared, so this gives the customer time to get their face and the card in view.
 2. **Automatic.** The agent takes the sharpest frame and checks it: the whole face in view, the card beside it, readable.
-3. **Take a picture.** If the face and the card weren't recognised, or no frame came, Aria says why and asks for a picture. The customer presses **Take a picture**, gets everything in view, and presses the shutter; the still is sent as the photo.
+3. **Take a picture.** If the face and the card weren’t recognised, or no frame came, Aria says why and asks for a picture. The card offers only the camera, never a file from the device: **Try again with video** (the same countdown, then the sharpest of a few frames is sent) or **Take a picture** (the customer presses the shutter). The studio knows the retake because the photo is asked for straight after the camera.
 4. **A colleague.** If that picture fails too, a video banking colleague finishes the video check (`video_incomplete`).
 
-No outlines are drawn over the camera. Every photo request also offers **Take a picture** next to "Choose a photo".
+No outlines are drawn over the camera. The card photo offers **Take a picture** next to "Choose a photo"; the video check's retake offers no file.
 
-**Time to fill the form.** The agent waits 2.5 minutes of silence before its first nudge, 7.5 minutes in all before it ends the conversation. The form says "you have up to 7" minutes, and the studio's form shows a **Time to finish** countdown worked out from the agent's own silence rule.
+**Time to fill the form.** The agent waits 2.5 minutes of silence before its first nudge, 7.5 minutes in all before it ends the conversation. The form's own text names no time limit (a typed number would go stale when the rule changes); the studio's form shows a **Time to finish** countdown worked out from the agent's own silence rule.
 
 ## The two bots
 
@@ -100,7 +120,8 @@ No outlines are drawn over the camera. Every photo request also offers **Take a 
 | ------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `GET /unbound/offers?amount=&currency=`                 | the bank's product catalogue                             | Demo figures: Private Wealth 3.10%, Inheritance Holding 2.25%, laddered deposits 2.80–3.10%; from SGD 5 million it adds the proof-of-funds requirement       |
 | `POST /unbound/applications`                            | the onboarding and risk systems                          | Keeps only the last 4 characters of the ID number; enhanced due diligence from SGD 5 million or for a politically exposed person; the proof needed by source |
-| `POST /unbound/callbacks`                               | the call-back campaign                                   | A CB- reference, within 2 working hours                                                                                                                      |
+| `POST /unbound/callbacks`                               | the call-back campaign                                   | A CB- reference and its window (`window`), which Aria says                                                                                                   |
+| `POST /unbound/accounts`                                | the core banking system opening the account              | The account by its id or name; refuses one the deposit doesn’t qualify for; adds the relationship manager (demo names)                                       |
 | `POST /unbound/verify/face`                             | a verification provider (face match, liveness, deepfake) | **No picture is sent.** It answers "passed". An e-mail with `+deepfake` or `+nomatch` before the `@` (or `simulate`) makes it fail                           |
 | `POST /mx/handovers`, `GET /mx/handovers?status=queued` | the Tetherfi MX routing bridge and the agent queue       | The reason, the risk level, the proof needed, the differences and the checks                                                                                 |
 | `POST /mx/handovers/{id}/complete`                      | the human agent's desktop                                | `plan_id`, `signed: true`, and the names as confirmed (`first_name`, `last_name`)                                                                            |

@@ -7,13 +7,15 @@ import { More, Rows, hasProblem, reveal } from '../workspaceKit.jsx';
 import { PAGES } from './mediaLayout.js';
 import { stepsIn, timeWords } from './mediaWords.js';
 import { addSecondReading } from './pictureRecipes.js';
+import { lineOf } from '../../../form/speechLine.js';
 
 // A picture step on a page of its own (canvas boards M3, M4, M5): its sections in steps (what they see, the check in
 // code, if nothing comes, where it goes; or what it reads, the details, who reads it; or the pairs, when it passes, try
 // it), each with the step card's own rows (the same controls as All settings). A reading says plainly what a model
 // reading a photo can't do, and offers a second reading to double-check it.
 
-const speech = (v) => (typeof v === 'string' ? v : typeof v?.message === 'string' ? v.message : '');
+// a line's words, a fixed line's too
+const speech = (v, config) => lineOf(config, v).text;
 const clip = (t, n = 40) => (t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t);
 
 export default function StepPage({ ctx, form, listId, itemKey, onBack, onOpen }) {
@@ -48,7 +50,7 @@ export default function StepPage({ ctx, form, listId, itemKey, onBack, onOpen })
   const applies = (id) => !!rows[id] && isShown(rows[id], ctx);
   const shown = page.sections.filter((s) => s.ids.some(applies));
   const words = {
-    sees: speech(item.prompt) ? `“${clip(speech(item.prompt))}”` : item.kind === 'camera' ? 'their camera' : 'an upload button',
+    sees: speech(item.prompt, config) ? `“${clip(speech(item.prompt, config))}”` : item.kind === 'camera' ? 'their camera' : 'an upload button',
     check: step?.pickyWord
       ? `${step.pickyWord}${typeof item.quality?.min_sharpness === 'number' ? ` · sharpness ${item.quality.min_sharpness}` : ''}`
       : 'not checked',

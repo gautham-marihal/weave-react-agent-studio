@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from '../../ui/Icon.jsx';
 import Button from '../../ui/Button.tsx';
-import { GetReadyStage, SharedStage, TakePictureStage } from './CameraStage.jsx';
+import { GetReadyStage, SharedStage, TakePictureStage, VideoAgainStage } from './CameraStage.jsx';
 import { acceptWords, clockText, formatBytes, secondsLeft } from './pictureProtocol.js';
 import './pictures.css';
 
@@ -77,6 +77,7 @@ function UploadBody({ request, onSend, simulated }) {
   const [note, setNote] = useState('');
   const [over, setOver] = useState(false);
   const [taking, setTaking] = useState(false);
+  const [again, setAgain] = useState(false);
   const busy = request.phase === 'sending' || request.phase === 'sent';
   const types = acceptWords(request.accept);
   const send = async (file) => {
@@ -134,7 +135,20 @@ function UploadBody({ request, onSend, simulated }) {
           <span>{note || request.rejection.message}</span>
         </p>
       )}
-      {!busy && (
+      {/* a camera check's retake: the camera again, the video or a still, never a file from the device */}
+      {!busy && request.cameraOnly && (
+        <div className="pcDrop again pcCameraOnly">
+          <Button type="button" variant="primary" size="compact" onClick={() => setAgain(true)}>
+            <Icon name="camera" size={15} />
+            Try again with video
+          </Button>
+          <Button type="button" size="compact" onClick={() => setTaking(true)}>
+            <Icon name="camera" size={15} />
+            Take a picture
+          </Button>
+        </div>
+      )}
+      {!busy && !request.cameraOnly && (
         <div className={`pcDrop ${request.sent || note ? 'again' : ''} ${over ? 'over' : ''}`} {...drop}>
           {!request.sent && !note && <span className="pcCardArt" aria-hidden="true" />}
           <Button type="button" variant="primary" size="compact" onClick={choose}>
@@ -157,6 +171,17 @@ function UploadBody({ request, onSend, simulated }) {
           {picker}
         </div>
       )}
+      {again &&
+        createPortal(
+          <VideoAgainStage
+            request={request}
+            onSend={onSend}
+            onClose={() => setAgain(false)}
+            timer={<Countdown request={request} icon="camera" />}
+            privacy={simulated ? SIMULATED_LINE : PRIVACY_LINE}
+          />,
+          document.body,
+        )}
       {taking &&
         createPortal(
           <TakePictureStage
@@ -237,14 +262,17 @@ function CameraBody({ request, onCamera, cameraOn, attachCamera, simulated }) {
 export default function PictureRequest({ request, onSend, onCamera, cameraOn = false, attachCamera, simulated = false }) {
   if (!request) return null;
   const camera = request.kind === 'camera';
-  const title = camera ? 'The agent needs your camera' : 'The agent needs a photo';
+  // a camera check's retake asks for the camera too, though it arrives as a photo
+  const title = camera || request.cameraOnly ? 'The agent needs your camera' : 'The agent needs a photo';
   return (
     <section className={`pcCard ${camera ? 'camera' : 'upload'}`} aria-label={title} data-request={request.id}>
       <header className="pcHead">
         <Countdown request={request} icon={camera ? 'camera' : 'image'} />
         <span className="pcTitle">
           <b>{title}</b>
-          <small>{camera ? 'It takes the picture from your camera itself' : 'From your device'}</small>
+          <small>
+            {camera ? 'It takes the picture from your camera itself' : request.cameraOnly ? 'Your camera again: the video or a picture' : 'From your device'}
+          </small>
         </span>
       </header>
       {request.prompt && (

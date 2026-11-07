@@ -93,7 +93,8 @@ export default function HomePage({
   const partsDone = sections.filter((s) => s.state === 'done').length;
 
   // the same number tiles as Home (pages/homeKpi.jsx), in Home's colours
-  const handled = (t) => (typeof t.handoffRate === 'number' ? 1 - t.handoffRate : null);
+  // finished by the agent with nobody passed on (as Home): a call cut off or still going is not handled
+  const handled = (t) => (typeof t.handledRate === 'number' ? t.handledRate : null);
   const hadPrevious = previous.calls > 0;
   const today = series[series.length - 1]?.calls || 0;
   const stats = (
@@ -114,7 +115,7 @@ export default function HomePage({
           loading={reading}
           value={totals.calls ? pct(handled(totals)) : '–'}
           note={totals.calls ? passedOnText(totals.calls, totals.handoffRate) : 'No calls yet'}
-          spark={sparkPoints(series.map((d) => (d.calls ? 1 - d.handoffs / d.calls : null)))}
+          spark={sparkPoints(series.map((d) => (d.calls ? d.handled / d.calls : null)))}
           change={hadPrevious ? moved(handled(totals), handled(previous), pct, 'up') : null}
           onOpen={() => go('monitoring')}
         />

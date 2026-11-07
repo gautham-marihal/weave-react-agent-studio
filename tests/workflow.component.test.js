@@ -294,7 +294,10 @@ test('a tool block’s panel changes what it says and when it is used, in place 
   await a.type(when, 'When the caller says goodbye.');
   assert.equal(tool().description, 'When the caller says goodbye.');
   await a.type($(panel(), 'textarea[id$="-goodbye"]'), 'Thanks for calling. Bye!');
-  assert.equal(tool().params.say, 'Thanks for calling. Bye!');
+  // the starter's goodbye is one of its fixed lines: its own words change, and the tool keeps pointing at it
+  const said = tool().params.say;
+  const words = typeof said === 'string' ? said : app.config.messages.find((m) => m.id === said.message).text;
+  assert.equal(typeof words === 'string' ? words : Object.values(words)[0], 'Thanks for calling. Bye!');
   // emptied, the call ends without a goodbye: the line is taken away, not left empty
   await a.type($(panel(), 'textarea[id$="-goodbye"]'), '');
   assert.equal('say' in (tool().params || {}), false);
@@ -304,7 +307,7 @@ test('a tool block’s panel changes what it says and when it is used, in place 
   await app.unmount();
 });
 
-test('a line that is one of the agent’s fixed lines is shown in its words; typing makes it its own words and leaves the fixed line as it is', async () => {
+test('a line that is one of the agent’s fixed lines is shown in its words; typing changes that line’s own words, as on every page, and emptying takes it from here only', async () => {
   const config = agent();
   const entry = config.agents.items[0];
   const endId = entry.tools.find((t) => config.tools.find((x) => x.id === t)?.builtin === 'end_call');
@@ -315,10 +318,13 @@ test('a line that is one of the agent’s fixed lines is shown in its words; typ
   await press(node(app, `${entry.id}::tool::${endId}`));
   const box = () => $(app.container, '.wfInspector textarea[id$="-goodbye"]');
   assert.equal(box().value, 'Goodbye from Acme.');
-  assert.match(textOf(box().closest('.wfField')), /One of its fixed lines/);
+  assert.match(textOf(box().closest('.wfField')), /It is the fixed line “bye”/);
   await a.type(box(), 'Goodbye from Acme, take care.');
-  assert.equal(app.config.tools.find((t) => t.id === endId).params.say, 'Goodbye from Acme, take care.');
-  assert.equal(app.config.messages.find((m) => m.id === 'bye').text, 'Goodbye from Acme.', 'the fixed line itself is unchanged');
+  assert.deepEqual(app.config.tools.find((t) => t.id === endId).params.say, { message: 'bye' }, 'the tool still points at the fixed line');
+  assert.equal(app.config.messages.find((m) => m.id === 'bye').text, 'Goodbye from Acme, take care.', 'whose own words changed');
+  await a.type(box(), '');
+  assert.equal('say' in (app.config.tools.find((t) => t.id === endId).params || {}), false, 'emptied, the goodbye goes from this tool');
+  assert.equal(app.config.messages.find((m) => m.id === 'bye').text, 'Goodbye from Acme, take care.', 'and the fixed line stays for the others');
   await app.unmount();
 });
 

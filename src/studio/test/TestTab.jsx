@@ -16,6 +16,7 @@ import { formTimeLimit } from './formQueue.js';
 import PictureRequest, { PictureLine } from '../pictures/PictureRequest.jsx';
 import { drawsVoice, testability } from './channels.ts';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
+import { DEFAULT_ACCEPT, DEFAULT_MAX_BYTES } from '../../demo/simulatedPictures.js';
 import TraceView from '../trace/TraceView.jsx';
 import { useTrace } from '../trace/useTrace.js';
 import { finalStateOf, toolsUsedIn } from '../trace/records.js';
@@ -132,11 +133,27 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
   // The saved draft is what a draft test runs; edits that aren't saved yet are not part of it.
   const config = editor.parsed.value;
+  const ranConfig = editor.savedConfig || config;
   const botName = config?.persona?.name || name;
-  const channelCfg = useMemo(() => (Array.isArray(config?.channels) ? config.channels.find((c) => c.id === info?.channel?.id) : null), [config, info]);
+  const channelCfg = useMemo(() => (Array.isArray(ranConfig?.channels) ? ranConfig.channels.find((c) => c.id === info?.channel?.id) : null), [ranConfig, info]);
   const inputs = info?.channel?.input || [];
   const isVoice = drawsVoice(info?.channel);
-  const imageCfg = ref === 'draft' ? channelCfg?.inputs?.image : null;
+  // what a picture sent unasked must be: the channel's own kinds and size on a draft test, the usual ones when unset
+  // (as the Media page says); a version's channel isn't read here, so the server alone checks it
+  const imageCfg = inputs.includes('image')
+    ? ref === 'draft'
+      ? {
+          ...channelCfg?.inputs?.image,
+          accepted_mime:
+            Array.isArray(channelCfg?.inputs?.image?.accepted_mime) && channelCfg.inputs.image.accepted_mime.length
+              ? channelCfg.inputs.image.accepted_mime
+              : DEFAULT_ACCEPT,
+          max_bytes: channelCfg?.inputs?.image?.max_bytes || DEFAULT_MAX_BYTES,
+        }
+      : {}
+    : null;
+  // the camera: the channel takes video and its camera isn't switched off
+  const cameraAllowed = inputs.includes('video') && channelCfg?.inputs?.video?.camera !== false;
   const unsupported = plainUnsupported(editor.report?.unsupported);
 
   // The models a test runs with: a draft test runs the saved draft (not unsaved edits); a published version or an
@@ -235,7 +252,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
       simulated={simulated}
     />
   ) : null;
-  const cameraWanted = session.picture?.kind === 'camera';
+  // the camera is wanted: a camera request, or a camera check's retake (a picture from the camera, never a file)
+  const cameraWanted = session.picture?.kind === 'camera' || !!session.picture?.cameraOnly;
 
   // A finished conversation becomes a starting scenario to edit (the caller's turns, the tools used, the final state).
   const canSave = messages.some((m) => m.role === 'user') && !running && !!config && editor.isObject && !editor.parsed.error;
@@ -476,7 +494,11 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                     <>
                       <strong>No conversation yet</strong>
                       <span>
-                        Press “Start conversation”. The agent greets you first, then you can reply here{inputs.includes('audio') ? ' or by speaking' : ''}.
+                        Press “Start conversation”. {/* what its channel says first, from the draft that runs: a channel with no greeting waits */}
+                        {channelCfg && !channelCfg.greeting?.say
+                          ? 'This channel has no greeting, so the agent waits for you to start: write'
+                          : 'The agent greets you first, then you can reply'}{' '}
+                        here{inputs.includes('audio') ? ' or by speaking' : ''}.
                       </span>
                     </>
                   )}
@@ -558,7 +580,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                       <Icon name="mic" size={16} /> {media.mic ? 'Microphone on' : 'Microphone off'}
                     </button>
                   )}
-                  {inputs.includes('video') && (
+                  {cameraAllowed && (
                     <button
                       type="button"
                       className={`stTMediaBtn ${media.camera ? 'on' : ''}`}

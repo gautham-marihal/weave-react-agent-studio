@@ -57,6 +57,11 @@ test('fixed values: where each is used, a number stays a number, and names the s
     [4, 4.5, true, '4 hours', ['a', 'b'], '[broken'],
   );
   assert.equal(shownValue(['a']), '["a"]');
+  assert.deepEqual(
+    [typedValue('0123456789'), typedValue('12345678901234567890'), typedValue('1.50'), typedValue('-7')],
+    ['0123456789', '12345678901234567890', '1.50', -7],
+    'a phone number, a long digit string or a padded decimal stays words',
+  );
   assert.equal(nameProblem('pay_url', []), '');
   assert.match(nameProblem('Pay URL', []), /Lower-case/);
   assert.match(nameProblem('pay_url', ['pay_url']), /Another value/);

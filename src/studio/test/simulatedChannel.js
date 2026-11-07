@@ -8,12 +8,12 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 export const isVoiceChannel = (channel) => isObj(channel) && (VOICE.includes(channel.type) || list(channel.modalities?.output).includes('audio'));
 
-// -> { id, type, voice } or null: the one asked for if there is one, else the first enabled text channel (web chat
-// before the rest), else the first enabled one.
+// -> { id, type, voice } or null: the one asked for if it is switched on, else the first enabled text channel (web chat
+// before the rest), else the first enabled one; null when every channel is off (nobody can reach the agent).
 export function chooseSimulatedChannel(config, wanted = '') {
   const channels = list(config?.channels).filter((c) => isObj(c) && typeof c.id === 'string' && c.id);
   const on = channels.filter((c) => c.enabled !== false);
-  const asked = wanted ? channels.find((c) => c.id === wanted) : null;
-  const picked = asked || on.find((c) => c.type === 'web_chat') || on.find((c) => !isVoiceChannel(c)) || on[0] || channels[0] || null;
+  const asked = wanted ? on.find((c) => c.id === wanted) : null;
+  const picked = asked || on.find((c) => c.type === 'web_chat') || on.find((c) => !isVoiceChannel(c)) || on[0] || null;
   return picked ? { id: picked.id, type: picked.type, voice: isVoiceChannel(picked) } : null;
 }

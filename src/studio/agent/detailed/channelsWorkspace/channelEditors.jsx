@@ -3,6 +3,7 @@ import Icon from '../../../../ui/Icon.jsx';
 import Button from '../../../../ui/Button.tsx';
 import { Input } from '../../../../ui/Input.tsx';
 import { navigate, routeHref, useRoute } from '../../../route.js';
+import { infoOf } from '../../../form/channelTypes.js';
 import { DAY_NAMES, IN_ICONS, OUT_ICONS, allowedFor, asTime } from './channelsWords.js';
 import './channelsWorkspace.css';
 
@@ -25,7 +26,9 @@ const OUT = [
   ['text', 'writing'],
 ];
 export function CarriesEditor({ id, value, onChange, types, type }) {
-  const now = isObj(value) ? value : {};
+  const given = isObj(value) ? value : {};
+  const usual = infoOf(types, type)?.defaultModalities || {};
+  const now = { input: list(given.input).length ? given.input : list(usual.input), output: list(given.output).length ? given.output : list(usual.output) };
   const allowed = allowedFor(types, type);
   const group = (dir, choices, icons, label) => {
     const have = list(now[dir]);
@@ -48,7 +51,7 @@ export function CarriesEditor({ id, value, onChange, types, type }) {
                 className={on ? 'on' : ''}
                 disabled={last || (refused && !on)}
                 title={last ? 'It needs at least one' : refused ? 'This kind of channel can’t carry it' : undefined}
-                onClick={() => onChange({ ...now, input: list(now.input), output: list(now.output), [dir]: on ? have.filter((x) => x !== m) : [...have, m] })}
+                onClick={() => onChange({ ...given, input: list(now.input), output: list(now.output), [dir]: on ? have.filter((x) => x !== m) : [...have, m] })}
               >
                 <Icon name={icons[m]} size={13} />
                 {words}

@@ -115,7 +115,8 @@ test('the demo runner takes keys without writing them down, and says honestly wh
   assert.equal(JSON.stringify(run).includes('4821'), false, 'the digits are nowhere in the result');
   assert.deepEqual(
     run.transcript.map((m) => m.role),
-    ['assistant', 'user', 'assistant', 'assistant'],
+    // its channel has no greeting, so it waits for the caller (nothing is made up)
+    ['user', 'assistant', 'assistant'],
     'a turn of keys adds no line from the caller',
   );
   assert.equal(run.status, 'passed', 'checks the demo cannot make are not failures');

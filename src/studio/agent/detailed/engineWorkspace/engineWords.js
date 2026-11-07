@@ -29,14 +29,16 @@ export function timeIn(zone, now = new Date()) {
 }
 
 // ---- fixed values: how many places use each ({{const.name}}, spaces allowed inside the braces)
-export function usesOf(config, name) {
-  if (!isObj(config)) return 0;
+// every {{const.name}} in the config (but the constants themselves), counted by name in one pass
+function usesAll(config) {
+  if (!isObj(config)) return {};
   const rest = { ...config };
   delete rest.constants;
-  const text = JSON.stringify(rest);
-  const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return (text.match(new RegExp(`\\{\\{\\s*const\\.${safe}\\s*\\}\\}`, 'g')) || []).length;
+  const counts = {};
+  for (const m of JSON.stringify(rest).matchAll(/\{\{\s*const\.([a-z][a-z0-9_]*)\s*\}\}/g)) counts[m[1]] = (counts[m[1]] || 0) + 1;
+  return counts;
 }
+export const usesOf = (config, name) => usesAll(config)[name] || 0;
 // a value as it is shown and typed: words as they are, anything else as JSON ("4", "true", ["a","b"])
 export const shownValue = (v) => (typeof v === 'string' ? v : v === undefined ? '' : JSON.stringify(v));
 // what a typed value is: a number stays a number, true and false stay true and false, a list or object typed as JSON is
@@ -44,7 +46,9 @@ export const shownValue = (v) => (typeof v === 'string' ? v : v === undefined ? 
 export function typedValue(text) {
   const t = String(text ?? '');
   const trimmed = t.trim();
-  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+  // a phone number (0123…) or a long digit string would lose digits as a number: it stays words
+  if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(trimmed) && Number.isSafeInteger(Math.trunc(Number(trimmed))) && String(Number(trimmed)) === trimmed)
+    return Number(trimmed);
   if (trimmed === 'true' || trimmed === 'false') return trimmed === 'true';
   if (/^[[{]/.test(trimmed)) {
     try {
@@ -65,7 +69,8 @@ export function nameProblem(name, taken = []) {
 }
 export function constantsIn(config) {
   const c = isObj(config?.constants) ? config.constants : {};
-  return Object.entries(c).map(([name, value]) => ({ name, value, shown: shownValue(value), uses: usesOf(config, name) }));
+  const uses = usesAll(config);
+  return Object.entries(c).map(([name, value]) => ({ name, value, shown: shownValue(value), uses: uses[name] || 0 }));
 }
 export const usedWords = (n) => (n ? `used in ${plural(n, 'place')}` : 'not used yet');
 

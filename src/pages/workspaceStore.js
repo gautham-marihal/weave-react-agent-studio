@@ -22,6 +22,8 @@ export function loadWorkspaces(profile) {
     stored = JSON.parse(localStorage.getItem(WORKSPACE_STORAGE_KEY) || '[]');
   } catch {}
 
+  // a stored entry that isn't a workspace (null, a number) is skipped, never read as one
+  if (Array.isArray(stored)) stored = stored.filter((ws) => ws && typeof ws === 'object' && !Array.isArray(ws));
   if (Array.isArray(stored) && stored.length) {
     return stored.map((ws) => ({
       id: ws.id || makeWorkspaceId(),

@@ -1,6 +1,7 @@
 import React from 'react';
 import Icon from '../../../../ui/Icon.jsx';
 import { fieldVar, plural, timeWords, together } from './mediaWords.js';
+import { lineOf } from '../../../form/speechLine.js';
 
 // The picture at the top of Images & Videos (canvas board M1): one picture's journey, a lane per request (asked, checked
 // in code, read by the AI), then where the lanes meet (compared in code, forgotten). Each station opens the step it
@@ -9,7 +10,8 @@ import { fieldVar, plural, timeWords, together } from './mediaWords.js';
 
 const HOW = { run: 'set, and run by the server', bad: 'needs a look', off: 'not set' };
 const Dot = ({ how }) => <i className={`grDot ${how}`} aria-hidden="true" />;
-const speech = (v) => (typeof v === 'string' ? v : typeof v?.message === 'string' ? v.message : '');
+// a line's words, a fixed line's too
+const speech = (v, config) => lineOf(config, v).text;
 const clip = (t, n = 60) => (t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t);
 
 function Station({ n, title, how, children, sub, onClick, empty, wide, label }) {
@@ -27,7 +29,7 @@ function Station({ n, title, how, children, sub, onClick, empty, wide, label }) 
   );
 }
 
-export default function Journey({ m, secret, onStep, onAdd }) {
+export default function Journey({ m, config, secret, onStep, onAdd }) {
   const hows = new Set();
   const how = (h) => {
     hows.add(h);
@@ -114,7 +116,7 @@ export default function Journey({ m, secret, onStep, onAdd }) {
                 }
                 label={`Open ${req.name}`}
               >
-                {speech(step.prompt) ? `“${clip(speech(step.prompt))}”` : req.kind === 'camera' ? 'The camera' : 'A photo'}
+                {speech(step.prompt, config) ? `“${clip(speech(step.prompt, config))}”` : req.kind === 'camera' ? 'The camera' : 'A photo'}
               </Station>
               <Station
                 n={2}

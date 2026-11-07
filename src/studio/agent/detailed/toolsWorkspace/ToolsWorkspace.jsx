@@ -105,7 +105,7 @@ function Overview({ ctx, form, view }) {
   const simple = readSimple(config);
   const name = simple.persona || simple.name || 'It';
   const abilities = abilitiesOf(config);
-  const tools = toolsOf(config);
+  const tools = toolsOf(config, ctx.editor?.report?.unsupported);
   const said = sentenceOf(config);
 
   const openToken = (key) => {

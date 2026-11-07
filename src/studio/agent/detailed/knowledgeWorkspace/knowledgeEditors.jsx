@@ -3,6 +3,8 @@ import { Switch } from '../../../form/fields.jsx';
 import { Scale } from '../parts/KnowledgeSearch.jsx';
 import { USUAL, keptBy } from './knowledgeWords.js';
 import { useLastHits } from './lastSearch.js';
+import { askConfirm } from '../../../../ui/dialogs.js';
+import { searchToolsLost } from '../../../setup/setupKnowledge.js';
 import './knowledgeWorkspace.css';
 
 // Build › Knowledge's own editors, used as rows of the part (knowledgePart.jsx), so they are the same in the workspace
@@ -30,6 +32,20 @@ export function ModeChoice({ config, id, value, onChange }) {
   const now = value || 'tool';
   // a model that can't use tools can only be given the material on every turn (agent config guide, models)
   const noTools = config?.defaults?.models?.llm?.tool_calling === false;
+  // "every turn" can't keep a search tool (the server refuses one): one with settings of its own is only removed once
+  // the person agrees, since switching back makes a plain one
+  const choose = async (mode) => {
+    const lost = mode === 'inject' && now !== 'inject' ? searchToolsLost(config) : [];
+    if (lost.length) {
+      const ok = await askConfirm({
+        title: 'Remove its search tool?',
+        body: `Searching on every turn needs no search tool, so ${lost.map((t) => `“${t.id}”`).join(' and ')} ${lost.length > 1 ? 'are' : 'is'} removed, with ${[...new Set(lost.flatMap((t) => t.settings))].join(', ')}. Switching back makes a new one with the usual settings.`,
+        confirmLabel: 'Search on every turn',
+      });
+      if (!ok) return;
+    }
+    onChange(mode);
+  };
   return (
     <div className="kwModes" id={id} role="group" aria-label="When it searches">
       {MODES.map((m) => {
@@ -41,7 +57,7 @@ export function ModeChoice({ config, id, value, onChange }) {
             className={`kwMode ${now === m.value ? 'on' : ''}`}
             aria-pressed={now === m.value}
             disabled={off && now !== m.value}
-            onClick={() => onChange(m.value)}
+            onClick={() => choose(m.value)}
           >
             <b>{m.name}</b>
             <span className="kwFlow" aria-hidden="true">

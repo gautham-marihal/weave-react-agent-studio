@@ -131,8 +131,8 @@ function Overview({ ctx, form, view }) {
     setItem(null);
     if (route.view === 'bot') replaceRoute(routeHref(route.botId, route.tab, { ...route.params, item: undefined }));
   };
-  const openToken = (k) => {
-    setOpen({ token: k });
+  const openToken = (k, at = k) => {
+    setOpen({ token: k, at });
     reveal(hero.current);
   };
   const openStep = (s) => openItem(s.list, s.key);
@@ -171,22 +171,26 @@ function Overview({ ctx, form, view }) {
       </section>
     );
 
-  const tok = (k, words, blank = false) => (
-    <button
-      key={`${k}:${words}`}
-      type="button"
-      ref={(el) => {
-        anchors.current[k] = el;
-      }}
-      className={['apTok', blank && 'blank optional', open?.token === k && 'on'].filter(Boolean).join(' ')}
-      aria-expanded={open?.token === k}
-      aria-haspopup="dialog"
-      onClick={() => (open?.token === k ? close() : openToken(k))}
-    >
-      {blank ? TOKENS[k].blank : words}
-      <span className="srOnly"> ({TOKENS[k].title}: change)</span>
-    </button>
-  );
+  const tok = (k, words, blank = false) => {
+    const at = `${k}:${blank ? '' : words}`;
+    const on = open?.token === k && open.at === at;
+    return (
+      <button
+        key={at}
+        type="button"
+        ref={(el) => {
+          anchors.current[at] = el;
+        }}
+        className={['apTok', blank && 'blank optional', on && 'on'].filter(Boolean).join(' ')}
+        aria-expanded={on}
+        aria-haspopup="dialog"
+        onClick={() => (on ? close() : openToken(k, at))}
+      >
+        {blank ? TOKENS[k].blank : words}
+        <span className="srOnly"> ({TOKENS[k].title}: change)</span>
+      </button>
+    );
+  };
   // a part of the sentence that opens a step's own page
   const stepTok = (s, words) => (
     <button key={`${s.key}:${words}`} type="button" className="apTok" onClick={() => openStep(s)}>
@@ -381,7 +385,7 @@ function Overview({ ctx, form, view }) {
           {blanks.length > 0 && <> Not yet: {joined(blanks, 'or')}.</>}
         </p>
         <p className="apHint">Click any part to change it.</p>
-        <Journey m={m} secret={secret} onStep={openStep} onAdd={() => openToken('add')} />
+        <Journey m={m} config={config} secret={secret} onStep={openStep} onAdd={() => openToken('add')} />
         {m.seeing.some((x) => x.mode !== 'off') ? (
           <p className="cxNote grWarn">
             <Icon name="eye" size={14} />
@@ -401,7 +405,10 @@ function Overview({ ctx, form, view }) {
         {open?.token && (
           <Popover
             key={open.token}
-            anchor={anchors.current[open.token] || hero.current}
+            // the part clicked, else the first part of the sentence that opens it (opened from the picture)
+            anchor={
+              anchors.current[open.at] || Object.entries(anchors.current).find(([key, el]) => el && key.startsWith(`${open.token}:`))?.[1] || hero.current
+            }
             box={hero}
             title={TOKENS[open.token].title}
             onClose={close}
@@ -457,9 +464,9 @@ function Overview({ ctx, form, view }) {
             k="ai"
             icon="eye"
             label="The AI can see pictures"
-            action={aiProblem ? 'Mark it' : 'Open on Agent'}
+            action={aiProblem && m.ai.set ? 'Mark it' : 'Open on Agent'}
             muted={!m.ai.sees && !aiProblem}
-            onAction={() => (aiProblem ? ctx.set(markSeeing(config)) : goPart('agent'))}
+            onAction={() => (aiProblem && m.ai.set ? ctx.set(markSeeing(config)) : goPart('agent'))}
           >
             {m.ai.sees
               ? 'Yes'

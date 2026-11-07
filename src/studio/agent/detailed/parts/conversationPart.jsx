@@ -8,7 +8,7 @@ import { speaks } from './agentPart.jsx';
 import ConversationWorkspace from '../conversationView/ConversationWorkspace.jsx';
 import { QuietScript, RetryGrid, WaitChoice } from '../conversationView/conversationEditors.jsx';
 import RememberSheet from '../conversationView/RememberSheet.jsx';
-import { C, INTERRUPTION, QUIET, R, TURNS, eventName, setQuietOn } from '../conversationView/conversationWords.js';
+import { C, INTERRUPTION, QUIET, R, TURNS, eventName, readQuiet, setQuietOn } from '../conversationView/conversationWords.js';
 
 // 2 · Conversation: how the agent behaves during a call (taking turns, quiet callers, how it sounds, what it remembers
 // and reacts to, failing services). Gathered from Settings › Conversation flow, Reliability and the Workflow's state and
@@ -179,7 +179,8 @@ export const conversationForm = {
             label: 'Check in when someone goes quiet',
             hint: 'A short “are you still there?”, a few times, before it closes.',
             path: [...QUIET, 'enabled'],
-            get: (config) => getAtPath(config, [...QUIET, 'enabled']) === true,
+            // read as the sentence and the script above it read it (readQuiet): a script with no `enabled` counts as on
+            get: (config) => readQuiet(config).state === 'on',
             put: (config, on) => setQuietOn(config, on, speaks(config)),
           },
           {
