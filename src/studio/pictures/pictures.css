@@ -1,0 +1,591 @@
+/* A picture the agent asks for during a test conversation (PictureRequest.jsx) and the line it leaves when done. Kept
+   with the card, so it is styled wherever a conversation shows it. Studio tokens only: every style, light and dark. */
+.pcCard {
+  align-self: stretch;
+  flex-shrink: 0; /* in a conversation that scrolls, the card keeps its height (it hides what overflows its corners) */
+  container-type: inline-size;
+  border: 1px solid var(--line2);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 9%, transparent);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: pcRise 0.35s ease both;
+}
+@keyframes pcRise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.pcHead {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px 14px 10px;
+  position: relative;
+}
+.pcClock {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+.pcClock > svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.pcRingTrack {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 3;
+}
+.pcRing {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+.pcGlyph {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.pcLeft {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.pcLeft.low {
+  color: var(--warn-text);
+}
+.pcTitle {
+  min-width: 0;
+  padding-right: 44px;
+}
+.pcTitle b {
+  display: block;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  line-height: 1.3;
+}
+.pcTitle small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.pcPrompt {
+  margin: 0 14px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+}
+.pcPrompt svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent-text);
+}
+
+/* the upload: a drop area with a card outline, the photo being checked, why one was turned down */
+.pcDrop {
+  margin: 0 14px 12px;
+  border-radius: 14px;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 40%, var(--line2));
+  background: radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--accent) 7%, var(--surface)), var(--surface) 70%);
+  padding: 18px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.pcDrop.again {
+  padding: 12px;
+}
+.pcDrop.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.pcCardArt {
+  width: 112px;
+  aspect-ratio: 1.586;
+  border-radius: 9px;
+  border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  position: relative;
+}
+.pcCardArt::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  top: 20%;
+  width: 24%;
+  height: 50%;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.pcCardArt::after {
+  content: "";
+  position: absolute;
+  left: 42%;
+  top: 26%;
+  width: 46%;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow:
+    0 13px 0 color-mix(in srgb, var(--accent) 12%, transparent),
+    0 26px 0 color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.pcOr {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.pcTypes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pcTypes span {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: var(--surface);
+}
+.pcChosen {
+  margin: 0 14px 12px;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line2);
+}
+.pcChosen b {
+  display: block;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.pcChosen small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.pcThumb {
+  position: relative;
+  width: 72px;
+  aspect-ratio: 1.586;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--surface2);
+  color: var(--muted);
+}
+.pcThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pcThumb.dim img {
+  filter: grayscale(0.6);
+  opacity: 0.7;
+}
+.pcSheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.6) 50%, transparent 70%);
+  background-size: 220% 100%;
+  animation: pcSheen 1.1s linear infinite;
+}
+@keyframes pcSheen {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+.pcVerdict {
+  margin: 0 14px 12px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+  color: var(--warn-text);
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+  animation: pcRise 0.3s ease both;
+}
+.pcVerdict svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* the camera: before the press, then a viewfinder with corner guides and a scan line while frames are taken */
+.pcCamOff {
+  margin: 0 14px 12px;
+  border-radius: 14px;
+  min-height: 150px;
+  padding: 18px 14px;
+  background: radial-gradient(120% 100% at 30% 15%, #3a3047, #15111b);
+  color: #e9e2f3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+.pcCamOff small {
+  color: #c6bcd4;
+  font-size: var(--fs-xs);
+  max-width: 34ch;
+}
+/* the camera: the whole frame, as the agent receives it (not cropped), widescreen like most cameras; the face and the
+   card must both fit in it, side by side */
+.pcView {
+  margin: 0 14px 12px;
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  max-height: min(52vh, 400px);
+  background: radial-gradient(120% 100% at 30% 15%, #4b3d5d, #15111b);
+}
+.pcView video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scaleX(-1); /* a mirror, as people expect to see themselves */
+}
+/* before the camera is shared: the countdown over the private preview */
+.pcReady {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+.pcReady b {
+  font-size: var(--fs-2xl);
+  line-height: 1;
+  padding: 14px 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.pcReady small {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.pcLive {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.pcLive i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff5a5a;
+  animation: pcBlink 1.2s steps(2) infinite;
+}
+@keyframes pcBlink {
+  50% {
+    opacity: 0.3;
+  }
+}
+.pcToast {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  background: rgba(40, 26, 0, 0.85);
+  color: #ffd58a;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: 10px;
+  width: max-content;
+  max-width: 84%;
+  text-align: center;
+  animation: pcRise 0.3s ease both;
+}
+.pcTip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 12px 10px;
+  color: #fff;
+  font-size: var(--fs-xs);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
+}
+
+.pcFoot {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface2);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  line-height: 1.45;
+}
+.pcFoot svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* what a finished request leaves in the conversation */
+.pcLine {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px 8px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--line2);
+  background: var(--surface2);
+  animation: pcRise 0.35s ease both;
+}
+.pcLine .pcThumb {
+  width: 52px;
+}
+.pcLine b {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--textStrong);
+}
+.pcLine.good {
+  border-color: color-mix(in srgb, var(--good) 30%, var(--line2));
+  background: var(--good-soft);
+}
+.pcLine.good b {
+  color: var(--good-text);
+}
+.pcLine small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.pcTick {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--good);
+  color: var(--surface);
+  display: grid;
+  place-items: center;
+  animation: pcPop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes pcPop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+@media (max-height: 820px) {
+  .pvPanel .pcCardArt,
+  .pvPanel .pcOr {
+    display: none;
+  }
+  .pvPanel .pcHead {
+    padding: 10px 12px 8px;
+  }
+  .pvPanel .pcPrompt {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+  }
+  .pvPanel .pcDrop {
+    padding: 12px;
+    gap: 8px;
+  }
+  .pvPanel .pcCamOff {
+    min-height: 0;
+    padding: 14px 12px;
+  }
+  .pvPanel .pcView {
+    max-height: 300px;
+  }
+}
+@container (max-width: 300px) {
+  .pcCardArt {
+    display: none;
+  }
+  .pcChosen {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+  .pcThumb {
+    width: 56px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pcCard,
+  .pcVerdict,
+  .pcToast,
+  .pcLine,
+  .pcTick,
+  .pcSheen,
+  .pcLive i {
+    animation: none;
+  }
+  .pcRing {
+    transition: none;
+  }
+}
+
+/* the Test page's conversation is wide: the card and its line keep a chat card's width there */
+.stTMessages > .pcCard,
+.stTPictureLine {
+  width: 100%;
+  max-width: 480px;
+}
+
+/* ---- the camera stage: while the camera is on, a large view over the page (like a video call), so the face and the
+   card both fit in one frame; as big as the window allows, keeping 16:9 */
+.pcStageScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 8, 16, 0.6);
+  animation: pcRise 0.2s ease both;
+}
+.pcStage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(960px, 100%, calc((100vh - 190px) * 16 / 9));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--line2);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.pcStageHead {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+.pcStageHead > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.pcStageHead strong {
+  font-size: var(--fs-md);
+}
+.pcStageHead span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+/* the countdown beside its ring (in a card it sits in the card's corner) */
+.pcStageTime {
+  display: inline-flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+}
+.pcStageTime .pcLeft {
+  position: static;
+  font-size: var(--fs-sm);
+}
+.pcStage .pcView {
+  flex: none;
+  margin: 0;
+  width: 100%;
+  max-height: none;
+}
+.pcStage .pcVerdict {
+  margin: 0;
+}
+.pcStageFoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+.pcStageActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pcStageFoot small {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+/* in the conversation, the camera card only says where the camera is */
+.pcStageNote {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 14px 12px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pcStageScrim {
+    animation: none;
+  }
+}

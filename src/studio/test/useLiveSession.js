@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { drawsVoice } from './channels.ts';
+import { IMAGE_TOPIC, UI_TOPIC, applyUiMessage, fileKey, readUiMessage, uploadProblem } from '../pictures/pictureProtocol.js';
+import { addForm, readForm, removeForm, updateForm } from './formQueue.js';
 
 // One conversation with an agent over LiveKit: get a join token (POST /sessions), connect, and turn what arrives into
 // messages. Bot text arrives on `lk.transcription`, chat goes out on `lk.chat`, forms use `agent-builder.form` and
-// `agent-builder.form.submit`. The join token is a secret for this session: used to connect, never kept or logged.
+// `agent-builder.form.submit`, and a picture the agent asks for is `agent-builder.ui` (see pictures/pictureProtocol.js):
+// an upload goes back on `agent-builder.image`, the camera is the normal camera track. The join token is a secret for
+// this session: used to connect, never kept or logged.
 
 const TOPIC_TRANSCRIPTION = 'lk.transcription';
 const TOPIC_CHAT = 'lk.chat';
@@ -67,12 +71,21 @@ export function useLiveSession({ onFinished } = {}) {
   const [messages, setMessages] = useState([]);
   const [events, setEvents] = useState([]);
   const [error, setError] = useState(null); // { title, body, errors }
-  const [form, setForm] = useState(null); // { requestId, title, description, fields, submitLabel, errors, busy }
+  // the forms the agent has open, oldest first (formQueue.js); the screen shows the first
+  const [forms, setForms] = useState([]); // [{ requestId, title, description, fields, submitLabel, errors, busy }]
+  const form = forms[0] || null;
   const [media, setMedia] = useState({ mic: false, camera: false, screen: false });
   const [agentHint, setAgentHint] = useState(false);
   const [reconnecting, setReconnecting] = useState(false); // the connection dropped and LiveKit is trying to restore it
   // what the agent says it is doing ('listening' | 'thinking' | 'speaking'), from its lk.agent.state attribute; '' until it says
   const [agentState, setAgentState] = useState('');
+  // the picture the agent is asking for, if any (pictures/pictureProtocol.js openRequest); one at a time
+  const [picture, setPicture] = useState(null);
+  const pictureRef = useRef(null);
+  const lastKindRef = useRef(null); // the kind of the picture request that ended last (a camera's retake is known by it)
+  const sentFilesRef = useRef(new Set()); // the photos sent in this call: the same file is never sent twice
+  const thumbsRef = useRef([]); // small local previews of sent photos (object URLs), released when the call is over
+  const cameraForPictureRef = useRef(false); // the camera was switched on for a request, so it goes off when that ends
 
   const roomRef = useRef(null);
   const lkRef = useRef(null);
@@ -132,6 +145,8 @@ export function useLiveSession({ onFinished } = {}) {
 
   const cleanup = useCallback(() => {
     window.clearTimeout(hintTimerRef.current);
+    // a connection that dropped is over with its room: the next session starts connected, not "reconnecting"
+    setReconnecting(false);
     const room = roomRef.current;
     roomRef.current = null;
     if (audioHostRef.current) audioHostRef.current.replaceChildren();
@@ -145,6 +160,22 @@ export function useLiveSession({ onFinished } = {}) {
     }
     setMedia({ mic: false, camera: false, screen: false });
     setAgentState('');
+    pictureRef.current = null;
+    lastKindRef.current = null;
+    setPicture(null);
+    cameraForPictureRef.current = false;
+  }, []);
+  // the previews of sent photos are released when the hook goes (a new call keeps none either)
+  const releaseThumbs = useCallback(() => {
+    thumbsRef.current.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        /* already released */
+      }
+    });
+    thumbsRef.current = [];
+    sentFilesRef.current = new Set();
   }, []);
 
   useEffect(() => {
@@ -153,8 +184,126 @@ export function useLiveSession({ onFinished } = {}) {
       finish('closed');
       aliveRef.current = false;
       cleanup();
+      releaseThumbs();
     };
-  }, [cleanup, finish]);
+  }, [cleanup, finish, releaseThumbs]);
+
+  // ---- pictures (MEDIA_PROTOCOL): the runtime asks, the screen reacts; every request ends with request_done
+  const setRequest = useCallback((next) => {
+    pictureRef.current = next;
+    if (aliveRef.current) setPicture(next);
+  }, []);
+  const cameraOff = useCallback(async () => {
+    const room = roomRef.current;
+    cameraForPictureRef.current = false;
+    if (!room) return;
+    try {
+      await room.localParticipant.setCameraEnabled(false);
+    } catch {
+      /* already off */
+    }
+    if (aliveRef.current) setMedia((m) => ({ ...m, camera: false }));
+  }, []);
+  const onUiPacket = useCallback(
+    (raw) => {
+      const message = readUiMessage(raw);
+      if (!message) return; // not JSON, or a type this screen doesn't know: ignored, as the protocol asks
+      const before = pictureRef.current;
+      const { request, done, note } = applyUiMessage(before, message, Date.now(), lastKindRef.current);
+      if (done) lastKindRef.current = done.kind;
+      else if (before && request && request.id !== before.id) lastKindRef.current = before.kind;
+      // a new request while the camera was on for an older one: that one is over
+      if (before && request && request.id !== before.id && before.kind === 'camera' && request.kind !== 'camera' && cameraForPictureRef.current) cameraOff();
+      setRequest(request);
+      if (message.type === 'request_image') log(`The agent asked for ${message.kind === 'camera' ? 'the camera' : 'a photo'}`);
+      if (message.type === 'image_rejected') log(`The agent turned a picture down: ${message.code}`, 'warn');
+      if (note) upsertMessage(nextId('pic'), { role: 'system', text: `A photo was not used: ${note}`, final: true });
+      if (done) {
+        log(`The picture request ended: ${done.status}`);
+        if (done.kind === 'camera' || cameraForPictureRef.current) cameraOff();
+        upsertMessage(nextId('pic'), { role: 'picture', text: '', final: true, picture: { kind: done.kind, status: done.status, sent: done.sent } });
+      }
+    },
+    [cameraOff, log, setRequest, upsertMessage],
+  );
+
+  // A photo: for the open upload request, or (with nothing asked) as the channel allows. Returns why it wasn't sent, in
+  // words, or '' when it went. `topic` is the channel's inputs.image.topic when it sets one.
+  const sendImage = useCallback(
+    async (file, topic) => {
+      const room = roomRef.current;
+      if (!room || !file) return '';
+      const request = pictureRef.current;
+      if (request?.kind === 'camera') return 'The agent wants the camera now, so a photo chosen from your device is not used. Turn the camera on instead.';
+      const problem = uploadProblem(file, request || {});
+      if (problem) return problem;
+      const key = fileKey(file);
+      if (sentFilesRef.current.has(key)) return 'You have already sent this photo. Choose another one.';
+      let thumb = '';
+      try {
+        thumb = URL.createObjectURL(file);
+        thumbsRef.current.push(thumb);
+      } catch {
+        /* no preview: the line says the name */
+      }
+      const sent = { name: file.name, size: file.size, thumb };
+      if (request) setRequest({ ...request, sent, phase: 'sending', rejection: null });
+      try {
+        await room.localParticipant.sendFile(file, { topic: topic || IMAGE_TOPIC });
+        sentFilesRef.current.add(key);
+        if (request && pictureRef.current?.id === request.id) setRequest({ ...pictureRef.current, phase: 'sent' });
+        if (!request) upsertMessage(nextId('me'), { role: 'picture', text: '', final: true, picture: { kind: 'upload', status: 'sent', sent } });
+        log(`Sent a photo: ${file.name}`);
+        return '';
+      } catch (err) {
+        if (request && pictureRef.current?.id === request.id) setRequest({ ...pictureRef.current, sent: null, phase: 'open' });
+        log(`Couldn’t send the picture: ${err.message}`, 'error');
+        return `The photo wasn’t delivered: ${err.message}`;
+      }
+    },
+    [log, setRequest, upsertMessage],
+  );
+
+  // The camera for the open camera request: switched on by the person's press (browsers ask for that), kept on until the
+  // request ends, then switched off. Returns why it couldn't start, or ''.
+  const pictureCamera = useCallback(
+    async (on) => {
+      const room = roomRef.current;
+      if (!room) return '';
+      if (!on) {
+        await cameraOff();
+        log('Camera off');
+        return '';
+      }
+      try {
+        await room.localParticipant.setCameraEnabled(true);
+        cameraForPictureRef.current = true;
+        if (aliveRef.current) setMedia((m) => ({ ...m, camera: true }));
+        log('Camera on');
+        return '';
+      } catch (err) {
+        log(`Camera: ${err.message}`, 'error');
+        return /denied|permission|notallowed/i.test(`${err.name} ${err.message}`)
+          ? 'The browser was not allowed to use the camera. Allow it in the address bar, then press Turn on camera again.'
+          : `The camera didn’t start: ${err.message}`;
+      }
+    },
+    [cameraOff, log],
+  );
+  // A request still open when the call ends is over too (the runtime cancels it): it leaves its line in the conversation.
+  const endOpenPicture = useCallback(() => {
+    const open = pictureRef.current;
+    if (!open) return;
+    upsertMessage(nextId('pic'), { role: 'picture', text: '', final: true, picture: { kind: open.kind, status: 'cancelled', sent: open.sent } });
+  }, [upsertMessage]);
+  // Shows the camera in a <video> of the card asking for it.
+  const attachCamera = useCallback((video) => {
+    const room = roomRef.current;
+    const lk = lkRef.current;
+    if (!room || !lk || !video) return;
+    const pub = room.localParticipant.getTrackPublication(lk.Track.Source.Camera);
+    if (pub?.track) pub.track.attach(video);
+  }, []);
 
   // ---- forms
 
@@ -169,20 +318,14 @@ export function useLiveSession({ onFinished } = {}) {
       }
       formViaRef.current = via;
       if (packet.type === 'form') {
-        setForm({
-          requestId: packet.request_id,
-          title: packet.title || 'The agent needs some details',
-          description: packet.description || '',
-          fields: Array.isArray(packet.fields) ? packet.fields : [],
-          submitLabel: packet.submit_label || 'Send',
-          errors: {},
-          busy: false,
-        });
+        const next = readForm(packet);
+        if (!next) return;
+        setForms((old) => addForm(old, next));
         log(`The agent asked for a form: ${packet.title || packet.request_id}`);
       } else if (packet.type === 'form_errors') {
-        setForm((old) => (old && old.requestId === packet.request_id ? { ...old, errors: packet.errors || {}, busy: false } : old));
+        setForms((old) => updateForm(old, packet.request_id, { errors: packet.errors || {}, busy: false }));
       } else if (packet.type === 'form_accepted') {
-        setForm((old) => (old && old.requestId === packet.request_id ? null : old));
+        setForms((old) => removeForm(old, packet.request_id));
         addSystem('Form sent.');
       }
     },
@@ -194,13 +337,13 @@ export function useLiveSession({ onFinished } = {}) {
       const room = roomRef.current;
       const current = form;
       if (!room || !current) return;
-      setForm({ ...current, busy: true, errors: {} });
+      setForms((old) => updateForm(old, current.requestId, { busy: true, errors: {} }));
       const body = JSON.stringify({ request_id: current.requestId, values });
       try {
         if (formViaRef.current === 'stream') await room.localParticipant.sendText(body, { topic: TOPIC_FORM_SUBMIT });
         else await room.localParticipant.publishData(encoder.encode(body), { reliable: true, topic: TOPIC_FORM_SUBMIT });
       } catch (err) {
-        setForm({ ...current, busy: false, errors: { _form: `Couldn’t send the form: ${err.message}` } });
+        setForms((old) => updateForm(old, current.requestId, { busy: false, errors: { _form: `Couldn’t send the form: ${err.message}` } }));
       }
     },
     [form],
@@ -211,7 +354,7 @@ export function useLiveSession({ onFinished } = {}) {
   const dismissForm = useCallback(async () => {
     const room = roomRef.current;
     const current = form;
-    setForm(null);
+    if (current) setForms((old) => removeForm(old, current.requestId));
     if (!room || !current) return;
     const body = JSON.stringify({ request_id: current.requestId, cancelled: true });
     try {
@@ -238,9 +381,10 @@ export function useLiveSession({ onFinished } = {}) {
       setError(null);
       setMessages([]);
       setEvents([]);
-      setForm(null);
+      setForms([]);
       setAgentHint(false);
       setInfo(null);
+      releaseThumbs();
       setStatus('starting');
       let session;
       try {
@@ -254,7 +398,7 @@ export function useLiveSession({ onFinished } = {}) {
       if (!aliveRef.current || attempt !== attemptRef.current) return;
       await connectRef.current(session, options.ref || 'draft', attempt);
     },
-    [status],
+    [status, releaseThumbs],
   );
 
   async function connect(session, ref, attempt) {
@@ -304,8 +448,17 @@ export function useLiveSession({ onFinished } = {}) {
         onFormPacket(text, 'stream');
       });
 
+      // what the agent asks of the screen about pictures: only from the agent, never from the visitor's own side
+      room.registerTextStreamHandler(UI_TOPIC, async (reader, participant) => {
+        if (participant?.identity === room.localParticipant.identity) return;
+        let text = '';
+        for await (const chunk of reader) text += chunk;
+        onUiPacket(text);
+      });
+
       room.on(RoomEvent.DataReceived, (payload, _participant, _kind, topic) => {
         if (topic === TOPIC_FORM) onFormPacket(decoder.decode(payload), 'data');
+        if (topic === UI_TOPIC) onUiPacket(decoder.decode(payload));
       });
       room.on(RoomEvent.ParticipantConnected, (p) => {
         log(`${p.identity} joined`);
@@ -345,11 +498,13 @@ export function useLiveSession({ onFinished } = {}) {
       room.on(RoomEvent.Disconnected, () => {
         window.clearTimeout(hintTimerRef.current);
         if (!aliveRef.current) return;
+        setReconnecting(false);
         if (stoppingRef.current) {
           setStatus('idle');
           return;
         }
         log('The conversation ended', 'warn');
+        endOpenPicture();
         finish('agent');
         addSystem('The agent ended the conversation.');
         setStatus('ended');
@@ -413,11 +568,12 @@ export function useLiveSession({ onFinished } = {}) {
     attemptRef.current += 1;
     stoppingRef.current = true;
     finish('user');
+    endOpenPicture();
     cleanup();
     setStatus('idle');
-    setForm(null);
+    setForms([]);
     log('You ended the conversation');
-  }, [cleanup, finish, log]);
+  }, [cleanup, endOpenPicture, finish, log]);
 
   // ---- sending
 
@@ -439,21 +595,6 @@ export function useLiveSession({ onFinished } = {}) {
     [addSystem, log, upsertMessage],
   );
 
-  const sendImage = useCallback(
-    async (file, topic) => {
-      const room = roomRef.current;
-      if (!room || !file) return;
-      try {
-        await room.localParticipant.sendFile(file, { topic });
-        upsertMessage(nextId('me'), { role: 'user', text: `Sent a picture: ${file.name}`, final: true });
-      } catch (err) {
-        log(`Couldn’t send the picture: ${err.message}`, 'error');
-        addSystem(`The picture wasn’t delivered: ${err.message}`);
-      }
-    },
-    [addSystem, log, upsertMessage],
-  );
-
   const toggle = useCallback(
     async (what) => {
       const room = roomRef.current;
@@ -463,6 +604,7 @@ export function useLiveSession({ onFinished } = {}) {
         if (what === 'mic') await room.localParticipant.setMicrophoneEnabled(next);
         if (what === 'camera') {
           await room.localParticipant.setCameraEnabled(next);
+          if (!next) cameraForPictureRef.current = false;
         }
         if (what === 'screen') await room.localParticipant.setScreenShareEnabled(next);
         setMedia((m) => ({ ...m, [what]: next }));
@@ -510,6 +652,9 @@ export function useLiveSession({ onFinished } = {}) {
     attachPreview,
     sendText,
     sendImage,
+    picture,
+    pictureCamera,
+    attachCamera,
     toggle,
     submitForm,
     dismissForm,

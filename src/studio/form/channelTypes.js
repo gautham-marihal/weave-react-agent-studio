@@ -198,6 +198,17 @@ export function keysNotOffered(config, types, path) {
   return path.length === 4 && VOICE_ONLY[where] ? VOICE_ONLY[where] : [];
 }
 
+// Choices of a setting that mean something only with a voice (the guide, section 5: the silence clock is a voice-only
+// setting): a channel that carries no audio doesn't offer them in its overrides. A value already chosen stays offered,
+// so it can be seen and changed. The agent-wide setting keeps every choice (a bot-wide thing is not hidden).
+const VOICE_ONLY_VALUES = { 'conversation.inactivity.clock': ['silence'] };
+export function enumValuesNotOffered(config, types, path) {
+  if (path[0] !== 'channels' || typeof path[1] !== 'number' || path[2] !== 'overrides') return [];
+  const channel = list(config?.channels)[path[1]];
+  if (!channel || isVoiceChannel(channel, types)) return [];
+  return VOICE_ONLY_VALUES[path.slice(3).join('.')] || [];
+}
+
 // Choices for a list of options at `path` (a channel's modalities): { allowed, extra }, or null for any other path.
 //   allowed: what the kind may carry
 //   extra: ticked values the kind cannot carry (kept, so they can be seen and removed)

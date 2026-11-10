@@ -100,7 +100,7 @@ try {
     .first()
     .click();
   // a fresh server has no agents yet: the list is then the empty state, not cards or rows, and each is a loaded list
-  await page.waitForSelector('.agentCard, .agentRow, .emptyPanel, .agentTable');
+  await page.waitForSelector('.agentCard, .emptyPanel, .agentTable');
   await page
     .getByRole('button', { name: /^(New|Create) agent$/ })
     .first()

@@ -2,9 +2,11 @@
 // use it, and advice on its settings. Pure: no network, no DOM.
 
 import { isObj } from './engine.js';
+import { notRunAt } from '../preflight.ts';
 
 // The kinds the runtime does not run yet (the validator's "unsupported" list, checked on 2026-10-16), so "Add tool" can
-// say so before anyone builds one. Built-ins are named by `builtin`.
+// say so before anyone builds one. Built-ins are named by `builtin`. Once a draft is checked, what the server says about
+// each tool wins (toolNotRun), so a kind it starts running stops being marked.
 export const UNSUPPORTED_KINDS = {
   mcp: 'MCP server tools',
   code: 'Custom code tools',
@@ -25,15 +27,23 @@ export function notAvailable(tool) {
   return null;
 }
 
+// What the server doesn't run of a tool in the draft: its own check's word for that tool once the draft is checked
+// (`unsupported`, the validator's list), else the list above. '' or null when it runs.
+export function toolNotRun(config, tool, unsupported) {
+  if (!Array.isArray(unsupported)) return notAvailable(tool);
+  const index = (Array.isArray(config?.tools) ? config.tools : []).indexOf(tool);
+  return index < 0 ? notAvailable(tool) : notRunAt(unsupported, ['tools', index]) || null;
+}
+
 // One line on when to use each built-in action.
 export const BUILTIN_HELP = {
   end_call: 'Ends the conversation. It says a goodbye line first, which is done in code so it is never skipped. Give the agent this so it can hang up.',
   transfer_or_callback:
-    'Hands the caller to a person, or runs its fallback (say a callback line, raise a ticket) when no one can take it: no target, closed hours, a failed transfer. Needs a transfer set up under Telephony.',
+    'Hands the caller to a person, or runs its fallback (say a callback line, raise a ticket) when no one can take it: no target, a failed transfer, or closed hours when the transfer has no closed steps of its own. Needs a transfer set up under Phone transfers on Connections.',
   return_to_entry: 'A specialist sends the caller back to the agent that answers first, with a note of what is still needed.',
   send_dtmf: 'Sends keypad tones on the call (a phone call only).',
   collect_dtmf: 'Collects digits the caller presses (a phone call only).',
-  send_form: 'Shows the caller a form. Needs a form defined under Forms; the channel must be able to show forms.',
+  send_form: 'Shows the caller a form. Needs a form set up under Forms on Connections; the channel must be able to show forms.',
   noop: 'Does nothing itself; only its effects run (set state, hand off). Use it for a tool whose whole job is a conditional handoff.',
 };
 

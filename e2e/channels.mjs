@@ -92,14 +92,18 @@ await page
   .click();
 await page.waitForTimeout(900);
 
-// ---- the channel card: each channel is a chip on the Channels part, and the chosen one opens in the card beside it
+// ---- the channel card (All settings): each channel is a row of its list, and the chosen one opens in the card beside it
 await page.evaluate(() => {
   location.hash = '#/bots/acme-support/channels';
 });
-await page.waitForSelector('[data-card="channels.channel"] .dtItems');
+// these checks read the part's cards: Channels opens on how people reach it, so its All settings view is chosen
+await page.waitForSelector('.chHero');
+await page.getByRole('button', { name: 'All settings', exact: true }).click();
+await page.waitForSelector('[data-card="channels.channel"] .dtIList');
 const card = page.locator('[data-card="channels.channel"]');
-const rows = card.locator('.dtItems > button[aria-current]');
-check('every channel is a chip', (await rows.count()) === 7, String(await rows.count()));
+// each channel is a row of the list, with its own Edit
+const rows = card.locator('.dtIList > li button[aria-pressed]');
+check('every channel is a row', (await rows.count()) === 7, String(await rows.count()));
 // the nth channel's card, its Advanced rows open (its kind, entry fields and what it carries are there); edits go straight into the draft
 const open = async (n) => {
   await rows.nth(n).click();
@@ -118,20 +122,22 @@ const caps = async (n) => {
 };
 check('a phone line offers the keypad and a hand-over, and no form switch', JSON.stringify(await caps(0)) === JSON.stringify(['dtmf', 'human_transfer']));
 check('a web chat offers a form and a hand-over, and no keypad', JSON.stringify(await caps(1)) === JSON.stringify(['human_transfer', 'forms']));
-// what a channel carries is its own form under Advanced: read the choices
+// what a channel carries: the choices its own editor offers (only what its kind may carry), what the person can use
+// and how it answers
 const carries = async (n) => {
   const channel = await open(n);
   const row = channel.locator('[data-field="channels.modalities"]');
-  await row.getByRole('button', { name: /^Edit / }).click();
-  const checks = row.locator('.stFChecks');
-  await checks.first().waitFor();
-  const shown = [await checks.nth(0).locator('label').allInnerTexts(), await checks.nth(1).locator('label').allInnerTexts()];
-  await row.getByRole('button', { name: /^Done / }).click();
-  return shown;
+  return [
+    await row.locator('[role="group"][aria-label="The person can"] button').allInnerTexts(),
+    await row.locator('[role="group"][aria-label="It answers by"] button').allInnerTexts(),
+  ];
 };
 const phone = await carries(0);
 check('a phone line can only carry audio in and out', phone[0].length === 1 && phone[1].length === 1, JSON.stringify(phone));
-check('a web chat can carry audio, text, images and video in', (await carries(1))[0].length === 4);
+// photos and the camera are asked on Images & Videos (one place each): here a web chat offers talking and typing, and
+// says where pictures are set
+check('a web chat can carry audio and text in, and says pictures are set on Images & Videos', (await carries(1))[0].length === 2);
+check('…with the way to Images & Videos', (await page.locator('.chPictures').count()) === 1);
 let channel = await open(0);
 check('the kind says what it is, in the server’s words', /A phone call carries audio only/.test(await channel.innerText()));
 channel = await open(3);

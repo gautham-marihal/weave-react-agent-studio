@@ -9,6 +9,7 @@ import {
   LANGUAGES,
   greetingOf,
   greetingTarget,
+  languageName,
   readSimple,
   setAgentName,
   setGreeting,
@@ -23,21 +24,18 @@ import {
 import { setLanguageField, spokenChips } from '../../pickers/pickerLogic.js';
 import VoicePicker from '../../pickers/VoicePicker.jsx';
 import ModelPicker from '../../pickers/ModelPicker.jsx';
-import { providerLabel } from '../../../models/catalog.js';
+import { modelLabel, providerLabel } from '../../../models/catalog.js';
 import { summarizeModels, voicesFor, readModels } from '../../../models/config.js';
 import { useProviders } from '../../../models/useProviders.js';
 import { getAtPath } from '../../schemaPath.js';
+import { setPath } from '../schemaFacts.js';
 import { InlineItems, briefOf } from '../Detailed.jsx';
+import { speaks } from '../agentProfile/speaks.js';
+import AgentWorkspace from '../agentProfile/AgentWorkspace.jsx';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-// it speaks: a channel that is on is a voice one (a phone line, web voice) or says it hears or speaks audio
-export const speaks = (config) =>
-  list(config?.channels).some(
-    (ch) =>
-      ch &&
-      ch.enabled !== false &&
-      (['sip_voice', 'web_voice'].includes(ch.type) || list(ch.modalities?.input).includes('audio') || list(ch.modalities?.output).includes('audio')),
-  );
+// it speaks: a voice channel is on, or a channel hears or speaks audio (agentProfile/speaks.js)
+export { speaks };
 const inWords = (names) => {
   const each = [...new Set(names)];
   return each.length > 1 ? `${each.slice(0, -1).join(', ')} and ${each.at(-1)}` : each[0] || '';
@@ -175,8 +173,16 @@ function GreetingField({ config, set, id }) {
 }
 
 // A picker shown as a select-like button; the full picker opens under it.
-function PickerButton({ id, value, empty, children }) {
-  const [open, setOpen] = useState(false);
+// startOpen: the list shows at once (inside the profile's editor for that one setting)
+function PickerButton({ id, value, empty, children, startOpen = false }) {
+  const [open, setOpen] = useState(!!startOpen);
+  // in a popover for that one setting, the picker is the editor itself (its choice is shown once, ticked in its list)
+  if (startOpen)
+    return (
+      <div id={id} className="dtPickPanel bare" role="group" aria-labelledby={`${id}-label`}>
+        {children}
+      </div>
+    );
   return (
     <>
       <button type="button" id={id} className="dtPickBtn" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -188,26 +194,45 @@ function PickerButton({ id, value, empty, children }) {
   );
 }
 
-function VoiceRow({ config, set, id }) {
+function VoiceRow({ config, set, id, pickersOpen }) {
   const models = readModels(config);
   const voice = voicesFor(models.tts.provider).find((v) => v.voiceId === models.tts.voiceId);
   const value = models.tts.voiceId ? `${voice?.name || 'Custom voice'}${models.tts.provider ? ` · ${providerLabel(models.tts.provider)}` : ''}` : '';
   const talks = readSimple(config).voiceChannel;
   return (
-    <PickerButton id={id} value={value} empty={talks ? 'No voice chosen yet' : 'Not needed while it only chats'}>
-      <VoicePicker config={config} set={set} speech={talks} />
+    <PickerButton id={id} value={value} empty={talks ? 'No voice chosen yet' : 'Not needed while it only chats'} startOpen={pickersOpen}>
+      <VoicePicker config={config} set={set} speech={talks} bare={pickersOpen} />
     </PickerButton>
   );
 }
 
-// One stage's model ("Language model: OpenAI GPT-4.1 Mini"); the picker covers all three stages.
-function ModelRow({ config, set, id, stage }) {
+// One stage's model ("Language model: OpenAI GPT-4.1 Mini"); its picker shows that stage only.
+function ModelRow({ config, set, id, stage, pickersOpen }) {
   const { providers, live } = useProviders();
   const m = summarizeModels(config).find((s) => s.stage === stage);
   const value = m?.set ? `${m.providerName}${m.modelName ? ` · ${m.modelName}` : ''}` : '';
   return (
-    <PickerButton id={id} value={value} empty="Not chosen yet">
-      <ModelPicker config={config} set={set} providers={providers} live={live} speech={readSimple(config).voiceChannel} />
+    <PickerButton id={id} value={value} empty="Not chosen yet" startOpen={pickersOpen}>
+      <ModelPicker config={config} set={set} providers={providers} live={live} speech={readSimple(config).voiceChannel} stages={[stage]} bare={pickersOpen} />
+    </PickerButton>
+  );
+}
+
+// A speech-to-speech model in use (defaults.models.realtime with a provider): it hears, thinks and speaks itself, with
+// its own voice (`realtime.voice`), so the speaking model's voice isn't used meanwhile.
+const usesRealtime = (config) => !!readModels(config).realtime.provider;
+// the voices a speech-to-speech model offers, by provider (OpenAI's realtime voices); another provider's is typed in All
+// settings' JSON, or picked from what is set
+const REALTIME_VOICES = { openai: ['alloy', 'ash', 'ballad', 'cedar', 'coral', 'echo', 'marin', 'sage', 'shimmer', 'verse'] };
+
+// Speech-to-speech: the same picker, showing only its own part ("Not used" until one is chosen).
+function RealtimeRow({ config, set, id, pickersOpen }) {
+  const { providers, live } = useProviders();
+  const { provider, model } = readModels(config).realtime;
+  const value = provider ? `${providerLabel(provider)}${model ? ` · ${modelLabel('realtime', provider, model)}` : ''}` : '';
+  return (
+    <PickerButton id={id} value={value} empty="Not used" startOpen={pickersOpen}>
+      <ModelPicker config={config} set={set} providers={providers} live={live} stages={['realtime']} />
     </PickerButton>
   );
 }
@@ -220,11 +245,12 @@ const speaksOf = (config) =>
     .map((chip) => chip.code);
 const languageChoices = BASE_LANGUAGES.map((l) => ({ value: l.code, label: l.name }));
 
-export const agentPart = {
+// Every setting of the part, as cards of rows: what All settings shows, and the rows the profile opens.
+export const agentForm = {
   id: 'agent',
   num: '1',
   title: 'Agent',
-  question: 'Who is it, and how does it sound?',
+  question: 'Who it is, what it should do, what it says first, and how it sounds.',
   cols: [
     [
       {
@@ -295,9 +321,24 @@ export const agentPart = {
             id: 'voice',
             label: 'Voice',
             hint: 'Hear each one say the greeting',
-            tags: (c) => (speaks(c) ? 'r' : ''),
+            tags: (c) => (speaks(c) && !usesRealtime(c) ? 'r' : ''),
             errPath: ['defaults', 'models', 'tts'],
+            // a speech-to-speech model speaks with a voice of its own (the next row): this one isn't used meanwhile
+            note: (c) => (usesRealtime(c) ? 'Not used while a speech-to-speech model speaks: it has a voice of its own, below.' : ''),
             render: (c) => <VoiceRow {...c} />,
+          },
+          {
+            id: 'realtimeVoice',
+            label: 'Voice of the speech-to-speech model',
+            hint: 'The speech-to-speech model speaks with this voice',
+            kind: 'pick',
+            placeholder: 'The model’s usual voice',
+            hidden: (c) => !usesRealtime(c),
+            // read and written here (the schema says what it is only once a speech-to-speech model is chosen)
+            pathFor: () => ['defaults', 'models', 'realtime', 'voice'],
+            get: (c) => getAtPath(c, ['defaults', 'models', 'realtime', 'voice']),
+            put: (c, v) => (usesRealtime(c) ? setPath(c, ['defaults', 'models', 'realtime', 'voice'], v || undefined) : c),
+            options: (c) => (REALTIME_VOICES[readModels(c).realtime.provider] || []).map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })),
           },
           {
             id: 'primary',
@@ -306,6 +347,7 @@ export const agentPart = {
             kind: 'pick',
             path: ['defaults', 'language', 'primary'],
             options: LANGUAGES.map(([value, label]) => ({ value, label })),
+            valueLabel: (v) => `${languageName(v)} (${v})`,
             put: (c, v) => setPrimaryLanguage(c, v),
           },
           {
@@ -345,8 +387,13 @@ export const agentPart = {
           { id: 'clean', label: 'Clean up text before speaking', tags: 'm', path: ['defaults', 'models', 'tts', 'text_transforms'] },
         ],
         adv: [
-          { id: 'voiceid', label: 'A voice id from your own account', path: ['defaults', 'models', 'tts', 'voice_id'] },
-          { id: 'sttlang', label: 'Listening language code', path: ['defaults', 'models', 'stt', 'language'] },
+          {
+            id: 'voiceid',
+            label: 'A voice from your own account',
+            hint: 'Its id at the voice provider. Or pick a voice in the list.',
+            path: ['defaults', 'models', 'tts', 'voice_id'],
+          },
+          { id: 'sttlang', label: 'Language for listening', path: ['defaults', 'models', 'stt', 'language'] },
           { id: 'keyterms', label: 'Words to listen for', path: ['defaults', 'models', 'stt', 'keyterms'] },
         ],
       },
@@ -356,8 +403,8 @@ export const agentPart = {
         lead: 'What it thinks, hears and speaks with.',
         rows: [
           { id: 'llm', label: 'Thinking', tags: 'r', errPath: ['defaults', 'models', 'llm'], render: (c) => <ModelRow {...c} stage="llm" /> },
-          { id: 'stt', label: 'Hearing', errPath: ['defaults', 'models', 'stt'], hidden: (c) => !speaks(c), render: (c) => <ModelRow {...c} stage="stt" /> },
-          { id: 'tts', label: 'Speaking', hidden: (c) => !speaks(c), render: (c) => <ModelRow {...c} stage="tts" /> },
+          { id: 'stt', label: 'Hearing', errPath: ['defaults', 'models', 'stt'], render: (c) => <ModelRow {...c} stage="stt" /> },
+          { id: 'tts', label: 'Speaking', render: (c) => <ModelRow {...c} stage="tts" /> },
           { id: 'temperature', label: 'How creative the answers are', tags: 'm', unit: '0 to 2', path: ['defaults', 'models', 'llm', 'temperature'] },
           { id: 'tools', label: 'Can use tools', path: ['defaults', 'models', 'llm', 'tool_calling'] },
           { id: 'parallel', label: 'Use several tools at once', path: ['defaults', 'models', 'llm', 'parallel_tool_calls'] },
@@ -365,13 +412,30 @@ export const agentPart = {
         ],
         adv: [
           { id: 'fallbacks', label: 'Backup models', path: ['defaults', 'models', 'llm', 'fallbacks'] },
-          { id: 'key', label: 'Access keys', path: ['defaults', 'models', 'llm', 'api_key'] },
-          { id: 'address', label: 'Service addresses', path: ['defaults', 'models', 'llm', 'base_url'] },
-          { id: 'options', label: 'Extra options', path: ['defaults', 'models', 'llm', 'options'] },
-          { id: 'realtime', label: 'Speech-to-speech model', path: ['defaults', 'models', 'realtime'] },
-          { id: 'model', label: 'Another model id', path: ['defaults', 'models', 'llm', 'model'] },
+          {
+            id: 'key',
+            label: 'Key kept on the server',
+            hint: 'The name of the key the server keeps for this service. The key itself is never shown here.',
+            path: ['defaults', 'models', 'llm', 'api_key'],
+          },
+          {
+            id: 'address',
+            label: 'Web address of the service',
+            hint: 'Only for a self-hosted or compatible service.',
+            path: ['defaults', 'models', 'llm', 'base_url'],
+          },
+          { id: 'options', label: 'Provider settings', hint: 'Passed as they are to the provider.', path: ['defaults', 'models', 'llm', 'options'] },
+          {
+            id: 'realtime',
+            label: 'Speech-to-speech model',
+            errPath: ['defaults', 'models', 'realtime'],
+            render: (c) => <RealtimeRow {...c} />,
+          },
         ],
       },
     ],
   ],
 };
+
+// Build › Agent: the agent as a profile, or every setting at once (agentProfile/AgentWorkspace.jsx), both from agentForm.
+export const agentPart = { ...agentForm, render: (ctx) => <AgentWorkspace ctx={ctx} form={agentForm} /> };

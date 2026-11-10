@@ -86,7 +86,8 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
     ...(ids ? { scenarios: ids } : {}),
     ...(paid.live ? { live: true } : {}),
     ...(paid.judge ? { judge: true } : {}),
-    ...(network ? { allow_network: true } : {}),
+    // only where the server allows it (GET /tests says network_allowed): elsewhere a run that asks is refused
+    ...(network && list.networkAllowed ? { allow_network: true } : {}),
   });
   const go = (ids) => {
     setQueued(ids);
@@ -136,8 +137,8 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
       {!isDemoMode() && (
         <p className="scBanner" role="note">
           Scenarios run in the real runtime but <strong>never call a real API</strong>: the mocks you write answer the bot’s API calls
-          {saved.data && list.networkAllowed ? ' (this server lets a run reach real APIs when asked; the studio never asks)' : ''}. Scenarios with a model
-          script are free and repeatable; the others are live and only run when you include them.
+          {saved.data && list.networkAllowed ? ' (unless you let them under “Paid and real-request options”: this server allows it)' : ''}. Scenarios with a
+          model script are free and repeatable; the others are live and only run when you include them.
         </p>
       )}
 
@@ -174,7 +175,7 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
         <Button type="button" variant="primary" size="compact" disabled={!scenarios.length || running || starting} onClick={() => go(null)}>
           {starting ? 'Starting…' : running ? 'Running…' : `Run all (${scenarios.length})`}
           {paid.live || paid.judge ? ' · uses a paid model' : ''}
-          {network ? ' · real requests' : ''}
+          {network && list.networkAllowed ? ' · real requests' : ''}
         </Button>
         <Button type="button" disabled={!!editing} onClick={() => setEditing({ id: null, scenario: newScenario(config) })}>
           <Icon name="plus" size={14} /> New scenario
@@ -188,7 +189,10 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
       </div>
 
       <details className="scPaid">
-        <summary>Paid and real-request options{paid.live || paid.judge || network ? ' (on)' : ''}</summary>
+        <summary>
+          {list.networkAllowed ? 'Paid and real-request options' : 'Paid options'}
+          {paid.live || paid.judge || (network && list.networkAllowed) ? ' (on)' : ''}
+        </summary>
         <label className="scCheck">
           <input type="checkbox" checked={paid.live} onChange={(event) => (event.target.checked ? turnOn('live') : setPaid((p) => ({ ...p, live: false })))} />
           <span>
@@ -207,29 +211,32 @@ export default function ScenariosTab({ botId, name, editor, pollMs }) {
             be graded.
           </span>
         </label>
-        <label className="scCheck">
-          <input
-            type="checkbox"
-            checked={network}
-            onChange={async (event) => {
-              if (!event.target.checked) {
-                setNetwork(false);
-                return;
-              }
-              const ok = await askConfirm({
-                title: 'Let this run send requests to the real systems?',
-                body: 'A scenario normally never calls a real API: its mocks answer. With this on, a request can change real data. The server refuses it unless an operator has allowed it.',
-                confirmLabel: 'Allow real requests',
-                tone: 'danger',
-              });
-              if (ok) setNetwork(true);
-            }}
-          />
-          <span>
-            <strong>Let requests reach real systems</strong> (for operators). Scenarios normally never call a real API; with this on they can, and a request can{' '}
-            <b>change real data</b>. The server refuses it unless an operator has allowed it.
-          </span>
-        </label>
+        {/* offered only where the server lets a run reach real systems (FRONTEND_GUIDE 10.4); elsewhere it would be refused */}
+        {list.networkAllowed && (
+          <label className="scCheck">
+            <input
+              type="checkbox"
+              checked={network}
+              onChange={async (event) => {
+                if (!event.target.checked) {
+                  setNetwork(false);
+                  return;
+                }
+                const ok = await askConfirm({
+                  title: 'Let this run send requests to the real systems?',
+                  body: 'A scenario normally never calls a real API: its mocks answer. With this on, a request can change real data. The server refuses it unless an operator has allowed it.',
+                  confirmLabel: 'Allow real requests',
+                  tone: 'danger',
+                });
+                if (ok) setNetwork(true);
+              }}
+            />
+            <span>
+              <strong>Let requests reach real systems</strong> (for operators). Scenarios normally never call a real API; with this on they can, and a request
+              can <b>change real data</b>. An operator has allowed it on this server.
+            </span>
+          </label>
+        )}
       </details>
 
       {confirm && (

@@ -87,6 +87,10 @@ src/
     form/                the settings form, built from the schema: FormEditor.jsx, Node.jsx (draws any part of the
                          schema), engine.js (reads the schema), plainLanguage.js (every label in plain words)
     simple/              helpers that read and write the everyday settings (simpleModel.js)
+    pictures/            pictures the agent asks for (MEDIA_PROTOCOL.md, guide 7.1): pictureProtocol.js (the
+                         agent-builder.ui messages and the open request), PictureRequest.jsx (the card in any test
+                         conversation), PictureSteps.jsx + pictureSteps.js (the four picture steps in Build), measure.js
+                         (sharpness and brightness, as the runtime measures them, for the simulated agent)
     workflow/, knowledge/, test/, scenarios/, calls/, trace/, release/, monitoring/, speed/, live/, insights/, ...
                          one folder per feature: its components, its logic (`*Model.js`) and its stylesheet
 tests/                   unit and component tests (node:test; components are mounted in jsdom by tests/component/)
@@ -159,8 +163,187 @@ Guardrails, After the call, Engine and details; the Workflow canvas is its own p
   Undo. **Problems** show under their row; "show me" and the search bring the row into view by its `data-field` or
   `data-path`.
 
+**A part with its own workspace.** Agent, Conversation, Knowledge, Tools, Connections and Channels set `render(ctx)` on
+their part, so they open on a page of their own instead of the cards. The pages work the same way:
+
+- a sentence whose bold parts open small editors in place;
+- chapters of lines that open under themselves;
+- the less-used settings under "N more settings", which names them;
+- a switch to "All settings", which shows the part's own cards with every fold open, plus a search box. "/" (or the
+  "find a setting" hint beside the switch) opens it with the search box ready to type in.
+
+The pieces are shared in `detailed/workspaceKit.jsx`. Each person's choice of view is remembered by
+`detailed/workspaceView.js`. Every editor in a workspace is one of the part's own rows (`DetailedRow`), so a setting is
+the same control, saved in the same place, wherever it shows.
+
+- **Agent:** `detailed/agentProfile/` (the agent as a profile).
+- **Conversation:** `detailed/conversationView/`.
+  - `ConversationWorkspace.jsx` is the page, "The call", in one format for every agent. A part not set yet is a blank to
+    click and fill. An agent that only chats is told which parts take effect once a voice channel is on.
+  - `CallDrawing.jsx` draws an example call from the agent's own settings, and lights the moment an open editor shapes.
+  - `RememberSheet.jsx` is "What it remembers": every detail in a table (kind, how it starts, kept secret), searched and
+    filtered by kind, with one editor card beside it ("A new detail", or the one chosen). `rememberWords.js` is pure:
+    the plain words and its writes to `state.variables`.
+  - `conversationEditors.jsx` holds the part's own editors, used as rows: how long it waits, the quiet-caller script, and
+    the retries per service.
+  - `conversationWords.js` is pure: the plain words, and those editors' writes.
+  - `conversationLayout.js` says where each row shows. A test checks that every row has exactly one place.
+- **Knowledge:** `detailed/knowledgeWorkspace/`.
+  - `KnowledgeWorkspace.jsx` is the page, "What it knows".
+    - **The sentence:** what it answers from, when it searches, how many passages.
+    - **The shelf:** the index row and every document and page, drawn by `parts/KnowledgeIndex.jsx`.
+    - **Three chapters:** what it reads, how it searches, try it.
+  - `knowledgeEditors.jsx` holds "When it searches" (two ways) and "How close a match" (a line on the score scale).
+  - `lastSearch.js` keeps the passages the last try-out found, so the scale can place them.
+  - `knowledgeWords.js` is pure (the plain words); `knowledgeLayout.js` says where each row shows.
+- **Tools:** `detailed/toolsWorkspace/`.
+  - `ToolsWorkspace.jsx` is the page, "What it can do".
+    - **The sentence:** the quick abilities that are on, the tools of its own, and "Not yet:" blanks for the others.
+      Each ability opens its switch and details in place.
+    - **The tiles:** one per ability and tool, saying only its state; the switches live once, on the chapter's lines.
+    - **Three chapters:** quick abilities, your tools (with "Add a tool" by what it does, from `useAddChoices` in
+      `AddItem.jsx`), try it (`parts/ToolTry.jsx`).
+  - `ToolPage.jsx` opens one tool as the steps of one run (asked for, may it run, the call, what comes back, then, if it
+    fails), with the tool card's own rows. Its address is `?item=tools:<id>`, so a link or a reload opens the same tool.
+  - `toolsWords.js` is pure (the plain words, and each step in a few words); `toolsLayout.js` says where each row shows.
+- **Connections:** `detailed/connectionsWorkspace/`, designed for any agent and any use case.
+  - `ConnectionsWorkspace.jsx` is the page, "What it reaches".
+    - **The sentence:** the systems it reaches, where it passes callers on, and the forms, messages and tasks it has;
+      what it has none of is a grey blank after "Not yet:". Each part opens the list of its kind, with the way to add one.
+    - **The picture:** `ReachMap.jsx` draws the agent, what reaches out (tools, transfers, forms, messages, tasks,
+      reactions, a search service) and the systems they reach, the busiest first; the lines are measured from the nodes.
+    - **Three chapters:** systems it reaches (search and filters once there are many; "Add a system" runs the guided
+      steps on the page: `AddConnectionSteps`), passing callers on (with the agent's phone system), what it shows and sends.
+  - `ItemPage.jsx` opens one item on a page of its own, in the sections `connectionsLayout.js` names: a system (with
+    what uses it), a transfer as the path of the call, a form beside a preview of it, a message, a task. Rows that don't
+    apply to the item's kind are left out; a long list of steps reads as one line until opened. Its address is
+    `?item=<list>:<id>`.
+  - `SignIn.jsx` is the "Sign-in" row: no sign-in, a token, a key in a header, a username and password; only a secret's
+    name is saved.
+  - `connectionsWords.js` is pure (the plain words, what reaches what, a transfer's path).
+- **Channels:** `detailed/channelsWorkspace/`, designed for any agent and any use case.
+  - `ChannelsWorkspace.jsx` is the page, "How people reach it".
+    - **The sentence:** the ways in that are on, the working ones that aren't as grey blanks after "Not yet:" (each
+      opens the part's own switches, `ReachPills`), when its team is in, and how it knows who is calling.
+    - **The pictures:** `ChannelPictures.jsx` draws a door per way in (first words, what it carries, what it can do) and
+      the week of a set of hours, with "open now" by that schedule's own clock.
+    - **Three chapters:** ways in, when your team is in, who is calling.
+  - `ChannelPage.jsx` opens a way in (its On switch at the top, what doesn't fit it first) or a set of hours on a page of
+    its own, in the sections `channelsLayout.js` names. Its address is `?item=<list>:<key>`.
+  - `channelEditors.jsx` holds the part's own editors, used as rows in both views: what a way in carries (only what its
+    kind may carry, never none), a week of hours, and closed days.
+  - `channelsWords.js` is pure. Hours don't close a channel: a schedule is read by a transfer and by steps that check it.
+- **Subagents and hand-overs:** `detailed/subagentsWorkspace/`, designed for any agent and any use case. It edits the
+  same draft the Workflow canvas draws; the canvas itself is not changed.
+  - `SubagentsWorkspace.jsx` is the page, "Who answers".
+    - **The sentence:** who answers first (its own setting, in place), who it passes callers to, how many can send them
+      back, and who is beyond this agent (another agent's number, a person). One agent alone reads "answers every call
+      itself", with grey blanks after "Not yet:".
+    - **A notice** when agents are missing the hand-over rules (`handoffRules.js`), with the button that adds them.
+    - **The picture:** `RelayMap.jsx` draws the first agent, up to six subagents and who is beyond; a line per hand-over,
+      dashed lines for the ways back, and a line leaving the agent over the top. The lines are measured from the nodes.
+    - **Three chapters:** its agents (search and filter once there are many), hand-overs (with "Add a hand-over" by
+      where the caller should go, and "Try a line"), coming back and limits (only with subagents).
+  - `SubagentPage.jsx` opens an agent, a hand-over (its path: when, while it hands over, who takes over) or a
+    hand-over to another agent on a page of its own, in the sections `subagentsLayout.js` names. An agent's page also has
+    its way back (the back card's switch for that agent). Its address is `?item=<list>:<key>`.
+  - All settings keeps the part's strip of hand-overs (`form.top`), which chooses the hand-over cards' item.
+  - `subagentsWords.js` is pure. A new subagent's starting words (`DEFAULT_ROLE`) count as no job yet.
+- **Guardrails:** `detailed/guardrailsWorkspace/`, designed for any agent and any use case.
+  - `GuardrailsWorkspace.jsx` is the page, "What it guards".
+    - **The sentence:** what it checks before it hears a caller and before it speaks, the topics it keeps to, when it
+      hands over or ends, its own rules and its longest call; what is not set is a grey blank after "Not yet:".
+    - **The picture:** `CallPath.jsx` draws the path of one line: the caller, the checks on what callers say, the agent,
+      the checks on what it says, and what the caller hears; under it, what watches the whole call (moments, rules of its
+      own, limits). Every check says what really happens to it: checked every time, told to the agent, or kept but not
+      run yet.
+    - **Three chapters:** checks (search and filters once there are many; "Add a check" by which words it checks, then
+      by kind, from `useAddChoices`), topics and when to hand over or end, limits ("Most moves between agents" points to
+      Subagents through `ctx.goPart`).
+  - `GuardrailPage.jsx` opens a check or a rule of its own on a page of its own, in the sections
+    `guardrailsLayout.js` names. Renaming a check (its id) on its page keeps the page on it and moves the address.
+  - `guardrailsWords.js` is pure. What is not run comes from the server's report (`unsupported`); before it has answered,
+    the guide's list stands in (topics, escalation, checks on what it says other than a rule in words). `gapOf` names
+    what a check plainly lacks (no kinds, patterns, fields or words; blocking in silence on a voice agent), since the
+    demo validator does not check the schema's minimums.
+  - In the part, checks on what the agent says are a list with the same rows as those on what callers say (ids end in
+    `Out`), and a rule of its own is a list card (`rules`) with real rows instead of a raw form.
+- **After the call:** `detailed/afterCallWorkspace/`, designed for any agent and any use case.
+  - `AfterCallWorkspace.jsx` is the page, "After a call".
+    - **The sentence:** what it writes when a call ends (a summary, answers to questions), what it keeps and for how
+      long, what it hides, and how a call closes; a summary, questions and hiding are grey blanks after "Not yet:".
+    - **The picture:** `CallRecord.jsx` draws one call's record as these settings keep it (its summary, the answers to
+      its questions, what was said with the hidden details replaced), beside what it keeps (with bars for the days) and
+      what it hides. It is built from the settings, never a real call. A dot says what really happens: done after
+      every call, kept but not done by the server yet, off, or needs a look.
+    - **Three chapters:** how it closes and what it writes (each question opens in place on its own line, its row
+      `questions.q<index>`), what it keeps, what it hides. Lines stay in their order; one that needs a look says so
+      where it is, so a line being typed in never moves.
+  - `afterCallWords.js` is pure. What is not done comes from the server's report; before it has answered, the guide's
+    list stands in (summaries, questions, keeping the audio and transcript). The log of each call is on unless switched
+    off; the exact values of secret variables are hidden even with no hiding set up.
+  - Metrics, the log level and tracing moved to Engine and details (`locate` sends those paths there); logging
+    personal details and full model requests stay here, as privacy settings.
+- **Engine and details:** `detailed/engineWorkspace/`, designed for any agent and any use case.
+  - `EngineWorkspace.jsx` is the page, "Its details". The page's "Edit as JSON" (`ctx.actions`) stays beside the view
+    switch in both views.
+    - **The sentence:** its id, version and status, the environment it is meant for, the engine, where models come from,
+      its time zone, where secrets are found, its fixed values and the studio's checks. Its name, description and tags
+      stay on Build › Agent.
+    - **The picture:** `Nameplate.jsx`, each detail with who sets it (a lock on the id, the version and the status), the
+      time there now for its time zone, how it hangs up, then its fixed values with how many places use each.
+    - **Three chapters:** who it is (Copy the id; "Release" opens Release through `ctx.goPart`), how it runs (the
+      worker and the old dispatch name under "more"), fixed values, checks and logging (a rotating log file under
+      "more", said not to be applied yet).
+  - `ConstantsTable.jsx` is the fixed values' row in both views: a table edited in place. A number stays a number, and
+    a name is written only once the schema takes it (lower case, digits and _), so a half-typed name never makes the
+    draft invalid.
+  - `engineWords.js` is pure. The logs card gained the OpenTelemetry export (on, collector address, service name).
+- **Images & Videos:** `detailed/mediaWorkspace/`, designed for any agent and any use case.
+  - `MediaWorkspace.jsx` is the page, "Its pictures".
+    - **The sentence:** which ways in take photos and the camera, what it asks for and where, what it reads and with
+      which model, what it compares, what it forgets, and how picky the checks are; grey blanks after "Not yet:".
+    - **The picture:** `Journey.jsx`, one picture's journey: a lane per picture (the value a request keeps it in; a
+      request asked again joins its lane), asked → checked in code → read by the AI, meeting where they are compared
+      and forgotten. A missing station is dashed and adds a step.
+    - **Three chapters:** where pictures come in (each way in and each agent's way of seeing open in place), what it
+      asks for and how it checks (steps grouped by where they run, filters once there are more than 8; "how picky" for
+      all at once; "Add a picture step"), privacy, honesty and trying it (forgetting with a one-click fix, the pictures
+      to try with and your camera, live, each on a page).
+  - `StepPage.jsx` opens a picture step on a page of its own (`?item=requests|reads|compares|forgets:<path>`), in the
+    sections `mediaLayout.js` names. A reading offers "Add a second reading" (`addSecondReading`).
+  - `pictureEditors.jsx` holds the part's own editors, rows in both views: how picky (reuses `PictureSteps.jsx`'s
+    strictness and sharpness scale), which pictures, the details table, the pairs table and its try-out (the demo's
+    `compareValues`, the server's rules), how picky for all, and adding a step or a starting point.
+  - `pictureRecipes.js` is pure: the four starting points (ask, read, forget, with their values declared; the website
+    ways in are let to take that picture), the second reading, `markSeeing`, `forgetKept`.
+  - `mediaWords.js` is pure. Picture steps run on the server; an agent's `vision` is kept but not run (its report, else
+    the guide's list).
+  - One place each: photos, the camera and the picture details of a way in moved here from Channels (its "What it
+    carries" now offers typing and talking, and says pictures with a link here); an agent's `vision` moved here from
+    Subagents. `locate` sends `channels[].inputs` and `agents.items[].vision` here.
+- The old "At a glance" tiles (`Glance.jsx`) were removed: every part now has its own workspace.
+
 `tests/detailed.component.test.js` checks every part: each row names a place the schema has, no setting is a row of two
 parts, ids are unique, and the parts write the draft and point at each other's lists.
+
+Some cards carry a whole panel as their `body(ctx, entry)` instead of rows, or a row draws one with `render`:
+
+- **Knowledge** (guide 10.2): `parts/KnowledgeIndex.jsx` is the "Search index" row (its state from
+  `knowledge/model.js` `readingState`, Build now or Save and build, the build followed with `useBuilds` until it ends,
+  then the knowledge read again) and "What it has read" (each file and page as a card with its state and fix; × asks
+  whether to delete the file too, and a 409 from the server is explained before `?force=true` is sent).
+  `parts/KnowledgeSearch.jsx` is "Try a search": any base, a follow-up's reply before, every passage on one 0-to-1 scale
+  with the saved `min_score` line and a what-if line that saves nothing. The pure helpers (`docBase`, `buildStep`,
+  `canSearch`, `searchProblem`) are in `parts/knowledgeView.js`; styles in `parts/knowledge.css`.
+- **Tools** (guide 10.1): `parts/ToolTry.jsx` is the chosen tool's "Try it" card (`POST /preview/result`): sample
+  arguments and a pasted answer in; the request, whether it may run, and the answer split three ways out. Nothing is
+  called. Styles in `parts/toolTry.css`.
+
+Elsewhere from the same round: Monitor › Calls has "Choose dates…" (`calls/DateRange.jsx`, the days worked out by
+`callModel.js` `datesQuery`, `since` and `until` sent to the server), and Preview prompt has a chip per agent
+(`form/WhatIfBar.jsx` `AgentChips`). `tests/section10.test.js`, `tests/knowledge10.component.test.js` and
+`npm run e2e:section10` check them.
 
 ## Styles
 

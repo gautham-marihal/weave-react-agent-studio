@@ -164,8 +164,9 @@ test('after the call: what is recorded, for how long, and the recording notice, 
 
 test('after the call: hiding sensitive details is on once it is set and not switched off, with what it looks for', () => {
   assert.equal(afterCallOf(bare()).redaction.on, false, 'not set: nothing is hidden but the values marked sensitive');
-  let c = setRedaction(bare(), { entities: ['pin', 'card_number', 'nonsense'] });
-  assert.deepEqual(c.post_call.redaction, { entities: ['card_number', 'pin'] });
+  // the studio's kinds in their usual order, then a kind only the server lists (GET /redaction/entities): kept, not dropped
+  let c = setRedaction(bare(), { entities: ['pin', 'passport_number', 'card_number', 'pin'] });
+  assert.deepEqual(c.post_call.redaction, { entities: ['card_number', 'pin', 'passport_number'] });
   c = setRedaction(c, { on: false });
   assert.equal(c.post_call.redaction.enabled, false);
   c = setRedaction(c, { on: true, entities: [] });

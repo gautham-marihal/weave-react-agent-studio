@@ -244,6 +244,8 @@ const ROUTES = [
     'tools',
     'connections',
     'channels',
+    'media',
+    'steps',
     'workflow',
     'subagents',
     'guardrails',

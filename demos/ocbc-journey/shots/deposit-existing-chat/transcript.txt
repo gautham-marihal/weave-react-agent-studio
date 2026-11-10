@@ -1,0 +1,63 @@
+Preview
+Ended
+· Web chat
+Real agent
+Simulated
+
+Real agent. A live conversation with the saved draft through the server.
+
+Ended
+Agent
+
+Hello, this is Aria from OCBC. How can I help you today?
+
+You
+
+Hi, I want to deposit 1 million dollars.
+
+Agent
+
+Is this deposit for an account you already have with us, or would you like to open a new account for it?
+
+You
+
+It’s for my existing account.
+
+Agent
+
+You’d like to deposit SGD 1,000,000 into your existing account. May I have your 7-digit phone banking number to assist you?
+
+You
+
+My phone banking number is ****.
+
+Agent
+
+Thank you. Please provide your phone banking PIN so I can verify your identity.
+
+You
+
+My PIN is ****.
+
+Agent
+
+You can deposit SGD 1,000,000 into your current account ending 9921 or your savings account ending 6169. You may do this by:
+
+- FAST or PayNow transfer from another bank to your account number (you can find the full number in your online banking or on a statement).
+- GIRO transfer.
+- Cash or cheque deposit at any OCBC branch or deposit machine.
+
+If you are depositing a large sum, I can also arrange for our advisor to discuss accounts for larger deposits with you. Would you like to speak with our advisor, or do you need help with anything else?
+
+You
+
+No, that’s all. Thank you!
+
+Agent
+
+Thank you for choosing OCBC. Goodbye.
+
+The agent ended the conversation.
+The conversation ended.
+Chat again
+Talk instead

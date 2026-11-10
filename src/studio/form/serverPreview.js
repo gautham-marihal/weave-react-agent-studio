@@ -57,21 +57,29 @@ export function normalizePrompt(raw) {
 }
 
 // How big is too big: the whole instructions go with every model call, so a long prompt costs time and money every
-// turn, and many tools make the model pick wrongly more often. Advice, never errors.
-export const LIMITS = { words: 1500, tools: 15 };
+// turn, and many tools make the model pick wrongly more often. Advice, never errors. The agent's own limits
+// (`builder.lint`, set on Engine › Studio checks, which the server's check warns at too); without them, the agent config
+// guide's (2.1): 450 words and 8 tools, the numbers every new agent starts with.
+export const LIMITS = { words: 450, tools: 8 };
+export function limitsOf(config) {
+  const lint = isObj(config?.builder?.lint) ? config.builder.lint : {};
+  const positive = (v, fallback) => (typeof v === 'number' && v > 0 ? v : fallback);
+  return { words: positive(lint.max_prompt_words_per_agent, LIMITS.words), tools: positive(lint.max_tools_per_agent, LIMITS.tools) };
+}
 
-export function promptAdvice(prompt) {
+export function promptAdvice(prompt, config) {
   const advice = [];
   if (!prompt) return advice;
-  if (prompt.stats.words > LIMITS.words)
+  const limit = limitsOf(config);
+  if (prompt.stats.words > limit.words)
     advice.push({
       id: 'long',
-      text: `The instructions are ${prompt.stats.words.toLocaleString()} words (about ${prompt.stats.tokens.toLocaleString()} tokens), and they are sent with every reply. Over ${LIMITS.words.toLocaleString()} words, a model follows them less closely and each turn costs more: move rarely needed detail into a knowledge base or a condition.`,
+      text: `The instructions are ${prompt.stats.words.toLocaleString()} words (about ${prompt.stats.tokens.toLocaleString()} tokens), and they are sent with every reply. Over ${limit.words.toLocaleString()} words, a model follows them less closely and each turn costs more: move rarely needed detail into a knowledge base or a condition.`,
     });
-  if (prompt.stats.toolsOffered > LIMITS.tools)
+  if (prompt.stats.toolsOffered > limit.tools)
     advice.push({
       id: 'tools',
-      text: `This agent is offered ${prompt.stats.toolsOffered} tools. Past about ${LIMITS.tools}, a model picks the wrong one more often: give each agent only the tools it needs, and split the rest across agents.`,
+      text: `This agent is offered ${prompt.stats.toolsOffered} tools. Past ${limit.tools}, a model picks the wrong one more often: give each agent only the tools it needs, and split the rest across agents.`,
     });
   const dropped = prompt.tools.filter((t) => !t.offered);
   if (dropped.length)

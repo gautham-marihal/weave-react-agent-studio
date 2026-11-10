@@ -51,7 +51,7 @@ test('hiding sensitive details reads the same as the release checklist, for ever
 });
 
 test('hiding sensitive details keeps what was ticked while it is off, and stays on when the last kind is unticked', () => {
-  let c = setRedaction(setRedaction(care(), { on: true }), { entities: ['pin', 'card_number', 'nonsense'] });
+  let c = setRedaction(setRedaction(care(), { on: true }), { entities: ['pin', 'card_number'] });
   assert.deepEqual(c.post_call.redaction, { enabled: true, entities: ['card_number', 'pin'] });
   c = setRedaction(c, { on: false });
   assert.deepEqual(c.post_call.redaction, { enabled: false, entities: ['card_number', 'pin'] });

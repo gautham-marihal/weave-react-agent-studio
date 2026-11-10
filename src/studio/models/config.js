@@ -29,7 +29,21 @@ export function readModels(config) {
     secret: str(models[stage]?.api_key?.secret),
     baseUrl: str(models[stage]?.base_url),
   });
-  return { stt: slot('stt'), llm: slot('llm'), tts: { ...slot('tts'), voiceId: str(models.tts?.voice_id) } };
+  return {
+    stt: slot('stt'),
+    llm: slot('llm'),
+    tts: { ...slot('tts'), voiceId: str(models.tts?.voice_id) },
+    // speech-to-speech (one model hears, thinks and speaks); empty when it isn't used
+    realtime: slot('realtime'),
+  };
+}
+
+// Stops using a stage's model altogether (speech-to-speech): its slot goes from defaults.models.
+export function clearStage(config, stage) {
+  if (!isObject(config?.defaults?.models) || !(stage in config.defaults.models)) return config;
+  const next = clone(config);
+  delete next.defaults.models[stage];
+  return next;
 }
 
 // One line per stage for showing what an agent will use, e.g. "Speech-to-text · OpenAI · GPT Realtime Whisper".

@@ -1,0 +1,33 @@
+Preview
+Ended
+· Web chat
+Real agent
+Simulated
+
+Real agent. A live conversation with the saved draft through the server.
+
+Ended
+Agent
+
+Hello, this is Aria from OCBC. How can I help you today?
+
+You
+
+Hello, I’m not a customer yet. I’d like to open an account for an inheritance of about SGD 300,000.
+
+Agent
+
+For SGD 300,000, the best fit is the Inheritance Holding Account at 2.25% p.a., with access anytime. Another option is Laddered Fixed Deposits, offering 2.80% to 3.10% p.a. over 3, 6, and 12 months. Deposits are safe with the bank, but insurance covers only up to the legal limit; proof of your money source can follow after opening. Would you like to open the account now with a short form, ID photo, and video check?
+
+You
+
+No, that’s all. Thank you!
+
+Agent
+
+Thank you for choosing OCBC. Goodbye.
+
+The agent ended the conversation.
+The conversation ended.
+Chat again
+Talk instead

@@ -1,0 +1,445 @@
+/* Build › Channels (ChannelsWorkspace.jsx, ChannelPictures.jsx, ChannelPage.jsx, channelEditors.jsx; canvas page
+   "6 · Channels, redesigned"): the Agent profile's calm column in the part's own green, a door for each way in, the
+   week of a set of hours, and its editors. An item's page, the lists in a popover and the notes are Connections' own
+   (connectionsWorkspace.css, which brings Tools' step strip and sections). Only the studio's tokens, so every style and
+   both themes draw it in their own colours. The editors also show in All settings, so they carry their own hue. */
+@import "../connectionsWorkspace/connectionsWorkspace.css";
+
+.chWrap,
+.chCarries,
+.chWeek,
+.chClosed {
+  --ch-hue: var(--hue-channels, var(--accent));
+  --ch-hue-text: color-mix(in srgb, var(--ch-hue) 75%, var(--textStrong));
+}
+/* the part's green is deep: on a dark page it is lifted, so its words keep their contrast */
+html[data-theme="dark"] :is(.chWrap, .chCarries, .chWeek, .chClosed) {
+  --ch-hue: color-mix(in srgb, var(--hue-channels, var(--accent)) 55%, #ffffff);
+}
+.apWrap.chWrap {
+  --ap-hue: var(--ch-hue);
+  --tl-hue: var(--ch-hue);
+  --tl-hue-text: var(--ch-hue-text);
+  --cx-hue: var(--ch-hue);
+  --cx-hue-text: var(--ch-hue-text);
+}
+
+/* ---- the card at the top ---- */
+.chAvatar {
+  width: 56px;
+  height: 56px;
+  font-size: var(--fs-xl);
+}
+html[data-theme] body .chHero .apName h2 {
+  font-size: var(--fs-2xl);
+}
+.chSentence {
+  line-height: 1.75;
+}
+
+/* ---- a door for each way in ---- */
+.chDoors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 1100px) {
+  .chDoors {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.chDoors > li {
+  display: flex;
+  min-width: 0;
+}
+.chDoor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.chDoor:hover {
+  border-color: color-mix(in srgb, var(--ch-hue) 45%, var(--line2));
+}
+.chDoor.off {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--surface2) 50%, var(--panel));
+}
+.chDoor.bad {
+  border-color: color-mix(in srgb, var(--danger-text) 35%, var(--line2));
+}
+.chDoorHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.chDoorHead b {
+  min-width: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.chDoorHead .tlState {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.chDoorIcon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ch-hue) 10%, var(--panel));
+  color: var(--ch-hue-text);
+}
+.chDoor.off .chDoorIcon {
+  background: var(--surface2);
+  color: var(--muted);
+}
+.chBubble {
+  padding: 8px 10px;
+  border-radius: 12px 12px 12px 4px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.chBubble.none {
+  border: 1px dashed var(--line2);
+  background: none;
+  color: var(--muted);
+}
+.chCarried {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chCarriedOne {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.chCarriedOne.in {
+  background: color-mix(in srgb, var(--ch-hue) 10%, var(--panel));
+  color: var(--ch-hue-text);
+}
+.chCan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.chCan > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.chCan > span.no {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+.chSwitchOn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ch-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+/* ---- the week of a set of hours ---- */
+.chWeekStrip {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--ch-hue) 20%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ch-hue) 3%, var(--panel));
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.chWeekStrip.press {
+  cursor: pointer;
+}
+.chWeekStrip.press:hover {
+  border-color: color-mix(in srgb, var(--ch-hue) 45%, var(--line));
+}
+.chWeekHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  color: var(--ch-hue-text);
+}
+.chWeekHead b {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.chWeekSub {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.chWeekHead .chNow {
+  margin-left: auto;
+}
+.chNow {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--good) 12%, var(--panel));
+  color: var(--good-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chNow.closed {
+  background: color-mix(in srgb, var(--danger-text) 10%, var(--panel));
+  color: var(--danger-text);
+}
+.chDaysGrid {
+  display: grid;
+  gap: 6px;
+}
+.chDayRow {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.chDayBar {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.chDayBar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 6px;
+  background: var(--ch-hue);
+}
+.chDayBar em {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--danger-text);
+}
+.chScale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--dim);
+  font-size: var(--fs-xs);
+}
+.chScale i {
+  font-style: normal;
+}
+.chNoHours {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px dashed color-mix(in srgb, var(--ch-hue) 30%, var(--line));
+  border-radius: 14px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.chNoHoursAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--ch-hue-text);
+  font-weight: 600;
+}
+
+/* ---- the chapters and an item's page ---- */
+.chWhoHint {
+  margin: 8px 0 0;
+}
+.chPageActs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.tlSection.chFit {
+  border-color: color-mix(in srgb, var(--warn-text) 35%, var(--line));
+  background: color-mix(in srgb, var(--warn-text) 4%, var(--panel));
+}
+
+/* ---- its editors ---- */
+.chCarries {
+  display: grid;
+  gap: 12px;
+}
+.chCarry {
+  display: grid;
+  gap: 6px;
+}
+.chCarryLabel {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.chCarries .cvPills button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* photos and the camera: said here, set on Images & Videos */
+.chPictures {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.chPictures svg {
+  flex: none;
+  margin-top: 2px;
+}
+.chWeek {
+  display: grid;
+  gap: 10px;
+}
+.chRule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.chDays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chDays button {
+  min-width: 44px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.chDays button.on {
+  border-color: var(--ch-hue);
+  background: color-mix(in srgb, var(--ch-hue) 12%, var(--panel));
+  color: var(--ch-hue-text);
+  font-weight: 600;
+}
+.chDays button:disabled {
+  cursor: not-allowed;
+}
+.chFromTo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.chTime input.stFInput {
+  width: 84px;
+}
+.chRule .rmClose {
+  margin-left: auto;
+}
+.chWeekFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.chClosed {
+  display: grid;
+  gap: 10px;
+}
+.chChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chChips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.chChips button {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.chChips button:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.chAddDay {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.chAddDay input.stFInput {
+  width: 170px;
+}

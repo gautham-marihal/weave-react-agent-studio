@@ -115,7 +115,8 @@ await settled();
 // ---- the workspace ------------------------------------------------------------------------------------------------------------------------------------
 check('the sidebar says Speed', (await page.locator('.sideLink', { hasText: /^Speed$/ }).count()) === 1);
 check('how fast answers come', /\d(\.\d)? s$|\d+ ms$/.test(await statText(0)), await statText(0));
-check('every agent is compared', (await page.locator('section[aria-labelledby="csAgents"] tbody tr').count()) === 3);
+// the demo's three starters and the Unbound sample (src/demo/demoSamples.js)
+check('every agent is compared', (await page.locator('section[aria-labelledby="csAgents"] tbody tr').count()) === 4);
 check('no money on the page', !(await moneyOnPage()), await moneyOnPage());
 check(
   'a sentence says how quickly callers are answered',

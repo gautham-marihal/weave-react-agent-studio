@@ -9,17 +9,24 @@ const PORT = Number(process.env.PORT || 4400);
 const server = http.createServer((req, res) => {
   const chunks = [];
   req.on('data', (c) => chunks.push(c));
-  req.on('end', () => {
+  req.on('end', async () => {
     const url = new URL(req.url, 'http://localhost');
-    const { status, body } = handle({
-      method: req.method,
-      path: url.pathname,
-      query: Object.fromEntries(url.searchParams),
-      body: Buffer.concat(chunks).toString('utf8'),
-      headers: req.headers,
-    });
-    res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(JSON.stringify(body));
+    let answer;
+    try {
+      // a route that reads a store answers later (a promise); the others at once
+      answer = await handle({
+        method: req.method,
+        path: url.pathname,
+        query: Object.fromEntries(url.searchParams),
+        body: Buffer.concat(chunks).toString('utf8'),
+        headers: req.headers,
+      });
+    } catch (err) {
+      console.error(err);
+      answer = { status: 503, body: { ok: false, reason: 'The service is not available just now. Try again shortly.' } };
+    }
+    res.writeHead(answer.status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(JSON.stringify(answer.body));
   });
 });
 

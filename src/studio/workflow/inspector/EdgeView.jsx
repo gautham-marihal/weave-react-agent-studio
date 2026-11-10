@@ -66,6 +66,9 @@ export function EdgeView({ edge, flow, config, agents, set, apply, onSelect, onR
           label="Say while handing over"
           value={h.announce}
           config={config}
+          path={[...base, 'announce']}
+          apply={apply}
+          group={`announce:${edge.id}`}
           rows={2}
           hint="Optional. Spoken while the next agent gets ready."
           placeholder="One moment, I’ll put you through."

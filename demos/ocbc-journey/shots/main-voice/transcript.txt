@@ -1,0 +1,90 @@
+Preview
+Live
+· Web voice
+Real agent
+Simulated
+Speaking
+
+Agent Thank you for choosing OCBC. Goodbye.
+
+Hide the transcript
+Agent
+
+Hello, this is Aria from OCBC. How can I help you today?
+
+You
+
+Hi, I’d like to check my account balance.
+
+Agent
+
+I can help you check your account balance. Please tell me your 7-digit phone banking number.
+
+You
+
+My phone banking number is ****.
+
+Agent
+
+Thank you. Please provide your phone banking PIN.
+
+You
+
+My PIN is ****.
+
+Agent
+
+You have a Current Account ending 9921 with a balance of SGD 38,314.70, and a Savings Account ending 6169 with a balance of SGD 105,323.86.
+
+Is there anything else I can help you with?
+
+You
+
+Please move SGD 500 from my current account to my savings account.
+
+Agent
+
+You want to transfer SGD 500 from your Current Account ending 9921 to your Savings Account ending 6169. Shall I proceed with this transfer?
+
+You
+
+Yes, please.
+
+Agent
+
+The transfer of SGD 500 from your Current Account ending 9921 to your Savings Account ending 6169 is complete. The reference for this transfer is TRF-34770.
+
+Is there anything else I can help you with?
+
+You
+
+I think I’ve lost my debit card. Can you block it?
+
+Agent
+
+You would like to block your lost debit card. Let me check your card details.
+
+Agent
+
+You have a Debit Mastercard ending 2068. Shall I block this card now? A replacement is free.
+
+You
+
+Yes, block it please.
+
+Agent
+
+Your debit card ending 2068 is now blocked. No new payments or withdrawals can be made with it. A replacement card will be sent to your registered address by 17 November 2026. The reference for this action is BLK-46511.
+
+Is there anything else I can help you with?
+
+You
+
+No, that’s all. Thank you!
+
+Agent
+
+Thank you for choosing OCBC. Goodbye.
+
+Send
+End

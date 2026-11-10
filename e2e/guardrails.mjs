@@ -74,6 +74,9 @@ await page.waitForSelector('.dashMain');
 // ---- Guardrails
 await go('#/bots/acme-support/guardrails');
 const field = (id) => page.locator(`[data-field="${id}"]`);
+// the part opens on "What it guards"; every setting as a row is under All settings (remembered from here on)
+await page.locator('.apSeg').getByRole('button', { name: 'All settings', exact: true }).click();
+await wait(400);
 // a word typed into a list of words, and Enter adds it
 const addChip = async (id, word) => {
   await field(id).locator('input').fill(word);
@@ -90,8 +93,8 @@ await wait(300);
 await page.locator('#dt-guardrails-max_call_duration_s').fill('10');
 await wait(300);
 check('a limit has the line it says when it ends the call beside it', (await field('guardrails.limitSay').count()) === 1);
-const ruleChips = await field('guardrails.rules').locator('.dtItems > button[aria-current]').allInnerTexts();
-check('the rules switched on are listed with your own', ruleChips.length === 2 && ruleChips.some((r) => /frustrated_to_person/.test(r)), ruleChips.join(' | '));
+// the switches are rules in the draft, but not listed again under "Rules of its own"
+check('the rules switched on are not listed again as rules of its own', (await field('guardrails.rules').locator('.dtItems > button').count()) === 0);
 if (OUT) {
   await field('guardrails.offtopic').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${OUT}/guardrails-topics.png` });
@@ -108,13 +111,25 @@ check(
 );
 check('the longest call is kept in seconds', g.limits?.max_call_duration_s === 600, JSON.stringify(g.limits));
 check('two rules for handing over and ending', g.escalation?.length === 2 && g.escalation.some((r) => r.id === 'abusive_end' && r.action === 'end_call'));
-// a rule opens in place, with all of its settings
-await field('guardrails.rules').locator('.dtItems > button[aria-current]').first().click();
-await wait(1200);
-check('a rule opens in place', (await field('guardrails.rules').locator('.dtInlineItem .stForm').count()) === 1);
+// the overview says the same, in a sentence
+await page.locator('.apSeg').getByRole('button', { name: 'What it guards', exact: true }).click();
+await wait(600);
+const sentence = (await page.locator('.grSentence').innerText()).replace(/\s+/g, ' ');
+check(
+  'the overview says it in a sentence',
+  /keeps to 1 topic/.test(sentence) && /ends the call/.test(sentence) && /ends every call at 10 minutes/.test(sentence),
+  sentence,
+);
+await page.locator('.apSeg').getByRole('button', { name: 'All settings', exact: true }).click();
+await wait(400);
 
 // ---- After the call
 await go('#/bots/acme-support/aftercall');
+// the part opens on "After a call": what it writes, keeps and hides, as a sentence; every row is under All settings
+await page.waitForSelector('.acHero');
+check('After the call opens on its sentence and one call’s record', (await page.locator('.acRec').count()) === 1);
+await page.locator('.apSeg').getByRole('button', { name: 'All settings', exact: true }).click();
+await wait(400);
 await page.locator('#dt-aftercall-summary').click();
 await wait(300);
 await page.locator('#dt-aftercall-cover').fill('Why they called and what to follow up.');
@@ -161,6 +176,8 @@ check('card numbers and PINs are hidden', JSON.stringify(c.post_call.redaction.e
 
 // ---- each input in one place
 await go('#/bots/acme-support/agent');
+// these checks read the part's own rows: Agent opens on its profile, so its All settings view is chosen
+await page.getByRole('button', { name: 'All settings', exact: true }).click();
 const agentText = await page.locator('.dtPage').innerText();
 check('the Agent part does not ask for the recording notice', !/Recording notice|What callers are told/.test(agentText));
 check('its name is the one it introduces itself by', (await field('agent.persona').count()) === 1);
@@ -168,6 +185,8 @@ await go('#/bots/acme-support/channels');
 check('Channels has no phone transfers now', (await page.locator('[data-card$=".transfers"]').count()) === 0);
 check('Channels no longer asks for the recording notice', (await page.locator('.dtPage label', { hasText: 'Recording notice' }).count()) === 0);
 await go('#/bots/acme-support/connections');
+// the check reads the part's cards: Connections opens on what it reaches, so its All settings view is chosen
+await page.getByRole('button', { name: 'All settings', exact: true }).click();
 check('Connections has the phone transfers', (await page.locator('[data-card="connections.transfers"]').count()) === 1);
 await go('#/bots/acme-support/workflow');
 await page
@@ -188,6 +207,8 @@ if (await roleBox.count()) {
   await wait(500);
   await go('#/bots/acme-support/agent');
   await wait(900);
+  // the brief's own box: on the profile it opens under "Open the brief"; All settings shows it as it is
+  await page.getByRole('button', { name: 'All settings', exact: true }).click();
   const agentRole = page.getByRole('textbox', { name: 'What the agent should do (its role)' });
   check('and the Agent part shows the same instructions', (await agentRole.count()) > 0 && (await agentRole.first().inputValue()) === newRole);
 }
@@ -203,11 +224,14 @@ check(
   page.url(),
 );
 await go('#/bots/acme-support/guardrails');
-const own = field('guardrails.rules');
+const own = page.locator('[data-card="guardrails.rule"]');
 const before = await own.locator('.dtItems > button[aria-current]').count();
-await own.getByRole('button', { name: 'Add a rule' }).click();
+await own.getByRole('button', { name: 'Add a rule' }).first().click();
 await wait(700);
-check('a rule of one’s own can be added', (await own.locator('.dtItems > button[aria-current]').count()) === before + 1);
+check(
+  'a rule of one’s own can be added, with its own rows',
+  (await own.locator('.dtItems > button[aria-current]').count()) === before + 1 && (await field('guardrails.ruleIntent').count()) === 1,
+);
 const tries = page.locator('#dt-guardrails-strikes');
 await tries.click();
 await tries.press('Control+a');
@@ -225,7 +249,18 @@ await wait(300);
 await save();
 g = (await draft()).guardrails;
 check('…and they are kept as 5 tries and 30 seconds', g.topics?.on_off_topic?.max_strikes === 5 && g.limits?.max_call_duration_s === 30);
+// back on "After a call", the sentence says what was set above
 await go('#/bots/acme-support/aftercall');
+await page.locator('.apSeg').getByRole('button', { name: 'After a call', exact: true }).click();
+await page.waitForSelector('.acHero');
+const afterSaid = (await page.locator('.grSentence').innerText()).replace(/\s+/g, ' ');
+check(
+  'the sentence says it writes a summary, answers 2 questions, keeps the transcript and hides card numbers and PINs',
+  /writes a summary/.test(afterSaid) && /answers 2 questions/.test(afterSaid) && /the transcript/.test(afterSaid) && /card numbers and PINs/.test(afterSaid),
+  afterSaid,
+);
+await page.locator('.apSeg').getByRole('button', { name: 'All settings', exact: true }).click();
+await wait(300);
 const choices = page.locator('#dt-aftercall-q1-values');
 await choices.click();
 await choices.type('Billing, Delivery, Returns');

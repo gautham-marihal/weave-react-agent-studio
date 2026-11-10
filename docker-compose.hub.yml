@@ -1,0 +1,59 @@
+# Weave Studio from Docker Hub: nothing is built, the images are pulled from the private repository
+# gtm25/weave-agent-builder. For a server (AWS EC2 and the like) that has only these files, not the source code:
+#   docker-compose.hub.yml, .env.docker (from .env.docker.example), credentials.txt, and the Caddyfile for HTTPS.
+#
+#   1. docker login --username gtm25        (the password is a read-only access token; see DEPLOY.md)
+#   2. docker compose -f docker-compose.hub.yml pull
+#   3. docker compose -f docker-compose.hub.yml up -d                     → http://localhost:5173 on the server
+#      docker compose -f docker-compose.hub.yml --profile https up -d     → https://STUDIO_DOMAIN (ports 80 and 443)
+# Extras: --profile demo (the demo studio, port 8090), --profile mock (the mock bank services, port 4400).
+# Keep the services in step with docker-compose.yml, which builds the same images from the source.
+
+services:
+  studio:
+    image: gtm25/weave-agent-builder:studio
+    env_file:
+      - path: .env.docker
+        required: false
+    ports:
+      - '127.0.0.1:${STUDIO_PORT:-5173}:8080'
+    # who may sign in: never inside the image; edit credentials.txt here and the next sign-in uses it
+    volumes:
+      - ./credentials.txt:/app/credentials.txt:ro
+    restart: unless-stopped
+
+  studio-demo:
+    profiles: [demo]
+    image: gtm25/weave-agent-builder:studio-demo
+    ports:
+      - '127.0.0.1:${STUDIO_DEMO_PORT:-8090}:8080'
+    volumes:
+      - ./credentials.txt:/app/credentials.txt:ro
+    restart: unless-stopped
+
+  mock-api:
+    profiles: [mock]
+    image: gtm25/weave-agent-builder:mock-api
+    ports:
+      - '127.0.0.1:${MOCK_API_PORT:-4400}:4400'
+    restart: unless-stopped
+
+  caddy:
+    profiles: [https]
+    image: caddy:2.8-alpine
+    depends_on: [studio]
+    env_file:
+      - path: .env.docker
+        required: false
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -45,6 +45,18 @@ export const FALLBACK_PROVIDERS = [
   { name: 'silero', stages: ['vad'], installed: true, default_secret: null, key_available: null },
 ];
 
+// Which language models of the list read pictures (photos and camera frames): true or false for a model the list
+// knows, null for one it doesn't (typed in, or a compatible service), whose maker says. The schema's `vision` switch
+// only tells the runtime to send pictures; the model must also read them.
+const TEXT_ONLY = { groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'] };
+const SEEING = ['openai', 'anthropic', 'google'];
+export function seesPictures(provider, model) {
+  const listed = (MODEL_OPTIONS.llm[provider] || []).some((m) => m.id === model);
+  if (!listed) return null;
+  if ((TEXT_ONLY[provider] || []).includes(model)) return false;
+  return SEEING.includes(provider) ? true : null;
+}
+
 export const MODEL_OPTIONS = {
   stt: {
     openai: [
@@ -117,6 +129,14 @@ export const MODEL_OPTIONS = {
     google: [],
     groq: [],
     openai_compatible: [],
+  },
+  // speech-to-speech: one model hears, thinks and speaks (defaults.models.realtime), instead of the three steps above
+  realtime: {
+    openai: [
+      m('gpt-realtime', 'GPT Realtime', 'Hears, thinks and speaks in one model; the most natural conversation'),
+      m('gpt-realtime-mini', 'GPT Realtime Mini', 'Faster and cheaper, for simpler conversations', ['fast']),
+      m('gpt-4o-realtime-preview', 'GPT-4o Realtime (preview)', 'The earlier preview model'),
+    ],
   },
 };
 
@@ -229,7 +249,7 @@ export const providersForStage = (providers, stage) =>
 // ---- what each provider can do, by stage: the catalogue's copy of GET /providers, to check the table and to say
 // sensible things when the server can't be asked
 export const PROVIDER_STAGES = {
-  openai: ['stt', 'llm', 'tts'],
+  openai: ['stt', 'llm', 'tts', 'realtime'],
   openai_compatible: ['stt', 'llm', 'tts'],
   anthropic: ['llm'],
   google: ['stt', 'llm', 'tts'],

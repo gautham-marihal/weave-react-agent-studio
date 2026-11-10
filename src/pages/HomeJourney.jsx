@@ -4,7 +4,7 @@ import { useAgentHealth } from '../studio/health/useAgentHealth.js';
 import { useKnowledge } from '../studio/knowledge/useKnowledge.js';
 import { readinessSteps, stepRoute } from '../studio/agent/readiness.js';
 import { useGate } from '../studio/release/gate.js';
-import { isFinished, normalizeHeadline } from '../studio/scenarios/runResults.js';
+import { latestDraftRun } from '../studio/scenarios/runResults.js';
 import { useAsync } from '../studio/useAsync.js';
 
 // Home's "what now?", at the foot of its alerts card: the agent you last worked on, how far it is from ready
@@ -40,10 +40,7 @@ export default function HomeJourney({ bots, onOpenTab }) {
   // runs of the shown agent only: an answer kept for another agent (while loading, or after a failure) is ignored
   const runs = useAsync(async (signal) => (bot ? { bot: bot.id, list: await api.listTestRuns(bot.id, 20, { signal }) } : null), [bot?.id]);
   const runsHere = runs.data && runs.data.bot === bot?.id && !runs.loading ? runs.data.list : undefined;
-  const latestRun = useMemo(
-    () => (Array.isArray(runsHere) ? runsHere.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : undefined),
-    [runsHere],
-  );
+  const latestRun = useMemo(() => (Array.isArray(runsHere) ? latestDraftRun(runsHere) : undefined), [runsHere]);
   const [gateOn] = useGate(bot?.id || '');
   const config = answer?.config || null;
   // what the server has read of its documents, so this matches its menu

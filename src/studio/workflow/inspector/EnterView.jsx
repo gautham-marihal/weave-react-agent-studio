@@ -33,6 +33,10 @@ export function EnterView({ node, agent, ai, owner, config, set, apply, onSelect
           label="What it says"
           value={action.text}
           config={config}
+          path={[...base, 'text']}
+          apply={apply}
+          keepEmpty
+          group={`enter:${base.join('.')}`}
           rows={4}
           hint="Spoken, or written in a chat, as soon as this agent takes over."
           required="A step that says something needs the words to say: write them, or delete the step."
@@ -99,6 +103,32 @@ export function EnterView({ node, agent, ai, owner, config, set, apply, onSelect
   );
 }
 
+// A number a variable becomes: what is typed stays in the box ("-", "1.", nothing), and only a number is written (a whole
+// one for an integer variable). Emptied, the value it had stays until a number is typed.
+function NumberValue({ name, value, integer, onChange }) {
+  const shown = value === undefined || value === null ? '' : String(value);
+  const [typed, setTyped] = useState(shown);
+  const [seen, setSeen] = useState(shown);
+  if (shown !== seen) {
+    setSeen(shown);
+    if (Number(typed) !== Number(shown) || typed.trim() === '') setTyped(shown);
+  }
+  return (
+    <Input
+      aria-label={`Value of ${name}`}
+      inputMode={integer ? 'numeric' : 'decimal'}
+      value={typed}
+      onChange={(event) => {
+        const text = event.target.value;
+        setTyped(text);
+        const n = Number(text);
+        if (text.trim() !== '' && Number.isFinite(n) && (!integer || Number.isInteger(n))) onChange(n);
+      }}
+      onBlur={() => setTyped(shown)}
+    />
+  );
+}
+
 // "Update state": the call's variables this agent sets as it takes over.
 function StateRows({ values, variables, config, apply, path }) {
   const names = Object.keys(variables);
@@ -128,7 +158,7 @@ function StateRows({ values, variables, config, apply, path }) {
           ? text === 'true'
           : text;
   };
-  const free = names.filter((n) => !(n in values));
+  const free = names.filter((n) => !Object.hasOwn(values, n));
   return (
     <section className="wfSection">
       <h4>What it remembers</h4>
@@ -168,13 +198,10 @@ function StateRows({ values, variables, config, apply, path }) {
                 <option value="true">Yes</option>
                 <option value="false">No</option>
               </Select>
+            ) : ['integer', 'number'].includes(variables[name]?.type) ? (
+              <NumberValue name={name} value={value} integer={variables[name].type === 'integer'} onChange={(n) => write({ ...values, [name]: n })} />
             ) : (
-              <Input
-                aria-label={`Value of ${name}`}
-                type={['integer', 'number'].includes(variables[name]?.type) ? 'number' : 'text'}
-                value={value ?? ''}
-                onChange={(event) => write({ ...values, [name]: typed(name, event.target.value) })}
-              />
+              <Input aria-label={`Value of ${name}`} value={value ?? ''} onChange={(event) => write({ ...values, [name]: typed(name, event.target.value) })} />
             )}
             <button
               type="button"
@@ -214,7 +241,7 @@ function StateRows({ values, variables, config, apply, path }) {
           className="wfInline"
           onSubmit={(event) => {
             event.preventDefault();
-            if (/^[a-z][a-z0-9_]{0,63}$/.test(draft.name) && !(draft.name in variables)) {
+            if (/^[a-z][a-z0-9_]{0,63}$/.test(draft.name) && !Object.hasOwn(variables, draft.name)) {
               const next = addStateVariable(config, draft.name, draft.kind);
               apply(setAt(next, path, { ...values, [draft.name]: draft.kind === 'integer' ? 0 : draft.kind === 'boolean' ? false : '' }), { group: '' });
               setAdding(false);
@@ -235,7 +262,7 @@ function StateRows({ values, variables, config, apply, path }) {
             <option value="integer">A number</option>
             <option value="boolean">Yes / no</option>
           </Select>
-          <Button type="submit" variant="primary" size="compact" disabled={!/^[a-z][a-z0-9_]{0,63}$/.test(draft.name) || draft.name in variables}>
+          <Button type="submit" variant="primary" size="compact" disabled={!/^[a-z][a-z0-9_]{0,63}$/.test(draft.name) || Object.hasOwn(variables, draft.name)}>
             Add it
           </Button>
           <Button type="button" onClick={() => setAdding(false)}>

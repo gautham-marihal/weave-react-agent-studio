@@ -26,13 +26,16 @@ function KeyValueRows({ value, onChange, scope, disabled, keyLabel, warnCredenti
   const object = isObj(value) ? value : {};
   const fromObject = () => Object.entries(object).map(([key, v]) => ({ key, value: typeof v === 'string' ? v : JSON.stringify(v) }));
   const [rows, setRows] = useState(fromObject);
+  // the first row with a name is the one saved: a later row with the same name waits, said under it, until renamed
+  // (it used to replace the first one's value without a word)
   const write = (list) => {
     const out = {};
     list.forEach((row) => {
-      if (row.key) out[row.key] = row.value;
+      if (row.key && !Object.hasOwn(out, row.key)) out[row.key] = row.value;
     });
     return out;
   };
+  const repeated = (index) => !!rows[index].key && rows.findIndex((r) => r.key === rows[index].key) < index;
   useEffect(() => {
     if (JSON.stringify(write(rows)) !== JSON.stringify(object)) setRows(fromObject());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,6 +80,11 @@ function KeyValueRows({ value, onChange, scope, disabled, keyLabel, warnCredenti
           >
             Delete
           </button>
+          {repeated(index) && (
+            <small className="stFWarn stKVWarn" role="alert">
+              Another {keyLabel.toLowerCase()} above already has this name, so this one isn’t saved. Rename it, or change the value above.
+            </small>
+          )}
           {warnCredentials && CREDENTIAL_NAME.test(row.key) && (
             <small className="stFWarn stKVWarn">
               This looks like a credential. Don’t put a secret here: it would be saved in every version. Put it in the connection’s authentication, which holds

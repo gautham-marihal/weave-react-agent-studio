@@ -17,6 +17,8 @@ export const PAGE_GROUPS = [
       { id: 'tools', label: 'Tools', icon: 'tools' },
       { id: 'connections', label: 'Connections', icon: 'plug' },
       { id: 'channels', label: 'Channels', icon: 'dial' },
+      { id: 'media', label: 'Images & Videos', icon: 'image' },
+      { id: 'steps', label: 'Steps', icon: 'steps' },
       { id: 'workflow', label: 'Workflow', icon: 'workflow' },
       { id: 'subagents', label: 'Subagents and hand-overs', icon: 'team' },
       { id: 'guardrails', label: 'Guardrails', icon: 'shield' },
@@ -54,7 +56,22 @@ export const STAGES = [
   {
     id: 'build',
     label: 'Build',
-    pages: ['build', 'agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall', 'settings'],
+    pages: [
+      'build',
+      'agent',
+      'conversation',
+      'knowledge',
+      'tools',
+      'connections',
+      'channels',
+      'media',
+      'steps',
+      'workflow',
+      'subagents',
+      'guardrails',
+      'aftercall',
+      'settings',
+    ],
   },
   { id: 'test', label: 'Test', pages: ['tests'] },
   { id: 'release', label: 'Release', pages: ['releases'] },
@@ -74,6 +91,8 @@ export const EXTRA_PAGE_IDS = [
   'tools',
   'connections',
   'channels',
+  'media',
+  'steps',
   'subagents',
   'guardrails',
   'aftercall',
@@ -126,7 +145,7 @@ export const PAGE_SECTIONS = {
   guardrails: ['guardrails'],
   aftercall: ['post_call', 'wrapups', 'observability'],
   tests: ['tests'],
-  settings: ['meta', 'runtime', 'constants', 'builder', 'defaults'],
+  settings: ['meta', 'runtime', 'constants', 'builder', 'defaults', 'observability'],
 };
 
 export const sectionsCovered = () => new Set(Object.values(PAGE_SECTIONS).flat());
@@ -136,7 +155,9 @@ export const PAGE_LEAD = {
   conversation: 'How it behaves during a call: taking turns, silences, what it remembers and reacts to.',
   tools: 'What the agent can do besides talk: look something up, hand over to a person, end the call.',
   connections: 'What its tools reach: connections, phone transfers, forms, messages and multi-step tasks.',
+  media: 'Photos and the camera: where customers can send them, what it asks for, how picky the checks are and what happens to the pictures.',
   subagents: 'Who answers, what each subagent does, and who passes callers to whom.',
+  steps: 'What happens on a call, in order: what the agent does every time, and what it is told to do.',
   knowledge: 'The documents and sources the agent can look things up in.',
   workflow: 'Who answers first, and how a call moves from one agent to another.',
   channels: 'Where people reach the agent, and when.',
@@ -181,6 +202,12 @@ export function locate(path) {
   if (key === 'meta' && ['name', 'description', 'tags', 'owner'].includes(sub)) return { page: 'agent' };
   // how many times a call may move between agents is asked with the hand-overs
   if (key === 'guardrails' && sub === 'limits' && third === 'max_handoffs_per_call') return { page: 'subagents' };
+  // the log of each call and what it holds are After the call's; metrics, the log level, tracing and the export are
+  // Engine and details', beside the rest of the logging
+  if (key === 'observability' && ['metrics', 'log_level', 'tracing', 'otel', 'log_file'].includes(sub)) return { page: 'settings' };
+  // photos, the camera and their details on a way in, and how an agent sees pictures, are Images & Videos'
+  if (key === 'channels' && sub !== undefined && third === 'inputs') return { page: 'media' };
+  if (key === 'agents' && sub === 'items' && fourth === 'vision') return { page: 'media' };
   if (key === 'tests') return { page: 'tests', part: 'scenarios' };
   const page = Object.keys(PAGE_SECTIONS).find((id) => id !== 'agent' && PAGE_SECTIONS[id].includes(key));
   return { page: page || 'settings' };
@@ -244,10 +271,12 @@ const PAGE_WORDS = {
   conversation: 'turns interrupt interruption silence quiet nudge pronunciation sounds variables state events reliability',
   connections: 'connection api transfer phone forms messages sms email tasks verification',
   subagents: 'subagent agents hand over handover hand-off transfer specialist multi entry first',
+  steps: 'steps flow call flow order sequence script playbook in order what happens first next',
   knowledge: 'documents files faq website pages answers sources',
   tools: 'actions abilities lookup hand over end call integrations api forms connections',
   workflow: 'agents handover hand-off canvas flow specialist multi',
   channels: 'phone chat website widget reach business hours opening hours whatsapp sms',
+  media: 'pictures picture photos photo images image videos camera video upload library sample card id identity verification kyc face sharpness',
   guardrails: 'safety block blocked topics rules limits',
   aftercall: 'summary recording redaction wrap up analysis',
   tests: 'try scenarios checks simulated callers',

@@ -79,6 +79,9 @@ function totalsOf(calls, samples) {
     cutOff: calls.filter((c) => c.status === 'unfinished').length,
     cutOffRate: rate(calls.filter((c) => c.status === 'unfinished').length, calls.length),
     handoffRate: rate(calls.filter((c) => (c.handoffs || 0) > 0).length, calls.length),
+    // finished by the agent, with nobody passed on: what the Calls page calls "handled"
+    handled: calls.filter((c) => c.status === 'ended' && (c.handoffs || 0) <= 0).length,
+    handledRate: rate(calls.filter((c) => c.status === 'ended' && (c.handoffs || 0) <= 0).length, calls.length),
     avgDurationS: avg(calls.map((c) => c.duration_s).filter((d) => typeof d === 'number')),
     avgTurns: avg(calls.map((c) => c.caller_turns).filter((d) => typeof d === 'number')),
     waitP50: percentile(waits, 50),
@@ -105,13 +108,14 @@ export function analyse({ calls = [], samples = {}, bots = [], nowMs = 0, days =
 
   // a bar for every day of the period, including days with nothing
   const byDay = new Map();
-  period.days.forEach((day) => byDay.set(day, { day, calls: 0, cutOff: 0, handoffs: 0, waits: [], toolCalls: 0, toolFailed: 0 }));
+  period.days.forEach((day) => byDay.set(day, { day, calls: 0, handled: 0, cutOff: 0, handoffs: 0, waits: [], toolCalls: 0, toolFailed: 0 }));
   current.forEach((c) => {
     const row = byDay.get(localDay(at(c)));
     if (row) {
       row.calls += 1;
       if (c.status === 'unfinished') row.cutOff += 1;
       if ((c.handoffs || 0) > 0) row.handoffs += 1;
+      else if (c.status === 'ended') row.handled += 1;
       // from the call's record, when it was read: its answers' waits and its tool calls
       const facts = samples[`${c.bot}/${c.id}`];
       if (facts) {

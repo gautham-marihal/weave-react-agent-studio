@@ -152,8 +152,20 @@ export function normalizeSearch(raw) {
     modelIsShown:
       typeof r.the_model_is_shown === 'string' ? r.the_model_is_shown : r.the_model_is_shown == null ? '' : JSON.stringify(r.the_model_is_shown, null, 2),
     query: text(r.query),
+    // what was really searched for: with "the last reply and the newest words", the reply before is put in front
+    queryUsed: text(r.query_used),
+    note: text(r.note),
   };
 }
+
+// Where a score falls on the guide's scale (default embeddings: related text about 0.5–0.75, unrelated below 0.25),
+// as the bands the search panel draws: [from, to, words].
+export const SCORE_BANDS = [
+  [0, 0.25, 'Unrelated'],
+  [0.25, 0.5, 'Maybe'],
+  [0.5, 0.75, 'Related'],
+  [0.75, 1, 'Very close'],
+];
 
 // Which hits a `min_score` would keep. Only some sources give scores; a hit without a score is always kept.
 export function applyMinScore(hits, minScore) {

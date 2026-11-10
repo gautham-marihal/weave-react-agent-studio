@@ -237,13 +237,20 @@ export function renameEverywhere(engine, config, collection, from, to) {
       });
   } else if (info?.kind === 'map') {
     const holder = getAt(next, info.path);
-    if (isObj(holder) && from in holder) {
+    if (isObj(holder) && Object.hasOwn(holder, from)) {
       const renamed = renameKey(holder, from, to);
       const parentPath = info.path.slice(0, -1);
       if (parentPath.length) getAt(next, parentPath)[info.path[info.path.length - 1]] = renamed;
       else next[info.path[0]] = renamed;
     }
   }
+  // an agent's saved places on the Workflow canvas are keyed by its id ("greeter", "greeter::tool::x"): they move with
+  // it, so the layout someone arranged is kept
+  const places = collection === 'agents' ? next?.builder?.ui?.graph_positions : null;
+  if (isObj(places))
+    next.builder.ui.graph_positions = Object.fromEntries(
+      Object.entries(places).map(([key, at]) => [key === from ? to : key.startsWith(`${from}::`) ? `${to}${key.slice(from.length)}` : key, at]),
+    );
   // finally the text that mentions it
   const root = TEMPLATE_ROOT[collection];
   if (root) next = rewriteTemplates(next, root, from, to);

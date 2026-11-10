@@ -6,7 +6,7 @@ import { createDemoApi, minimalConfig } from '../src/demo/demoApi.js';
 
 // Component tests of the screens built on top of the form: the Simple view, the Scenarios tab and the preview beside the editor. Each
 // is mounted in jsdom with a config in state; clicks and typing are replayed and the config that comes out is read back.
-const { mountScreen, act } = await setupDom();
+const { mountScreen, act, getDemoApi } = await setupDom();
 const a = actions(act);
 after(() => teardownDom());
 
@@ -82,39 +82,64 @@ test('Scenarios: write one, it goes into the draft’s tests, run it, results ap
   await app.unmount();
 });
 
-test('Scenarios: letting a run reach real systems is off by default, asks first, and says so on the Run button', async () => {
+test('Scenarios: a server that doesn’t let runs reach real systems isn’t asked to (FRONTEND_GUIDE 10.4)', async () => {
   const config = {
     ...agent(),
     tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }], model_script: [{ say: 'hello' }] }],
   };
-  const app = await scenarios(config);
+  const app = await scenarios(config); // the demo's server says network_allowed: false
   await a.click($(app.container, '.scPaid summary'));
-  const boxes = $$(app.container, '.scPaid input[type=checkbox]');
-  assert.equal(boxes.length, 3, 'live, reviewer checks, and real requests');
-  assert.equal(boxes[2].checked, false, 'off by default');
-  assert.match(textOf($(app.container, '.scPaid')), /Let requests reach real systems.*can change real data.*refuses it unless an operator has allowed it/);
-  const realConfirm = window.confirm;
-  const asked = [];
-  try {
-    window.confirm = (text) => {
-      asked.push(text);
-      return false;
-    };
-    await a.check(boxes[2]);
-    assert.equal(asked.length, 1);
-    assert.match(asked[0], /real systems/);
-    assert.equal($$(app.container, '.scPaid input[type=checkbox]')[2].checked, false, 'declining leaves it off');
-    assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
-    window.confirm = () => true;
-    await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
-    assert.match(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
-    assert.match(textOf($(app.container, '.scPaid summary')), /\(on\)/);
-    await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
-    assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/, 'switching it off takes the words away');
-  } finally {
-    window.confirm = realConfirm;
-  }
+  assert.equal($$(app.container, '.scPaid input[type=checkbox]').length, 2, 'live and reviewer checks only');
+  assert.doesNotMatch(textOf($(app.container, '.scPaid')), /real systems/);
+  assert.match(textOf($(app.container, '.scPaid summary')), /^Paid options/);
   await app.unmount();
+});
+
+test('Scenarios: where the server allows it, letting a run reach real systems is off by default, asks first, and says so on the Run button', async () => {
+  const config = {
+    ...agent(),
+    tests: [{ id: 'one', channel: 'web-chat', turns: [{ say: 'hi' }], expect: [{ said_matches: '.' }], model_script: [{ say: 'hello' }] }],
+  };
+  // this server allows it: GET /tests says so
+  const demo = getDemoApi();
+  const handle = demo.handle;
+  demo.handle = async (method, path, body) => {
+    const answer = await handle.call(demo, method, path, body);
+    return method === 'GET' && /\/tests(\?|$)/.test(path) && answer.status === 200 ? { ...answer, body: { ...answer.body, network_allowed: true } } : answer;
+  };
+  try {
+    const app = await scenarios(config);
+    await a.click($(app.container, '.scPaid summary'));
+    await until(app, () => $$(app.container, '.scPaid input[type=checkbox]').length === 3);
+    const boxes = $$(app.container, '.scPaid input[type=checkbox]');
+    assert.equal(boxes.length, 3, 'live, reviewer checks, and real requests');
+    assert.equal(boxes[2].checked, false, 'off by default');
+    assert.match(textOf($(app.container, '.scPaid')), /Let requests reach real systems.*can change real data.*An operator has allowed it/);
+    const realConfirm = window.confirm;
+    const asked = [];
+    try {
+      window.confirm = (text) => {
+        asked.push(text);
+        return false;
+      };
+      await a.check(boxes[2]);
+      assert.equal(asked.length, 1);
+      assert.match(asked[0], /real systems/);
+      assert.equal($$(app.container, '.scPaid input[type=checkbox]')[2].checked, false, 'declining leaves it off');
+      assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
+      window.confirm = () => true;
+      await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
+      assert.match(textOf(byText(app.container, 'button', /Run all/)), /real requests/);
+      assert.match(textOf($(app.container, '.scPaid summary')), /\(on\)/);
+      await a.check($$(app.container, '.scPaid input[type=checkbox]')[2]);
+      assert.doesNotMatch(textOf(byText(app.container, 'button', /Run all/)), /real requests/, 'switching it off takes the words away');
+    } finally {
+      window.confirm = realConfirm;
+    }
+    await app.unmount();
+  } finally {
+    demo.handle = handle;
+  }
 });
 
 test('Scenarios: a scenario with mistakes isn’t added, and says what to fix; editing and deleting work', async () => {
@@ -275,6 +300,8 @@ test('Preview: the microphone and the picture button appear exactly when the cha
   const channel = config.channels.find((c) => c.type === 'web_chat') || config.channels[0];
   channel.modalities = { input: ['text', 'audio', 'image'], output: ['text'] };
   channel.inputs = { image: { accepted_mime: ['image/png'], max_bytes: 1000, topic: 'pics' } };
+  // as switching photos on in Media does: the model is marked as seeing them, or the server never sends it one
+  config.defaults.models.llm = { ...config.defaults.models.llm, vision: true };
   const app = await mountScreen('preview', config, { ready: '.pvPanel' });
   const panel = () => $(app.container, '.pvPanel');
   assert.ok(byLabel(panel(), 'Speak to the agent') && byLabel(panel(), 'Attach a picture'), 'both are offered, before the conversation too');
@@ -303,14 +330,12 @@ test('Preview: the microphone and the picture button appear exactly when the cha
   await send(new window.File(['x'], 'ok.png', { type: 'image/png' }));
   assert.equal($(panel(), '.pvHint.warn'), null, 'a good picture clears the note');
   assert.ok(
-    $$(panel(), '.pvMsg.me').some((m) => /Sent a picture: ok\.png/.test(textOf(m))),
-    'and is shown as sent',
+    $$(panel(), '.pvPictureLine').some((m) => /You sent a photo/.test(textOf(m)) && /ok\.png/.test(textOf(m))),
+    'and is shown as sent, as a line of its own in the conversation',
   );
   await app.wait(900);
-  assert.ok(
-    $$(panel(), '.pvMsg.bot').some((m) => /received your picture/.test(textOf(m))),
-    'the simulated agent answers, and says it is simulated',
-  );
+  // nothing asked for it, and the channel attaches a picture to the next message (the schema's usual): a note says so
+  assert.ok(/goes with your next message/.test(textOf(panel())), 'the simulation says what the real agent does with it');
   await app.unmount();
 });
 
@@ -339,6 +364,106 @@ test('Preview: in demo mode the real agent can’t be chosen, and a configuratio
   assert.equal(byText($(locked.container, '.pvPanel'), 'button', 'Real agent').disabled, true);
   assert.match(textOf($(locked.container, '.pvPanel')), /demo mode has none/);
   await locked.unmount();
+});
+
+// ---- the simulated agent plays the config (2026-11-07 review): the channel decides, and the config's own steps run
+const startSimulated = async (config) => {
+  window.localStorage.clear();
+  const app = await mountScreen('preview', config, { ready: '.pvPanel' });
+  const panel = () => $(app.container, '.pvPanel');
+  await a.click(byText(panel(), 'button', 'Start a simulated chat'));
+  for (let i = 0; i < 60 && panel().getAttribute('data-state') !== 'live'; i += 1) await app.wait(50);
+  await app.wait(900);
+  return { app, panel };
+};
+
+test('Simulated: a camera step on a channel that doesn’t take the camera isn’t asked; switched on, the camera card shows', async () => {
+  const config = agent();
+  const channel = config.channels.find((c) => c.type === 'web_chat') || config.channels[0];
+  channel.modalities = { input: ['text'], output: ['text'] };
+  config.state = { variables: { selfie: { type: 'string' } } };
+  config.agents.items[0].on_enter = [{ type: 'request_image', kind: 'camera', into: 'selfie', timeout_s: 60 }];
+  const off = await startSimulated(config);
+  assert.match(textOf(off.panel()), /can’t ask for the camera here: this channel doesn’t take the camera/);
+  assert.equal($(off.panel(), '.pcCard'), null, 'no camera card');
+  await off.app.unmount();
+
+  channel.modalities = { input: ['text', 'video'], output: ['text'] };
+  const on = await startSimulated(config);
+  assert.ok($(on.panel(), '.pcCard'), 'the camera card asks for it');
+  await on.app.unmount();
+});
+
+test('Simulated: when the video check gets no picture, its retake offers the video again or a picture, never a file', async () => {
+  const config = agent();
+  const channel = config.channels.find((c) => c.type === 'web_chat') || config.channels[0];
+  channel.modalities = { input: ['text', 'image', 'video'], output: ['text'] };
+  config.state = { variables: { selfie: { type: 'string' } } };
+  config.agents.items[0].on_enter = [
+    {
+      type: 'request_image',
+      kind: 'camera',
+      into: 'selfie',
+      timeout_s: 1,
+      on_timeout: [{ type: 'request_image', kind: 'upload', into: 'selfie', prompt: 'Your face and the card side by side', timeout_s: 60 }],
+    },
+  ];
+  const { app, panel } = await startSimulated(config);
+  for (let i = 0; i < 60 && !/Try again with video/.test(textOf(panel())); i += 1) await app.wait(50);
+  const card = $(panel(), '.pcCard');
+  assert.ok(card, 'the retake’s card');
+  assert.match(textOf(card), /The agent needs your camera/);
+  assert.ok(byText(card, 'button', 'Try again with video') && byText(card, 'button', 'Take a picture'));
+  assert.doesNotMatch(textOf(card), /Choose a photo|drop a photo/, 'no file from the device');
+  assert.equal($(card, 'input[type=file]'), null);
+  assert.equal(byLabel(panel(), 'Attach a picture')?.disabled ?? true, true, 'nor through the paperclip');
+  await app.unmount();
+});
+
+test('Simulated: a request shows the form’s own card; it is checked, sent, and what it keeps is kept', async () => {
+  const config = agent();
+  config.forms = [
+    { id: 'callback', title: 'Your call-back', fields: [{ name: 'phone', label: 'Phone', type: 'phone', required: true }], store_in_state: { phone: 'phone' } },
+  ];
+  config.state = { variables: { phone: { type: 'string' } } };
+  config.tools = [
+    ...config.tools,
+    { id: 'ask_callback', type: 'builtin', builtin: 'send_form', description: 'Takes a call-back request', params: { form: 'callback' } },
+  ];
+  config.agents.items[0].tools = [...config.agents.items[0].tools, 'ask_callback'];
+  const { app, panel } = await startSimulated(config);
+  await a.type(byLabel(panel(), 'Message to the agent'), 'Can I get a call back please?');
+  await a.click(byText(panel(), 'button', 'Send'));
+  for (let i = 0; i < 40 && !$(panel(), 'form.stTForm'); i += 1) await app.wait(50);
+  const form = $(panel(), 'form.stTForm');
+  assert.ok(form, 'the form’s own card');
+  assert.match(textOf(form), /Your call-back/);
+  await a.type($(form, 'input'), '91234567');
+  await act(async () => form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+  for (let i = 0; i < 40 && $(panel(), 'form.stTForm'); i += 1) await app.wait(50);
+  assert.equal($(panel(), 'form.stTForm'), null, 'sent, the card goes');
+  await app.wait(500);
+  assert.match(textOf(panel()), /now has these details/);
+  await app.unmount();
+});
+
+test('Simulated: a quiet caller gets the config’s own check-ins on its own clock, then its goodbye', async () => {
+  const config = agent();
+  config.defaults.conversation = {
+    inactivity: {
+      enabled: true,
+      timeout_s: 0.4,
+      max_nudges: 1,
+      nudges: [{ type: 'say', text: 'Still there?' }],
+      on_exhausted: { do: [{ type: 'end_call', say: 'Bye for now.' }] },
+    },
+  };
+  const { app, panel } = await startSimulated(config);
+  for (let i = 0; i < 60 && panel().getAttribute('data-state') !== 'ended'; i += 1) await app.wait(50);
+  assert.match(textOf(panel()), /Still there\?/);
+  assert.match(textOf(panel()), /Bye for now\./);
+  assert.equal(panel().getAttribute('data-state'), 'ended');
+  await app.unmount();
 });
 
 // ---------------------------------------------------------------- Simple: where it is available, call records, what is below the cards

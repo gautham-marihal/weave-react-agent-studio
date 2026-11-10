@@ -43,6 +43,8 @@ const plan = {
   deploys: [], // what each deploy answers, in order: 'pending' or 'active'
   checks: [], // what each GET of a pending deployment answers, in order: 'pending', 'active', 'failed', 'gone'
   validateDown: false,
+  // a protection set up but not enforced, added to every check's answer (the server lists none today)
+  security: false,
 };
 const pendingIds = new Set();
 const mock = createMockApi();
@@ -67,6 +69,15 @@ await page.route(
     const req = route.request();
     const path = new URL(req.url()).pathname.replace(/^\/api/, '');
     if (path === '/validate' && req.method() === 'POST' && plan.validateDown) return route.fulfill({ status: 503, body: '' });
+    if (path === '/validate' && req.method() === 'POST' && plan.security) {
+      const answer = await mock.handle({ request: () => req, fulfill: async (r) => r });
+      const body = JSON.parse(answer.body);
+      body.unsupported = [
+        ...(body.unsupported || []),
+        { feature: 'transcript redaction (not applied yet)', where: 'post_call.redaction', severity: 'security' },
+      ];
+      return route.fulfill(json(body, answer.status));
+    }
     const deployOf = /^\/bots\/([^/]+)\/deploy$/.exec(path);
     if (deployOf && req.method() === 'POST' && plan.deploys.length) {
       const how = plan.deploys.shift();
@@ -248,6 +259,39 @@ try {
     ),
     await textOf('.stPublishPanel'),
   );
+
+  // ---- 5. the setup's go-live for customers with a protection that isn't enforced: the Deploy page's word is asked for (the guide, section 5)
+  plan.security = true;
+  await go(`#/bots/${BOT}/agent`, '.dtPart');
+  await page.reload(); // checked again, now with the security item
+  await page.waitForSelector('.dtPart', { timeout: 15000 });
+  await go(`#/bots/${BOT}/setup?step=live`, '.suPage');
+  if ((await page.getByRole('button', { name: 'Put my latest changes live' }).count()) > 0)
+    await page.getByRole('button', { name: 'Put my latest changes live' }).click();
+  await page.locator('.suWhere').getByText('Live for customers').click();
+  plan.deploys.push('active');
+  await page.locator('.suGoLive').click();
+  const dialog = page.getByRole('alertdialog');
+  await dialog.waitFor({ timeout: 10000 });
+  const dialogText = (await dialog.innerText()).replace(/\s+/g, ' ');
+  step(
+    'setup, for customers: the unenforced protection is named in red, with the word to type',
+    /1 protection is declared but not enforced/.test(dialogText) &&
+      /post_call\.redaction/.test(dialogText) &&
+      /Type production to put it live for customers anyway/.test(dialogText),
+    dialogText,
+  );
+  const confirm = dialog.getByRole('button', { name: 'Put it live for customers anyway' });
+  step(
+    'setup, for customers: the button waits for the word, and the box to type it in has the keyboard',
+    (await confirm.isDisabled()) && (await page.evaluate(() => document.activeElement?.id === 'decisionWord')),
+  );
+  await shot('deploys-5-word');
+  await page.keyboard.type('production');
+  step('setup, for customers: typing the word turns the button on', !(await confirm.isDisabled()));
+  await confirm.click();
+  step('setup, for customers: then it is put live', await until(async () => /is live for customers/.test(await textOf('.suDone'))), await textOf('.suPage'));
+  plan.security = false;
 
   step('no console errors', problems.length === 0, problems.slice(0, 5).join('\n      '));
 } catch (error) {

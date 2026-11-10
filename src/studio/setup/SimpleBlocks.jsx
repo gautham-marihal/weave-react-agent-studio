@@ -194,7 +194,7 @@ export function ReachChoices({ config, set, botId, onPage = false, onShowNotice 
       {simple.voiceChannel && !onPage && (
         <label className="suField">
           <span>Recording notice</span>
-          <small>Said at the start of every call, before the greeting: tell callers the call is recorded. Many places require it.</small>
+          <small>Said once, with the first greeting, on calls that speak: tell callers the call is recorded. Many places require it.</small>
           <Input
             value={simple.recordingNotice}
             placeholder="This call may be recorded to improve our service."

@@ -1,0 +1,726 @@
+/* Build › Conversation (ConversationWorkspace.jsx, CallDrawing.jsx, conversationEditors.jsx): the Agent profile's calm
+   column (agentProfile.css) in the Conversation part's own hue, the drawn call, and the part's own editors. Only the
+   studio's tokens, so every style and both themes draw it in their own colours. The editors also show in All settings,
+   so they carry their own hue (--cv-hue) rather than the profile's. */
+
+.cvWrap,
+.cvWait,
+.cvScript,
+.cvRetry,
+.cdScore {
+  --cv-hue: var(--hue-conversation, var(--accent));
+  --cv-hue-text: color-mix(in srgb, var(--cv-hue) 72%, var(--textStrong));
+}
+/* the part's blue is deep: on a dark page it is lifted, so the drawn call and its words keep their contrast */
+html[data-theme="dark"] :is(.cvWrap, .cvWait, .cvScript, .cvRetry, .cdScore) {
+  --cv-hue: color-mix(in srgb, var(--hue-conversation, var(--accent)) 55%, #ffffff);
+}
+.apWrap.cvWrap {
+  --ap-hue: var(--cv-hue);
+}
+
+/* ---- the card at the top ---- */
+.cvHero .apHint a {
+  color: var(--cv-hue-text);
+  font-weight: 600;
+}
+.cvAvatar {
+  width: 56px;
+  height: 56px;
+  font-size: var(--fs-xl);
+}
+html[data-theme] body .cvHero .apName h2 {
+  font-size: var(--fs-2xl);
+}
+.cvSentence {
+  line-height: 1.75;
+}
+
+/* the drawn call: the caller's lane and the agent's, the moment an open setting shapes lit up */
+.cdScore {
+  margin: 0;
+  padding: 16px 18px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--cv-hue) 3%, var(--panel));
+  font-size: var(--fs-xs);
+}
+.cdScore svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.cdCaller rect,
+.cdKey.caller {
+  fill: color-mix(in srgb, var(--muted) 70%, transparent);
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+.cdAgent rect,
+.cdKey.agent {
+  fill: var(--cv-hue);
+  background: var(--cv-hue);
+}
+.cdGap {
+  fill: color-mix(in srgb, var(--cv-hue) 18%, transparent);
+}
+.cdHi rect {
+  fill: color-mix(in srgb, var(--cv-hue) 10%, transparent);
+}
+.cdHi .cdHiBar {
+  fill: var(--cv-hue);
+}
+.cdLane {
+  fill: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.cdTime {
+  fill: var(--muted);
+  font-size: var(--fs-xs);
+}
+.cdRule {
+  stroke: var(--line);
+}
+.cdQuiet {
+  stroke: color-mix(in srgb, var(--muted) 55%, transparent);
+  stroke-dasharray: 2 6;
+  stroke-width: 2;
+}
+.cdCut {
+  fill: none;
+  stroke: var(--cv-hue);
+  stroke-width: 1.6;
+}
+.cdEnd circle {
+  fill: var(--textStrong);
+}
+.cdEnd path {
+  fill: none;
+  stroke: var(--panel);
+  stroke-width: 1.6;
+}
+.cdLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.cdKey {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+.cdKey.quiet {
+  height: 3px;
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+  vertical-align: 3px;
+}
+.cdCaption {
+  margin-left: auto;
+}
+.cdCaption.on {
+  color: var(--cv-hue-text);
+  font-weight: 600;
+}
+.cdSketch {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ---- the chapters' extras ---- */
+.cvTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cvTag.warn {
+  background: color-mix(in srgb, var(--warn-text) 12%, var(--panel));
+  color: var(--warn-text);
+}
+/* ---- how long it waits ---- */
+.cvWait {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.cvChoices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.cvChoice {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cvChoice:hover {
+  border-color: color-mix(in srgb, var(--cv-hue) 40%, var(--line));
+}
+.cvChoice.on {
+  border-color: var(--cv-hue);
+  background: color-mix(in srgb, var(--cv-hue) 4%, var(--panel));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cv-hue) 16%, transparent);
+}
+.cvChoice:focus-visible {
+  outline: 2px solid var(--cv-hue);
+  outline-offset: 2px;
+}
+.cvChoice b {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.cvSec {
+  color: var(--cv-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.cvChoice small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.cvOwn {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.cvSwitchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cvSwitchRow > span {
+  display: grid;
+  gap: 2px;
+}
+.cvSwitchRow b {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.cvSwitchRow small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+/* ---- a quiet caller's script ---- */
+.cvScript {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.cvSteps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cvStep {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 14px;
+  padding-bottom: 16px;
+}
+.cvStep:not(.last)::before {
+  position: absolute;
+  top: 32px;
+  bottom: 4px;
+  left: 13px;
+  width: 2px;
+  background: repeating-linear-gradient(var(--line) 0 5px, transparent 5px 10px);
+  content: "";
+}
+.cvDot {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cv-hue) 10%, var(--panel));
+  color: var(--cv-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.cvDot.ink {
+  background: var(--textStrong);
+  color: var(--panel);
+}
+.cvDot.end {
+  background: color-mix(in srgb, var(--danger-text) 12%, var(--panel));
+  color: var(--danger-text);
+}
+.cvStepBody {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 3px;
+}
+.cvH {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.cvInline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.cvInline input {
+  width: 110px;
+}
+.cvRemove {
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.cvRemove:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.cvMuted {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.cvAdd {
+  justify-self: start;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--cv-hue-text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.cvPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cvPills button {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.cvPills button.on {
+  border-color: var(--textStrong);
+  background: var(--textStrong);
+  color: var(--panel);
+}
+.cvPills button:disabled:not(.on) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.cvStory {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cv-hue) 6%, var(--panel));
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+.cvNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.cvForms summary {
+  color: var(--cv-hue-text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.cvFormRows {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ---- the retries of each service ---- */
+.cvRetry {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+.cvHd {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.cvRowName {
+  color: var(--text);
+}
+.cvSpan {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .cvChoices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- a new agent: nothing set up for a quiet caller yet ---- */
+.cvSetup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 14px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--cv-hue) 25%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--cv-hue) 5%, var(--panel));
+}
+.cvSetupIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--cv-hue) 14%, var(--panel));
+  color: var(--cv-hue-text);
+}
+.cvSetupText {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 220px;
+}
+.cvSetupText b {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+}
+.cvSetupText span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+/* a line the script doesn't edit in place: a fixed line, one in several languages, or one it words itself */
+.cvQuote {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+.cvQuoteText {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.cvQuote a {
+  color: var(--cv-hue-text);
+  font-weight: 600;
+}
+
+/* ---- what it remembers (RememberSheet.jsx, canvas board C6): the details as a table, beside what "kept secret"
+   means and one editor card (a new detail, or the one chosen) ---- */
+.rmWrap {
+  --cv-hue: var(--hue-conversation, var(--accent));
+  --cv-hue-text: color-mix(in srgb, var(--cv-hue) 72%, var(--textStrong));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+  container-type: inline-size;
+  min-width: 0;
+}
+html[data-theme="dark"] .rmWrap {
+  --cv-hue: color-mix(in srgb, var(--hue-conversation, var(--accent)) 55%, #ffffff);
+}
+@container (max-width: 760px) {
+  .rmWrap > * {
+    grid-column: 1 / -1;
+  }
+}
+.rmSheet,
+.rmSide {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.rmSide {
+  gap: 12px;
+}
+.rmHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.rmTitle {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+}
+.rmTitle h3 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.rmSub,
+.rmCount,
+.rmNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.rmTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.rmFind {
+  position: relative;
+  display: flex;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.rmFind > svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.rmFind input.stFInput {
+  width: 100%;
+  padding-left: 36px;
+}
+.rmTools .cvPills button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.rmTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.rmTable thead th {
+  padding: 0 8px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: left;
+}
+.rmTable tbody tr {
+  position: relative;
+}
+.rmTable tbody :is(th, td) {
+  height: 42px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+  vertical-align: middle;
+}
+.rmTable tbody tr:hover {
+  background: var(--surface2);
+}
+.rmTable tbody tr.on {
+  background: color-mix(in srgb, var(--cv-hue) 8%, var(--panel));
+}
+.rmTable tbody th button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--textStrong);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+/* the whole row picks the detail, while the name stays its one button */
+.rmTable tbody th button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.rmTable tbody th button:focus-visible {
+  outline: none;
+}
+.rmTable tbody tr:has(button:focus-visible) {
+  outline: 2px solid var(--focus, var(--cv-hue));
+  outline-offset: -2px;
+}
+.rmKind {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.rmDim {
+  color: var(--muted) !important;
+}
+.rmEnd {
+  text-align: right !important;
+}
+.rmEnd .cvTag {
+  margin-left: 0;
+}
+.rmCount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rmCard {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  min-width: 0;
+}
+.rmCard h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.rmCard p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+.rmCardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rmCardHead h4 {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rmClose {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.rmClose:hover {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+.rmKey {
+  justify-self: start;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.rmH {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.rmField {
+  display: grid;
+  gap: 6px;
+}
+.rmSwitch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.rmSwitch .stSwitch span {
+  display: none;
+}
+.rmFoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.rmNew .rmFoot {
+  justify-content: flex-end;
+}
+.rmForm {
+  margin-top: 4px;
+}

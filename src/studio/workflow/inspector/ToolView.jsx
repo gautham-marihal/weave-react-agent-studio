@@ -59,7 +59,8 @@ export function ToolView({ node, owner, config, set, apply, onSelect, onRemove, 
               mono
               value={transfer.target || ''}
               placeholder="+44 20 7946 0000"
-              onChange={(v) => setOrUnset(['telephony', 'transfers', ti2, 'target'], v.trim() ? v : '', `transfer:${transfer.id}:number`)}
+              // emptied, it stays as '' ("no number yet", as the starters write it): a transfer needs its target
+              onChange={(v) => set(['telephony', 'transfers', ti2, 'target'], v.trim() ? v : '', `transfer:${transfer.id}:number`)}
             />
           </Field>
         ) : (
@@ -76,6 +77,9 @@ export function ToolView({ node, owner, config, set, apply, onSelect, onRemove, 
           label="What it says before it ends the conversation"
           value={tool.params?.say}
           config={config}
+          path={['tools', ti, 'params', 'say']}
+          apply={apply}
+          group={`tool:${toolId}:say`}
           hint="Leave it empty and the conversation ends without a goodbye."
           placeholder="Thanks for calling. Goodbye!"
           onChange={(v) => setOrUnset(['tools', ti, 'params', 'say'], v, `tool:${toolId}:say`)}

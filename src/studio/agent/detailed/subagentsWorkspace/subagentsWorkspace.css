@@ -1,0 +1,194 @@
+/* Build › Subagents and hand-overs (SubagentsWorkspace.jsx, RelayMap.jsx, SubagentPage.jsx; canvas page "7 · Subagents
+   and hand-overs, redesigned"): the Agent profile's calm column in the part's own teal, the relay of who passes callers
+   to whom, and an item's own page. The nodes, the legend, the lists in a popover and the notes are Connections' own
+   (connectionsWorkspace.css, which brings Tools' step strip, sections and kind tiles). Only the studio's tokens, so every
+   style and both themes draw it in their own colours. */
+@import "../connectionsWorkspace/connectionsWorkspace.css";
+
+.saWrap {
+  --sa-hue: var(--hue-subagents, var(--accent));
+  --sa-hue-text: color-mix(in srgb, var(--sa-hue) 75%, var(--textStrong));
+}
+/* the part's teal is deep: on a dark page it is lifted, so its words keep their contrast */
+html[data-theme="dark"] .saWrap {
+  --sa-hue: color-mix(in srgb, var(--hue-subagents, var(--accent)) 55%, #ffffff);
+}
+.apWrap.saWrap {
+  --ap-hue: var(--sa-hue);
+  --tl-hue: var(--sa-hue);
+  --tl-hue-text: var(--sa-hue-text);
+  --cx-hue: var(--sa-hue);
+  --cx-hue-text: var(--sa-hue-text);
+}
+
+/* ---- the card at the top ---- */
+.saAvatarBig {
+  width: 56px;
+  height: 56px;
+  font-size: var(--fs-xl);
+}
+html[data-theme] body .saHero .apName h2 {
+  font-size: var(--fs-2xl);
+}
+.saSentence {
+  line-height: 1.75;
+}
+.saFix {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--warn-text) 30%, var(--line2));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--warn-text) 7%, var(--panel));
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.saFix > svg {
+  flex: none;
+  color: var(--warn-text);
+}
+.saFix > span {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+/* ---- the relay: who answers first, its subagents, and who is beyond this agent ---- */
+.saRelay {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 64px;
+  padding: 40px 18px 18px;
+  border: 1px solid color-mix(in srgb, var(--sa-hue) 20%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--sa-hue) 3%, var(--panel));
+}
+.saRelay .cxCol {
+  padding-top: 22px;
+}
+.saLines path {
+  stroke: color-mix(in srgb, var(--sa-hue) 45%, var(--line));
+}
+.saLines path.on {
+  stroke-width: 1.6;
+}
+.saLines path.back {
+  stroke: color-mix(in srgb, var(--sa-hue) 30%, var(--line));
+  stroke-dasharray: 5 5;
+}
+.saLines path.out {
+  stroke: color-mix(in srgb, var(--muted) 45%, var(--line));
+}
+.saLines marker path {
+  fill: color-mix(in srgb, var(--sa-hue) 45%, var(--line));
+  stroke: none;
+}
+.saNode {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 60px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--sa-hue) 35%, var(--line2));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--sa-hue) 7%, var(--panel));
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.saNode:hover {
+  border-color: var(--sa-hue);
+}
+.saAvatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--sa-hue);
+  color: var(--panel);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.cxNode.out .cxIcon {
+  color: var(--muted);
+}
+.cxLegend i.solid.ext {
+  border-top-color: color-mix(in srgb, var(--muted) 45%, var(--line));
+}
+/* one agent alone: it, and the way to add a subagent */
+.saRelay.alone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 28px 18px;
+}
+.saRelay.alone .saNode {
+  width: 220px;
+}
+.saRelay.alone .cxNode.more {
+  min-height: 56px;
+  padding: 0 18px;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+@media (max-width: 1100px) {
+  .saRelay {
+    gap: 40px;
+  }
+}
+
+/* ---- add a hand-over: where to, then who from and to ---- */
+.saKinds {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.saKinds .tlKind.on {
+  border-color: var(--sa-hue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sa-hue) 14%, transparent);
+}
+.saKinds .tlKind.later {
+  cursor: default;
+}
+.saAddForm {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.saAddForm > b {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.saAddRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.saAddRow > .stFInput {
+  flex: 0 1 220px;
+  min-width: 0;
+}
+.saAddRow > svg {
+  flex: none;
+  color: var(--muted);
+}
+
+/* ---- the chapters: a line's words wrap beside its icon, not under it (a subagent's job can run long) ---- */
+.saWrap .apLineText {
+  flex: 1 1 0;
+}
+
+/* ---- a hand-over's own page: its path in three steps ---- */
+.tlSteps.saPath {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}

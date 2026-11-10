@@ -17,6 +17,13 @@ import { getAtPath } from '../schemaPath.js';
 import { factsAt, setPath } from './schemaFacts.js';
 import { schemaAtPath } from '../schemaPath.js';
 import { freshId } from '../../form/references.js';
+import { describeAction } from '../../form/effects.js';
+import { describeCondition } from '../../form/promptPreview.js';
+import { PICTURE_STEPS } from '../../pictures/pictureSteps.js';
+import { notRunAt } from '../../preflight.ts';
+import { useRedactionKinds } from './useRedactionKinds.js';
+import { STATE_WORDS, setShowAdvanced, useBuildSection, useShowAdvanced } from './buildContext.js';
+import StepsView, { isStepList } from './StepsView.jsx';
 import './detailed.css';
 
 const FormEditor = lazy(() => import('../../form/FormEditor.jsx'));
@@ -29,9 +36,11 @@ const FormEditor = lazy(() => import('../../form/FormEditor.jsx'));
 // A row spec:
 //   { id, label, hint?, tags? ('r' required, 'p' a try-out that is not saved, 'm' moved here, 'n' a new idea),
 //     kind? ('text' | 'long' | 'num' | 'sw' | 'ch' | 'multi' | 'list' | 'pick' | 'code' | 'form' | 'custom' | 'note'),
-//     path?, get?(config), put?(config, value), options? ([{ value, label }] or (config) => …), unit?, placeholder?,
+//     path?, get?(config), put?(config, value), options? ([{ value, label }] or (config) => …),
+//     valueLabel?(value) (what a 'pick' shows for a value its list lacks), unit?, placeholder?,
 //     rows?, disabled?, note?, render?(ctx) }
-// A card spec: { id, title, from?, lead?, rows, adv? (row specs, usually with a `path`), body?(ctx) }
+// A card spec: { id, title, from?, lead?, rows, adv? (row specs, usually with a `path`), body?(ctx),
+//   keep?(ctx, entry) (why the chosen item can't be deleted, in place of its Delete button) }
 // A part spec: { id, num, title, question, cols: [[card…], [card…]], top?(ctx) }
 
 // "Required": marked so (tags 'r'), or the schema says so, but not on a switch (it always has a value) and not while
@@ -58,7 +67,11 @@ function kindOf(row, facts) {
   if (facts.kind === 'boolean') return 'sw';
   if (facts.kind === 'enum') return facts.choices.length <= 5 ? 'ch' : 'pick';
   if (facts.kind === 'number') return 'num';
-  if (facts.kind === 'string' || facts.kind === 'ref' || facts.kind === 'secret') return 'text';
+  // the schema's own hints (agent config guide 5): a secret holds {"secret": NAME}, never a typed key, and an x-ref
+  // names something declared elsewhere: both get the schema-drawn editor (a secret picker, a list of the ids)
+  if (facts.kind === 'ref' || facts.kind === 'secret') return 'form';
+  if (facts.kind === 'string' && facts.shape?.['x-ui']?.widget === 'textarea') return 'long';
+  if (facts.kind === 'string') return 'text';
   if (facts.kind === 'array' && facts.itemKind === 'enum') return 'multi';
   if (facts.kind === 'array' && facts.itemKind === 'string') return 'list';
   return 'form';
@@ -82,6 +95,22 @@ export function useFacts(config) {
 
 // Deletes a list's item, after asking when other parts of the draft point at it (and then taking those pointers out).
 export async function removeEntry(ctx, collection, entry) {
+  // an item of a list with no id yet (written in the JSON) is known only by its place: it is taken out from there (by
+  // its key, which is its index, nothing would be found, and "deleted" would be said with nothing gone)
+  const at = entry.base?.[entry.base.length - 1];
+  if (typeof at === 'number' && !(entry.item && typeof entry.item.id === 'string' && entry.item.id)) {
+    const holderPath = entry.base.slice(0, -1);
+    const holder = getAtPath(ctx.config, holderPath);
+    if (Array.isArray(holder))
+      ctx.set(
+        setPath(
+          ctx.config,
+          holderPath,
+          holder.filter((_, i) => i !== at),
+        ),
+      );
+    return;
+  }
   const id = entry.key;
   const hits = ctx.engine ? findUsage(ctx.engine, ctx.config, collection, id) : [];
   if (hits.length) {
@@ -100,7 +129,7 @@ export async function removeEntry(ctx, collection, entry) {
 
 // Runs a deletion and, when it changed the draft, offers the item back with Undo (the page's notice, until the draft
 // changes again). `run` gets the ctx to delete with; a deletion the person called off changes nothing and offers nothing.
-async function deleteWithUndo(ctx, word, name, run) {
+export async function deleteWithUndo(ctx, word, name, run) {
   const before = ctx.config;
   let changed = false;
   await run({
@@ -117,15 +146,24 @@ async function deleteWithUndo(ctx, word, name, run) {
 const rowsOf = (card, ctx) => (card.rowsFor ? card.rowsFor(ctx) : card.rows) || [];
 const advOf = (card, ctx) => (card.advFor ? card.advFor(ctx) : card.adv) || [];
 
-// How many fields a part has, how many are required and how many are folded under Advanced: counted from its cards.
+// a row's value counts as given unless it is missing, empty words or an empty list
+const isEmpty = (value) => value === undefined || value === null || (typeof value === 'string' && !value.trim()) || (Array.isArray(value) && !value.length);
+
+// How many fields a part has, how many are required, how many required ones are still empty (`missing`) and how many
+// are folded under Advanced: counted from its cards.
 export function countPart(part, given) {
   let fields = 0;
   let required = 0;
+  let missing = 0;
   let advanced = 0;
   // an empty list still has its item's fields: counted on a stand-in first item
   const lists = Object.fromEntries(part.cols.flat().flatMap((card) => (card.list ? [[card.list.id, card.list]] : [])));
   const standIn = (l) => [...l.path, given.facts(l.path)?.kind === 'map' ? '_' : 0];
-  const ctx = { ...given, chosen: (id) => given.chosen(id) || (lists[id] ? { key: '', name: '', base: standIn(lists[id]), item: undefined } : null) };
+  // (a list gathered from several places, with no single path, has no stand-in: its card counts no rows while empty)
+  const ctx = {
+    ...given,
+    chosen: (id) => given.chosen(id) || (lists[id]?.path ? { key: '', name: '', base: standIn(lists[id]), item: undefined } : null),
+  };
   for (const card of part.cols.flat()) {
     // a list card's chips count as a field, unless the card also shows the chosen item's fields (they are the fields)
     if (card.list && card.of !== card.list.id) {
@@ -138,11 +176,16 @@ export function countPart(part, given) {
       if (!isShown(row, ctx)) continue;
       const path = row.pathFor ? row.pathFor(ctx.config) : row.path;
       const facts = path ? ctx.facts(path) : null;
-      if (tagsOf(row, facts, kindOf(row, facts), ctx.config).req) required += 1;
+      if (tagsOf(row, facts, kindOf(row, facts), ctx.config).req) {
+        required += 1;
+        // only a row that reads a value can be empty (a stand-in item's rows are not: the list is what is empty)
+        const real = !card.of || !!given.chosen(card.of);
+        if (real && (path || row.get) && isEmpty(readRow(path ? { ...row, path } : row, ctx.config))) missing += 1;
+      }
     }
     advanced += advOf(card, ctx).length;
   }
-  return { fields: fields + advanced, required, advanced };
+  return { fields: fields + advanced, required, missing, advanced };
 }
 
 // ---- lists of items (tools, channels, transfers…) -----------------------------------------------------------------
@@ -190,11 +233,18 @@ function useChoices(part, config, extra = {}) {
   }
   const listById = useMemo(() => Object.fromEntries(lists.map((l) => [l.id, l])), [lists]);
   const items = (id) => (listById[id] ? entriesOf(listById[id], config, extra) : []);
+  // where each list's chosen item was: an item renamed under its card (its key is its name, as a check's "Its name") is
+  // the same item in the same place, so the card stays on it rather than jumping to the first
+  const lastBase = useRef({});
   const chosen = (id) => {
     const all = items(id);
-    return all.find((e) => e.key === picked[id]) || all[0] || null;
+    const same = (e) => JSON.stringify(e.base) === lastBase.current[id];
+    const found = all.find((e) => e.key === picked[id]) || (lastBase.current[id] ? all.find(same) : null) || all[0] || null;
+    if (found) lastBase.current[id] = JSON.stringify(found.base);
+    return found;
   };
   const choose = (id, key) => {
+    delete lastBase.current[id];
     setPicked((old) => ({ ...old, [id]: key }));
     if (route.view === 'bot') replaceRoute(routeHref(route.botId, route.tab, { ...route.params, item: `${id}:${key}` }));
   };
@@ -257,6 +307,7 @@ export function DetailedPage({ part, editor, extra = {}, request = null, notices
     const path = request?.path;
     if (!Array.isArray(path)) return;
     for (const l of lists) {
+      if (!Array.isArray(l.path)) continue;
       if (path.length > l.path.length && l.path.every((p, i) => String(p) === String(path[i]))) {
         const key = path[l.path.length];
         const item = getAtPath(config, [...l.path, key]);
@@ -281,7 +332,9 @@ export function DetailedPage({ part, editor, extra = {}, request = null, notices
     } else if (config !== removed.after) setRemoved(null);
   }, [config, removed]);
   const deleted = (label, previous) => setRemoved({ label, previous });
-  const ctx = { config, set: editor.setValue, editor, facts, engine, schema, issues, deleted, ...choices, ...extra };
+  // the kinds of personal detail the server can find, for the redaction and personal-detail checkboxes (10.1)
+  const redactionKinds = useRedactionKinds();
+  const ctx = { config, set: editor.setValue, editor, facts, engine, schema, issues, deleted, redactionKinds, request, ...choices, ...extra };
   if (editor.parsed.error || !config || typeof config !== 'object') {
     return (
       <div className="dtBroken" role="status">
@@ -320,7 +373,8 @@ export function DetailedPage({ part, editor, extra = {}, request = null, notices
         />
       )}
       {notices}
-      <DetailedPart part={part} ctx={ctx} />
+      {/* a part may draw itself its own way (Agent: a profile), from the same rows */}
+      {part.render ? part.render(ctx) : <DetailedPart part={part} ctx={ctx} />}
     </div>
   );
 }
@@ -370,6 +424,53 @@ function ItemChips({ list, ctx, id, word }) {
   );
 }
 
+// A list's items as rows, each saying what it is (list.describe(entry, ctx) → { icon?, meta?, detail?, state? }) with an
+// Edit that opens its settings under the list; the chosen one is marked. Empty, it says what the list is for, with Add.
+//   state: { tone: 'good' | 'warn' | 'bad' | 'off', words }
+export function ItemRows({ list, ctx, id, word, add }) {
+  const entries = ctx.items(list.id);
+  const current = ctx.chosen(list.id);
+  if (!entries.length)
+    return (
+      <div className="dtIEmpty" id={id}>
+        <span className="dtIEmptyIcon" aria-hidden="true">
+          <Icon name={list.icon || 'plus'} size={20} />
+        </span>
+        <div>
+          <strong>{list.emptyTitle || `No ${word ? `${word}s` : 'items'} yet`}</strong>
+          {list.empty && <p>{list.empty}</p>}
+        </div>
+        {add}
+      </div>
+    );
+  return (
+    <ul className="dtIList" id={id} aria-label={list.label}>
+      {entries.map((entry) => {
+        const about = list.describe(entry, ctx) || {};
+        const on = current?.key === entry.key;
+        return (
+          <li key={entry.key} className={on ? 'on' : ''} data-item={entry.key}>
+            <span className="dtIIcon" aria-hidden="true">
+              <Icon name={about.icon || list.icon || 'list'} size={16} />
+            </span>
+            <div className="dtIText">
+              <span className={list.mono ? 'dtIName mono' : 'dtIName'}>{entry.name}</span>
+              {about.meta && <span className="dtIMeta">{about.meta}</span>}
+              {about.detail && <span className="dtIDetail">{about.detail}</span>}
+            </div>
+            {about.state ? <span className={`dtIState ${about.state.tone}`}>{about.state.words}</span> : <span />}
+            <Button type="button" variant={on ? 'quiet' : 'secondary'} size="small" aria-pressed={on} onClick={() => ctx.choose(list.id, entry.key)}>
+              {/* the visible words first, then whose: "Edit mx_bridge", "Editing below mx_bridge" */}
+              {on ? 'Editing below' : 'Edit'}
+              <span className="srOnly"> {entry.name}</span>
+            </Button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 // The part's cards by name, to jump to one on a long part; a dot marks a card holding something the checks found.
 function CardJumps({ part, ctx }) {
   const cards = part.cols.flat().map((card) => {
@@ -396,8 +497,22 @@ function CardJumps({ part, ctx }) {
   );
 }
 
+// The switch in a part's header that opens every "Advanced" fold, on every part, for this person (remembered)
+function AdvancedToggle({ partId, count }) {
+  const on = useShowAdvanced();
+  return (
+    <span className="dtAdvToggle" data-count={count}>
+      <Switch id={`dt-${partId}-showadv`} checked={on} label="Show advanced settings" onChange={setShowAdvanced} />
+      <label htmlFor={`dt-${partId}-showadv`}>
+        Show advanced settings <span className="dtAdvCount">· {count}</span>
+      </label>
+    </span>
+  );
+}
+
 export function DetailedPart({ part, ctx }) {
   const counts = countPart(part, ctx);
+  const section = useBuildSection(part.id);
   return (
     <section className="dtPart" data-part={part.id} aria-labelledby={`dt-${part.id}-title`} style={{ '--dt-hue': `var(--hue-${part.id}, var(--accent))` }}>
       <header className="dtHead">
@@ -405,16 +520,30 @@ export function DetailedPart({ part, ctx }) {
           {part.num}
         </span>
         <div className="dtHeadText">
-          <p className="dtEyebrow">Build › Detailed</p>
           <h1 id={`dt-${part.id}-title`}>{part.title}</h1>
           <p className="dtQuestion">{part.question}</p>
+          {(section || counts.missing > 0) && (
+            <p className="dtState">
+              {section && (
+                <span className={`dtStateChip ${section.state}`} data-state={section.state}>
+                  {STATE_WORDS[section.state] || section.state}
+                </span>
+              )}
+              {counts.missing > 0 && (
+                <span className="dtStateChip todo" data-missing={counts.missing}>
+                  {counts.missing} required {counts.missing === 1 ? 'field' : 'fields'} to fill in
+                </span>
+              )}
+              {section?.status && <span className="dtStateText">{section.status}</span>}
+            </p>
+          )}
         </div>
-        <ul className="dtCounts" aria-label="Fields">
-          <li>{counts.fields} fields</li>
-          {counts.required > 0 && <li className="req">{counts.required} required</li>}
-          <li className="adv">{counts.advanced} under Advanced</li>
-        </ul>
-        {ctx.actions && <div className="nlPageActions dtActions">{ctx.actions}</div>}
+        {(counts.advanced > 0 || ctx.actions) && (
+          <div className="dtHeadSide">
+            {counts.advanced > 0 && !ctx.forceAdvanced && <AdvancedToggle partId={part.id} count={counts.advanced} />}
+            {ctx.actions && <div className="nlPageActions dtActions">{ctx.actions}</div>}
+          </div>
+        )}
       </header>
       <CardJumps part={part} ctx={ctx} />
       {part.top && part.top(ctx)}
@@ -437,9 +566,14 @@ export function DetailedCard({ card, ctx, partId }) {
   const entry = card.of ? ctx.chosen(card.of) : null;
   // an item's card fades in when another item is chosen (not the card that holds the list of items)
   const box = useRef(null);
-  useFadeOnChange(box, card.of && !card.list ? entry?.key || '' : 'list');
-  const rows = card.of && !entry ? [] : rowsOf(card, ctx);
-  const adv = card.of && !entry ? [] : advOf(card, ctx);
+  useFadeOnChange(box, card.of && !card.list ? (entry ? JSON.stringify(entry.base) : '') : 'list');
+  // a search over the part (Agent's All settings) keeps the rows whose name or help says it
+  const q = String(ctx.rowFilter || '')
+    .trim()
+    .toLowerCase();
+  const says = (row) => !q || `${row.label || ''} ${typeof row.hint === 'string' ? row.hint : ''}`.toLowerCase().includes(q);
+  const rows = (card.of && !entry ? [] : rowsOf(card, ctx)).filter(says);
+  const adv = (card.of && !entry ? [] : advOf(card, ctx)).filter(says);
   const title = card.titleFor ? card.titleFor(entry, ctx) : card.title;
   const lead = typeof card.lead === 'function' ? card.lead(ctx, entry) : card.lead;
   const listed = card.list && !card.list.hidden ? ctx.items(card.list.id) : [];
@@ -454,6 +588,7 @@ export function DetailedCard({ card, ctx, partId }) {
       </section>
     );
   const word = card.word || card.list?.word;
+  if (q && !rows.some((row) => isShown(row, ctx)) && !adv.some((row) => isShown(row, ctx))) return null;
   return (
     <section
       ref={box}
@@ -475,7 +610,19 @@ export function DetailedCard({ card, ctx, partId }) {
       {card.body && card.body(ctx, entry)}
       {card.list && !card.list.hidden && (
         <DetailedRow
-          row={{ ...card.list, path: undefined, kind: 'custom', render: (c) => <ItemChips list={card.list} ctx={ctx} id={c.id} word={word} /> }}
+          row={{
+            ...card.list,
+            path: undefined,
+            kind: 'custom',
+            // a list that says what each item is shows a row per item, the whole width of the card
+            wide: card.list.wide ?? !!card.list.describe,
+            render: (c) =>
+              card.list.describe ? (
+                <ItemRows list={card.list} ctx={ctx} id={c.id} word={word} add={<AddToList list={card.list} ctx={ctx} word={word} />} />
+              ) : (
+                <ItemChips list={card.list} ctx={ctx} id={c.id} word={word} />
+              ),
+          }}
           ctx={ctx}
           partId={partId}
         />
@@ -488,13 +635,24 @@ export function DetailedCard({ card, ctx, partId }) {
         ))}
       {entry && card.remove && (
         <div className="dtItemFoot">
-          <Button type="button" variant="secondary" size="small" onClick={() => deleteWithUndo(ctx, card.word, entry.name, (c) => card.remove(c, entry))}>
-            Delete {card.word ? `this ${card.word}` : `“${entry.name}”`}
-          </Button>
+          {card.keep?.(ctx, entry) ? (
+            <p className="dtNote">{card.keep(ctx, entry)}</p>
+          ) : (
+            <Button type="button" variant="secondary" size="small" onClick={() => deleteWithUndo(ctx, card.word, entry.name, (c) => card.remove(c, entry))}>
+              Delete {card.word ? `this ${card.word}` : `“${entry.name}”`}
+            </Button>
+          )}
         </div>
       )}
       {adv.filter((row) => isShown(row, ctx)).length > 0 && (
-        <AdvancedFoot key={entry?.key || 'card'} rows={adv.filter((row) => isShown(row, ctx))} ctx={ctx} partId={partId} cardId={card.id} />
+        <AdvancedFoot
+          key={entry ? JSON.stringify(entry.base) : 'card'}
+          rows={adv.filter((row) => isShown(row, ctx))}
+          ctx={ctx}
+          partId={partId}
+          cardId={card.id}
+          openAll={!!ctx.forceAdvanced}
+        />
       )}
     </section>
   );
@@ -513,9 +671,17 @@ export function DetailedRow({ row: spec, ctx, partId }) {
   const change = (next) => ctx.set(writeRow(row, ctx.config, next));
   const at = row.errPath || row.path;
   const problem = at && (ctx.issues || []).find((i) => at.every((part, n) => String(i.path[n]) === String(part)));
+  // the server's own word that it doesn't run this yet (agent config guide 8), read from its report every time
+  const notRun = row.serverNote === false ? '' : notRunAt(ctx.editor?.report?.unsupported, row.notRunPath || row.path);
+  // a list of steps reads best the whole width of the card, under its name
+  const stacked = kind === 'form' && isStepList(value) && value.length > 3;
   return (
-    <div className={`dtRow ${tags.tryout ? 'tryout' : ''}`} data-field={`${partId}.${row.id}`} data-path={row.path ? row.path.join('.') : undefined}>
-      <div className="dtLabel">
+    <div
+      className={['dtRow', tags.tryout && 'tryout', row.wide && 'wide', stacked && 'stacked'].filter(Boolean).join(' ')}
+      data-field={`${partId}.${row.id}`}
+      data-path={row.path ? row.path.join('.') : undefined}
+    >
+      <div className={row.wide ? 'dtLabel srOnly' : 'dtLabel'}>
         <label htmlFor={id} id={`${id}-label`}>
           {row.label}
         </label>
@@ -528,13 +694,14 @@ export function DetailedRow({ row: spec, ctx, partId }) {
         <Control kind={kind} row={row} id={id} value={value} onChange={change} facts={facts} ctx={ctx} />
         {problem && <small className="stFieldError">{row.errorText ? row.errorText(problem) : problem.message}</small>}
         {row.note && <small className="dtNote">{typeof row.note === 'function' ? row.note(ctx.config, ctx) : row.note}</small>}
+        {notRun && <small className="dtNote">Not run yet: the server keeps this but does not act on it ({notRun}).</small>}
       </div>
     </div>
   );
 }
 
-const optionsOf = (row, facts, config, item = false) => {
-  const own = typeof row.options === 'function' ? row.options(config) : row.options;
+const optionsOf = (row, facts, config, item = false, ctx = null) => {
+  const own = typeof row.options === 'function' ? row.options(config, ctx) : row.options;
   return own || (item ? facts?.itemChoices : facts?.choices) || [];
 };
 
@@ -588,7 +755,7 @@ function Control({ kind, row, id, value, onChange, facts, ctx }) {
       );
     }
     case 'ch': {
-      const options = optionsOf(row, facts, ctx.config);
+      const options = optionsOf(row, facts, ctx.config, false, ctx);
       const current = value === undefined ? facts?.def : value;
       return (
         <div className="dtPills" role="radiogroup" aria-labelledby={labelled} id={id}>
@@ -609,8 +776,14 @@ function Control({ kind, row, id, value, onChange, facts, ctx }) {
       );
     }
     case 'multi': {
-      const options = optionsOf(row, facts, ctx.config, true);
+      const offered = optionsOf(row, facts, ctx.config, true, ctx);
       const chosen = Array.isArray(value) ? value : [];
+      // a value the config holds that isn't offered (written by hand, or no longer listed) still shows, ticked, so what
+      // the agent really uses is never hidden and can be unticked
+      const options = [
+        ...offered,
+        ...chosen.filter((v) => !offered.some((o) => o.value === v)).map((v) => ({ value: v, label: String(v).replace(/_/g, ' ') })),
+      ];
       return (
         <div className="dtPills" role="group" aria-labelledby={labelled} id={id}>
           {options.map((option) => {
@@ -633,7 +806,7 @@ function Control({ kind, row, id, value, onChange, facts, ctx }) {
     }
     case 'pickchips': {
       // chosen values as chips, and a list of the rest to add one from
-      const options = optionsOf(row, facts, ctx.config, true);
+      const options = optionsOf(row, facts, ctx.config, true, ctx);
       const chosen = Array.isArray(value) ? value : [];
       const nameOf = (v) => options.find((o) => o.value === v)?.label || String(v);
       return (
@@ -680,7 +853,10 @@ function Control({ kind, row, id, value, onChange, facts, ctx }) {
         <ChipList id={id} label={row.label} items={Array.isArray(value) ? value : []} onChange={onChange} placeholder={row.placeholder} disabled={disabled} />
       );
     case 'pick': {
-      const options = optionsOf(row, facts, ctx.config);
+      const listed = optionsOf(row, facts, ctx.config, false, ctx);
+      // a value the list doesn't have (set elsewhere, or from an older list) still shows as itself, never as "Choose…"
+      const unlisted = value !== undefined && value !== null && value !== '' && !listed.some((option) => String(option.value) === String(value));
+      const options = unlisted ? [{ value, label: row.valueLabel ? row.valueLabel(value) : String(value) }, ...listed] : listed;
       return (
         <Select
           id={id}
@@ -728,11 +904,12 @@ export function ChipList({ id, label, items, onChange, placeholder, disabled }) 
     <div className="dtChips">
       {items.length > 0 && (
         <ul aria-label={label}>
-          {items.map((item) => (
-            <li key={String(item)}>
+          {/* by place: the same words twice (the schema allows it) are two chips, and × takes away only the one pressed */}
+          {items.map((item, at) => (
+            <li key={`${at}:${String(item)}`}>
               <span>{String(item)}</span>
               {!disabled && (
-                <button type="button" aria-label={`Remove “${item}”`} onClick={() => onChange(items.filter((i) => i !== item))}>
+                <button type="button" aria-label={`Remove “${item}”`} onClick={() => onChange(items.filter((_, i) => i !== at))}>
                   <Icon name="close" size={12} />
                 </button>
               )}
@@ -763,11 +940,17 @@ export function ChipList({ id, label, items, onChange, placeholder, disabled }) 
   );
 }
 
-// The card's foot: "Advanced · N" and the folded settings by name; opened, the same rows as above.
-function AdvancedFoot({ rows, ctx, partId, cardId }) {
-  const [open, setOpen] = useState(false);
+// The card's foot: "Advanced · N" and the folded settings by name; opened, the same rows as above. It starts open while
+// the person has "Show advanced settings" on, and can still be folded by hand.
+function AdvancedFoot({ openAll = false, ...props }) {
+  const showAll = useShowAdvanced() || openAll;
+  // drawn afresh when the switch changes, so every fold follows it
+  return <AdvancedFold key={showAll ? 'all' : 'one'} {...props} showAll={showAll} />;
+}
+function AdvancedFold({ rows, ctx, partId, cardId, showAll }) {
+  const [open, setOpen] = useState(showAll);
   return (
-    <Fold className="dtAdv" onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <Fold className="dtAdv" open={showAll} onToggle={(event) => setOpen(event.currentTarget.open)}>
       {/* the names stay in view while it is folded, so what is in there is never a surprise */}
       <summary>
         <span className="dtAdvTitle">
@@ -813,10 +996,21 @@ export function newItem(ctx, path, word) {
   return { config: setPath(ctx.config, path, [...list, item]), key: hasId ? key : String(list.length) };
 }
 
+// past this many items a list can be searched, and shows the first few until asked for all
+const MANY = 16;
+const FEW = 24;
+
 export function InlineItems({ ctx, id, path, word, label, nameOf, make, collection }) {
   const [open, setOpen] = useState(null);
+  const [query, setQuery] = useState('');
+  const [all, setAll] = useState(false);
   const entries = entriesOf({ path, nameOf }, ctx.config);
   const current = entries.find((e) => e.key === open) || null;
+  const many = entries.length > MANY;
+  const q = query.trim().toLowerCase();
+  const matching = q ? entries.filter((e) => `${e.key} ${e.name}`.toLowerCase().includes(q)) : entries;
+  // the open one stays in view whatever is typed
+  const shown = (all || q ? matching : matching.slice(0, FEW)).concat(current && !matching.includes(current) ? [current] : []);
   const add = () => {
     const made = make ? make(ctx) : newItem(ctx, path, word);
     if (!made) return;
@@ -842,8 +1036,23 @@ export function InlineItems({ ctx, id, path, word, label, nameOf, make, collecti
     });
   return (
     <>
+      {many && (
+        <div className="dtFind">
+          <Icon name="search" size={14} />
+          <Input
+            size="small"
+            value={query}
+            aria-label={`Search ${label}`}
+            placeholder={`Search ${entries.length} ${word}s`}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <span className="dtFindCount" aria-live="polite">
+            {q ? `${matching.length} of ${entries.length}` : all || entries.length <= FEW ? `${entries.length} in all` : `${FEW} of ${entries.length}`}
+          </span>
+        </div>
+      )}
       <div className="dtItems" id={id} role="group" aria-label={label}>
-        {entries.map((entry) => (
+        {shown.map((entry) => (
           <button
             key={entry.key}
             type="button"
@@ -854,6 +1063,11 @@ export function InlineItems({ ctx, id, path, word, label, nameOf, make, collecti
             {entry.name}
           </button>
         ))}
+        {many && !q && !all && entries.length > FEW && (
+          <Button type="button" variant="quiet" size="small" onClick={() => setAll(true)}>
+            Show all {entries.length}
+          </Button>
+        )}
         <Button type="button" variant="secondary" size="small" className="dtAddBtn" onClick={add}>
           <Icon name="plus" size={14} />
           Add {withA(word)}
@@ -878,7 +1092,13 @@ export function InlineItems({ ctx, id, path, word, label, nameOf, make, collecti
 }
 
 // A short name for one item of a list, for the chips of a folded group: its own words, else its name or kind.
+// A step with a condition says so, so two lines that never both run don't read as if they did:
+// "“Photo received.” (only when the state photo is set)".
 export function briefOf(item, i = 0, config = null) {
+  const core = briefCore(item, i, config);
+  return item && typeof item === 'object' && item.when && typeof item.when === 'object' ? `${core} (only when ${describeCondition(item.when)})` : core;
+}
+function briefCore(item, i = 0, config = null) {
   if (item == null) return '';
   if (typeof item === 'string' && Array.isArray(config?.messages)) {
     // a fixed line named by its id: its words
@@ -887,6 +1107,11 @@ export function briefOf(item, i = 0, config = null) {
   }
   if (typeof item !== 'object') return String(item);
   const text = (v) => (typeof v === 'string' ? v : v && typeof v === 'object' ? text(v.text ?? v.say ?? Object.values(v)[0]) : '');
+  // a picture step as its sentence ("Ask for the camera, keep it in selfie"), not its machine name
+  if (PICTURE_STEPS.has(item.type)) {
+    const words = describeAction(item);
+    return words.length > 48 ? `${words.slice(0, 47)}…` : words;
+  }
   if (item.id && item.text !== undefined && text(item.text)) {
     const words = text(item.text);
     return `“${words.length > 40 ? `${words.slice(0, 39)}…` : words}”`;
@@ -928,6 +1153,19 @@ export function FormRow({ row, id, value, ctx }) {
   if (!row.path) return <span className="dtNote">{row.missing || 'Not available until it is set up above.'}</span>;
   const items = Array.isArray(value) ? value : Array.isArray(value?.do) ? value.do : null;
   const set = value !== undefined && value !== null && !(Array.isArray(value) && value.length === 0);
+  // a list of steps reads as numbered cards, each with its own Edit (a few steps stay a short line of chips)
+  const isSteps = isStepList(value) && value.length > 3;
+  if (isSteps && !open)
+    return (
+      <div className="dtFormRow">
+        <StepsView steps={value} path={row.path} ctx={ctx} label={row.label} />
+        <div className="dtFormSummary">
+          <Button type="button" variant="quiet" size="small" id={id} aria-labelledby={`${id} ${id}-label`} aria-expanded={false} onClick={() => setOpen(true)}>
+            Edit all the steps
+          </Button>
+        </div>
+      </div>
+    );
   return (
     <div className="dtFormRow">
       <div className="dtFormSummary">

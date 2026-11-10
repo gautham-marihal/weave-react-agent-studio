@@ -289,12 +289,42 @@ export function parseMaxDuration(minutes) {
 }
 
 // ---- when something goes wrong --------------------------------------------------------------------------------------
+const FIELD_NAMES = {
+  number: 'Number',
+  environment: 'Environment',
+  allowed_addresses: 'Allowed addresses',
+  max_call_duration_s: 'Longest call',
+  record_audio: 'Record the call audio',
+  krisp: 'Noise filtering',
+};
+// "body.allowed_addresses.0: value is not a valid IP" -> "Allowed addresses (1): value is not a valid IP"
+export function fieldWords(details) {
+  const inner = String(details || '')
+    .replace(/^The app sent a malformed request \(/, '')
+    .replace(/\)\.?$/, '');
+  if (!inner) return '';
+  return inner
+    .split('; ')
+    .map((part) => {
+      const [where, ...rest] = part.split(': ');
+      const steps = where.split('.').filter((s) => s && s !== 'body' && s !== 'query');
+      const field = FIELD_NAMES[steps[0]] || steps[0] || 'A field';
+      const index = steps.length > 1 && /^\d+$/.test(steps[1]) ? ` (${Number(steps[1]) + 1})` : '';
+      return `${field}${index}: ${rest.join(': ') || 'not accepted'}`;
+    })
+    .join('. ');
+}
+
 export function numbersProblem(error) {
   if (!error) return '';
   const detail = text(error.message);
   if (error.status === 503)
     return 'This server has no phone-system (LiveKit) credentials, so numbers cannot be set up from here yet. Ask whoever runs the server.';
   if (error.status === 502) return `The phone system could not be reached or refused this${detail ? `: ${detail}` : '.'}`;
+  // a 422 whose detail is a list is the server's check of the fields (a number or address of the wrong shape): what was
+  // typed, said field by field, not "the studio sent something it couldn't read"
+  if (error.status === 422 && error.kind === 'client_bug')
+    return fieldWords(error.details) || 'The server did not accept what was typed. Check the number and the addresses.';
   if (error.status === 409 || error.status === 422) return detail || 'The server did not accept this number.';
   if (error.status === 404) return detail && !/^Request failed/.test(detail) ? detail : 'The server could not find that number or agent.';
   if (error.status === 405) return 'This server cannot manage phone numbers yet.';

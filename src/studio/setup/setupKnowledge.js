@@ -13,10 +13,15 @@ export const KNOWLEDGE_ID = 'knowledge';
 // The base under that id, if it is the setup's kind (documents and web pages, "vector_store"). A base of another kind
 // under the same id (your own search service) has nothing to list, and the simple controls leave it alone.
 const knowledgeBase = (config) => list(config?.knowledge).find((b) => isObj(b) && b.id === KNOWLEDGE_ID) || null;
+// With no base under that id, the first base of documents and pages (made elsewhere, under its own name, such as
+// "help_center"): the one the Knowledge part shows, so reading, adding and removing all agree on it.
 const ownBase = (config) => {
   const base = knowledgeBase(config);
-  return base?.type === 'vector_store' ? base : null;
+  if (base) return base.type === 'vector_store' ? base : null;
+  return list(config?.knowledge).find((b) => isObj(b) && b.type === 'vector_store' && typeof b.id === 'string' && b.id) || null;
 };
+// that base's id (the setup's own when there is none yet)
+const ownId = (config) => ownBase(config)?.id || KNOWLEDGE_ID;
 // One page however it was typed: "https://example.com" and "https://example.com/" are the same address.
 const pageKey = (url) => {
   try {
@@ -38,18 +43,19 @@ export function knowledgeOf(config) {
     pages: pages.map((s) => s.url),
     // how far each page is followed: 0 the page alone, 1 the pages it links to as well
     depths: Object.fromEntries(pages.map((s) => [s.url, Number(s.crawl_depth) || 0])),
-    attached: list(entryOf(config)?.knowledge).includes(KNOWLEDGE_ID),
+    attached: list(entryOf(config)?.knowledge).includes(ownId(config)),
   };
 }
 
 // What uses the setup's base: the agents that read it on every turn, and the knowledge tools that search it (by id).
 function usesOf(config) {
+  const id = ownId(config);
   return {
     agents: list(config?.agents?.items)
-      .filter((a) => isObj(a) && list(a.knowledge).includes(KNOWLEDGE_ID))
+      .filter((a) => isObj(a) && list(a.knowledge).includes(id))
       .map((a) => a.id),
     tools: list(config?.tools)
-      .filter((t) => isObj(t) && t.type === 'knowledge' && t.source === KNOWLEDGE_ID)
+      .filter((t) => isObj(t) && t.type === 'knowledge' && t.source === id)
       .map((t) => t.id),
   };
 }
@@ -68,18 +74,20 @@ export function readersOf(config, baseId) {
 
 // readersOf in a sentence, e.g. "Read by Billing and Sales in every conversation." ('' when nothing uses it)
 export function readersInWords(config, baseId) {
-  const { tools } = readersOf(config, baseId);
   const every = list(config?.agents?.items)
     .filter((a) => isObj(a) && list(a.knowledge).includes(baseId))
     .map((a) => agentLabel(config, a.id));
-  const toolWords = tools.map((id) => {
+  return [every.length ? `Read by ${together(every)} in every conversation.` : '', lookedUpWith(config, baseId)].filter(Boolean).join(' ');
+}
+
+// The knowledge tools that search a base, in a sentence: "Looked up with the “Search faq” tool (Billing)." ('' if none)
+export function lookedUpWith(config, baseId) {
+  const toolWords = readersOf(config, baseId).tools.map((id) => {
     const users = list(config?.agents?.items).filter((a) => isObj(a) && list(a.tools).includes(id));
     const by = users.length ? ` (${together(users.map((a) => agentLabel(config, a.id)))})` : ' (no agent has it yet)';
     return `the “${humanize(id)}” tool${by}`;
   });
-  return [every.length ? `Read by ${together(every)} in every conversation.` : '', toolWords.length ? `Looked up with ${together(toolWords)}.` : '']
-    .filter(Boolean)
-    .join(' ');
+  return toolWords.length ? `Looked up with ${together(toolWords)}.` : '';
 }
 
 // "Let <agent> use it": gives an unused base to the agent that answers. An "inject" base goes in its knowledge; a
@@ -95,9 +103,18 @@ export function attachBase(config, baseId) {
     agent.knowledge = [...list(agent.knowledge), baseId];
     return next;
   }
+  const tool = ensureKnowledgeTool(next, baseId);
+  if (list(agent.tools).includes(tool.id)) return config;
+  agent.tools = [...list(agent.tools), tool.id];
+  return next;
+}
+
+// The knowledge tool that searches a base, made (with a description the model can use) when there is none. Changes
+// `next` itself: call it on a copy.
+function ensureKnowledgeTool(next, baseId) {
   let tool = list(next.tools).find((t) => isObj(t) && t.type === 'knowledge' && t.source === baseId);
   if (!tool) {
-    const taken = [...list(next.tools).map((t) => t?.id), ...list(next.agents.items).flatMap((a) => list(a?.tools))];
+    const taken = [...list(next.tools).map((t) => t?.id), ...list(next.agents?.items).flatMap((a) => list(a?.tools))];
     tool = {
       id: freshId(taken, `search_${baseId}`),
       type: 'knowledge',
@@ -106,9 +123,93 @@ export function attachBase(config, baseId) {
     };
     next.tools = [...list(next.tools), tool];
   }
-  if (list(agent.tools).includes(tool.id)) return config;
-  agent.tools = [...list(agent.tools), tool.id];
+  return tool;
+}
+
+// Which agents read a base, and setting them, the one way its mode allows (agent config guide 2.11; the server's check
+// refuses the other way): an "inject" base is in the agent's own `knowledge` list and no knowledge tool may search it;
+// a "tool" base is searched through a knowledge tool in the agent's `tools` and is not in its `knowledge` list.
+export const baseReaders = (config, baseId) => readersOf(config, baseId).agents;
+export function setBaseReaders(config, baseId, agentIds) {
+  const base = list(config?.knowledge).find((b) => isObj(b) && b.id === baseId);
+  if (!base || !isObj(config?.agents)) return config;
+  const next = clone(config);
+  const inject = (base.mode || 'tool') === 'inject';
+  const searching = new Set(
+    list(next.tools)
+      .filter((t) => isObj(t) && t.type === 'knowledge' && t.source === baseId)
+      .map((t) => t.id),
+  );
+  const tool = !inject && agentIds.length ? ensureKnowledgeTool(next, baseId) : null;
+  next.agents.items = list(next.agents.items).map((agent) => {
+    if (!isObj(agent)) return agent;
+    const wanted = agentIds.includes(agent.id);
+    const knowledge = list(agent.knowledge).filter((k) => k !== baseId);
+    if (wanted && inject) knowledge.push(baseId);
+    // an agent that already searches it through a tool of its own keeps that tool
+    const hasOwn = list(agent.tools).some((t) => searching.has(t));
+    let tools = list(agent.tools);
+    if (inject || !wanted) tools = tools.filter((t) => !searching.has(t) && t !== tool?.id);
+    else if (!hasOwn) tools = [...tools, tool.id];
+    const changed = { ...agent, knowledge, tools };
+    if (!knowledge.length) delete changed.knowledge;
+    if (!tools.length && !('tools' in agent)) delete changed.tools;
+    return changed;
+  });
+  // a knowledge tool on an "inject" base is refused by the server's check: it goes (the agents' lists were cleared above)
+  if (inject) next.tools = list(next.tools).filter((t) => !(isObj(t) && searching.has(t.id)));
+  if (!list(next.tools).length && !Array.isArray(config.tools)) delete next.tools;
   return next;
+}
+// The search tools of a base that have settings of their own (a description someone wrote, top_k, on_error…): what
+// switching it to "every turn" loses, since that mode can't have a search tool, and switching back makes a plain one.
+// [{ id, settings: ['its own description', 'top_k', …] }]
+export function searchToolsLost(config, baseId = ownId(config)) {
+  return list(config?.tools)
+    .filter((t) => isObj(t) && t.type === 'knowledge' && t.source === baseId)
+    .map((t) => {
+      const plain = `Search ${humanize(baseId).toLowerCase()} when the caller asks something it may answer.`;
+      const settings = [
+        ...(typeof t.description === 'string' && t.description !== plain ? ['its own description'] : []),
+        ...Object.keys(t).filter((k) => !['id', 'type', 'source', 'description'].includes(k)),
+      ];
+      return { id: t.id, settings };
+    })
+    .filter((t) => t.settings.length);
+}
+
+// How many passages a search of a base brings back: a search tool's own `top_k` wins over the base's (schema), so
+// while one is set that is the number used, and setting the number sets it there too.
+const ownCounts = (config, baseId) =>
+  list(config?.tools).filter((t) => isObj(t) && t.type === 'knowledge' && t.source === baseId && typeof t.top_k === 'number');
+export function passagesOf(config, baseId) {
+  const base = list(config?.knowledge).find((b) => isObj(b) && b.id === baseId);
+  const tool = (base?.mode || 'tool') === 'tool' ? ownCounts(config, baseId)[0] : null;
+  return tool ? tool.top_k : typeof base?.top_k === 'number' ? base.top_k : null;
+}
+export function setPassages(config, baseId, count) {
+  const at = list(config?.knowledge).findIndex((b) => isObj(b) && b.id === baseId);
+  if (at < 0) return config;
+  const next = clone(config);
+  const n = typeof count === 'number' && Number.isFinite(count) ? count : undefined;
+  if (n === undefined) delete next.knowledge[at].top_k;
+  else next.knowledge[at].top_k = n;
+  ownCounts(next, baseId).forEach((t) => {
+    if (n === undefined) delete t.top_k;
+    else t.top_k = n;
+  });
+  return next;
+}
+
+// Changing how a base is searched keeps the same agents reading it, moved to the way the new mode allows.
+export function setBaseMode(config, baseId, mode) {
+  const at = list(config?.knowledge).findIndex((b) => isObj(b) && b.id === baseId);
+  if (at < 0) return config;
+  const readers = baseReaders(config, baseId);
+  const next = clone(config);
+  if (mode === undefined || mode === '') delete next.knowledge[at].mode;
+  else next.knowledge[at].mode = mode;
+  return setBaseReaders(next, baseId, readers);
 }
 
 // Who reads the documents and pages, for the Knowledge page: the agent that answers (or will answer), else the agents
@@ -154,13 +255,13 @@ function setSources(config, change) {
     next.knowledge = all;
     // a base nobody reads yet is given to the agent that answers; one already read (maybe by another agent), or made
     // elsewhere, keeps its setup
-    if (agent && base.mode === 'inject' && !usesOf(next).agents.length) agent.knowledge = [...list(agent.knowledge), KNOWLEDGE_ID];
+    if (agent && base.mode === 'inject' && !usesOf(next).agents.length) agent.knowledge = [...list(agent.knowledge), base.id];
   } else {
     // with no sources left the base goes, and so does the agent's use of it (removeKnowledge checks nothing else does)
     next.knowledge = all.filter((b) => b !== base);
     if (!next.knowledge.length) delete next.knowledge;
     if (agent && Array.isArray(agent.knowledge)) {
-      agent.knowledge = agent.knowledge.filter((id) => id !== KNOWLEDGE_ID);
+      agent.knowledge = agent.knowledge.filter((id) => id !== base.id);
       if (!agent.knowledge.length) delete agent.knowledge;
     }
   }

@@ -9,6 +9,12 @@ import { statusLine, testsPart } from '../src/studio/status.js';
 import {
   EXPECT_KINDS,
   addMockTo,
+  changeTurnKind,
+  describeImage,
+  describeTurn,
+  freshImageName,
+  sampleImage,
+  turnKind,
   describeExpectation,
   freshScenarioId,
   isUnknownExpectation,
@@ -80,17 +86,50 @@ function nimbus() {
   return config;
 }
 
-test('the kinds of expectation are exactly the ones the schema allows (all thirteen)', () => {
+test('the kinds of expectation are exactly the ones the schema allows (all sixteen, three of them about pictures)', () => {
   const engine = createEngine(schema);
   const items = engine.flatten(engine.flatten(engine.flatten(schema.properties.tests).items).properties.expect).items;
   const keys = engine
     .branchesOf(engine.flatten(items))
     .map((b) => Object.keys(engine.flatten(b).properties)[0])
     .sort();
-  assert.equal(keys.length, 13);
+  assert.equal(keys.length, 16);
   assert.deepEqual(EXPECT_KINDS.map((k) => k.key).sort(), keys);
   const props = engine.flatten(engine.flatten(schema.properties.tests).items).properties;
-  ['description', 'now', 'state', 'http_mocks', 'model_script'].forEach((key) => assert.ok(key in props, `the schema has ${key}`));
+  ['description', 'now', 'state', 'http_mocks', 'model_script', 'images', 'camera'].forEach((key) => assert.ok(key in props, `the schema has ${key}`));
+});
+
+test('pictures in a scenario: upload and camera turns name its sample pictures, and such a scenario can be saved', () => {
+  const config = support();
+  const s = {
+    ...newScenario(config),
+    images: { clear: sampleImage(), blurry: { ...sampleImage(), blur: 4 } },
+    turns: [{ say: 'I’d like to open an account.' }, { upload: 'blurry' }, { upload: 'clear' }, { camera: 'clear' }, { camera: null }],
+    expect: [{ screen_told: { type: 'image_rejected', code: 'too_blurry' } }, { images_held: 0 }, { said_not_matches: 'S1234567D' }],
+  };
+  assert.deepEqual(scenarioProblems(s, config), {}, 'the bug that refused every picture turn is gone');
+  assert.deepEqual(s.turns.map(turnKind), ['say', 'upload', 'upload', 'camera', 'camera']);
+  assert.equal(describeTurn({ upload: 'blurry' }), 'uploads the sample picture “blurry”');
+  assert.equal(describeTurn({ camera: null }), 'switches the camera off');
+  assert.equal(
+    describeExpectation({ screen_told: { type: 'image_rejected', code: 'too_blurry' } }),
+    'the screen is told a picture was turned down (too blurry)',
+  );
+  assert.equal(describeExpectation({ images_held: 0 }), 'no picture is still held at the end');
+  assert.equal(describeExpectation({ said_not_matches: 'S1234567D' }), 'the agent never says anything matching /S1234567D/');
+  // a picture turn naming no sample picture, a bad name, a camera that shows nothing known
+  assert.match(scenarioProblems({ ...s, turns: [{ upload: 'missing' }] }, config).turns, /sample pictures/);
+  assert.match(scenarioProblems({ ...s, images: {}, turns: [{ upload: 'clear' }] }, config).turns, /Add a sample picture/);
+  assert.match(scenarioProblems({ ...s, images: { 'Bad Name': {} } }, config).images, /lowercase/);
+  assert.match(scenarioProblems({ ...s, camera: 'nothing' }, config).images, /not one of the sample pictures/);
+  assert.match(scenarioProblems({ ...s, expect: [{ images_held: -1 }] }, config).expect[0], /whole number/);
+  assert.match(scenarioProblems({ ...s, expect: [{ said_not_matches: '(' }] }, config).expect[0], /not a valid pattern/);
+  // changing a turn's kind keeps the picture it named
+  assert.deepEqual(changeTurnKind({ upload: 'blurry' }, 'camera', s.images), { camera: 'blurry' });
+  assert.deepEqual(changeTurnKind({ say: 'Hi' }, 'upload', s.images), { upload: 'clear' });
+  assert.equal(describeImage({ ...sampleImage(), blur: 4, brightness: 0.35 }), 'Sample card · blur, dark');
+  assert.equal(describeImage({ text: 'hello' }), 'Not a picture (text)');
+  assert.equal(freshImageName(s.images, 'clear'), 'clear_2');
 });
 
 test('a new scenario starts valid on the first enabled channel, and ids stay unique', () => {

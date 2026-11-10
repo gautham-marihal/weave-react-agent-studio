@@ -108,9 +108,10 @@ export function KeyInput({ value, taken, pattern, onRename, disabled }) {
         onChange={(event) => setText(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
+          // Enter renames it and the keyboard stays in the box (blurring left it on the page itself)
           if (event.key === 'Enter') {
             event.preventDefault();
-            event.target.blur();
+            commit();
           }
         }}
       />

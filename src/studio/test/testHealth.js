@@ -1,4 +1,5 @@
 import { gateCheck } from '../release/gateCheck.js';
+import { coveredOnlySome, coveredOnlyText } from '../scenarios/runResults.js';
 import { formatWhen } from '../format.js';
 
 // "Ready to publish?": what the Test stage knows about the draft, in one verdict and a tile per kind of test (Scenarios,
@@ -56,13 +57,26 @@ export function testHealth({
       bars: bars(latestRun.passed || 0, failed, skipped, total),
       note: `Latest run ${formatWhen(latestRun.startedAt) || 'earlier'}${skipped ? `; ${skipped} live not run` : ''}`,
       // scenarios a run left out (live ones, which call a paid model, unless asked) are not failures: said as not run
-      chip: failed ? { text: `${failed} fail`, tone: 'bad' } : skipped ? { text: `${skipped} not run`, tone: 'warn' } : { text: 'All pass', tone: 'good' },
+      // a run that broke is never "All pass", whatever its counts say
+      chip:
+        latestRun.status === 'error'
+          ? { text: 'Run broke', tone: 'bad' }
+          : failed
+            ? { text: `${failed} fail`, tone: 'bad' }
+            : skipped
+              ? { text: `${skipped} not run`, tone: 'warn' }
+              : coveredOnlySome(latestRun, scenarioCount)
+                ? { text: `${latestRun.total || 0} of ${scenarioCount} ran`, tone: 'warn' }
+                : { text: 'All pass', tone: 'good' },
     });
-    counts.scenarios = failed
-      ? { text: `${failed} fail`, tone: 'bad' }
-      : skipped
-        ? { text: `${latestRun.passed || 0} pass, ${skipped} not run`, tone: 'warn' }
-        : { text: `${latestRun.passed || 0} of ${total}`, tone: 'good' };
+    counts.scenarios =
+      latestRun.status === 'error'
+        ? { text: 'run broke', tone: 'bad' }
+        : failed
+          ? { text: `${failed} fail`, tone: 'bad' }
+          : skipped
+            ? { text: `${latestRun.passed || 0} pass, ${skipped} not run`, tone: 'warn' }
+            : { text: `${latestRun.passed || 0} of ${total}`, tone: 'good' };
   }
 
   // simulated callers: their latest result this visit (a run saves nothing)
@@ -130,6 +144,12 @@ export function testHealth({
       verdict = { ok: false, title: 'Nothing tested yet', detail: 'Try it, then keep the conversations it must always get right.' };
     else if (failing)
       verdict = { ok: false, title: `Not yet: ${plural(failing, 'scenario')} ${failing === 1 ? 'fails' : 'fail'}`, detail: 'On the latest run.' };
+    // a run that broke or skipped everything, or ran only some scenarios, shows nothing passes (as the gate reads it)
+    else if (latestRun && latestRun.status === 'error') verdict = { ok: false, title: 'Not yet: the latest run broke', detail: 'Run the scenarios again.' };
+    else if (latestRun && latestRun.status === 'skipped')
+      verdict = { ok: false, title: 'Not yet: the latest run skipped everything', detail: 'Run the scenarios again.' };
+    else if (latestRun && latestRun.status === 'passed' && coveredOnlySome(latestRun, scenarioCount))
+      verdict = { ok: false, title: 'Not yet: only some scenarios ran', detail: `${coveredOnlyText(latestRun, scenarioCount)} Run them all.` };
     else if (look) verdict = { ok: false, title: `Nearly: ${plural(look, 'caller')} ${look === 1 ? 'needs' : 'need'} a look`, detail: 'The scenarios pass.' };
     else if (scenarioCount && !latestRun)
       verdict = { ok: false, title: 'Run the scenarios first', detail: `${plural(scenarioCount, 'scenario')} not run yet.` };

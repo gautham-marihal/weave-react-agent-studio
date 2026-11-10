@@ -1,0 +1,41 @@
+Preview
+Ended
+· Web chat
+Real agent
+Simulated
+
+Real agent. A live conversation with the saved draft through the server.
+
+Ended
+Agent
+
+Hello, this is Aria from OCBC. How can I help you today?
+
+You
+
+Hi, I want to deposit 1 million dollars.
+
+Agent
+
+Is this deposit for an account you already have with us, or would you like to open a new account for it?
+
+You
+
+I’d like to open a new account for it.
+
+Agent
+
+For SGD 1,000,000, the best fit is the Private Wealth Account with 3.10% p.a. on a 12-month fixed deposit. Another option is the Inheritance Holding Account at 2.25% p.a., with access anytime. Deposits are safe up to the legal insurance limit; above that, the bank’s strength matters, and proof of source can follow after opening. Would you like to open the account now with a quick form, ID photo, and video check?
+
+You
+
+No, that’s all. Thank you!
+
+Agent
+
+Thank you for choosing OCBC. Goodbye.
+
+The agent ended the conversation.
+The conversation ended.
+Chat again
+Talk instead

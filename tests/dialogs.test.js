@@ -88,3 +88,37 @@ test('leaving: nothing to lose goes at once; something to lose asks once, and St
     h.stop();
   }
 });
+
+test('a word to type: the host is told the word, the warning and the words after it; with no host the browser asks for the word and checks it', async () => {
+  const h = host(true);
+  try {
+    const warning = {
+      title: '1 protection is declared but not enforced',
+      text: 'The agent looks protected and is not.',
+      items: [{ feature: 'redaction', where: 'post_call.redaction' }],
+    };
+    assert.equal(
+      await askConfirm({ title: 'Put it live for customers?', typeWord: 'production', typeWordWhy: 'to put it live for customers anyway', warning }),
+      true,
+    );
+    assert.equal(h.asked[0].typeWord, 'production');
+    assert.equal(h.asked[0].typeWordWhy, 'to put it live for customers anyway');
+    assert.deepEqual(h.asked[0].warning, warning);
+  } finally {
+    h.stop();
+  }
+  const prompts = [];
+  for (const [typed, expected] of [
+    ['Production ', true],
+    ['prod', false],
+    [null, false],
+  ]) {
+    globalThis.window = { prompt: (text) => (prompts.push(text), typed), confirm: () => true };
+    try {
+      assert.equal(await askConfirm({ title: 'Go?', typeWord: 'production' }), expected, `typed ${typed}`);
+    } finally {
+      delete globalThis.window;
+    }
+  }
+  assert.match(prompts[0], /Type production to continue\.$/);
+});

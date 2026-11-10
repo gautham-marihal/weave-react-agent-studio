@@ -5,21 +5,24 @@ import { createDemoApi, memoryStorage, minimalConfig } from '../src/demo/demoApi
 import { diffConfigs } from '../src/demo/diff.js';
 import { validateDemo } from '../src/demo/demoValidate.js';
 import { DEMO_SAMPLE_IDS } from '../src/demo/demoMode.js';
+import { DEMO_SAMPLES } from '../src/demo/demoSamples.js';
 
 const schema = JSON.parse(readFileSync(new URL('./fixtures/agent-config.schema.json', import.meta.url), 'utf8'));
 const fresh = (options = {}) => createDemoApi({ storage: memoryStorage(), loadSchema: async () => schema, ...options });
 const call = async (api, method, path, body) => api.handle(method, path, body);
 
 test('the demo starts with a few agents, with some history to look at, and every seed is valid', async () => {
-  const api = fresh();
+  // the browser demo adds the sample agents (demoSamples.js) to the three starters
+  const api = fresh({ samples: DEMO_SAMPLES });
   const { body: list } = await call(api, 'GET', '/bots');
-  assert.deepEqual(list.map((b) => b.id).sort(), ['acme-support', 'bookings', 'front-desk']);
+  assert.deepEqual(list.map((b) => b.id).sort(), ['acme-support', 'bookings', 'front-desk', 'unbound-onboarding']);
   assert.deepEqual(list.map((b) => b.id).sort(), [...DEMO_SAMPLE_IDS].sort(), 'the agents Home calls samples are the ones it starts with');
   const support = list.find((b) => b.id === 'acme-support');
   assert.equal(support.latest_version, '0.1.1');
   assert.deepEqual(support.deployed, { development: '0.1.1', staging: '0.1.0' });
   for (const bot of list) {
     const { body: draft } = await call(api, 'GET', `/bots/${bot.id}/draft`);
+    if (bot.id === 'unbound-onboarding') assert.equal(draft.config.forms.length, 2, 'the sample keeps its whole configuration');
     const report = validateDemo(draft.config, bot.id);
     assert.equal(report.valid, true, `${bot.id}: ${JSON.stringify(report.errors)}`);
   }
@@ -186,4 +189,33 @@ test('demo: a made-up call says where the agent really runs, and a test conversa
   assert.deepEqual(placeCall(call, {}).summary, { id: 'c', ref: 'draft', version: 'draft' }, 'never put live: a test conversation');
   const tried = { summary: { id: 't', ref: 'draft', version: 'draft' } };
   assert.equal(placeCall(tried, { production: '1.0.0' }), tried);
+});
+
+test('a demo saved before a sample existed gets it, once', async () => {
+  const storage = memoryStorage();
+  const old = createDemoApi({ storage, loadSchema: async () => schema });
+  await call(old, 'GET', '/bots');
+  const now = createDemoApi({ storage, loadSchema: async () => schema, samples: DEMO_SAMPLES });
+  assert.ok(
+    (await call(now, 'GET', '/bots')).body.some((b) => b.id === 'unbound-onboarding'),
+    'added to the saved demo',
+  );
+  const again = createDemoApi({ storage, loadSchema: async () => schema, samples: DEMO_SAMPLES });
+  assert.equal((await call(again, 'GET', '/bots')).body.filter((b) => b.id === 'unbound-onboarding').length, 1, 'not added twice');
+  assert.deepEqual(storage.load().samples, ['unbound-onboarding'], 'remembered as added');
+});
+
+test('a newer version of a sample adds the settings its saved copy lacks, and keeps the ones it has', async () => {
+  const storage = memoryStorage();
+  const v1 = [{ ...DEMO_SAMPLES[0], version: 1, config: { ...DEMO_SAMPLES[0].config, tests: undefined } }];
+  delete v1[0].config.tests;
+  const first = createDemoApi({ storage, loadSchema: async () => schema, samples: v1 });
+  await call(first, 'GET', '/bots');
+  const saved = storage.load();
+  saved.bots['unbound-onboarding'].config.meta.name = 'Renamed by the person';
+  storage.save(saved);
+  const second = createDemoApi({ storage, loadSchema: async () => schema, samples: DEMO_SAMPLES });
+  const { body: draft } = await call(second, 'GET', '/bots/unbound-onboarding/draft');
+  assert.equal(draft.config.tests.length, DEMO_SAMPLES[0].config.tests.length, 'the scenarios are added');
+  assert.equal(draft.config.meta.name, 'Renamed by the person', 'what the person changed is kept');
 });

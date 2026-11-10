@@ -16,6 +16,8 @@ import {
   setTransferDelay,
   setTransferSay,
   transferOf,
+  transferSayOf,
+  whyKeepAgent,
 } from '../../../workflow/workflowOps.js';
 import {
   llmChoice,
@@ -33,7 +35,11 @@ import { whoTakesOver } from '../../../../demo/simulatedAgent.js';
 import { agentLabel, humanize } from '../../rowNames.js';
 import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
+import { fixedLineNote, lineOf, setLine } from '../../../form/speechLine.js';
 import { DetailedPage, removeEntry } from '../Detailed.jsx';
+import { clip } from '../describe.js';
+import SubagentsWorkspace from '../subagentsWorkspace/SubagentsWorkspace.jsx';
+import { firstOf } from '../subagentsWorkspace/subagentsWords.js';
 
 // 8 · Subagents and hand-overs: who answers, what each subagent does, and who passes callers to whom: the same
 // settings the Workflow canvas draws, as a form (one draft: a change here shows on the canvas and the other way round).
@@ -46,6 +52,32 @@ const agentsOf = (config) => list(config?.agents?.items).filter(isObj);
 const indexOfAgent = (config, id) => list(config?.agents?.items).findIndex((a) => isObj(a) && a.id === id);
 const nameOf = (config, id) => (id ? agentLabel(config, id) : '');
 const firstId = (config) => config?.agents?.entry || agentsOf(config)[0]?.id || '';
+
+// A subagent's row: whether it answers first, what it can use, who it passes to, and its job in a line
+function describeSubagent(entry, c) {
+  const a = isObj(entry.item) ? entry.item : {};
+  const tools = Array.isArray(a.tools) ? a.tools.length : 0;
+  const passes = Array.isArray(a.handoffs)
+    ? a.handoffs
+        .filter(isObj)
+        .map((h) => nameOf(c.config, h.to))
+        .filter(Boolean)
+    : [];
+  const role = typeof a.instructions === 'string' ? a.instructions : a.instructions?.role || '';
+  const first = a.id && a.id === firstId(c.config);
+  return {
+    icon: first ? 'agent' : 'subagent',
+    meta: [
+      first ? 'Answers first' : 'Takes over when asked',
+      tools ? `${tools} ${tools === 1 ? 'tool' : 'tools'}` : 'no tools',
+      passes.length ? `passes to ${passes.join(', ')}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    detail: role ? clip(role, 150) : 'No instructions yet: say what this one does.',
+    state: role ? null : { tone: 'bad', words: 'Needs instructions' },
+  };
+}
 
 // every hand-over to a subagent, across the agents
 const handoffEntries = (config) =>
@@ -255,11 +287,11 @@ const KINDS = [
   { value: 'standalone', label: 'Answers on its own' },
 ];
 
-export const subagentsPart = {
+export const subagentsForm = {
   id: 'subagents',
-  num: '8',
+  num: '9',
   title: 'Subagents and hand-overs',
-  question: 'Who answers, what each one does, and who passes callers to whom. The same things the Workflow canvas draws, as a form.',
+  question: 'Who answers first, what each subagent does, and who passes callers to whom. The Workflow canvas shows the same as a drawing.',
   top: (ctx) => <Strip {...ctx} />,
   cols: [
     [
@@ -285,6 +317,8 @@ export const subagentsPart = {
           label: 'Subagents',
           hint: 'One job each; choose one to set it up',
           nameOf: (a, i) => (isObj(a) && (a.name || a.id)) || `Subagent ${i + 1}`,
+          icon: 'subagent',
+          describe: describeSubagent,
           add: (config) => {
             const made = addSubagent(config, firstId(config), { name: 'New subagent' });
             return { config: made.config, key: made.id };
@@ -298,12 +332,28 @@ export const subagentsPart = {
         titleFor: (entry) => (entry ? `A subagent: ${entry.name}` : 'A subagent'),
         lead: 'Anything not set here comes from the agent (part 1).',
         remove: (c, entry) => removeEntry(c, 'agents', entry),
+        // as on its own page and the Workflow canvas
+        keep: (c, entry) =>
+          entry.key === firstOf(c.config)
+            ? 'It answers first, so it can’t be deleted. To delete it, choose another agent to answer first.'
+            : whyKeepAgent(c.config, entry.key),
         rowsFor: (c) => {
           const entry = c.chosen('agents');
           if (!entry) return [];
           return [
             itemRow(entry, ['name'], { id: 'name', label: 'Name', kind: 'text' }),
-            itemRow(entry, ['kind'], { id: 'kind', label: 'What kind', kind: 'ch', options: KINDS }),
+            {
+              ...itemRow(entry, ['kind'], { id: 'kind', label: 'What kind', kind: 'ch', options: KINDS }),
+              // the runtime ignores the hand-overs of an agent that answers on its own (the Workflow makes such an agent
+              // a router when one is added): said here, where the kind is chosen
+              note: (config) => {
+                const agent = getAtPath(config, entry.base);
+                const n = list(agent?.handoffs).length;
+                return agent?.kind === 'standalone' && n
+                  ? `It has ${n} hand-over${n === 1 ? '' : 's'}, which an agent that answers on its own never makes. Choose “Passes callers on” to keep ${n === 1 ? 'it' : 'them'}.`
+                  : '';
+              },
+            },
             // while it is the only agent, its words are the Agent part's (asked there, once)
             {
               id: 'same',
@@ -387,7 +437,6 @@ export const subagentsPart = {
           return [
             itemRow(entry, ['instructions', 'rules'], { id: 'rules', label: 'Rules', kind: 'list' }),
             itemRow(entry, ['instructions', 'conditional'], { id: 'sometimes', label: 'Only sometimes', kind: 'form' }),
-            itemRow(entry, ['vision'], { id: 'vision', label: 'Understands pictures', kind: 'form' }),
             itemRow(entry, ['channels'], {
               id: 'channels',
               label: 'Channels',
@@ -397,7 +446,19 @@ export const subagentsPart = {
                   .filter((ch) => isObj(ch) && ch.id)
                   .map((ch) => ({ value: ch.id, label: ch.id })),
             }),
-            itemRow(entry, ['on_enter'], { id: 'enter', label: 'On taking over, it first…', kind: 'form' }),
+            itemRow(entry, ['on_enter'], {
+              id: 'enter',
+              label: 'On taking over, it first…',
+              kind: 'form',
+              // agent config guide 3.27: with these steps the model stays quiet afterwards unless `opening` is also set
+              note: (config) => {
+                const agent = getAtPath(config, entry.base);
+                const steps = Array.isArray(agent?.on_enter) ? agent.on_enter.length : 0;
+                return steps && !String(agent?.instructions?.opening || '').trim()
+                  ? 'After these steps it says nothing more until the caller speaks. To have it go on talking, write what it does in “When it takes over”.'
+                  : '';
+              },
+            }),
           ];
         },
       },
@@ -523,8 +584,32 @@ export const subagentsPart = {
                 return parts.length ? parts.join(' · ') : 'Nothing else passes callers here.';
               },
             },
-            itemRow(entry, ['announce'], { id: 'say', label: 'Say while handing over', kind: 'text', placeholder: 'One moment, let me get bookings.' }),
-            itemRow(entry, ['carry_context'], { id: 'context', label: 'The next agent knows what was said', kind: 'sw' }),
+            // its words, a fixed line's too, changed in place (form/speechLine.js)
+            {
+              ...itemRow(entry, ['announce'], { id: 'say', label: 'Say while handing over', kind: 'text', placeholder: 'One moment, let me get bookings.' }),
+              note: (config) => fixedLineNote(config, getAtPath(config, [...entry.base, 'announce'])),
+              get: (config) => lineOf(config, getAtPath(config, [...entry.base, 'announce'])).text,
+              put: (config, text) => setLine(config, [...entry.base, 'announce'], text || ''),
+            },
+            // on unless switched off (the schema's default), so an unset switch reads on
+            (() => {
+              const row = itemRow(entry, ['carry_context'], { id: 'context', label: 'The next agent knows what was said', kind: 'sw' });
+              return { ...row, get: (config) => row.get(config) !== false };
+            })(),
+            // what it records as it hands over, such as the caller's intent for later routing (the schema's set_state)
+            itemRow(entry, ['set_state'], { id: 'remember', label: 'It remembers', hint: 'Values set as it hands over, for later routing', kind: 'form' }),
+          ];
+        },
+        advFor: (c) => {
+          const entry = c.chosen('handoffs');
+          if (!entry) return [];
+          return [
+            itemRow(entry, ['tool'], {
+              id: 'name',
+              label: 'Name the model sees',
+              hint: 'Made for you; change it only to match a prompt that names it',
+              kind: 'text',
+            }),
           ];
         },
       },
@@ -585,10 +670,9 @@ export const subagentsPart = {
               id: 'say',
               label: 'Say while transferring',
               kind: 'text',
-              get: (config) => {
-                const { transfer } = transferOf(config, entry.key);
-                return list(transfer?.before).find((a) => isObj(a) && a.type === 'say')?.text || '';
-              },
+              // its words, a fixed line's too (changed in place: setTransferSay)
+              note: (config) => fixedLineNote(config, list(transferOf(config, entry.key).transfer?.before).find((a) => isObj(a) && a.type === 'say')?.text),
+              get: (config) => transferSayOf(config, entry.key),
               put: (config, text) => setTransferSay(config, entry.key, text || ''),
             },
             {
@@ -657,6 +741,8 @@ export const subagentsPart = {
     ],
   ],
 };
+
+export const subagentsPart = { ...subagentsForm, render: (ctx) => <SubagentsWorkspace ctx={ctx} form={subagentsForm} /> };
 
 // The part with the workspace's other agents and their numbers (a transfer to one of them is a hand-over to it).
 export function SubagentsPage({ editor, request, onShowJson, onGoTools }) {

@@ -1,0 +1,353 @@
+/* Build › Images & Videos (MediaWorkspace.jsx, Journey.jsx, StepPage.jsx, pictureEditors.jsx; canvas page "11 · Images
+   & Videos, redesigned"): the Agent profile's calm column in the part's own magenta, one picture's journey, a step's own
+   page and the tables of details and pairs. The card at the top, the notes, the dots, the step strip and the kind
+   tiles are Guardrails' own (guardrailsWorkspace.css, which brings Subagents', Connections' and Tools' pieces); only the
+   hue changes. Only the studio's tokens, so every style and both themes draw it in their own colours. */
+@import "../guardrailsWorkspace/guardrailsWorkspace.css";
+
+.mdWrap.grWrap {
+  --gr-hue: var(--hue-media, var(--accent));
+}
+/* the magenta is deep: on a dark page it is lifted, so its words keep their contrast */
+html[data-theme="dark"] .mdWrap.grWrap {
+  --gr-hue: color-mix(in srgb, var(--hue-media, var(--accent)) 55%, #ffffff);
+}
+.mdMono {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+.mdWrap .cvPills button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- one picture's journey ---- */
+.mdFigure {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.mdJr {
+  display: grid;
+  grid-template-columns: minmax(104px, 128px) repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--gr-hue) 18%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--gr-hue) 3%, var(--panel));
+}
+.mdJr.n4 {
+  grid-template-columns: minmax(104px, 128px) repeat(4, minmax(0, 1fr));
+}
+.mdLane {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.mdLane > span:last-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.mdLane b {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.mdLane small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mdLaneIcon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--gr-hue) 10%, var(--panel));
+  color: var(--gr-hue-text);
+}
+.mdSt {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mdSt:hover {
+  border-color: color-mix(in srgb, var(--gr-hue) 45%, var(--line2));
+}
+.mdSt:focus-visible {
+  outline: 2px solid var(--gr-hue);
+  outline-offset: 2px;
+}
+.mdSt.wide {
+  grid-column: span 2;
+}
+.mdSt.empty {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--gr-hue) 2%, var(--panel));
+}
+.mdSt.bad {
+  border-color: color-mix(in srgb, var(--danger-text) 40%, var(--line2));
+}
+.mdStHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gr-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mdStMain {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.mdSt.empty .mdStMain {
+  color: var(--muted);
+  font-weight: 500;
+}
+.mdSt small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.mdSt.bad small {
+  color: var(--danger-text);
+}
+.mdChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mdChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  max-width: 100%;
+  padding: 1px 7px;
+  border: 1px solid var(--line2);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.mdChip.quiet {
+  background: none;
+  color: var(--muted);
+}
+
+/* ---- chapter 2: the steps, by where they run ---- */
+.mdGroup + .mdGroup,
+.mdGroup + .apDoc {
+  margin-top: 12px;
+}
+.mdGroupHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding: 12px 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+.mdGroupHead b {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.mdGroupHead .stLink {
+  margin-left: auto;
+}
+.mdHonest {
+  margin: 0 0 12px;
+}
+.mdPopWays {
+  display: grid;
+  gap: 12px;
+}
+.mdPopWay {
+  display: grid;
+  gap: 4px;
+}
+.mdPopWay > b {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+
+/* ---- the editors ---- */
+.mdPicky {
+  display: grid;
+  gap: 12px;
+}
+.mdNums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.mdNum {
+  display: grid;
+  gap: 4px;
+  min-width: 140px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.mdTight {
+  margin-top: 6px;
+}
+.mdTable,
+.mdTryBox {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+}
+.mdT {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.mdT :is(input, select) {
+  width: 100%;
+  min-width: 0;
+}
+.mdT th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  /* the text colour, not the muted one: a try-out row's tint leaves muted words too faint in dark */
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.mdT td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.mdT tr:last-child td {
+  border-bottom: 0;
+}
+.mdCenter {
+  text-align: center;
+}
+.mdCheck {
+  width: 18px;
+  height: 18px;
+  margin-top: 8px;
+  accent-color: var(--gr-hue);
+}
+.mdSecret {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.mdSecret.on {
+  color: var(--gr-hue-text);
+  font-weight: 600;
+}
+.mdSecret:hover {
+  background: color-mix(in srgb, var(--gr-hue) 6%, transparent);
+}
+.mdSub {
+  display: block;
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+.mdTableFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.mdPickyAll {
+  display: grid;
+  gap: 6px;
+}
+.mdAdd {
+  display: grid;
+  gap: 12px;
+}
+.mdWhere {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.mdWhere .stFInput {
+  width: auto;
+  min-width: 260px;
+}
+.mdAddHead {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.mdSecond {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px dashed color-mix(in srgb, var(--gr-hue) 40%, var(--line2));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gr-hue) 3%, var(--panel));
+}
+.mdSecond > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  max-width: 60ch;
+}
+.mdSecond b {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.mdSecond .apHint {
+  margin: 0;
+}
+@media (max-width: 1100px) {
+  .mdJr,
+  .mdJr.n4 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .mdLane {
+    grid-column: 1 / -1;
+  }
+  .mdSt.wide {
+    grid-column: auto;
+  }
+}

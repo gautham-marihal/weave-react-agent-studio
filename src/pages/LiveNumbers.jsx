@@ -407,9 +407,10 @@ function NumberDialog({ existing = null, agents, settings, current: givenCurrent
   // warn about the environment chosen for a new number, or the one an existing number is being moved to
   const warnings = !existing || form.environment !== existing.environment ? setupWarnings({ env: form.environment, ...where, botName }) : [];
 
-  // check the number as it is typed, a moment after the last key
+  // check the number as it is typed, a moment after the last key; also when it doesn't look right here, so the server's
+  // own `reason` (FRONTEND_GUIDE 10.5: show it for `invalid`) replaces the studio's general sentence
   useEffect(() => {
-    if (existing || !typed || shapeProblem) return undefined;
+    if (existing || !typed) return undefined;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setChecking(true);
@@ -427,11 +428,14 @@ function NumberDialog({ existing = null, agents, settings, current: givenCurrent
       clearTimeout(timer);
       controller.abort();
     };
-  }, [typed, shapeProblem, existing]);
+  }, [typed, existing]);
 
   const checked = !existing && check && check.number === typed ? check : null;
   const words = checked ? (checked.status === 'error' ? { tone: 'bad', words: checked.reason } : checkWords(checked)) : null;
-  const blocked = existing ? false : !typed || !!shapeProblem || (checked ? checked.status !== 'free' : true);
+  // once the server has answered for what is typed, its words win; the studio's own sentence only while it hasn't
+  const serverAnswered = !!checked && checked.status !== 'error';
+  const fieldProblem = serverAnswered ? '' : shapeProblem;
+  const blocked = existing ? false : !typed || (serverAnswered ? checked.status !== 'free' : true);
 
   const submit = async () => {
     setSubmitted(true);
@@ -513,7 +517,7 @@ function NumberDialog({ existing = null, agents, settings, current: givenCurrent
       }
     >
       {!existing && (
-        <DialogField label="Number" hint={settings?.pattern ? 'Digits, with an optional + at the start.' : ''} error={shapeProblem}>
+        <DialogField label="Number" hint={settings?.pattern ? 'Digits, with an optional + at the start.' : ''} error={fieldProblem}>
           <input
             autoFocus
             inputMode="tel"
@@ -524,7 +528,7 @@ function NumberDialog({ existing = null, agents, settings, current: givenCurrent
           />
         </DialogField>
       )}
-      {!existing && typed && !shapeProblem && (
+      {!existing && typed && !fieldProblem && (
         <p className={`telephonyCheck ${words?.tone || 'muted'}`} role="status" aria-live="polite" data-check={checked?.status || (checking ? 'checking' : '')}>
           {checking && !checked ? 'Checking…' : words?.words || ''}
           {checked?.warnings.map((w) => (

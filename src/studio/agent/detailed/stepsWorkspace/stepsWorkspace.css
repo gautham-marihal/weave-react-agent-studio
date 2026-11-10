@@ -1,0 +1,699 @@
+/* Build › Steps (StepsWorkspace.jsx): the call as numbered steps, a lane per subagent. The studio's tokens only, so
+   every style and both themes draw it in their own colours. */
+
+.bsWrap {
+  gap: 24px;
+  max-width: 900px;
+}
+.bsEveryWord {
+  color: var(--good-text);
+  font-weight: 600;
+}
+.bsGuidedWord {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+html[data-theme] body .stPill.bsGuided {
+  --pill: var(--accent-text);
+}
+html[data-theme] body .stPill.bsWarn {
+  --pill: var(--warn-text);
+}
+.bsPart {
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.bsNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+/* ---- the sentence at the top ---- */
+.bsSummary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.bsSummary p {
+  flex: 1;
+  min-width: 260px;
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+  line-height: 1.6;
+}
+.bsBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--warn-text) 30%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warn-text) 7%, var(--panel));
+  color: var(--warn-text);
+  font-size: var(--fs-sm);
+}
+.bsBanner span {
+  flex: 1;
+}
+
+/* ---- a lane ---- */
+.bsLane {
+  display: grid;
+  gap: 10px;
+}
+.bsLaneHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+html[data-theme] body .bsLaneHead h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.bsLaneSub {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.bsAvatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.bsSteps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.bsItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: row;
+  gap: 8px;
+}
+.bsChildren {
+  display: grid;
+  gap: 8px;
+  margin-left: 40px;
+  padding-left: 14px;
+  border-left: 2px solid var(--line2);
+}
+
+/* ---- a step ---- */
+.bsStep {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.bsStep.open {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.bsStep.bad {
+  border-color: color-mix(in srgb, var(--danger-text) 35%, var(--line));
+}
+.bsRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 12px 8px;
+}
+.bsNoDrag {
+  flex: none;
+  width: 24px;
+}
+.bsRow .dragHandle {
+  flex: none;
+  margin-top: 4px;
+}
+.bsNum {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.bsKind {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  --k: var(--muted);
+  background: color-mix(in srgb, var(--k) 12%, var(--panel));
+  color: var(--k);
+}
+.bsKind.t-every {
+  --k: var(--good-text);
+}
+.bsKind.t-show {
+  --k: var(--info-text);
+}
+.bsKind.t-guided {
+  --k: var(--accent-text);
+}
+.bsKind.t-move {
+  --k: var(--warn-text);
+}
+.bsWords {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bsSay {
+  color: var(--textStrong);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.bsSub {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.bsBranches {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px;
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--warn-text) 25%, var(--line));
+}
+.bsBranchLine {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+.bsRow > .stPill {
+  flex: none;
+  margin-top: 6px;
+}
+.bsMenuBtn {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.bsMenuBtn:hover,
+.bsMenuBtn[data-state="open"] {
+  background: var(--surface2);
+  color: var(--textStrong);
+}
+
+/* what can't run as written, and what runs with a limit */
+.bsProblem {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line);
+  --p: var(--info-text);
+  background: color-mix(in srgb, var(--p) 6%, var(--panel));
+  color: var(--p);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.bsProblem span {
+  flex: 1;
+  min-width: 200px;
+}
+.bsProblem.danger {
+  --p: var(--danger-text);
+}
+.bsProblem.warn {
+  --p: var(--warn-text);
+}
+.bsProblem:last-child {
+  border-radius: 0 0 9px 9px;
+}
+.bsLaneNote {
+  border: 1px solid color-mix(in srgb, var(--info-text) 22%, var(--line));
+  border-radius: 10px;
+}
+
+/* ---- a step's editor ---- */
+.bsEditor {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+}
+.bsField {
+  display: grid;
+  gap: 6px;
+}
+.bsField > span {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.bsField small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.bsMore > summary {
+  color: var(--accent-text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.bsMore[open] > summary {
+  margin-bottom: 10px;
+}
+.bsEditorFoot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.bsSaved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.bsGrow {
+  flex: 1;
+}
+html[data-theme] body .bsRemove {
+  color: var(--danger-text);
+}
+.bsDecide {
+  display: grid;
+  gap: 10px;
+}
+.bsBranch {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.bsBranchTo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.bsBranchWhen {
+  grid-column: 2 / span 2;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.bsAddRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bsAddRow > :first-child {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* ---- adding a step ---- */
+.bsAddHere {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 22px;
+  /* it takes 8px of the gap between two steps, so steps are evenly spaced with or without one between them */
+  margin: -7px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.bsAddHere:hover,
+.bsAddHere:focus-visible,
+.bsSteps > .bsAddHere:last-child {
+  opacity: 1;
+}
+.bsAddLine {
+  flex: 1;
+  border-top: 2px dashed color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.bsAddWord {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bsSteps > .bsAddHere:last-child {
+  justify-content: flex-start;
+  width: auto;
+  height: 40px;
+  margin: 4px 0 0;
+  padding: 0 16px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--textStrong);
+}
+.bsSteps > .bsAddHere:last-child .bsAddLine {
+  display: none;
+}
+.bsAdd {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px -12px color-mix(in srgb, var(--textStrong) 25%, transparent);
+}
+.bsAddSay {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--accent-text);
+}
+.bsAddSay > input {
+  flex: 1;
+  min-width: 0;
+}
+.bsPreview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--panel));
+}
+.bsPreviewText {
+  display: grid;
+  flex: 1;
+  min-width: 200px;
+  gap: 2px;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.bsPreviewText small {
+  color: var(--muted);
+}
+.bsAddHelp {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.bsKinds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+.bsKindGroup {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+}
+.bsKindGroup > p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.bsKindBtn {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bsKindBtn:hover,
+.bsKindBtn:focus-visible {
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+}
+.bsKindText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.bsKindText b {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.bsKindText small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.bsAddFoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.bsAddFoot span {
+  flex: 1;
+}
+.bsFoot {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+/* ---- in your words ---- */
+.bsWords2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.bsWords2.compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+.bsWordsIn,
+.bsWordsOut {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.bsWordsIn textarea {
+  font-size: var(--fs-sm);
+  line-height: 1.8;
+}
+.bsWordsActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bsWordsSum {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.bsWordsLane {
+  margin: 4px 0 0;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.bsWordsList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bsWordsList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.bsWordsList li.note {
+  border-color: color-mix(in srgb, var(--warn-text) 30%, var(--line));
+}
+.bsWordsList .bsKind {
+  width: 28px;
+  height: 28px;
+}
+.bsWordsText {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.bsWordsText small {
+  color: var(--warn-text);
+}
+.bsFine {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+/* ---- no steps yet ---- */
+.bsEmpty {
+  display: grid;
+  gap: 18px;
+  padding: 28px 32px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.bsEmptyHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+html[data-theme] body .bsEmptyHead h2 {
+  margin: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+}
+.bsEmptyHead p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.bsEmptyIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--accent-text);
+}
+.bsEmptyOr {
+  display: flex;
+}
+.bsEmptyLabel {
+  margin: 8px 0 0;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.bsStarters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.bsStarter {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bsStarter:hover,
+.bsStarter:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.bsStarter b {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.bsStarter span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .bsKinds,
+  .bsWords2,
+  .bsStarters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bsBranch {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bsBranchWhen {
+    grid-column: auto;
+  }
+  .bsChildren {
+    margin-left: 16px;
+  }
+}

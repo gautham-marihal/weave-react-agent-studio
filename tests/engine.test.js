@@ -134,3 +134,25 @@ test('the lists the pickers offer are read from any shape the JSON view leaves, 
   assert.deepEqual(collectRefOptions({ agents: { items: {} } }).agents, []);
   assert.deepEqual(collectRefOptions({ agents: { items: [{ id: 'a', handoffs: {} }, { handoffs: 'x' }, null] } }).tool_names, []);
 });
+
+test('an x-ref picker of a Build part offers what the schema allows: only web-API connections where it says http_connections (guide section 4)', async () => {
+  const { refChoices } = await import('../src/studio/form/engine.js');
+  const config = {
+    connections: {
+      crm: { type: 'http', base_url: 'https://crm.example' },
+      docs_server: { type: 'mcp', url: 'https://mcp.example' },
+      texts: { type: 'notifier', kind: 'sms', provider: 'x' },
+    },
+  };
+  assert.deepEqual(refChoices(config, 'http_connections'), [{ value: 'crm', label: 'crm' }]);
+  assert.deepEqual(
+    refChoices(config, 'mcp_connections').map((c) => c.value),
+    ['docs_server'],
+  );
+  assert.deepEqual(
+    refChoices(config, 'notifiers').map((c) => c.value),
+    ['texts'],
+  );
+  assert.deepEqual(refChoices(config, 'no_such_ref'), []);
+  assert.deepEqual(refChoices(null, 'http_connections'), []);
+});

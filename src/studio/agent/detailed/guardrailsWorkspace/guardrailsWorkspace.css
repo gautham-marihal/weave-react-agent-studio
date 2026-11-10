@@ -1,0 +1,289 @@
+/* Build › Guardrails (GuardrailsWorkspace.jsx, CallPath.jsx, GuardrailPage.jsx; canvas page "8 · Guardrails,
+   redesigned"): the Agent profile's calm column in the part's own crimson, the path of one line through a call, and a
+   check's or rule's own page. The lists in a popover, the notes, the legend and the filters are Connections' own
+   (connectionsWorkspace.css, which brings Tools' step strip, sections, kind tiles and pills); the agent's round mark is
+   Subagents'. Only the studio's tokens, so every style and both themes draw it in their own colours. */
+@import "../subagentsWorkspace/subagentsWorkspace.css";
+
+.grWrap {
+  --gr-hue: var(--hue-guardrails, var(--accent));
+  --gr-hue-text: color-mix(in srgb, var(--gr-hue) 75%, var(--textStrong));
+}
+/* the part's crimson is deep: on a dark page it is lifted, so its words keep their contrast */
+html[data-theme="dark"] .grWrap {
+  --gr-hue: color-mix(in srgb, var(--hue-guardrails, var(--accent)) 55%, #ffffff);
+}
+.apWrap.grWrap {
+  --ap-hue: var(--gr-hue);
+  --tl-hue: var(--gr-hue);
+  --tl-hue-text: var(--gr-hue-text);
+  --cx-hue: var(--gr-hue);
+  --cx-hue-text: var(--gr-hue-text);
+  --sa-hue: var(--gr-hue);
+  --sa-hue-text: var(--gr-hue-text);
+}
+
+/* ---- the card at the top ---- */
+.grAvatarBig {
+  width: 56px;
+  height: 56px;
+  font-size: var(--fs-xl);
+}
+html[data-theme] body .grHero .apName h2 {
+  font-size: var(--fs-2xl);
+}
+.grSentence {
+  line-height: 1.75;
+}
+
+/* ---- the path of one line: the caller, the two sets of checks, the agent ---- */
+.grFigure {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.grLoop {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr) minmax(130px, 170px);
+  grid-template-rows: auto auto;
+  column-gap: 40px;
+  row-gap: 28px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--gr-hue) 18%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--gr-hue) 3%, var(--panel));
+}
+.grLines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.grLines path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--gr-hue) 30%, var(--line));
+  stroke-width: 1.5;
+}
+.grLines marker path {
+  fill: color-mix(in srgb, var(--gr-hue) 30%, var(--line));
+  stroke: none;
+}
+.grEnd {
+  display: flex;
+  align-items: center;
+  align-self: start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 48px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.grEnd.says {
+  grid-area: 1 / 1;
+}
+.grEnd.hears {
+  grid-area: 2 / 1;
+}
+.grGate {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.grGate[data-node="in"] {
+  grid-area: 1 / 2;
+}
+.grGate[data-node="out"] {
+  grid-area: 2 / 2;
+}
+.grGate.empty {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--gr-hue) 2%, var(--panel));
+}
+.grGate h4,
+.grWatch h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--gr-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.grGate h4 em {
+  margin-left: auto;
+  white-space: nowrap;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.grAgent {
+  display: grid;
+  grid-area: 1 / 3 / 3 / 4;
+  align-content: center;
+  align-self: center;
+  justify-items: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--gr-hue) 40%, var(--line2));
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gr-hue) 10%, transparent);
+}
+.grAgent > small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.grWho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--textStrong);
+}
+.grWho b {
+  overflow-wrap: anywhere;
+}
+.grAvatar {
+  width: 28px;
+  height: 28px;
+}
+.grChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.grChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 2px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  text-align: left;
+}
+button.grChip {
+  cursor: pointer;
+}
+button.grChip:hover {
+  border-color: color-mix(in srgb, var(--gr-hue) 45%, var(--line2));
+}
+.grChip small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.grChip.bad {
+  border-color: color-mix(in srgb, var(--danger-text) 35%, var(--line2));
+}
+.grChip.add {
+  border-style: dashed;
+  background: var(--panel);
+  color: var(--gr-hue-text);
+  font-weight: 600;
+}
+.grChip.quiet {
+  background: none;
+  color: var(--muted);
+}
+/* what really happens to it: checked every time, told to the agent, kept but not run yet, needs a look */
+.grDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.grDot.run {
+  background: var(--good);
+}
+.grDot.told {
+  border: 1.5px solid var(--muted);
+  background: var(--panel);
+}
+.grDot.kept {
+  border: 1.5px dashed var(--dim);
+  background: var(--panel);
+}
+.grDot.bad {
+  background: var(--danger-text);
+}
+.grWatch {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--gr-hue) 14%, var(--line));
+  border-radius: 14px;
+  background: var(--panel);
+}
+@media (max-width: 1100px) {
+  .grLoop {
+    column-gap: 24px;
+  }
+}
+
+/* ---- add a check: which words, then by what it does ---- */
+.grWhere {
+  justify-self: start;
+}
+
+/* ---- the chapters and a page ---- */
+.grWarn {
+  background: color-mix(in srgb, var(--warn-text) 7%, var(--panel));
+  color: var(--text);
+}
+.grChNote {
+  margin: 0 0 12px;
+}
+.grFact {
+  margin: 10px 0 0;
+}
+.tlSteps.grPath.n2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.tlSteps.grPath.n3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.grCompare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.grCompare > .stFInput {
+  flex: 0 1 160px;
+}
+.grCompare > input {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/* a line's words wrap beside its icon, not under it (a check's patterns or a rule can run long) */
+.grWrap .apLineText {
+  flex: 1 1 0;
+}
+.grBad {
+  background: color-mix(in srgb, var(--danger-text) 7%, var(--panel));
+  color: var(--text);
+}
+.grBad svg {
+  color: var(--danger-text);
+}

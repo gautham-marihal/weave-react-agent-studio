@@ -23,12 +23,17 @@ const keepKeys = (event) => {
 function Decision({ dialog }) {
   const cancelRef = useRef(null);
   const confirmRef = useRef(null);
+  const wordRef = useRef(null);
+  // a word to type first (dialog.typeWord): the confirm button works once it is typed, in any case
+  const [typed, setTyped] = useState('');
+  const wordOk = !dialog.typeWord || typed.trim().toLowerCase() === dialog.typeWord.toLowerCase();
+  const warning = dialog.warning;
   // what had focus when it was asked, to give it back to
   const [opener] = useState(() => document.activeElement);
   const danger = dialog.tone === 'danger';
   const notice = dialog.kind === 'notice';
   const decline = () => dialog.resolve(false);
-  const accept = () => dialog.resolve(true);
+  const accept = () => wordOk && dialog.resolve(true);
 
   return (
     <Dialog.Root open onOpenChange={(open) => !open && decline()}>
@@ -43,9 +48,10 @@ function Decision({ dialog }) {
             onEscapeKeyDown={(event) => event.stopPropagation()}
             onCloseAutoFocus={backTo(opener)}
             onOpenAutoFocus={(event) => {
-              // something that can't be undone starts on Cancel, so a stray Enter doesn't do it
+              // a word to type starts in its box; something that can't be undone starts on Cancel, so a stray Enter
+              // doesn't do it
               event.preventDefault();
-              (danger && !notice ? cancelRef.current : confirmRef.current)?.focus({ preventScroll: true });
+              (dialog.typeWord ? wordRef.current : danger && !notice ? cancelRef.current : confirmRef.current)?.focus({ preventScroll: true });
             }}
           >
             <div className="decisionHead">
@@ -63,13 +69,57 @@ function Decision({ dialog }) {
                 )}
               </div>
             </div>
+            {warning && (
+              <div className="stNotice error decisionWarning" role="note">
+                <span className="stNoticeIcon" aria-hidden="true">
+                  <Icon name="alert" size={16} />
+                </span>
+                <div className="stNoticeBody">
+                  {warning.title && <strong>{warning.title}</strong>}
+                  <div>
+                    {warning.text}
+                    {Array.isArray(warning.items) && warning.items.length > 0 && (
+                      <ul className="stPlain">
+                        {warning.items.map((item, index) => (
+                          <li key={index}>
+                            {item.feature} {item.where && <code>{item.where}</code>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {dialog.typeWord && (
+              <label className="stTypedConfirm decisionWord" htmlFor="decisionWord">
+                <span>
+                  Type <b>{dialog.typeWord}</b> {dialog.typeWordWhy || 'to continue'}
+                </span>
+                <input
+                  ref={wordRef}
+                  id="decisionWord"
+                  value={typed}
+                  onChange={(event) => setTyped(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      accept();
+                    }
+                  }}
+                  placeholder={dialog.typeWord}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
+            )}
             <div className="decisionActions">
               {!notice && (
                 <Button ref={cancelRef} type="button" onClick={decline}>
                   {dialog.cancelLabel}
                 </Button>
               )}
-              <button ref={confirmRef} type="button" className={danger ? 'dangerCta' : 'primaryCta'} onClick={accept}>
+              <button ref={confirmRef} type="button" className={danger ? 'dangerCta' : 'primaryCta'} onClick={accept} disabled={!wordOk}>
                 {dialog.confirmLabel}
               </button>
             </div>

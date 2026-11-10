@@ -164,6 +164,12 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
           {all.sampled ? 'They are left out of the numbers below.' : 'So there is nothing to time yet.'} Refresh to try again.
         </Notice>
       )}
+      {/* the newest 500 calls of each agent are read: past that, said as Monitoring says it */}
+      {data.truncated && (
+        <Notice kind="info" title={agentOnly ? 'This agent has more calls than were read' : 'Some agents have more calls than were read'}>
+          {agentOnly ? 'The numbers rest on its newest calls.' : 'The numbers rest on the newest calls of each agent.'}
+        </Notice>
+      )}
 
       {data.loading && !data.at ? (
         // the page's own shape while the calls are read, so nothing jumps when the numbers arrive
@@ -215,7 +221,10 @@ export default function SpeedPage({ bots = [], agentOnly = false, onOpenCall, on
               </p>
               <small>
                 {subject}, {all.sampled} call{all.sampled === 1 ? '' : 's'} and {s.answers} answer{s.answers === 1 ? '' : 's'} in the {period}
-                {all.totalCalls > all.sampled + data.failed ? ` (${PER_AGENT} calls of each agent, spread over the days, out of ${all.totalCalls})` : ''}.
+                {all.totalCalls > all.sampled + data.failed
+                  ? ` (${PER_AGENT} calls of each agent, spread over the days, out of ${data.truncated ? `the newest ${all.totalCalls}` : all.totalCalls})`
+                  : ''}
+                .
               </small>
             </div>
             {s.within !== null && (

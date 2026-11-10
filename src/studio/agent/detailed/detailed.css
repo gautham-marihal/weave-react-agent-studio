@@ -10,6 +10,7 @@
   --hue-tools: #d4602a;
   --hue-connections: #8a4b0b;
   --hue-channels: #0f7a4a;
+  --hue-media: #b4307a;
   --hue-workflow: #3b6fe0;
   --hue-subagents: #0e7490;
   --hue-guardrails: #a3122a;
@@ -23,7 +24,7 @@
 /* ---- the header ---- */
 .dtHead {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 18px;
   flex-wrap: wrap;
 }
@@ -43,14 +44,6 @@
   flex: 1;
   min-width: 260px;
 }
-.dtEyebrow {
-  margin: 0 0 4px;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
 html[data-theme] body .dtPart h1 {
   margin: 0;
   color: var(--textStrong);
@@ -62,31 +55,79 @@ html[data-theme] body .dtPart h1 {
   margin: 6px 0 0;
   color: var(--muted);
   font-size: var(--fs-md);
+  line-height: 1.5;
+  max-width: 68ch;
 }
-.dtCounts {
+/* the part's state, as the side list says it, and what it still asks for */
+.dtState {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 12px 0 0;
 }
-.dtCounts li {
-  padding: 4px 10px;
+.dtStateChip {
+  --pill: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pill) 10%, var(--panel));
+  color: var(--pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dtStateChip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.dtStateChip.done {
+  --pill: var(--good-text);
+}
+.dtStateChip.todo {
+  --pill: var(--warn-text, #8a5300);
+}
+.dtStateChip.attention {
+  --pill: var(--danger-text);
+}
+.dtStateText {
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.dtHeadSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+.dtAdvToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel);
+  white-space: nowrap;
+}
+.dtAdvToggle label {
   color: var(--text);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
 }
-.dtCounts li.req {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--danger-text) 10%, var(--panel));
-  color: var(--danger-text);
-}
-.dtCounts li.adv {
-  border-style: dashed;
+.dtAdvCount {
   color: var(--muted);
+  font-weight: 400;
 }
 
 /* ---- the columns and cards ---- */
@@ -568,17 +609,6 @@ html[data-theme] body .dtCard h2 {
   border-radius: var(--r-control, 8px);
   background: color-mix(in srgb, var(--surface2) 45%, var(--panel));
 }
-.dtPerService {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.dtPerService label {
-  display: grid;
-  gap: 4px;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
 .dtFormRow {
   display: grid;
   gap: 8px;
@@ -631,26 +661,6 @@ html[data-theme] body .dtCard h2 {
 .dtDrop.over {
   border-color: var(--accent);
   color: var(--textStrong);
-}
-.dtFound {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--fs-xs);
-}
-.dtFound li {
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: var(--surface2);
-}
-.dtFound li.left {
-  opacity: 0.7;
-}
-.dtFound p {
-  margin: 2px 0 0;
-  color: var(--text);
 }
 .dtCardAction {
   padding: 4px 0 8px;
@@ -795,7 +805,8 @@ html[data-theme] body .dtStrip h2 {
   background: var(--danger-text, #b42318);
 }
 .dtCard {
-  scroll-margin-top: calc(var(--under-bar, 140px) + 52px);
+  /* clear of the sticky card names above, which can take two rows */
+  scroll-margin-top: calc(var(--under-bar, 140px) + 100px);
 }
 .dtCard h2:focus {
   outline: none;
@@ -824,9 +835,6 @@ html[data-theme] body .dtStrip h2 {
   background: color-mix(in srgb, var(--accent) 4%, var(--surface2));
   box-sizing: border-box;
 }
-.dtNarrow {
-  max-width: 120px;
-}
 
 /* the Add buttons, over the studio's own button look */
 html[data-theme] body .dtAddBtn,
@@ -840,4 +848,823 @@ html[data-theme] body .dtAddBtn:hover,
 html[data-theme] body .dtAddPicker .stAddBtn:hover {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}
+
+/* a list that draws its own rows (Connections): the whole width of the card, its name read by screen readers only */
+.dtRow.wide {
+  flex-direction: column;
+  gap: 0;
+}
+.dtRow.wide .dtControl {
+  width: 100%;
+}
+
+/* ---- a list drawn as rows (connections, tools, channels…): what each is, where it stands, Edit; then the guided Add ---- */
+.dtIList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dtIList li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 8px);
+  background: var(--panel);
+}
+.dtIList li.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--accent) 5%, var(--panel));
+}
+.cnIcon,
+.dtIIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dt-hue, var(--accent)) 12%, var(--panel));
+  color: var(--dt-hue, var(--accent));
+  flex: none;
+}
+.dtIText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.dtIName {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dtIName.mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.dtIMeta,
+.dtIDetail {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.dtIState {
+  --pill: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pill) 10%, var(--panel));
+  color: var(--pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dtIState::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.dtIState.good {
+  --pill: var(--good-text);
+}
+.dtIState.warn {
+  --pill: var(--warn-text);
+}
+.dtIState.bad {
+  --pill: var(--danger-text);
+}
+.dtIState.off {
+  --pill: var(--muted);
+}
+.dtIEmpty {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: var(--r-control, 8px);
+  background: color-mix(in srgb, var(--accent) 3%, var(--panel));
+}
+.dtIEmpty > div {
+  flex: 1;
+  min-width: 0;
+}
+.dtIEmpty strong {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.dtIEmpty p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.dtIEmptyIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--accent);
+  flex: none;
+}
+@media (max-width: 720px) {
+  .dtIList li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .dtIList li > .dtIState,
+  .dtIList li > button {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .dtIEmpty {
+    flex-wrap: wrap;
+  }
+}
+
+/* the steps across the top of the Add dialog */
+.cnSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0 0 20px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--line);
+  list-style: none;
+}
+.cnSteps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.cnSteps li.on {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.cnStepNum {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.cnSteps li.on .cnStepNum {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+}
+.cnSteps li.done .cnStepNum {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--good-text) 14%, var(--panel));
+  color: var(--good-text);
+}
+.cnStep {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.cnStep legend,
+.cnReviewTitle {
+  margin: 0 0 4px;
+  padding: 0;
+  color: var(--textStrong);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.cnKinds,
+.cnSignIn {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+.cnKinds button,
+.cnSignIn button {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 8px);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cnKinds button:hover,
+.cnSignIn button:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.cnKinds button.on,
+.cnSignIn button.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.cnKinds button strong,
+.cnSignIn button strong {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.cnKinds button > span:last-child,
+.cnSignIn button > span:last-child {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.cnField {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.cnField > label,
+.cnLabel {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.cnHelp {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.cnNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-control, 8px);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.cnNote svg {
+  flex: none;
+  margin-top: 1px;
+}
+.cnPairs {
+  display: grid;
+  gap: 8px;
+}
+.cnPair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.cnPairs > button {
+  justify-self: start;
+}
+.cnReview {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 20px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 8px);
+  font-size: var(--fs-sm);
+}
+.cnReview dt {
+  color: var(--muted);
+}
+.cnReview dd {
+  margin: 0;
+  color: var(--textStrong);
+  overflow-wrap: anywhere;
+}
+.cnReview dd.mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.cnChecks {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.cnChecks li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.cnChecks li svg {
+  flex: none;
+  margin-top: 1px;
+}
+.cnChecks li.good {
+  color: var(--good-text);
+}
+.cnChecks li.warn {
+  color: var(--warn-text);
+}
+.cnChecks li.bad {
+  color: var(--danger-text);
+}
+.cnChecks li.info {
+  color: var(--muted);
+}
+.cnAdvanced {
+  display: grid;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-control, 8px);
+}
+.cnAdvanced[open] {
+  padding-bottom: 16px;
+}
+.cnAdvanced summary {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.cnFootSpace {
+  flex: 1;
+}
+
+/* ---- a list of steps as numbered cards (StepsView) ---- */
+.svBox {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+.svTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.svSum {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.svSum b {
+  color: var(--textStrong);
+  font-weight: 600;
+}
+.svNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.svList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.svStep {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: var(--r-control, 8px);
+  background: var(--panel);
+}
+.svStep.media {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+  background: color-mix(in srgb, var(--accent) 3%, var(--panel));
+}
+.svStep.open {
+  border-color: var(--accent);
+}
+.svHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.svNum {
+  flex: none;
+  min-width: 22px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.svKind {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-width: 128px;
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.svWords {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.svWhen,
+.svPicture {
+  margin-left: 32px;
+}
+.svWhen {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.svPicture {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--r-control, 8px);
+  background: var(--surface2);
+}
+.svPrompt {
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.svFacts {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.svEditor {
+  margin-top: 4px;
+}
+.svMore {
+  justify-self: start;
+}
+@media (max-width: 720px) {
+  .svHead {
+    flex-wrap: wrap;
+  }
+  .svKind {
+    min-width: 0;
+  }
+}
+
+/* a row whose control needs the whole width (a list of steps): its name and help above it */
+.dtRow.stacked {
+  flex-direction: column;
+  gap: 10px;
+}
+.dtRow.stacked .dtLabel {
+  width: auto;
+}
+.dtRow.stacked .dtControl {
+  width: 100%;
+}
+
+/* ---- Images & Videos (its workspace is mediaWorkspace/mediaWorkspace.css) ---- */
+.dtCard .psHonest {
+  margin: 10px 0 16px;
+}
+
+/* the library, one picture's details and the camera */
+.mvCount {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+.mvLib {
+  display: grid;
+  gap: 14px;
+}
+.mvBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.mvSearch {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.mvSearch svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.mvSearch input {
+  padding-left: 36px;
+}
+.mvGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mvRows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mvTile {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 8px);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mvTile:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.mvRows .mvTile {
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+}
+.mvThumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.mvImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mvCardWrap {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.mvCardWrap .spCard {
+  width: 100%;
+  max-width: 100%;
+}
+.mvCardWrap.large .spCard {
+  max-width: 460px;
+}
+.mvOther {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.mvText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.mvText b {
+  color: var(--textStrong);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.mvText small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.mvTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mvTag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.mvTag.muted {
+  background: var(--surface2);
+  color: var(--muted);
+}
+.mvSum,
+.mvNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.mvDetail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.mvStage {
+  display: grid;
+  place-items: center;
+  min-height: 300px;
+  padding: 16px;
+  border-radius: var(--r-card, 12px);
+  background: var(--surface2);
+}
+.mvStage .mvImg {
+  max-height: 60vh;
+  object-fit: contain;
+}
+.mvSide {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.mvUses {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.mvLink {
+  justify-self: start;
+  font-size: var(--fs-xs);
+}
+.mvActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mvMeasured {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 8px);
+}
+.mvFacts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.mvFacts dt {
+  color: var(--muted);
+}
+.mvFacts dd {
+  margin: 0;
+  color: var(--textStrong);
+  font-variant-numeric: tabular-nums;
+}
+.mvChecks {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.mvChecks li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text);
+}
+.mvChecks li svg {
+  flex: none;
+  margin-top: 2px;
+}
+.mvChecks li.good {
+  color: var(--good-text);
+}
+.mvChecks li.bad {
+  color: var(--danger-text);
+}
+.mvCam {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.mvCamStage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--r-card, 12px);
+  background: #101828;
+}
+.mvCamStage video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.mvCamOff {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 20px;
+  color: #e4e7ec;
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.mvCamOff b {
+  color: #fff;
+  font-size: var(--fs-md);
+}
+.mvCamOff span {
+  max-width: 380px;
+  color: #c4c9d4;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.mvCamSide {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .mvDetail,
+  .mvCam {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mvRows .mvTile {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .mvRows .mvTags {
+    grid-column: 2;
+  }
+}
+
+/* a long list of items in a row (remembered values): searched, the first few shown until asked for all */
+.dtFind {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.dtFind > svg {
+  flex: none;
+  color: var(--muted);
+}
+.dtFind input {
+  max-width: 280px;
+}
+.dtFindCount {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
 }

@@ -58,8 +58,12 @@ export function useDraftEditor(botId) {
   // moves the draft on to the next version number. Only when nothing is unsaved; a failed read changes nothing.
   const reloadQuietly = useCallback(async () => {
     if (dirtyRef.current) return;
+    const before = textRef.current;
     try {
-      applyDraft(await api.getDraft(botId));
+      const draft = await api.getDraft(botId);
+      // typed while the read was on its way: keep it (the next save says the draft moved on, and offers both)
+      if (dirtyRef.current || textRef.current !== before) return;
+      applyDraft(draft);
     } catch {
       /* the next save says if the revision is behind */
     }

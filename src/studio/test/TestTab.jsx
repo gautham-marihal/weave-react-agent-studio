@@ -12,8 +12,11 @@ import { navigate, routeHref } from '../route.js';
 import { useAsync } from '../useAsync.js';
 import { sameModels, summarizeModels } from '../models/config.js';
 import FormPrompt from './FormPrompt.jsx';
+import { formTimeLimit } from './formQueue.js';
+import PictureRequest, { PictureLine } from '../pictures/PictureRequest.jsx';
 import { drawsVoice, testability } from './channels.ts';
 import { DemoNote } from '../../demo/DemoBadge.jsx';
+import { DEFAULT_ACCEPT, DEFAULT_MAX_BYTES } from '../../demo/simulatedPictures.js';
 import TraceView from '../trace/TraceView.jsx';
 import { useTrace } from '../trace/useTrace.js';
 import { finalStateOf, toolsUsedIn } from '../trace/records.js';
@@ -26,6 +29,7 @@ import '../preview/preview.css';
 import '../models/models.css';
 import { randomTag } from '../format.js';
 import Button from '../../ui/Button.tsx';
+import { plainUnsupported } from '../preflight.ts';
 
 // The Test page: a conversation with the draft, by voice in a real session (LiveKit) or with the simulated agent (no
 // server), and what happened in each turn (the trace) beside it.
@@ -54,6 +58,13 @@ function clock(ms) {
 }
 
 function Bubble({ message, botName }) {
+  // what a picture request the agent made came to, where it happened in the conversation
+  if (message.role === 'picture')
+    return (
+      <div className="stTPictureLine">
+        <PictureLine picture={message.picture} />
+      </div>
+    );
   if (message.role === 'system')
     return (
       <div className="stTSystem" role="note">
@@ -122,12 +133,28 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
 
   // The saved draft is what a draft test runs; edits that aren't saved yet are not part of it.
   const config = editor.parsed.value;
+  const ranConfig = editor.savedConfig || config;
   const botName = config?.persona?.name || name;
-  const channelCfg = useMemo(() => (Array.isArray(config?.channels) ? config.channels.find((c) => c.id === info?.channel?.id) : null), [config, info]);
+  const channelCfg = useMemo(() => (Array.isArray(ranConfig?.channels) ? ranConfig.channels.find((c) => c.id === info?.channel?.id) : null), [ranConfig, info]);
   const inputs = info?.channel?.input || [];
   const isVoice = drawsVoice(info?.channel);
-  const imageCfg = ref === 'draft' ? channelCfg?.inputs?.image : null;
-  const unsupported = editor.report?.unsupported || [];
+  // what a picture sent unasked must be: the channel's own kinds and size on a draft test, the usual ones when unset
+  // (as the Media page says); a version's channel isn't read here, so the server alone checks it
+  const imageCfg = inputs.includes('image')
+    ? ref === 'draft'
+      ? {
+          ...channelCfg?.inputs?.image,
+          accepted_mime:
+            Array.isArray(channelCfg?.inputs?.image?.accepted_mime) && channelCfg.inputs.image.accepted_mime.length
+              ? channelCfg.inputs.image.accepted_mime
+              : DEFAULT_ACCEPT,
+          max_bytes: channelCfg?.inputs?.image?.max_bytes || DEFAULT_MAX_BYTES,
+        }
+      : {}
+    : null;
+  // the camera: the channel takes video and its camera isn't switched off
+  const cameraAllowed = inputs.includes('video') && channelCfg?.inputs?.video?.camera !== false;
+  const unsupported = plainUnsupported(editor.report?.unsupported);
 
   // The models a test runs with: a draft test runs the saved draft (not unsaved edits); a published version or an
   // environment runs that version, whatever the draft says now.
@@ -142,6 +169,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
   const webChannels = useMemo(() => offeredChannels(browserChannels(testConfig), serverChannels), [testConfig, serverChannels]);
   const channelId = webChannels.some((c) => c.id === channelPick) ? channelPick : webChannels[0]?.id || '';
   const simulated = mode === 'simulated';
+  // how long a form may take before the real agent ends the conversation for silence (a simulation never does)
+  const formLimit = simulated ? null : formTimeLimit(testConfig, session.info?.channel?.id);
   // a web voice channel is shown as a call (the orb and captions); a simulation of one is written out, but still looks like a call
   // the conversation's own channel while it runs, and once it has ended until another channel is picked
   const showsSession = !!info && (running || (status === 'ended' && info.channel?.id === channelId));
@@ -176,6 +205,13 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     const el = listRef.current;
     if (stickRef.current && el) el.scrollTop = el.scrollHeight;
   }, [messages, form]);
+  // a picture the agent asks for opens at its top, in the list's own scroll: it waits for an answer, so it is shown
+  const pictureId = session.picture?.id;
+  useEffect(() => {
+    const el = listRef.current;
+    const card = el?.querySelector('.pcCard');
+    if (el && card) el.scrollTop += card.getBoundingClientRect().top - el.getBoundingClientRect().top - 8;
+  }, [pictureId]);
   const onScroll = () => {
     const el = listRef.current;
     if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -198,11 +234,26 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !imageCfg) return;
-    const problem = pictureProblem(file, { acceptedMime: imageCfg.accepted_mime || [], maxBytes: imageCfg.max_bytes || 0 });
+    // while the agent asks for a photo, its own request decides what it takes; otherwise the channel's settings do
+    const problem = session.picture ? '' : pictureProblem(file, { acceptedMime: imageCfg.accepted_mime || [], maxBytes: imageCfg.max_bytes || 0 });
     setPictureNote(problem);
     if (problem) return;
-    await session.sendImage(file, imageCfg.topic || 'image-upload');
+    setPictureNote((await session.sendImage(file, imageCfg.topic)) || '');
   };
+  // a picture the agent asks for (MEDIA_PROTOCOL): the upload or the camera, answered in the conversation
+  const pictureCard = session.picture ? (
+    <PictureRequest
+      key={session.picture.id}
+      request={session.picture}
+      onSend={(file) => session.sendImage(file, imageCfg?.topic)}
+      onCamera={session.pictureCamera}
+      cameraOn={!!media.camera}
+      attachCamera={session.attachCamera}
+      simulated={simulated}
+    />
+  ) : null;
+  // the camera is wanted: a camera request, or a camera check's retake (a picture from the camera, never a file)
+  const cameraWanted = session.picture?.kind === 'camera' || !!session.picture?.cameraOnly;
 
   // A finished conversation becomes a starting scenario to edit (the caller's turns, the tools used, the final state).
   const canSave = messages.some((m) => m.role === 'user') && !running && !!config && editor.isObject && !editor.parsed.error;
@@ -396,7 +447,10 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                   again.
                 </Notice>
               )}
-              {form && !transcriptOpen && <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} />}
+              {form && !transcriptOpen && (
+                <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} limitS={formLimit} />
+              )}
+              {!transcriptOpen && pictureCard}
               <button type="button" className="stLink stTTranscriptToggle" onClick={() => setTranscriptOpen((v) => !v)} aria-expanded={transcriptOpen}>
                 {transcriptOpen ? 'Hide the transcript' : `Show the transcript (${messages.length})`}
               </button>
@@ -440,7 +494,11 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                     <>
                       <strong>No conversation yet</strong>
                       <span>
-                        Press “Start conversation”. The agent greets you first, then you can reply here{inputs.includes('audio') ? ' or by speaking' : ''}.
+                        Press “Start conversation”. {/* what its channel says first, from the draft that runs: a channel with no greeting waits */}
+                        {channelCfg && !channelCfg.greeting?.say
+                          ? 'This channel has no greeting, so the agent waits for you to start: write'
+                          : 'The agent greets you first, then you can reply'}{' '}
+                        here{inputs.includes('audio') ? ' or by speaking' : ''}.
                       </span>
                     </>
                   )}
@@ -479,7 +537,8 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                   again.
                 </Notice>
               )}
-              {form && <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} />}
+              {form && <FormPrompt key={form.requestId} form={form} onSubmit={session.submitForm} onDismiss={session.dismissForm} limitS={formLimit} />}
+              {pictureCard}
               <div ref={endRef} />
             </div>
           )}
@@ -521,7 +580,7 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                       <Icon name="mic" size={16} /> {media.mic ? 'Microphone on' : 'Microphone off'}
                     </button>
                   )}
-                  {inputs.includes('video') && (
+                  {cameraAllowed && (
                     <button
                       type="button"
                       className={`stTMediaBtn ${media.camera ? 'on' : ''}`}
@@ -552,8 +611,14 @@ export default function TestTab({ botId, name, summary, editor, session, mode = 
                         type="button"
                         className="stTMediaBtn"
                         onClick={() => fileRef.current?.click()}
-                        disabled={!connected || !imageCfg}
-                        title={imageCfg ? 'Send a picture' : 'Pictures can be sent when testing the draft'}
+                        disabled={!connected || !imageCfg || cameraWanted}
+                        title={
+                          cameraWanted
+                            ? 'The agent wants the camera now: use the card in the conversation'
+                            : imageCfg
+                              ? 'Send a picture'
+                              : 'Pictures can be sent when testing the draft'
+                        }
                       >
                         <Icon name="paperclip" size={16} /> Send a picture
                       </button>

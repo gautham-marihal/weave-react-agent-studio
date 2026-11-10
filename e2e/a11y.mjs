@@ -34,10 +34,15 @@ const B = '#/bots/acme-support';
 // [name, address, what shows when it is ready]
 const PAGES = [
   ...['home', 'bots', 'calls', 'live', 'monitoring', 'speed', 'alerts', 'voices', 'integrations', 'team', 'settings'].map((p) => [p, `#/${p}`, '.dashMain']),
-  ...['home', 'agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall']
+  ...['home', 'agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'media', 'steps', 'workflow', 'subagents', 'guardrails', 'aftercall']
     .concat(['tests', 'scenarios', 'checks', 'callers'])
     .concat(['versions', 'deploy', 'calls', 'monitoring', 'questions', 'speed', 'settings'])
     .map((p) => [`agent ${p}`, `${B}/${p}`, '.nlWorkspace']),
+  // Steps on an agent with a form and its many steps
+  ['agent steps, with a form', '#/bots/unbound-onboarding/steps', '.bsLane'],
+  // Images & Videos on an agent with every kind of picture step, and one step's own page
+  ['agent media, every kind', '#/bots/unbound-onboarding/media', '.mdHero'],
+  ['agent media, a reading', '#/bots/unbound-onboarding/media?item=reads:forms.0.on_submit.3', '.cxPage'],
   // Build › Guided, each of its nine steps
   ...['who', 'voice', 'knowledge', 'tools', 'channels', 'workflow', 'guardrails', 'aftercall', 'ready'].map((s) => [
     `guided ${s}`,
@@ -50,9 +55,18 @@ const SETUP = ['purpose', 'reach', 'voice', 'knowledge', 'actions', 'try', 'live
 // what opens over a page: [name, address, the control that opens it, what shows once it is open]
 const OVERLAYS = [
   ['create an agent', '#/bots?new=1', null, '[role=dialog]'],
-  ['a tool’s Advanced rows', `${B}/tools`, '[data-card="tools.tool"] .dtAdv > summary', '[data-card="tools.tool"] .dtAdvRows'],
-  ['a channel’s Advanced rows', `${B}/channels`, '[data-card="channels.channel"] .dtAdv > summary', '[data-card="channels.channel"] .dtAdvRows'],
-  ['a setting opened in place', `${B}/conversation`, '.dtFormRow button:has-text("Edit")', '.dtFormRow .stForm'],
+  // Tools: a quick ability opened in place, and a tool on its own page (the steps of one run)
+  ['a quick ability opened in place', `${B}/tools`, '.tlSentence .apTok', '.apPop'],
+  ['a tool on its own page', `${B}/tools`, '.apLine .apChange:has-text("Open")', '.tlPage .tlStep'],
+  // Connections: a part of the sentence opened in place, and a phone transfer as the path of the call
+  ['what it reaches, opened in place', `${B}/connections`, '.cxSentence .apTok', '.apPop'],
+  ['a phone transfer on its own page', `${B}/connections`, '[data-line^="tr:"] .apChange', '.cxPath .tlStep'],
+  // Channels: a way in on its own page, and the ways in switched in place
+  ['a way in on its own page', `${B}/channels`, '.chDoor:not(.missing)', '.cxPage'],
+  ['the ways in, opened in place', `${B}/channels`, '.chSentence .apTok', '.apPop'],
+  // Conversation opens on the call: a part of its sentence opens an editor in place, a chapter's line its settings
+  ['a part of the call opened in place', `${B}/conversation`, '.cvSentence .apTok', '.apPop'],
+  ['a setting opened in place', `${B}/conversation`, '.apLine:has-text("If a service fails") .apChange', '.apLine.open .dtRow'],
   ['the test panel', `${B}/home`, '.nlBar button:has-text("Test")', '.nlTestDock'],
   ['Describe', `${B}/home`, '.nlBar button:has-text("Describe")', '.nlDrawer'],
   ['a new scenario', `${B}/scenarios`, 'button:has-text("New scenario")', 'form.scForm'],

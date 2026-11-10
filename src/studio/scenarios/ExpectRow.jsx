@@ -18,6 +18,14 @@ import {
 import Select from '../../ui/Select.tsx';
 import { Input, TextArea } from '../../ui/Input.tsx';
 import { JsonBox, ValueBox } from './JsonBox.jsx';
+import { REJECTED_SHORT } from '../pictures/pictureProtocol.js';
+
+// what a scenario can check the screen was told (MEDIA_PROTOCOL section 1)
+const SCREEN_MESSAGES = [
+  { value: 'request_image', label: 'Asked for a picture' },
+  { value: 'image_rejected', label: 'Turned a picture down' },
+  { value: 'request_done', label: 'Ended a picture request' },
+];
 
 // One expectation row of the scenario editor: picks its kind and edits that kind's fields.
 export default function ExpectRow({ value, onChange, onRemove, index, config, reportBox }) {
@@ -128,6 +136,97 @@ export default function ExpectRow({ value, onChange, onRemove, index, config, re
           />
           {regexProblem(value.said_matches || '') && <small className="stFErr">Not a valid pattern: {regexProblem(value.said_matches)}</small>}
         </span>
+      )}
+
+      {kind === 'said_not_matches' && (
+        <span className="scField">
+          <Input
+            size="small"
+            mono
+            type="text"
+            value={value.said_not_matches || ''}
+            placeholder="a pattern, e.g. S\d{7}[A-Z]"
+            aria-label={label('pattern it must never match')}
+            aria-invalid={!!regexProblem(value.said_not_matches || '') || undefined}
+            onChange={(event) => onChange({ said_not_matches: event.target.value })}
+          />
+          {regexProblem(value.said_not_matches || '') && <small className="stFErr">Not a valid pattern: {regexProblem(value.said_not_matches)}</small>}
+        </span>
+      )}
+
+      {kind === 'images_held' && (
+        <Input
+          size="small"
+          type="number"
+          min={0}
+          step={1}
+          value={Number.isInteger(value.images_held) ? value.images_held : ''}
+          aria-label={label('how many pictures are still held')}
+          onChange={(event) => onChange({ images_held: event.target.value === '' ? 0 : Math.max(0, Math.round(Number(event.target.value))) })}
+        />
+      )}
+
+      {kind === 'screen_told' && (
+        <>
+          <Select
+            className="stFInput small"
+            value={value.screen_told?.type || 'request_image'}
+            aria-label={label('message')}
+            onChange={(event) => {
+              const type = event.target.value;
+              onChange({
+                screen_told:
+                  type === 'request_image' ? { type, kind: 'upload' } : type === 'image_rejected' ? { type, code: 'too_blurry' } : { type, status: 'received' },
+              });
+            }}
+          >
+            {SCREEN_MESSAGES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+          {(value.screen_told?.type || 'request_image') === 'request_image' && (
+            <Select
+              className="stFInput small"
+              value={value.screen_told?.kind || ''}
+              aria-label={label('asked for')}
+              onChange={(event) => onChange({ screen_told: { ...value.screen_told, kind: event.target.value || undefined } })}
+            >
+              <option value="">Either</option>
+              <option value="upload">An upload</option>
+              <option value="camera">The camera</option>
+            </Select>
+          )}
+          {value.screen_told?.type === 'image_rejected' && (
+            <Select
+              className="stFInput small"
+              value={value.screen_told?.code || ''}
+              aria-label={label('why it was turned down')}
+              onChange={(event) => onChange({ screen_told: { ...value.screen_told, code: event.target.value || undefined } })}
+            >
+              <option value="">Any reason</option>
+              {Object.entries(REJECTED_SHORT).map(([code, words]) => (
+                <option key={code} value={code}>
+                  {words.replace(/^./, (c) => c.toUpperCase())}
+                </option>
+              ))}
+            </Select>
+          )}
+          {value.screen_told?.type === 'request_done' && (
+            <Select
+              className="stFInput small"
+              value={value.screen_told?.status || ''}
+              aria-label={label('how it ended')}
+              onChange={(event) => onChange({ screen_told: { ...value.screen_told, status: event.target.value || undefined } })}
+            >
+              <option value="">In any way</option>
+              <option value="received">A picture came in</option>
+              <option value="timeout">Nothing came in time</option>
+              <option value="cancelled">Cancelled</option>
+            </Select>
+          )}
+        </>
       )}
 
       {kind === 'agent_is' && (

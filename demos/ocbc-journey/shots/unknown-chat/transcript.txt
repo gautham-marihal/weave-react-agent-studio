@@ -1,0 +1,41 @@
+Preview
+Ended
+· Web chat
+Real agent
+Simulated
+
+Real agent. A live conversation with the saved draft through the server.
+
+Ended
+Agent
+
+Hello, this is Aria from OCBC. How can I help you today?
+
+You
+
+Hi, I want to check my balance.
+
+Agent
+
+I can help you check your account balance. Please provide your 7-digit phone banking number.
+
+You
+
+My phone banking number is ****.
+
+Agent
+
+I couldn't find a customer with that phone banking number. Please check the number and let me know your 7-digit phone banking number again.
+
+You
+
+No, that’s all. Thank you!
+
+Agent
+
+Thank you for choosing OCBC. Goodbye.
+
+The agent ended the conversation.
+The conversation ended.
+Chat again
+Talk instead

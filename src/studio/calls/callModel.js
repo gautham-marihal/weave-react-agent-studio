@@ -32,18 +32,67 @@ export const RANGES = [
   { id: '7d', label: 'Past 7 days', hours: 24 * 7 },
   { id: '30d', label: 'Past 30 days', hours: 24 * 30 },
   { id: 'all', label: 'All time', hours: null },
+  // any two days (the server's since and until, FRONTEND_GUIDE 10.3)
+  { id: 'dates', label: 'Choose dates…', hours: null },
 ];
+
+// ---- a range of days: "YYYY-MM-DD" strings, read in the person's own time zone (a day is their day)
+const pad = (n) => String(n).padStart(2, '0');
+export const dayKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+export const dayOf = (key) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+};
+// since: the first day's start; until: the end of the last day (the next day's start), so the last day is whole
+export function datesQuery(from, to) {
+  const a = dayOf(from);
+  const b = dayOf(to || from);
+  if (!a || !b) return {};
+  const [first, last] = a <= b ? [a, b] : [b, a];
+  const after = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1);
+  return { since: first.toISOString(), until: after.toISOString() };
+}
+// "Tue 28 Oct" and how many days, for the line under the calendar
+export function datesWords(from, to) {
+  const a = dayOf(from);
+  const b = dayOf(to || from);
+  if (!a || !b) return '';
+  const [first, last] = a <= b ? [a, b] : [b, a];
+  const day = (d) => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  const count = Math.round((last - first) / 86400000) + 1;
+  return count === 1 ? `${day(first)} · 1 day` : `${day(first)} to ${day(last)} · ${count} days`;
+}
+// the weeks of a month, Monday first, with the days of the months around it to fill the rows: [[{ key, day, inMonth }]]
+export function monthWeeks(year, month) {
+  const first = new Date(year, month, 1);
+  const lead = (first.getDay() + 6) % 7; // Monday = 0
+  const start = new Date(year, month, 1 - lead);
+  const weeks = [];
+  for (let w = 0; w < 6; w += 1) {
+    const week = [];
+    for (let d = 0; d < 7; d += 1) {
+      const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + d);
+      week.push({ key: dayKey(date), day: date.getDate(), inMonth: date.getMonth() === month });
+    }
+    // a sixth row only when the month needs it
+    if (w < 5 || week.some((x) => x.inMonth)) weeks.push(week);
+  }
+  return weeks.filter((week) => week.some((x) => x.inMonth));
+}
 export const sinceFor = (rangeId, nowMs = Date.now()) => {
   const r = RANGES.find((x) => x.id === rangeId);
   return r?.hours ? new Date(nowMs - r.hours * 3600 * 1000).toISOString() : undefined;
 };
 
 // The filters of the screen -> the query of GET /bots/{id}/calls.
-export function queryFor({ range = '7d', caller = '', channel = '', status = '' } = {}, { limit = 25, cursor, nowMs } = {}) {
+export function queryFor({ range = '7d', caller = '', channel = '', status = '', from = '', to = '' } = {}, { limit = 25, cursor, nowMs } = {}) {
+  const dates = range === 'dates' ? datesQuery(from, to) : {};
   return {
     limit,
     cursor,
-    since: sinceFor(range, nowMs),
+    since: range === 'dates' ? dates.since : sinceFor(range, nowMs),
+    // only with chosen days (the query keeps no empty key)
+    ...(dates.until ? { until: dates.until } : {}),
     caller: String(caller || '').trim() || undefined,
     channel: channel || undefined,
     status: status || undefined,

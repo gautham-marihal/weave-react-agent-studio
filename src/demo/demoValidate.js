@@ -112,6 +112,37 @@ export function validateDemo(config, botId) {
     const kind = isObj(tool) ? tool.type : undefined;
     if (UNSUPPORTED_TOOL_KINDS[kind]) unsupported.push({ feature: UNSUPPORTED_TOOL_KINDS[kind], where: `tools[${index}]` });
   });
+  // guardrails the runtime keeps but does not run yet, in the real validator's words (answered 2026-11-05; agent config
+  // guide 8): code-enforced checks on what the agent says, topic limits and escalation rules. A rule in words runs.
+  const guard = isObj(config.guardrails) ? config.guardrails : {};
+  list(guard.output).forEach((rule, index) => {
+    if (isObj(rule) && rule.type && rule.type !== 'statement')
+      unsupported.push({ feature: `guardrail '${rule.type}' (a code-enforced check)`, where: `guardrails.output[${index}]` });
+  });
+  if (isObj(guard.topics) && Object.keys(guard.topics).length) unsupported.push({ feature: 'topic limits', where: 'guardrails.topics' });
+  if (list(guard.escalation).length) unsupported.push({ feature: 'escalation rules', where: 'guardrails.escalation' });
+  // the rest of what the runtime doesn't run yet, in the real validator's words (answered 2026-11-05; guide 8)
+  const conv = isObj(config.defaults?.conversation) ? config.defaults.conversation : {};
+  const on = (block) => isObj(block) && block.enabled !== false;
+  if (isObj(conv.sounds) && (on(conv.sounds.thinking) || on(conv.sounds.ambient)))
+    unsupported.push({ feature: 'thinking / ambient sounds', where: 'defaults.conversation.sounds' });
+  if (isObj(conv.noise_cancellation) && conv.noise_cancellation.enabled === true)
+    unsupported.push({ feature: 'noise cancellation', where: 'defaults.conversation.noise_cancellation' });
+  list(config.defaults?.reliability?.on_session_error?.do).forEach((step, index) => {
+    if (isObj(step) && step.type === 'play_sound')
+      unsupported.push({ feature: 'playing recorded sounds', where: `defaults.reliability.on_session_error.do[${index}]` });
+  });
+  list(config.knowledge).forEach((base, index) => {
+    if (isObj(base) && typeof base.refresh === 'string' && base.refresh !== 'manual')
+      unsupported.push({ feature: 'scheduled knowledge refresh: nothing rebuilds the index on a timer', where: `knowledge[${index}].refresh` });
+  });
+  list(config.agents?.items).forEach((agent, index) => {
+    if (isObj(agent) && isObj(agent.vision) && agent.vision.mode)
+      unsupported.push({ feature: 'vision (camera frames / images)', where: `agents.items[${index}].vision` });
+  });
+  if (isObj(config.post_call?.summary) && config.post_call.summary.enabled === true)
+    unsupported.push({ feature: 'post-call summary', where: 'post_call.summary' });
+  if (list(config.post_call?.analysis).length) unsupported.push({ feature: 'post-call analysis', where: 'post_call.analysis' });
   // Since 2026-10-16 the server enforces sensitive variables and redaction, so neither is reported. A declared but
   // unenforced protection would come back with `severity: "security"`, which the studio still shows in red.
 

@@ -1898,12 +1898,6 @@ html[data-theme] body .agentRowList.agentTable {
   background: var(--card-fill, var(--panel));
   container-type: inline-size;
 }
-html[data-theme] body .agentTable :is(.stAgentHead, .agentRowMain) {
-  display: grid;
-  grid-template-columns: 36px minmax(200px, 1.7fr) minmax(220px, 1.1fr) minmax(120px, 0.7fr) minmax(110px, 0.7fr) 16px;
-  align-items: center;
-  gap: 14px;
-}
 /* the environments wrap inside their column (an agent in all three can need two lines); nothing spills into the next column */
 html[data-theme] body .agentTable .stEnvSlots {
   flex-wrap: wrap;
@@ -1916,11 +1910,6 @@ html[data-theme] body .agentTable .agentRowAvatar {
   border-radius: 9px;
 }
 /* a narrower place (Home's column): the version goes, then the columns stack */
-@container (max-width: 860px) {
-  html[data-theme] body .agentTable :is(.stAgentHead, .agentRowMain) {
-    grid-template-columns: 36px minmax(140px, 1.3fr) minmax(240px, 1.1fr) minmax(110px, 0.6fr) 16px;
-  }
-}
 @container (max-width: 640px) {
   html[data-theme] body .agentTable .stEnvSlots {
     flex-wrap: wrap;

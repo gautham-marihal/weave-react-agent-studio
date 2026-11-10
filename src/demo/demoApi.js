@@ -23,6 +23,7 @@ import { FALLBACK_TYPES } from '../studio/form/channelTypes.js';
 import { minimalConfig } from './minimalConfig.js';
 import { callFromConversation, followCallOf, getCallOf, listCallsOf, seedCalls, transcriptOf } from './demoCalls.js';
 import { STEP_MS, checksumOf, createRun, headlineOf, scenarioListOf, viewRun } from './demoTests.js';
+import { DEMO_SAMPLES } from './demoSamples.js';
 
 export const ENVIRONMENTS = ['development', 'staging', 'production'];
 export const RESERVED_IDS = ['transcripts', 'metrics', 'logs', 'sessions', 'tmp'];
@@ -104,6 +105,8 @@ export function createDemoApi({
   // On: a new agent has no calls, as on a real server, until it is put live.
   // Off: it gets sample calls at once (what the screen tests build on).
   quietNewAgents = false,
+  // more sample agents ({ id, name, config }): seeded with the starters, and added once to a demo saved before them
+  samples = [],
 } = {}) {
   let counter = 0;
   const uid = (prefix) => {
@@ -183,7 +186,37 @@ export function createDemoApi({
     deploy(support, 'development', '0.1.1');
     publish(front, '0.1.0');
     deploy(front, 'development', '0.1.0');
+    addSamples(state);
     return state;
+  }
+
+  // the samples a state hasn't had yet; each is added once and remembered, so it is never added twice. A sample's newer
+  // `version` adds the settings its saved copy doesn't have yet (top-level sections only), never changing one it has.
+  function addSamples(state) {
+    const had = new Set(state.samples || []);
+    const versions = { ...(state.sampleVersions || {}) };
+    let changed = false;
+    for (const sample of samples) {
+      const version = sample.version || 1;
+      if (!had.has(sample.id)) {
+        if (!state.bots[sample.id]) state.bots[sample.id] = newBot(sample.id, sample.name, clone(sample.config));
+        had.add(sample.id);
+        changed = true;
+      } else if ((versions[sample.id] || 1) < version && state.bots[sample.id]) {
+        const bot = state.bots[sample.id];
+        for (const [key, value] of Object.entries(sample.config)) if (!(key in bot.config)) bot.config[key] = clone(value);
+        changed = true;
+      }
+      if (versions[sample.id] !== version) {
+        versions[sample.id] = version;
+        changed = true;
+      }
+    }
+    if (changed) {
+      state.samples = [...had];
+      state.sampleVersions = versions;
+    }
+    return changed;
   }
 
   const read = () => {
@@ -191,7 +224,7 @@ export function createDemoApi({
     if (!state && seed) {
       state = seedState();
       storage.save(state);
-    }
+    } else if (state && seed && addSamples(state)) storage.save(state);
     return state || { v: 1, bots: {} };
   };
   const summary = (bot) => ({
@@ -608,7 +641,7 @@ const historyOn = () => {
   }
 };
 export const getDemoApi = () => {
-  instance ||= createDemoApi({ storage: browserStorage(), loadSchema: loadPublicSchema, history: historyOn(), quietNewAgents: true });
+  instance ||= createDemoApi({ storage: browserStorage(), loadSchema: loadPublicSchema, history: historyOn(), quietNewAgents: true, samples: DEMO_SAMPLES });
   return instance;
 };
 export const resetDemoData = () => {

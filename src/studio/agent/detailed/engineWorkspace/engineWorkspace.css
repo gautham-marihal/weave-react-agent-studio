@@ -1,0 +1,240 @@
+/* Build › Engine and details (EngineWorkspace.jsx, Nameplate.jsx, ConstantsTable.jsx; canvas page "10 · Engine and
+   details, redesigned"): the Agent profile's calm column in the part's own slate, a nameplate and a table of fixed
+   values. The card at the top and the notes are Guardrails' own (guardrailsWorkspace.css, which brings Subagents',
+   Connections' and Tools' pieces); only the hue changes. Only the studio's tokens, so every style and both themes draw
+   it in their own colours. */
+@import "../guardrailsWorkspace/guardrailsWorkspace.css";
+
+.enWrap.grWrap {
+  --gr-hue: var(--hue-settings, var(--accent));
+}
+/* the slate is deep: on a dark page it is lifted, so its words keep their contrast */
+html[data-theme="dark"] .enWrap.grWrap {
+  --gr-hue: color-mix(in srgb, var(--hue-settings, var(--accent)) 45%, #ffffff);
+}
+.enTopActs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.enMono {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+/* ---- the nameplate ---- */
+.enFigure {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.enPlate {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--gr-hue) 22%, var(--line));
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gr-hue) 5%, var(--panel)), var(--panel));
+}
+.enPlateHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.enAvatar {
+  width: 34px;
+  height: 34px;
+  font-size: var(--fs-sm);
+}
+.enPlateName {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.enPlateName b {
+  color: var(--textStrong);
+}
+.enPlateName small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.enScrews {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.enScrews i {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--line2);
+  border-radius: 50%;
+  background: var(--surface2);
+}
+.enCells {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.enCell {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.enCell:hover {
+  border-color: color-mix(in srgb, var(--gr-hue) 45%, var(--line2));
+}
+.enCell:focus-visible,
+.enValues:focus-visible {
+  outline: 2px solid var(--gr-hue);
+  outline-offset: 2px;
+}
+.enCell.locked {
+  background: var(--surface2);
+}
+.enCell.empty {
+  border-style: dashed;
+}
+.enCell.bad {
+  border-color: color-mix(in srgb, var(--danger-text) 40%, var(--line2));
+}
+.enCellLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gr-hue-text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.enCellLabel svg {
+  color: var(--muted);
+}
+.enCell b {
+  overflow-wrap: anywhere;
+  color: var(--textStrong);
+  font-size: var(--fs-sm);
+}
+.enCell.empty b {
+  color: var(--muted);
+  font-weight: 500;
+}
+.enCell small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+.enCell.bad small {
+  color: var(--danger-text);
+}
+.enFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.enFacts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- its fixed values, under the plate ---- */
+.enValues {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.enValues:hover {
+  border-color: color-mix(in srgb, var(--gr-hue) 40%, var(--line2));
+}
+.enValue {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 12px;
+  font-size: var(--fs-sm);
+}
+.enValue code {
+  overflow: hidden;
+  color: var(--gr-hue-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.enValueText {
+  overflow-wrap: anywhere;
+}
+.enValue small,
+.enUsed {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.enValue small.none,
+.enUsed.none {
+  color: var(--dim);
+}
+
+/* ---- the table of fixed values ---- */
+.enConsts {
+  display: grid;
+  gap: 12px;
+}
+.enConstList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.enConst {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.3fr) 7.5rem auto;
+  align-items: start;
+  gap: 10px;
+}
+.enConstName {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.enConst .enUsed {
+  align-self: center;
+}
+.enConstAdd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  .enCells {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .enConst {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+  .enConst .enUsed {
+    display: none;
+  }
+}

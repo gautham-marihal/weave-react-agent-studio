@@ -80,7 +80,8 @@ export function readinessSteps({ config, summary = null, report = null, scenario
         },
   );
 
-  const voiceOk = !!read.primaryLanguage && (!read.voiceChannel || !!models.tts.voiceId);
+  // a speech-to-speech model speaks with a voice of its own, so it needs no speaking model's voice
+  const voiceOk = !!read.primaryLanguage && (!read.voiceChannel || !!models.tts.voiceId || !!models.realtime?.provider);
   add(
     voiceOk
       ? {

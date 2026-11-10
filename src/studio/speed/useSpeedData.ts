@@ -17,12 +17,13 @@ type SpeedReading = {
   samples: Sample[];
   totals: Record<string, number>;
   failed: number;
+  truncated: boolean;
   at: string;
 };
 
 async function readSpeed(ids: string[], days: number, perAgent: number, signal: AbortSignal): Promise<SpeedReading> {
   const nowMs = Date.now();
-  const { calls, errors } = await loadCalls(ids, { sinceMs: periodOf(nowMs, days).startMs, maxPages: MAX_PAGES, signal });
+  const { calls, errors, truncated } = await loadCalls(ids, { sinceMs: periodOf(nowMs, days).startMs, maxPages: MAX_PAGES, signal });
   const finished = newestFirst(calls.filter((c) => c.status !== 'in_progress'));
   const totals: Record<string, number> = {};
   finished.forEach((c) => {
@@ -45,7 +46,7 @@ async function readSpeed(ids: string[], days: number, perAgent: number, signal: 
       }
     })
   ).filter((s): s is Sample => !!s);
-  return { errors, samples, totals, failed, at: new Date().toISOString() };
+  return { errors, samples, totals, failed, truncated, at: new Date().toISOString() };
 }
 
 // The Speed data for some agents: { loading (any read), refreshing (a re-read, old reading still shown), errors,
@@ -70,6 +71,7 @@ export function useSpeedData(bots: { id: string }[], { days = 14, perAgent = PER
     samples: reading?.samples || [],
     totals: reading?.totals || {},
     failed: reading?.failed || 0,
+    truncated: !!reading?.truncated,
     at: reading?.at || null,
     refresh: () => {
       query.refetch();

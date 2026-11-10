@@ -48,7 +48,7 @@ test('the Overview lists the parts of building it first while it is not live, ea
   const rows = $$(app.container, '.ovBuild li');
   assert.deepEqual(
     rows.map((r) => r.dataset.part),
-    ['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall'],
+    ['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'media', 'steps', 'workflow', 'subagents', 'guardrails', 'aftercall'],
   );
   assert.ok($(app.container, '.ovBuild li[data-part="guardrails"][data-state="optional"]'));
   const body = $(app.container, '.ovBody');
@@ -65,11 +65,15 @@ test('Build lists its parts down the side: the open one marked, a done part chec
   const app = await mountScreen('buildstage', config, { ready: 'nav', props: { page: 'tools', sections } });
   assert.deepEqual(
     $$(app.container, 'nav[aria-label="Build"] button[data-page]').map((b) => b.dataset.page),
-    [...['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'workflow', 'subagents', 'guardrails', 'aftercall'], 'settings'],
+    [
+      ...['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'media', 'steps', 'workflow', 'subagents', 'guardrails', 'aftercall'],
+      'settings',
+    ],
   );
   assert.equal($(app.container, 'button[aria-current="page"]').dataset.page, 'tools');
   assert.ok($(app.container, 'button[data-page="workflow"] [aria-label="Done"]'), 'one agent answers: done');
   assert.ok(!$(app.container, 'button[data-page="guardrails"] [role="img"]'), 'nothing set, optional: no mark');
+  assert.match(textOf($(app.container, 'button[data-page="guardrails"]')), /Optional$/, 'it says it is optional instead');
   assert.equal(byText(app.container, 'button', /^JSON$/), null, 'its views are in the bar above it (StageViews), not here');
   assert.equal(textOf($(app.container, '.theOpenPage')), 'the open page');
   await app.unmount();

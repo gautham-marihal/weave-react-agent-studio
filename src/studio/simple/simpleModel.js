@@ -35,6 +35,7 @@ export const LANGUAGES = [
   ['en-AU', 'English (Australia)'],
   ['en-IN', 'English (India)'],
   ['en-NG', 'English (Nigeria)'],
+  ['en-SG', 'English (Singapore)'],
   ['es-ES', 'Spanish (Spain)'],
   ['es-MX', 'Spanish (Mexico)'],
   ['fr-FR', 'French (France)'],
@@ -53,6 +54,7 @@ export const LANGUAGES = [
   ['ko-KR', 'Korean'],
   ['zh-CN', 'Chinese (Mandarin)'],
   ['id-ID', 'Indonesian'],
+  ['ms-MY', 'Malay'],
   ['sw-KE', 'Swahili'],
 ];
 export const languageName = (code) =>
@@ -263,8 +265,17 @@ export function setRecordingNotice(config, text) {
 }
 
 // The primary language is a locale; the agent also speaks its base language (en-US -> en), kept first in the list.
+// The language speech is heard in (`stt.language`, on the defaults, a channel or an agent) follows when it was the old
+// main language (en or en-SG for en-SG), written the same way (a base or a locale); one set to another language on
+// purpose is kept.
 export function setPrimaryLanguage(config, code) {
   const value = String(code || '');
+  const was = typeof config?.defaults?.language?.primary === 'string' ? config.defaults.language.primary : '';
+  const follow = (stt) => {
+    if (!isObj(stt) || typeof stt.language !== 'string' || !stt.language || !was || !value) return;
+    if (baseOf(stt.language) !== baseOf(was) || (stt.language.includes('-') && stt.language.toLowerCase() !== was.toLowerCase())) return;
+    stt.language = stt.language.includes('-') ? value : baseOf(value);
+  };
   return edit(config, (next) => {
     next.defaults = { ...(isObj(next.defaults) ? next.defaults : {}) };
     const language = { ...(isObj(next.defaults.language) ? next.defaults.language : {}) };
@@ -274,6 +285,9 @@ export function setPrimaryLanguage(config, code) {
       language.speaks = [baseOf(value), ...speaks.filter((c) => baseOf(c) !== baseOf(value))];
     } else delete language.primary;
     next.defaults.language = language;
+    follow(next.defaults.models?.stt);
+    list(next.channels).forEach((c) => follow(c?.overrides?.models?.stt));
+    list(next.agents?.items).forEach((a) => follow(a?.overrides?.models?.stt));
   });
 }
 

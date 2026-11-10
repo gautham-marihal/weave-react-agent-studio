@@ -15,6 +15,9 @@ import Select from '../ui/Select.tsx';
 import { askConfirm } from '../ui/dialogs.js';
 import { ASSIGNABLE_ROLES } from '../studio/team/teamModel.js';
 import { useMyMembership } from '../studio/team/useMyMembership.js';
+
+// what a role is today: a label, as on the Team page's preview
+const ROLES_PREVIEW = 'Roles are a preview: the server doesn’t check them yet, so anyone who can open the studio can do everything.';
 import { SidebarFolded } from '../ui/sidebarFolded.ts';
 
 // What the workspace pages share: the logo, profile menu and account dialog, help and shortcuts, "?" tips,
@@ -329,7 +332,7 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
     const option = ASSIGNABLE_ROLES.find((candidate) => candidate.id === next);
     const confirmed = await askConfirm({
       title: `Change your role to ${option.label}?`,
-      body: `${option.blurb}${chosenRole ? ` You are ${chosenRole.label} now.` : ''}`,
+      body: `${option.blurb}${chosenRole ? ` You are ${chosenRole.label} now.` : ''} ${ROLES_PREVIEW}`,
       confirmLabel: `Change to ${option.label}`,
     });
     if (!confirmed) return;
@@ -447,6 +450,8 @@ export function AccountDialog({ profile, workspaceName: workspaceNameProp, onClo
                 <p className="accountRoleNote">{chosenRole ? chosenRole.blurb : `Now: ${profile?.role || 'no role'}. Choose Admin, Editor or Viewer.`}</p>
               </>
             )}
+            {/* the server has no roles yet (FRONTEND_GUIDE section 8): never implied that one keeps anyone out */}
+            <p className="accountRoleNote">{ROLES_PREVIEW}</p>
           </div>
           <div className="accountSaveRow">
             <span role="status" className="accountSaveNote">

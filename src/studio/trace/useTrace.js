@@ -21,9 +21,13 @@ export function useTrace({ botId, session }) {
     const stop = followCall(botId, room, {
       onRecord: (record) => setRecords((old) => (old.some((r) => r.seq === record.seq) ? old : [...old, record])),
       onEnd: () => setFollowing(false),
-      onError: () => {
+      onError: (reason) => {
         setFollowing(false);
-        setProblem('The live trace stopped. The runtime may not have written anything yet, or the connection to the API was cut.');
+        setProblem(
+          reason
+            ? `No call record appeared for this conversation (${reason.replace(/\.$/, '')}). The runtime may not be running for this agent, or it writes no call log.`
+            : 'The live trace stopped. The runtime may not have written anything yet, or the connection to the API was cut.',
+        );
       },
     });
     return () => {

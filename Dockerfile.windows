@@ -34,7 +34,9 @@ ENV NODE_ENV=production PORT=8080 HOST=0.0.0.0
 COPY --from=build /app/package.json ./
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
-COPY --from=build /app/apiPass.js /app/llmRoute.js /app/authRoute.js /app/credentials.txt ./
+# who may sign in (credentials.txt) is never built in: it is given to the container when it starts (docker-compose mounts it),
+# so the image can be shared without the passwords
+COPY --from=build /app/apiPass.js /app/llmRoute.js /app/authRoute.js ./
 # Nano Server runs as ContainerUser (not an administrator) by default
 USER ContainerUser
 EXPOSE 8080

@@ -123,6 +123,16 @@ const distance = (a, b) => {
   return d[m][n];
 };
 const quoted = (text) => `“${text}”`;
+// settings that hold a secret's name ({"secret": "NAME"}), never a typed key
+const SECRET_PLACE = /^(api_key|token|password|auth_token|account_sid|client_secret|secret|key)$/;
+// the agent's own language model, and the agent's override of it, marked a certain way (the fix beside two checks)
+function markModel(config, agentId, key) {
+  let next = setAt(config, ['defaults', 'models', 'llm', key], true);
+  const index = list(next?.agents?.items).findIndex((a) => isObj(a) && a.id === agentId);
+  if (index >= 0 && isObj(next.agents.items[index].overrides?.models?.llm))
+    next = setAt(next, ['agents', 'items', index, 'overrides', 'models', 'llm', key], true);
+  return next;
+}
 
 // Each rule: a pattern for the server's sentence, and a function from the match to { text, fixes }.
 // `ctx` has the config, the engine, the issue's path, and `label(name, owner)` for a setting's plain name.
@@ -230,7 +240,18 @@ const RULES = [
   },
   {
     re: /^'?(.*?)'? is not of type '(\w+)'$/,
-    make: (m) => ({ text: `${quoted(m[1])} isn’t ${TYPE_WORDS[m[2]] || `a ${m[2]}`}, which is what this setting needs.`, fixes: [] }),
+    make: (m, ctx) => {
+      // a key typed where a secret's name belongs: never repeat it, say what goes there instead
+      const last = String(ctx.path[ctx.path.length - 1] ?? '');
+      if (m[2] === 'object' && SECRET_PLACE.test(last) && m[1] !== 'None')
+        return {
+          text: 'A key can’t be typed in here: give the name of a secret instead (for example OPENAI_API_KEY). The key itself is set on the server, never in the agent.',
+          fixes: [],
+        };
+      // the server writes an empty value as Python's None
+      if (m[1] === 'None') return { text: `This is empty, but it needs ${TYPE_WORDS[m[2]] || `a ${m[2]}`}.`, fixes: [] };
+      return { text: `${quoted(m[1])} isn’t ${TYPE_WORDS[m[2]] || `a ${m[2]}`}, which is what this setting needs.`, fixes: [] };
+    },
   },
   {
     re: /^'(.+)' is not one of \[(.*)\]$/,
@@ -286,6 +307,96 @@ const RULES = [
           apply: (config) => setAt(config, ['state', 'variables', m[2]], { type: 'string' }),
         },
       ],
+    }),
+  },
+  // the rules of the agent config guide's section 6 table, in the server's words (answered 2026-11-05)
+  {
+    re: /^channel '(.+)' \/ agent '(.+)': accepts images or video but the effective llm does not have vision: true$/,
+    make: (m) => ({
+      text: `The channel ${quoted(m[1])} takes pictures or video, but the language model agent ${quoted(m[2])} uses isn’t marked as reading pictures.`,
+      fixes: [{ id: 'model-vision', label: 'Mark the model as reading pictures', apply: (config) => markModel(config, m[2], 'vision') }],
+    }),
+  },
+  {
+    re: /^channel '(.+)' \/ agent '(.+)': agent has tools or handoffs but the effective llm has tool_calling: false$/,
+    make: (m) => ({
+      text: `The agent ${quoted(m[2])} has tools or hand-overs, but its language model is marked as not using tools, so it couldn’t call them. Mark the model as using tools, or take them away.`,
+      fixes: [{ id: 'model-tools', label: 'Mark the model as using tools', apply: (config) => markModel(config, m[2], 'tool_calling') }],
+    }),
+  },
+  {
+    re: /^handoff tool name '(.+)' collides with a tool the model already sees under that name$/,
+    make: (m) => ({
+      text: `The hand-over name ${quoted(m[1])} is already a tool’s name, so the model couldn’t tell them apart. Give the hand-over another name.`,
+      fixes: [],
+    }),
+  },
+  {
+    re: /^template '(.*)' reads undeclared constant '(.+)'$/,
+    make: (m) => ({ text: `This text uses the fixed value ${quoted(m[2])}, which doesn’t exist. Add it under Fixed values, or correct the name.`, fixes: [] }),
+  },
+  {
+    re: /^schedule '(.+)': window (\S+)-(\S+) ends before it starts$/,
+    make: (m) => ({
+      text: `In the opening hours ${quoted(m[1])}, the window from ${m[2]} to ${m[3]} ends before it starts. For hours past midnight, use two windows: to 24:00, then from 00:00.`,
+      fixes: [],
+    }),
+  },
+  {
+    re: /^schedule '(.+)' timezone: '(.+)' is not a known IANA timezone$/,
+    make: (m) => ({
+      text: `${quoted(m[2])} isn’t a time zone the server knows (in the opening hours ${quoted(m[1])}). Use a name like Asia/Singapore or Europe/London.`,
+      fixes: [],
+    }),
+  },
+  {
+    re: /inactivity has max_nudges (\d+) but no nudges to say$/,
+    make: (m) => ({
+      text: `Silent callers are to be nudged ${m[1]} times, but nothing is written to say. Add what it says, or set the nudges to 0.`,
+      fixes: [],
+    }),
+  },
+  {
+    re: /callers are nudged but nothing ends the silence \(no on_exhausted\)$/,
+    make: () => ({
+      text: 'Silent callers are nudged, but nothing happens after the last nudge, so the call stays open. Add what it does then, such as saying goodbye and hanging up.',
+      fixes: [],
+    }),
+  },
+  {
+    re: /^agent '(.+)' is unreachable: nothing hands off to it$/,
+    make: (m) => ({ text: `Nothing passes callers to the agent ${quoted(m[1])}, so it never answers. Add a hand-over to it, or remove it.`, fixes: [] }),
+  },
+  {
+    re: /^(\w+) '(.+)' is declared but never used$/,
+    make: (m) => ({ text: `The ${noun(`${m[1]}s`)} ${quoted(m[2])} isn’t used anywhere, so it does nothing.`, fixes: [] }),
+  },
+  {
+    re: /^message '(.+)' has no text for the primary language '(.+)'$/,
+    make: (m) => ({ text: `The fixed line ${quoted(m[1])} has no version in the agent’s main language (${m[2]}). Add one.`, fixes: [] }),
+  },
+  {
+    re: /^message '(.+)' has no '(.+)' text$/,
+    make: (m) => ({ text: `The fixed line ${quoted(m[1])} has no ${m[2]} version, but the agent speaks ${m[2]}.`, fixes: [] }),
+  },
+  {
+    re: /^(?:channel '(.+)': )?inactivity needs up to (\d+)s of silence to finish, but guardrails\.limits\.max_silence_s is (\d+)s and would cut the call off first$/,
+    make: (m) => ({
+      text: `${m[1] ? `On ${quoted(m[1])}, the` : 'The'} silence nudges need up to ${m[2]} seconds, but the longest silence allowed is ${m[3]} seconds, so calls would be cut off first.`,
+      fixes: [
+        {
+          id: 'longest-silence',
+          label: `Allow ${m[2]} seconds of silence`,
+          apply: (config) => setAt(config, ['guardrails', 'limits', 'max_silence_s'], Number(m[2])),
+        },
+      ],
+    }),
+  },
+  {
+    re: /^tool '(.+)': transfer_or_callback has no fallback if the transfer cannot happen$/,
+    make: (m) => ({
+      text: `The tool ${quoted(m[1])} has nothing to do when the transfer can’t happen, so the caller would hear nothing. Add what it does then, such as a callback line.`,
+      fixes: [],
     }),
   },
   {

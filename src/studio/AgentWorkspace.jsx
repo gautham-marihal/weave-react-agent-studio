@@ -14,7 +14,7 @@ import { DemoNote } from '../demo/DemoBadge.jsx';
 import { dismissNotes, peekNotes } from './assistantNotes.js';
 import { navigate, routeHref, setLeaveGuard } from './route.js';
 import { useGateStatus } from './release/gate.js';
-import { DeploySecrets } from './release/Preflight.jsx';
+import { DeployKnowledge, DeploySecrets } from './release/Preflight.jsx';
 import { failureReason, useDeploymentWatch } from './release/deployWatch.js';
 import { ErrorState, Notice } from './ui.jsx';
 import NotFound from '../ui/NotFound.jsx';
@@ -200,6 +200,7 @@ function PublishDialog({ botId, editor, latestVersion, onClose, onPublished, don
           </Notice>
         )}
         {deploy.result?.preflight && <DeploySecrets preflight={deploy.result.preflight} missingOnly />}
+        {deploy.result?.preflight && <DeployKnowledge preflight={deploy.result.preflight} />}
         {shown.warnings?.length > 0 && (
           <Notice kind="warn" title={`${shown.warnings.length} warning${shown.warnings.length === 1 ? '' : 's'}`}>
             <Suspense fallback={null}>
@@ -594,7 +595,8 @@ export default function AgentWorkspace({ botId, tab, bare = false, params, onRec
       onPublished={(published) => {
         setJustPublished(published);
         bump();
-        editor.reload();
+        // the draft moved on to the next version number; edits made while publishing are never replaced
+        editor.reloadQuietly();
       }}
       onDeployed={bump}
     />

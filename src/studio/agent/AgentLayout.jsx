@@ -11,13 +11,14 @@ import AgentAlerts from '../insights/AgentAlerts.jsx';
 import ChatPreview from '../preview/ChatPreview.jsx';
 import { navigate, replaceRoute, routeHref } from '../route.js';
 import { useGate } from '../release/gate.js';
-import { isFinished, normalizeHeadline } from '../scenarios/runResults.js';
+import { latestDraftRun } from '../scenarios/runResults.js';
 import { useAsync } from '../useAsync.js';
 import Icon from '../../ui/Icon.jsx';
 import { ErrorState, Notice, Spinner } from '../ui.jsx';
 import { SkeletonRows } from '../../ui/Skeleton.jsx';
 import { readinessSteps } from './readiness.js';
 import { buildSections } from './buildSections.js';
+import { BuildSectionsContext } from './detailed/buildContext.js';
 import StageTabs from './workspace/StageTabs.jsx';
 import BuildStage from './workspace/BuildStage.jsx';
 import GuidedBuild from './workspace/GuidedBuild.jsx';
@@ -40,6 +41,8 @@ import { conversationPart } from './detailed/parts/conversationPart.jsx';
 import { knowledgePart } from './detailed/parts/knowledgePart.jsx';
 import { toolsPart } from './detailed/parts/toolsPart.jsx';
 import { connectionsPart } from './detailed/parts/connectionsPart.jsx';
+import { mediaPart } from './detailed/parts/mediaPart.jsx';
+import { stepsPart } from './detailed/parts/stepsPart.jsx';
 import { ChannelsPage } from './detailed/parts/channelsPart.jsx';
 import { SubagentsPage } from './detailed/parts/subagentsPart.jsx';
 import { guardrailsPart } from './detailed/parts/guardrailsPart.jsx';
@@ -141,7 +144,7 @@ export default function AgentLayout({ ws }) {
   const [localPart, setLocalPart] = useState({}); // parts with no address of their own
   const [focusRequest, setFocusRequest] = useState(null);
   const [openRequest, setOpenRequest] = useState(null);
-  const [lastFix, setLastFix] = useState(null); // { label, previous }
+  const [lastFix, setLastFix] = useState(null); // { label, previous, made }: what the fix replaced, and what it made
   // on a wide window the test conversation docks beside the page across page changes; on a narrow one it slides over
   const wideEnough = useWide('(min-width: 1280px)');
   const testDocked = drawer === 'test' && wideEnough;
@@ -237,10 +240,7 @@ export default function AgentLayout({ ws }) {
   }, []);
   // the tests' latest run (re-read on leaving the Tests page, where they run) and whether they must pass to publish
   const runs = useAsync((signal) => api.listTestRuns(botId, 20, { signal }), [botId, page === 'tests']);
-  const latestRun = useMemo(
-    () => (Array.isArray(runs.data) ? runs.data.map(normalizeHeadline).find((run) => isFinished(run.status)) || null : undefined),
-    [runs.data],
-  );
+  const latestRun = useMemo(() => (Array.isArray(runs.data) ? latestDraftRun(runs.data) : undefined), [runs.data]);
   const [gateOn] = useGate(botId);
   const gate = useMemo(
     () => (gateOn ? { enabled: true, savedAt: editor.meta?.savedAt || '', dirty: editor.dirty } : null),
@@ -305,10 +305,20 @@ export default function AgentLayout({ ws }) {
     if (askSetting && editor.isObject) showPath(askSetting.split('.'));
   }, [askSetting, editor.isObject, showPath]);
   const applyFix = (next, label, jumpTo) => {
-    setLastFix({ label, previous: editor.parsed.value });
+    fixLanded.current = false;
+    setLastFix({ label, previous: editor.parsed.value, made: JSON.stringify(next) });
     editor.setValue(next);
     if (jumpTo) window.setTimeout(() => showPath(jumpTo), 60);
   };
+
+  // once the fix is in the draft, any other change to it (an edit, a reload, Load theirs) ends the fix's Undo
+  const draftNow = editor.parsed.value;
+  const fixLanded = useRef(false);
+  useEffect(() => {
+    if (!lastFix) return;
+    if (JSON.stringify(draftNow) === lastFix.made) fixLanded.current = true;
+    else if (fixLanded.current) setLastFix(null);
+  }, [draftNow, lastFix]);
 
   const part = (id, fallback) => (resolved.part && resolved.page === id ? resolved.part : localPart[id] || fallback);
   // Test's "Ready to publish?": the callers' latest result this visit (by agent), and what all the tests say
@@ -417,9 +427,28 @@ export default function AgentLayout({ ws }) {
       />
     );
   } else if (page === 'agent') {
-    body = <DetailedPage part={agentPart} editor={editor} request={detailedRequest('agent')} notices={notices} onShowJson={openJson} />;
+    body = (
+      <DetailedPage
+        part={agentPart}
+        editor={editor}
+        request={detailedRequest('agent')}
+        notices={notices}
+        onShowJson={openJson}
+        // "Talk to it" on the profile opens the same test panel as the bar's Test
+        extra={{ onTest: () => setDrawer('test') }}
+      />
+    );
   } else if (page === 'conversation') {
-    body = <DetailedPage part={conversationPart} editor={editor} request={detailedRequest('conversation')} onShowJson={openJson} />;
+    body = (
+      <DetailedPage
+        part={conversationPart}
+        editor={editor}
+        request={detailedRequest('conversation')}
+        onShowJson={openJson}
+        // "Try a call" on the overview opens the same test panel as the bar's Test
+        extra={{ onTest: () => setDrawer('test') }}
+      />
+    );
   } else if (page === 'tools') {
     body = (
       <DetailedPage
@@ -438,6 +467,29 @@ export default function AgentLayout({ ws }) {
     );
   } else if (page === 'connections') {
     body = <DetailedPage part={connectionsPart} editor={editor} request={detailedRequest('connections')} onShowJson={openJson} />;
+  } else if (page === 'media') {
+    body = (
+      <DetailedPage
+        part={mediaPart}
+        editor={editor}
+        request={detailedRequest('media')}
+        onShowJson={openJson}
+        // its lines open the parts that own what they show (Agent's model, Conversation's secret values, a form's steps)
+        extra={{ goPart: (id, query) => go(id, query) }}
+      />
+    );
+  } else if (page === 'steps') {
+    body = (
+      <DetailedPage
+        part={stepsPart}
+        editor={editor}
+        request={detailedRequest('steps')}
+        onShowJson={openJson}
+        // a step's settings that live elsewhere open there (the greeting on Agent, a form on Connections, a person on
+        // Tools); "Try these steps" opens the same test panel as the bar's Test
+        extra={{ goPart: (id, query) => go(id, query), onTest: () => setDrawer('test') }}
+      />
+    );
   } else if (page === 'channels') {
     body = <ChannelsPage editor={editor} request={detailedRequest('channels')} onShowJson={openJson} extra={{ botId, dialled }} />;
   } else if (page === 'subagents') {
@@ -451,7 +503,16 @@ export default function AgentLayout({ ws }) {
       />
     );
   } else if (page === 'guardrails') {
-    body = <DetailedPage part={guardrailsPart} editor={editor} request={detailedRequest('guardrails')} onShowJson={openJson} />;
+    body = (
+      <DetailedPage
+        part={guardrailsPart}
+        editor={editor}
+        request={detailedRequest('guardrails')}
+        onShowJson={openJson}
+        // "Most moves between agents" is set on Subagents and hand-overs: its line opens that part
+        extra={{ goPart: (id) => go(id) }}
+      />
+    );
   } else if (page === 'aftercall') {
     body = <DetailedPage part={afterCallPart} editor={editor} request={detailedRequest('aftercall')} onShowJson={openJson} />;
   } else if (page === 'knowledge') {
@@ -514,7 +575,14 @@ export default function AgentLayout({ ws }) {
           <JsonPart editor={editor} />
         </PageShell>
       ) : (
-        <DetailedPage part={enginePart} editor={editor} request={detailedRequest('settings')} onShowJson={openJson} extra={{ actions: toggle }} />
+        <DetailedPage
+          part={enginePart}
+          editor={editor}
+          request={detailedRequest('settings')}
+          onShowJson={openJson}
+          // the version line's "Release" opens Release
+          extra={{ actions: toggle, goPart: (id) => go(id) }}
+        />
       );
   } else if (page === 'calls') {
     body = (
@@ -629,9 +697,11 @@ export default function AgentLayout({ ws }) {
   const stage = drawn ? stageOf(page)?.id : null;
   const staged =
     stage === 'build' ? (
-      <BuildStage botId={botId} page={page} sections={sections} problems={errorsByPage} jsonOpen={page === 'settings' && localPart.settings === 'json'}>
-        {body}
-      </BuildStage>
+      <BuildSectionsContext.Provider value={sections}>
+        <BuildStage botId={botId} page={page} sections={sections} problems={errorsByPage} jsonOpen={page === 'settings' && localPart.settings === 'json'}>
+          {body}
+        </BuildStage>
+      </BuildSectionsContext.Provider>
     ) : (
       body
     );
@@ -833,7 +903,7 @@ export default function AgentLayout({ ws }) {
       {drawer === 'prompt' && (
         <Drawer title="Preview the prompt" icon="eye" width="wide" onClose={() => setDrawer(null)}>
           {/* what the agent that answers first is told; another agent's is on its own page */}
-          <PromptPreview agentId={readSimple(config).agentId} config={config} startOpen />
+          <PromptPreview agentId={readSimple(config).agentId} config={config} startOpen pickAgent />
         </Drawer>
       )}
       {drawer === 'describe' && (

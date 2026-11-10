@@ -8,6 +8,12 @@ const localZone = () => {
     return 'UTC';
   }
 };
+// The time zone new hours are written in: the agent's own (`runtime.timezone`, which its clock and dates use), else
+// this computer's
+export const agentZone = (config) => {
+  const zone = config?.runtime?.timezone;
+  return typeof zone === 'string' && zone.trim() ? zone.trim() : localZone();
+};
 // Hours change nothing on their own: a phone transfer or a rule follows them.
 export const SCHEDULES_START = {
   label: 'Start with Monday to Friday, 9 to 5',
@@ -16,7 +22,7 @@ export const SCHEDULES_START = {
     schedules: {
       business_hours: {
         description: 'Office hours',
-        timezone: localZone(),
+        timezone: agentZone(c),
         weekly: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '09:00', end: '17:00' }],
       },
     },

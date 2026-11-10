@@ -4,7 +4,10 @@ node_modules
 dist
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example
 .vercel
 **/.vercel
 .git
@@ -17,3 +20,6 @@ playwright-report
 test-results
 # exported images (./run.sh export): gigabytes, never part of a build
 docker-images
+# who may sign in: given to the container when it starts, never built into an image that may be shared
+credentials.txt
+**/credentials.txt

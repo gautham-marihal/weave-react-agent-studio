@@ -512,24 +512,6 @@ html[data-theme] body .authScreen .authField.hasError input {
   cursor: not-allowed;
   box-shadow: none;
 }
-.authSignedIn {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
-  border-block: 1px solid var(--a-line);
-  color: var(--a-dim);
-  font-size: var(--fs-sm);
-}
-.authSignedIn b {
-  color: var(--a-text);
-  font-weight: 500;
-}
-.authSmall {
-  color: var(--a-faint);
-  font-size: var(--fs-xs);
-  text-align: center;
-}
 
 @media (max-width: 900px) {
   .authWrap {

@@ -6,6 +6,37 @@ import Button from '../../ui/Button.tsx';
 
 // What happened in a conversation, for a real call, the Test tab and a failed scenario (all the same records): rows in
 // order, filters by kind, what went wrong marked, raw fields on request. `live` follows a call in progress.
+
+// A picture's sharpness or brightness as a bar, with the request's standard marked on it (a floor, or a band), so an
+// author sees at once why a photo was turned down and what to set. Sharpness spans 0 to thousands, so it is drawn on a
+// log scale.
+function PictureMeter({ meter }) {
+  const at = (v) => {
+    const x = Math.max(0, Math.min(v, meter.max));
+    return meter.log ? (Math.log10(1 + x) / Math.log10(1 + meter.max)) * 100 : (x / meter.max) * 100;
+  };
+  const value = Math.round(meter.value * 10) / 10;
+  const short = (meter.need !== undefined && meter.value < meter.need) || (meter.band && (meter.value < meter.band[0] || meter.value > meter.band[1]));
+  const standard = meter.need !== undefined ? `needs ${meter.need}` : meter.band ? `between ${meter.band[0]} and ${meter.band[1]}` : '';
+  return (
+    <div className={`trMeter ${short ? 'short' : ''}`}>
+      <span className="trMeterTop">
+        <span>{meter.label}</span>
+        <span>
+          <b>{value}</b>
+          {standard && <small> · {standard}</small>}
+        </span>
+      </span>
+      <span className="trMeterBar" aria-hidden="true">
+        <span className="trMeterFill" style={{ width: `${at(meter.value).toFixed(1)}%` }} />
+        {meter.band && (
+          <span className="trMeterBand" style={{ left: `${at(meter.band[0]).toFixed(1)}%`, width: `${(at(meter.band[1]) - at(meter.band[0])).toFixed(1)}%` }} />
+        )}
+        {meter.need !== undefined && <span className="trMeterNeed" style={{ left: `${at(meter.need).toFixed(1)}%` }} />}
+      </span>
+    </div>
+  );
+}
 export default function TraceView({ records, live = false, compact = false, title = 'What happened', emptyText = 'Nothing has been recorded yet.', note }) {
   const [active, setActive] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -116,6 +147,23 @@ export default function TraceView({ records, live = false, compact = false, titl
                       )}
                     </p>
                   )}
+                  {row.meters?.length > 0 && (
+                    <div className="trMeters">
+                      {row.meters.map((meter) => (
+                        <PictureMeter key={meter.id} meter={meter} />
+                      ))}
+                    </div>
+                  )}
+                  {row.pairs?.length > 0 && (
+                    <p className="trPairs">
+                      {row.pairs.map((pair, i) => (
+                        <span key={`${pair.label}-${i}`} className={pair.matched ? 'same' : 'differs'}>
+                          {pair.label} {pair.matched ? 'matched' : 'differs'}
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                  {row.note && <p className="trNote2">{row.note}</p>}
                   <details className="trRaw">
                     <summary>Raw record</summary>
                     <pre>{JSON.stringify(row.raw, null, 2)}</pre>

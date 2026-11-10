@@ -9,6 +9,9 @@ import { momentsOf, topicsOf } from './blocks/guardrailModel.js';
 import { afterCallOf } from './blocks/afterCallModel.js';
 import { agentLabel } from './rowNames.js';
 import { PAGE_GROUPS } from './pages.js';
+import { aiSeesPictures, channelPictures, pictureCounts } from '../pictures/mediaModel.js';
+import { settingConflicts } from './conflicts.js';
+import { lanesOf, numbered, problemsOf } from './detailed/stepsWorkspace/stepsModel.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -28,7 +31,9 @@ export const PURPOSE = {
   aftercall: 'What happens when a conversation ends: a summary, questions about it, what is kept.',
   conversation: 'How it behaves during a call: taking turns, silent callers, what it remembers and reacts to.',
   connections: 'What its tools reach: the systems it calls, phone transfers, forms, messages and tasks.',
+  media: 'Photos and the camera: where customers can send them, what it asks for, how picky the checks are and what happens to the pictures.',
   subagents: 'Who answers first, what each subagent does, and who passes callers to whom.',
+  steps: 'What happens on a call, in order: what it does every time, and what it is told to do.',
 };
 
 // What a part's documents still need, the worst first (the words of readiness.js)
@@ -49,7 +54,7 @@ function agentPart(config) {
     words(read.role) < 8 && 'what it should do',
     !read.greeting && 'what it says first',
     !read.primaryLanguage && 'its language',
-    read.voiceChannel && !voice && 'its voice',
+    read.voiceChannel && !voice && !readModels(config).realtime?.provider && 'its voice',
   ].filter(Boolean);
   if (missing.length) return { state: 'todo', status: `Still to choose: ${joinAnd(missing)}.` };
   const languages = [...new Set([read.primaryLanguage, ...read.speaks].filter(Boolean).map((c) => languageName(c).replace(/ \(.*\)$/, '')))];
@@ -139,6 +144,7 @@ function afterCallPart(config) {
     summary,
     after.questions.length && `answers ${plural(after.questions.length, 'question')}`,
     after.recording.days && `keeps recordings ${after.recording.days} days`,
+    after.redaction.on && 'hides personal details in what is kept',
   ].filter(Boolean);
   if (!parts.length) return { state: 'optional', status: 'Nothing set: the server’s defaults apply.' };
   const text = parts.join(' · ');
@@ -188,7 +194,19 @@ function subagentsPart(config) {
   return { state: 'done', status: `${plural(agents.length, 'subagent')} · ${plural(handoffs, 'hand-over')} · ${agentLabel(config, first.id)} answers first.` };
 }
 
+// The call, step by step: optional (with no steps it answers in its own order); a step that can't run needs a look
+function stepsSection(config) {
+  const lanes = lanesOf(config);
+  const rows = numbered(lanes).filter((r) => r.step.kind !== 'greet');
+  if (!rows.length) return { state: 'optional', status: 'No steps yet: it answers from its role, in its own order.' };
+  const broken = rows.filter((r) => problemsOf(config, r.step).some((p) => p.level === 'danger')).length;
+  const what = `${plural(rows.length, 'step')}${lanes.length > 1 ? ` across ${plural(lanes.length, 'subagent')}` : ''}`;
+  if (broken) return { state: 'attention', status: `${what} · ${plural(broken, 'step')} can’t run as written.` };
+  return { state: 'done', status: `${what}.` };
+}
+
 const READERS = {
+  steps: (c) => stepsSection(c),
   agent: (c) => agentPart(c),
   conversation: (c) => conversationPart(c),
   connections: (c) => connectionsPart(c),
@@ -199,24 +217,53 @@ const READERS = {
   channels: (c) => channelsPart(c),
   guardrails: (c) => guardrailsPart(c),
   aftercall: (c) => afterCallPart(c),
+  media: (c) => mediaSection(c),
 };
+// Images & Videos: optional until it asks for one; then every picture needs a channel that takes it and an AI that
+// sees it
+function mediaSection(config) {
+  const n = pictureCounts(config);
+  const asks = n.photo + n.video;
+  if (!asks && !n.read) return { state: 'optional', status: 'Not used: it doesn’t ask for photos or the camera.' };
+  const reach = channelPictures(config);
+  const photoOk = !n.photo || reach.some((c) => c.on && c.photo);
+  const cameraOk = !n.video || reach.some((c) => c.on && c.camera);
+  if (!photoOk || !cameraOk)
+    return { state: 'attention', status: `It asks for ${!photoOk ? 'photos' : 'the camera'}, but no web channel takes ${!photoOk ? 'them' : 'it'}.` };
+  if (!aiSeesPictures(config).sees) return { state: 'attention', status: 'It asks for pictures, but the AI isn’t marked as seeing them.' };
+  const parts = [n.photo && plural(n.photo, 'photo request'), n.video && plural(n.video, 'video check'), n.compare && plural(n.compare, 'comparison')].filter(
+    Boolean,
+  );
+  return { state: 'done', status: `${parts.join(' · ')}.` };
+}
+
 const BUILD_PAGES = PAGE_GROUPS.find((g) => g.id === 'build').pages;
 
 // -> [{ id, label, icon, purpose, state: 'done' | 'todo' | 'attention' | 'optional', status }], in the menu's order.
 //   errorsByPage: what the checks found, by page (a page with errors needs attention, whatever it holds)
 //   knowledgeRead: what the server has read of the documents (useKnowledge's data); if absent, documents count as there
+//   settings that don't work together (conflicts.js) mark their part too, saying the first
 export function buildSections({ config, errorsByPage = {}, knowledgeRead = null } = {}) {
   if (!isObj(config)) return [];
+  const conflicts = settingConflicts(config);
   return BUILD_PAGES.map((page) => {
     const part = READERS[page.id](config, knowledgeRead);
     const errors = errorsByPage[page.id] || 0;
+    const clash = conflicts.filter((c) => c.part === page.id);
     return {
       id: page.id,
       label: page.label,
       icon: page.icon,
       purpose: PURPOSE[page.id],
       ...part,
-      ...(errors ? { state: 'attention', status: `${plural(errors, 'problem')} to fix · ${part.status}` } : {}),
+      ...(clash.length && !errors
+        ? {
+            state: 'attention',
+            status: `${clash[0].text}${clash.length > 1 ? ` (and ${plural(clash.length - 1, 'more thing')} to look at)` : ''}`,
+            conflicts: clash.map((c) => c.text),
+          }
+        : {}),
+      ...(errors ? { state: 'attention', status: `${plural(errors, 'problem')} to fix · ${part.status}`, conflicts: clash.map((c) => c.text) } : {}),
     };
   });
 }

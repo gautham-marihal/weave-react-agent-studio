@@ -472,7 +472,7 @@ html:not([data-style="simple"])[data-theme] body {
   background: var(--page-art), var(--page);
   background-attachment: fixed;
 }
-html:not([data-style="simple"])[data-theme] body :is(#root, .dashboard, .dashMain, .landing, .loginScreen) {
+html:not([data-style="simple"])[data-theme] body :is(#root, .dashboard, .dashMain, .landing) {
   background: transparent;
 }
 
@@ -481,13 +481,8 @@ html:not([data-style="simple"])[data-theme]
   body
   :where(
     .agentTable,
-    .activityCard,
-    .progressCard,
-    .quickCard,
     .metricCard,
-    .stAgentSummary,
     .stCard,
-    .nlRows,
     .nlSteps,
     .stTpl,
     .stPromptPreview,
@@ -518,12 +513,8 @@ html:not([data-style="simple"])[data-theme]
     .tmTable,
     .settingsCard,
     .wfInspector,
-    .gateStrip,
     .shipFlow,
-    .loginCard,
-    .profileCard,
     .createModal,
-    .ovStat,
     .ovCalls,
     .ovReady,
     .nlTestDock,
@@ -558,7 +549,7 @@ html[data-style="premium"][data-theme] body :is(h1, h2) {
   font-weight: 500;
   letter-spacing: 0;
 }
-html[data-style="premium"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1, .heroCopy h1, .loginIntro h1) {
+html[data-style="premium"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1) {
   font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1.08;
@@ -583,9 +574,7 @@ html[data-style="premium"][data-theme] body :is(.lvStat span, .csStat > span) {
   letter-spacing: 0.12em;
 }
 /* numbers set in the display face, with old-style figures */
-html[data-style="premium"][data-theme]
-  body
-  :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong, .stAgentSummary strong, .inQCount) {
+html[data-style="premium"][data-theme] body :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong, .inQCount) {
   font-family: var(--font-display);
   font-weight: 600;
   font-variant-numeric: oldstyle-nums proportional-nums;
@@ -599,12 +588,8 @@ html[data-style="premium"][data-theme]
   body
   :is(
     .agentTable,
-    .activityCard,
-    .progressCard,
-    .quickCard,
     .metricCard,
     .stCard,
-    .nlRows,
     .nlSteps,
     .mnCard,
     .csStat,
@@ -618,9 +603,6 @@ html[data-style="premium"][data-theme]
     .integrationCard,
     .telephonyStatCard,
     .settingsCard,
-    .loginCard,
-    .profileCard,
-    .ovStat,
     .ovCalls,
     .ovReady,
     .nlTestDock
@@ -633,7 +615,6 @@ html[data-style="premium"][data-theme]
 html[data-style="premium"][data-theme]
   body
   :is(
-    .stAgentSummary,
     .stTpl,
     .stPromptPreview,
     .stFCards,
@@ -646,7 +627,6 @@ html[data-style="premium"][data-theme]
     .inHistory,
     .inAllClear,
     .createModal,
-    .ovStat,
     .ovCalls,
     .ovReady,
     .nlTestDock,
@@ -658,7 +638,7 @@ html[data-style="premium"][data-theme]
   border-radius: 4px;
 }
 /* buttons: espresso with champagne letters on ivory; metallic gold at night */
-html[data-style="premium"][data-theme] body :is(.primaryCta, .topStart) {
+html[data-style="premium"][data-theme] body :is(.primaryCta) {
   border: 1px solid var(--metal-edge);
   border-radius: 3px;
   background: linear-gradient(180deg, #2b2118 0%, #16100a 100%);
@@ -669,7 +649,7 @@ html[data-style="premium"][data-theme] body :is(.primaryCta, .topStart) {
     inset 0 1px 0 rgba(241, 217, 160, 0.22),
     0 8px 18px -10px rgba(40, 25, 5, 0.6);
 }
-html[data-style="premium"][data-theme] body :is(.primaryCta, .topStart):hover:not(:disabled) {
+html[data-style="premium"][data-theme] body :is(.primaryCta):hover:not(:disabled) {
   opacity: 1;
   border-color: var(--gold);
   color: var(--metal-bright);
@@ -677,7 +657,7 @@ html[data-style="premium"][data-theme] body :is(.primaryCta, .topStart):hover:no
     inset 0 1px 0 rgba(241, 217, 160, 0.3),
     0 10px 24px -10px rgba(120, 80, 20, 0.6);
 }
-html[data-style="premium"][data-theme="dark"] body :is(.primaryCta, .topStart) {
+html[data-style="premium"][data-theme="dark"] body :is(.primaryCta) {
   border-color: var(--metal-edge-dark);
   background: linear-gradient(180deg, var(--metal-hi) 0%, var(--metal-mid) 48%, var(--metal-lo) 100%);
   color: #1a1206;
@@ -685,7 +665,7 @@ html[data-style="premium"][data-theme="dark"] body :is(.primaryCta, .topStart) {
     inset 0 1px 0 rgba(255, 248, 225, 0.6),
     0 10px 24px -12px color-mix(in srgb, var(--metal) 55%, transparent);
 }
-html[data-style="premium"][data-theme="dark"] body :is(.primaryCta, .topStart):hover:not(:disabled) {
+html[data-style="premium"][data-theme="dark"] body :is(.primaryCta):hover:not(:disabled) {
   color: #120c03;
   filter: brightness(1.06);
 }
@@ -696,10 +676,10 @@ html[data-style="premium"][data-theme] body :is(.quietButton, .secondaryCta, .nl
 html[data-style="premium"][data-theme] body :is(.quietButton, .secondaryCta):hover:not(:disabled) {
   border-color: var(--gold);
 }
-html[data-style="premium"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input) {
+html[data-style="premium"][data-theme] body :is(.stFInput, .stCombo .stComboInput) {
   border-radius: 3px;
 }
-html[data-style="premium"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input):focus {
+html[data-style="premium"][data-theme] body :is(.stFInput, .stCombo .stComboInput):focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px var(--ring);
 }
@@ -794,17 +774,17 @@ html[data-style="futuristic"][data-theme] body h3 {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-html[data-style="futuristic"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1, .heroCopy h1, .loginIntro h1, .featureHeader h1) {
+html[data-style="futuristic"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1) {
   background: var(--h1-fill);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 22px var(--hud-dim));
 }
-html[data-style="futuristic"][data-theme] body :is(.welcomeBlock h1 span, .heroCopy h1 span) {
+html[data-style="futuristic"][data-theme] body :is(.welcomeBlock h1 span) {
   -webkit-text-fill-color: transparent;
 }
-html[data-style="futuristic"][data-theme] body :is(.nlBar h1, .agentStatusLine h1) {
+html[data-style="futuristic"][data-theme] body :is(.nlBar h1) {
   letter-spacing: 0.02em;
   text-transform: none;
 }
@@ -812,7 +792,7 @@ html[data-style="futuristic"][data-theme] body :is(.nlBar h1, .agentStatusLine h
 /* numbers glow */
 html[data-style="futuristic"][data-theme]
   body
-  :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong, .stAgentSummary strong, .lvTime, .inQCount) {
+  :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong, .lvTime, .inQCount) {
   color: var(--readout);
   font-family: var(--font-mono);
   font-weight: 600;
@@ -825,13 +805,8 @@ html[data-style="futuristic"][data-theme]
   body
   :is(
     .agentTable,
-    .activityCard,
-    .progressCard,
-    .quickCard,
     .metricCard,
-    .stAgentSummary,
     .stCard,
-    .nlRows,
     .nlSteps,
     .stTpl,
     .stPromptPreview,
@@ -862,12 +837,8 @@ html[data-style="futuristic"][data-theme]
     .tmTable,
     .settingsCard,
     .wfInspector,
-    .gateStrip,
     .shipFlow,
-    .loginCard,
-    .profileCard,
     .createModal,
-    .ovStat,
     .ovCalls,
     .ovReady,
     .nlTestDock,
@@ -896,7 +867,7 @@ html[data-style="futuristic"][data-theme] body .inAlert.warning {
   --hud: var(--warn-text);
 }
 /* the main button: angled corners, a gradient that moves under the pointer */
-html[data-style="futuristic"][data-theme] body :is(.primaryCta, .topStart),
+html[data-style="futuristic"][data-theme] body :is(.primaryCta),
 html[data-style="futuristic"][data-theme] body :is(.nlPageActions, .nlSection > header) .stAddBtn {
   border: 0;
   border-radius: 0;
@@ -909,18 +880,18 @@ html[data-style="futuristic"][data-theme] body :is(.nlPageActions, .nlSection > 
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   box-shadow: none;
 }
-html[data-style="futuristic"][data-theme="dark"] body :is(.primaryCta, .topStart),
+html[data-style="futuristic"][data-theme="dark"] body :is(.primaryCta),
 html[data-style="futuristic"][data-theme="dark"] body :is(.nlPageActions, .nlSection > header) .stAddBtn {
   background: linear-gradient(100deg, var(--ink) 0%, var(--btn-mid) 50%, var(--btn-end) 100%) 0 0 / 200% 100%;
   color: var(--on-ink);
 }
-html[data-style="futuristic"][data-theme] body :is(.primaryCta, .topStart):hover:not(:disabled),
+html[data-style="futuristic"][data-theme] body :is(.primaryCta):hover:not(:disabled),
 html[data-style="futuristic"][data-theme] body :is(.nlPageActions, .nlSection > header) .stAddBtn:hover {
   opacity: 1;
   background-position: 100% 0;
   filter: brightness(1.08);
 }
-html[data-style="futuristic"][data-theme] body :is(.primaryCta, .topStart):focus-visible {
+html[data-style="futuristic"][data-theme] body :is(.primaryCta):focus-visible {
   outline: 2px solid var(--on-ink);
   outline-offset: -5px;
 }
@@ -939,12 +910,12 @@ html[data-style="futuristic"][data-theme] body :is(.quietButton, .secondaryCta, 
   box-shadow: 0 0 18px -6px var(--glow);
 }
 /* fields: dark wells that light up */
-html[data-style="futuristic"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input) {
+html[data-style="futuristic"][data-theme] body :is(.stFInput, .stCombo .stComboInput) {
   border-radius: 2px;
   border-color: var(--line2);
   caret-color: var(--accent);
 }
-html[data-style="futuristic"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input):focus {
+html[data-style="futuristic"][data-theme] body :is(.stFInput, .stCombo .stComboInput):focus {
   border-color: var(--hud);
   box-shadow:
     0 0 0 1px var(--hud),
@@ -1024,7 +995,7 @@ html[data-style="futuristic"][data-theme] body :is(.lvDot, .inBell b) {
       background-position: 140% 0;
     }
   }
-  html[data-style="futuristic"][data-theme] body :is(.primaryCta, .topStart) {
+  html[data-style="futuristic"][data-theme] body :is(.primaryCta) {
     transition:
       background-position 0.4s ease,
       filter 0.2s ease;
@@ -1047,13 +1018,13 @@ html[data-style="vibrant"][data-theme] body :is(h1, h2) {
 html[data-style="vibrant"][data-theme] body h3 {
   font-weight: 750;
 }
-html[data-style="vibrant"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1, .heroCopy h1, .loginIntro h1, .featureHeader h1) {
+html[data-style="vibrant"][data-theme] body :is(.welcomeBlock h1, .nlPageHead h1) {
   background: var(--h1-fill);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-html[data-style="vibrant"][data-theme] body :is(.welcomeBlock h1 span, .heroCopy h1 span) {
+html[data-style="vibrant"][data-theme] body :is(.welcomeBlock h1 span) {
   -webkit-text-fill-color: transparent;
 }
 /* cards: big soft corners and a coloured shadow */
@@ -1061,13 +1032,8 @@ html[data-style="vibrant"][data-theme]
   body
   :is(
     .agentTable,
-    .activityCard,
-    .progressCard,
-    .quickCard,
     .metricCard,
-    .stAgentSummary,
     .stCard,
-    .nlRows,
     .nlSteps,
     .stTpl,
     .stPromptPreview,
@@ -1098,12 +1064,8 @@ html[data-style="vibrant"][data-theme]
     .tmTable,
     .settingsCard,
     .wfInspector,
-    .gateStrip,
     .shipFlow,
-    .loginCard,
-    .profileCard,
     .createModal,
-    .ovStat,
     .ovCalls,
     .ovReady,
     .nlTestDock,
@@ -1112,24 +1074,24 @@ html[data-style="vibrant"][data-theme]
   border-radius: 22px;
 }
 @media (prefers-reduced-motion: no-preference) {
-  html[data-style="vibrant"][data-theme] body :is(.quickCard, .integrationCard, .lvCard, .stCard) {
+  html[data-style="vibrant"][data-theme] body :is(.integrationCard, .lvCard, .stCard) {
     transition:
       transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1),
       box-shadow 0.18s ease;
   }
-  html[data-style="vibrant"][data-theme] body :is(.quickCard, .integrationCard, .lvCard, .stCard):hover {
+  html[data-style="vibrant"][data-theme] body :is(.integrationCard, .lvCard, .stCard):hover {
     transform: translateY(-2px);
   }
-  html[data-style="vibrant"][data-theme] body :is(.primaryCta, .topStart, .quietButton, .secondaryCta) {
+  html[data-style="vibrant"][data-theme] body :is(.primaryCta, .quietButton, .secondaryCta) {
     transition:
       transform 0.16s cubic-bezier(0.3, 1.5, 0.5, 1),
       box-shadow 0.16s ease,
       filter 0.16s ease;
   }
-  html[data-style="vibrant"][data-theme] body :is(.primaryCta, .topStart):hover:not(:disabled) {
+  html[data-style="vibrant"][data-theme] body :is(.primaryCta):hover:not(:disabled) {
     transform: translateY(-1px);
   }
-  html[data-style="vibrant"][data-theme] body :is(.primaryCta, .topStart, .quietButton, .secondaryCta):active:not(:disabled) {
+  html[data-style="vibrant"][data-theme] body :is(.primaryCta, .quietButton, .secondaryCta):active:not(:disabled) {
     transform: scale(0.97);
   }
 }
@@ -1162,7 +1124,7 @@ html[data-style="vibrant"][data-theme] body :is(.lvStat.bad strong, .csStat.warn
   color: var(--danger-text);
 }
 /* buttons: candy pills */
-html[data-style="vibrant"][data-theme] body :is(.primaryCta, .topStart),
+html[data-style="vibrant"][data-theme] body :is(.primaryCta),
 html[data-style="vibrant"][data-theme] body :is(.nlPageActions, .nlSection > header) .stAddBtn {
   border: 0;
   border-radius: 999px;
@@ -1171,7 +1133,7 @@ html[data-style="vibrant"][data-theme] body :is(.nlPageActions, .nlSection > hea
   font-weight: 750;
   box-shadow: 0 10px 22px -10px var(--glow);
 }
-html[data-style="vibrant"][data-theme] body :is(.primaryCta, .topStart):hover:not(:disabled) {
+html[data-style="vibrant"][data-theme] body :is(.primaryCta):hover:not(:disabled) {
   opacity: 1;
   filter: brightness(1.06) saturate(1.05);
   box-shadow: 0 14px 28px -10px var(--glow);
@@ -1185,10 +1147,10 @@ html[data-style="vibrant"][data-theme] body :is(.quietButton, .secondaryCta):hov
   background: var(--accent-soft);
   color: var(--accent-text);
 }
-html[data-style="vibrant"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input) {
+html[data-style="vibrant"][data-theme] body :is(.stFInput, .stCombo .stComboInput) {
   border-radius: 14px;
 }
-html[data-style="vibrant"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input):focus {
+html[data-style="vibrant"][data-theme] body :is(.stFInput, .stCombo .stComboInput):focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--ring);
 }
@@ -1563,13 +1525,6 @@ html[data-theme] body .landing {
     radial-gradient(circle at 72% 22%, color-mix(in srgb, var(--accent) 9%, transparent) 0%, transparent 28%),
     radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--accent2, var(--accent)) 6%, transparent) 0%, transparent 24%), var(--page);
 }
-html[data-theme] body :is(.landingNav, .simpleHeader) {
-  border-bottom-color: var(--line);
-}
-html[data-theme] body :is(.loginCard, .profileCard) {
-  border-color: var(--line2);
-  background: var(--panel);
-}
 
 /* ---- Premium: what sits inside the espresso sidebar keeps to it ------------------------------------------------------------------------------- */
 html[data-style="premium"][data-theme] body .sidebar .agentSideName {
@@ -1763,7 +1718,7 @@ html[data-style="professional"][data-theme] body :is(.csTable th, .tmTable th, .
 }
 html[data-style="professional"][data-theme]
   body
-  :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong, .stAgentSummary strong, .lvTime, .inQCount) {
+  :is(.metricCard strong, .lvStat strong, .csStat strong, .telephonyStatCard strong, .mnKpis strong, .lvTime, .inQCount) {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -1773,13 +1728,8 @@ html[data-style="professional"][data-theme]
   body
   :is(
     .agentTable,
-    .activityCard,
-    .progressCard,
-    .quickCard,
     .metricCard,
-    .stAgentSummary,
     .stCard,
-    .nlRows,
     .nlSteps,
     .stTpl,
     .stPromptPreview,
@@ -1810,17 +1760,12 @@ html[data-style="professional"][data-theme]
     .tmTable,
     .settingsCard,
     .wfInspector,
-    .gateStrip,
     .shipFlow,
-    .loginCard,
-    .profileCard,
     .createModal,
-    .ovStat,
     .ovCalls,
     .ovReady,
     .nlTestDock,
-    .agentSideName,
-    .showcaseCard
+    .agentSideName
   ) {
   border-radius: 6px;
 }
@@ -1836,7 +1781,7 @@ html[data-style="professional"][data-theme] body .lvStat.bad {
     var(--card-shadow);
 }
 /* buttons: solid blue, square-ish */
-html[data-style="professional"][data-theme] body :is(.primaryCta, .topStart),
+html[data-style="professional"][data-theme] body :is(.primaryCta),
 html[data-style="professional"][data-theme] body :is(.nlPageActions, .nlSection > header) .stAddBtn {
   border: 1px solid var(--ink);
   border-radius: 4px;
@@ -1845,7 +1790,7 @@ html[data-style="professional"][data-theme] body :is(.nlPageActions, .nlSection 
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(11, 21, 38, 0.12);
 }
-html[data-style="professional"][data-theme] body :is(.primaryCta, .topStart):hover:not(:disabled) {
+html[data-style="professional"][data-theme] body :is(.primaryCta):hover:not(:disabled) {
   opacity: 1;
   filter: brightness(0.92);
 }
@@ -1855,10 +1800,10 @@ html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta
 html[data-style="professional"][data-theme] body :is(.quietButton, .secondaryCta):hover:not(:disabled) {
   border-color: var(--accent);
 }
-html[data-style="professional"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input) {
+html[data-style="professional"][data-theme] body :is(.stFInput, .stCombo .stComboInput) {
   border-radius: 4px;
 }
-html[data-style="professional"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input):focus {
+html[data-style="professional"][data-theme] body :is(.stFInput, .stCombo .stComboInput):focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--ring);
 }
@@ -2034,13 +1979,8 @@ html[data-style="calm"][data-theme]
   body
   :is(
     .agentTable,
-    .activityCard,
-    .progressCard,
-    .quickCard,
     .metricCard,
-    .stAgentSummary,
     .stCard,
-    .nlRows,
     .nlSteps,
     .stTpl,
     .stPromptPreview,
@@ -2071,22 +2011,17 @@ html[data-style="calm"][data-theme]
     .tmTable,
     .settingsCard,
     .wfInspector,
-    .gateStrip,
     .shipFlow,
-    .loginCard,
-    .profileCard,
     .createModal,
-    .ovStat,
     .ovCalls,
     .ovReady,
     .nlTestDock,
-    .agentSideName,
-    .showcaseCard
+    .agentSideName
   ) {
   border-radius: 16px;
 }
 /* buttons: soft and round, a gentle change under the pointer */
-html[data-style="calm"][data-theme] body :is(.primaryCta, .topStart),
+html[data-style="calm"][data-theme] body :is(.primaryCta),
 html[data-style="calm"][data-theme] body :is(.nlPageActions, .nlSection > header) .stAddBtn {
   border: 1px solid var(--ink);
   border-radius: 12px;
@@ -2095,7 +2030,7 @@ html[data-style="calm"][data-theme] body :is(.nlPageActions, .nlSection > header
   font-weight: 600;
   box-shadow: 0 8px 20px -14px rgba(40, 70, 45, 0.6);
 }
-html[data-style="calm"][data-theme] body :is(.primaryCta, .topStart):hover:not(:disabled) {
+html[data-style="calm"][data-theme] body :is(.primaryCta):hover:not(:disabled) {
   opacity: 1;
   filter: brightness(1.07);
   box-shadow: 0 10px 24px -14px rgba(40, 70, 45, 0.7);
@@ -2107,10 +2042,10 @@ html[data-style="calm"][data-theme] body :is(.quietButton, .secondaryCta):hover:
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line2));
   background: var(--accent-soft);
 }
-html[data-style="calm"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input) {
+html[data-style="calm"][data-theme] body :is(.stFInput, .stCombo .stComboInput) {
   border-radius: 12px;
 }
-html[data-style="calm"][data-theme] body :is(.stFInput, .stCombo .stComboInput, .loginCard input, .profileCard input):focus {
+html[data-style="calm"][data-theme] body :is(.stFInput, .stCombo .stComboInput):focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--ring);
 }

@@ -442,6 +442,11 @@
   border-radius: 10px;
   background: var(--surface2);
 }
+.pkChosenActions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
 .pkChosenText {
   display: grid;
   min-width: 0;

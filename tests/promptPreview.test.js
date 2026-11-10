@@ -38,11 +38,18 @@ const config = {
   },
 };
 
-test('the pieces come in order, with names the configuration knows filled in', () => {
+test('the pieces come in the agent config guide’s order (3.16, 4), with names the configuration knows filled in', () => {
   const out = assemblePrompt(config, 'a');
   assert.deepEqual(
     out.sections.map((s) => s.id),
-    ['persona', 'shared', 'role', 'opening', 'rules', 'conditional-0', 'tools'],
+    ['persona', 'shared', 'role', 'rules', 'conditional-0', 'opening', 'tools'],
+  );
+  // the channel's note comes right after the rules every agent shares, before the agent's own role
+  assert.deepEqual(
+    assemblePrompt(config, 'a', { channelId: 'phone' })
+      .sections.map((s) => s.id)
+      .slice(0, 4),
+    ['persona', 'shared', 'channel', 'role'],
   );
   const role = out.sections.find((s) => s.id === 'role').text;
   assert.match(role, /The plan is basic and we are open 9 to 5/);
@@ -86,6 +93,9 @@ test('a sensitive variable is never shown; an unknown agent gives nothing', () =
 test('conditions in words', () => {
   assert.equal(describeCondition({ state: 'verified', equals: true }), 'the state verified is true');
   assert.equal(describeCondition({ arg: 'n', gte: 3 }), 'the argument n is at least 3');
+  // the picture fixture's "a photo arrived": not … is not set reads … is set; any other not stays as it is
+  assert.equal(describeCondition({ not: { state: 'photo', equals: null } }), 'the state photo is set');
+  assert.equal(describeCondition({ not: { state: 'verified', equals: true } }), 'not (the state verified is true)');
   assert.equal(describeCondition({ channel: ['phone', 'web'] }), 'the channel is “phone”, “web”');
   assert.equal(
     describeCondition({ all: [{ state: 'a', equals: 'x' }, { not: { state: 'b', in: ['y', 'z'] } }] }),

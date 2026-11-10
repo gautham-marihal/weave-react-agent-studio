@@ -352,12 +352,16 @@ export type Condition = ((Comparison) & {
 });
 
 export type ActionSay = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "say";
   text: Speech;
   allow_interruptions?: boolean;
 };
 
 export type ActionGenerate = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "generate";
   /** The model writes the reply from these instructions. Costs an LLM call and fails if the LLM does; prefer say for must-deliver lines. */
   instructions: string;
@@ -365,12 +369,16 @@ export type ActionGenerate = {
 };
 
 export type ActionPlaySound = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "play_sound";
   sound: SoundSource;
   volume?: number;
 };
 
 export type ActionHttp = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "http";
   connection: string;
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -392,6 +400,8 @@ export type ActionHttp = {
 
 /** Collect keypad digits */
 export type ActionCollectDtmf = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "collect_dtmf";
   /** The state variable that receives the digits as text. */
   into: string;
@@ -407,7 +417,107 @@ export type ActionCollectDtmf = {
   on_timeout?: Action[];
 };
 
+/** Ask for a picture */
+export type ActionRequestImage = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
+  type: "request_image";
+  /** upload = the visitor sends a photo (a photo already sent, and not yet used, is taken at once). camera = a frame (the sharpest of a few) is taken from their camera, which the screen switches on. */
+  kind: "upload" | "camera";
+  /** The state variable that receives the picture's id. It is emptied first, so a retry never sees the last attempt's picture. */
+  into: string;
+  /** Shown on the visitor's screen beside the upload button or the camera view (it is not spoken). */
+  prompt?: Speech;
+  /** Give up after this long. */
+  timeout_s?: number;
+  /** Hold the picture to a standard, checked in code. A picture that falls short is refused with a message that tells the visitor how to retake it, and the request stays open. Worth setting for anything a model will read: a m… */
+  quality?: {
+    /** Least sharpness (variance of the picture's edges, measured at 640 px wide; a crisp card photo is in the hundreds or thousands, a badly blurred upload under 5). For a camera request set it higher than for an upload: video… */
+    min_sharpness?: number;
+    /** Least average brightness (0 black to 255 white). */
+    min_brightness?: number;
+    /** Greatest average brightness: refuses a washed-out picture. */
+    max_brightness?: number;
+    /** Least length of the picture's shorter side in pixels. */
+    min_dimension?: number;
+  };
+  /** Run when no picture came in time, instead of continuing. */
+  on_timeout?: Action[];
+};
+
+/** Read a picture with the vision model */
+export type ActionAnalyzeImage = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
+  type: "analyze_image";
+  /** State variables that hold picture ids (set by request_image). */
+  images: string[];
+  /** What to look for, in your words. {{...}} is filled in first. */
+  instructions: string;
+  /** The values to read. Each comes back as its type or empty. Text is trimmed to one short line. */
+  fields: {
+    [key: string]: {
+      /** date = written as YYYY-MM-DD. */
+      type: "string" | "number" | "boolean" | "date";
+      /** What this value is and how to write it. */
+      description?: string;
+    };
+  };
+  /** Which state variable keeps each field: {"full_name": "doc_name"}. A field not listed goes to a variable with its own name. Mark the variable `sensitive` for a number you do not want in logs. */
+  into?: {
+    [key: string]: string;
+  };
+  /** Fields that must be read for the answer to count as ok. */
+  required?: string[];
+  /** A boolean state variable: true when an answer came back and every required field was read. */
+  ok_into?: string;
+  /** Read with this model instead of the one the bot talks with. A stronger vision model reads a card better and says more honestly when it cannot (gpt-4.1 did, gpt-4.1-mini often called a blurred card clear); the chat can st… */
+  model?: LlmConfig;
+  timeout_s?: number;
+};
+
+/** Compare values in code */
+export type ActionCompareValues = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
+  type: "compare_values";
+  pairs: ({
+    left: string;
+    right: string;
+    /** text: names and phrases (fuzzy). id: letters and digits only. exact: same text ignoring case. date: the same day. date_on_or_after: the left date is the right date or later (an expiry date against today). number: the sam… */
+    method?: "text" | "id" | "exact" | "date" | "date_on_or_after" | "number";
+    /** text only: the least similarity that counts as a match. */
+    threshold?: number;
+    /** date only: how to read 05/04/1990. */
+    date_order?: "dmy" | "mdy";
+    /** A name for this pair in `differences` (default: the left variable's name). */
+    label?: string;
+    /** Leave this pair out when either side is empty (it still must match when both have a value). */
+    optional?: boolean;
+  })[];
+  /** all: every pair must match. any: one is enough. */
+  require?: "all" | "any";
+  into?: {
+    /** A boolean variable: did they match. */
+    matched?: string;
+    /** A number variable: the lowest similarity among the pairs (1 = identical). */
+    score?: string;
+    /** A text variable: the labels of the pairs that did not match, never their values. */
+    differences?: string;
+  };
+};
+
+/** Forget pictures now */
+export type ActionDiscardImage = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
+  type: "discard_image";
+  images: string[];
+};
+
 export type ActionLog = {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "log";
   level?: "debug" | "info" | "warning" | "error";
   message: string;
@@ -418,21 +528,33 @@ export type SpokenAction = (ActionSay | ActionGenerate);
 
 /** Action */
 export type Action = (ActionSay | ActionGenerate | {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "set_state";
   values: Record<string, unknown>;
 } | {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "handoff";
   to: string;
   carry_context?: boolean;
 } | {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "return_to_entry";
 } | {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "end_call";
   say?: Speech;
 } | {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "transfer";
   transfer: string;
 } | {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "notify";
   notification: string;
   /** Extra template variables, available as {{with.name}}. */
@@ -444,12 +566,16 @@ export type Action = (ActionSay | ActionGenerate | {
     sent_by?: string;
   };
 } | {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "send_form";
   form: string;
 } | {
+  /** Run this action only if the condition holds now (schema 1.2). Without it the action always runs. */
+  when?: Condition;
   type: "wrapup";
   wrapup: string;
-} | ActionPlaySound | ActionHttp | ActionCollectDtmf | ActionLog);
+} | ActionPlaySound | ActionHttp | ActionCollectDtmf | ActionRequestImage | ActionAnalyzeImage | ActionCompareValues | ActionDiscardImage | ActionLog);
 
 export type RuleBlock = {
   when?: Condition;
@@ -1339,8 +1465,52 @@ export interface AgentConfig {
       phone?: string;
       persona?: string;
     };
+    /** Pictures this scenario can upload or show to a pretend camera, by name (schema 1.2). Each is either drawn from text lines as a sample card (`lines`, with faults you can switch on: blur, brightness, rotate, exif_orientati… */
+    images?: {
+      [key: string]: {
+        /** The rows of text on the sample card, for example "Name: JANE SAMPLE". */
+        lines?: string[];
+        title?: string;
+        width?: number;
+        height?: number;
+        colour?: "blue" | "green" | "sand" | "grey";
+        format?: "png" | "jpeg" | "jpg" | "webp" | "gif" | "bmp";
+        quality?: number;
+        /** Soft focus: a Gaussian radius in pixels (2 is slightly soft, 6 unreadable by eye). */
+        blur?: number;
+        /** 1 is unchanged, below 1 is darker, above 1 brighter. */
+        brightness?: number;
+        /** Degrees the card is turned. */
+        rotate?: number;
+        /** Store the picture turned and tag it with how to turn it back, as a phone held sideways does. */
+        exif_orientation?: 3 | 6 | 8;
+        /** A white bloom over part of the card. */
+        glare?: number;
+        noise?: number;
+        /** The fraction cut off the right side. */
+        crop?: number;
+        /** A perspective tilt. */
+        skew?: number;
+        seed?: number;
+        base64?: string;
+        data_url?: string;
+        /** A path inside the bot's fixtures folder. */
+        file?: string;
+        /** Plain text bytes: a file that is not a picture. */
+        text?: string;
+        empty?: boolean;
+      };
+    };
+    /** Which of `images` the visitor's camera shows from the start (schema 1.2). Leave it out, or null, for no camera. */
+    camera?: string | null;
     turns: (({
       say: string;
+    } | {
+      /** The visitor sends this picture (one of the scenario's `images`). If the bot is waiting for one it is taken at once; otherwise it waits to be asked for. */
+      upload: string;
+    } | {
+      /** From now on the visitor's camera shows this picture (one of `images`), or null to switch the camera off. */
+      camera: string | null;
     } | {
       /** The caller presses these keys on the phone keypad (a phone channel only), for example 4821#. The digits are never written to the result. */
       keys: string;
@@ -1357,6 +1527,9 @@ export interface AgentConfig {
     } | {
       /** Some assistant message matches this regex (ignoring case). */
       said_matches: string;
+    } | {
+      /** No assistant message matches this regex (ignoring case): the way to prove something was never said, such as a full ID number. Schema 1.2. */
+      said_not_matches: string;
     } | {
       /** Natural-language criterion graded by an LLM. Needs a live model, so it is skipped in a scenario that has a model_script. */
       judge: string;
@@ -1402,6 +1575,17 @@ export interface AgentConfig {
     } | {
       /** This call limit ended the call (schema 1.2). A scenario is far shorter than the duration and silence limits, so those two can only be proved in a unit test. */
       limit_reached: "max_call_duration_s" | "max_silence_s" | "max_tool_calls_per_call" | "max_handoffs_per_call";
+    } | {
+      /** The bot sent the visitor's screen this message (schema 1.2): {type: request_image, kind: upload | camera} for a request, {type: image_rejected, code: too_blurry ...} for a refused picture, {type: request_done, status: re… */
+      screen_told: {
+        type?: "request_image" | "request_done" | "image_rejected";
+        kind?: "upload" | "camera";
+        code?: string;
+        status?: "received" | "timeout" | "cancelled";
+      };
+    } | {
+      /** This many pictures were still held in the call's memory when the conversation ended (0 proves they were discarded). Schema 1.2. */
+      images_held: number;
     } | {
       /** This input rule did not match anything: the way to prove an ordinary request is not refused. Schema 1.2. */
       guardrail_not_triggered: string;

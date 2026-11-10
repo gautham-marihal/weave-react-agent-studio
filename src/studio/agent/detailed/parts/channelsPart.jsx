@@ -20,13 +20,35 @@ import { addDefaultSpeechModels } from '../../../models/config.js';
 import { useProviders } from '../../../models/useProviders.js';
 import { REACH, reachOf, setReach } from '../../../setup/setupModel.js';
 import { channelGreetingTarget, channelName, greetingOf, setGreeting } from '../../../simple/simpleModel.js';
-import { SCHEDULES_START } from '../../pageLists.js';
+import { SCHEDULES_START, agentZone } from '../../pageLists.js';
 import { getAtPath } from '../../schemaPath.js';
 import { setPath } from '../schemaFacts.js';
 import { DetailedPage, removeEntry } from '../Detailed.jsx';
 import AddItem from '../AddItem.jsx';
+import { clip } from '../describe.js';
+import { CarriesEditor, ClosedDays, WeekEditor } from '../channelsWorkspace/channelEditors.jsx';
+import ChannelsWorkspace from '../channelsWorkspace/ChannelsWorkspace.jsx';
 
-// 6 · Channels and hours: where people reach the agent, and when. The three ways that work today are switched on and
+// A channel's row: what kind it is, what customers can send on it, its first words, and whether it is on
+const INPUT_WORDS = { text: 'typing', audio: 'talking', image: 'photos', video: 'the camera' };
+function describeChannel(entry) {
+  const ch = isObj(entry.item) ? entry.item : {};
+  const input = Array.isArray(ch.modalities?.input) ? ch.modalities.input : [];
+  // its own first words, when they are words (a fixed line by its id is named on the Agent part)
+  const says = typeof ch.greeting?.say === 'string' ? ch.greeting.say : '';
+  return {
+    icon: ch.type === 'sip_voice' || ch.type === 'phone' ? 'phone' : ch.type === 'web_voice' ? 'voice' : 'chat',
+    meta: [ch.id, input.length ? `customers can use ${input.map((m) => INPUT_WORDS[m] || m).join(', ')}` : ''].filter(Boolean).join(' · '),
+    detail: says
+      ? `Says first: “${clip(says, 110)}”`
+      : ch.greeting?.say
+        ? 'Says first one of the agent’s fixed lines.'
+        : 'Says nothing first: it waits for the person to start.',
+    state: ch.enabled === false ? { tone: 'off', words: 'Switched off' } : { tone: 'good', words: 'On' },
+  };
+}
+
+// 6 · Channels: how people reach the agent, and when its team is in. The three ways that work today are switched on and
 // off with the setup's own switches (setupModel.js: a new one is made ready, the last one can't go); the kinds the
 // server lists as not running yet are shown, waiting. Each channel opens its own card; hours and caller id sit beside.
 // What a channel offers (a keypad, forms, which entry fields, voice) is the server's table of kinds (GET
@@ -53,7 +75,7 @@ function ReachPills({ ctx, id }) {
       <div className="dtPills" role="group" aria-label="Where people reach it" id={id}>
         {REACH.map((r) => (
           <button key={r.type} type="button" aria-pressed={on[r.type]} className={on[r.type] ? 'on' : ''} onClick={() => flip(r.type)}>
-            {r.title || channelName(r.type)}
+            {r.label || r.title || channelName(r.type)}
           </button>
         ))}
         {later.map((t) => (
@@ -71,19 +93,37 @@ function ReachPills({ ctx, id }) {
   );
 }
 
-// a channel's own first line: what this channel says when someone arrives (the agent's line, unless it has its own)
+// what this channel says first when someone arrives. A line other channels say too stays one line (as on the Workflow's
+// channel panel), so the field says when typing changes them as well; the channels are fixed at the first edit, so
+// clearing and retyping writes the same ones.
 function OwnGreeting({ ctx, id, entry }) {
   const index = entry.base[1];
-  const target = channelGreetingTarget(ctx.config, index);
+  const [fixed, setFixed] = useState(null);
+  const target = fixed || channelGreetingTarget(ctx.config, index);
   const line = greetingOf(ctx.config, target);
+  const notes = [
+    target.length > 1 ? `${target.length} channels say this line, so it changes on all of them.` : '',
+    line.reference ? 'It is one of the agent’s fixed lines; changing it changes that line everywhere it is used.' : '',
+  ].filter(Boolean);
   return (
-    <TextArea
-      id={id}
-      rows={2}
-      value={line.text}
-      placeholder="Empty: it waits for the person to start"
-      onChange={(event) => ctx.set(setGreeting(ctx.config, event.target.value, target))}
-    />
+    <>
+      <TextArea
+        id={id}
+        rows={2}
+        value={line.text}
+        placeholder="Empty: it waits for the person to start"
+        aria-describedby={notes.length ? `${id}-shared` : undefined}
+        onChange={(event) => {
+          if (!fixed) setFixed(target);
+          ctx.set(setGreeting(ctx.config, event.target.value, target));
+        }}
+      />
+      {notes.length > 0 && (
+        <small className="dtNote" id={`${id}-shared`}>
+          {notes.join(' ')}
+        </small>
+      )}
+    </>
   );
 }
 
@@ -251,11 +291,11 @@ export function ChannelsPage({ extra = {}, ...props }) {
   return <DetailedPage part={channelsPart} {...props} extra={{ ...extra, channelTypes: types }} />;
 }
 
-export const channelsPart = {
+export const channelsForm = {
   id: 'channels',
   num: '6',
-  title: 'Channels and hours',
-  question: 'Where do people reach it, and when? Each channel opens its own settings; hours and caller id sit beside them.',
+  title: 'Channels',
+  question: 'How people reach it, when its team is in, and how it knows who is calling.',
   cols: [
     [
       {
@@ -280,6 +320,10 @@ export const channelsPart = {
           label: 'Settings for',
           hint: 'The channel whose settings are below',
           nameOf: (ch, i) => (isObj(ch) ? `${channelName(ch.type)}${ch.enabled === false ? ' (off)' : ''}` : `Channel ${i + 1}`),
+          icon: 'chat',
+          emptyTitle: 'No way to reach it yet',
+          empty: 'Add chat or talk on your website, or a phone line.',
+          describe: describeChannel,
           renderAdd: (c) => <AddItem ctx={c} path={['channels']} pickerKey="channels" word="channel" onAdded={(key) => c.choose('channels', key)} />,
         },
         of: 'channels',
@@ -310,11 +354,20 @@ export const channelsPart = {
               : []),
             {
               id: 'greeting',
-              label: 'Its own greeting',
-              hint: 'Empty: it uses the agent’s greeting',
+              label: 'What it says first',
+              hint: 'Empty: it waits for the person to start',
               render: (ctx) => <OwnGreeting ctx={ctx} id={ctx.id} entry={entry} />,
             },
-            itemRow(entry, ['greeting', 'allow_interruptions'], { id: 'interrupt', label: 'Callers can interrupt the greeting', kind: 'sw' }, speaks),
+            (() => {
+              const row = itemRow(
+                entry,
+                ['greeting', 'allow_interruptions'],
+                { id: 'interrupt', label: 'Callers can interrupt the greeting', kind: 'sw' },
+                speaks,
+              );
+              // unset, callers may talk over it (the schema has no default; the channel form reads it the same way)
+              return { ...row, get: (config) => row.get(config) !== false };
+            })(),
             ...capabilityRows(entry, types),
             itemRow(entry, ['instructions_append'], { id: 'extra', label: 'Extra instructions for this channel', kind: 'long', rows: 2 }),
             ...(fit.mislabelled || fit.voiceOnly.length || fit.speech.length
@@ -336,8 +389,11 @@ export const channelsPart = {
               }),
             ),
             itemRow(entry, ['match'], { id: 'match', label: 'Who it answers', kind: 'form' }),
-            itemRow(entry, ['modalities'], { id: 'modalities', label: 'What it hears and says', kind: 'form' }),
-            itemRow(entry, ['inputs'], { id: 'inputs', label: 'Pictures and video', kind: 'form' }),
+            {
+              ...itemRow(entry, ['modalities'], { id: 'modalities', label: 'What it carries', hint: 'What the person can use, and how it answers' }),
+              kind: 'custom',
+              render: (ctx) => <CarriesEditor id={ctx.id} value={ctx.value} onChange={ctx.onChange} types={ctx.channelTypes} type={entry.item?.type} />,
+            },
             itemRow(entry, ['overrides'], { id: 'overrides', label: 'Its own models and conversation settings', kind: 'form' }),
           ];
         },
@@ -352,19 +408,23 @@ export const channelsPart = {
           id: 'schedules',
           path: ['schedules'],
           label: 'Schedules',
-          empty: 'None yet. The first one starts as Monday to Friday, 9 to 5, in your time zone.',
+          empty: 'None yet. The first one starts as Monday to Friday, 9 to 5, in the agent’s time zone.',
           nameOf: (s, key) => (isObj(s) && s.description) || key,
           add: (config) => {
             if (!isObj(config?.schedules) || !Object.keys(config.schedules).length) {
               const next = SCHEDULES_START.make(config);
               return { config: next, key: Object.keys(next.schedules || {})[0] };
             }
-            const key = `hours_${Object.keys(config.schedules).length + 1}`;
+            // a name no schedule has (counting can repeat one after a deletion, and would replace it)
+            let n = Object.keys(config.schedules).length + 1;
+            while (`hours_${n}` in config.schedules) n += 1;
+            const key = `hours_${n}`;
             return {
               config: setPath(config, ['schedules', key], {
                 description: 'More hours',
-                timezone: config.schedules[Object.keys(config.schedules)[0]]?.timezone || 'UTC',
-                weekly: [],
+                timezone: config.schedules[Object.keys(config.schedules)[0]]?.timezone || agentZone(config),
+                // a schedule needs at least one rule (schema minItems 1): weekdays, 9 to 5, to change
+                weekly: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri'], start: '09:00', end: '17:00' }],
               }),
               key,
             };
@@ -378,8 +438,16 @@ export const channelsPart = {
           if (!entry) return [];
           return [
             itemRow(entry, ['timezone'], { id: 'tz', label: 'Time zone', kind: 'text', placeholder: 'Asia/Singapore' }),
-            itemRow(entry, ['weekly'], { id: 'week', label: 'Normal week', kind: 'form' }),
-            itemRow(entry, ['holidays'], { id: 'closed', label: 'Closed days', kind: 'form' }),
+            {
+              ...itemRow(entry, ['weekly'], { id: 'week', label: 'Normal week' }),
+              kind: 'custom',
+              render: (ctx) => <WeekEditor id={ctx.id} value={ctx.value} onChange={ctx.onChange} />,
+            },
+            {
+              ...itemRow(entry, ['holidays'], { id: 'closed', label: 'Closed days' }),
+              kind: 'custom',
+              render: (ctx) => <ClosedDays id={ctx.id} value={ctx.value} onChange={ctx.onChange} />,
+            },
             itemRow(entry, ['description'], { id: 'name', label: 'Name', kind: 'text' }),
           ];
         },
@@ -425,3 +493,5 @@ export const channelsPart = {
     ],
   ],
 };
+
+export const channelsPart = { ...channelsForm, render: (ctx) => <ChannelsWorkspace ctx={ctx} form={channelsForm} /> };

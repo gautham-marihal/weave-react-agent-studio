@@ -16,6 +16,7 @@ import {
 import {
   SECRET_PATTERN,
   applyRenamedProvider,
+  clearStage,
   applyVoice,
   readModels,
   renamedProvider,
@@ -322,4 +323,18 @@ test('default speech models: the best provider the server can run is chosen for 
   const none = addDefaultSpeechModels(config, [{ name: 'anthropic', stages: ['llm'], installed: true }]);
   assert.deepEqual(none.skipped, ['stt', 'tts']);
   assert.equal(none.config, config);
+});
+
+// ---- speech-to-speech ------------------------------------------------------------------------------------------------
+test('speech-to-speech is picked like the other models, and can be stopped', () => {
+  assert.deepEqual(readModels({}).realtime, { provider: '', model: '', secret: '', baseUrl: '' }, 'not used until chosen');
+  const chosen = setProvider({}, 'realtime', 'openai');
+  assert.deepEqual(chosen.defaults.models.realtime, { provider: 'openai', model: 'gpt-realtime', api_key: { secret: 'OPENAI_API_KEY' } });
+  assert.equal(modelLabel('realtime', 'openai', 'gpt-realtime'), 'GPT Realtime');
+  assert.equal(setModel(chosen, 'realtime', 'gpt-realtime-mini').defaults.models.realtime.model, 'gpt-realtime-mini');
+  const stopped = clearStage(chosen, 'realtime');
+  assert.ok(!('realtime' in stopped.defaults.models), 'stopping removes it');
+  assert.ok('realtime' in chosen.defaults.models, 'the original is untouched');
+  assert.equal(clearStage({}, 'realtime').defaults, undefined, 'nothing to stop: the same config');
+  assert.ok(providersForStage(FALLBACK_PROVIDERS, 'realtime').some((p) => p.name === 'openai'));
 });

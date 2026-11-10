@@ -183,8 +183,11 @@ check('the numbers set up by hand are still there', (await page.locator('tbody t
 // ---- an agent: its phone line asks for no route, and its Deploy page lists its numbers
 await page.evaluate(() => (location.hash = '#/bots/front-desk/channels'));
 await page.waitForTimeout(1500);
-// the phone channel's card: how callers reach it
-await page.locator('[data-card="channels.channel"] .dtItems button', { hasText: /phone/i }).first().click();
+// the phone line's own page, opened from its door: how callers reach it
+await page
+  .locator('.chDoor', { hasText: /Phone calls/ })
+  .first()
+  .click();
 await page.waitForSelector('[data-route="platform"]');
 check(
   'a phone line asks for no number, trunk or routing rule',
@@ -197,6 +200,18 @@ check(
   'its Deploy page lists its numbers, with a way to add one',
   (await page.locator('.agentNumbers').getByRole('button', { name: 'Add a number' }).count()) === 1,
 );
+
+// ---- SIP trunks: a preview, and outbound calling is not built (FRONTEND_GUIDE section 8): nothing says an agent can place calls
+await page.evaluate(() => (location.hash = '#/telephony/trunks'));
+await page.waitForSelector('.telephonyPreview');
+const trunks = (await page.locator('.telephonyContent').innerText()).replace(/\s+/g, ' ');
+check(
+  'trunks: the preview says outbound calling isn’t built',
+  /Outbound trunks and outbound calling aren’t built on the platform yet/.test(trunks),
+  trunks.slice(0, 300),
+);
+check('trunks: the outbound count says calling isn’t available', /Outbound calling isn’t available yet/.test(trunks));
+check('trunks: nothing promises that agents place calls', !/let agents place calls|Placing calls through your carrier/.test(trunks));
 
 check('nothing was sent to a server (the demo answers in the browser)', requests.length === 0, requests.join(', '));
 check('no errors in the console', problems.length === 0, problems.slice(0, 2).join(' | '));

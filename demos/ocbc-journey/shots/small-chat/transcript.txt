@@ -1,0 +1,33 @@
+Preview
+Ended
+· Web chat
+Real agent
+Simulated
+
+Real agent. A live conversation with the saved draft through the server.
+
+Ended
+Agent
+
+Hello, this is Aria from OCBC. How can I help you today?
+
+You
+
+Hello, I’m new to OCBC and I’d like to open an account for SGD 50,000.
+
+Agent
+
+For SGD 50,000, we don't have special deposit offers as these start at SGD 100,000. One alternative is an everyday savings account, which a relationship manager can help you with. Deposits are safe with us, but deposit insurance covers only up to its legal limit. Would you like a call from a relationship manager to discuss this, or help with anything else?
+
+You
+
+No, that’s all. Thank you!
+
+Agent
+
+Thank you for choosing OCBC. Goodbye.
+
+The agent ended the conversation.
+The conversation ended.
+Chat again
+Talk instead

@@ -254,13 +254,13 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
   // only this workspace's agents: another workspace's alerts and their history stay with it
   const names = Object.fromEntries(bots.map((b) => [b.id, b.name || b.id]));
   const alerts = withStatus(
-    live.alerts.filter((a) => a.bot in names),
+    live.alerts.filter((a) => Object.hasOwn(names, a.bot)),
     insights.acks,
     Date.now(),
   );
   const fresh = alerts.filter((a) => a.status === 'new');
   const handled = alerts.filter((a) => a.status !== 'new');
-  const history = insights.history.filter((h) => h.clearedAt && h.bot in names);
+  const history = insights.history.filter((h) => h.clearedAt && Object.hasOwn(names, h.bot));
   const changedRules = Object.keys(insights.rules || {}).length > 0;
 
   return (
@@ -374,7 +374,7 @@ export default function AlertsPage({ bots = [], onOpenAgent, onOpenCall, userNam
                     ))}
                   </ul>
                   <p>
-                    <Button type="button" onClick={clearHistory}>
+                    <Button type="button" onClick={() => clearHistory(Object.keys(names))}>
                       Clear this list
                     </Button>
                   </p>

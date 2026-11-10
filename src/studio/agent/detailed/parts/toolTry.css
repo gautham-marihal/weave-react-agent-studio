@@ -1,0 +1,212 @@
+/* Build › Tools › "Try it" (ToolTry.jsx): what you give it beside what would happen, the request on a dark strip, a
+   yes/no gate, the answer split three ways, then what follows. Studio tokens; the strip is dark in both themes. */
+.ttTry {
+  container-type: inline-size;
+}
+.ttGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 20px;
+  padding: 4px 0 8px;
+}
+@container (max-width: 720px) {
+  .ttGrid {
+    grid-template-columns: 1fr;
+  }
+}
+.ttPane {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+.ttHead {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.ttField {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.ttField > span {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--textStrong);
+}
+.ttField > span small {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.ttWhatIf > summary {
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--accent-text);
+}
+.ttReq {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #1d1526;
+  color: #efe8f7;
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.ttReqLine {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.ttVerb {
+  color: #1a1220;
+  background: #6fd39d;
+  border-radius: 5px;
+  padding: 0 6px;
+  font-weight: 700;
+}
+.ttReq small {
+  color: #b9aec8;
+  font-size: var(--fs-xs);
+}
+.ttGate {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.ttGate.yes {
+  background: color-mix(in srgb, var(--good) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--good) 35%, transparent);
+  color: var(--good-text);
+}
+.ttGate.no {
+  background: color-mix(in srgb, var(--warn-text) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--warn-text) 35%, transparent);
+  color: var(--warn-text);
+}
+.ttGateIco {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: var(--surface);
+  background: var(--good);
+}
+.ttGate.no .ttGateIco {
+  background: var(--warn-text);
+}
+/* the answer splits three ways: one bracket over three lanes */
+.ttLanes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 20px;
+}
+.ttLanes::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16%;
+  right: 16%;
+  height: 12px;
+  border: 2px solid var(--line2);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+}
+@container (max-width: 560px) {
+  .ttLanes {
+    grid-template-columns: 1fr;
+    padding-top: 0;
+  }
+  .ttLanes::before {
+    display: none;
+  }
+}
+.ttLane {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.ttLane h4 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--textStrong);
+}
+.ttLane h4 i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.ttLane.state h4 i {
+  background: var(--good);
+}
+.ttLane.caller h4 i {
+  background: color-mix(in srgb, var(--accent) 40%, #d0508f);
+}
+.ttLane pre {
+  margin: 0;
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ttLane small {
+  color: var(--dim);
+  font-size: var(--fs-xs);
+}
+.ttThen {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--line2);
+  font-size: var(--fs-sm);
+}
+.ttThen ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 2px;
+}
+.ttThenIco {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}

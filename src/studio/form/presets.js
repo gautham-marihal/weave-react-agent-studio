@@ -92,9 +92,14 @@ export function defaultsForType(type, botId) {
   }
 }
 
-export function buildChannel(presetId, { taken = [], botId = '' } = {}) {
+// A new channel of a preset. `types` (GET /channel-types) says what each kind starts with: its `default_modalities`
+// replace the ones written above, so a kind the server changes starts right (the guide, section 5).
+export function buildChannel(presetId, { taken = [], botId = '', types = null } = {}) {
   const preset = CHANNEL_PRESETS.find((item) => item.id === presetId) || CHANNEL_PRESETS[0];
   const start = defaultsForType(preset.type, botId);
+  const told = types ? infoOf(types, preset.type)?.defaultModalities : null;
+  if (told && Array.isArray(told.input) && told.input.length && Array.isArray(told.output) && told.output.length)
+    start.modalities = { input: [...told.input], output: [...told.output] };
   // an id that differs from one already taken only by a hyphen
   // ("web-chat", "web_chat") counts as taken: the two would read the same
   const lookalikes = taken.map((id) => String(id).replace(/-/g, '_'));
@@ -183,15 +188,41 @@ export function changeChannelType(channel, nextType, botId = '', types = FALLBAC
 
 // What a channel's modalities need from the rest of the config, as sentences. The validator says the same, but only
 // afterwards and not beside the field.
-export function modalityNotes(channel, config) {
+// The models a channel really runs with: its own (`overrides.models`) where it has one, null where it switches one off,
+// otherwise the agent's. A speech-to-speech model hears and speaks by itself.
+export function channelModels(channel, config) {
   const models = config?.defaults?.models || {};
+  const own = channel?.overrides?.models && typeof channel.overrides.models === 'object' ? channel.overrides.models : {};
+  const of = (stage) => (Object.hasOwn(own, stage) ? (own[stage] === null ? null : { ...(models[stage] || {}), ...own[stage] }) : models[stage] || null);
+  return { stt: of('stt'), tts: of('tts'), llm: of('llm'), realtime: of('realtime') };
+}
+
+export function modalityNotes(channel, config) {
+  const models = channelModels(channel, config);
+  const own = channel?.overrides?.models && typeof channel.overrides.models === 'object' ? channel.overrides.models : {};
+  const realtime = !!models.realtime?.provider;
   const input = channel?.modalities?.input || [];
   const output = channel?.modalities?.output || [];
   const notes = [];
-  if (input.includes('audio') && !models.stt?.provider)
-    notes.push({ level: 'warn', text: 'Audio in needs a speech-to-text model. None is set yet.', fix: 'models', stage: 'stt' });
-  if (output.includes('audio') && !models.tts?.provider)
-    notes.push({ level: 'warn', text: 'Audio out needs a text-to-speech model. None is set yet.', fix: 'models', stage: 'tts' });
+  // what is missing, and whether this channel switched it off itself
+  const lacks = (stage) => !realtime && !models[stage]?.provider;
+  const off = (stage) => Object.hasOwn(own, stage) && own[stage] === null;
+  if (input.includes('audio') && lacks('stt'))
+    notes.push({
+      level: 'warn',
+      text: off('stt') ? 'Audio in needs a speech-to-text model, but this channel switches it off.' : 'Audio in needs a speech-to-text model. None is set yet.',
+      fix: 'models',
+      stage: 'stt',
+    });
+  if (output.includes('audio') && lacks('tts'))
+    notes.push({
+      level: 'warn',
+      text: off('tts')
+        ? 'Audio out needs a text-to-speech model, but this channel switches it off.'
+        : 'Audio out needs a text-to-speech model. None is set yet.',
+      fix: 'models',
+      stage: 'tts',
+    });
   if ((input.includes('image') || input.includes('video')) && models.llm?.vision !== true)
     notes.push({ level: 'warn', text: 'Images and video are only understood by a language model with vision. Turn on “vision” for the model.', fix: 'models' });
   if (input.includes('audio') || output.includes('audio'))

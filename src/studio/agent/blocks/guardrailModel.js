@@ -328,3 +328,18 @@ export function checkWords(rule) {
     how: ENFORCED[rule.enforcement] || '',
   };
 }
+
+// Which guardrail parts the server keeps but does not run yet, from the validator's `unsupported` (agent config guide 8:
+// topic limits, escalation rules, and the code-enforced checks on what the agent says). Read from the server every time,
+// so a part it starts running stops being marked. { topics, escalation, output: [indexes of output checks] }
+export function guardNotRun(unsupported) {
+  const where = (Array.isArray(unsupported) ? unsupported : []).map((u) => String(u?.where || ''));
+  return {
+    topics: where.some((w) => w === 'guardrails.topics' || w.startsWith('guardrails.topics.')),
+    escalation: where.some((w) => w === 'guardrails.escalation' || w.startsWith('guardrails.escalation')),
+    output: where
+      .filter((w) => w.startsWith('guardrails.output['))
+      .map((w) => Number(/^guardrails\.output\[(\d+)\]/.exec(w)?.[1]))
+      .filter(Number.isInteger),
+  };
+}

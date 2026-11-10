@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Notice } from '../ui.jsx';
 import { Choice, OneOf } from '../../ui/OneOf.tsx';
 import './preview.css';
@@ -11,6 +11,10 @@ import { browserChannels } from '../form/channelTypes.js';
 import { inputCapabilities, pictureProblem, useDictation } from './useDictation.js';
 import { randomTag } from '../format.js';
 import Button from '../../ui/Button.tsx';
+import FormPrompt from '../test/FormPrompt.jsx';
+import { formTimeLimit } from '../test/formQueue.js';
+import { drawsVoice } from '../test/channels.ts';
+import PictureRequest, { PictureLine } from '../pictures/PictureRequest.jsx';
 
 // The preview beside the agent's settings: talk to the agent while editing it. It is either the REAL agent (LiveKit,
 // on the saved draft) or a SIMULATED one (rules in the browser on current edits); the panel says which, and every
@@ -25,10 +29,18 @@ function previewState(session) {
   return 'loading';
 }
 
+const COUNT_WORDS = { 2: 'two', 3: 'three', 4: 'four', 5: 'five' };
 const STATUS_WORDS = { idle: 'Ready', loading: 'Connecting', live: 'Live', reconnecting: 'Reconnecting', ended: 'Ended', error: 'Problem' };
 const LOADING_TEXT = { starting: 'Asking for a conversation…', connecting: 'Connecting…', waiting: 'Waiting for the agent to join…' };
 
 function Line({ message }) {
+  // what a picture request the agent made came to (received, timed out…), in the conversation where it happened
+  if (message.role === 'picture')
+    return (
+      <li className="pvPictureLine">
+        <PictureLine picture={message.picture} />
+      </li>
+    );
   if (message.role === 'system')
     return (
       <li className="pvSystem" role="note">
@@ -62,8 +74,35 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
     const el = endRef.current?.parentElement;
     if (el) el.scrollTop = el.scrollHeight;
   }, [session.messages]);
+  // a form or a picture request the agent asks for opens at its top (its title first), in the log's own scroll
+  const formId = session.form?.requestId;
+  const pictureId = session.picture?.id;
+  useEffect(() => {
+    const el = endRef.current?.parentElement;
+    const card = el?.querySelector('.pvForm, .pvPicture');
+    if (el && card) el.scrollTop += card.getBoundingClientRect().top - el.getBoundingClientRect().top;
+  }, [formId, pictureId]);
 
-  const start = () => session.startFor(botId, { ref: 'draft', identity: `preview-${randomTag()}` });
+  // The ways in (the guide, section 6): an agent offering two or more web channels (web chat, web voice) is tried as the
+  // one chosen, and the server is asked for that channel. The real agent runs the saved draft, the simulation the
+  // current edits, so the channels are read from the same. One web channel: the panel is as it always was.
+  const triedConfig = simulated ? editor?.parsed?.value : editor?.savedConfig || editor?.parsed?.value;
+  // how long a form may take before the real agent ends the conversation for silence (a simulation never does)
+  const formLimit = simulated ? null : formTimeLimit(triedConfig, session.info?.channel?.id);
+  const ways = useMemo(() => browserChannels(triedConfig), [triedConfig]);
+  const choosing = ways.length > 1;
+  const spoken = (c) => drawsVoice({ ...c, type: c?.realType || c?.type });
+  const twin = (c) => ways.filter((o) => spoken(o) === spoken(c)).length > 1; // two of a kind are told apart by name
+  const wayWord = (c) => `${spoken(c) ? 'Talk' : 'Chat'}${twin(c) ? ` · ${c.id}` : ''}`;
+  const channelWord = (c) => `${spoken(c) ? 'Web voice' : 'Web chat'}${twin(c) ? ` · ${c.id}` : ''}`;
+  // the channel of the conversation that ran last (still known once it ended), else a chat, else the first
+  const lastWay = ways.find((c) => c.id === session.info?.channel?.id) || null;
+  const defaultWay = lastWay || ways.find((c) => !spoken(c)) || ways[0] || null;
+  // start(channel): that channel; start() as the panel always did, on the last way used when there is a choice
+  const start = (channel) => {
+    const pick = (channel && typeof channel === 'object' && typeof channel.id === 'string' ? channel : null) || (choosing ? defaultWay : null);
+    session.startFor(botId, { ref: 'draft', identity: `preview-${randomTag()}`, ...(pick ? { channel: pick.id, channelId: pick.id } : {}) });
+  };
   const send = async () => {
     const text = draft;
     if (!text.trim() || state !== 'live') return;
@@ -71,7 +110,8 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
     setDraft('');
     await session.sendText(text);
   };
-  const voice = !simulated && session.info?.channel?.type === 'web_voice';
+  // voice by what the channel carries, not only its kind (the guide, section 5), as on the Test page
+  const voice = !simulated && drawsVoice(session.info?.channel);
   // shown as a call (the orb and captions) when it runs on a web voice channel, or before it starts when every web
   // channel the agent has is voice; a simulation of one is written out, but still looks like a call
   const voiceView =
@@ -85,13 +125,16 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
   const findChannel = (config) => (Array.isArray(config?.channels) ? config.channels : []).find((c) => c?.id === voiceChannelId);
   const noCaptions = !simulated && voiceView && speaksOnly(findChannel(editor?.savedConfig || draftConfig));
 
-  // What the channel lets a caller send, from the draft's own settings: the microphone, pictures, the camera.
-  const can = inputCapabilities(editor?.parsed?.value, session.info?.channel);
+  // What the channel lets a caller send, from the settings of what runs (the saved draft for the real agent, the edits
+  // for the simulation): the microphone, pictures, the camera.
+  const can = inputCapabilities(triedConfig, session.info?.channel);
   const fileRef = useRef(null);
   const [note, setNote] = useState('');
   // what was already typed when the microphone was turned on stays; what is said is added after it
   const dictBase = useRef('');
-  const dictation = useDictation((text) => setDraft(`${dictBase.current}${dictBase.current && !/\s$/.test(dictBase.current) ? ' ' : ''}${text}`));
+  // heard in the agent's language: what it listens for (`stt.language`), else its main language
+  const hearIn = String(triedConfig?.defaults?.models?.stt?.language || triedConfig?.defaults?.language?.primary || '');
+  const dictation = useDictation((text) => setDraft(`${dictBase.current}${dictBase.current && !/\s$/.test(dictBase.current) ? ' ' : ''}${text}`), hearIn);
   useEffect(() => {
     if (state !== 'live') dictation.cancel();
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -106,10 +149,25 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !can.image) return;
-    const problem = pictureProblem(file, can.image);
+    // the agent's own request decides what it takes while one is open; otherwise the channel's settings do
+    const problem = session.picture ? '' : pictureProblem(file, can.image);
     setNote(problem);
-    if (!problem) await session.sendImage(file, can.image.topic);
+    if (!problem) setNote((await session.sendImage(file, can.image.topic)) || '');
   };
+  // the card for a picture the agent asks for, answered from here
+  const pictureCard = session.picture ? (
+    <PictureRequest
+      key={session.picture.id}
+      request={session.picture}
+      onSend={(file) => session.sendImage(file, can.image?.topic)}
+      onCamera={session.pictureCamera}
+      cameraOn={!!session.media?.camera}
+      attachCamera={session.attachCamera}
+      simulated={simulated}
+    />
+  ) : null;
+  // the camera is wanted: a camera request, or a camera check's retake (a picture from the camera, never a file)
+  const cameraWanted = session.picture?.kind === 'camera' || !!session.picture?.cameraOnly;
   const hasTools = can.voice || !!can.image || (can.video && !simulated);
   const tools = hasTools ? (
     <span className="pvTools">
@@ -142,11 +200,13 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
             type="button"
             className="pvTool"
             aria-label="Attach a picture"
-            disabled={!connected}
+            disabled={!connected || cameraWanted}
             title={
-              connected
-                ? `Send a picture${can.image.acceptedMime.length ? ` (${can.image.acceptedMime.map((m) => m.replace('image/', '')).join(', ')})` : ''}`
-                : 'Start a conversation first'
+              !connected
+                ? 'Start a conversation first'
+                : cameraWanted
+                  ? 'The agent wants the camera now: use the card above'
+                  : `Send a picture${can.image.acceptedMime.length ? ` (${can.image.acceptedMime.map((m) => m.replace('image/', '')).join(', ')})` : ''}`
             }
             onClick={() => fileRef.current?.click()}
           >
@@ -185,6 +245,10 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
         <span className={`pvStatus ${state}`}>
           <i aria-hidden="true" />
           {STATUS_WORDS[state] || 'Ready'}
+          {/* with a choice of channels, the one this conversation runs on, in the same badge (the head has no room for two) */}
+          {choosing && state !== 'idle' && session.info?.channel && (
+            <span className="pvChannel"> · {channelWord(ways.find((c) => c.id === session.info.channel.id) || session.info.channel)}</span>
+          )}
         </span>
         <OneOf className="pvModes" label="What to talk to" value={simulated ? 'simulated' : 'real'} onChange={onMode}>
           <Choice
@@ -231,25 +295,50 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
         </Button>
       )}
 
-      {state === 'idle' && voiceView && (
+      {state === 'idle' && choosing && (
+        <div className="pvEmpty pvWaysIn">
+          <div className="pvStage" aria-hidden="true">
+            <AiOrb size="var(--pv-orb-ways, 88px)" />
+          </div>
+          <strong>How do you want to try it?</strong>
+          <span>It can be reached {COUNT_WORDS[ways.length] || ways.length} ways on your website. It greets you first.</span>
+          <div className="pvWays" role="group" aria-label="How to try it">
+            {ways.map((c) => (
+              <button key={c.id} type="button" className="pvWay" onClick={() => start(c)}>
+                <span className="pvWayIcon" aria-hidden="true">
+                  <Icon name={spoken(c) ? 'mic' : 'chat'} size={18} />
+                </span>
+                <b>{wayWord(c)}</b>
+                <small>{spoken(c) ? 'Speak to it, as a website caller would' : 'Type to it, as in the chat box on your site'}</small>
+                <span className="pvWayGo">
+                  {spoken(c) ? (simulated ? 'Start a simulated call' : 'Start a call') : simulated ? 'Start a simulated chat' : 'Start chatting'}
+                  <Icon name="arrowRight" size={13} />
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {state === 'idle' && voiceView && !choosing && (
         <VoiceStage session={session} size="var(--pv-voice-orb, 168px)" badge={false} className="pvVoice">
-          <Button type="button" variant="primary" size="compact" onClick={start}>
+          <Button type="button" variant="primary" size="compact" onClick={() => start()}>
             {simulated ? 'Start a simulated call' : 'Start a call'}
           </Button>
         </VoiceStage>
       )}
 
-      {state === 'idle' && !voiceView && (
+      {state === 'idle' && !voiceView && !choosing && (
         <div className="pvEmpty">
           <div className="pvStage">
             {/* a shortcut for the mouse: the button below is the one for everyone */}
-            <button type="button" className="pvOrbButton" onClick={start} tabIndex={-1} aria-hidden="true">
+            <button type="button" className="pvOrbButton" onClick={() => start()} tabIndex={-1} aria-hidden="true">
               <AiOrb size="var(--pv-orb, 132px)" />
             </button>
           </div>
           <strong>No conversation yet</strong>
           <span>The agent greets you first. Change a setting, save if it is the real agent, and start again to see the difference.</span>
-          <Button type="button" variant="primary" size="compact" onClick={start}>
+          <Button type="button" variant="primary" size="compact" onClick={() => start()}>
             {simulated ? 'Start a simulated chat' : 'Start a conversation'}
           </Button>
         </div>
@@ -360,7 +449,8 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
         </div>
       )}
 
-      {state === 'idle' && (
+      {/* the box that starts a chat by typing; with a choice of channels, the ways in above are the start */}
+      {state === 'idle' && !choosing && (
         <div className="pvComposer pvComposerIdle">
           {tools}
           <input
@@ -369,7 +459,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
             value=""
             placeholder="Send a message to start a chat"
             aria-label="Start a conversation by typing here"
-            onClick={start}
+            onClick={() => start()}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
@@ -377,7 +467,7 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
               }
             }}
           />
-          <button type="button" className="pvSendRound" aria-label={simulated ? 'Start a simulated chat' : 'Start a conversation'} onClick={start}>
+          <button type="button" className="pvSendRound" aria-label={simulated ? 'Start a simulated chat' : 'Start a conversation'} onClick={() => start()}>
             <Icon name="arrowRight" size={18} />
           </button>
         </div>
@@ -418,9 +508,29 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
               {maskConversation(session.messages).map((message) => (
                 <Line key={message.id} message={message} />
               ))}
+              {/* a form the agent asks for (the guide's job d): the same card as on the Test page, answered from here. In
+                  the log, so it scrolls with the conversation and the box to type in stays in view */}
+              {session.form && (
+                <li className="pvForm">
+                  <FormPrompt
+                    key={session.form.requestId}
+                    form={session.form}
+                    onSubmit={session.submitForm}
+                    onDismiss={session.dismissForm}
+                    limitS={formLimit}
+                  />
+                </li>
+              )}
+              {/* a picture the agent asks for (MEDIA_PROTOCOL): the upload or the camera, in the conversation */}
+              {pictureCard && <li className="pvPicture">{pictureCard}</li>}
               <li ref={endRef} aria-hidden="true" />
             </ul>
           )}
+          {/* a voice call with its transcript folded: the form shows under the call */}
+          {voiceView && !transcriptOpen && session.form && (
+            <FormPrompt key={session.form.requestId} form={session.form} onSubmit={session.submitForm} onDismiss={session.dismissForm} limitS={formLimit} />
+          )}
+          {voiceView && !transcriptOpen && pictureCard}
           {voice && <p className="pvHint">This agent talks by voice. Use Tests › Try it to speak with it; typing here still works.</p>}
           {(note || dictation.error) && (
             <p className="pvHint warn" role="alert">
@@ -430,9 +540,20 @@ export default function ChatPreview({ session, mode, modeLocked, onMode, botId, 
           {state === 'ended' ? (
             <div className="pvEnded" role="status">
               <span>The conversation ended.</span>
-              <Button type="button" variant="primary" size="compact" onClick={start}>
-                Start again
-              </Button>
+              {choosing ? (
+                <span className="pvEndedWays">
+                  {[defaultWay, ...ways.filter((c) => c !== defaultWay)].map((c, index) => (
+                    <Button key={c.id} type="button" variant={index === 0 ? 'primary' : undefined} size="compact" onClick={() => start(c)}>
+                      <Icon name={spoken(c) ? 'mic' : 'chat'} size={14} />
+                      {index === 0 ? `${wayWord(c)} again` : `${wayWord(c)} instead`}
+                    </Button>
+                  ))}
+                </span>
+              ) : (
+                <Button type="button" variant="primary" size="compact" onClick={() => start()}>
+                  Start again
+                </Button>
+              )}
             </div>
           ) : (
             <div className="pvComposer">

@@ -1,0 +1,1010 @@
+{
+  "about": "The OCBC journey’s bank records for the test customers (scripts/build-bank.mjs). Demo figures.",
+  "customers": [
+    {
+      "customerId": "7984789",
+      "passcode": "721680",
+      "email": "ahmad.faizal@example.com",
+      "accounts": [
+        {
+          "accountId": "742381492921",
+          "balance": 24000,
+          "transactions": [
+            {
+              "type": "CREDIT",
+              "amount": 50.4,
+              "description": "FIXED DEPOSIT INTEREST CREDIT",
+              "daysAgo": 20
+            },
+            {
+              "type": "CREDIT",
+              "amount": 24000,
+              "description": "FIXED DEPOSIT PLACEMENT - 12 MONTHS",
+              "daysAgo": 106
+            }
+          ]
+        },
+        {
+          "accountId": "932905623760",
+          "balance": 95462.82,
+          "transactions": [
+            {
+              "type": "CREDIT",
+              "amount": 707.55,
+              "description": "DUITNOW TRANSFER FROM AHMAD RAZAK",
+              "daysAgo": 2
+            },
+            {
+              "type": "CREDIT",
+              "amount": 6285.94,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 5
+            },
+            {
+              "type": "DEBIT",
+              "amount": 176.62,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 9
+            },
+            {
+              "type": "DEBIT",
+              "amount": 129.53,
+              "description": "DUITNOW QR - MYDIN MART",
+              "daysAgo": 15
+            },
+            {
+              "type": "DEBIT",
+              "amount": 555.18,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 18
+            },
+            {
+              "type": "CREDIT",
+              "amount": 557.26,
+              "description": "DUITNOW TRANSFER FROM AHMAD RAZAK",
+              "daysAgo": 22
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "9909155",
+      "passcode": "577737",
+      "email": "goh.kian@example.com",
+      "accounts": [
+        {
+          "accountId": "195166925799",
+          "balance": 34210.34,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 1116.97,
+              "description": "GIRO - IRAS INCOME TAX INSTALMENT",
+              "daysAgo": 1
+            },
+            {
+              "type": "DEBIT",
+              "amount": 103.43,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 5
+            },
+            {
+              "type": "CREDIT",
+              "amount": 315.65,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 9
+            },
+            {
+              "type": "DEBIT",
+              "amount": 229.36,
+              "description": "NETS PURCHASE - FAIRPRICE FINEST",
+              "daysAgo": 14
+            },
+            {
+              "type": "CREDIT",
+              "amount": 403.25,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 16
+            },
+            {
+              "type": "DEBIT",
+              "amount": 1097.67,
+              "description": "CARD PAYMENT - VISA PLATINUM",
+              "daysAgo": 22
+            },
+            {
+              "type": "DEBIT",
+              "amount": 115.07,
+              "description": "GIRO - SINGTEL MOBILE",
+              "daysAgo": 27
+            },
+            {
+              "type": "CREDIT",
+              "amount": 2014.53,
+              "description": "FAST TRANSFER FROM DBS - RENTAL INCOME",
+              "daysAgo": 31
+            }
+          ]
+        },
+        {
+          "accountId": "480311686099",
+          "balance": 9571.47,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 1154.49,
+              "description": "CARD PAYMENT - VISA PLATINUM",
+              "daysAgo": 0
+            },
+            {
+              "type": "DEBIT",
+              "amount": 141.62,
+              "description": "NETS PURCHASE - FAIRPRICE FINEST",
+              "daysAgo": 6
+            },
+            {
+              "type": "DEBIT",
+              "amount": 93.42,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 8
+            },
+            {
+              "type": "DEBIT",
+              "amount": 108.92,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 13
+            },
+            {
+              "type": "DEBIT",
+              "amount": 48.71,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 19
+            },
+            {
+              "type": "DEBIT",
+              "amount": 55.51,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 22
+            },
+            {
+              "type": "DEBIT",
+              "amount": 113.62,
+              "description": "GIRO - SINGTEL MOBILE",
+              "daysAgo": 25
+            },
+            {
+              "type": "CREDIT",
+              "amount": 7326.22,
+              "description": "SALARY GIRO - NORTHSTAR LOGISTICS PTE LTD",
+              "daysAgo": 28
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "4312568",
+      "passcode": "929600",
+      "email": "lee.siew@example.com",
+      "accounts": [
+        {
+          "accountId": "107796363034",
+          "balance": 176000,
+          "transactions": [
+            {
+              "type": "CREDIT",
+              "amount": 369.6,
+              "description": "FIXED DEPOSIT INTEREST CREDIT",
+              "daysAgo": 8
+            },
+            {
+              "type": "CREDIT",
+              "amount": 176000,
+              "description": "FIXED DEPOSIT PLACEMENT - 12 MONTHS",
+              "daysAgo": 144
+            }
+          ]
+        },
+        {
+          "accountId": "386950317134",
+          "balance": 43948.95,
+          "transactions": [
+            {
+              "type": "CREDIT",
+              "amount": 248.66,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 2
+            },
+            {
+              "type": "DEBIT",
+              "amount": 33.13,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 6
+            },
+            {
+              "type": "DEBIT",
+              "amount": 226.49,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 9
+            },
+            {
+              "type": "DEBIT",
+              "amount": 112.99,
+              "description": "GIRO - SINGTEL MOBILE",
+              "daysAgo": 12
+            },
+            {
+              "type": "CREDIT",
+              "amount": 2549.06,
+              "description": "FAST TRANSFER FROM DBS - RENTAL INCOME",
+              "daysAgo": 17
+            },
+            {
+              "type": "DEBIT",
+              "amount": 138.65,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 22
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "2220125",
+      "passcode": "1234",
+      "email": "lim.chee@example.com",
+      "accounts": [
+        {
+          "accountId": "575504605600",
+          "balance": 3856.09,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 1426.86,
+              "description": "IBG TRANSFER - HOUSE RENT",
+              "daysAgo": 3
+            },
+            {
+              "type": "DEBIT",
+              "amount": 80.7,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 7
+            },
+            {
+              "type": "DEBIT",
+              "amount": 36.36,
+              "description": "DUITNOW QR - MYDIN MART",
+              "daysAgo": 8
+            },
+            {
+              "type": "DEBIT",
+              "amount": 379.14,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 12
+            },
+            {
+              "type": "CREDIT",
+              "amount": 6491.64,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 19
+            },
+            {
+              "type": "DEBIT",
+              "amount": 121.73,
+              "description": "DUITNOW QR - MYDIN MART",
+              "daysAgo": 21
+            },
+            {
+              "type": "DEBIT",
+              "amount": 261.77,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 24
+            },
+            {
+              "type": "CREDIT",
+              "amount": 8526.18,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 28
+            },
+            {
+              "type": "DEBIT",
+              "amount": 85.97,
+              "description": "JOMPAY - AIR SELANGOR",
+              "daysAgo": 32
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "2052007",
+      "passcode": "864711",
+      "email": "maria.cristina@example.com",
+      "accounts": [
+        {
+          "accountId": "613247909222",
+          "balance": 43593.13,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 1077.8,
+              "description": "GIRO - IRAS INCOME TAX INSTALMENT",
+              "daysAgo": 0
+            },
+            {
+              "type": "DEBIT",
+              "amount": 1468.92,
+              "description": "GIRO - IRAS INCOME TAX INSTALMENT",
+              "daysAgo": 6
+            },
+            {
+              "type": "DEBIT",
+              "amount": 81.64,
+              "description": "GIRO - SINGTEL MOBILE",
+              "daysAgo": 11
+            },
+            {
+              "type": "DEBIT",
+              "amount": 49.73,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 15
+            },
+            {
+              "type": "DEBIT",
+              "amount": 113.04,
+              "description": "GIRO - SINGTEL MOBILE",
+              "daysAgo": 19
+            },
+            {
+              "type": "DEBIT",
+              "amount": 23.85,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 23
+            },
+            {
+              "type": "DEBIT",
+              "amount": 37.5,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 27
+            },
+            {
+              "type": "DEBIT",
+              "amount": 79.1,
+              "description": "GIRO - SINGTEL MOBILE",
+              "daysAgo": 30
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "6702857",
+      "passcode": "765566",
+      "email": "muhammad.hafiz@example.com",
+      "accounts": [
+        {
+          "accountId": "210149811012",
+          "balance": 102029.75,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 47.6,
+              "description": "NETS PURCHASE - FAIRPRICE FINEST",
+              "daysAgo": 2
+            },
+            {
+              "type": "CREDIT",
+              "amount": 2035.23,
+              "description": "FAST TRANSFER FROM DBS - RENTAL INCOME",
+              "daysAgo": 6
+            },
+            {
+              "type": "CREDIT",
+              "amount": 6550.28,
+              "description": "SALARY GIRO - NORTHSTAR LOGISTICS PTE LTD",
+              "daysAgo": 11
+            },
+            {
+              "type": "CREDIT",
+              "amount": 3179.85,
+              "description": "FAST TRANSFER FROM DBS - RENTAL INCOME",
+              "daysAgo": 13
+            },
+            {
+              "type": "CREDIT",
+              "amount": 327.54,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 17
+            },
+            {
+              "type": "CREDIT",
+              "amount": 4297.93,
+              "description": "SALARY GIRO - NORTHSTAR LOGISTICS PTE LTD",
+              "daysAgo": 23
+            },
+            {
+              "type": "CREDIT",
+              "amount": 495.7,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "1449287",
+      "passcode": "1234",
+      "email": "nur.aisyah@example.com",
+      "accounts": [
+        {
+          "accountId": "473747358741",
+          "balance": 71811.95,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 1404.21,
+              "description": "IBG TRANSFER - HOUSE RENT",
+              "daysAgo": 1
+            },
+            {
+              "type": "DEBIT",
+              "amount": 246.78,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 5
+            },
+            {
+              "type": "CREDIT",
+              "amount": 595.47,
+              "description": "DUITNOW TRANSFER FROM AHMAD RAZAK",
+              "daysAgo": 8
+            },
+            {
+              "type": "CREDIT",
+              "amount": 5315.4,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 15
+            },
+            {
+              "type": "CREDIT",
+              "amount": 8308.17,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 19
+            },
+            {
+              "type": "CREDIT",
+              "amount": 5930.68,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 20
+            },
+            {
+              "type": "DEBIT",
+              "amount": 388.11,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 26
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "2223009",
+      "passcode": "669521",
+      "email": "nur.farhana@example.com",
+      "accounts": [
+        {
+          "accountId": "960274304111",
+          "balance": 42463.99,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 550.45,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 2
+            },
+            {
+              "type": "DEBIT",
+              "amount": 222.78,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 5
+            },
+            {
+              "type": "CREDIT",
+              "amount": 6166.99,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 8
+            },
+            {
+              "type": "DEBIT",
+              "amount": 234.92,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 15
+            },
+            {
+              "type": "DEBIT",
+              "amount": 311.5,
+              "description": "FPX - SHOPEE MALAYSIA",
+              "daysAgo": 18
+            },
+            {
+              "type": "DEBIT",
+              "amount": 398.18,
+              "description": "FPX - SHOPEE MALAYSIA",
+              "daysAgo": 23
+            },
+            {
+              "type": "DEBIT",
+              "amount": 34.12,
+              "description": "JOMPAY - AIR SELANGOR",
+              "daysAgo": 26
+            },
+            {
+              "type": "DEBIT",
+              "amount": 65.84,
+              "description": "FPX - SHOPEE MALAYSIA",
+              "daysAgo": 31
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "7643604",
+      "passcode": "785066",
+      "email": "priya.ramasamy@example.com",
+      "accounts": [
+        {
+          "accountId": "502493100998",
+          "balance": 22767.71,
+          "transactions": [
+            {
+              "type": "CREDIT",
+              "amount": 4878.13,
+              "description": "SALARY GIRO - NORTHSTAR LOGISTICS PTE LTD",
+              "daysAgo": 1
+            },
+            {
+              "type": "CREDIT",
+              "amount": 137.36,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 5
+            },
+            {
+              "type": "CREDIT",
+              "amount": 572.37,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 10
+            },
+            {
+              "type": "DEBIT",
+              "amount": 520.58,
+              "description": "CARD PAYMENT - VISA PLATINUM",
+              "daysAgo": 14
+            },
+            {
+              "type": "DEBIT",
+              "amount": 51.55,
+              "description": "GIRO - SINGTEL MOBILE",
+              "daysAgo": 18
+            },
+            {
+              "type": "DEBIT",
+              "amount": 201.5,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 21
+            },
+            {
+              "type": "CREDIT",
+              "amount": 418.45,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 27
+            },
+            {
+              "type": "DEBIT",
+              "amount": 82.74,
+              "description": "NETS PURCHASE - FAIRPRICE FINEST",
+              "daysAgo": 28
+            },
+            {
+              "type": "DEBIT",
+              "amount": 238.78,
+              "description": "NETS PURCHASE - FAIRPRICE FINEST",
+              "daysAgo": 34
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "8143082",
+      "passcode": "611544",
+      "email": "rajesh.kumar@example.com",
+      "accounts": [
+        {
+          "accountId": "565636835058",
+          "balance": 28053.93,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 45.75,
+              "description": "GIRO - SINGTEL MOBILE",
+              "daysAgo": 3
+            },
+            {
+              "type": "DEBIT",
+              "amount": 59.33,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 6
+            },
+            {
+              "type": "CREDIT",
+              "amount": 537.26,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 8
+            },
+            {
+              "type": "DEBIT",
+              "amount": 1253.94,
+              "description": "CARD PAYMENT - VISA PLATINUM",
+              "daysAgo": 15
+            },
+            {
+              "type": "CREDIT",
+              "amount": 416.04,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 19
+            },
+            {
+              "type": "DEBIT",
+              "amount": 1973.11,
+              "description": "CARD PAYMENT - VISA PLATINUM",
+              "daysAgo": 22
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "5912900",
+      "passcode": "101933",
+      "email": "ravi.subramaniam@example.com",
+      "accounts": [
+        {
+          "accountId": "751837691586",
+          "balance": 34035.72,
+          "transactions": [
+            {
+              "type": "CREDIT",
+              "amount": 412.36,
+              "description": "DUITNOW TRANSFER FROM AHMAD RAZAK",
+              "daysAgo": 2
+            },
+            {
+              "type": "DEBIT",
+              "amount": 84.06,
+              "description": "JOMPAY - AIR SELANGOR",
+              "daysAgo": 4
+            },
+            {
+              "type": "DEBIT",
+              "amount": 247.3,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 9
+            },
+            {
+              "type": "DEBIT",
+              "amount": 148.64,
+              "description": "DUITNOW QR - MYDIN MART",
+              "daysAgo": 14
+            },
+            {
+              "type": "CREDIT",
+              "amount": 193.89,
+              "description": "DUITNOW TRANSFER FROM AHMAD RAZAK",
+              "daysAgo": 19
+            },
+            {
+              "type": "DEBIT",
+              "amount": 2081.29,
+              "description": "IBG TRANSFER - HOUSE RENT",
+              "daysAgo": 22
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "5563332",
+      "passcode": "672604",
+      "email": "siti.hajar@example.com",
+      "accounts": [
+        {
+          "accountId": "124050322405",
+          "balance": 14316.89,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 197.99,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 2
+            },
+            {
+              "type": "CREDIT",
+              "amount": 6910.12,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 4
+            },
+            {
+              "type": "CREDIT",
+              "amount": 242.24,
+              "description": "DUITNOW TRANSFER FROM AHMAD RAZAK",
+              "daysAgo": 10
+            },
+            {
+              "type": "DEBIT",
+              "amount": 220.4,
+              "description": "FPX - SHOPEE MALAYSIA",
+              "daysAgo": 14
+            },
+            {
+              "type": "DEBIT",
+              "amount": 201.45,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 16
+            },
+            {
+              "type": "DEBIT",
+              "amount": 2156.63,
+              "description": "IBG TRANSFER - HOUSE RENT",
+              "daysAgo": 22
+            },
+            {
+              "type": "CREDIT",
+              "amount": 495.31,
+              "description": "DUITNOW TRANSFER FROM AHMAD RAZAK",
+              "daysAgo": 26
+            },
+            {
+              "type": "CREDIT",
+              "amount": 7810.08,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 31
+            },
+            {
+              "type": "CREDIT",
+              "amount": 9716.37,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 35
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "6114873",
+      "passcode": "576215",
+      "email": "tan.mei@example.com",
+      "accounts": [
+        {
+          "accountId": "212163107464",
+          "balance": 28405.95,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 396.62,
+              "description": "FPX - SHOPEE MALAYSIA",
+              "daysAgo": 0
+            },
+            {
+              "type": "DEBIT",
+              "amount": 332.48,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 6
+            },
+            {
+              "type": "DEBIT",
+              "amount": 62.2,
+              "description": "JOMPAY - AIR SELANGOR",
+              "daysAgo": 9
+            },
+            {
+              "type": "DEBIT",
+              "amount": 114.71,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 15
+            },
+            {
+              "type": "DEBIT",
+              "amount": 99.88,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 16
+            },
+            {
+              "type": "DEBIT",
+              "amount": 45.95,
+              "description": "JOMPAY - AIR SELANGOR",
+              "daysAgo": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "5409881",
+      "passcode": "1234",
+      "email": "tan.wei@example.com",
+      "accounts": [
+        {
+          "accountId": "897350869921",
+          "balance": 38314.7,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 24.89,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 3
+            },
+            {
+              "type": "CREDIT",
+              "amount": 298.95,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 4
+            },
+            {
+              "type": "DEBIT",
+              "amount": 113.86,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 10
+            },
+            {
+              "type": "CREDIT",
+              "amount": 6282.9,
+              "description": "SALARY GIRO - NORTHSTAR LOGISTICS PTE LTD",
+              "daysAgo": 14
+            },
+            {
+              "type": "DEBIT",
+              "amount": 190.94,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 18
+            },
+            {
+              "type": "DEBIT",
+              "amount": 47.92,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 21
+            },
+            {
+              "type": "DEBIT",
+              "amount": 22.27,
+              "description": "PAYNOW TO GRAB SINGAPORE",
+              "daysAgo": 27
+            },
+            {
+              "type": "DEBIT",
+              "amount": 212.07,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 28
+            },
+            {
+              "type": "CREDIT",
+              "amount": 4555.77,
+              "description": "SALARY GIRO - NORTHSTAR LOGISTICS PTE LTD",
+              "daysAgo": 34
+            }
+          ]
+        },
+        {
+          "accountId": "923253456169",
+          "balance": 105323.86,
+          "transactions": [
+            {
+              "type": "DEBIT",
+              "amount": 94.92,
+              "description": "GIRO - SP GROUP UTILITIES",
+              "daysAgo": 1
+            },
+            {
+              "type": "DEBIT",
+              "amount": 250.2,
+              "description": "ATM WITHDRAWAL - OCBC CENTRE",
+              "daysAgo": 5
+            },
+            {
+              "type": "DEBIT",
+              "amount": 57.97,
+              "description": "NETS PURCHASE - FAIRPRICE FINEST",
+              "daysAgo": 8
+            },
+            {
+              "type": "DEBIT",
+              "amount": 1756.59,
+              "description": "CARD PAYMENT - VISA PLATINUM",
+              "daysAgo": 14
+            },
+            {
+              "type": "CREDIT",
+              "amount": 124.6,
+              "description": "PAYNOW TRANSFER FROM LIM KAH WEI",
+              "daysAgo": 17
+            },
+            {
+              "type": "DEBIT",
+              "amount": 251.88,
+              "description": "ATM WITHDRAWAL - OCBC CENTRE",
+              "daysAgo": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "customerId": "4987754",
+      "passcode": "004655",
+      "email": "wong.kok@example.com",
+      "accounts": [
+        {
+          "accountId": "566581720705",
+          "balance": 78089.68,
+          "transactions": [
+            {
+              "type": "CREDIT",
+              "amount": 8965.09,
+              "description": "SALARY - PETRONAS DAGANGAN BHD",
+              "daysAgo": 0
+            },
+            {
+              "type": "DEBIT",
+              "amount": 379.67,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 7
+            },
+            {
+              "type": "DEBIT",
+              "amount": 1819.62,
+              "description": "IBG TRANSFER - HOUSE RENT",
+              "daysAgo": 10
+            },
+            {
+              "type": "DEBIT",
+              "amount": 1549.53,
+              "description": "IBG TRANSFER - HOUSE RENT",
+              "daysAgo": 12
+            },
+            {
+              "type": "DEBIT",
+              "amount": 73.48,
+              "description": "JOMPAY - AIR SELANGOR",
+              "daysAgo": 18
+            },
+            {
+              "type": "DEBIT",
+              "amount": 255.28,
+              "description": "JOMPAY - TENAGA NASIONAL BERHAD",
+              "daysAgo": 20
+            },
+            {
+              "type": "DEBIT",
+              "amount": 89.57,
+              "description": "JOMPAY - AIR SELANGOR",
+              "daysAgo": 27
+            },
+            {
+              "type": "DEBIT",
+              "amount": 328.48,
+              "description": "ATM WITHDRAWAL - OCBC JALAN TUN PERAK",
+              "daysAgo": 28
+            },
+            {
+              "type": "DEBIT",
+              "amount": 1372.95,
+              "description": "IBG TRANSFER - HOUSE RENT",
+              "daysAgo": 32
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

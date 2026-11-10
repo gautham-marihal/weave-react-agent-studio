@@ -384,3 +384,19 @@ test('demo numbers have the live server’s shapes: our rule names the runtime w
   assert.equal((await api.handle('GET', '/numbers/check?number=1234567890123456')).body.status, 'invalid', '16 digits is too long');
   assert.equal((await api.handle('GET', '/numbers/check?number=123456789012345')).body.status, 'free');
 });
+
+// FRONTEND_GUIDE 10.5: 422 for a number or an address of the wrong shape. A list-shaped detail is the server's check of
+// the fields, said field by field to the person who typed them, not "the studio sent something it couldn't read"
+test('a field-by-field 422 says which field and why', async () => {
+  const { classify } = await import('../src/api/client.ts');
+  const { fieldWords: words, numbersProblem: problem } = await import('../src/pages/numbersModel.js');
+  const c = classify(422, {
+    detail: [
+      { loc: ['body', 'allowed_addresses', 1], msg: 'value is not a valid IPv4 or IPv6 network' },
+      { loc: ['body', 'max_call_duration_s'], msg: 'Input should be less than or equal to 86400' },
+    ],
+  });
+  assert.equal(words(c.details), 'Allowed addresses (2): value is not a valid IPv4 or IPv6 network. Longest call: Input should be less than or equal to 86400');
+  assert.equal(problem({ status: 422, kind: 'client_bug', message: c.message, details: c.details }), words(c.details));
+  assert.equal(problem({ status: 422, kind: 'invalid', message: 'Unknown environment: prod' }), 'Unknown environment: prod', 'a plain 422 keeps its own words');
+});

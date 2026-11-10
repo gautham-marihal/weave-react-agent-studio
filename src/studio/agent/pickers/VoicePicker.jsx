@@ -16,7 +16,8 @@ import { Input } from '../../../ui/Input.tsx';
 // An agent's voice, chosen from a list: search, filter, listen and pick. Picking a voice also sets its engine (and that
 // engine's model), noted under the list. The list opens filtered to the main language, with the voice in use on top.
 //   speech: whether it talks anywhere (phone or website); an agent that only chats needs no voice yet
-export default function VoicePicker({ config, set, speech = true }) {
+// bare: inside an editor of its own (a popover), where the voice in use is ticked in the list rather than shown above it
+export default function VoicePicker({ config, set, speech = true, bare = false }) {
   const voiceIdBox = useId();
   const { providers } = useProviders();
   const tts = readModels(config).tts;
@@ -56,39 +57,42 @@ export default function VoicePicker({ config, set, speech = true }) {
 
   return (
     <div className="pkPicker">
-      <section className="pkNow" aria-label="The voice now">
-        {tts.voiceId ? (
-          <>
-            <span className="pkAvatar" style={{ '--hue': voiceHue(inUse?.name || tts.voiceId) }} aria-hidden="true">
-              {(inUse?.name || 'V')[0]}
-            </span>
+      {/* a voice from the list is ticked there; one of your own (or none) is said here */}
+      {!(bare && inUse) && (
+        <section className="pkNow" aria-label="The voice now">
+          {tts.voiceId ? (
+            <>
+              <span className="pkAvatar" style={{ '--hue': voiceHue(inUse?.name || tts.voiceId) }} aria-hidden="true">
+                {(inUse?.name || 'V')[0]}
+              </span>
+              <span className="pkNowText">
+                <strong>{inUse ? inUse.name : 'A voice from your own account'}</strong>
+                <small>
+                  {inUse
+                    ? `${inUse.style} · ${inUse.language} · ${inUse.engineName}`
+                    : `${tts.voiceId}${tts.provider ? ` · ${providerLabel(tts.provider)}` : ''}`}
+                </small>
+              </span>
+              {inUse && preview.can && (
+                <button
+                  type="button"
+                  className="pkPlay"
+                  aria-label={preview.playing === inUse.id ? `Stop ${inUse.name}` : `Listen to ${inUse.name}`}
+                  onClick={() => preview.play(inUse)}
+                >
+                  <Icon name={preview.playing === inUse.id ? 'stop' : 'play'} size={14} />
+                </button>
+              )}
+            </>
+          ) : (
             <span className="pkNowText">
-              <strong>{inUse ? inUse.name : 'A voice from your own account'}</strong>
-              <small>
-                {inUse
-                  ? `${inUse.style} · ${inUse.language} · ${inUse.engineName}`
-                  : `${tts.voiceId}${tts.provider ? ` · ${providerLabel(tts.provider)}` : ''}`}
-              </small>
+              <strong>{speech ? 'No voice chosen yet' : 'Not needed while it only chats'}</strong>
+              <small>{speech ? 'Pick one below.' : 'Choose one for phone calls or talking on your website.'} Listen first with the play button.</small>
             </span>
-            {inUse && preview.can && (
-              <button
-                type="button"
-                className="pkPlay"
-                aria-label={preview.playing === inUse.id ? `Stop ${inUse.name}` : `Listen to ${inUse.name}`}
-                onClick={() => preview.play(inUse)}
-              >
-                <Icon name={preview.playing === inUse.id ? 'stop' : 'play'} size={14} />
-              </button>
-            )}
-          </>
-        ) : (
-          <span className="pkNowText">
-            <strong>{speech ? 'No voice chosen yet' : 'Not needed while it only chats'}</strong>
-            <small>{speech ? 'Pick one below.' : 'Choose one for phone calls or talking on your website.'} Listen first with the play button.</small>
-          </span>
-        )}
-        <SimpleKey path={['defaults', 'models', 'tts', 'voice_id']} />
-      </section>
+          )}
+          <SimpleKey path={['defaults', 'models', 'tts', 'voice_id']} />
+        </section>
+      )}
 
       <div className="pkTools">
         <input

@@ -10,6 +10,10 @@
   "scripts": {
     "start": "node server.mjs",
     "sync": "node scripts/sync-customers.mjs",
-    "seed": "node scripts/build-seed.mjs"
+    "seed": "node scripts/build-seed.mjs",
+    "bank": "node scripts/build-bank.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2"
   }
 }

@@ -5,7 +5,8 @@ import { Notice } from '../ui.jsx';
 import { SkeletonRows } from '../../ui/Skeleton.jsx';
 import { formatWhen } from '../format.js';
 import CallDetail from './CallDetail.jsx';
-import { ALL_AGENTS_LIMIT, OUTCOMES, RANGES, channelsIn, rowOf, summaryOf } from './callModel.js';
+import { ALL_AGENTS_LIMIT, OUTCOMES, RANGES, channelsIn, dayKey, datesWords, rowOf, summaryOf } from './callModel.js';
+import DateRange from './DateRange.jsx';
 import { useCallPeeks } from './useCallPeeks.ts';
 import Icon from '../../ui/Icon.jsx';
 import { usePref } from '../usePref.js';
@@ -21,13 +22,21 @@ import { Input } from '../../ui/Input.tsx';
 export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, initialCall = null, editor = null }) {
   const [botId, setBotId] = useState(fixedBotId);
   const [range, setRange] = useState('7d');
+  // the days of "Choose dates…": the past week to begin with
+  const [days, setDays] = useState(() => {
+    const now = new Date();
+    return { from: dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)), to: dayKey(now) };
+  });
   const [caller, setCaller] = useState('');
   const [channel, setChannel] = useState('');
   const [outcome, setOutcome] = useState('');
   const [auto, setAuto] = useState(false);
   const [openCall, setOpenCall] = useState(initialCall); // { botId, id, raw }
   const effectiveBot = fixedBotId || botId;
-  const filters = useMemo(() => ({ range, caller, channel, status: OUTCOMES[outcome]?.status || '' }), [range, caller, channel, outcome]);
+  const filters = useMemo(
+    () => ({ range, caller, channel, status: OUTCOMES[outcome]?.status || '', ...(range === 'dates' ? { from: days.from, to: days.to } : {}) }),
+    [range, caller, channel, outcome, days],
+  );
   const [noticeSeen, setNoticeSeen] = usePref('weave_calls_notice_seen', '');
   const { calls, loading, refreshing, busy, loadingMore, errors, hasMore, loadMore, reload, skipped } = useCalls({
     bots,
@@ -130,6 +139,7 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
           </label>
         </span>
       </div>
+      {range === 'dates' && <DateRange from={days.from} to={days.to} onChange={setDays} />}
 
       {skipped > 0 && (
         <Notice kind="info" title={`Showing the first ${ALL_AGENTS_LIMIT} agents`}>
@@ -224,9 +234,11 @@ export default function CallsView({ bots = [], fixedBotId = '', onOpenAgent, ini
                 ? 'Once you have an agent, every conversation it has is listed here, with what was said and what the agent did.'
                 : outcome || channel || caller
                   ? 'Clear a filter or try a longer time range.'
-                  : range !== 'all'
-                    ? `Nothing in the ${(RANGES.find((r) => r.id === range)?.label || '').toLowerCase()}. Try a longer time range.`
-                    : 'Nothing has called yet.'}{' '}
+                  : range === 'dates'
+                    ? `Nothing on ${datesWords(days.from, days.to).replace(/ · .*$/, '')}. Try other days.`
+                    : range !== 'all'
+                      ? `Nothing in the ${(RANGES.find((r) => r.id === range)?.label || '').toLowerCase()}. Try a longer time range.`
+                      : 'Nothing has called yet.'}{' '}
               {bots.length > 0 && 'Trying an agent out makes a call too.'}
             </p>
             {onOpenAgent && effectiveBot && (

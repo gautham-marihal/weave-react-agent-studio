@@ -64,18 +64,22 @@ export class ApiError extends Error {
   kind: ApiErrorKind;
   errors: ValidationIssue[];
   body: unknown;
+  // the technical part, for the person who runs the server (shown folded), never as the message itself
+  details: string;
   constructor({
     status,
     kind,
     message,
     errors = [],
     body = null,
+    details = '',
   }: {
     status: number;
     kind: ApiErrorKind;
     message: string;
     errors?: ValidationIssue[];
     body?: unknown;
+    details?: string;
   }) {
     super(message);
     this.name = 'ApiError';
@@ -83,10 +87,11 @@ export class ApiError extends Error {
     this.kind = kind;
     this.errors = errors;
     this.body = body;
+    this.details = details;
   }
 }
 
-export function classify(status: number, body: unknown): { kind: ApiErrorKind; message: string; errors: ValidationIssue[] } {
+export function classify(status: number, body: unknown): { kind: ApiErrorKind; message: string; errors: ValidationIssue[]; details?: string } {
   const detail = body && typeof body === 'object' ? (body as { detail?: unknown }).detail : undefined;
   // A 5xx with no JSON `detail` didn't come from the API's handlers: empty (dev proxy) or 502/503/504 means the API is
   // down or restarting; anything else means the API itself failed, so a change may be half made.
@@ -96,7 +101,15 @@ export function classify(status: number, body: unknown): { kind: ApiErrorKind; m
   }
   if (status === 422 && Array.isArray(detail)) {
     const where = detail.map((item: { loc?: unknown[]; msg?: string }) => `${(item.loc || []).join('.')}: ${item.msg}`).join('; ');
-    return { kind: 'client_bug', message: `The app sent a malformed request (${where}).`, errors: [] };
+    // FastAPI's own answer to a request of the wrong shape: a bug in the studio, which the guide says not to show a user
+    // (section 2). The person reads a plain sentence; the fields the server named go in `details`, shown folded.
+    return {
+      kind: 'client_bug',
+      message:
+        'The studio sent the server something it couldn’t read, so nothing was changed. It isn’t something you did: try again, and report it if it keeps happening.',
+      errors: [],
+      details: `The app sent a malformed request (${where}).`,
+    };
   }
   const message = typeof detail === 'string' ? detail : `Request failed (${status}).`;
   if (status === 422) {
@@ -156,8 +169,8 @@ async function send(method: string, path: string, { body, signal, raw }: SendOpt
     }
   }
   if (!response.ok) {
-    const { kind, message, errors } = classify(response.status, data);
-    throw new ApiError({ status: response.status, kind, message, errors, body: data });
+    const { kind, message, errors, details } = classify(response.status, data);
+    throw new ApiError({ status: response.status, kind, message, errors, body: data, details });
   }
   return data;
 }
@@ -207,8 +220,8 @@ async function demoRequest(method: string, path: string, body: unknown, signal?:
   const payload = body === undefined ? undefined : isFile ? body : JSON.parse(JSON.stringify(body));
   const { status, body: data } = await getDemoApi().handle(method, path, payload);
   if (status >= 400) {
-    const { kind, message, errors } = classify(status, data);
-    throw new ApiError({ status, kind, message, errors, body: data });
+    const { kind, message, errors, details } = classify(status, data);
+    throw new ApiError({ status, kind, message, errors, body: data, details });
   }
   return data;
 }
@@ -402,7 +415,9 @@ type FollowHandlers = {
   onOpen?: (call: Loose) => void;
   onRecord: (record: Loose) => void;
   onEnd?: () => void;
-  onError?: () => void;
+  // reason: the server's own words when it ended the stream with its `error` event (no call appeared within the
+  // wait), so it is not mistaken for a dropped connection; empty when the connection itself was lost
+  onError?: (reason?: string) => void;
   after?: number;
 };
 
@@ -440,7 +455,17 @@ export function followCall(id: string, callId: string, { onOpen, onRecord, onEnd
     source.close();
     if (onEnd) onEnd();
   });
-  source.addEventListener('error', () => {
+  source.addEventListener('error', (event) => {
+    // the server's named `error` event carries data (FRONTEND_GUIDE 10.3: no call appeared within `wait`): it is final,
+    // so the browser is stopped from reconnecting to it again and again
+    const data = (event as MessageEvent).data;
+    if (typeof data === 'string' && data) {
+      source.close();
+      const said = parse(event as MessageEvent);
+      const reason = said && typeof said === 'object' ? String(said.detail || said.message || said.error || '') : String(said || data);
+      if (onError) onError(reason || 'The server ended the live trace.');
+      return;
+    }
     if (source.readyState === EventSource.CLOSED && onError) onError();
   });
   return () => source.close();

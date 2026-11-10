@@ -13,6 +13,7 @@ import {
   Bot,
   BrushCleaning,
   Camera,
+  CameraOff,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -26,6 +27,8 @@ import {
   CornerDownLeft,
   createLucideIcon,
   Ellipsis,
+  Equal,
+  Eraser,
   ExternalLink,
   Eye,
   FileText,
@@ -38,11 +41,14 @@ import {
   Hammer,
   Hash,
   House,
+  Image,
   Info,
   KeyRound,
   LayoutGrid,
   LayoutTemplate,
   List,
+  ListOrdered,
+  GitBranch,
   Lock,
   LogOut,
   Mail,
@@ -70,6 +76,8 @@ import {
   Radio,
   Redo2,
   Rocket,
+  ScanEye,
+  ScanLine,
   Search,
   Shield,
   ShieldCheck,
@@ -82,6 +90,7 @@ import {
   Trash2,
   TriangleAlert,
   Undo2,
+  Upload,
   User,
   UserCog,
   Users,
@@ -189,6 +198,9 @@ export const ICONS = {
   webhook: Webhook,
   // the Workflow page: blocks joined by a line
   workflow: Workflow,
+  // Build › Steps: the call as numbered steps; a step that decides where a caller goes
+  steps: ListOrdered,
+  branch: GitBranch,
   // the Enter key (open what is chosen), and a secret's key
   enter: CornerDownLeft,
   key: KeyRound,
@@ -205,6 +217,14 @@ export const ICONS = {
   eye: Eye,
   // putting a version live (the agent's Release stage)
   rocket: Rocket,
+  // pictures the agent asks for (a photo, the camera), reads, compares and forgets
+  image: Image,
+  upload: Upload,
+  scan: ScanLine,
+  read: ScanEye,
+  compare: Equal,
+  forget: Eraser,
+  cameraOff: CameraOff,
 };
 
 export const ICON_NAMES = Object.keys(ICONS);
