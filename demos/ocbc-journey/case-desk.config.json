@@ -1,0 +1,442 @@
+{
+  "schema_version": "1.2",
+  "meta": {
+    "id": "ocbc-case-desk",
+    "name": "OCBC case desk",
+    "version": "1.0.0",
+    "status": "draft",
+    "description": "OCBC journey: after a human video banker opens the account, MX hands the customer back to this agent; it reads the hand-back, opens the case in Tetherfi Quest Desk, and TQD e-mails the customer (the phone banking PIN goes by SMS).",
+    "tags": ["ocbc", "onboarding", "tetherfi-unbound"]
+  },
+  "runtime": {
+    "engine": "livekit-agents",
+    "provider_mode": "plugins",
+    "timezone": "Asia/Singapore"
+  },
+  "defaults": {
+    "models": {
+      "llm": {
+        "provider": "openai",
+        "model": "gpt-4.1-mini",
+        "vision": false,
+        "temperature": 0.3,
+        "api_key": {
+          "secret": "OPENAI_API_KEY"
+        }
+      },
+      "stt": {
+        "provider": "openai",
+        "model": "gpt-4o-mini-transcribe",
+        "api_key": {
+          "secret": "OPENAI_API_KEY"
+        },
+        "language": "en"
+      },
+      "tts": {
+        "provider": "elevenlabs",
+        "model": "eleven_flash_v2_5",
+        "api_key": {
+          "secret": "ELEVEN_API_KEY"
+        },
+        "voice_id": "hpp4J3VqNfWAUOO0d1Us"
+      }
+    },
+    "language": {
+      "primary": "en-SG",
+      "speaks": ["en"]
+    },
+    "conversation": {
+      "inactivity": {
+        "enabled": true,
+        "timeout_s": 150,
+        "max_nudges": 2,
+        "nudges": [
+          {
+            "type": "say",
+            "text": "Are you still there? Take your time; I’m here when you’re ready."
+          },
+          {
+            "type": "say",
+            "text": "I haven’t heard from you for a while. I’ll close this conversation soon if there is no reply."
+          }
+        ],
+        "on_exhausted": {
+          "do": [
+            {
+              "type": "end_call",
+              "say": "Thank you for your time. Goodbye."
+            }
+          ]
+        }
+      },
+      "speech": {
+        "apply_to": "all",
+        "pronunciation": [
+          {
+            "type": "replace",
+            "id": "sgd_amount",
+            "pattern": "\\bSGD\\s?(\\d[\\d,.]*(?:\\s(?:thousand|million|billion))?)",
+            "replacement": "\\g<1> Singapore dollars"
+          },
+          {
+            "type": "replace",
+            "id": "per_year",
+            "pattern": "\\bp\\.\\s?a\\.",
+            "replacement": "a year",
+            "ignore_case": true
+          },
+          {
+            "type": "replace",
+            "id": "rate_trailing_zero",
+            "pattern": "(\\d+)\\.(\\d)0%",
+            "replacement": "\\g<1>.\\g<2> percent"
+          },
+          {
+            "type": "replace",
+            "id": "percent",
+            "pattern": "(\\d+(?:\\.\\d+)?)%",
+            "replacement": "\\g<1> percent"
+          },
+          {
+            "type": "replace",
+            "id": "account_ending",
+            "pattern": "\\bending (\\d)(\\d)(\\d)(\\d)\\b",
+            "replacement": "ending \\g<1> \\g<2> \\g<3> \\g<4>"
+          },
+          {
+            "type": "replace",
+            "id": "reference_join",
+            "pattern": "\\b(TQD|CB)-(\\d+)",
+            "replacement": "\\g<1>\\g<2>"
+          },
+          {
+            "type": "spell",
+            "id": "reference",
+            "pattern": "\\b(?:TQD|CB)\\d+\\b"
+          },
+          {
+            "type": "replace",
+            "id": "email_at",
+            "pattern": "@",
+            "replacement": " at "
+          },
+          {
+            "type": "replace",
+            "id": "email_dot",
+            "pattern": "([A-Za-z])\\.([A-Za-z])",
+            "replacement": "\\g<1> dot \\g<2>"
+          }
+        ]
+      }
+    }
+  },
+  "persona": {
+    "name": "Aria",
+    "company": "OCBC",
+    "tone": "warm, calm and precise; plain language",
+    "style_rules": [
+      "One question at a time.",
+      "Short sentences: the customer may be listening, not reading.",
+      "Amounts in digits with the currency code (SGD 500,000,000)."
+    ]
+  },
+  "state": {
+    "variables": {
+      "handover_id": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "customer_name": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "first_name": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "email": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "plan_name": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "account_number": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "account_last4": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "colleague": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "relationship_manager": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "risk_level": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "proof_needed": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "handback_source": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "case_id": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "email_sent_to": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      }
+    }
+  },
+  "channels": [
+    {
+      "id": "web-voice",
+      "type": "web_voice",
+      "enabled": true,
+      "entry": {
+        "widget_id": "ocbc-case-desk-voice"
+      },
+      "modalities": {
+        "input": ["audio", "text"],
+        "output": ["audio", "text"]
+      },
+      "instructions_append": "This is a voice call in the browser: the customer can also type, and sees forms and picture requests on the screen."
+    },
+    {
+      "id": "web-chat",
+      "type": "web_chat",
+      "enabled": true,
+      "entry": {
+        "widget_id": "ocbc-case-desk-chat"
+      },
+      "modalities": {
+        "input": ["text"],
+        "output": ["text"]
+      },
+      "overrides": {
+        "models": {
+          "stt": null,
+          "tts": null
+        }
+      },
+      "instructions_append": "This is a web chat: the customer types, and sees forms and picture requests on the screen."
+    }
+  ],
+  "connections": {
+    "mx_bridge": {
+      "type": "http",
+      "base_url": "https://weave-mock-api.vercel.app",
+      "timeout_s": 10
+    },
+    "quest_desk": {
+      "type": "http",
+      "base_url": "https://weave-mock-api.vercel.app",
+      "timeout_s": 10
+    }
+  },
+  "tools": [
+    {
+      "id": "end_call",
+      "type": "builtin",
+      "builtin": "end_call",
+      "description": "Ends the conversation after the goodbye, when the customer has nothing more to ask.",
+      "params": {
+        "say": "Thank you for choosing {{const.bank_name}}. Goodbye."
+      }
+    }
+  ],
+  "agents": {
+    "entry": "case_desk",
+    "items": [
+      {
+        "id": "case_desk",
+        "name": "Case desk",
+        "kind": "standalone",
+        "instructions": {
+          "role": "You are at the bank’s case desk. The customer has just opened an account with a video banking colleague, and you have opened their case in Tetherfi Quest Desk, which e-mails them the details. Answer short questions about what happens next, using only what you have already told them: when their relationship manager calls, the proof of where the money comes from that a large deposit needs (anti-money-laundering rules), and when the online banking login and debit card arrive. When they have nothing more to ask, say goodbye and call end_call.",
+          "rules": [
+            "Use only the details you were given: plan, account ending, case reference, e-mail, relationship manager and the proof needed.",
+            "Never read out a full account number: only its last four digits.",
+            "Never give investment, tax or legal advice: the relationship manager covers those.",
+            "If they want to check their new account or do other banking, say they can call or chat with us any time and sign in with the phone banking number from the welcome e-mail and the temporary PIN from the SMS."
+          ]
+        },
+        "tools": ["end_call"],
+        "on_enter": [
+          {
+            "type": "http",
+            "connection": "mx_bridge",
+            "method": "GET",
+            "path": "/mx/handbacks/latest",
+            "to_state": {
+              "handover_id": "$.handover_id",
+              "customer_name": "$.customer_name",
+              "first_name": "$.first_name",
+              "email": "$.email",
+              "plan_name": "$.plan_name",
+              "account_number": "$.account_number",
+              "account_last4": "$.account_last4",
+              "colleague": "$.agent",
+              "relationship_manager": "$.relationship_manager",
+              "risk_level": "$.risk",
+              "proof_needed": "$.proof_needed",
+              "handback_source": "$.source"
+            }
+          },
+          {
+            "type": "say",
+            "text": "Welcome back, {{state.first_name}}. Your {{state.plan_name}} is open, account number ending {{state.account_last4}}. I’m logging everything for you now."
+          },
+          {
+            "type": "http",
+            "connection": "quest_desk",
+            "method": "POST",
+            "path": "/tqd/cases",
+            "body": {
+              "type": "account_opening",
+              "handover_id": "{{state.handover_id}}",
+              "customer_name": "{{state.customer_name}}",
+              "email": "{{state.email}}",
+              "account_number": "{{state.account_number}}",
+              "plan_name": "{{state.plan_name}}",
+              "relationship_manager": "{{state.relationship_manager}}",
+              "proof_needed": "{{state.proof_needed}}",
+              "bank": "{{const.bank_name}}"
+            },
+            "to_state": {
+              "case_id": "$.case_id",
+              "email_sent_to": "$.email_sent_to"
+            }
+          },
+          {
+            "type": "say",
+            "when": {
+              "not": {
+                "state": "case_id",
+                "equals": null
+              }
+            },
+            "text": "Done. Your case reference is {{state.case_id}}, and the details are on their way to {{state.email_sent_to}}."
+          },
+          {
+            "type": "say",
+            "when": {
+              "not": {
+                "state": "case_id",
+                "equals": null
+              }
+            },
+            "text": "Your phone banking number is in that e-mail, and a temporary phone banking PIN is on its way to your mobile by SMS, so you can check your new account with us any time."
+          },
+          {
+            "type": "say",
+            "when": {
+              "all": [
+                {
+                  "not": {
+                    "state": "case_id",
+                    "equals": null
+                  }
+                },
+                {
+                  "not": {
+                    "state": "proof_needed",
+                    "equals": null
+                  }
+                }
+              ]
+            },
+            "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you {{const.rm_call_window}} to arrange the deposit. Please have {{state.proof_needed}} ready: banks must check where large deposits come from."
+          },
+          {
+            "type": "say",
+            "when": {
+              "all": [
+                {
+                  "not": {
+                    "state": "case_id",
+                    "equals": null
+                  }
+                },
+                {
+                  "state": "proof_needed",
+                  "equals": null
+                }
+              ]
+            },
+            "text": "Next, {{state.relationship_manager}}, your relationship manager, will call you {{const.rm_call_window}} to arrange the deposit."
+          },
+          {
+            "type": "say",
+            "when": {
+              "not": {
+                "state": "case_id",
+                "equals": null
+              }
+            },
+            "text": "Your online banking login and debit card arrive by post {{const.card_delivery}}. Is there anything else I can help with?"
+          },
+          {
+            "type": "say",
+            "when": {
+              "state": "case_id",
+              "equals": null
+            },
+            "text": "I couldn’t create the case just now. Your colleague will make sure you get the details by e-mail today."
+          }
+        ]
+      }
+    ]
+  },
+  "guardrails": {
+    "input": [
+      {
+        "id": "prompt_injection",
+        "type": "prompt_injection",
+        "enforcement": "code",
+        "on_trigger": {
+          "action": "deflect",
+          "say": "I can only help with {{const.bank_name}} accounts."
+        }
+      }
+    ]
+  },
+  "post_call": {
+    "redaction": {
+      "enabled": true,
+      "entities": ["national_id", "date_of_birth", "card_number", "bank_account"],
+      "mask_sensitive_state": true
+    }
+  },
+  "constants": {
+    "bank_name": "OCBC",
+    "rm_call_window": "within one working day",
+    "card_delivery": "within 5 working days"
+  }
+}

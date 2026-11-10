@@ -14,6 +14,10 @@
 // source: "demo_default". Figures are demo figures.
 
 import { randomInt } from 'node:crypto';
+// the store (store.mjs): put / get / newest, by kind (applications, handovers, handbacks, cases, outbox)
+import { store, timeKey } from './store.mjs';
+// an account opened for a bank whose banking agents serve it straight away (the OCBC journey) becomes a bank customer
+import { openBankingCustomer, bankingCustomerOfAccount, welcomeBankingLines } from './ocbc.mjs';
 
 // short references (TQD-48213): easy to say aloud, and too short for call-log redaction to take for an account number
 const ref = (prefix) => `${prefix}-${randomInt(10000, 100000)}`;
@@ -21,49 +25,6 @@ const now = () => new Date().toISOString();
 const bad = (reason) => [400, { ok: false, reason }];
 const notFound = (what) => [404, { ok: false, reason: `No ${what} with that reference.` }];
 const text = (v) => (typeof v === 'string' ? v.trim() : v === undefined || v === null ? '' : String(v).trim());
-
-// ---- the store: put / get / newest, by kind (applications, handovers, handbacks, cases, outbox)
-const memoryStore = () => {
-  const kinds = new Map();
-  const of = (kind) => kinds.get(kind) || kinds.set(kind, new Map()).get(kind);
-  return {
-    put: async (kind, id, value) => void of(kind).set(id, structuredClone(value)),
-    get: async (kind, id) => (of(kind).has(id) ? structuredClone(of(kind).get(id)) : null),
-    newest: async (kind, limit) =>
-      [...of(kind).values()]
-        .reverse()
-        .slice(0, limit)
-        .map((v) => structuredClone(v)),
-    clear: () => kinds.clear(),
-  };
-};
-const blobStore = () => {
-  let lib;
-  const blob = async () => (lib ??= await import('@vercel/blob'));
-  const path = (kind, id) => `unbound/${kind}/${id}.json`;
-  const read = async (pathname) => {
-    const { get } = await blob();
-    const found = await get(pathname, { access: 'private', useCache: false }).catch((err) => (err?.name === 'BlobNotFoundError' ? null : Promise.reject(err)));
-    return found?.stream ? JSON.parse(await new Response(found.stream).text()) : null;
-  };
-  return {
-    put: async (kind, id, value) => {
-      const { put } = await blob();
-      await put(path(kind, id), JSON.stringify(value), { access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json' });
-    },
-    get: async (kind, id) => read(path(kind, id)),
-    newest: async (kind, limit) => {
-      const { list } = await blob();
-      const { blobs } = await list({ prefix: `unbound/${kind}/`, limit: 1000 });
-      const recent = blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)).slice(0, limit);
-      return (await Promise.all(recent.map((b) => read(b.pathname)))).filter(Boolean);
-    },
-    clear: () => {},
-  };
-};
-const store = process.env.BLOB_READ_WRITE_TOKEN ? blobStore() : memoryStore();
-// a name that sorts by time, for the kinds read newest first
-const timeKey = (iso, id) => `${iso.replace(/\D/g, '')}-${id}`;
 
 // the demo customer of the stage script, used when a hand-back can't be found (see the top of this file)
 const DEMO_CUSTOMER = {
@@ -163,6 +124,12 @@ export const UNBOUND_ROUTES = [
           offers,
           safety: SAFETY,
           onboarding: 'Open the account in about 2 minutes, in this conversation: a short form, a photo of your ID card and a quick video check.',
+          // an amount below every account's minimum: say from what amount they start (only then; nothing else changes)
+          ...(offers.length
+            ? {}
+            : {
+                none_for_this_amount: `These accounts start at ${currency} ${Math.min(...OFFERS.map((o) => o.min_amount)).toLocaleString('en-US')}. For a smaller amount, a relationship manager can suggest an everyday savings account.`,
+              }),
           ...(amount >= EDD_FROM
             ? {
                 requirements:
@@ -265,6 +232,8 @@ export const UNBOUND_ROUTES = [
         risk: application?.risk || text(body.risk) || 'standard',
         proof_needed: application?.proof_needed || text(body.proof_needed),
         session: text(body.session),
+        // the bank whose agent handed over (the OCBC journey); none for use case 1
+        ...(text(body.bank) ? { bank: text(body.bank) } : {}),
         created_at: now(),
       };
       await store.put('handovers', handover.handover_id, handover);
@@ -323,6 +292,19 @@ export const UNBOUND_ROUTES = [
         completed_at: now(),
       });
       await store.put('handovers', id, handover);
+      // an account the human opened for a bank whose banking agents serve it straight away (the OCBC journey): a bank
+      // customer too, under the names the human confirmed
+      if (handover.bank) {
+        const application = await store.get('applications', handover.application_id);
+        const [, currency = 'SGD', figure = ''] = text(application?.amount).match(/^([A-Z]{3})\s+(.*)$/) || [];
+        await openBankingCustomer({
+          bank: handover.bank,
+          account: handover,
+          customer: { ...handover.customer, ...handover.confirmed },
+          deposit: amountOf(figure),
+          currency,
+        });
+      }
       // MX's hand-back to the next AI agent, kept under its own new name (so "the newest" never reads a stale copy)
       await store.put('handbacks', timeKey(handover.completed_at, id), handbackOf(handover));
       return [200, { ok: true, handover_id: id, status: handover.status, account_number: handover.account_number }];
@@ -391,6 +373,18 @@ export const UNBOUND_ROUTES = [
         opened_at: now(),
       };
       await store.put('accounts', account.account_number, account);
+      // a bank whose own banking agents serve the customer straight away (the OCBC journey sends bank: "OCBC") also
+      // gets a banking customer: phone code, temporary TPIN, the account awaiting its first deposit, a debit card.
+      // Without bank (use case 1), nothing more happens here.
+      const bank = text(body.bank);
+      if (bank)
+        await openBankingCustomer({
+          bank,
+          account,
+          customer: application?.customer || {},
+          deposit: amount,
+          currency: text(body.currency).toUpperCase() || 'SGD',
+        });
       return [200, { ok: true, ...account, account_last4: account.account_number.slice(-4) }];
     },
   ],
@@ -417,6 +411,11 @@ export const UNBOUND_ROUTES = [
       const plan = text(body.plan_name) || 'new account';
       const manager = text(body.relationship_manager) || 'your relationship manager';
       const proof = text(body.proof_needed);
+      // the bank's name, when the agent sends it (the OCBC journey); use case 1 sends none and stays Unbound Bank
+      const bank = text(body.bank) || 'Unbound Bank';
+      // a banking customer made when the account opened: the welcome adds their phone banking number, and the
+      // temporary TPIN goes by SMS (both kept in the outbox; nothing is really sent)
+      const banking = text(body.bank) && account ? await bankingCustomerOfAccount(account) : null;
       const item = {
         case_id: ref('TQD'),
         type: text(body.type) || 'account_opening',
@@ -431,7 +430,7 @@ export const UNBOUND_ROUTES = [
       };
       const mail = {
         to: email,
-        subject: `Welcome to Unbound Bank: your ${plan} is open`,
+        subject: `Welcome to ${bank}: your ${plan} is open`,
         body: [
           `Dear ${name},`,
           '',
@@ -441,8 +440,9 @@ export const UNBOUND_ROUTES = [
           `1. ${manager === 'your relationship manager' ? 'Your relationship manager' : `${manager}, your relationship manager,`} will call you within one working day to arrange the deposit.`,
           ...(proof ? [`2. Before the deposit is credited, please have ${proof} ready. Banks must check where large deposits come from.`] : []),
           `${proof ? 3 : 2}. Your online banking login and debit card arrive by post within 5 working days.`,
+          ...(banking ? ['', ...welcomeBankingLines(banking)] : []),
           '',
-          'Unbound Bank',
+          bank,
         ].join('\n'),
         case_id: item.case_id,
         sent_at: now(),
@@ -450,6 +450,19 @@ export const UNBOUND_ROUTES = [
       };
       await store.put('cases', item.case_id, item);
       await store.put('outbox', timeKey(mail.sent_at, item.case_id), mail);
+      if (banking) {
+        // the temporary TPIN, by SMS to the mobile on the application (a moment after the e-mail, so it lists first)
+        const sms = {
+          to: banking.phone,
+          channel: 'sms',
+          subject: `${bank}: your temporary phone banking PIN`,
+          body: `${bank}: Your temporary phone banking PIN is ${banking.passcode}. Use it with phone banking number ${banking.customerId}, then change it on your first call. Never share it with anyone, including bank staff.`,
+          case_id: item.case_id,
+          sent_at: new Date(Date.parse(mail.sent_at) + 1000).toISOString(),
+          status: 'sent (mock outbox: nothing is really sent)',
+        };
+        await store.put('outbox', timeKey(sms.sent_at, `${item.case_id}-sms`), sms);
+      }
       return [200, { ok: true, case_id: item.case_id, status: item.status, email_sent_to: email, email_subject: mail.subject }];
     },
   ],

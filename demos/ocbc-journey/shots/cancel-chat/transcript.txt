@@ -1,0 +1,65 @@
+Preview
+Ended
+· Web chat
+Real agent
+Simulated
+
+Real agent. A live conversation with the saved draft through the server.
+
+Ended
+Agent
+
+Hello, this is Aria from OCBC. How can I help you today?
+
+You
+
+Hi, I want to move some money between my accounts.
+
+Agent
+
+You’d like to transfer money between your own OCBC accounts. Please tell me your 7-digit phone banking number to get started.
+
+You
+
+My phone banking number is ****.
+
+Agent
+
+Thank you. Please enter your phone banking PIN so I can verify your identity.
+
+You
+
+My PIN is ****.
+
+Agent
+
+You have a Current Account ending 9921 and a Savings Account ending 6169. Which account would you like to transfer money from, and which one to?
+
+You
+
+SGD 300 from my current account to my savings, please.
+
+Agent
+
+You are about to transfer SGD 300 from your Current Account ending 9921 to your Savings Account ending 6169. There is no fee for this transfer. Shall I proceed?
+
+You
+
+No, actually don’t do that.
+
+Agent
+
+No problem, I have not made the transfer. Is there anything else I can help you with today?
+
+You
+
+No, that’s all. Thank you!
+
+Agent
+
+Thank you for choosing OCBC. Goodbye.
+
+The agent ended the conversation.
+The conversation ended.
+Chat again
+Talk instead

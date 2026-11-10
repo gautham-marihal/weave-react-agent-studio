@@ -1,0 +1,1835 @@
+{
+  "schema_version": "1.2",
+  "meta": {
+    "id": "my-consumer-banking",
+    "name": "MY Consumer Banking",
+    "version": "1.0.28",
+    "status": "draft",
+    "description": "OCBC Bank Malaysia consumer banking phone lines (Mass and iQ 1300 88 5000, Al-Amin 1300 88 0310): credit and debit cards (activation, a lost card, fee waiver, credit limit, balance transfer, applications), banking enquiries and payments, in English, Malay and Mandarin.",
+    "tags": ["ocbc", "malaysia", "consumer-banking", "cards", "phone"],
+    "owner": "my-contact-centre"
+  },
+  "runtime": {
+    "engine": "livekit-agents",
+    "provider_mode": "plugins",
+    "timezone": "Asia/Kuala_Lumpur"
+  },
+  "defaults": {
+    "models": {
+      "llm": {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "api_key": {
+          "secret": "OPENAI_API_KEY"
+        },
+        "temperature": 0
+      },
+      "stt": {
+        "provider": "openai",
+        "model": "gpt-4o-mini-transcribe",
+        "api_key": {
+          "secret": "OPENAI_API_KEY"
+        },
+        "language": "en"
+      },
+      "tts": {
+        "provider": "elevenlabs",
+        "model": "eleven_flash_v2_5",
+        "api_key": {
+          "secret": "ELEVEN_API_KEY"
+        },
+        "voice_id": "pNInz6obpgDQGcFmaJgB"
+      }
+    },
+    "conversation": {
+      "inactivity": {
+        "enabled": true,
+        "timeout_s": 15,
+        "max_nudges": 2,
+        "nudges": [
+          {
+            "type": "say",
+            "text": {
+              "message": "still_there"
+            }
+          },
+          {
+            "type": "say",
+            "text": {
+              "message": "still_there_final"
+            }
+          }
+        ],
+        "on_exhausted": {
+          "do": [
+            {
+              "type": "end_call",
+              "say": {
+                "message": "inactivity_goodbye"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "language": {
+      "primary": "en-MY",
+      "speaks": ["en", "ms", "zh"]
+    }
+  },
+  "persona": {
+    "name": "OCBC Bank assistant",
+    "company": "OCBC Bank",
+    "tone": "professional, warm and efficient; plain language",
+    "style_rules": [
+      "One question at a time.",
+      "Short sentences: this is a phone call.",
+      "Write amounts in digits with the currency code (MYR 41,762.75), dates like 2 May 2026, and an account by its last four digits (ending 5600). An account ending is always exactly the last four digits of its number (account 923253456169 is \"ending 6169\").",
+      "Answer in the language the caller uses; switch at once if they ask for another."
+    ],
+    "shared_rules": [
+      "Only state account, cheque, card and rate facts a tool returned; never guess them.",
+      "Account details are given only once the caller’s phone code and TPIN have been checked. If you can’t check them yourself, hand the caller to the specialist who can; never refuse them.",
+      "Never read out a full account number, NRIC, IC, phone code, PIN or one-time password; say only the last four digits of an account.",
+      "Banking topics only: politely decline anything else in one sentence, and say what you can help with (balances and recent transactions).",
+      "If the caller asks for a person, or is upset, apologise once and offer a call-back: a service manager returns the call as soon as possible.",
+      "Amounts are in MYR unless an account or card says otherwise."
+    ],
+    "disclosures": {
+      "recording_notice": "This call may be recorded for quality and training purposes."
+    }
+  },
+  "messages": [
+    {
+      "id": "still_there",
+      "text": {
+        "en": "Are you still there? Take your time.",
+        "zh": "您还在吗？请慢慢来。",
+        "ms": "Adakah anda masih di talian? Ambil masa anda."
+      }
+    },
+    {
+      "id": "still_there_final",
+      "text": {
+        "en": "I haven’t heard from you. I’ll end the call if there is no reply.",
+        "zh": "我没有听到您的回应。如果没有回复，我将结束通话。",
+        "ms": "Saya tidak mendengar sebarang jawapan. Panggilan akan ditamatkan jika tiada jawapan."
+      }
+    },
+    {
+      "id": "inactivity_goodbye",
+      "text": {
+        "en": "Thank you for calling OCBC Bank. Goodbye.",
+        "zh": "感谢您致电华侨银行。再见。",
+        "ms": "Terima kasih kerana menghubungi OCBC Bank. Selamat tinggal."
+      }
+    },
+    {
+      "id": "goodbye",
+      "text": {
+        "en": "Thank you for banking with OCBC Bank. Goodbye.",
+        "zh": "感谢您选择华侨银行。再见。",
+        "ms": "Terima kasih kerana berurusan dengan OCBC Bank. Selamat tinggal."
+      }
+    },
+    {
+      "id": "greeting",
+      "text": {
+        "en": "Welcome to OCBC Bank. I can help with your accounts, cards, cheques, payments and statements. How may I help you today?",
+        "zh": "欢迎致电华侨银行。我可以协助您处理账户、信用卡、支票、付款和结单。请问今天有什么可以帮您？",
+        "ms": "Selamat datang ke OCBC Bank. Saya boleh membantu dengan akaun, kad, cek, pembayaran dan penyata anda. Bagaimana saya boleh membantu anda hari ini?"
+      }
+    },
+    {
+      "id": "after_cutoff",
+      "text": {
+        "en": "Please note that instructions placed after 8 pm will be effective tomorrow.",
+        "zh": "请注意，晚上8点后发出的指示将于明天生效。",
+        "ms": "Sila ambil perhatian bahawa arahan yang dibuat selepas jam 8 malam akan berkuat kuasa esok."
+      }
+    }
+  ],
+  "identity": {
+    "caller_id": {
+      "sources": [
+        {
+          "from": "participant_attribute",
+          "name": "sip.phoneNumber"
+        },
+        {
+          "from": "participant_identity",
+          "strip": ["^sip[:_]", "@.*$"]
+        }
+      ],
+      "normalize": {
+        "type": "e164",
+        "default_country": "MY"
+      }
+    }
+  },
+  "channels": [
+    {
+      "id": "phone",
+      "type": "sip_voice",
+      "enabled": true,
+      "entry": {},
+      "modalities": {
+        "input": ["audio"],
+        "output": ["audio"]
+      },
+      "capabilities": {
+        "dtmf": true,
+        "human_transfer": true
+      },
+      "greeting": {
+        "say": {
+          "message": "greeting"
+        },
+        "allow_interruptions": false
+      },
+      "instructions_append": "This is a phone call. Phone codes, PINs and one-time passwords are only ever keyed in on the keypad, through the verification tools."
+    },
+    {
+      "id": "web-voice",
+      "type": "web_voice",
+      "enabled": true,
+      "entry": {
+        "widget_id": "my-consumer-banking-voice"
+      },
+      "modalities": {
+        "input": ["audio", "text"],
+        "output": ["audio", "text"]
+      },
+      "greeting": {
+        "say": {
+          "message": "greeting"
+        }
+      },
+      "instructions_append": "This is a voice call in the browser (a test line): there is no keypad, so the caller says codes and digits aloud."
+    },
+    {
+      "id": "web-chat",
+      "type": "web_chat",
+      "enabled": true,
+      "entry": {
+        "widget_id": "my-consumer-banking-chat"
+      },
+      "modalities": {
+        "input": ["text"],
+        "output": ["text"]
+      },
+      "greeting": {
+        "say": {
+          "message": "greeting"
+        }
+      },
+      "instructions_append": "This is a web chat (a test line): the customer types codes and digits."
+    }
+  ],
+  "guardrails": {
+    "input": [
+      {
+        "id": "prompt_injection",
+        "type": "prompt_injection",
+        "enforcement": "code",
+        "on_trigger": {
+          "action": "deflect",
+          "say": "I can only help with OCBC Bank banking."
+        }
+      },
+      {
+        "id": "card_and_id_numbers",
+        "type": "pii_detect",
+        "entities": ["card_number", "bank_account", "national_id"],
+        "enforcement": "code",
+        "on_trigger": {
+          "action": "redact_in_logs"
+        }
+      }
+    ],
+    "output": [
+      {
+        "id": "no_secrets",
+        "type": "statement",
+        "text": "Never say a phone code, TPIN or one-time password back to the caller, and never say any digit of the stored passcode. Asking the caller for their phone code and TPIN to check who they are is expected.",
+        "enforcement": "prompt"
+      },
+      {
+        "id": "no_advice",
+        "type": "statement",
+        "text": "Give no investment, tax or legal advice; say plainly that you can’t advise on that, and offer balances or transactions instead.",
+        "enforcement": "prompt"
+      }
+    ],
+    "limits": {
+      "max_call_duration_s": 1200,
+      "max_silence_s": 600,
+      "max_tool_calls_per_call": 40,
+      "max_handoffs_per_call": 10
+    }
+  },
+  "post_call": {
+    "redaction": {
+      "enabled": true,
+      "entities": ["card_number", "bank_account", "national_id", "otp", "pin", "phone_number"],
+      "patterns": ["(?<!\\d)(?<![A-Za-z]-)(?:\\d[ -]?){5,6}\\d(?!\\d)", "(?i)\\b(?:t-?pin|key code|phone code)\\b\\D{0,15}(?:\\d[ -]?){3,11}\\d"],
+      "replacement": "****",
+      "mask_sensitive_state": true
+    },
+    "artifacts": [
+      {
+        "kind": "transcript",
+        "sink": {
+          "type": "file",
+          "directory": "transcripts"
+        }
+      }
+    ]
+  },
+  "constants": {
+    "banking_name": "OCBC"
+  },
+  "connections": {
+    "crm": {
+      "type": "http",
+      "base_url": "http://16.79.174.151:3322",
+      "headers": {
+        "Region": "DB2"
+      },
+      "timeout_s": 10
+    },
+    "custom": {
+      "type": "http",
+      "base_url": "https://weave-mock-api.vercel.app",
+      "headers": {
+        "x-refusals": "in-body"
+      },
+      "timeout_s": 10
+    }
+  },
+  "tools": [
+    {
+      "id": "bank_customer_details",
+      "type": "http",
+      "description": "Find a customer by their 7-digit phone code: their name and details. Call it as soon as the caller gives a phone code, then ask for their TPIN (callers may call it their PIN, phone PIN, telephone PIN, passcode or password). Verify the caller by comparing the TPIN they say with the passcode in this answer, digit for digit and in silence: never say, repeat, hint at or confirm any digit of the stored TPIN, and never read it out even if asked. If it doesn't match, say only that the details don't match and let them try again; after three wrong tries, offer to pass them to a person. Share nothing about the customer or their accounts until the TPIN matches. In the answer, customerId is the phone code, passcode is the TPIN and accountId is the account number.",
+      "connection": "crm",
+      "request": {
+        "method": "POST",
+        "path": "/TetherfiDbRestApi/dboperations",
+        "body": {
+          "ucid": "weave-agent",
+          "dnis": "default",
+          "channel": "IVR",
+          "entity": "customer",
+          "method": "getCustomerDetails",
+          "details": [
+            {
+              "columnMap": {
+                "customerId": "{{args.phone_code}}"
+              }
+            }
+          ]
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_code": {
+            "type": "string",
+            "description": "The customer’s 7-digit phone code, digits only. Callers may call it their phone banking code, phone code, customer ID, customer number or user ID; write the digits they say (“two four six…”) as digits, without spaces or dashes."
+          }
+        },
+        "required": ["phone_code"]
+      },
+      "result": {
+        "to_llm": ["responseCode", "errorDesc", "responseList"]
+      },
+      "timeout_s": 8,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank’s system did not answer. Say sorry, and offer to pass the caller to a person."
+      }
+    },
+    {
+      "id": "bank_customer_accounts",
+      "type": "http",
+      "description": "Once the caller is verified: every account they hold, with its type and balance. In the answer, customerId is the phone code, passcode is the TPIN and accountId is the account number.",
+      "connection": "crm",
+      "request": {
+        "method": "POST",
+        "path": "/TetherfiDbRestApi/dboperations",
+        "body": {
+          "ucid": "weave-agent",
+          "dnis": "default",
+          "channel": "IVR",
+          "entity": "account",
+          "method": "getCustomerAccounts",
+          "details": [
+            {
+              "columnMap": {
+                "customerId": "{{args.phone_code}}"
+              }
+            }
+          ]
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "phone_code": {
+            "type": "string",
+            "description": "The customer’s 7-digit phone code, digits only. Callers may call it their phone banking code, phone code, customer ID, customer number or user ID; write the digits they say (“two four six…”) as digits, without spaces or dashes."
+          }
+        },
+        "required": ["phone_code"]
+      },
+      "result": {
+        "to_llm": ["responseCode", "errorDesc", "responseList"]
+      },
+      "timeout_s": 8,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank’s system did not answer. Say sorry, and offer to pass the caller to a person."
+      }
+    },
+    {
+      "id": "bank_account_details",
+      "type": "http",
+      "description": "One account by its number: whose it is, its type, balance and currency. When the caller identifies themselves by account number, call it, then call bank_customer_details with its customerId to check their TPIN before sharing anything. In the answer, customerId is the phone code, passcode is the TPIN and accountId is the account number.",
+      "connection": "crm",
+      "request": {
+        "method": "POST",
+        "path": "/TetherfiDbRestApi/dboperations",
+        "body": {
+          "ucid": "weave-agent",
+          "dnis": "default",
+          "channel": "IVR",
+          "entity": "account",
+          "method": "getAccountDetails",
+          "details": [
+            {
+              "columnMap": {
+                "accountId": "{{args.account_number}}"
+              }
+            }
+          ]
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_number": {
+            "type": "string",
+            "description": "The account number, digits only. Callers may say account number, account no., a/c number or just “my account”; write the digits they say as digits, without spaces or dashes."
+          }
+        },
+        "required": ["account_number"]
+      },
+      "result": {
+        "to_llm": ["responseCode", "errorDesc", "responseList"]
+      },
+      "timeout_s": 8,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank’s system did not answer. Say sorry, and offer to pass the caller to a person."
+      }
+    },
+    {
+      "id": "bank_transaction_history",
+      "type": "http",
+      "description": "Once the caller is verified: the transactions on one of their accounts (debit or credit, amount, description). In the answer, customerId is the phone code, passcode is the TPIN and accountId is the account number.",
+      "connection": "crm",
+      "request": {
+        "method": "POST",
+        "path": "/TetherfiDbRestApi/dboperations",
+        "body": {
+          "ucid": "weave-agent",
+          "dnis": "default",
+          "channel": "IVR",
+          "entity": "transaction",
+          "method": "getTransactionHistory",
+          "details": [
+            {
+              "columnMap": {
+                "accountId": "{{args.account_number}}"
+              }
+            }
+          ]
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_number": {
+            "type": "string",
+            "description": "The account number, digits only. Callers may say account number, account no., a/c number or just “my account”; write the digits they say as digits, without spaces or dashes."
+          }
+        },
+        "required": ["account_number"]
+      },
+      "result": {
+        "to_llm": ["responseCode", "errorDesc", "responseList"]
+      },
+      "timeout_s": 8,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank’s system did not answer. Say sorry, and offer to pass the caller to a person."
+      }
+    },
+    {
+      "id": "end_call",
+      "type": "builtin",
+      "builtin": "end_call",
+      "description": "Ends the call after the goodbye, when the caller has nothing more to ask.",
+      "params": {
+        "say": {
+          "message": "goodbye"
+        }
+      }
+    },
+    {
+      "id": "back_to_front_desk",
+      "type": "builtin",
+      "builtin": "return_to_entry",
+      "description": "Send the caller back to the front desk. Use it at once when they ask for something outside your role, before asking for any details, or when their request is finished.",
+      "params": {
+        "pending_request_into": "pending_request",
+        "guard_loops": true
+      }
+    },
+    {
+      "id": "list_issued_cheques",
+      "type": "http",
+      "description": "The cheques issued from an account, each with its status: CLEARED, PRESENTED, NOT_PRESENTED, STOPPED, or RETURNED (with the reason).",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/{{args.account_id}}/cheques"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          }
+        },
+        "required": ["account_id"]
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "cheque_status",
+      "type": "http",
+      "description": "Whether one issued cheque was cleared, presented, returned (with the reason), stopped, or not presented yet; a number not on record means “we are unable to confirm your cheque number”.",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/{{args.account_id}}/cheques/{{args.cheque_no}}"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          },
+          "cheque_no": {
+            "type": "string",
+            "description": "The 6-digit cheque number, digits only."
+          }
+        },
+        "required": ["account_id", "cheque_no"]
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "stop_cheque",
+      "type": "http",
+      "description": "Stop a cheque that was not presented yet (fee MYR 10, taken from the account). A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/{{args.account_id}}/cheques/{{args.cheque_no}}/stop",
+        "body": {
+          "reason": "{{args.reason}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          },
+          "cheque_no": {
+            "type": "string",
+            "description": "The 6-digit cheque number, digits only."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why, in a few words (e.g. lost)."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["account_id", "cheque_no", "reason", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "order_cheque_book",
+      "type": "http",
+      "description": "Order a cheque book for a current account (no charge, about 7 working days, by courier). A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/{{args.account_id}}/cheque-books"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["account_id", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "request_statement",
+      "type": "http",
+      "description": "Post a copy of an account’s statement for a month (fee MYR 5, about 7 working days). A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/accounts/{{args.account_id}}/statements",
+        "body": {
+          "month": "{{args.month}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          },
+          "month": {
+            "type": "string",
+            "description": "The month, as YYYY-MM, e.g. 2026-10."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["account_id", "month", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "list_cards",
+      "type": "http",
+      "description": "The caller’s cards: debit and credit, each with its card id, last four digits, status, and for credit cards the limit, amount due and due date.",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/customers/{{args.customer_id}}/cards"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "The caller’s 7-digit phone code (the bank calls it their customer id)."
+          }
+        },
+        "required": ["customer_id"]
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "block_card",
+      "type": "http",
+      "description": "Block a lost or stolen card at once; a replacement is sent in about 7 working days (MYR 12). A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/cards/{{args.card_id}}/block",
+        "body": {
+          "reason": "{{args.reason}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "description": "The card id, from list_cards."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Lost, stolen, or another reason in a few words."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["card_id", "reason", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "activate_card",
+      "type": "http",
+      "description": "Activate a new card that is not activated yet. A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/cards/{{args.card_id}}/activate"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "description": "The card id, from list_cards."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["card_id", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "card_fee_waiver",
+      "type": "http",
+      "description": "Ask for this year’s annual fee on a credit card to be waived. A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/cards/{{args.card_id}}/fee-waiver"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "description": "The credit card id, from list_cards."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["card_id", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "change_credit_limit",
+      "type": "http",
+      "description": "Change a credit card’s limit: a lower one is immediate, a higher one is reviewed within 3 working days. A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/cards/{{args.card_id}}/credit-limit",
+        "body": {
+          "newLimit": "{{args.new_limit}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "description": "The credit card id, from list_cards."
+          },
+          "new_limit": {
+            "type": "string",
+            "description": "The new limit, a number."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["card_id", "new_limit", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "card_balance_transfer",
+      "type": "http",
+      "description": "Move a balance from another bank’s card onto this credit card (about 5 working days). A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/cards/{{args.card_id}}/balance-transfer",
+        "body": {
+          "fromBank": "{{args.from_bank}}",
+          "amount": "{{args.amount}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "description": "The credit card id, from list_cards."
+          },
+          "from_bank": {
+            "type": "string",
+            "description": "The other bank."
+          },
+          "amount": {
+            "type": "string",
+            "description": "The amount, a number."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["card_id", "from_bank", "amount", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "card_application_status",
+      "type": "http",
+      "description": "The status of a card application, by the applicant’s ID number (no login needed).",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/card-applications/{{args.applicant_id}}"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "applicant_id": {
+            "type": "string",
+            "description": "The applicant’s ID number, digits only."
+          }
+        },
+        "required": ["applicant_id"]
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "list_payees",
+      "type": "http",
+      "description": "What the caller can pay: their loans (instalment, arrears), credit cards (amount due), registered bills, and payees at other banks, each with its payee id.",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/customers/{{args.customer_id}}/payees"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "The caller’s 7-digit phone code (the bank calls it their customer id)."
+          }
+        },
+        "required": ["customer_id"]
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "make_payment",
+      "type": "http",
+      "description": "Pay a loan, a credit card, a bill or another bank’s payee from one of the caller’s accounts. A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/payments",
+        "body": {
+          "fromAccount": "{{args.from_account}}",
+          "payeeId": "{{args.payee_id}}",
+          "amount": "{{args.amount}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_account": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          },
+          "payee_id": {
+            "type": "string",
+            "description": "The payee id, from list_payees."
+          },
+          "amount": {
+            "type": "string",
+            "description": "The amount, a number."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["from_account", "payee_id", "amount", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "transfer_own_accounts",
+      "type": "http",
+      "description": "Move money between two of the caller’s own accounts in the same currency. A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/transfers",
+        "body": {
+          "fromAccount": "{{args.from_account}}",
+          "toAccount": "{{args.to_account}}",
+          "amount": "{{args.amount}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_account": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          },
+          "to_account": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          },
+          "amount": {
+            "type": "string",
+            "description": "The amount, a number."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["from_account", "to_account", "amount", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "request_callback",
+      "type": "http",
+      "description": "Ask for a person (a service manager, or the team named in the reason) to call the caller back as soon as possible. Give the customer id once they are verified, otherwise the number they want to be called on (5 to 15 digits). It says so if they already asked for one.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/callbacks",
+        "body": {
+          "customerId": "{{args.customer_id}}",
+          "phone": "{{args.phone}}",
+          "reason": "{{args.reason}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "The caller’s phone code if they are verified, else empty."
+          },
+          "phone": {
+            "type": "string",
+            "description": "The number to call back, if they gave one, else empty."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Who should call and what about, in a few words."
+          }
+        },
+        "required": ["customer_id", "phone", "reason"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "get_rates",
+      "type": "http",
+      "description": "Malaysia rates: foreign exchange rates (USD, euro…), deposit rates by month, foreign currency deposit rates (call rates and fixed deposit rates), Islamic banking (Current Account-i, General Investment Account-i) and the prime rate.",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/info/rates",
+        "query": {
+          "country": "MY"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "find_branches",
+      "type": "http",
+      "description": "Branches by area or name, with address, opening hours and phone.",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/info/branches",
+        "query": {
+          "country": "MY",
+          "area": "{{args.area}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "string",
+            "description": "The area or branch name the caller said, or empty for all."
+          }
+        },
+        "required": ["area"]
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "login_ic",
+      "type": "http",
+      "description": "Log in a caller by their 12-digit IC number instead of the phone code: gives their phone code (customer id), to check their TPIN with bank_customer_details.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/login/ic",
+        "body": {
+          "ic": "{{args.ic}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ic": {
+            "type": "string",
+            "description": "The 12-digit IC number the caller said, digits only."
+          }
+        },
+        "required": ["ic"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "card_transactions",
+      "type": "http",
+      "description": "A credit card’s balance (amount due, minimum due, due date) and its recent transactions.",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/cards/{{args.card_id}}/transactions"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "description": "The credit card id, from list_cards."
+          }
+        },
+        "required": ["card_id"]
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "card_statement",
+      "type": "http",
+      "description": "Post a copy of a credit card statement for a month. A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/cards/{{args.card_id}}/statements",
+        "body": {
+          "month": "{{args.month}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "description": "The credit card id, from list_cards."
+          },
+          "month": {
+            "type": "string",
+            "description": "The month, as YYYY-MM."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["card_id", "month", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    },
+    {
+      "id": "account_balance",
+      "type": "http",
+      "description": "One account’s balance and available balance, with any hold amount, cheques pending clearance and overdraft limit, and a notice to read when there is one.",
+      "connection": "custom",
+      "request": {
+        "method": "GET",
+        "path": "/accounts/{{args.account_id}}/balance"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The account number, from bank_customer_accounts (the caller never needs to say it)."
+          }
+        },
+        "required": ["account_id"]
+      },
+      "timeout_s": 10,
+      "retries": 1,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      }
+    },
+    {
+      "id": "change_phone_pin",
+      "type": "http",
+      "description": "Change the caller’s phone PIN (TPIN) to a new 6-digit PIN, given twice. Never say the digits. A change: only after the caller’s clear yes.",
+      "connection": "custom",
+      "request": {
+        "method": "POST",
+        "path": "/customers/{{args.customer_id}}/phone-pin",
+        "body": {
+          "newPin": "{{args.new_pin}}",
+          "confirmPin": "{{args.confirm_pin}}"
+        }
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "The caller’s 7-digit phone code (the bank calls it their customer id)."
+          },
+          "new_pin": {
+            "type": "string",
+            "description": "The new 6-digit PIN."
+          },
+          "confirm_pin": {
+            "type": "string",
+            "description": "The new PIN again."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true only after you read back exactly what will happen and the caller clearly said yes."
+          }
+        },
+        "required": ["customer_id", "new_pin", "confirm_pin", "confirmed"]
+      },
+      "timeout_s": 10,
+      "retries": 0,
+      "on_error": {
+        "tool_error": "The bank service did not answer. Say sorry once, and offer a call-back."
+      },
+      "preconditions": [
+        {
+          "require": {
+            "arg": "confirmed",
+            "equals": true
+          },
+          "on_fail": {
+            "tool_error": "Not done: read back exactly what will happen (with any fee) and wait for a clear yes, then call it again with confirmed: true."
+          }
+        }
+      ]
+    }
+  ],
+  "agents": {
+    "entry": "front_desk",
+    "items": [
+      {
+        "id": "front_desk",
+        "name": "Front desk",
+        "kind": "router",
+        "instructions": {
+          "role": "You answer OCBC Bank Malaysia’s consumer banking lines, find out what the caller needs, and pass them to the right specialist.",
+          "opening": "The greeting has been said. Listen to what the caller needs.",
+          "rules": [
+            "Hand the caller to the specialist as soon as you know what they need, in the same reply, without a word about verifying. Do not ask for an account number, a code or a PIN yourself unless one of your rules below says to: the specialist verifies.",
+            "The welcome has already been said: never say it again.",
+            "Answer in the caller’s language: English, Malay or Mandarin.",
+            "Cards (a lost or stolen card, activation, fee waiver, credit limit, balance transfer, what is due, application status): Cards, at once for a lost card.",
+            "Account balance, cheques, statements, rates, branches, a TPIN change: Banking. Transfers to own accounts, loan, card and bill payments, Interbank GIRO: Payments.",
+            "If the caller has nothing else, call end_call.",
+            "When the caller has nothing more, thank them warmly and use end_call (it says goodbye); never say you have to end the call.",
+            "When a tool says no, tell the caller why in plain words, never the code (for example \"that cheque was already paid on 2 May\"), and offer what can be done instead.",
+            "If a bank system does not answer, say sorry once and suggest they try again a little later; do not retry again and again.",
+            "Questions about money that already moved (did I pay X, when did Y come in, my last transactions, a charge I don’t recognise) go to the accounts specialist: they are in the transaction history. Payments is only for making a new payment.",
+            "If the caller already gave a phone code or a TPIN, never comment on it: hand them to the specialist at once, who will use it.",
+            "Never send the caller to the same specialist twice in a row for the same request. If a specialist has just sent them back, tell the caller plainly what you can help with instead.",
+            "You can help with balances, transactions, statements, cheques, cards, payments, rates, branches, forms and appointments through the right specialist, and arrange a call-back for anything else.",
+            "If the caller asks for a person, or for something you can’t do, offer a call-back (request_callback): a service manager returns the call as soon as possible. Never promise an immediate transfer.",
+            "An iQ member who wants their iQ service executive: hand over to Banking, which checks them (phone code or 12-digit IC number, then TPIN) and arranges a call-back from the iQ service executive.",
+            "A customer service officer is reached by call-back: for banking transactions, Velocity or a lost card, take their account number first and put the topic in the reason."
+          ],
+          "conditional": [
+            {
+              "when": {
+                "state": "pending_request",
+                "not_equals": null
+              },
+              "append": "The caller still needs: {{state.pending_request}}. Pass them on now without asking again."
+            }
+          ]
+        },
+        "tools": ["end_call", "request_callback"],
+        "handoffs": [
+          {
+            "id": "to_cards",
+            "tool": "go_to_cards",
+            "description": "Card services, and a lost or stolen card.",
+            "to": "cards",
+            "carry_context": true,
+            "set_state": {
+              "intent": "cards"
+            }
+          },
+          {
+            "id": "to_banking",
+            "tool": "go_to_banking",
+            "description": "Balances, cheques, statements, rates, branches, a TPIN change.",
+            "to": "banking",
+            "carry_context": true,
+            "set_state": {
+              "intent": "banking"
+            }
+          },
+          {
+            "id": "to_payments",
+            "tool": "go_to_payments",
+            "description": "Transfers and payments.",
+            "to": "payments",
+            "carry_context": true,
+            "set_state": {
+              "intent": "payments"
+            }
+          }
+        ]
+      },
+      {
+        "id": "cards",
+        "name": "Cards",
+        "kind": "specialist",
+        "instructions": {
+          "role": "You help verified customers with their OCBC cards: a lost or stolen card, activation, fee waivers, credit limit changes, balance transfers, what is due, and application status.",
+          "opening": "Acknowledge what they need in a few words.",
+          "rules": [
+            "To check who the caller is: ask for their 7-digit phone code. When they give it, your very next step, before you say anything, is to call bank_customer_details with it. Ask for the TPIN only once that answer shows a customer; if no customer has that phone code, say so and ask them to check it.",
+            "Then ask for their TPIN (never say how many digits it has) and compare it, digit by digit, with the passcode in that answer, ignoring spaces: it matches only if every digit is the same. Do this in silence: never say, repeat or hint at any digit of the passcode or the TPIN, even if asked.",
+            "Never say the details don’t match unless you have this caller’s answer from bank_customer_details and its passcode differs from what they said. If you don’t have it yet, call bank_customer_details first.",
+            "If the TPIN doesn’t match, say only that the details don’t match and ask for it again. After three wrong TPINs, say you can’t verify them on this call and offer a call-back (request_callback with the number they want); don’t ask again.",
+            "Share nothing about the customer or their accounts, and make no change, until the TPIN matches.",
+            "Check a caller once per call: if their TPIN already matched earlier in this call (also before a hand-over), they are verified; don’t ask again.",
+            "If the caller gives the phone code and the TPIN together, use both straight away.",
+            "If the caller forgot their TPIN or asks you to tell it, never say it or any part of it: tell them to reset it at their branch, and offer a call-back.",
+            "Don’t narrate the checks (no “your TPIN matches”, “I am verifying”, “please wait”): once it matches, go straight to what they asked.",
+            "When the caller then asks about a balance or transactions, use go_to_banking_from_cards straight away: you cannot see any account or transaction, so never answer it yourself and never make one up. For anything else, use back_to_front_desk.",
+            "Account numbers come from bank_customer_accounts, card ids from list_cards: never ask the caller for an id. The customer id is the caller’s phone code.",
+            "After a change, give its reference and what happens next (dates, fees) in one or two sentences, then ask if there is anything else.",
+            "For a PIN or TPIN change, fixed deposits or loans, use back_to_front_desk; if you can’t, offer a call-back.",
+            "If the caller asks for a person, or for something you can’t do, offer a call-back (request_callback): a service manager returns the call as soon as possible. Never promise an immediate transfer.",
+            "For something outside your role, use back_to_front_desk; never for the request that brought the caller to you.",
+            "Today is {{call.started_at | format('%d %B %Y', 'Asia/Singapore')}}. A month or day without a year means the latest one before today.",
+            "Before any change (stopping a cheque, a cheque book, a statement, blocking or activating a card, a fee waiver, a credit limit, a balance transfer, a payment or transfer, ending a direct debit, booking or cancelling, opening a case, a fax), read back exactly what will happen (the item by its last four digits or number, the amount and any fee) and wait for a clear yes; then call the tool with confirmed: true. The read-back is one sentence that names the action and the fee and ends with a question, e.g. “Shall I post your October 2026 statement for the account ending 5600, for MYR 5?”. Never call a change before the caller has answered that question with a yes. If the reply is anything but a clear yes (a reason, a question, a correction), answer it and ask the question again; never take it as a yes.",
+            "Before asking which account, call bank_customer_accounts: if only one of their accounts fits what they asked, use it without asking; if several do, name them by type and last four digits and ask which.",
+            "Callers may give their 12-digit IC number instead of the phone code: call login_ic; it gives their phone code, then call bank_customer_details with it and check the TPIN as above.",
+            "For a credit card’s balance, statement or transactions, call card_transactions; to post a statement copy, card_statement.",
+            "Ask for their phone code or 12-digit IC number. When they give an IC number, call login_ic; then, before asking for the TPIN, call bank_customer_details with the customerId it gives, and check the TPIN against that answer as above. Never say how many digits a TPIN has.",
+            "Never answer about a cheque, a card, a payment or a booking from the transaction history: use the tool for it, or hand the caller to the specialist who has it."
+          ],
+          "conditional": [
+            {
+              "when": {
+                "state": "verified",
+                "equals": false
+              },
+              "append": "The caller is not verified yet: use verify_phone_code before any account tool."
+            }
+          ]
+        },
+        "tools": [
+          "back_to_front_desk",
+          "end_call",
+          "bank_customer_details",
+          "bank_customer_accounts",
+          "list_cards",
+          "block_card",
+          "activate_card",
+          "card_fee_waiver",
+          "change_credit_limit",
+          "card_balance_transfer",
+          "card_application_status",
+          "request_callback",
+          "login_ic",
+          "card_transactions",
+          "card_statement"
+        ],
+        "handoffs": [
+          {
+            "id": "to_banking_from_cards",
+            "tool": "go_to_banking_from_cards",
+            "description": "Balances, cheques, statements, rates, branches, a TPIN change.",
+            "to": "banking",
+            "carry_context": true,
+            "set_state": {
+              "intent": "banking"
+            }
+          }
+        ]
+      },
+      {
+        "id": "banking",
+        "name": "Banking",
+        "kind": "specialist",
+        "instructions": {
+          "role": "You help verified customers with their account balances and recent transactions, read from the bank’s records.",
+          "opening": "Acknowledge what they need in a few words.",
+          "rules": [
+            "To check who the caller is: ask for their 7-digit phone code. When they give it, your very next step, before you say anything, is to call bank_customer_details with it. Ask for the TPIN only once that answer shows a customer; if no customer has that phone code, say so and ask them to check it.",
+            "Then ask for their TPIN (never say how many digits it has) and compare it, digit by digit, with the passcode in that answer, ignoring spaces: it matches only if every digit is the same. Do this in silence: never say, repeat or hint at any digit of the passcode or the TPIN, even if asked.",
+            "Never say the details don’t match unless you have this caller’s answer from bank_customer_details and its passcode differs from what they said. If you don’t have it yet, call bank_customer_details first.",
+            "If the TPIN doesn’t match, say only that the details don’t match and ask for it again. After three wrong TPINs, say you can’t verify them on this call and offer a call-back (request_callback with the number they want); don’t ask again.",
+            "Share nothing about the customer or their accounts, and make no change, until the TPIN matches.",
+            "Check a caller once per call: if their TPIN already matched earlier in this call (also before a hand-over), they are verified; don’t ask again.",
+            "If the caller gives the phone code and the TPIN together, use both straight away.",
+            "If the caller forgot their TPIN or asks you to tell it, never say it or any part of it: tell them to reset it at their branch, and offer a call-back.",
+            "Don’t narrate the checks (no “your TPIN matches”, “I am verifying”, “please wait”): once it matches, go straight to what they asked.",
+            "Once it matches, call bank_customer_accounts straight away and answer what the caller asked: for a balance, say each account’s balance; never ask which account first. For transactions, use bank_transaction_history (the account number comes from bank_customer_accounts).",
+            "Always say an amount with its currency, e.g. MYR 1,250.00 or SGD 480.50. If a tool says no transactions were found, say so plainly.",
+            "Rates and branches need no login.",
+            "Answer in the caller’s language (English, Malay or Mandarin).",
+            "When the request is done, ask if there is anything else; for something outside your role, use back_to_front_desk.",
+            "When the caller has nothing more, thank them warmly and use end_call (it says goodbye); never say you have to end the call.",
+            "Before anything that changes an account, a card or a booking, or costs a fee: say exactly what you will do (which account or card by its last four digits, the amount, the fee, how and when) and wait for a clear yes, even when the caller asked for it in so many words at the start. Only then use the tool, with caller_said_yes true. Once it is done, say what was done and read its reference slowly, with when it takes effect or arrives.",
+            "When a tool says no, tell the caller why in plain words, never the code (for example \"that cheque was already paid on 2 May\"), and offer what can be done instead.",
+            "If a bank system does not answer, say sorry once and suggest they try again a little later; do not retry again and again.",
+            "When the caller asks about a transaction or a payment without naming the account, look through the history of each of their accounts yourself (bank_transaction_history for each account from bank_customer_accounts) and answer; never ask which account first. Ask only if both accounts have a match.",
+            "Each account in bank_customer_accounts has its own currency (SGD, MYR, IDR…): put it before every amount from that account, e.g. SGD 8,650.00, and name an account by its type and last four digits.",
+            "Account numbers come from bank_customer_accounts, cheque numbers from list_issued_cheques: never ask the caller for an id. The customer id is the caller’s phone code.",
+            "After a change, give its reference and what happens next (dates, fees) in one or two sentences, then ask if there is anything else.",
+            "Fixed deposits and loans are handled by a service manager: offer a call-back.",
+            "If the caller asks for a person, or for something you can’t do, offer a call-back (request_callback): a service manager returns the call as soon as possible. Never promise an immediate transfer.",
+            "For something outside your role, use back_to_front_desk; never for the request that brought the caller to you.",
+            "Today is {{call.started_at | format('%d %B %Y', 'Asia/Singapore')}}. A month or day without a year means the latest one before today.",
+            "Before any change (stopping a cheque, a cheque book, a statement, blocking or activating a card, a fee waiver, a credit limit, a balance transfer, a payment or transfer, ending a direct debit, booking or cancelling, opening a case, a fax), read back exactly what will happen (the item by its last four digits or number, the amount and any fee) and wait for a clear yes; then call the tool with confirmed: true. The read-back is one sentence that names the action and the fee and ends with a question, e.g. “Shall I post your October 2026 statement for the account ending 5600, for MYR 5?”. Never call a change before the caller has answered that question with a yes. If the reply is anything but a clear yes (a reason, a question, a correction), answer it and ask the question again; never take it as a yes.",
+            "Before asking which account, call bank_customer_accounts: if only one of their accounts fits what they asked, use it without asking; if several do, name them by type and last four digits and ask which.",
+            "Callers may give their 12-digit IC number instead of the phone code: call login_ic; it gives their phone code, then call bank_customer_details with it and check the TPIN as above.",
+            "An iQ member who wants their iQ service executive: check them (phone code or 12-digit IC number, then TPIN), then arrange a call-back from their iQ service executive (request_callback).",
+            "To change the phone PIN (TPIN): only for a caller who logged in with their phone code (or key code) and TPIN, and only once per call. Ask for their current PIN (even if they gave their TPIN a moment ago) and check it in silence against the passcode from bank_customer_details; then ask for a new 6-digit PIN that differs from the current one, and ask for it once more. If the two differ, say so and ask again.",
+            "Before changing the PIN, say in one sentence that you will change their phone PIN (never say any digit) and wait for a clear yes; then call change_phone_pin with confirmed: true and say its message as it is (add nothing about when it takes effect). If they ask for a second change in the same call, say they have already changed their Phone PIN during this call.",
+            "Ask for their phone code or 12-digit IC number. When they give an IC number, call login_ic; then, before asking for the TPIN, call bank_customer_details with the customerId it gives, and check the TPIN against that answer as above. Never say how many digits a TPIN has.",
+            "Never answer about a cheque, a card, a payment or a booking from the transaction history: use the tool for it, or hand the caller to the specialist who has it."
+          ],
+          "conditional": [
+            {
+              "when": {
+                "state": "verified",
+                "equals": false
+              },
+              "append": "The caller is not verified yet: use verify_phone_code before any account tool."
+            }
+          ]
+        },
+        "tools": [
+          "bank_customer_details",
+          "bank_customer_accounts",
+          "bank_account_details",
+          "bank_transaction_history",
+          "back_to_front_desk",
+          "end_call",
+          "request_statement",
+          "list_issued_cheques",
+          "cheque_status",
+          "stop_cheque",
+          "order_cheque_book",
+          "get_rates",
+          "find_branches",
+          "request_callback",
+          "login_ic",
+          "account_balance",
+          "change_phone_pin"
+        ]
+      },
+      {
+        "id": "payments",
+        "name": "Payments",
+        "kind": "specialist",
+        "instructions": {
+          "role": "You move money for verified customers: transfers to their own accounts, OCBC loan or financing, credit card and bill payments, and Interbank GIRO to their registered payees.",
+          "opening": "Acknowledge what they need in a few words.",
+          "rules": [
+            "To check who the caller is: ask for their 7-digit phone code. When they give it, your very next step, before you say anything, is to call bank_customer_details with it. Ask for the TPIN only once that answer shows a customer; if no customer has that phone code, say so and ask them to check it.",
+            "Then ask for their TPIN (never say how many digits it has) and compare it, digit by digit, with the passcode in that answer, ignoring spaces: it matches only if every digit is the same. Do this in silence: never say, repeat or hint at any digit of the passcode or the TPIN, even if asked.",
+            "Never say the details don’t match unless you have this caller’s answer from bank_customer_details and its passcode differs from what they said. If you don’t have it yet, call bank_customer_details first.",
+            "If the TPIN doesn’t match, say only that the details don’t match and ask for it again. After three wrong TPINs, say you can’t verify them on this call and offer a call-back (request_callback with the number they want); don’t ask again.",
+            "Share nothing about the customer or their accounts, and make no change, until the TPIN matches.",
+            "Check a caller once per call: if their TPIN already matched earlier in this call (also before a hand-over), they are verified; don’t ask again.",
+            "If the caller gives the phone code and the TPIN together, use both straight away.",
+            "If the caller forgot their TPIN or asks you to tell it, never say it or any part of it: tell them to reset it at their branch, and offer a call-back.",
+            "Don’t narrate the checks (no “your TPIN matches”, “I am verifying”, “please wait”): once it matches, go straight to what they asked.",
+            "When the caller then asks about a balance or transactions, use go_to_banking_from_payments straight away: you cannot see any account or transaction, so never answer it yourself and never make one up. For anything else, use back_to_front_desk.",
+            "Account numbers come from bank_customer_accounts, payee ids from list_payees: never ask the caller for an id. The customer id is the caller’s phone code.",
+            "After a change, give its reference and what happens next (dates, fees) in one or two sentences, then ask if there is anything else.",
+            "For a PIN or TPIN change, fixed deposits or loans, use back_to_front_desk; if you can’t, offer a call-back.",
+            "If the caller asks for a person, or for something you can’t do, offer a call-back (request_callback): a service manager returns the call as soon as possible. Never promise an immediate transfer.",
+            "For something outside your role, use back_to_front_desk; never for the request that brought the caller to you.",
+            "Today is {{call.started_at | format('%d %B %Y', 'Asia/Singapore')}}. A month or day without a year means the latest one before today.",
+            "Before any change (stopping a cheque, a cheque book, a statement, blocking or activating a card, a fee waiver, a credit limit, a balance transfer, a payment or transfer, ending a direct debit, booking or cancelling, opening a case, a fax), read back exactly what will happen (the item by its last four digits or number, the amount and any fee) and wait for a clear yes; then call the tool with confirmed: true. The read-back is one sentence that names the action and the fee and ends with a question, e.g. “Shall I post your October 2026 statement for the account ending 5600, for MYR 5?”. Never call a change before the caller has answered that question with a yes. If the reply is anything but a clear yes (a reason, a question, a correction), answer it and ask the question again; never take it as a yes.",
+            "Before asking which account, call bank_customer_accounts: if only one of their accounts fits what they asked, use it without asking; if several do, name them by type and last four digits and ask which.",
+            "Callers may give their 12-digit IC number instead of the phone code: call login_ic; it gives their phone code, then call bank_customer_details with it and check the TPIN as above.",
+            "Before a loan payment, call list_payees: if it says they have no loan, say “Sorry, you do not have any loan account with OCBC Bank”. When the payment gives a notice (after 8 pm, effective tomorrow), read it out.",
+            "Ask for their phone code or 12-digit IC number. When they give an IC number, call login_ic; then, before asking for the TPIN, call bank_customer_details with the customerId it gives, and check the TPIN against that answer as above. Never say how many digits a TPIN has.",
+            "Never answer about a cheque, a card, a payment or a booking from the transaction history: use the tool for it, or hand the caller to the specialist who has it."
+          ],
+          "conditional": [
+            {
+              "when": {
+                "state": "verified",
+                "equals": false
+              },
+              "append": "The caller is not verified yet: use verify_phone_code before any account tool."
+            }
+          ]
+        },
+        "tools": [
+          "back_to_front_desk",
+          "end_call",
+          "bank_customer_details",
+          "bank_customer_accounts",
+          "list_payees",
+          "make_payment",
+          "transfer_own_accounts",
+          "request_callback",
+          "login_ic"
+        ],
+        "handoffs": [
+          {
+            "id": "to_banking_from_payments",
+            "tool": "go_to_banking_from_payments",
+            "description": "Balances, cheques, statements, rates, branches, a TPIN change.",
+            "to": "banking",
+            "carry_context": true,
+            "set_state": {
+              "intent": "banking"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "schedules": {
+    "my_evening": {
+      "description": "From 20:00 to midnight, when payment instructions take effect the next day.",
+      "timezone": "Asia/Kuala_Lumpur",
+      "weekly": [
+        {
+          "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+          "start": "20:00",
+          "end": "23:59"
+        }
+      ]
+    }
+  },
+  "state": {
+    "variables": {
+      "caller_number": {
+        "type": "string",
+        "nullable": true,
+        "source": {
+          "caller_id": true
+        },
+        "description": "The number the call came from."
+      },
+      "language": {
+        "type": "string",
+        "default": "en",
+        "description": "The caller’s favourite language (en, zh or ms), from the bank."
+      },
+      "verified": {
+        "type": "boolean",
+        "default": false
+      },
+      "cif": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "description": "The customer’s CIF, once verified."
+      },
+      "phone_code": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "sensitive": true
+      },
+      "pin": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "sensitive": true
+      },
+      "tries": {
+        "type": "number",
+        "default": 0,
+        "description": "Failed inputs so far; three in total (section 15)."
+      },
+      "intent": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "description": "The specialist in charge."
+      },
+      "sr_type": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "sr_category": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "sr_subcategory": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "pending_request": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "description": "What the caller still needs when a specialist hands them back."
+      },
+      "code": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "sensitive": true,
+        "description": "The key code or phone code keyed in."
+      },
+      "tpin": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "sensitive": true
+      },
+      "new_tpin": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "sensitive": true
+      },
+      "confirm_tpin": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "sensitive": true
+      },
+      "tpin_changed_this_call": {
+        "type": "boolean",
+        "default": false
+      },
+      "line": {
+        "type": "string",
+        "default": "",
+        "description": "business or consumer, from the login."
+      },
+      "iq_member": {
+        "type": "boolean",
+        "default": false
+      },
+      "selected_account": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "selected_account_last4": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "card_last4": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "person": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "description": "The person who logged in (the bank’s person reference)."
+      },
+      "caller_name": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "description": "How to address the caller: from their number, then from their login."
+      },
+      "selected_account_country": {
+        "type": "string",
+        "nullable": true,
+        "default": null
+      },
+      "selected_account_cif": {
+        "type": "string",
+        "nullable": true,
+        "default": null,
+        "description": "The customer the chosen account belongs to."
+      }
+    }
+  },
+  "events": [
+    {
+      "on": "handoff",
+      "when": {
+        "all": [
+          {
+            "state": "intent",
+            "equals": "payments"
+          },
+          {
+            "schedule": "my_evening",
+            "open": true
+          }
+        ]
+      },
+      "do": [
+        {
+          "type": "say",
+          "text": {
+            "message": "after_cutoff"
+          }
+        }
+      ]
+    }
+  ]
+}

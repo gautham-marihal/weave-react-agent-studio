@@ -22,6 +22,7 @@
 //   UB_ID_NUMBER, UB_DOB           the ID card number and date of birth typed (default S8512345D, 14/03/1985)
 //   UB_FAILURE=deepfake | nomatch  the stand-in provider fails the face check (the identity-review path)
 //   UB_CAMERA=path/to/video.mjpeg  another camera video (say, one where the card never shows: the take-a-picture path)
+//   UB_JOURNEY=ocbc                the same flow in the OCBC journey's agents (demos/ocbc-journey), then banking
 // On voice the panel shows only the latest caption: read what was said in the call record (Monitor › Calls).
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -50,6 +51,14 @@ const MAIL_NAME = `${FIRST}.${LAST}`.toLowerCase().replace(/[^a-z.]+/g, '');
 // this run's customer, never one left there by an earlier run with the same name
 const RUN_TAG = /^[a-z0-9]{1,12}$/i.test(env.UB_RUN || '') ? `+${env.UB_RUN.toLowerCase()}` : '';
 const CUSTOMER_EMAIL = `${MAIL_NAME}${RUN_TAG}${FAILURE ? `+${FAILURE}` : ''}@example.com`;
+// UB_JOURNEY=ocbc: the same flow inside the OCBC journey (demos/ocbc-journey): its two agents and OCBC's greeting; once
+// the account is open, the customer goes on to banking on the same call (that journey's banking-steps.mjs)
+const OCBC = env.UB_JOURNEY === 'ocbc';
+const BOTS = OCBC
+  ? { onboarding: 'ocbc-personal-banking', caseDesk: 'ocbc-case-desk', bank: 'OCBC' }
+  : { onboarding: 'unbound-onboarding', caseDesk: 'unbound-case-desk', bank: 'Unbound Bank' };
+// the e-mail of a case (an OCBC case also has an SMS with the same case id: the temporary phone banking PIN)
+const mailOf = (emails, caseId) => (emails || []).find((m) => m.case_id === caseId && m.channel !== 'sms');
 
 const shots = here(`../shots/${way}`);
 const BASE = env.E2E_BASE || 'http://localhost:5181';
@@ -184,9 +193,9 @@ await page.waitForSelector('.dashMain');
 console.log(at(), 'signed in');
 
 // ---------------------------------------------------------------- 1. AI agent 1: offers and onboarding
-await openTest('unbound-onboarding');
-console.log(at(), `started a real ${way} with unbound-onboarding (draft)`);
-check('greeting', await until(async () => /Aria from Unbound Bank/.test(await textOf(panel)), 60000));
+await openTest(BOTS.onboarding);
+console.log(at(), `started a real ${way} with ${BOTS.onboarding} (draft)`);
+check('greeting', await until(async () => (await textOf(panel)).includes(`Aria from ${BOTS.bank}`), 60000));
 let mark = (await textOf(panel)).length;
 await say(
   'Hi. I recently inherited about 500 million and I want to open an account to manage this sum separately. I am exploring the local banks to see who gives me good safety and value.',
@@ -370,12 +379,25 @@ if (formShown) {
 if (verified) {
   const queued = (await getJson('/mx/handovers?status=queued')).handovers || [];
   check('nothing was sent to the MX queue for this customer', !queued.some((h) => h.customer?.email === CUSTOMER_EMAIL));
-  const mail = ((await getJson('/tqd/outbox')).emails || []).find((m) => m.case_id === selfCase);
+  const emails = (await getJson('/tqd/outbox')).emails;
+  // on voice the panel shows only the latest caption, so the case reference may not have been read: then the newest
+  // e-mail to this run's customer (its address carries this run's tag)
+  const mail = mailOf(emails, selfCase) || (selfCase ? null : (emails || []).find((m) => m.to === CUSTOMER_EMAIL && m.channel !== 'sms'));
+  if (!selfCase && mail) selfCase = mail.case_id;
   check('TQD outbox has the e-mail to the customer', !!mail && mail.to === CUSTOMER_EMAIL, mail ? `${mail.to} | ${mail.subject}` : '(not found)');
   if (mail) console.log('\n--- the e-mail ---\n' + mail.body + '\n------------------');
+  if (OCBC) {
+    // the new customer goes on to banking on the same call: the new account, the temporary PIN, the debit card
+    const sms = (emails || []).find((m) => m.case_id === selfCase && m.channel === 'sms');
+    const { steps } = await import('../../../ocbc-journey/scripts/banking-steps.mjs');
+    await steps({ page, panel, say, until, textOf, newText, check, at, getJson, postJson }).afterOpening({ mail, sms });
+    await page.screenshot({ path: `${shots}/7-banking.png` });
+  }
   mark = (await textOf(panel)).length;
   await say('No, that’s all. Thank you!');
   check('goodbye and end', await until(async () => /Goodbye|goodbye/.test(await newText(mark)), 40000));
+  // the whole conversation as the panel shows it, to read what each agent said
+  fs.writeFileSync(`${shots}/transcript.txt`, await page.locator(panel).first().innerText());
   console.log(`\n${results.filter((r) => r.ok).length}/${results.length} checks passed; outcome: verified, finished by the AI (no hand-over)`);
   console.log('page errors:', problems.length ? problems.slice(0, 4).join(' | ') : 'none');
   await browser.close();
@@ -422,8 +444,8 @@ await page
   .catch(() => {});
 await page.keyboard.press('Escape').catch(() => {});
 await page.waitForTimeout(1500);
-await openTest('unbound-case-desk');
-console.log(at(), `started a real ${way} with unbound-case-desk (draft)`);
+await openTest(BOTS.caseDesk);
+console.log(at(), `started a real ${way} with ${BOTS.caseDesk} (draft)`);
 const welcomed = await until(async () => /Welcome back/.test(await textOf(panel)), 60000);
 const caseLine = await until(async () => /case reference is TQD-|couldn’t create the case/.test(await textOf(panel)), 45000);
 await until(async () => /anything else/.test(await textOf(panel)), 30000);
@@ -451,7 +473,7 @@ check(
   `hand-back ${back.handover_id} (${back.source})`,
 );
 const outbox = await getJson('/tqd/outbox');
-const mail = (outbox.emails || []).find((m) => m.case_id === caseId);
+const mail = mailOf(outbox.emails, caseId);
 check(
   'TQD outbox has the e-mail to the customer',
   !!mail && mail.to === CUSTOMER_EMAIL,
@@ -462,6 +484,7 @@ mark = (await textOf(panel)).length;
 await say('No, that’s all. Thank you!');
 const bye = await until(async () => /Goodbye|goodbye/.test(await newText(mark)), 40000);
 check('goodbye and end', bye);
+fs.writeFileSync(`${shots}/transcript.txt`, await page.locator(panel).first().innerText());
 
 console.log(`\n${results.filter((r) => r.ok).length}/${results.length} checks passed; outcome: ${outcome?.words || '?'} (${ho?.reason || '?'})`);
 console.log('page errors:', problems.length ? problems.slice(0, 4).join(' | ') : 'none');

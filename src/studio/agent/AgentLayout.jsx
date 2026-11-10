@@ -42,6 +42,7 @@ import { knowledgePart } from './detailed/parts/knowledgePart.jsx';
 import { toolsPart } from './detailed/parts/toolsPart.jsx';
 import { connectionsPart } from './detailed/parts/connectionsPart.jsx';
 import { mediaPart } from './detailed/parts/mediaPart.jsx';
+import { stepsPart } from './detailed/parts/stepsPart.jsx';
 import { ChannelsPage } from './detailed/parts/channelsPart.jsx';
 import { SubagentsPage } from './detailed/parts/subagentsPart.jsx';
 import { guardrailsPart } from './detailed/parts/guardrailsPart.jsx';
@@ -475,6 +476,18 @@ export default function AgentLayout({ ws }) {
         onShowJson={openJson}
         // its lines open the parts that own what they show (Agent's model, Conversation's secret values, a form's steps)
         extra={{ goPart: (id, query) => go(id, query) }}
+      />
+    );
+  } else if (page === 'steps') {
+    body = (
+      <DetailedPage
+        part={stepsPart}
+        editor={editor}
+        request={detailedRequest('steps')}
+        onShowJson={openJson}
+        // a step's settings that live elsewhere open there (the greeting on Agent, a form on Connections, a person on
+        // Tools); "Try these steps" opens the same test panel as the bar's Test
+        extra={{ goPart: (id, query) => go(id, query), onTest: () => setDrawer('test') }}
       />
     );
   } else if (page === 'channels') {

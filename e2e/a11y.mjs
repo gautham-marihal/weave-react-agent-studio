@@ -34,10 +34,12 @@ const B = '#/bots/acme-support';
 // [name, address, what shows when it is ready]
 const PAGES = [
   ...['home', 'bots', 'calls', 'live', 'monitoring', 'speed', 'alerts', 'voices', 'integrations', 'team', 'settings'].map((p) => [p, `#/${p}`, '.dashMain']),
-  ...['home', 'agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'media', 'workflow', 'subagents', 'guardrails', 'aftercall']
+  ...['home', 'agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'media', 'steps', 'workflow', 'subagents', 'guardrails', 'aftercall']
     .concat(['tests', 'scenarios', 'checks', 'callers'])
     .concat(['versions', 'deploy', 'calls', 'monitoring', 'questions', 'speed', 'settings'])
     .map((p) => [`agent ${p}`, `${B}/${p}`, '.nlWorkspace']),
+  // Steps on an agent with a form and its many steps
+  ['agent steps, with a form', '#/bots/unbound-onboarding/steps', '.bsLane'],
   // Images & Videos on an agent with every kind of picture step, and one step's own page
   ['agent media, every kind', '#/bots/unbound-onboarding/media', '.mdHero'],
   ['agent media, a reading', '#/bots/unbound-onboarding/media?item=reads:forms.0.on_submit.3', '.cxPage'],

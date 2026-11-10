@@ -43,5 +43,6 @@ export const HUES = {
   connections: 'amber',
   media: 'rose',
   subagents: 'teal',
+  steps: 'violet',
   settings: 'slate',
 };

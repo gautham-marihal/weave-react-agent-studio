@@ -189,28 +189,45 @@ const compareRows = (e) => [
 ];
 
 // ---- a way in's picture rows (only ways in on the website take pictures)
+//   The chosen entry is one way in, or "Both" / "All N" (bases: every way in on the website): a row then shows what they
+//   all have (the first one's, with a note when they differ) and a change sets each of them.
+const eachWay = (e, key, row) => {
+  const bases = e.bases || [e.base];
+  const values = (config) => bases.map((b) => row.read(config, b));
+  const differ = (config) => new Set(values(config).map((v) => JSON.stringify(v ?? null))).size > 1;
+  return {
+    ...row,
+    pathFor: () => [...bases[0], ...key],
+    errPath: [...bases[0], ...key],
+    get: (config) => values(config)[0],
+    put: (config, value) => bases.reduce((c, b) => row.write(c, b, value), config),
+    note: bases.length > 1 ? (config) => (differ(config) ? 'Not the same on every way in yet: a change here sets them all.' : null) : undefined,
+  };
+};
 const wayRows = (e) => {
-  const index = e.base[1];
-  const takes = (config, want) => list(getAtPath(config, ['channels', index, 'modalities', 'input'])).includes(want);
-  const photoOff = (config) => !takes(config, 'image');
+  const bases = e.bases || [e.base];
+  const takes = (config, base, want) => list(getAtPath(config, [...base, 'modalities', 'input'])).includes(want);
+  const photoOff = (config) => bases.every((b) => !takes(config, b, 'image'));
+  const each = (key, row) => eachWay(e, key, row);
+  const megabytes = (b) => (typeof b === 'number' ? Math.round((b / (1024 * 1024)) * 10) / 10 : undefined);
   return [
-    {
+    each(['modalities', 'input'], {
       id: 'photo',
       label: 'Customers can send photos',
       hint: 'An upload button in the conversation',
       kind: 'sw',
-      get: (c) => takes(c, 'image'),
-      put: (c, on) => setChannelInput(c, index, 'image', on),
-    },
-    {
+      read: (c, b) => takes(c, b, 'image'),
+      write: (c, b, on) => setChannelInput(c, b[1], 'image', on),
+    }),
+    each(['modalities', 'input'], {
       id: 'camera',
       label: 'Customers can turn on their camera',
       hint: 'Only when a step asks for it',
       kind: 'sw',
-      get: (c) => takes(c, 'video'),
-      put: (c, on) => setChannelInput(c, index, 'video', on),
-    },
-    at(e, ['inputs', 'image', 'on_receive'], {
+      read: (c, b) => takes(c, b, 'video'),
+      write: (c, b, on) => setChannelInput(c, b[1], 'video', on),
+    }),
+    each(['inputs', 'image', 'on_receive'], {
       id: 'onReceive',
       label: 'When a photo arrives',
       hint: 'A step that asks for a photo waits for one either way',
@@ -220,24 +237,21 @@ const wayRows = (e) => {
         { value: 'reply', label: 'Answer at once' },
       ],
       disabled: photoOff,
-      get: (c) => (getAtPath(c, [...e.base, 'inputs', 'image', 'on_receive']) === 'reply' ? 'reply' : 'attach'),
-      put: (c, v) => setPath(c, [...e.base, 'inputs', 'image', 'on_receive'], v === 'reply' ? 'reply' : undefined),
+      read: (c, b) => (getAtPath(c, [...b, 'inputs', 'image', 'on_receive']) === 'reply' ? 'reply' : 'attach'),
+      write: (c, b, v) => setPath(c, [...b, 'inputs', 'image', 'on_receive'], v === 'reply' ? 'reply' : undefined),
     }),
-    at(e, ['inputs', 'image', 'max_bytes'], {
+    each(['inputs', 'image', 'max_bytes'], {
       id: 'maxSize',
       label: 'Largest photo',
       kind: 'num',
       unit: 'MB',
       placeholder: '8',
       disabled: photoOff,
-      get: (c) => {
-        const b = getAtPath(c, [...e.base, 'inputs', 'image', 'max_bytes']);
-        return typeof b === 'number' ? Math.round((b / (1024 * 1024)) * 10) / 10 : undefined;
-      },
-      put: (c, mb) =>
-        setPath(c, [...e.base, 'inputs', 'image', 'max_bytes'], typeof mb === 'number' && mb > 0 ? Math.max(1024, Math.round(mb * 1024 * 1024)) : undefined),
+      read: (c, b) => megabytes(getAtPath(c, [...b, 'inputs', 'image', 'max_bytes'])),
+      write: (c, b, mb) =>
+        setPath(c, [...b, 'inputs', 'image', 'max_bytes'], typeof mb === 'number' && mb > 0 ? Math.max(1024, Math.round(mb * 1024 * 1024)) : undefined),
     }),
-    at(e, ['inputs', 'image', 'accepted_mime'], {
+    each(['inputs', 'image', 'accepted_mime'], {
       id: 'accept',
       label: 'Kinds of file',
       kind: 'multi',
@@ -249,39 +263,45 @@ const wayRows = (e) => {
         { value: 'image/gif', label: 'GIF' },
       ],
       disabled: photoOff,
-      get: (c) => {
-        const now = list(getAtPath(c, [...e.base, 'inputs', 'image', 'accepted_mime']));
+      read: (c, b) => {
+        const now = list(getAtPath(c, [...b, 'inputs', 'image', 'accepted_mime']));
         return now.length ? now : DEFAULT_ACCEPT;
       },
-      put: (c, v) => {
+      write: (c, b, v) => {
         const same = list(v).length === DEFAULT_ACCEPT.length && DEFAULT_ACCEPT.every((t) => list(v).includes(t));
-        return setPath(c, [...e.base, 'inputs', 'image', 'accepted_mime'], same || !list(v).length ? undefined : v);
+        return setPath(c, [...b, 'inputs', 'image', 'accepted_mime'], same || !list(v).length ? undefined : v);
       },
     }),
   ];
 };
+// a value kept as it is, or removed when emptied (as `at` puts it)
+const plain = (key) => (c, b, value) => setPath(c, [...b, ...key], value === '' || (Array.isArray(value) && !value.length) ? undefined : value);
 const wayAdv = (e) => [
-  at(e, ['inputs', 'video', 'screen_share'], {
+  eachWay(e, ['inputs', 'video', 'screen_share'], {
     id: 'screen',
     label: 'Screen sharing',
     hint: 'They can share their screen as well as the camera',
     kind: 'sw',
-    get: (c) => getAtPath(c, [...e.base, 'inputs', 'video', 'screen_share']) === true,
+    read: (c, b) => getAtPath(c, [...b, 'inputs', 'video', 'screen_share']) === true,
+    write: plain(['inputs', 'video', 'screen_share']),
   }),
-  at(e, ['inputs', 'video', 'camera'], {
+  eachWay(e, ['inputs', 'video', 'camera'], {
     id: 'videoCamera',
     label: 'Camera stream (technical)',
     hint: 'How the browser sends the camera. Off, the camera can’t be used on this channel',
     kind: 'sw',
     // on unless switched off: a channel that takes video sends the camera unless this says false
-    get: (c) => getAtPath(c, [...e.base, 'inputs', 'video', 'camera']) !== false,
+    read: (c, b) => getAtPath(c, [...b, 'inputs', 'video', 'camera']) !== false,
+    write: plain(['inputs', 'video', 'camera']),
   }),
-  at(e, ['inputs', 'image', 'topic'], {
+  eachWay(e, ['inputs', 'image', 'topic'], {
     id: 'topic',
     label: 'Upload topic (technical)',
     hint: 'The channel uploads travel on; leave it empty for the usual one',
     kind: 'text',
     placeholder: 'agent-builder.image',
+    read: (c, b) => getAtPath(c, [...b, 'inputs', 'image', 'topic']),
+    write: plain(['inputs', 'image', 'topic']),
   }),
 ];
 
@@ -364,10 +384,21 @@ export const mediaForm = {
           id: 'ways',
           path: ['channels'],
           label: 'Ways in',
-          entries: (config) =>
-            waysIn(config)
+          // with two or more ways in on the website, "Both" (or "All N") comes first: it sets them all at once
+          entries: (config) => {
+            const ways = waysIn(config)
               .filter((w) => w.web)
-              .map((w) => ({ key: w.key, name: `${w.name}${w.id ? ` (${w.id})` : ''}`, base: ['channels', w.index], item: config.channels[w.index] })),
+              .map((w) => ({ key: w.key, name: `${w.name}${w.id ? ` (${w.id})` : ''}`, base: ['channels', w.index], item: config.channels[w.index] }));
+            if (ways.length < 2) return ways;
+            const all = {
+              key: 'all',
+              name: ways.length === 2 ? 'Both' : `All ${ways.length}`,
+              base: ways[0].base,
+              bases: ways.map((w) => w.base),
+              item: ways[0].item,
+            };
+            return [all, ...ways];
+          },
         },
         of: 'ways',
         rowsFor: (c) => (c.chosen('ways') ? wayRows(c.chosen('ways')) : []),

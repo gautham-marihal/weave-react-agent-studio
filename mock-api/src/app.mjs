@@ -10,6 +10,7 @@ import customersFile from '../data/customers.json' with { type: 'json' };
 import services from '../data/services.json' with { type: 'json' };
 import info from '../data/info.json' with { type: 'json' };
 import { UNBOUND_ROUTES, resetUnbound } from './unbound.mjs';
+import { OCBC_ROUTES } from './ocbc.mjs';
 
 const { customers } = customersFile;
 const OTP = '123456'; // the one-time password every test customer "receives"
@@ -1115,7 +1116,7 @@ function fax(items, id, body, what) {
 }
 
 // Tetherfi Unbound use case 1 (src/unbound.mjs): onboarding, the MX bridge and TQD
-ROUTES.push(...UNBOUND_ROUTES);
+ROUTES.push(...UNBOUND_ROUTES, ...OCBC_ROUTES);
 
 const compiled = ROUTES.map(([method, path, handler]) => {
   const names = [];

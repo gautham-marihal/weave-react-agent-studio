@@ -11,6 +11,7 @@ import { agentLabel } from './rowNames.js';
 import { PAGE_GROUPS } from './pages.js';
 import { aiSeesPictures, channelPictures, pictureCounts } from '../pictures/mediaModel.js';
 import { settingConflicts } from './conflicts.js';
+import { lanesOf, numbered, problemsOf } from './detailed/stepsWorkspace/stepsModel.js';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -32,6 +33,7 @@ export const PURPOSE = {
   connections: 'What its tools reach: the systems it calls, phone transfers, forms, messages and tasks.',
   media: 'Photos and the camera: where customers can send them, what it asks for, how picky the checks are and what happens to the pictures.',
   subagents: 'Who answers first, what each subagent does, and who passes callers to whom.',
+  steps: 'What happens on a call, in order: what it does every time, and what it is told to do.',
 };
 
 // What a part's documents still need, the worst first (the words of readiness.js)
@@ -192,7 +194,19 @@ function subagentsPart(config) {
   return { state: 'done', status: `${plural(agents.length, 'subagent')} · ${plural(handoffs, 'hand-over')} · ${agentLabel(config, first.id)} answers first.` };
 }
 
+// The call, step by step: optional (with no steps it answers in its own order); a step that can't run needs a look
+function stepsSection(config) {
+  const lanes = lanesOf(config);
+  const rows = numbered(lanes).filter((r) => r.step.kind !== 'greet');
+  if (!rows.length) return { state: 'optional', status: 'No steps yet: it answers from its role, in its own order.' };
+  const broken = rows.filter((r) => problemsOf(config, r.step).some((p) => p.level === 'danger')).length;
+  const what = `${plural(rows.length, 'step')}${lanes.length > 1 ? ` across ${plural(lanes.length, 'subagent')}` : ''}`;
+  if (broken) return { state: 'attention', status: `${what} · ${plural(broken, 'step')} can’t run as written.` };
+  return { state: 'done', status: `${what}.` };
+}
+
 const READERS = {
+  steps: (c) => stepsSection(c),
   agent: (c) => agentPart(c),
   conversation: (c) => conversationPart(c),
   connections: (c) => connectionsPart(c),

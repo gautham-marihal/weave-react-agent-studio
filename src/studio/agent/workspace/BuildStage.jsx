@@ -59,7 +59,7 @@ export function ChecksChip({ status, onOpen }) {
 const PART_GROUPS = [
   { id: 'basics', label: 'Basics', ids: ['agent', 'conversation', 'knowledge'] },
   { id: 'abilities', label: 'What it can do', ids: ['tools', 'connections', 'channels', 'media'] },
-  { id: 'flow', label: 'Call flow', ids: ['workflow', 'subagents'] },
+  { id: 'flow', label: 'Call flow', ids: ['steps', 'workflow', 'subagents'] },
   { id: 'safety', label: 'Safety and follow-up', ids: ['guardrails', 'aftercall'] },
 ];
 

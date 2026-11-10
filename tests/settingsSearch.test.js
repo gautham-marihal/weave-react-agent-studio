@@ -134,7 +134,7 @@ test('agent pages: a setting found under one name in many places is listed twice
 test('agent pages: the agent’s pages and the things people come to do are found by the words they use, the best match first', async () => {
   const { searchAgent } = await import('../src/studio/agent/pages.js');
   const ids = (q) => searchAgent(q).map((i) => i.id);
-  assert.equal(searchAgent('').length, 19, 'with nothing typed, the pages (Conversation, Connections, Images & Videos and Subagents among them)');
+  assert.equal(searchAgent('').length, 20, 'with nothing typed, the pages (Conversation, Connections, Images & Videos, Steps and Subagents among them)');
   assert.equal(searchAgent('camera')[0]?.id, 'page-media', 'the camera is found on Images & Videos');
   assert.ok(ids('hand over').includes('page-subagents'));
   assert.equal(ids('deploy')[0], 'deploy');

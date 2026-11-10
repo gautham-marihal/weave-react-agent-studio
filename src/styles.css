@@ -6418,6 +6418,8 @@ html[data-theme="dark"] {
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* never sideways: a scrollbar down the side takes a few pixels, and the folded menu's icons must not then scroll across */
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 .dashboard > .sidebar > .sideBottom {

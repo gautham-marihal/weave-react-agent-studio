@@ -15,12 +15,12 @@ test('a fresh draft: the agent still to write, the optional parts said to be opt
   const rows = buildSections({ config });
   assert.deepEqual(
     rows.map((r) => r.id),
-    ['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'media', 'workflow', 'subagents', 'guardrails', 'aftercall'],
+    ['agent', 'conversation', 'knowledge', 'tools', 'connections', 'channels', 'media', 'steps', 'workflow', 'subagents', 'guardrails', 'aftercall'],
   );
   const s = byId(rows);
   assert.equal(s.agent.state, 'todo');
   assert.match(s.agent.status, /^Still to choose: what it should do/);
-  for (const id of ['knowledge', 'tools', 'guardrails', 'aftercall', 'media']) assert.equal(s[id].state, 'optional', id);
+  for (const id of ['knowledge', 'tools', 'guardrails', 'aftercall', 'media', 'steps']) assert.equal(s[id].state, 'optional', id);
   assert.equal(s.workflow.status, 'One agent answers every conversation.');
   assert.equal(s.channels.state, 'done');
   assert.ok(rows.every((r) => r.purpose && r.label && r.icon));

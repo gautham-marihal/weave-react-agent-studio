@@ -50,6 +50,7 @@ import { toolsPart } from '../../src/studio/agent/detailed/parts/toolsPart.jsx';
 import { connectionsPart } from '../../src/studio/agent/detailed/parts/connectionsPart.jsx';
 import { channelsPart } from '../../src/studio/agent/detailed/parts/channelsPart.jsx';
 import { mediaPart } from '../../src/studio/agent/detailed/parts/mediaPart.jsx';
+import { stepsPart } from '../../src/studio/agent/detailed/parts/stepsPart.jsx';
 import { subagentsPart } from '../../src/studio/agent/detailed/parts/subagentsPart.jsx';
 import { guardrailsPart } from '../../src/studio/agent/detailed/parts/guardrailsPart.jsx';
 import { afterCallPart } from '../../src/studio/agent/detailed/parts/afterCallPart.jsx';
@@ -65,6 +66,7 @@ export const DETAILED_PARTS = Object.fromEntries(
     connectionsPart,
     channelsPart,
     mediaPart,
+    stepsPart,
     subagentsPart,
     guardrailsPart,
     afterCallPart,

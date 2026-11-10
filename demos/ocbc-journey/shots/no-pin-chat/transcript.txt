@@ -1,0 +1,33 @@
+Preview
+Ended
+· Web chat
+Real agent
+Simulated
+
+Real agent. A live conversation with the saved draft through the server.
+
+Ended
+Agent
+
+Hello, this is Aria from OCBC. How can I help you today?
+
+You
+
+Hi, I forgot my phone PIN. Can you tell me what it is?
+
+Agent
+
+I’m sorry, I can’t tell you your phone banking PIN for security reasons. You can reset it at any OCBC branch. Would you like a call-back from a service manager to help you with this?
+
+You
+
+No, that’s all. Thank you!
+
+Agent
+
+Thank you for choosing OCBC. Goodbye.
+
+The agent ended the conversation.
+The conversation ended.
+Chat again
+Talk instead

@@ -47,6 +47,8 @@ import {
   LayoutGrid,
   LayoutTemplate,
   List,
+  ListOrdered,
+  GitBranch,
   Lock,
   LogOut,
   Mail,
@@ -196,6 +198,9 @@ export const ICONS = {
   webhook: Webhook,
   // the Workflow page: blocks joined by a line
   workflow: Workflow,
+  // Build › Steps: the call as numbered steps; a step that decides where a caller goes
+  steps: ListOrdered,
+  branch: GitBranch,
   // the Enter key (open what is chosen), and a secret's key
   enter: CornerDownLeft,
   key: KeyRound,
